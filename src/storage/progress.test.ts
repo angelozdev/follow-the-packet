@@ -52,13 +52,21 @@ describe('progress', () => {
     expect(loadProgress(blocked)).toEqual({});
   });
 
-  it('a level unlocks when the previous one in its chapter has a star', () => {
-    const chapter: LevelEntry[] = [
-      { id: '04-01', chapter: 4, order: 1, title: 'El primer ping', role: 'defender' },
-      { id: '04-02', chapter: 4, order: 2, title: 'Abre lo justo', role: 'defender' },
-    ];
-    expect(isUnlocked(chapter[0], {}, chapter)).toBe(true);
-    expect(isUnlocked(chapter[1], {}, chapter)).toBe(false);
-    expect(isUnlocked(chapter[1], { '04-01': 1 }, chapter)).toBe(true);
+  const COURSE: LevelEntry[] = [
+    { id: '04-01', chapter: 4, order: 1, title: 'El primer ping', role: 'defender' },
+    { id: '04-02', chapter: 4, order: 2, title: 'Abre lo justo', role: 'defender' },
+    { id: '05-01', chapter: 5, order: 1, title: 'Uno de otro capítulo', role: 'defender' },
+  ];
+
+  it('an incident opens when the one before it has a star', () => {
+    expect(isUnlocked(COURSE[0], {}, COURSE)).toBe(true);
+    expect(isUnlocked(COURSE[1], {}, COURSE)).toBe(false);
+    expect(isUnlocked(COURSE[1], { '04-01': 1 }, COURSE)).toBe(true);
+  });
+
+  it('a chapter opens only when every incident of the chapters before it has a star', () => {
+    expect(isUnlocked(COURSE[2], { '04-01': 3 }, COURSE)).toBe(false);
+    expect(isUnlocked(COURSE[2], { '04-02': 3 }, COURSE)).toBe(false);
+    expect(isUnlocked(COURSE[2], { '04-01': 1, '04-02': 1 }, COURSE)).toBe(true);
   });
 });

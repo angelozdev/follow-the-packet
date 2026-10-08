@@ -47,7 +47,8 @@ export function saveStars(current: Progress, levelId: string, stars: number, sto
   return next;
 }
 
-export function isUnlocked(level: LevelEntry, progress: Progress, chapterLevels: LevelEntry[]): boolean {
-  const index = chapterLevels.findIndex((l) => l.id === level.id);
-  return index <= 0 || (progress[chapterLevels[index - 1].id] ?? 0) > 0;
+/** True when every incident before this one, in course order, has at least one star; the first one is always open. */
+export function isUnlocked(level: LevelEntry, progress: Progress, levels: LevelEntry[]): boolean {
+  const index = levels.findIndex((l) => l.id === level.id);
+  return levels.slice(0, Math.max(index, 0)).every((l) => (progress[l.id] ?? 0) > 0);
 }

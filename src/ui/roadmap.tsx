@@ -1,18 +1,7 @@
 import { ROADMAP_TEXT } from '@/copy';
 import { CHAPTERS, type LevelEntry } from '@/levels';
 import { isUnlocked, type Progress } from '@/storage';
-
-function Stars({ count }: { count: number }) {
-  return (
-    <span className="stars-inline">
-      <span aria-hidden="true">
-        {'★'.repeat(count)}
-        {'☆'.repeat(3 - count)}
-      </span>
-      <span className="sr-only">{ROADMAP_TEXT.starsOf(count)}</span>
-    </span>
-  );
-}
+import { Stars } from './stars';
 
 export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: Progress }) {
   return (
@@ -38,7 +27,7 @@ export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: 
                     const label = `${level.order}. ${level.title}`;
                     return (
                       <li key={level.id} data-level-id={level.id} className="level-item">
-                        {isUnlocked(level, progress, own) ? (
+                        {isUnlocked(level, progress, levels) ? (
                           <a href={`#/level/${level.id}`}>{label}</a>
                         ) : (
                           <span className="locked" aria-disabled="true">
