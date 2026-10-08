@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS } from '../levels/registry';
+import type { LevelEntry } from '../levels/level-entry';
 import { isUnlocked, loadProgress, saveStars } from './progress';
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -36,10 +36,13 @@ describe('progreso', () => {
     expect(saveStars('04-01', 3, broken)).toEqual({ '04-01': 3 });
   });
 
-  it('un nivel se desbloquea cuando el anterior del capítulo tiene al menos una estrella', () => {
-    const chapter = LEVELS.filter((l) => l.chapter === 4);
+  it('a level unlocks when the previous one in its chapter has a star', () => {
+    const chapter: LevelEntry[] = [
+      { id: '04-01', chapter: 4, order: 1, title: 'El primer ping', role: 'defender' },
+      { id: '04-02', chapter: 4, order: 2, title: 'Abre lo justo', role: 'defender' },
+    ];
     expect(isUnlocked(chapter[0], {}, chapter)).toBe(true);
     expect(isUnlocked(chapter[1], {}, chapter)).toBe(false);
-    expect(isUnlocked(chapter[1], { [chapter[0].id]: 1 }, chapter)).toBe(true);
+    expect(isUnlocked(chapter[1], { '04-01': 1 }, chapter)).toBe(true);
   });
 });

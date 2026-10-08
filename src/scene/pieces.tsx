@@ -123,26 +123,3 @@ export function ActorMark({ position, actor }: { position: Vec2; actor: Actor })
     </group>
   );
 }
-
-export function PredictRing({ position, onSelect }: { position: Vec2; onSelect: () => void }) {
-  const [x, z] = position;
-  return (
-    <mesh
-      rotation-x={-Math.PI / 2}
-      position={[x, 0.04, z]}
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelect();
-      }}
-      onPointerOver={() => {
-        document.body.style.cursor = 'pointer';
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = '';
-      }}
-    >
-      <ringGeometry args={[0.4, 0.55, 40]} />
-      <meshBasicMaterial color={ACCENT} transparent opacity={0.85} />
-    </mesh>
-  );
-}

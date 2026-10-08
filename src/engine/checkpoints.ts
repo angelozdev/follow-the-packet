@@ -6,7 +6,3 @@ export function deathPoint(trace: Trace): Checkpoint {
   if (stopStep) return { stage: stopStep.stage === 'nat' ? 'route' : stopStep.stage, at: stopStep.at };
   return { stage: 'reply', at: trace.destinationId ?? 'vpc' };
 }
-
-export function sameCheckpoint(a: Checkpoint, b: Checkpoint): boolean {
-  return a.stage === b.stage && a.at === b.at;
-}

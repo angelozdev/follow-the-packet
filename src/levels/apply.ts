@@ -1,7 +1,17 @@
+import { z } from 'zod';
+import { ruleSchema } from '../engine/schema';
 import type { Network, PacketSpec } from '../engine/types';
-import type { LevelAction } from './schema';
 
-export function applyAction(net: Network, action: LevelAction): Network {
+export const networkActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('addRule'), sgId: z.string().min(1), rule: ruleSchema }),
+  z.object({ type: z.literal('removeRule'), sgId: z.string().min(1), ruleId: z.string().min(1) }),
+  z.object({ type: z.literal('setAppTarget'), instanceId: z.string().min(1), target: z.string().min(1) }),
+  z.object({ type: z.literal('setIgnoreIcmpEcho'), instanceId: z.string().min(1), value: z.boolean() }),
+]);
+
+export type NetworkAction = z.infer<typeof networkActionSchema>;
+
+export function applyAction(net: Network, action: NetworkAction): Network {
   switch (action.type) {
     case 'addRule':
       return {

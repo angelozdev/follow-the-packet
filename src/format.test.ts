@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { actor, inst, lab03Net, ping } from './engine/fixtures';
-import { formatPacket, formatPeer, formatSolution, formatWhat } from './format';
-import level01 from './levels/04-iaas/01-where-ping-dies';
+import { formatPacket, formatPeer, formatWhat } from './format';
 
 describe('formatos', () => {
   it('describe el qué de una regla en lenguaje simple', () => {
@@ -21,9 +20,5 @@ describe('formatos', () => {
     const net = lab03Net();
     expect(formatPacket(ping(inst('servidor1'), '172.31.38.97'), net)).toBe('ping de servidor1 a 172.31.38.97');
     expect(formatPacket(ping(actor('probe-internet'), '34.244.254.100'), net)).toBe('ping de Internet a 34.244.254.100');
-  });
-
-  it('describe la solución de un nivel', () => {
-    expect(formatSolution(level01)).toBe('Agregar en el SG servidor2: ICMP · Echo Request desde SG servidor1.');
   });
 });

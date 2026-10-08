@@ -1,5 +1,5 @@
 import { CHAPTERS } from '../../levels/chapters';
-import type { Level } from '../../levels/schema';
+import type { LevelEntry } from '../../levels/level-entry';
 import { isUnlocked, type Progress } from '../../storage/progress';
 
 function Stars({ count }: { count: number }) {
@@ -14,7 +14,7 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-export function Roadmap({ levels, progress }: { levels: Level[]; progress: Progress }) {
+export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: Progress }) {
   return (
     <main className="page roadmap">
       <header>

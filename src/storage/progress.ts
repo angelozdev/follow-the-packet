@@ -1,4 +1,4 @@
-import type { Level } from '../levels/schema';
+import type { LevelEntry } from '../levels/level-entry';
 
 const KEY = 'follow-the-packet:progress:v1';
 
@@ -46,7 +46,7 @@ export function saveStars(
   return next;
 }
 
-export function isUnlocked(level: Level, progress: Progress, chapterLevels: Level[]): boolean {
+export function isUnlocked(level: LevelEntry, progress: Progress, chapterLevels: LevelEntry[]): boolean {
   const index = chapterLevels.findIndex((l) => l.id === level.id);
   return index <= 0 || (progress[chapterLevels[index - 1].id] ?? 0) > 0;
 }
