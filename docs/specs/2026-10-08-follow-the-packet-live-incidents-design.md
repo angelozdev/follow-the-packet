@@ -1,6 +1,6 @@
 # Sigue el paquete: incidentes en vivo (rediseño de la mecánica)
 
-Fecha: 2026-10-08 · Estado: diseño aprobado por partes en la conversación, pendiente de revisión del documento
+Fecha: 2026-10-08 · Estado: prototipo 04-01 y 04-02 construido (plan 2); falta la prueba humana
 
 Reemplaza la dinámica, el contrato del nivel, la interfaz y el flujo, y el desbloqueo de `docs/specs/2026-10-07-follow-the-packet-design.md`. De aquel spec siguen valiendo el propósito, el motor de simulación, el arte papel y tinta (con el cambio de colores de abajo), el stack y la base factual.
 
