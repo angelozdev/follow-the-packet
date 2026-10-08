@@ -24,8 +24,14 @@ describe('ipInCidr', () => {
 });
 
 describe('parseCidr', () => {
-  it('rechaza prefijos inválidos', () => {
-    expect(() => parseCidr('10.0.0.0/33')).toThrow('CIDR inválido');
-    expect(() => parseCidr('10.0.0.0')).toThrow('CIDR inválido');
+  it('reads the base address and the prefix', () => {
+    expect(parseCidr('172.31.0.0/16').prefix).toBe(16);
+    expect(parseCidr('0.0.0.0/0').prefix).toBe(0);
+  });
+
+  it('rejects anything that is not address/prefix with a prefix from 0 to 32', () => {
+    for (const bad of ['10.0.0.0/33', '10.0.0.0', '10.0.0.0/', '10.0.0.0/ 8', '10.0.0.0/8/9', ' 10.0.0.0/8', '10.0.0/8']) {
+      expect(() => parseCidr(bad), bad).toThrow('invalid CIDR');
+    }
   });
 });

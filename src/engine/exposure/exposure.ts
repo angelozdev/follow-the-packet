@@ -44,14 +44,14 @@ export function reachesHost(trace: Trace): boolean {
   return trace.steps.some((s) => s.stage === 'sg-in' && s.verdict === 'pass');
 }
 
-function keyFor(from: Endpoint, destinationId: string, p: Service): string {
+function keyFor(from: Endpoint, trace: Trace, p: Service): string {
   const detail = p.protocol === 'icmp' ? `icmp:${p.icmpType}` : `${p.protocol}:${p.port}`;
-  return `${from.kind}:${from.id}>${destinationId}:${detail}`;
+  return `${from.kind}:${from.id}@${trace.effectiveSource}>${trace.destinationId}@${trace.resolvedIp}:${detail}`;
 }
 
 export function flowKey(net: Network, packet: PacketSpec): string | null {
   const trace = simulate(withProbeActor(net), packet);
-  return trace.destinationId ? keyFor(packet.from, trace.destinationId, packet) : null;
+  return trace.destinationId ? keyFor(packet.from, trace, packet) : null;
 }
 
 /** Sondas que llegan a un host y no corresponden a ningún flujo esperado. */
@@ -60,6 +60,6 @@ export function extraOpenings(net: Network, expected: PacketSpec[]): PacketSpec[
   const allowed = new Set(expected.map((p) => flowKey(net, p)).filter((k): k is string => k !== null));
   return probePackets(net).filter((packet) => {
     const trace = simulate(probeNet, packet);
-    return reachesHost(trace) && trace.destinationId !== null && !allowed.has(keyFor(packet.from, trace.destinationId, packet));
+    return reachesHost(trace) && trace.destinationId !== null && !allowed.has(keyFor(packet.from, trace, packet));
   });
 }

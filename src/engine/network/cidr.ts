@@ -11,13 +11,13 @@ export function ipToInt(ip: string): number {
   return ip.split('.').reduce((acc, part) => acc * 256 + Number(part), 0);
 }
 
+const CIDR = /^([\d.]+)\/(\d{1,2})$/;
+
 export function parseCidr(cidr: string): { base: number; prefix: number } {
-  const [ip, prefixText] = cidr.split('/');
-  const prefix = Number(prefixText);
-  if (prefixText === undefined || !Number.isInteger(prefix) || prefix < 0 || prefix > 32 || !isIpv4(ip)) {
-    throw new Error(`CIDR inválido: ${cidr}`);
-  }
-  return { base: ipToInt(ip), prefix };
+  const match = CIDR.exec(cidr);
+  const prefix = Number(match?.[2]);
+  if (!match || !isIpv4(match[1]) || prefix > 32) throw new Error(`invalid CIDR: ${cidr}`);
+  return { base: ipToInt(match[1]), prefix };
 }
 
 export function ipInCidr(ip: string, cidr: string): boolean {
