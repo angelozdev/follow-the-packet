@@ -1,6 +1,6 @@
 import { useHash } from '@mantine/hooks';
 import { useState } from 'react';
-import { LEVELS } from '@/levels';
+import { INCIDENTS } from '@/levels';
 import { loadProgress } from '@/storage';
 import { NotFound, Roadmap } from '@/ui';
 
@@ -10,5 +10,5 @@ export function App() {
   const [hash] = useHash({ getInitialValueInEffect: false });
   const [progress] = useState(loadProgress);
   const levelId = LEVEL_ROUTE.exec(hash)?.[1];
-  return levelId === undefined ? <Roadmap levels={LEVELS} progress={progress} /> : <NotFound levelId={levelId} />;
+  return levelId === undefined ? <Roadmap levels={INCIDENTS} progress={progress} /> : <NotFound levelId={levelId} />;
 }
