@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import checkFile from 'eslint-plugin-check-file';
 import noComments from 'eslint-plugin-no-comments';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
@@ -18,6 +19,8 @@ const LAYERS = Object.keys(LAYER_IMPORTS);
 const VIEW_LAYERS = ['scene', 'ui'];
 const TEST_FILES = ['**/*.test.{ts,tsx}'];
 const HOOK_FILES = ['src/**/use-*.ts'];
+
+const KEBAB_CASE = '+([a-z0-9])*(-+([a-z0-9]))';
 
 const PARENT_IMPORT = { regex: '^\\.\\./', message: 'Use the @/ alias instead of ../ imports.' };
 const NO_EFFECTS = { name: 'react', importNames: ['useEffect', 'useLayoutEffect'], message: 'Effects live in use-*.ts hooks; prefer @mantine/hooks.' };
@@ -111,6 +114,14 @@ export default tseslint.config(
         { selector: "NewExpression[callee.name='Date']", message: 'Take the time as a parameter.' },
         { selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']", message: 'Take randomness as a parameter.' },
       ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts'],
+    plugins: { 'check-file': checkFile },
+    rules: {
+      'check-file/filename-naming-convention': ['error', { '**/*.{ts,tsx}': KEBAB_CASE }, { ignoreMiddleExtensions: true }],
+      'check-file/folder-naming-convention': ['error', { 'src/**/': KEBAB_CASE, 'tests/**/': KEBAB_CASE }],
     },
   },
   {

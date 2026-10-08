@@ -12,7 +12,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "structure": "node scripts/check-structure.ts",
-    "check": "npm run typecheck && npm run lint && npm run structure && npm run test && npm run e2e"
+    "dup": "jscpd src tests scripts",
+    "check": "npm run typecheck && npm run lint && npm run structure && npm run dup && npm run test && npm run e2e"
   },
   "dependencies": {
     "@mantine/hooks": "9.7.1",
@@ -36,9 +37,11 @@
     "@types/three": "0.186.0",
     "@vitejs/plugin-react": "6.1.2",
     "eslint": "10.12.0",
+    "eslint-plugin-check-file": "3.3.2",
     "eslint-plugin-no-comments": "1.2.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
+    "jscpd": "5.0.16",
     "jsdom": "29.1.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",

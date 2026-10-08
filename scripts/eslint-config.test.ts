@@ -74,4 +74,21 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
       expect(await ruleIdsFor('src/engine/probe.ts', "export const read = () => localStorage.getItem('x');\n")).toContain('no-restricted-globals');
     });
   });
+
+  describe('names', () => {
+    const SOURCE = 'export const value = 1;\n';
+
+    it('rejects a PascalCase file name', async () => {
+      expect(await ruleIdsFor('src/ui/RoadMap.tsx', SOURCE)).toContain('check-file/filename-naming-convention');
+    });
+
+    it('rejects a PascalCase folder name', async () => {
+      expect(await ruleIdsFor('src/ui/Shared/roadmap.tsx', SOURCE)).toContain('check-file/folder-naming-convention');
+    });
+
+    it('allows numbered kebab-case level files and test suffixes', async () => {
+      expect(await ruleIdsFor('src/levels/04-iaas/01-the-first-ping.ts', SOURCE)).toEqual([]);
+      expect(await ruleIdsFor('src/ui/roadmap.test.tsx', SOURCE)).toEqual([]);
+    });
+  });
 });
