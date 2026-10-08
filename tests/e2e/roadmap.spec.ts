@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const CHAPTER_COUNT = 20;
+const SOON_CHAPTER_COUNT = 19;
 const FONT_LOAD_ERROR = /Failed to load resource/;
 
 function collectErrors(page: Page): string[] {
@@ -16,7 +16,7 @@ test('the roadmap loads every chapter without console errors', async ({ page }) 
   const errors = collectErrors(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
-  await expect(page.locator('li.chapter--soon')).toHaveCount(CHAPTER_COUNT);
+  await expect(page.locator('li.chapter--soon')).toHaveCount(SOON_CHAPTER_COUNT);
   expect(errors).toEqual([]);
 });
 
