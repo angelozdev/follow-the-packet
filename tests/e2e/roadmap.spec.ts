@@ -1,16 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { collectErrors } from './console-errors';
 
 const SOON_CHAPTER_COUNT = 19;
-const FONT_LOAD_ERROR = /Failed to load resource/;
-
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !FONT_LOAD_ERROR.test(message.text())) errors.push(message.text());
-  });
-  return errors;
-}
 
 test('the roadmap loads every chapter without console errors', async ({ page }) => {
   const errors = collectErrors(page);
