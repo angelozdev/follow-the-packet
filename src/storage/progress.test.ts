@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LevelEntry } from '@/levels';
-import { isUnlocked, loadProgress, saveStars } from './progress';
+import { PROGRESS_KEY, isUnlocked, loadProgress, saveStars } from './progress';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -10,30 +10,46 @@ function memoryStorage(initial: Record<string, string> = {}) {
   };
 }
 
-describe('progreso', () => {
-  it('guarda la mejor marca de cada nivel', () => {
+const blocked = {
+  getItem: (): string | null => {
+    throw new Error('blocked');
+  },
+  setItem: (): void => {
+    throw new Error('blocked');
+  },
+};
+
+describe('progress', () => {
+  it('keeps the best stars per level and saves them', () => {
     const storage = memoryStorage();
-    saveStars('04-01', 2, storage);
-    saveStars('04-01', 1, storage);
+    const first = saveStars({}, '04-01', 2, storage);
+    const second = saveStars(first, '04-01', 1, storage);
+    expect(second).toEqual({ '04-01': 2 });
     expect(loadProgress(storage)).toEqual({ '04-01': 2 });
   });
 
-  it('JSON roto o valores raros: arranca vacío (Review Focus 1)', () => {
-    expect(loadProgress(memoryStorage({ 'follow-the-packet:progress:v1': '{roto' }))).toEqual({});
-    expect(loadProgress(memoryStorage({ 'follow-the-packet:progress:v1': '{"04-01":"tres","04-02":9}' }))).toEqual({});
+  it('with blocked storage, progress accumulates in memory', () => {
+    const afterFirst = saveStars({}, '04-01', 3, blocked);
+    const afterSecond = saveStars(afterFirst, '04-02', 3, blocked);
+    const afterReplay = saveStars(afterSecond, '04-02', 1, blocked);
+    expect(afterReplay).toEqual({ '04-01': 3, '04-02': 3 });
   });
 
-  it('un storage que lanza errores no rompe nada (Review Focus 1)', () => {
-    const broken = {
-      getItem: () => {
-        throw new Error('bloqueado');
-      },
-      setItem: () => {
-        throw new Error('bloqueado');
-      },
-    };
-    expect(loadProgress(broken)).toEqual({});
-    expect(saveStars('04-01', 3, broken)).toEqual({ '04-01': 3 });
+  it('drops only the invalid entries', () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: '{"04-01":"three","04-02":9,"04-03":2,"04-04":1.5,"04-05":0}' });
+    expect(loadProgress(storage)).toEqual({ '04-03': 2, '04-05': 0 });
+  });
+
+  it('progress saved by version 1 keeps loading', () => {
+    const storage = memoryStorage({ [PROGRESS_KEY]: '{"04-01":3,"04-07":2}' });
+    expect(loadProgress(storage)).toEqual({ '04-01': 3, '04-07': 2 });
+  });
+
+  it('broken JSON, a non-object or blocked storage start empty', () => {
+    for (const raw of ['{broken', '[1,2]', '"text"', 'null', '7']) {
+      expect(loadProgress(memoryStorage({ [PROGRESS_KEY]: raw })), raw).toEqual({});
+    }
+    expect(loadProgress(blocked)).toEqual({});
   });
 
   it('a level unlocks when the previous one in its chapter has a star', () => {

@@ -1,9 +1,12 @@
 import type { LevelEntry } from '@/levels';
 
-const KEY = 'follow-the-packet:progress:v1';
+export const PROGRESS_KEY = 'follow-the-packet:progress:v1';
+export const MAX_STARS = 3;
 
-/** id de nivel → mejores estrellas (0-3). */
 export type Progress = Record<string, number>;
+
+type ReadableStorage = Pick<Storage, 'getItem'>;
+type WritableStorage = Pick<Storage, 'setItem'>;
 
 function browserStorage(): Storage | undefined {
   try {
@@ -13,36 +16,34 @@ function browserStorage(): Storage | undefined {
   }
 }
 
-function isValid(value: unknown): value is Progress {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    Object.values(value).every((v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 3)
-  );
+function isStarCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_STARS;
 }
 
-export function loadProgress(storage: Pick<Storage, 'getItem'> | undefined = browserStorage()): Progress {
+function persist(storage: WritableStorage | undefined, progress: Progress): boolean {
   try {
-    const raw = storage?.getItem(KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    return isValid(parsed) ? parsed : {};
+    storage?.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Reads the saved progress, keeping every valid entry and dropping the rest; returns {} when nothing usable is saved. */
+export function loadProgress(storage: ReadableStorage | undefined = browserStorage()): Progress {
+  try {
+    const parsed: unknown = JSON.parse(storage?.getItem(PROGRESS_KEY) ?? '{}');
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, stars]) => isStarCount(stars)));
   } catch {
     return {};
   }
 }
 
-export function saveStars(
-  levelId: string,
-  stars: number,
-  storage: Pick<Storage, 'getItem' | 'setItem'> | undefined = browserStorage(),
-): Progress {
-  const current = loadProgress(storage);
+/** Merges a result into the in-memory progress, keeping the best stars per level; saves it when storage allows and returns the merged progress. */
+export function saveStars(current: Progress, levelId: string, stars: number, storage: WritableStorage | undefined = browserStorage()): Progress {
   const next = { ...current, [levelId]: Math.max(current[levelId] ?? 0, stars) };
-  try {
-    storage?.setItem(KEY, JSON.stringify(next));
-  } catch {
-    // Sin almacenamiento (modo privado): el progreso vive solo en memoria.
-  }
+  persist(storage, next);
   return next;
 }
 
