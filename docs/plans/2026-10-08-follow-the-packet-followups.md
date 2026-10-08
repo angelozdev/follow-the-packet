@@ -85,6 +85,21 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 
 - Reglas del almacén aún sin decidir: `prefer-radix`, `design-tokens`, `primitive-semantic-tokens`.
 
+## Bloque E: primera prueba humana del prototipo (2026-10-08)
+
+| # | Feedback o hallazgo | Destino |
+|---|---------------------|---------|
+| E1 | El cuadro de inspección salía cortado al final del panel | Hecho en `53c0489`: flota en la esquina inferior derecha del mapa |
+| E2 | «Puerta debe llamarse explícitamente Security Group y al hacerle hover sí se muestre una descripción de lo que es» | Spec, sección "Cambios tras la primera prueba": nombre oficial siempre, definición al pasar el mouse. Plan 3 |
+| E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Spec, misma sección: cierre manual, sin barra de 3 s. Plan 3 |
+| E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente (revisión del plan 2) |
+| E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Pendiente (revisión del plan 2) |
+| E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Pendiente (revisión del plan 2) |
+| E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Pendiente de decidir (revisión del plan 2) |
+| E8 | Pantallas bajas en horizontal: el cuadro de inspección se corta; a 390 px la tarjeta queda fuera de pantalla y a 320 px «Roadmap» pisa una etiqueta | Pendiente |
+| E9 | Menores de la revisión: las estrellas se guardan solo al pulsar «Ver resultado»; tras el cierre los Security Groups parecen editables pero no responden; Esc solo cierra la tarjeta con el foco dentro; el bermellón tiene contraste de unos 3.5:1 | Pendiente |
+| E10 | `projects/follow-the-packet/` tiene `pnpm-lock.yaml` y `pnpm-workspace.yaml` sin seguimiento; el proyecto usa npm | Decide el estudiante: borrarlos o ignorarlos |
+
 ## Fuera de este backlog (decide el estudiante)
 
 - `git push` de `main` (2 commits: `55dadac`, `6daf19a`) y de la rama.
