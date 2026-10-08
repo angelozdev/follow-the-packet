@@ -1,27 +1,21 @@
-# Sigue el paquete
+# Follow the packet
 
-Juego para estudiar redes en AWS: predices dónde muere un paquete, lo ves viajar y arreglas (o atacas) la configuración. Un capítulo por módulo del curso; el capítulo 4 tiene 7 niveles de Security Groups basados en el [lab 03](../../labs/03-ping-connectivity/README.md).
+A study game about AWS networking. On screen it is called "Sigue el paquete". One chapter per course module; chapter 4 is being rebuilt as live incidents based on [lab 03](../../labs/03-ping-connectivity/README.md).
 
-Diseño: [spec](../../docs/specs/2026-10-07-follow-the-packet-design.md) · Plan: [plan](../../docs/plans/2026-10-07-follow-the-packet.md)
+Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live-incidents-design.md) · Plans: [clean base](../../docs/plans/2026-10-08-follow-the-packet-clean-base.md)
 
-## Correr
+## Run
 
-```bash
-npm install
-npx playwright install chromium
-npm run dev
-```
+    npm install
+    npx playwright install chromium
+    npm run dev
 
-## Validar
+## Check
 
-```bash
-npm run check
-```
+    npm run check
 
-Corre tipos, lint, tests unitarios y Playwright. "Listo" significa que pasó entero.
+Runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector, unit tests and Playwright. "Done" means it passes entirely.
 
-## Agregar un nivel
+## Layout
 
-1. Crea `src/levels/NN-<capítulo>/NN-<slug>.ts` con `export default defineLevel({...})`. Usa un nivel existente como modelo.
-2. `lesson` debe ser el texto exacto de su lección en `syllabus.md`, y `concept` una nota que exista en `concepts/`.
-3. Corre `npm test`: los tests por nivel comprueban que arranca roto, que la solución gana con 3 estrellas, que la predicción coincide con el motor y que la solución solo usa opciones del nivel.
+The code lives in layers under `src/`; every folder has a `CLAUDE.md` guide that says what belongs there and what it may import. The rules are in `.claude/rules/`.
