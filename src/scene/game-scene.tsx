@@ -9,6 +9,7 @@ import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
 import { ActorMark, Barrier, Building, Gateway, Road, Sheet } from './pieces';
+import { Traffic, type MapFlow } from './traffic/traffic';
 
 const CAMERA_OFFSET = 14;
 const CAMERA_ZOOM = 38;
@@ -16,6 +17,7 @@ const CAMERA_ZOOM = 38;
 export interface GameSceneProps {
   world: Network;
   pieces: MapPiece[];
+  flows: MapFlow[];
   intrudedServerIds: ReadonlySet<string>;
   still: boolean;
   activePieceId: string | null;
@@ -24,7 +26,7 @@ export interface GameSceneProps {
   onActivate: (pieceId: string) => void;
 }
 
-export function GameScene({ world, pieces, intrudedServerIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, intrudedServerIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world);
   const [cx, cz] = layoutCenter(layout);
   const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
@@ -58,6 +60,7 @@ export function GameScene({ world, pieces, intrudedServerIds, still, activePiece
           {pieces.map((piece) => (
             <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
           ))}
+          <Traffic flows={flows} layout={layout} still={still} onInspect={onInspect} />
           {active && overlay && <CardAnchor position={cardAnchorPosition(active.anchorId, layout)}>{overlay}</CardAnchor>}
           <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
         </HtmlLayerContext.Provider>
