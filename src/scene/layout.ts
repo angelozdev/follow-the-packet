@@ -1,6 +1,5 @@
 import type { Checkpoint, Network, PacketSpec, Trace } from '@/engine';
 
-/** [x, z] sobre el plano del suelo. La cámara mira desde +x, +z: "delante" es z mayor. */
 export type Vec2 = [number, number];
 
 export interface SubnetSpot {
@@ -37,10 +36,9 @@ const ROAD_Z = 1.9;
 const BUILDING_Z = -0.9;
 const BARRIER_Z = 0.7;
 const DOOR_Z = -0.2;
-// A un lado del edificio: medio ancho 0.8 + radio del anillo 0.55 + margen, para que se vea y no tape el anillo de Linux.
 const REPLY_SIDE_X = 1.45;
 
-/** Una columna por subred (en el orden del nivel), instancias en fila, internet a la izquierda. */
+/** Lays out one column per subnet, the instances of each subnet in a row, and the internet on the left. */
 export function computeLayout(net: Network): Layout {
   const widths = net.subnets.map((s) => Math.max(MIN_COLUMN, net.instances.filter((i) => i.subnetId === s.id).length * GAP + 1));
   const total = widths.reduce((a, b) => a + b, 0);
@@ -67,7 +65,7 @@ export function computeLayout(net: Network): Layout {
   return { sheet: { width: sheetWidth, depth: DEPTH }, subnets, instances, roadZ: ROAD_Z, roadFromX: igw[0], roadToX: sheetWidth / 2 - 0.5, igw, actors };
 }
 
-/** Puntos por los que viaja el paquete según su recorrido; termina donde murió. */
+/** Returns the points the packet travels along its trace, ending where it stopped. */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[] {
   const points: Vec2[] = [];
   const from = packet.from;

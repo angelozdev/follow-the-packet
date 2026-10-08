@@ -9,7 +9,6 @@ import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, Trace } from './trace';
 
 
-/** Orden de las etapas. Un capítulo nuevo (por ejemplo, NACL) agrega etapas aquí. */
 export const PIPELINE: Stage[] = [dnsStage, routeStage, sgOutStage, sgInStage, linuxStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
@@ -34,7 +33,7 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
   };
 }
 
-/** Recorre las etapas en orden. Pura: misma entrada, mismo recorrido. */
+/** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. */
 export function simulate(net: Network, packet: PacketSpec): Trace {
   const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), steps: [], tcpdump: [] };
   for (const stage of PIPELINE) {

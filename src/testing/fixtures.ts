@@ -20,7 +20,7 @@ export const actor = (id: string): Endpoint => ({ kind: 'actor', id });
 export const ping = (from: Endpoint, to: string): PacketSpec => ({ from, to, protocol: 'icmp', icmpType: 8 });
 export const tcp = (from: Endpoint, to: string, port: number): PacketSpec => ({ from, to, protocol: 'tcp', port });
 
-/** La red del lab 03: dos servidores en AZs distintas, solo SSH desde tu Mac. */
+/** Returns the lab 03 network: two servers in different availability zones, SSH only from your Mac. */
 export function lab03Net(): Network {
   return {
     region: 'eu-west-1',

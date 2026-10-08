@@ -9,7 +9,6 @@ import { ACCENT, INK, PAPER_FILL, PAPER_SHADE } from './theme';
 
 type V3 = [number, number, number];
 
-/** Caja con relleno de papel y aristas de tinta de grosor real (Line2). */
 export function InkBox({ size, position, fill = PAPER_FILL, lineWidth = 1.5 }: { size: V3; position: V3; fill?: string; lineWidth?: number }) {
   return (
     <group position={position}>

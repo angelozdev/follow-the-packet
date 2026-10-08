@@ -10,24 +10,24 @@ const expected = [
 ];
 
 describe('extraOpenings', () => {
-  it('con la regla justa no hay aperturas de más', () => {
+  it('with the exact rule there are no extra openings', () => {
     const net = withInbound(lab03Net(), 'sg-servidor2', echoFrom('echo', 'sg-servidor1'));
     expect(extraOpenings(net, expected)).toEqual([]);
   });
 
-  it('ICMP de todos los tipos desde el SG de servidor1 abre de más (deja entrar Echo Reply)', () => {
+  it('ICMP of every type from the servidor1 SG opens too much (lets Echo Reply in)', () => {
     const net = withInbound(lab03Net(), 'sg-servidor2', { id: 'all-icmp', what: { kind: 'icmp', icmpType: 'all' }, peer: { kind: 'sg', sgId: 'sg-servidor1' } });
     const extra = extraOpenings(net, expected);
     expect(extra).toContainEqual({ from: inst('servidor1'), to: S2.private, protocol: 'icmp', icmpType: 0 });
   });
 
-  it('Echo Request desde 0.0.0.0/0 abre a internet', () => {
+  it('Echo Request from 0.0.0.0/0 opens to the internet', () => {
     const net = withInbound(lab03Net(), 'sg-servidor2', { id: 'world', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: '0.0.0.0/0' } });
     const extra = extraOpenings(net, expected);
     expect(extra.some((p) => p.from.kind === 'actor' && p.from.id === 'probe-internet')).toBe(true);
   });
 
-  it('el SSH esperado desde tu Mac no cuenta como apertura de más', () => {
+  it('the expected SSH from your Mac does not count as an extra opening', () => {
     expect(extraOpenings(lab03Net(), expected)).toEqual([]);
   });
 });
@@ -68,7 +68,7 @@ describe('extraOpenings by path', () => {
 });
 
 describe('probePackets', () => {
-  it('no se sondea una instancia a sí misma', () => {
+  it('an instance is not probed from itself', () => {
     const packets = probePackets(lab03Net());
     expect(packets.some((p) => p.from.kind === 'instance' && p.from.id === 'servidor1' && p.to === '172.31.16.131')).toBe(false);
   });

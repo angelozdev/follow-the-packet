@@ -14,7 +14,6 @@ export interface SimContext {
 }
 
 export type StageResult = { done: false } | { done: true; outcome: Outcome };
-/** Una etapa lee y amplía el contexto; simulate() crea un contexto nuevo en cada llamada. */
 export type Stage = (ctx: SimContext) => StageResult;
 
 export const CONTINUE: StageResult = { done: false };

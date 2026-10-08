@@ -3,7 +3,6 @@ export interface Chapter {
   title: string;
 }
 
-/** Los 20 módulos del pensum (syllabus.md). Un test exige que coincidan. */
 export const CHAPTERS: Chapter[] = [
   { number: 1, title: 'Introducción' },
   { number: 2, title: 'Fundamentos de Cloud Computing y AWS' },

@@ -10,7 +10,6 @@ export default defineConfig({
     baseURL: 'http://localhost:4183',
     viewport: { width: 1440, height: 900 },
     trace: 'retain-on-failure',
-    // WebGL por software para que el canvas funcione en modo headless.
     launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
   },
   webServer: {

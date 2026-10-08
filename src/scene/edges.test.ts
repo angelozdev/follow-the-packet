@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { boxEdgePoints } from './edges';
 
 describe('boxEdgePoints', () => {
-  it('da las 12 aristas de una caja como 24 puntos en pares', () => {
+  it('returns the 12 edges of a box as 24 points in pairs', () => {
     const points = boxEdgePoints(2, 4, 6);
     expect(points).toHaveLength(24);
     for (const [x, y, z] of points) {

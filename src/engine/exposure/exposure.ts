@@ -2,7 +2,6 @@ import type { Actor, Endpoint, Network, PacketSpec } from '@/engine/network/type
 import { simulate } from '@/engine/simulation/simulate';
 import type { Trace } from '@/engine/simulation/trace';
 
-/** Una IP cualquiera de internet que no está en la red del nivel. */
 export const PROBE_INTERNET: Actor = { id: 'probe-internet', name: 'Internet', ip: '203.0.113.200', kind: 'attacker' };
 
 type Service = Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>;
@@ -21,7 +20,7 @@ export function withProbeActor(net: Network): Network {
   return { ...net, actors: [...net.actors, PROBE_INTERNET] };
 }
 
-/** Batería fija: desde cada actor, desde internet y desde cada instancia, a cada IP de cada otra instancia. */
+/** Builds the fixed probe battery: from every actor, from the internet and from every instance, to every IP of every other instance. */
 export function probePackets(net: Network): PacketSpec[] {
   const sources: Endpoint[] = [
     ...net.actors.map((a): Endpoint => ({ kind: 'actor', id: a.id })),
@@ -39,7 +38,7 @@ export function probePackets(net: Network): PacketSpec[] {
   return packets;
 }
 
-/** "Llega al host" = pasó el SG de entrada, aunque Linux luego no conteste. */
+/** True when the packet passed the destination's inbound security group, even if Linux then stays silent. */
 export function reachesHost(trace: Trace): boolean {
   return trace.steps.some((s) => s.stage === 'sg-in' && s.verdict === 'pass');
 }
@@ -54,7 +53,7 @@ export function flowKey(net: Network, packet: PacketSpec): string | null {
   return trace.destinationId ? keyFor(packet.from, trace, packet) : null;
 }
 
-/** Sondas que llegan a un host y no corresponden a ningún flujo esperado. */
+/** Returns the probes that reach a host without matching any expected flow. */
 export function extraOpenings(net: Network, expected: PacketSpec[]): PacketSpec[] {
   const probeNet = withProbeActor(net);
   const allowed = new Set(expected.map((p) => flowKey(net, p)).filter((k): k is string => k !== null));

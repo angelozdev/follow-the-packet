@@ -1,6 +1,6 @@
 export type Point3 = [number, number, number];
 
-/** Las 12 aristas de una caja centrada, como 24 puntos (pares inicio-fin) para drei <Line segments>. */
+/** Returns the 12 edges of a centered box as 24 points (start-end pairs) for drei <Line segments>. */
 export function boxEdgePoints(w: number, h: number, d: number): Point3[] {
   const x = w / 2;
   const y = h / 2;

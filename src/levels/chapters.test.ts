@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { syllabusChapters } from '@/testing';
 import { CHAPTERS } from './chapters';
 
-describe('capítulos', () => {
-  it('coinciden con los módulos de syllabus.md', () => {
+describe('chapters', () => {
+  it('match the modules of syllabus.md', () => {
     expect(CHAPTERS).toEqual(syllabusChapters());
   });
 
-  it('son 20', () => {
+  it('there are 20', () => {
     expect(CHAPTERS).toHaveLength(20);
   });
 });

@@ -12,7 +12,6 @@ const cidr = z.string().refine((value) => {
 }, 'invalid CIDR');
 const port = z.number().int().min(0).max(65535);
 
-/** 0 = Echo Reply, 8 = Echo Request. Los únicos tipos ICMP del juego en v1. */
 export const icmpTypeSchema = z.union([z.literal(0), z.literal(8)]);
 
 export const ruleWhatSchema = z.discriminatedUnion('kind', [
@@ -22,7 +21,6 @@ export const ruleWhatSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('icmp'), icmpType: z.union([icmpTypeSchema, z.literal('all')]) }),
 ]);
 
-/** En una regla de entrada, el peer es el origen; en una de salida, el destino. */
 export const rulePeerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('cidr'), cidr }),
   z.object({ kind: z.literal('sg'), sgId: z.string().min(1) }),
@@ -45,7 +43,6 @@ export const instanceSchema = z.object({
   publicIp: ip.optional(),
   sgIds: z.array(z.string().min(1)),
   linux: z.object({ ignoreIcmpEcho: z.boolean(), listeningTcpPorts: z.array(port) }),
-  /** Adónde apunta la app de esta instancia: IP o nombre DNS. */
   appTarget: z.string().min(1).optional(),
 });
 
@@ -115,7 +112,6 @@ export const endpointSchema = z.discriminatedUnion('kind', [
 export const packetSchema = z
   .object({
     from: endpointSchema,
-    /** IP, nombre DNS o "@appTarget" (lo que tenga configurado la app de la instancia de origen). */
     to: z.string().min(1),
     protocol: z.enum(['tcp', 'udp', 'icmp']),
     port: port.optional(),

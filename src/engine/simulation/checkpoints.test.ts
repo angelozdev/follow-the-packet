@@ -10,7 +10,7 @@ const base: Omit<Trace, 'steps' | 'outcome'> = {
 };
 
 describe('deathPoint', () => {
-  it('es el primer paso que descarta o rechaza', () => {
+  it('is the first step that drops or rejects', () => {
     const trace: Trace = {
       ...base,
       outcome: 'timeout',
@@ -22,7 +22,7 @@ describe('deathPoint', () => {
     expect(deathPoint(trace)).toEqual({ stage: 'sg-in', at: 'servidor2' });
   });
 
-  it('si nada lo frena, es la respuesta en el destino', () => {
+  it('when nothing stops it, it is the reply at the destination', () => {
     const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', instanceId: 'servidor2' } }] };
     expect(deathPoint(trace)).toEqual({ stage: 'reply', at: 'servidor2' });
   });

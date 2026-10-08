@@ -5,9 +5,7 @@ import type { RuleCheck } from './trace';
 type PacketKind = Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>;
 
 export interface PeerContext {
-  /** IP que ve la regla (origen en entrada, destino en salida). */
   ip: string;
-  /** SGs del otro extremo; vacío si el paquete no viaja por IP privada dentro de la VPC. */
   sgIds: string[];
 }
 
@@ -27,7 +25,7 @@ export function matchesPeer(peer: RulePeer, ctx: PeerContext): boolean {
   return peer.kind === 'cidr' ? ipInCidr(ctx.ip, peer.cidr) : ctx.sgIds.includes(peer.sgId);
 }
 
-/** Un SG solo permite: pasa si alguna regla de alguno de los SGs coincide en qué y desde dónde a la vez. */
+/** Checks a packet against every rule of the given groups; allowed when one rule matches both what and from. */
 export function checkRules(
   groups: SecurityGroup[],
   direction: 'inbound' | 'outbound',
