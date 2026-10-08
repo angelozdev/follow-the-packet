@@ -8,13 +8,12 @@ export const dnsStage: Stage = (ctx) => {
     ctx.destIp = packet.to;
     return CONTINUE;
   }
-  const where = source.inside ? 'dentro' : 'fuera';
   const ip = resolveName(net, packet.to, source.inside);
   if (ip === null) {
-    ctx.steps.push({ stage: 'dns', at: source.id, verdict: 'drop', reason: `Nadie responde por el nombre ${packet.to} desde ${where} de la VPC.` });
+    ctx.steps.push({ stage: 'dns', at: source.id, verdict: 'drop', reason: { code: 'dns-unresolved', name: packet.to, fromInside: source.inside } });
     return stop('unresolved');
   }
   ctx.destIp = ip;
-  ctx.steps.push({ stage: 'dns', at: source.id, verdict: 'info', reason: `${packet.to} → ${ip} (preguntando desde ${where} de la VPC)` });
+  ctx.steps.push({ stage: 'dns', at: source.id, verdict: 'info', reason: { code: 'dns-resolved', name: packet.to, ip, fromInside: source.inside } });
   return CONTINUE;
 };

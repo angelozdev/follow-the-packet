@@ -15,11 +15,11 @@ export const PIPELINE: Stage[] = [dnsStage, routeStage, sgOutStage, sgInStage, l
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
   if (from.kind === 'instance') {
     const instance = net.instances.find((i) => i.id === from.id);
-    if (!instance) throw new Error(`No existe la instancia ${from.id}`);
+    if (!instance) throw new Error(`unknown instance ${from.id}`);
     return { endpoint: from, id: instance.id, ip: instance.privateIp, inside: true, instance };
   }
   const found = net.actors.find((a) => a.id === from.id);
-  if (!found) throw new Error(`No existe el actor ${from.id}`);
+  if (!found) throw new Error(`unknown actor ${from.id}`);
   return { endpoint: from, id: found.id, ip: found.ip, inside: false };
 }
 
@@ -41,5 +41,5 @@ export function simulate(net: Network, packet: PacketSpec): Trace {
     const result = stage(ctx);
     if (result.done) return finish(ctx, result.outcome);
   }
-  throw new Error('La simulación terminó sin resultado');
+  throw new Error('the simulation ended without an outcome');
 }

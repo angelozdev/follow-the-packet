@@ -7,37 +7,37 @@ export const routeStage: Stage = (ctx) => {
 
   if (ipInCidr(destIp, net.vpcCidr)) {
     if (!source.inside) {
-      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: `${destIp} es una IP privada: solo existe dentro de la VPC. Desde internet no hay camino.` });
+      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-private-from-outside', ip: destIp } });
       return stop('timeout');
     }
     const dest = net.instances.find((i) => i.privateIp === destIp);
     if (!dest) {
-      ctx.steps.push({ stage: 'route', at: 'vpc', verdict: 'drop', reason: `Ninguna instancia tiene la IP ${destIp}.` });
+      ctx.steps.push({ stage: 'route', at: 'vpc', verdict: 'drop', reason: { code: 'route-no-private-instance', ip: destIp } });
       return stop('timeout');
     }
     ctx.dest = dest;
     ctx.path = 'private';
     ctx.effectiveSource = source.ip;
-    ctx.steps.push({ stage: 'route', at: 'vpc', verdict: 'pass', reason: 'Viaja por dentro de la VPC, con IPs privadas.' });
+    ctx.steps.push({ stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } });
     return CONTINUE;
   }
 
   const dest = net.instances.find((i) => i.publicIp === destIp);
   if (!dest) {
-    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: `Ninguna instancia de la VPC tiene la IP pública ${destIp}.` });
+    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-instance', ip: destIp } });
     return stop('timeout');
   }
   if (source.instance) {
     const publicIp = source.instance.publicIp;
     if (!publicIp) {
-      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: `${source.instance.name} no tiene IP pública: no puede salir a internet.` });
+      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-ip', instanceId: source.instance.id } });
       return stop('timeout');
     }
     ctx.effectiveSource = publicIp;
-    ctx.steps.push({ stage: 'nat', at: 'igw', verdict: 'info', reason: `Sale por el internet gateway: el origen cambia de ${source.ip} a ${publicIp}.` });
+    ctx.steps.push({ stage: 'nat', at: 'igw', verdict: 'info', reason: { code: 'route-nat', from: source.ip, to: publicIp } });
   } else {
     ctx.effectiveSource = source.ip;
-    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'pass', reason: 'Entra desde internet por el internet gateway.' });
+    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'pass', reason: { code: 'route-from-internet' } });
   }
   ctx.dest = dest;
   ctx.path = 'public';

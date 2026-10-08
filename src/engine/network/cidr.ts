@@ -6,7 +6,7 @@ export function isIpv4(value: string): boolean {
 }
 
 export function ipToInt(ip: string): number {
-  if (!isIpv4(ip)) throw new Error(`IP inválida: ${ip}`);
+  if (!isIpv4(ip)) throw new Error(`invalid IP: ${ip}`);
   // Aritmética en vez de operadores de bits: evita el signo de los enteros de 32 bits.
   return ip.split('.').reduce((acc, part) => acc * 256 + Number(part), 0);
 }

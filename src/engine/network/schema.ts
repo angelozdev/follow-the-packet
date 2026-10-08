@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ipInCidr, isIpv4, parseCidr } from './cidr';
 
-const ip = z.string().refine(isIpv4, 'IPv4 inválida');
+const ip = z.string().refine(isIpv4, 'invalid IPv4');
 const cidr = z.string().refine((value) => {
   try {
     parseCidr(value);
@@ -9,7 +9,7 @@ const cidr = z.string().refine((value) => {
   } catch {
     return false;
   }
-}, 'CIDR inválido');
+}, 'invalid CIDR');
 const port = z.number().int().min(0).max(65535);
 
 /** 0 = Echo Reply, 8 = Echo Request. Los únicos tipos ICMP del juego en v1. */
@@ -84,16 +84,16 @@ export const networkSchema = z
       ...net.actors.map((a) => a.id),
     ];
     const repeated = ids.find((id, index) => ids.indexOf(id) !== index);
-    if (repeated) fail(`id repetido: ${repeated}`);
+    if (repeated) fail(`duplicate id: ${repeated}`);
     for (const subnet of net.subnets) {
-      if (!safeInCidr(subnet.cidr.split('/')[0], net.vpcCidr)) fail(`${subnet.id}: ${subnet.cidr} no está dentro de la VPC`);
+      if (!safeInCidr(subnet.cidr.split('/')[0], net.vpcCidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
     }
     for (const instance of net.instances) {
       const subnet = net.subnets.find((s) => s.id === instance.subnetId);
-      if (!subnet) fail(`${instance.id}: la subred ${instance.subnetId} no existe`);
-      else if (!safeInCidr(instance.privateIp, subnet.cidr)) fail(`${instance.id}: ${instance.privateIp} no está en ${subnet.cidr}`);
+      if (!subnet) fail(`${instance.id}: subnet ${instance.subnetId} does not exist`);
+      else if (!safeInCidr(instance.privateIp, subnet.cidr)) fail(`${instance.id}: ${instance.privateIp} is not in ${subnet.cidr}`);
       for (const sgId of instance.sgIds) {
-        if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${instance.id}: el SG ${sgId} no existe`);
+        if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${instance.id}: security group ${sgId} does not exist`);
       }
     }
     for (const group of net.securityGroups) {
@@ -101,7 +101,7 @@ export const networkSchema = z
         const peer = rule.peer;
         if (peer.kind === 'sg') {
           const sgId = peer.sgId;
-          if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${group.id}/${rule.id}: el SG ${sgId} no existe`);
+          if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${group.id}/${rule.id}: security group ${sgId} does not exist`);
         }
       }
     }
@@ -122,5 +122,5 @@ export const packetSchema = z
     icmpType: icmpTypeSchema.optional(),
   })
   .refine((p) => (p.protocol === 'icmp' ? p.icmpType !== undefined : p.port !== undefined), {
-    message: 'ICMP necesita icmpType; TCP y UDP necesitan port',
+    message: 'ICMP needs icmpType; TCP and UDP need port',
   });

@@ -11,7 +11,7 @@ describe('networkSchema', () => {
     const bad = withInstance(lab03Net(), 'servidor1', { privateIp: '172.31.38.5' });
     const result = networkSchema.safeParse(bad);
     expect(result.success).toBe(false);
-    expect(JSON.stringify(result.error?.issues)).toContain('no está en 172.31.16.0/20');
+    expect(JSON.stringify(result.error?.issues)).toContain('is not in 172.31.16.0/20');
   });
 
   it('rechaza un SG que no existe', () => {

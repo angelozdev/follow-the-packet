@@ -13,7 +13,7 @@ export const sgOutStage: Stage = (ctx) => {
     stage: 'sg-out',
     at: instance.id,
     verdict: allowed ? 'pass' : 'drop',
-    reason: allowed ? `La salida de ${instance.name} lo deja salir.` : `Ninguna regla de salida de ${instance.name} coincide.`,
+    reason: { code: allowed ? 'sg-out-pass' : 'sg-out-drop', instanceId: instance.id },
     checks,
   });
   return allowed ? CONTINUE : stop('timeout');

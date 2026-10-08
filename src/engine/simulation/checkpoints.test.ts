@@ -15,15 +15,15 @@ describe('deathPoint', () => {
       ...base,
       outcome: 'timeout',
       steps: [
-        { stage: 'route', at: 'vpc', verdict: 'pass', reason: '' },
-        { stage: 'sg-in', at: 'servidor2', verdict: 'drop', reason: '' },
+        { stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } },
+        { stage: 'sg-in', at: 'servidor2', verdict: 'drop', reason: { code: 'sg-in-drop', instanceId: 'servidor2' } },
       ],
     };
     expect(deathPoint(trace)).toEqual({ stage: 'sg-in', at: 'servidor2' });
   });
 
   it('si nada lo frena, es la respuesta en el destino', () => {
-    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: '' }] };
+    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', instanceId: 'servidor2' } }] };
     expect(deathPoint(trace)).toEqual({ stage: 'reply', at: 'servidor2' });
   });
 });

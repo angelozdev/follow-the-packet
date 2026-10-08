@@ -2,6 +2,7 @@ import type { z } from 'zod';
 import type {
   actorSchema,
   endpointSchema,
+  icmpTypeSchema,
   instanceSchema,
   networkSchema,
   packetSchema,
@@ -22,3 +23,4 @@ export type Actor = z.infer<typeof actorSchema>;
 export type Network = z.infer<typeof networkSchema>;
 export type Endpoint = z.infer<typeof endpointSchema>;
 export type PacketSpec = z.infer<typeof packetSchema>;
+export type IcmpType = z.infer<typeof icmpTypeSchema>;

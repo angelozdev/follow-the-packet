@@ -5,5 +5,5 @@ export type { Actor, Endpoint, Instance, Network, PacketSpec, Rule, RulePeer, Ru
 export { describePacket } from './simulation/context';
 export { deathPoint } from './simulation/checkpoints';
 export { simulate } from './simulation/simulate';
-export type { Checkpoint, Outcome, Step, Trace } from './simulation/trace';
+export type { Checkpoint, Outcome, Reason, Step, Trace } from './simulation/trace';
 export { extraOpenings, reachesHost } from './exposure/exposure';
