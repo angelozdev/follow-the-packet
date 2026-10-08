@@ -1,41 +1,64 @@
 import { ContactShadows, MapControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Network } from '@/engine';
 import { HtmlLayerContext } from './html-layer';
-import { computeLayout } from './layout';
-import { ActorMark, Barrier, Building, Gateway, Road, Sheet, Zone } from './pieces';
+import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter } from './layout';
+import { CardAnchor } from './overlay/card-anchor';
+import type { OnInspect } from './overlay/inspect-handlers';
+import { PieceAnchor } from './overlay/piece-anchor';
+import type { MapPiece } from './overlay/piece-label';
+import { ActorMark, Barrier, Building, Gateway, Road, Sheet } from './pieces';
 
-export function GameScene({ network }: { network: Network }) {
-  const layout = computeLayout(network);
+const CAMERA_OFFSET = 14;
+const CAMERA_ZOOM = 38;
+
+export interface GameSceneProps {
+  world: Network;
+  pieces: MapPiece[];
+  intrudedServerIds: ReadonlySet<string>;
+  still: boolean;
+  activePieceId: string | null;
+  overlay: ReactNode;
+  onInspect: OnInspect;
+  onActivate: (pieceId: string) => void;
+}
+
+export function GameScene({ world, pieces, intrudedServerIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+  const layout = computeLayout(world);
+  const [cx, cz] = layoutCenter(layout);
   const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
+  const active = pieces.find((piece) => piece.id === activePieceId);
   return (
     <>
       <Canvas
         orthographic
-        camera={{ position: [14, 14, 14], zoom: 38, near: 0.1, far: 500 }}
+        camera={{ position: [cx + CAMERA_OFFSET, CAMERA_OFFSET, cz + CAMERA_OFFSET], zoom: CAMERA_ZOOM, near: 0.1, far: 500 }}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
         dpr={[1, 2]}
       >
         <HtmlLayerContext.Provider value={htmlLayer}>
           <ambientLight intensity={1.2} />
           <directionalLight position={[8, 14, 6]} intensity={1.1} />
-          <MapControls enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
+          <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
           <Sheet layout={layout} />
-          {network.subnets.map((s) => (
-            <Zone key={s.id} spot={layout.subnets[s.id]} />
-          ))}
           <Road layout={layout} />
           <Gateway position={layout.igw} />
-          {network.instances.map((i) => (
-            <group key={i.id}>
-              <Building spot={layout.instances[i.id]} name={i.name} />
-              <Barrier spot={layout.instances[i.id]} />
-            </group>
+          {world.instances.map((instance) => (
+            <Building key={instance.id} spot={layout.instances[instance.id]} shaking={intrudedServerIds.has(instance.id)} still={still} />
           ))}
-          {network.actors.map((a) => (
-            <ActorMark key={a.id} position={layout.actors[a.id]} actor={a} />
+          {pieces
+            .filter((piece) => piece.kind === 'barrier')
+            .map((piece) => (
+              <Barrier key={piece.id} spot={layout.instances[piece.anchorId]} active={piece.id === activePieceId} still={still} />
+            ))}
+          {world.actors.map((actor) => (
+            <ActorMark key={actor.id} position={layout.actors[actor.id]} actor={actor} />
           ))}
+          {pieces.map((piece) => (
+            <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
+          ))}
+          {active && overlay && <CardAnchor position={cardAnchorPosition(active.anchorId, layout)}>{overlay}</CardAnchor>}
           <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
         </HtmlLayerContext.Provider>
       </Canvas>

@@ -1,13 +1,15 @@
-import type { Checkpoint, Network, PacketSpec, Trace } from '@/engine';
+import type { Network, PacketSpec, Trace } from '@/engine';
+import type { MapPieceKind } from './overlay/piece-label';
 
 export type Vec2 = [number, number];
+export type Vec3 = [number, number, number];
+export type CardSide = 'left' | 'right';
 
 export interface SubnetSpot {
   x: number;
   z: number;
   width: number;
   depth: number;
-  az: string;
 }
 
 export interface InstanceSpot {
@@ -36,7 +38,13 @@ const ROAD_Z = 1.9;
 const BUILDING_Z = -0.9;
 const BARRIER_Z = 0.7;
 const DOOR_Z = -0.2;
-const REPLY_SIDE_X = 1.45;
+const GATEWAY_MARGIN = 1.5;
+const ACTOR_GAP = 3.5;
+const ACTOR_SPACING = 2.5;
+const ACTOR_STAGGER_Z = 1.6;
+const LABEL = { serverY: 1.75, barrierY: 0.1, barrierDz: 0.8, actorY: 0.05, actorDz: 0.7, gatewayY: 2.6 } as const;
+const CARD_Y = 0.5;
+const STAMP_SPREAD = 0.6;
 
 /** Lays out one column per subnet, the instances of each subnet in a row, and the internet on the left. */
 export function computeLayout(net: Network): Layout {
@@ -50,19 +58,56 @@ export function computeLayout(net: Network): Layout {
     const width = widths[index];
     const cx = cursor + width / 2;
     cursor += width;
-    subnets[subnet.id] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1, az: subnet.az };
+    subnets[subnet.id] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
     const own = net.instances.filter((i) => i.subnetId === subnet.id);
     own.forEach((instance, k) => {
       const x = cx + (k - (own.length - 1) / 2) * GAP;
       instances[instance.id] = { x, z: BUILDING_Z, barrier: [x, BARRIER_Z], door: [x, DOOR_Z], road: [x, ROAD_Z] };
     });
   });
-  const igw: Vec2 = [-sheetWidth / 2 - 1.5, ROAD_Z];
+  const igw: Vec2 = [-sheetWidth / 2 - GATEWAY_MARGIN, ROAD_Z];
   const actors: Record<string, Vec2> = {};
   net.actors.forEach((a, k) => {
-    actors[a.id] = [igw[0] - 3 - k * 2.5, ROAD_Z + (k % 2 === 0 ? 0 : 1.6)];
+    actors[a.id] = [igw[0] - ACTOR_GAP - k * ACTOR_SPACING, ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
   });
   return { sheet: { width: sheetWidth, depth: DEPTH }, subnets, instances, roadZ: ROAD_Z, roadFromX: igw[0], roadToX: sheetWidth / 2 - 0.5, igw, actors };
+}
+
+/** Returns the middle of everything drawn, so the camera can look at it. */
+export function layoutCenter(layout: Layout): Vec2 {
+  const left = Math.min(layout.igw[0], ...Object.values(layout.actors).map(([x]) => x));
+  return [(left + layout.sheet.width / 2) / 2, 0];
+}
+
+/** Returns where the label of a piece floats: above a building, in front of a door, below an actor, above the internet entrance. */
+export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
+  switch (piece.kind) {
+    case 'server': {
+      const spot = layout.instances[piece.anchorId];
+      return [spot.x, LABEL.serverY, spot.z];
+    }
+    case 'barrier': {
+      const [x, z] = layout.instances[piece.anchorId].barrier;
+      return [x, LABEL.barrierY, z + LABEL.barrierDz];
+    }
+    case 'actor': {
+      const [x, z] = layout.actors[piece.anchorId];
+      return [x, LABEL.actorY, z + LABEL.actorDz];
+    }
+    case 'gateway':
+      return [layout.igw[0], LABEL.gatewayY, layout.igw[1]];
+  }
+}
+
+/** Returns where the task card of the door of this instance is anchored. */
+export function cardAnchorPosition(instanceId: string, layout: Layout): Vec3 {
+  const [x, z] = layout.instances[instanceId].barrier;
+  return [x, CARD_Y, z];
+}
+
+/** Picks the side with more room for a card anchored at this normalized screen x (-1 is the left edge, 1 the right edge). */
+export function sideForNdc(ndcX: number): CardSide {
+  return ndcX > 0 ? 'left' : 'right';
 }
 
 /** Returns the points the packet travels along its trace, ending where it stopped. */
@@ -104,19 +149,25 @@ export function pointAt(path: Vec2[], lengths: number[], distance: number): Vec2
   return [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t];
 }
 
-export function checkpointPosition(cp: Checkpoint, layout: Layout): Vec2 {
-  const spot = layout.instances[cp.at];
-  switch (cp.stage) {
-    case 'route':
-      return cp.at === 'igw' ? layout.igw : [0, layout.roadZ];
-    case 'dns':
-      return spot?.door ?? layout.actors[cp.at] ?? layout.igw;
-    case 'sg-out':
-    case 'sg-in':
-      return spot?.barrier ?? layout.igw;
-    case 'linux':
-      return spot?.door ?? layout.igw;
-    case 'reply':
-      return spot ? [spot.x + REPLY_SIDE_X, spot.z] : layout.igw;
-  }
+/** Returns the path out and, for a reply, the same path back to the start. */
+export function roundTrip(path: Vec2[]): Vec2[] {
+  return [...path, ...path.slice(0, -1).reverse()];
+}
+
+export function pathLength(path: Vec2[]): number {
+  return cumulativeLengths(path).at(-1) ?? 0;
+}
+
+function samePoint(point: Vec2) {
+  return (other: Vec2) => other[0] === point[0] && other[1] === point[1];
+}
+
+/** Moves stamps that share a point apart along the screen's horizontal (x up, z down), keeping each group centered on its point. */
+export function spreadStamps(points: Vec2[]): Vec2[] {
+  return points.map((point, index): Vec2 => {
+    const group = points.filter(samePoint(point)).length;
+    const rank = points.slice(0, index).filter(samePoint(point)).length;
+    const shift = (rank - (group - 1) / 2) * STAMP_SPREAD;
+    return [point[0] + shift, point[1] - shift];
+  });
 }

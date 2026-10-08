@@ -12,7 +12,3 @@ export const NOT_FOUND_TEXT = {
   body: (levelId: string) => `No existe el nivel ${levelId}.`,
   back: 'Volver al roadmap',
 } as const;
-
-export const SCENE_TEXT = {
-  gateway: 'internet gateway',
-} as const;

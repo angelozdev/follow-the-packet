@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { actor, echoFrom, inst, lab03Net, ping, withInbound } from '@/testing';
 import { simulate } from '@/engine/simulation/simulate';
-import { checkpointPosition, computeLayout, cumulativeLengths, pathFor, pointAt } from './layout';
+import { cardAnchorPosition, computeLayout, cumulativeLengths, labelPosition, layoutCenter, pathFor, pathLength, pointAt, roundTrip, sideForNdc, spreadStamps } from './layout';
 
 const S2 = '172.31.38.97';
 
@@ -63,18 +63,39 @@ describe('path interpolation', () => {
   });
 });
 
-describe('checkpointPosition', () => {
-  it('places each checkpoint on its piece', () => {
-    const layout = computeLayout(lab03Net());
-    expect(checkpointPosition({ stage: 'sg-in', at: 'servidor2' }, layout)).toEqual(layout.instances.servidor2.barrier);
-    expect(checkpointPosition({ stage: 'linux', at: 'servidor2' }, layout)).toEqual(layout.instances.servidor2.door);
-    expect(checkpointPosition({ stage: 'route', at: 'igw' }, layout)).toEqual(layout.igw);
+describe('anchors', () => {
+  const layout = computeLayout(lab03Net());
+
+  it('the camera looks at the middle of everything drawn, actors included', () => {
+    const [x] = layoutCenter(layout);
+    const left = Math.min(...Object.values(layout.actors).map(([actorX]) => actorX));
+    expect(x - left).toBeCloseTo(layout.sheet.width / 2 - x);
   });
 
-  it('the "arrives and returns" point sits outside the building, in view', () => {
-    const layout = computeLayout(lab03Net());
+  it('a door label sits in front of its door, and a server label above its building', () => {
     const spot = layout.instances.servidor2;
-    const [x, z] = checkpointPosition({ stage: 'reply', at: 'servidor2' }, layout);
-    expect(Math.abs(x - spot.x) >= 0.8 + 0.55 || Math.abs(z - spot.z) >= 0.6 + 0.55).toBe(true);
+    expect(labelPosition({ kind: 'barrier', anchorId: 'servidor2' }, layout)[2]).toBeGreaterThan(spot.barrier[1]);
+    expect(labelPosition({ kind: 'server', anchorId: 'servidor2' }, layout)[1]).toBeGreaterThan(1);
+    expect(cardAnchorPosition('servidor2', layout)[0]).toBe(spot.barrier[0]);
+  });
+
+  it('a card opens on the side of the screen with more room', () => {
+    expect(sideForNdc(0.4)).toBe('left');
+    expect(sideForNdc(-0.4)).toBe('right');
+  });
+});
+
+describe('paths and stamps', () => {
+  it('a round trip goes and comes back along the same points', () => {
+    expect(roundTrip([[0, 0], [2, 0], [2, 2]])).toEqual([[0, 0], [2, 0], [2, 2], [2, 0], [0, 0]]);
+    expect(pathLength([[0, 0], [3, 0], [3, 4]])).toBe(7);
+  });
+
+  it('stamps on the same point spread apart along the screen, the rest stay', () => {
+    const [a, b, c] = spreadStamps([[1, 1], [1, 1], [5, 5]]);
+    expect(a[0] + b[0]).toBeCloseTo(2);
+    expect(a[0]).toBeLessThan(b[0]);
+    expect(a[0] - 1).toBeCloseTo(-(a[1] - 1));
+    expect(c).toEqual([5, 5]);
   });
 });
