@@ -1,0 +1,90 @@
+import { useReducedMotion } from '@mantine/hooks';
+import { useReducer, useState } from 'react';
+import { SCREEN_TEXT } from '@/copy';
+import { barrierCard, countStars, inspect, intrudedServerIds, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import type { Incident } from '@/levels';
+import { GameScene, pieceDomId } from '@/scene';
+import { ExplanationCard } from './explanation-card';
+import { InspectionBox } from './inspection-box';
+import { LuciaCard } from './lucia-card';
+import { ResultCard } from './result-card';
+import { TaskCard } from './task-card';
+import { useStabilityClock } from './use-stability-clock';
+
+interface IncidentScreenProps {
+  incidents: Incident[];
+  incidentId: string;
+  nextId: string | null;
+  onFinish: (stars: number) => void;
+}
+
+export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: IncidentScreenProps) {
+  const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
+  const [inspecting, setInspecting] = useState<string | null>(null);
+  const [cardPieceId, setCardPieceId] = useState<string | null>(null);
+  const prefersStill = useReducedMotion(false, { getInitialValueInEffect: false });
+  const [stillChoice, setStillChoice] = useState<boolean | null>(null);
+  useStabilityClock(dispatch);
+
+  const still = stillChoice ?? prefersStill;
+  const playing = session.phase === 'playing';
+  const pieces = pieceViews(session);
+  const card = playing && cardPieceId ? barrierCard(session, cardPieceId) : null;
+  const inspection = inspecting ? inspect(session, inspecting) : null;
+
+  const activate = (pieceId: string) => {
+    if (playing && pieces.some((piece) => piece.id === pieceId && piece.configurable)) setCardPieceId(pieceId);
+  };
+  const closeCard = () => {
+    if (cardPieceId) document.getElementById(pieceDomId(cardPieceId))?.focus();
+    setCardPieceId(null);
+  };
+  const showResult = () => {
+    dispatch({ type: 'showResult' });
+    onFinish(countStars(starsOf(session)));
+  };
+
+  return (
+    <main className="incident">
+      <div className="incident__map">
+        <header className="incident__bar">
+          <a href="#/">{SCREEN_TEXT.back}</a>
+          <h1>{session.incident.title}</h1>
+          <label className="incident__motion">
+            <input type="checkbox" checked={still} onChange={(event) => setStillChoice(event.target.checked)} /> {SCREEN_TEXT.motion}
+          </label>
+        </header>
+        <GameScene
+          world={session.world}
+          pieces={pieces}
+          flows={session.runs}
+          intrudedServerIds={intrudedServerIds(session.runs)}
+          still={still}
+          activePieceId={card ? cardPieceId : null}
+          overlay={
+            card && (
+              <TaskCard
+                key={card.sgId}
+                card={card}
+                chips={session.incident.chips}
+                onPlace={(whatId, fromId) => dispatch({ type: 'placeRule', sgId: card.sgId, whatId, fromId })}
+                onRemove={(ruleId) => dispatch({ type: 'removeRule', sgId: card.sgId, ruleId })}
+                onClose={closeCard}
+              />
+            )
+          }
+          onInspect={setInspecting}
+          onActivate={activate}
+        />
+      </div>
+      <aside className="incident__side">
+        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} />
+        {session.phase === 'explaining' && (
+          <ExplanationCard options={session.incident.explanation} choice={session.choice} onChoose={(index) => dispatch({ type: 'chooseExplanation', index })} onContinue={showResult} />
+        )}
+        {session.phase === 'result' && <ResultCard stars={starsOf(session)} takeaway={session.incident.takeaway} nextId={nextId} />}
+        <div aria-live="polite">{inspection ? <InspectionBox inspection={inspection} /> : <p className="muted">{SCREEN_TEXT.inspectHelp}</p>}</div>
+      </aside>
+    </main>
+  );
+}

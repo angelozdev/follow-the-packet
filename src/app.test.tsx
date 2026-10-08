@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { NOTICE_TEXT } from '@/copy';
 import { CHAPTERS, INCIDENTS } from '@/levels';
 import { App } from './app';
 
@@ -18,11 +19,17 @@ describe('App', () => {
     expect(screen.getAllByText('Próximamente')).toHaveLength(SOON_COUNT);
   });
 
-  it('an old level link shows "Nivel no encontrado" with a link back', () => {
-    window.location.hash = '#/level/04-01';
+  it('an unknown incident shows "Incidente no encontrado" with a link back', () => {
+    window.location.hash = '#/level/09-99';
     render(<App />);
-    expect(screen.getByRole('heading', { name: 'Nivel no encontrado' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Volver al roadmap' })).toHaveAttribute('href', '#/');
+    expect(screen.getByRole('heading', { name: NOTICE_TEXT.notFound.title })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: NOTICE_TEXT.back })).toHaveAttribute('href', '#/');
+  });
+
+  it('a locked incident does not open from its URL', () => {
+    window.location.hash = `#/level/${INCIDENTS[1].id}`;
+    render(<App />);
+    expect(screen.getByRole('heading', { name: NOTICE_TEXT.locked.title })).toBeInTheDocument();
   });
 
   it('corrupt saved progress does not break the roadmap', () => {

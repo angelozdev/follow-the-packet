@@ -7,8 +7,8 @@ export const ROADMAP_TEXT = {
   role: { defender: 'Defensor', attacker: 'Atacante' },
 } as const;
 
-export const NOT_FOUND_TEXT = {
-  title: 'Nivel no encontrado',
-  body: (levelId: string) => `No existe el nivel ${levelId}.`,
+export const NOTICE_TEXT = {
+  notFound: { title: 'Incidente no encontrado', body: (id: string) => `No existe el incidente ${id}.` },
+  locked: { title: 'Incidente bloqueado', body: (id: string) => `Para abrir el ${id}, termina antes los incidentes anteriores.` },
   back: 'Volver al roadmap',
 } as const;

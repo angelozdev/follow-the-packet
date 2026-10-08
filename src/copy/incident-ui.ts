@@ -57,3 +57,26 @@ export const TASK_CARD_TEXT = {
   remove: (rule: string) => `Quitar la regla ${rule}`,
   giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,
 } as const;
+
+export const EXPLANATION_TEXT = {
+  asks: 'Lucía: «¿Qué pasó?»',
+  right: 'Correcto.',
+  wrong: 'No es eso.',
+  seeResult: 'Ver resultado',
+} as const;
+
+export const RESULT_TEXT = {
+  title: 'Incidente cerrado',
+  stars: { closed: 'Cerraste el incidente', tight: 'Abriste solo lo justo', explained: 'Explicaste qué pasó a la primera' },
+  earned: 'conseguida',
+  missed: 'sin conseguir',
+  takeaway: 'Lo que te llevas',
+  next: 'Siguiente incidente',
+  back: 'Volver al roadmap',
+} as const;
+
+export const SCREEN_TEXT = {
+  back: '← Roadmap',
+  motion: 'Sin animaciones',
+  inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver cómo está.',
+} as const;

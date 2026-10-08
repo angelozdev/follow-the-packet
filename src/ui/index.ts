@@ -1,2 +1,2 @@
-export { NotFound } from './not-found';
+export { IncidentPage } from './incident-page';
 export { Roadmap } from './roadmap';

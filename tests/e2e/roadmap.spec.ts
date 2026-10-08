@@ -20,9 +20,9 @@ test('the roadmap loads every chapter without console errors', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
-test('an old level link leads back to the roadmap', async ({ page }) => {
-  await page.goto('/#/level/04-01');
-  await expect(page.getByRole('heading', { name: 'Nivel no encontrado' })).toBeVisible();
+test('an unknown incident leads back to the roadmap', async ({ page }) => {
+  await page.goto('/#/level/09-99');
+  await expect(page.getByRole('heading', { name: 'Incidente no encontrado' })).toBeVisible();
   await page.getByRole('link', { name: 'Volver al roadmap' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
 });
