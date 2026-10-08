@@ -1,20 +1,33 @@
-import { APP_TARGET, type Endpoint, type Network, type Outcome, type PacketSpec } from '@/engine';
+import type { Endpoint, Network, Outcome, PacketSpec, Trace } from '@/engine';
+import type { TermText } from './term-text';
 
-export function endpointName(e: Endpoint, net: Network): string {
-  if (e.kind === 'instance') return net.instances.find((i) => i.id === e.id)?.name ?? e.id;
-  return net.actors.find((a) => a.id === e.id)?.name ?? 'Internet';
+const INTERNET_NAME = 'Internet';
+
+export function instanceName(net: Network, instanceId: string): string {
+  return net.instances.find((i) => i.id === instanceId)?.name ?? instanceId;
 }
 
-export function formatPacket(p: PacketSpec, net: Network): string {
-  const service = p.protocol === 'icmp' ? (p.icmpType === 8 ? 'ping' : 'ICMP Echo Reply') : `${p.protocol.toUpperCase()} ${p.port}`;
-  const to = p.to === APP_TARGET ? 'el destino de su app' : p.to;
-  return `${service} de ${endpointName(p.from, net)} a ${to}`;
+export function endpointName(endpoint: Endpoint, net: Network): string {
+  if (endpoint.kind === 'instance') return instanceName(net, endpoint.id);
+  return net.actors.find((a) => a.id === endpoint.id)?.name ?? INTERNET_NAME;
 }
 
-export const OUTCOME_TEXT: Record<Outcome, string> = {
-  replied: 'Respondió.',
-  timeout: 'Timeout: nadie contestó.',
-  refused: 'Connection refused: llegó, pero nada escuchaba.',
-  'arrived-no-reply': 'Llegó, pero nadie respondió.',
-  unresolved: 'El nombre no se pudo resolver.',
+/** Names what a packet carries, with its term tagged. */
+export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>): TermText {
+  if (packet.protocol === 'icmp') return packet.icmpType === 8 ? '{{ping}}' : '{{echo-reply}}';
+  return `${packet.protocol.toUpperCase()} ${packet.port}`;
+}
+
+/** Describes a packet as what, from whom and to whom, naming the server the trace reached or else the address it was sent to. */
+export function packetLabel(packet: PacketSpec, trace: Trace, net: Network): TermText {
+  const to = trace.destinationId ? instanceName(net, trace.destinationId) : packet.to;
+  return `${serviceLabel(packet)} de ${endpointName(packet.from, net)} a ${to}`;
+}
+
+export const OUTCOME_TEXT: Record<Outcome, TermText> = {
+  replied: 'Llegó y volvió la respuesta.',
+  timeout: 'No llegó: no volvió ninguna respuesta.',
+  refused: 'Llegó, pero ningún programa lo estaba esperando.',
+  'arrived-no-reply': 'Llegó, pero nadie contestó.',
+  unresolved: 'No salió: el nombre no se pudo convertir en una IP.',
 };

@@ -1,11 +1,29 @@
 import { describe, expect, it } from 'vitest';
+import { simulate } from '@/engine';
 import { actor, inst, lab03Net, ping } from '@/testing';
-import { formatPacket } from './packet-labels';
+import { endpointName, packetLabel, serviceLabel } from './packet-labels';
+
+const NET = lab03Net();
 
 describe('packet labels', () => {
-  it('describes a packet by service, source name and destination', () => {
-    const net = lab03Net();
-    expect(formatPacket(ping(inst('servidor1'), '172.31.38.97'), net)).toBe('ping de servidor1 a 172.31.38.97');
-    expect(formatPacket(ping(actor('probe-internet'), '34.244.254.100'), net)).toBe('ping de Internet a 34.244.254.100');
+  it('name the service, the source and the destination server', () => {
+    const packet = ping(inst('servidor1'), '172.31.38.97');
+    expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a servidor2');
+  });
+
+  it('name an actor, and the internet probe that is not on the map', () => {
+    const packet = ping(actor('attacker'), '34.244.254.100');
+    expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de Atacante a servidor2');
+    expect(endpointName(actor('probe-internet'), NET)).toBe('Internet');
+  });
+
+  it('keep the address when the packet reached no server', () => {
+    const packet = ping(inst('servidor1'), 'no-existe.example');
+    expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a no-existe.example');
+  });
+
+  it('tag Echo Reply and leave TCP plain', () => {
+    expect(serviceLabel({ protocol: 'icmp', icmpType: 0 })).toBe('{{echo-reply}}');
+    expect(serviceLabel({ protocol: 'tcp', port: 22 })).toBe('TCP 22');
   });
 });

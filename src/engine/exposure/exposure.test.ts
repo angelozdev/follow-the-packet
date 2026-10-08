@@ -30,6 +30,11 @@ describe('extraOpenings', () => {
   it('the expected SSH from your Mac does not count as an extra opening', () => {
     expect(extraOpenings(lab03Net(), expected)).toEqual([]);
   });
+
+  it('Echo Reply from 0.0.0.0/0 lets the internet in (the day-shift rule of 04-02)', () => {
+    const net = withInbound(lab03Net(), 'sg-servidor2', { id: 'reply-world', what: { kind: 'icmp', icmpType: 0 }, peer: { kind: 'cidr', cidr: '0.0.0.0/0' } });
+    expect(extraOpenings(net, expected)).toContainEqual({ from: actor('probe-internet'), to: S2.public, protocol: 'icmp', icmpType: 0 });
+  });
 });
 
 describe('flowKey', () => {

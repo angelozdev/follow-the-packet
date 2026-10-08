@@ -1,54 +1,53 @@
-import { describePacket, type Network, type Reason } from '@/engine';
-
-function instanceName(net: Network, instanceId: string): string {
-  return net.instances.find((i) => i.id === instanceId)?.name ?? instanceId;
-}
+import type { Network, Reason } from '@/engine';
+import { instanceName } from './packet-labels';
+import type { TermText } from './term-text';
 
 function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
 }
 
-export function describeReason(reason: Reason, net: Network): string {
+/** Turns an engine reason into the sentence the player reads, with its terms tagged. */
+export function describeReason(reason: Reason, net: Network): TermText {
   switch (reason.code) {
     case 'dns-unresolved':
-      return `Nadie responde por el nombre ${reason.name} desde ${side(reason.fromInside)} de la VPC.`;
+      return `El {{dns}} no conoce ${reason.name} cuando se pregunta desde ${side(reason.fromInside)} de la {{vpc}}.`;
     case 'dns-resolved':
-      return `${reason.name} → ${reason.ip} (preguntando desde ${side(reason.fromInside)} de la VPC)`;
+      return `El {{dns}} convierte ${reason.name} en ${reason.ip} (se preguntó desde ${side(reason.fromInside)} de la {{vpc}}).`;
     case 'route-private-from-outside':
-      return `${reason.ip} es una IP privada: solo existe dentro de la VPC. Desde internet no hay camino.`;
+      return `${reason.ip} es una {{private-ip}}: desde internet no hay camino hasta ella.`;
     case 'route-no-private-instance':
-      return `Ninguna instancia tiene la IP ${reason.ip}.`;
+      return `Ningún {{server}} tiene la {{private-ip}} ${reason.ip}.`;
     case 'route-private':
-      return 'Viaja por dentro de la VPC, con IPs privadas.';
+      return 'Viaja por dentro de la {{vpc}}.';
     case 'route-no-public-instance':
-      return `Ninguna instancia de la VPC tiene la IP pública ${reason.ip}.`;
+      return `Ningún {{server}} tiene la {{public-ip}} ${reason.ip}.`;
     case 'route-no-public-ip':
-      return `${instanceName(net, reason.instanceId)} no tiene IP pública: no puede salir a internet.`;
+      return `${instanceName(net, reason.instanceId)} no tiene {{public-ip}}: no puede salir a internet.`;
     case 'route-nat':
-      return `Sale por el internet gateway: el origen cambia de ${reason.from} a ${reason.to}.`;
+      return `Sale por el {{internet-gateway}} y su remitente cambia de ${reason.from} a ${reason.to}: eso es {{nat}}.`;
     case 'route-from-internet':
-      return 'Entra desde internet por el internet gateway.';
+      return 'Entra desde internet por el {{internet-gateway}}.';
     case 'sg-out-pass':
-      return `La salida de ${instanceName(net, reason.instanceId)} lo deja salir.`;
+      return `La {{security-group}} de ${instanceName(net, reason.instanceId)} lo deja salir.`;
     case 'sg-out-drop':
-      return `Ninguna regla de salida de ${instanceName(net, reason.instanceId)} coincide.`;
+      return `Se queda en la {{security-group}} de ${instanceName(net, reason.instanceId)}: ninguna {{outbound-rule}} lo deja salir.`;
     case 'sg-in-pass':
-      return `El SG de ${instanceName(net, reason.instanceId)} lo deja entrar.`;
+      return `La {{security-group}} de ${instanceName(net, reason.instanceId)} lo deja entrar.`;
     case 'sg-in-drop':
-      return `Descartado en silencio: ninguna regla de entrada de ${instanceName(net, reason.instanceId)} coincide en qué y desde dónde a la vez.`;
+      return `Se queda en la {{security-group}} de ${instanceName(net, reason.instanceId)}: ninguna {{rule}} lo deja entrar.`;
     case 'linux-unsolicited-icmp':
-      return `Llega un ${describePacket({ protocol: 'icmp', icmpType: reason.icmpType })} que nadie pidió: Linux no contesta.`;
+      return `Llega un {{echo-reply}} que nadie pidió: ${instanceName(net, reason.instanceId)} no contesta.`;
     case 'linux-ignores-echo':
-      return `Llega, pero Linux de ${instanceName(net, reason.instanceId)} tiene icmp_echo_ignore_all=1 y no contesta.`;
+      return `Llega, pero ${instanceName(net, reason.instanceId)} tiene activado «{{linux-ignore-ping}}» y no contesta.`;
     case 'linux-replies':
-      return `Linux de ${instanceName(net, reason.instanceId)} contesta.`;
+      return `${instanceName(net, reason.instanceId)} contesta.`;
     case 'linux-refused':
-      return `Llega, pero nada escucha en el puerto ${reason.port}: Linux contesta "connection refused".`;
+      return `Llega, pero ningún programa escucha en el puerto ${reason.port}: ${instanceName(net, reason.instanceId)} lo rechaza.`;
     case 'linux-accepts':
       return `Un programa escucha en el puerto ${reason.port} y acepta.`;
     case 'linux-udp-no-service':
-      return `Llega un paquete UDP ${reason.port}, pero en este juego ningún servicio UDP contesta.`;
+      return `Llega por UDP al puerto ${reason.port}, pero en este juego ningún programa UDP contesta.`;
     case 'reply-stateful':
-      return 'La respuesta vuelve sola: el SG es stateful y recuerda la conversación.';
+      return 'La respuesta vuelve sola: la {{security-group}} es {{stateful}} y recuerda la conversación.';
   }
 }
