@@ -33,3 +33,17 @@ export const ACTOR_ROLE_TEXT: Record<Actor['kind'], TermText> = {
   attacker: 'Alguien de internet que prueba puertas ajenas.',
   you: 'Tu computadora.',
 };
+
+export const LUCIA_TEXT = {
+  name: 'Lucía',
+  role: 'soporte',
+  tasks: 'Tareas',
+  pending: 'pendiente',
+  done: 'hecha',
+  steady: 'Tiempo funcionando sin cortes',
+  intrusion: '¡Algo raro está entrando!',
+  newTerms: 'Palabras nuevas',
+  newBadge: 'nuevo',
+  askHint: '¿Alguna pista?',
+  hint: (number: number) => `Pista ${number}:`,
+} as const;
