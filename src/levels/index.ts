@@ -4,3 +4,5 @@ export type { ExplanationOption, Flow, FlowKind, FromChip, Incident, IncidentTas
 export { INCIDENTS } from './registry';
 export { chipsOfRule } from './chips';
 export { applyMove, solvedWorld, startWorld } from './world';
+export { configurableParts, knownTerms } from './ladder';
+export type { ConfigurableParts } from './ladder';
