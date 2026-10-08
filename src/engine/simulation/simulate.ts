@@ -8,7 +8,6 @@ import { sgOutStage } from './stages/sg-out';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, Trace } from './trace';
 
-
 export const PIPELINE: Stage[] = [dnsStage, routeStage, sgOutStage, sgInStage, linuxStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
