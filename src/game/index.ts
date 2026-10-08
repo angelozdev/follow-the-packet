@@ -1,13 +1,11 @@
 export { intrudedServerIds } from './flow-runs';
-export type { FlowRun } from './flow-runs';
 export { isIntruding, sessionReducer, startSession, starsOf } from './session';
-export type { Session, SessionAction, SessionPhase } from './session';
+export type { Session, SessionAction } from './session';
 export { countStars } from './stars';
 export type { Stars } from './stars';
 export { STABLE_MS, isStable } from './tasks';
 export { barrierCard, rowText } from './view/barrier';
-export type { BarrierCard, RuleRow } from './view/barrier';
+export type { BarrierCard } from './view/barrier';
 export { inspect } from './view/inspection';
-export type { Inspection, InspectionField } from './view/inspection';
+export type { Inspection } from './view/inspection';
 export { pieceViews } from './view/pieces';
-export type { PieceView } from './view/pieces';

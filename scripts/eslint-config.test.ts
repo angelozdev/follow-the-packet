@@ -87,7 +87,7 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
     });
 
     it('rejects a value import from the engine in a view', async () => {
-      expect(await ruleIdsFor('src/scene/probe.ts', "import { describePacket } from '@/engine';\nexport const describe = describePacket;\n")).toContain(
+      expect(await ruleIdsFor('src/scene/probe.ts', "import { simulate } from '@/engine';\nexport const run = simulate;\n")).toContain(
         '@typescript-eslint/no-restricted-imports',
       );
     });

@@ -41,6 +41,11 @@ const BROKEN: [string, Record<string, unknown>][] = [
   ['a task without a required flow', { tasks: [{ id: 'task', text: 'x', flowIds: ['unwanted'] }, { id: 'other', text: 'y', flowIds: ['wanted'] }] }],
   ['a solution with a chip it does not offer', { solution: [{ type: 'placeRule', sgId: 'sg-servidor2', whatId: 'ghost', fromId: 'one' }] }],
   ['an unknown term tag', { report: 'El {{firewall}} falla.' }],
+  ['a term tag with capitals', { report: 'La {{Security-Group}} falla.' }],
+  ['a term tag with an underscore', { report: 'La {{security_group}} falla.' }],
+  ['a term tag with an empty word', { report: 'La {{rule|}} falla.' }],
+  ['a term tag with spaces inside', { report: 'La {{ security-group }} falla.' }],
+  ['a term tag opened inside the words', { report: 'La {{rule|a {{b}} falla.' }],
   ['an unknown introduced term', { introduces: ['firewall'] }],
   ['a term introduced twice', { introduces: ['ping', 'ping'] }],
   ['an id that does not match chapter and order', { id: '09-04' }],
@@ -55,6 +60,11 @@ describe('incident contract', () => {
 
   it.each(BROKEN)('rejects %s', (_name, patch) => {
     expect(incidentSchema.safeParse({ ...VALID, ...patch }).success).toBe(false);
+  });
+
+  it('says which tag is wrong', () => {
+    const result = incidentSchema.safeParse({ ...VALID, report: 'La {{rule|}} falla.' });
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.message)).toEqual(['malformed term tag: {{rule|}}']);
   });
 
   it('names a placed rule after its chips', () => {

@@ -1,6 +1,27 @@
-import { LUCIA_TEXT, TERMS } from '@/copy';
+import type { RefObject } from 'react';
+import { LUCIA_TEXT, TERMS, type TermText } from '@/copy';
 import { STABLE_MS, isIntruding, isStable, type Session } from '@/game';
 import { TaggedText } from '@/ui/tagged-text';
+import { useFocusOnMount } from './use-focus-on-mount';
+
+interface HintLineProps {
+  number: number;
+  text: TermText;
+  lineRef?: RefObject<HTMLParagraphElement | null>;
+}
+
+function HintLine({ number, text, lineRef }: HintLineProps) {
+  return (
+    <p ref={lineRef} tabIndex={lineRef ? -1 : undefined} className="hint">
+      <strong>{LUCIA_TEXT.hint(number)}</strong> <TaggedText text={text} />
+    </p>
+  );
+}
+
+function FocusedHintLine({ number, text }: HintLineProps) {
+  const line = useFocusOnMount<HTMLParagraphElement>();
+  return <HintLine number={number} text={text} lineRef={line} />;
+}
 
 export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint: () => void }) {
   const { incident } = session;
@@ -45,11 +66,10 @@ export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint:
         ))}
       </dl>
       <div aria-live="polite">
-        {incident.hints.slice(0, session.hintsShown).map((hint, index) => (
-          <p key={hint} className="hint">
-            <strong>{LUCIA_TEXT.hint(index + 1)}</strong> <TaggedText text={hint} />
-          </p>
-        ))}
+        {incident.hints.slice(0, session.hintsShown).map((hint, index) => {
+          const Line = index === incident.hints.length - 1 ? FocusedHintLine : HintLine;
+          return <Line key={hint} number={index + 1} text={hint} />;
+        })}
       </div>
       {session.hintsShown < incident.hints.length && (
         <button type="button" className="btn btn--small" onClick={onAskHint}>

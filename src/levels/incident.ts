@@ -4,16 +4,19 @@ import { networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleW
 
 const id = z.string().min(1);
 
-function isTermText(text: string): boolean {
+function termTextProblem(text: string): string | undefined {
   try {
     parseTermText(text);
-    return true;
-  } catch {
-    return false;
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
   }
 }
 
-const termText = z.string().min(1).refine(isTermText, 'unknown term tag');
+const termText = z.string().min(1).check((context) => {
+  const problem = termTextProblem(context.value);
+  if (problem) context.issues.push({ code: 'custom', message: problem, input: context.value });
+});
 const termIdSchema = z.custom<TermId>((value) => typeof value === 'string' && isTermId(value), 'unknown term');
 
 export const flowKindSchema = z.enum(['required', 'forbidden', 'ambient']);

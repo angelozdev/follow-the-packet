@@ -2,7 +2,7 @@
 
 > **Estado (plan 1, `docs/plans/2026-10-08-follow-the-packet-clean-base.md`):** hechos A3, A4, A11, A12, B1-B3, B5-B6 y C1-C9. B4 y B7 pasan al plan 2 (el panel de getent ya no existe; la revisión del texto se hace con los textos nuevos). El destino del resto está en la tabla "Relación con el backlog" del spec de incidentes en vivo.
 
-> **Estado (plan 2, `docs/plans/2026-10-08-follow-the-packet-live-incidents-prototype.md`):** hechos A6 (escena centrada, etiquetas sin superponerse, con prueba de Playwright), A8 (desbloqueo en orden), A13 (foco de la tarjeta de tarea), B4 (la inspección llega calculada desde `game`) y B7 (textos de los motivos en lenguaje sencillo). A5 lo reemplaza el tráfico vivo. Siguen pendientes A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
+> **Estado (plan 2, `docs/plans/2026-10-08-follow-the-packet-live-incidents-prototype.md`):** hechos A6 (escena centrada, etiquetas sin superponerse al empezar el 04-01, con prueba de Playwright), A8 (desbloqueo en orden), A13 (foco de la tarjeta de tarea), B4 (la inspección llega calculada desde `game`) y B7 (textos de los motivos en lenguaje sencillo). A5 lo reemplaza el tráfico vivo. Siguen pendientes A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
 
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
 

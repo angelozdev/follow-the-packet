@@ -30,7 +30,6 @@ function allOutbound(id: string): Rule {
   return { id, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANYWHERE } };
 }
 
-/** The night shift's world before anyone touches it: two servers in different zones, new doors with no inbound rules and every outbound open, and an attacker on the internet. */
 export const BASE_WORLD: Network = {
   region: REGION,
   vpcCidr: VPC_CIDR,
@@ -69,5 +68,4 @@ export const FROM = {
   internet: { id: 'internet', label: 'Todo internet', peer: { kind: 'cidr', cidr: ANYWHERE } },
 } satisfies Record<string, FromChip>;
 
-/** The day shift's rule in 04-02: Echo Reply from all of internet, "to open the ping's answer". */
 export const DAY_SHIFT_RULE: Rule = { id: 'day-shift-echo-reply', what: WHAT.echoReply.what, peer: FROM.internet.peer };

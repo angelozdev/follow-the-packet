@@ -49,6 +49,21 @@ describe("Lucía's card", () => {
     expect(region).toHaveTextContent(LUCIA_TEXT.hint(1));
   });
 
+  it('keeps the focus on the button after hint 1, then moves it to the last hint', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.tab();
+    const button = screen.getByRole('button', { name: LUCIA_TEXT.askHint });
+    expect(button).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(button).toHaveFocus();
+    await user.keyboard('{Enter}');
+    const lastHint = screen.getByText(LUCIA_TEXT.hint(2)).closest('p');
+    expect(lastHint).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole('region', { name: new RegExp(LUCIA_TEXT.name) })).toContainElement(lastHint);
+  });
+
   it('warns when something forbidden gets in', () => {
     render(<Harness actions={[WIDE]} />);
     expect(screen.getByRole('alert')).toHaveTextContent(LUCIA_TEXT.intrusion);

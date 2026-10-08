@@ -3,6 +3,7 @@ import { collectErrors } from './console-errors';
 
 const DOOR = 'puerta de servidor2';
 const FULL_STARS = '3 de 3 estrellas';
+const QUESTION = /¿Qué pasó\?/;
 const CLOSE_TIMEOUT_MS = 15_000;
 
 interface Box {
@@ -93,4 +94,22 @@ test('labels and stamps do not overlap, and the open card does not cover its doo
   const card = await openDoor(page);
   const label = page.getByRole('button', { name: DOOR, exact: true });
   await expect.poll(async () => overlaps(await card.boundingBox(), await label.boundingBox())).toBe(false);
+});
+
+test('focus goes to the card heading when a door opens, and back to the door on Escape', async ({ page }) => {
+  await page.goto('/#/level/04-01');
+  const card = await openDoor(page);
+  await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('button', { name: DOOR, exact: true })).toBeFocused();
+});
+
+test('focus goes to the question when the incident closes with the card still open', async ({ page }) => {
+  await page.goto('/#/level/04-01');
+  const card = await openDoor(page);
+  await card.getByRole('button', { name: 'Ping', exact: true }).click();
+  await card.getByRole('button', { name: 'servidor1', exact: true }).click();
+  await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused({ timeout: CLOSE_TIMEOUT_MS });
+  await expect(card).toHaveCount(0);
 });
