@@ -1,5 +1,7 @@
 # Sigue el paquete: pendientes tras la revisión
 
+> **Estado (plan 1, `docs/plans/2026-10-08-follow-the-packet-clean-base.md`):** hechos A3, A4, A11, A12, B1-B3, B5-B6 y C1-C9. B4 y B7 pasan al plan 2 (el panel de getent ya no existe; la revisión del texto se hace con los textos nuevos). El destino del resto está en la tabla "Relación con el backlog" del spec de incidentes en vivo.
+
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
 
 - **Rama base:** `feat/follow-the-packet` (13 commits, `5aff501…712c076`, sin push).

@@ -195,7 +195,7 @@ Lección citada por todos: `Lab: Comprobación de Conectividad entre Instancias 
 - **Solo lo justo (★2):**
   - Dejar Echo Reply ← Todo internet es una apertura de más.
   - Usar Ping completo ← servidor1 también lo es.
-  - Por eso la batería de sondas agrega Echo Reply (tipo 0) a sus sondas ICMP.
+  - La batería de sondas ya prueba Echo Reply (tipo 0) en sus sondas ICMP (`SERVICES` en `src/engine/exposure/exposure.ts`).
 - **Pistas:**
   1. «Un ping tiene ida y vuelta. ¿Cuál de las dos entra a servidor2?»
   2. «En la puerta de servidor2: Echo Request desde servidor1. Y quita la regla del turno de día.»
@@ -236,7 +236,7 @@ Lección citada por todos: `Lab: Comprobación de Conectividad entre Instancias 
 
 Se mantiene el stack (Vite, TypeScript, React, React Three Fiber, drei, three, zod, Vitest, Testing Library, Playwright) y las capas de la regla `folder-structure` del proyecto: `engine`, `levels`, `copy`, `game`, `storage`, `scene`, `ui` y `testing`.
 
-- **`engine`:** sin cambios de modelo. `simulate(world, packet)` sigue siendo puro y devuelve el recorrido. La batería de sondas agrega Echo Reply.
+- **`engine`:** sin cambios de modelo. `simulate(world, packet)` sigue siendo puro y devuelve el recorrido. La batería de sondas ya prueba Echo Reply (tipo 0).
 - **`copy`:** el registro de términos (nombre y definición) y los textos de los códigos de motivo del motor.
 - **`levels`:**
   - el contrato del incidente (zod);
