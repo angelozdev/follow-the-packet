@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "rules": {
+    "caller-controls-visibility": {
+      "origin": "frontend/caller-controls-visibility",
+      "version": 1,
+      "notes": [
+        "paths: src/**/*.tsx"
+      ]
+    },
+    "dry": {
+      "origin": "core/dry",
+      "version": 1,
+      "notes": [
+        "enforced: jscpd with threshold 0 in npm run check (npm run dup)."
+      ]
+    },
+    "english-only": {
+      "origin": "core/english-only",
+      "version": 1,
+      "notes": [
+        "covers all of projects/follow-the-packet, project README included; spec and plan stay in Spanish in the repo-root docs/",
+        "display language Spanish, no i18n layer: Spanish text in src/copy/ and in level files",
+        "deviation: the engine returns reason codes and src/copy/ renders them in Spanish"
+      ]
+    },
+    "exact-dependency-versions": {
+      "origin": "core/exact-dependency-versions",
+      "version": 1,
+      "notes": [
+        "npm (package-lock.json); npm does not gate install scripts",
+        "enforced: .npmrc with save-exact=true; package.json has no ^ or ~ ranges.",
+        "typescript stays on 6.0.x: typescript-eslint 8.71 accepts TypeScript below 6.1"
+      ]
+    },
+    "folder-structure": {
+      "origin": "core/folder-structure",
+      "version": 1,
+      "notes": [
+        "axis by layer: engine, levels, copy, game, storage, scene, ui, testing",
+        "import direction: app -> ui -> game, scene, storage -> levels -> copy -> engine; no peers",
+        "alias @/ -> src/; all ../ imports banned; one index.ts barrel per layer",
+        "cap 12 files per folder, tests and barrel included; guide file CLAUDE.md per folder",
+        "enforced: no-restricted-imports rules generated from the layer table in eslint.config.js (npm run lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (npm run structure).",
+        "deviation: boundaries use core no-restricted-imports generated from the layer table instead of eslint-plugin-boundaries (no extra dependency or alias resolver)"
+      ]
+    },
+    "kebab-case-filenames": {
+      "origin": "core/kebab-case-filenames",
+      "version": 1,
+      "notes": [
+        "covers src/ and tests/; suffixes *.test.ts, *.test.tsx, *.spec.ts; no exemptions",
+        "enforced: eslint-plugin-check-file on src/ and tests/ in npm run lint.",
+        "accepted risk (2026-10-08): npm audit reports 3 high findings in braces (GHSA-vfj7-8cjw-p6xm) through eslint-plugin-check-file > micromatch; dev-only, the plugin only matches patterns written in eslint.config.js, no fix published; revisit when a fixed braces release ships"
+      ]
+    },
+    "kiss": {
+      "origin": "core/kiss",
+      "version": 1
+    },
+    "low-coupling-high-cohesion": {
+      "origin": "core/low-coupling-high-cohesion",
+      "version": 1
+    },
+    "maintainability": {
+      "origin": "core/maintainability",
+      "version": 1,
+      "notes": [
+        "extension axis: one more level file in src/levels/NN-<chapter>/ or one more engine stage"
+      ]
+    },
+    "no-comments": {
+      "origin": "core/no-comments",
+      "version": 1,
+      "notes": [
+        "decision reasoning: commit messages and repo-root docs/specs/, docs/plans/",
+        "allowed directive: // @vitest-environment jsdom",
+        "enforced: eslint-plugin-no-comments in npm run lint; only JSDoc and tool directives pass."
+      ]
+    },
+    "no-magic-strings": {
+      "origin": "core/no-magic-strings",
+      "version": 1,
+      "notes": [
+        "constants: chapter shared.ts once levels exist, src/scene/theme.ts, src/storage/progress.ts (PROGRESS_KEY, MAX_STARS), src/copy/"
+      ]
+    },
+    "no-raw-effects": {
+      "origin": "frontend/no-raw-effects",
+      "version": 1,
+      "notes": [
+        "paths: src/**/*.tsx",
+        "hook files use-*.ts next to their first consumer",
+        "convention: no namespace import of react in components (the effect ban rejects it)",
+        "hooks library: @mantine/hooks (useHash, useReducedMotion, useWindowEvent, useInterval, useTimeout, useDidUpdate, useMounted)",
+        "enforced: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in npm run lint."
+      ]
+    },
+    "plain-language-copy": {
+      "origin": "frontend/plain-language-copy",
+      "version": 1,
+      "notes": [
+        "reader: the student, no networking background, reads Spanish",
+        "copy lives in src/copy/ and level files"
+      ]
+    },
+    "prefer-established-libraries": {
+      "origin": "core/prefer-established-libraries",
+      "version": 1,
+      "notes": [
+        "choices: zod, three via @react-three/fiber and drei, @mantine/hooks 9.7.1 (checked 2026-10-08); usehooks-ts rejected (last release 2025-02-05)"
+      ]
+    },
+    "prefer-just-utilities": {
+      "origin": "core/prefer-just-utilities",
+      "version": 1,
+      "notes": [
+        "no utility library in use, none banned; display strings sorted with localeCompare"
+      ]
+    },
+    "pure-domain-core": {
+      "origin": "core/pure-domain-core",
+      "version": 1,
+      "notes": [
+        "core: src/engine/; banned there: react, react-dom, three, @react-three/*, browser storage",
+        "enforced: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in npm run lint."
+      ]
+    },
+    "single-responsibility": {
+      "origin": "core/single-responsibility",
+      "version": 1
+    },
+    "user-event-for-interactions": {
+      "origin": "frontend/user-event-for-interactions",
+      "version": 1,
+      "notes": [
+        "paths: src/**/*.test.tsx",
+        "no shared render helper: userEvent.setup() per test; first interaction test arrives with the incident screen",
+        "enforced: no-restricted-imports bans fireEvent from the Testing Library packages in npm run lint."
+      ]
+    },
+    "view-renders-domain-result": {
+      "origin": "frontend/view-renders-domain-result",
+      "version": 1,
+      "notes": [
+        "result: engine Trace and level evaluations in the game state; views: src/scene/, src/ui/",
+        "player tools (getent, tcpdump) get answers through the game state",
+        "enforced: @typescript-eslint/no-restricted-imports lets src/scene/** and src/ui/** import only types from @/engine."
+      ]
+    }
+  },
+  "declined": {}
+}
