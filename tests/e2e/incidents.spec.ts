@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
 const DOOR = 'puerta de servidor2';
+const INSPECTED_SERVER = 'servidor2 con candado';
+const INSPECTION_TITLE = 'servidor2';
 const FULL_STARS = '3 de 3 estrellas';
 const QUESTION = /¿Qué pasó\?/;
 const CLOSE_TIMEOUT_MS = 15_000;
@@ -14,17 +16,31 @@ interface Box {
   height: number;
 }
 
+type Size = Pick<Box, 'width' | 'height'>;
+
 function overlaps(a: Omit<Box, 'name'> | null, b: Omit<Box, 'name'> | null): boolean {
   return a !== null && b !== null && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-async function overlappingPairs(page: Page): Promise<string[]> {
-  const boxes: Box[] = await page.locator('.map-button, button.stamp').evaluateAll((elements) =>
+function isInside(outer: Size, inner: Omit<Box, 'name'> | null): boolean {
+  return inner !== null && inner.x >= 0 && inner.y >= 0 && inner.x + inner.width <= outer.width && inner.y + inner.height <= outer.height;
+}
+
+async function windowSize(page: Page): Promise<Size> {
+  return page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+}
+
+async function mapBoxes(page: Page): Promise<Box[]> {
+  return page.locator('.map-button, button.stamp').evaluateAll((elements) =>
     elements.map((element) => {
       const rect = element.getBoundingClientRect();
       return { name: element.getAttribute('aria-label') ?? element.textContent ?? '', x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     }),
   );
+}
+
+async function overlappingPairs(page: Page): Promise<string[]> {
+  const boxes = await mapBoxes(page);
   return boxes.flatMap((a, index) => boxes.slice(index + 1).filter((b) => overlaps(a, b)).map((b) => `${a.name} / ${b.name}`));
 }
 
@@ -94,6 +110,18 @@ test('labels and stamps do not overlap, and the open card does not cover its doo
   const card = await openDoor(page);
   const label = page.getByRole('button', { name: DOOR, exact: true });
   await expect.poll(async () => overlaps(await card.boundingBox(), await label.boundingBox())).toBe(false);
+});
+
+test('the inspection box floats inside the window and covers no label or stamp', async ({ page }) => {
+  await page.goto('/#/level/04-01');
+  await expect(page.locator('button.stamp').first()).toBeVisible();
+  await page.getByRole('button', { name: INSPECTED_SERVER, exact: true }).hover();
+  const inspection = page.getByRole('region', { name: INSPECTION_TITLE, exact: true });
+  await expect(inspection).toBeVisible();
+  const rect = await inspection.boundingBox();
+  expect(isInside(await windowSize(page), rect)).toBe(true);
+  const covered = (await mapBoxes(page)).filter((other) => overlaps(rect, other)).map((other) => other.name);
+  expect(covered).toEqual([]);
 });
 
 test('focus goes to the card heading when a door opens, and back to the door on Escape', async ({ page }) => {

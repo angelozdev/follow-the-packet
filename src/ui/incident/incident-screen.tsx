@@ -76,6 +76,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           onInspect={setInspecting}
           onActivate={activate}
         />
+        <div aria-live="polite" className="incident__inspection">{inspection ? <InspectionBox inspection={inspection} /> : <p className="muted">{SCREEN_TEXT.inspectHelp}</p>}</div>
       </div>
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} />
@@ -83,7 +84,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           <ExplanationCard options={session.incident.explanation} choice={session.choice} onChoose={(index) => dispatch({ type: 'chooseExplanation', index })} onContinue={showResult} />
         )}
         {session.phase === 'result' && <ResultCard stars={starsOf(session)} takeaway={session.incident.takeaway} nextId={nextId} />}
-        <div aria-live="polite">{inspection ? <InspectionBox inspection={inspection} /> : <p className="muted">{SCREEN_TEXT.inspectHelp}</p>}</div>
       </aside>
     </main>
   );
