@@ -70,4 +70,12 @@ describe('checkpointPosition', () => {
     expect(checkpointPosition({ stage: 'linux', at: 'servidor2' }, layout)).toEqual(layout.instances.servidor2.door);
     expect(checkpointPosition({ stage: 'route', at: 'igw' }, layout)).toEqual(layout.igw);
   });
+
+  it('el punto "llega y vuelve" queda fuera del edificio, a la vista', () => {
+    const layout = computeLayout(lab03Net());
+    const spot = layout.instances.servidor2;
+    const [x, z] = checkpointPosition({ stage: 'reply', at: 'servidor2' }, layout);
+    // Edificio: medio ancho 0.8 y medio fondo 0.6; anillo de radio 0.55.
+    expect(Math.abs(x - spot.x) >= 0.8 + 0.55 || Math.abs(z - spot.z) >= 0.6 + 0.55).toBe(true);
+  });
 });

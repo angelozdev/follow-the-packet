@@ -37,6 +37,8 @@ const ROAD_Z = 1.9;
 const BUILDING_Z = -0.9;
 const BARRIER_Z = 0.7;
 const DOOR_Z = -0.2;
+// A un lado del edificio: medio ancho 0.8 + radio del anillo 0.55 + margen, para que se vea y no tape el anillo de Linux.
+const REPLY_SIDE_X = 1.45;
 
 /** Una columna por subred (en el orden del nivel), instancias en fila, internet a la izquierda. */
 export function computeLayout(net: Network): Layout {
@@ -117,6 +119,6 @@ export function checkpointPosition(cp: Checkpoint, layout: Layout): Vec2 {
     case 'linux':
       return spot?.door ?? layout.igw;
     case 'reply':
-      return spot ? [spot.door[0], spot.door[1] - 0.6] : layout.igw;
+      return spot ? [spot.x + REPLY_SIDE_X, spot.z] : layout.igw;
   }
 }
