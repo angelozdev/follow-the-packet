@@ -1,0 +1,12 @@
+import type { Checkpoint, Trace } from './types';
+
+/** Dónde murió el paquete; si no murió, la respuesta en el destino. */
+export function deathPoint(trace: Trace): Checkpoint {
+  const stopStep = trace.steps.find((s) => s.verdict === 'drop' || s.verdict === 'reject');
+  if (stopStep) return { stage: stopStep.stage === 'nat' ? 'route' : stopStep.stage, at: stopStep.at };
+  return { stage: 'reply', at: trace.destinationId ?? 'vpc' };
+}
+
+export function sameCheckpoint(a: Checkpoint, b: Checkpoint): boolean {
+  return a.stage === b.stage && a.at === b.at;
+}
