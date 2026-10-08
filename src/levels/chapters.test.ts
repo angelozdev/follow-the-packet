@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { syllabusChapters } from '../test-utils/repo';
+import { syllabusChapters } from '@/testing';
 import { CHAPTERS } from './chapters';
 
 describe('capítulos', () => {

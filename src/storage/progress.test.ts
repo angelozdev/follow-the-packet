@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LevelEntry } from '../levels/level-entry';
+import type { LevelEntry } from '@/levels';
 import { isUnlocked, loadProgress, saveStars } from './progress';
 
 function memoryStorage(initial: Record<string, string> = {}) {

@@ -1,4 +1,4 @@
-import type { Checkpoint, Network, PacketSpec, Trace } from '../engine/types';
+import type { Checkpoint, Network, PacketSpec, Trace } from '@/engine';
 
 /** [x, z] sobre el plano del suelo. La cámara mira desde +x, +z: "delante" es z mayor. */
 export type Vec2 = [number, number];

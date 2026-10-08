@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run e2e"
+    "structure": "node scripts/check-structure.ts",
+    "check": "npm run typecheck && npm run lint && npm run structure && npm run test && npm run e2e"
   },
   "dependencies": {
     "@mantine/hooks": "9.7.1",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { actor, echoFrom, inst, lab03Net, ping, withInbound } from '../engine/fixtures';
-import { simulate } from '../engine/simulate';
+import { actor, echoFrom, inst, lab03Net, ping, withInbound } from '@/testing';
+import { simulate } from '@/engine/simulation/simulate';
 import { checkpointPosition, computeLayout, cumulativeLengths, pathFor, pointAt } from './layout';
 
 const S2 = '172.31.38.97';

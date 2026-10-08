@@ -1,8 +1,9 @@
 import { Html, Line } from '@react-three/drei';
 import type { ReactNode } from 'react';
-import type { Actor } from '../engine/types';
+import { SCENE_TEXT } from '@/copy';
+import type { Actor } from '@/engine';
 import { boxEdgePoints } from './edges';
-import { useHtmlPortal } from './htmlLayer';
+import { useHtmlPortal } from './html-layer';
 import type { InstanceSpot, Layout, SubnetSpot, Vec2 } from './layout';
 import { ACCENT, INK, PAPER_FILL, PAPER_SHADE } from './theme';
 
@@ -106,7 +107,7 @@ export function Gateway({ position }: { position: Vec2 }) {
       <InkBox size={[0.22, 1.3, 0.22]} position={[x, 0.65, z - 0.65]} />
       <InkBox size={[0.22, 1.3, 0.22]} position={[x, 0.65, z + 0.65]} />
       <InkBox size={[0.3, 0.2, 1.6]} position={[x, 1.38, z]} fill={PAPER_SHADE} />
-      <Label position={[x, 1.95, z]}>internet gateway</Label>
+      <Label position={[x, 1.95, z]}>{SCENE_TEXT.gateway}</Label>
     </group>
   );
 }

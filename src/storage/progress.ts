@@ -1,4 +1,4 @@
-import type { LevelEntry } from '../levels/level-entry';
+import type { LevelEntry } from '@/levels';
 
 const KEY = 'follow-the-packet:progress:v1';
 
