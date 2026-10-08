@@ -47,3 +47,13 @@ export const LUCIA_TEXT = {
   askHint: '¿Alguna pista?',
   hint: (number: number) => `Pista ${number}:`,
 } as const;
+
+export const TASK_CARD_TEXT = {
+  noRules: 'No tiene reglas: no deja entrar nada.',
+  slot: 'Regla nueva',
+  what: 'Qué',
+  from: 'Desde dónde',
+  done: 'Listo',
+  remove: (rule: string) => `Quitar la regla ${rule}`,
+  giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,
+} as const;
