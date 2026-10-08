@@ -1,5 +1,6 @@
 import { Html } from '@react-three/drei';
 import type { Network, Trace } from '../engine/types';
+import { useHtmlPortal } from './htmlLayer';
 import { findRule, formatPeer, formatWhat } from '../format';
 import type { Layout } from './layout';
 import { Label } from './pieces';
@@ -24,11 +25,12 @@ export function StepNotes({ trace, layout }: { trace: Trace; layout: Layout }) {
 
 /** La lista del guardia: cada regla de entrada con qué ✓/✕ y desde dónde ✓/✕. */
 export function GuardList({ trace, network, layout }: { trace: Trace; network: Network; layout: Layout }) {
+  const portal = useHtmlPortal();
   const step = trace.steps.find((s) => s.stage === 'sg-in');
   const spot = step ? layout.instances[step.at] : undefined;
   if (!step?.checks || !spot) return null;
   return (
-    <Html position={[spot.barrier[0] + 1.3, 1.3, spot.barrier[1]]} zIndexRange={[20, 0]}>
+    <Html portal={portal} position={[spot.barrier[0] + 1.3, 1.3, spot.barrier[1]]} zIndexRange={[20, 0]}>
       <div className="guard">
         <p className="guard__title">Lista del guardia</p>
         {step.checks.length === 0 && <p>Sin reglas de entrada.</p>}

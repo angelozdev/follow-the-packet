@@ -1,7 +1,9 @@
 import { ContactShadows, MapControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
+import { useState } from 'react';
 import type { Checkpoint, Network, PacketSpec, Trace } from '../engine/types';
 import type { Candidate } from '../levels/schema';
+import { HtmlLayerContext } from './htmlLayer';
 import { checkpointPosition, computeLayout, pathFor } from './layout';
 import { GuardList, StepNotes } from './overlays';
 import { PacketRun } from './PacketRun';
@@ -23,46 +25,52 @@ export function GameScene({ network, trace, packet, runId, reducedMotion, packet
   // La distribución es pura y barata: se recalcula en cada render.
   const layout = computeLayout(network);
   const path = trace && packet ? pathFor(trace, packet, layout) : null;
+  const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
   return (
-    <Canvas
-      orthographic
-      camera={{ position: [14, 14, 14], zoom: 38, near: 0.1, far: 500 }}
-      gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
-      dpr={[1, 2]}
-    >
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[8, 14, 6]} intensity={1.1} />
-      <MapControls enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
-      <Sheet layout={layout} />
-      {network.subnets.map((s) => (
-        <Zone key={s.id} spot={layout.subnets[s.id]} />
-      ))}
-      <Road layout={layout} />
-      <Gateway position={layout.igw} />
-      {network.instances.map((i) => (
-        <group key={i.id}>
-          <Building spot={layout.instances[i.id]} name={i.name} />
-          <Barrier spot={layout.instances[i.id]} />
-        </group>
-      ))}
-      {network.actors.map((a) => (
-        <ActorMark key={a.id} position={layout.actors[a.id]} actor={a} />
-      ))}
-      {candidates.map((c) => (
-        <PredictRing key={c.label} position={checkpointPosition(c.checkpoint, layout)} onSelect={() => onPredict(c.checkpoint)} />
-      ))}
-      {trace && path && (
-        <PacketRun
-          key={runId}
-          path={path}
-          reducedMotion={reducedMotion}
-          color={packetColor === 'accent' ? ACCENT : INK}
-          verdict={trace.outcome === 'replied' ? 'pass' : 'drop'}
-        />
-      )}
-      {trace && <StepNotes trace={trace} layout={layout} />}
-      {trace && <GuardList trace={trace} network={network} layout={layout} />}
-      <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
-    </Canvas>
+    <>
+      <Canvas
+        orthographic
+        camera={{ position: [14, 14, 14], zoom: 38, near: 0.1, far: 500 }}
+        gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
+        dpr={[1, 2]}
+      >
+        <HtmlLayerContext.Provider value={htmlLayer}>
+          <ambientLight intensity={1.2} />
+          <directionalLight position={[8, 14, 6]} intensity={1.1} />
+          <MapControls enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
+          <Sheet layout={layout} />
+          {network.subnets.map((s) => (
+            <Zone key={s.id} spot={layout.subnets[s.id]} />
+          ))}
+          <Road layout={layout} />
+          <Gateway position={layout.igw} />
+          {network.instances.map((i) => (
+            <group key={i.id}>
+              <Building spot={layout.instances[i.id]} name={i.name} />
+              <Barrier spot={layout.instances[i.id]} />
+            </group>
+          ))}
+          {network.actors.map((a) => (
+            <ActorMark key={a.id} position={layout.actors[a.id]} actor={a} />
+          ))}
+          {candidates.map((c) => (
+            <PredictRing key={c.label} position={checkpointPosition(c.checkpoint, layout)} onSelect={() => onPredict(c.checkpoint)} />
+          ))}
+          {trace && path && (
+            <PacketRun
+              key={runId}
+              path={path}
+              reducedMotion={reducedMotion}
+              color={packetColor === 'accent' ? ACCENT : INK}
+              verdict={trace.outcome === 'replied' ? 'pass' : 'drop'}
+            />
+          )}
+          {trace && <StepNotes trace={trace} layout={layout} />}
+          {trace && <GuardList trace={trace} network={network} layout={layout} />}
+          <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
+        </HtmlLayerContext.Provider>
+      </Canvas>
+      <div ref={setHtmlLayer} className="html-layer" />
+    </>
   );
 }

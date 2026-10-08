@@ -2,6 +2,7 @@ import { Html, Line } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import type { Actor } from '../engine/types';
 import { boxEdgePoints } from './edges';
+import { useHtmlPortal } from './htmlLayer';
 import type { InstanceSpot, Layout, SubnetSpot, Vec2 } from './layout';
 import { ACCENT, INK, PAPER_FILL, PAPER_SHADE } from './theme';
 
@@ -21,8 +22,9 @@ export function InkBox({ size, position, fill = PAPER_FILL, lineWidth = 1.5 }: {
 }
 
 export function Label({ position, children, tone = 'plain' }: { position: V3; children: ReactNode; tone?: 'plain' | 'mono' | 'accent' }) {
+  const portal = useHtmlPortal();
   return (
-    <Html position={position} center zIndexRange={[10, 0]}>
+    <Html portal={portal} position={position} center zIndexRange={[10, 0]}>
       <span className={`label3d label3d--${tone}`}>{children}</span>
     </Html>
   );
