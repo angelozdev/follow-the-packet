@@ -2,13 +2,14 @@ import { ContactShadows, MapControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useState, type ReactNode } from 'react';
 import type { Network } from '@/engine';
+import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, NetworkPiece } from './entities';
 import { HtmlLayerContext } from './html-layer';
 import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter } from './layout';
 import { CardAnchor } from './overlay/card-anchor';
 import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
-import { ActorMark, Barrier, Building, Gateway, Road, Sheet } from './pieces';
+import { Road } from './road';
 import { Traffic, type MapFlow } from './traffic/traffic';
 
 const CAMERA_OFFSET = 14;
@@ -43,19 +44,19 @@ export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, acti
           <ambientLight intensity={1.2} />
           <directionalLight position={[8, 14, 6]} intensity={1.1} />
           <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
-          <Sheet layout={layout} />
+          <NetworkPiece width={layout.sheet.width} depth={layout.sheet.depth} />
           <Road layout={layout} />
-          <Gateway position={layout.edge} />
+          <EdgePiece position={layout.edge} />
           {world.devices.map((device) => (
-            <Building key={device.id} spot={layout.devices[device.id]} shaking={intrudedDeviceIds.has(device.id)} still={still} />
+            <DevicePiece key={device.id} position={[layout.devices[device.id].x, layout.devices[device.id].z]} intruded={intrudedDeviceIds.has(device.id)} still={still} />
           ))}
           {pieces
             .filter((piece) => piece.kind === 'firewall')
             .map((piece) => (
-              <Barrier key={piece.id} spot={layout.devices[piece.anchorId]} active={piece.id === activePieceId} still={still} />
+              <FirewallPiece key={piece.id} position={layout.devices[piece.anchorId].firewall} selected={piece.id === activePieceId} still={still} />
             ))}
           {world.actors.map((actor) => (
-            <ActorMark key={actor.id} position={layout.actors[actor.id]} actor={actor} />
+            <ActorPiece key={actor.id} position={layout.actors[actor.id]} variant={actor.kind} />
           ))}
           {pieces.map((piece) => (
             <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />

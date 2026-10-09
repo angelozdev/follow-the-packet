@@ -51,8 +51,8 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .map-card--right { transform: translate(110px, -50%); }
 .map-card--left { transform: translate(calc(-100% - 110px), -50%); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: 700 18px var(--font-display); background: var(--paper-fill); border: 2.5px solid currentColor; border-radius: 50%; transform: rotate(-8deg); }
-.stamp--pass { color: var(--ink); }
-.stamp--drop { color: var(--accent); }
+.stamp--arrived { color: var(--ink); }
+.stamp--blocked { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .btn:active { transform: none; }

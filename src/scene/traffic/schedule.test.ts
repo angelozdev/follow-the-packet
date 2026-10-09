@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BURST_S, FLOW_OFFSET_S, FLOW_PERIOD_S, PACKET_SPEED, runSeconds, sendsBetween } from './schedule';
+import { PACKET_END_S, PACKET_SPEED } from '@/scene/entities';
+import { FLOW_OFFSET_S, FLOW_PERIOD_S, runSeconds, sendsBetween } from './schedule';
 
 const FRAME_S = 1 / 60;
 const FRAMES_IN_TWO_PERIODS = Math.round((2 * FLOW_PERIOD_S) / FRAME_S);
@@ -20,7 +21,7 @@ describe('traffic schedule', () => {
     expect(sent).toBe(2);
   });
 
-  it('a packet stays its travel time plus the burst', () => {
-    expect(runSeconds([[0, 0], [PACKET_SPEED, 0]])).toBeCloseTo(1 + BURST_S);
+  it('a packet stays its travel time plus its end', () => {
+    expect(runSeconds([[0, 0], [PACKET_SPEED, 0]])).toBeCloseTo(1 + PACKET_END_S);
   });
 });

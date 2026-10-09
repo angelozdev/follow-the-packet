@@ -1,19 +1,21 @@
+import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
-import { cumulativeLengths, pointAt } from '@/scene/layout';
+import { cumulativeLengths, pointAt, type Vec2, type Vec3 } from '@/scene/layout';
 import { ACCENT, INK } from '@/scene/theme';
-import { PACKET_SPEED } from './schedule';
-import type { Trip } from './use-packet-runs';
 
-export const PACKET_Y = 0.3;
+export const PACKET_SPEED = 3.2;
+export const PACKET_END_S = 0.5;
+const PACKET_Y = 0.3;
 const DOT_RADIUS = 0.17;
 const RHOMBUS_RADIUS = 0.24;
 const BURST_GROWTH = 3;
 const BURST_RING: [number, number, number] = [0.22, 0.3, 24];
+const TRACE_LINE_WIDTH = 2.5;
 
-/** One packet travelling its trip: an ink dot for legitimate traffic, a vermilion rhombus for the attacker, and a burst where a blocked one stops. */
-export function PacketRun({ path, blocked, attacker }: Trip & { attacker: boolean }) {
+/** One packet travelling its path: an ink dot for legitimate traffic, a vermilion rhombus for an intruder, and a burst where a blocked one stops. */
+export function PacketRun({ path, blocked, intruder }: { path: Vec2[]; blocked: boolean; intruder: boolean }) {
   const lengths = useMemo(() => cumulativeLengths(path), [path]);
   const total = lengths.at(-1) ?? 0;
   const packet = useRef<Group>(null);
@@ -38,8 +40,8 @@ export function PacketRun({ path, blocked, attacker }: Trip & { attacker: boolea
     <>
       <group ref={packet} position={[startX, PACKET_Y, startZ]}>
         <mesh>
-          {attacker ? <octahedronGeometry args={[RHOMBUS_RADIUS]} /> : <sphereGeometry args={[DOT_RADIUS, 16, 12]} />}
-          <meshStandardMaterial color={attacker ? ACCENT : INK} roughness={1} />
+          {intruder ? <octahedronGeometry args={[RHOMBUS_RADIUS]} /> : <sphereGeometry args={[DOT_RADIUS, 16, 12]} />}
+          <meshStandardMaterial color={intruder ? ACCENT : INK} roughness={1} />
         </mesh>
       </group>
       <group ref={burst} position={[endX, PACKET_Y, endZ]} visible={false}>
@@ -50,4 +52,9 @@ export function PacketRun({ path, blocked, attacker }: Trip & { attacker: boolea
       </group>
     </>
   );
+}
+
+/** A packet's path drawn without movement: ink when it gets in, vermilion up to where it stops. */
+export function PacketTrace({ path, reached }: { path: Vec2[]; reached: boolean }) {
+  return <Line points={path.map(([x, z]): Vec3 => [x, PACKET_Y, z])} color={reached ? INK : ACCENT} lineWidth={TRACE_LINE_WIDTH} />;
 }

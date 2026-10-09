@@ -1,5 +1,5 @@
+import { PacketRun } from '@/scene/entities';
 import { roundTrip, type Vec2 } from '@/scene/layout';
-import { PacketRun } from './packet-run';
 import type { MapFlow } from './traffic';
 import { usePacketRuns } from './use-packet-runs';
 
@@ -8,7 +8,7 @@ export function FlowTraffic({ path, flow, index }: { path: Vec2[]; flow: MapFlow
   return (
     <>
       {runs.map((run) => (
-        <PacketRun key={run.key} path={run.path} blocked={run.blocked} attacker={flow.kind === 'forbidden'} />
+        <PacketRun key={run.key} path={run.path} blocked={run.blocked} intruder={flow.kind === 'forbidden'} />
       ))}
     </>
   );
