@@ -4,6 +4,8 @@
 
 > **Estado (plan 2, `docs/plans/2026-10-08-follow-the-packet-live-incidents-prototype.md`):** hechos A6 (escena centrada, etiquetas sin superponerse al empezar el 04-01, con prueba de Playwright), A8 (desbloqueo en orden), A13 (foco de la tarjeta de tarea), B4 (la inspección llega calculada desde `game`) y B7 (textos de los motivos en lenguaje sencillo). A5 lo reemplaza el tráfico vivo. Siguen pendientes A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
 
+> **Estado (plan 3, `docs/plans/2026-10-08-follow-the-packet-rigor-and-submit.md`):** hechos E2 (nombres oficiales de AWS, definición al pasar el mouse, glosario y la regla `rigorous-plain-copy`) y E3 («Enviar solución», sin la barra de 3 s). Siguen pendientes E4 a E10, A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
+
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
 
 - **Rama base:** `feat/follow-the-packet` (13 commits, `5aff501…712c076`, sin push).
@@ -65,7 +67,7 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
   - Reemplazar `usePrefersReducedMotion` por `useReducedMotion` de `@mantine/hooks` 9.7.1. Verificar antes con `npm view @mantine/hooks version time.modified peerDependencies`.
   - Llevar los `useEffect` de `src/App.tsx` y `src/ui/shared/LevelScreen.tsx` a hooks en archivos `use-*.ts`.
 - **B6 `exact-dependency-versions`.** Quitar los `^` de `package.json`. `typescript` queda en una versión exacta 6.0.x, porque typescript-eslint 8.71 solo acepta TypeScript menor que 6.1.
-- **B7 `plain-language-copy`.** Revisar los textos de `src/copy/` con la lista: una idea por mensaje, términos definidos, frases cortas.
+- **B7 `plain-language-copy`.** Revisar los textos de `src/copy/` con la lista: una idea por mensaje, términos definidos, frases cortas (la regla se reemplazó por `rigorous-plain-copy` en el plan 3).
 
 ## Bloque C: controles aceptados (sin implementar)
 
@@ -90,8 +92,8 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | # | Feedback o hallazgo | Destino |
 |---|---------------------|---------|
 | E1 | El cuadro de inspección salía cortado al final del panel | Hecho en `53c0489`: flota en la esquina inferior derecha del mapa |
-| E2 | «Puerta debe llamarse explícitamente Security Group y al hacerle hover sí se muestre una descripción de lo que es» | Spec, sección "Cambios tras la primera prueba": nombre oficial siempre, definición al pasar el mouse. Plan 3 |
-| E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Spec, misma sección: cierre manual, sin barra de 3 s. Plan 3 |
+| E2 | «Puerta debe llamarse explícitamente Security Group y al hacerle hover sí se muestre una descripción de lo que es» | Hecho en el plan 3 |
+| E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Hecho en el plan 3 |
 | E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente (revisión del plan 2) |
 | E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Pendiente (revisión del plan 2) |
 | E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Pendiente (revisión del plan 2) |
