@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { LUCIA_TEXT, TERMS, type TermText } from '@/copy';
+import { LUCIA_TEXT, TERMS, type TermId, type TermText } from '@/copy';
 import { STABLE_MS, isIntruding, isStable, type Session } from '@/game';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -21,6 +21,26 @@ function HintLine({ number, text, lineRef }: HintLineProps) {
 function FocusedHintLine({ number, text }: HintLineProps) {
   const line = useFocusOnMount<HTMLParagraphElement>();
   return <HintLine number={number} text={text} lineRef={line} />;
+}
+
+function byName(a: TermId, b: TermId): number {
+  return TERMS[a].name.localeCompare(TERMS[b].name, 'es');
+}
+
+function TermList({ terms, markNew }: { terms: TermId[]; markNew: boolean }) {
+  return (
+    <dl className="glossary">
+      {terms.map((id) => (
+        <div key={id}>
+          <dt>
+            {TERMS[id].name}
+            {markNew && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
+          </dt>
+          <dd>{TERMS[id].definition}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint: () => void }) {
@@ -55,16 +75,11 @@ export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint:
         })}
       </ul>
       <h3>{LUCIA_TEXT.newTerms}</h3>
-      <dl className="glossary">
-        {incident.introduces.map((id) => (
-          <div key={id}>
-            <dt>
-              {TERMS[id].name} <span className="term__new">{LUCIA_TEXT.newBadge}</span>
-            </dt>
-            <dd>{TERMS[id].definition}</dd>
-          </div>
-        ))}
-      </dl>
+      <TermList terms={incident.introduces} markNew />
+      <details className="lucia__glossary">
+        <summary>{LUCIA_TEXT.glossary}</summary>
+        <TermList terms={[...session.known].sort(byName)} markNew={false} />
+      </details>
       <div aria-live="polite">
         {incident.hints.slice(0, session.hintsShown).map((hint, index) => {
           const Line = index === incident.hints.length - 1 ? FocusedHintLine : HintLine;

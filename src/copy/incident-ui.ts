@@ -44,6 +44,7 @@ export const LUCIA_TEXT = {
   intrusion: '¡Algo raro está entrando!',
   newTerms: 'Palabras nuevas',
   newBadge: 'nuevo',
+  glossary: 'Glosario',
   askHint: '¿Alguna pista?',
   hint: (number: number) => `Pista ${number}:`,
 } as const;

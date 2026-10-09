@@ -69,6 +69,10 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .glossary { margin: 0 0 0.8rem; }
 .glossary dt { font-weight: 600; }
 .glossary dd { margin: 0 0 0.4rem; color: var(--ink-soft); }
+.lucia__glossary { margin: 0 0 0.8rem; }
+.lucia__glossary summary { cursor: pointer; font: 600 0.8rem/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; }
+.lucia__glossary[open] summary { margin-bottom: 0.6rem; }
+.lucia__glossary summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hint { margin: 0.4rem 0; }
 .hint:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
