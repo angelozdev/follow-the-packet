@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
+import { officeNet, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
@@ -10,6 +11,7 @@ import { pieceViews } from './pieces';
 const WHAT_IS = 'Qué es';
 const ATTACKER_BLOCKED = ['Resultado', 'No llegó: no volvió ninguna respuesta.'];
 const first = startSession(INCIDENTS, '04-01');
+const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
 const fixed = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
 
 function plain(inspection: Inspection | null) {
@@ -81,6 +83,27 @@ describe('inspect', () => {
     expect(plain(inspect(first, PIECE_ID.edge))).toEqual({
       title: 'Internet gateway',
       fields: [whatIs('internet-gateway'), ['Qué hace', 'Por aquí entra y sale el tráfico entre la VPC e internet.']],
+    });
+  });
+
+  it('a laptop of the office shows its IP and its firewall, with no definition while its term does not exist', () => {
+    expect(plain(inspect(office, PIECE_ID.device('lucia-laptop')))).toEqual({
+      title: 'lucia-laptop',
+      fields: [['IP privada', '192.168.1.11'], ['Firewall', 'firewall lucia-laptop']],
+    });
+  });
+
+  it('a host firewall lists its inbound rules like a Security Group, named after its device', () => {
+    expect(plain(inspect(office, PIECE_ID.firewall('fw-lucia')))).toEqual({
+      title: 'firewall lucia-laptop',
+      fields: [['Reglas de entrada', 'Ninguna: no deja entrar nada.']],
+    });
+  });
+
+  it('the router of an office says what it does', () => {
+    expect(plain(inspect(office, PIECE_ID.edge))).toEqual({
+      title: 'router',
+      fields: [['Qué hace', 'Por aquí entra y sale el tráfico entre la oficina e internet.']],
     });
   });
 

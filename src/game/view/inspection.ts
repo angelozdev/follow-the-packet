@@ -1,10 +1,9 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, type TermId, type TermText } from '@/copy';
-import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type PacketSpec } from '@/engine';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, type EntityRef, type TermId, type TermText } from '@/copy';
+import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './firewall-card';
 import { parsePieceId } from './piece-id';
-import { PIECE_TERM } from './pieces';
 
 export interface InspectionField {
   label: TermText;
@@ -23,13 +22,18 @@ interface FieldSpec {
 }
 
 const ICMP_MESSAGE_TERM = { 8: 'echo-request', 0: 'echo-reply' } as const satisfies Record<NonNullable<PacketSpec['icmpType']>, TermId>;
+const RULES_TERM: Record<FirewallKind, TermId | null> = { 'security-group': 'inbound-rule', 'host-firewall': null };
 
 function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionField[] {
   return specs.filter((spec) => spec.term === null || known.has(spec.term)).map((spec) => ({ label: spec.label, lines: spec.lines() }));
 }
 
-function whatIs(term: TermId): FieldSpec {
-  return { term, label: INSPECTION_TEXT.whatIs, lines: () => [TERMS[term].definition] };
+function definition(term: TermId | null): FieldSpec[] {
+  return term ? [{ term, label: INSPECTION_TEXT.whatIs, lines: () => [TERMS[term].definition] }] : [];
+}
+
+function whatIs(entity: EntityRef): FieldSpec[] {
+  return definition(entityTerm(entity));
 }
 
 function packetTerm(packet: PacketSpec): TermId | null {
@@ -41,6 +45,12 @@ function dnsNames(device: Device, region: string | undefined): string[] {
   return [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)];
 }
 
+function guardsField(guards: Firewall[]): FieldSpec[] {
+  const [first] = guards;
+  if (!first) return [];
+  return [{ term: entityTerm({ kind: 'firewall', variant: first.kind }), label: INSPECTION_TEXT.firewalls[first.kind], lines: () => guards.map((guard) => MAP_TEXT.firewall[guard.kind](guard.name)) }];
+}
+
 function device(session: Session, own: Device): Inspection {
   const { region, firewalls } = session.world;
   const guards = firewalls.filter((firewall) => own.firewallIds.includes(firewall.id));
@@ -48,12 +58,12 @@ function device(session: Session, own: Device): Inspection {
     title: own.name,
     fields: visible(
       [
-        whatIs(PIECE_TERM.device),
+        ...whatIs({ kind: 'device', variant: own.kind }),
         { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [own.privateIp] },
         { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] },
         { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
-        { term: 'security-group', label: INSPECTION_TEXT.firewalls, lines: () => guards.map((firewall) => MAP_TEXT.firewall(firewall.name)) },
+        ...guardsField(guards),
       ],
       session.known,
     ),
@@ -63,18 +73,22 @@ function device(session: Session, own: Device): Inspection {
 function firewall(session: Session, own: Firewall): Inspection {
   const rows = ruleRows(own, session.incident);
   return {
-    title: MAP_TEXT.firewall(own.name),
+    title: MAP_TEXT.firewall[own.kind](own.name),
     fields: visible(
-      [whatIs(PIECE_TERM.firewall), { term: 'inbound-rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }],
+      [
+        ...whatIs({ kind: 'firewall', variant: own.kind }),
+        { term: RULES_TERM[own.kind], label: INSPECTION_TEXT.inbound[own.kind], lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) },
+      ],
       session.known,
     ),
   };
 }
 
 function edge(session: Session): Inspection {
+  const variant = session.world.edge;
   return {
-    title: MAP_TEXT.edge,
-    fields: visible([whatIs(PIECE_TERM.edge), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.edgeDoes] }], session.known),
+    title: MAP_TEXT.edge[variant],
+    fields: visible([...whatIs({ kind: 'edge', variant }), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.edgeDoes[variant]] }], session.known),
   };
 }
 
@@ -93,11 +107,10 @@ function actor(session: Session, who: Actor): Inspection {
 
 function packet(session: Session, run: FlowRun): Inspection {
   const step = stopStep(run.trace);
-  const term = packetTerm(run.packet);
   return {
     title: run.label,
     fields: [
-      ...visible(term ? [whatIs(term)] : [], session.known),
+      ...visible(definition(packetTerm(run.packet)), session.known),
       { label: INSPECTION_TEXT.result, lines: [OUTCOME_TEXT[run.trace.outcome]] },
       ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world)] }] : []),
     ],

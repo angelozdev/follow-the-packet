@@ -1,3 +1,5 @@
+import type { Actor, Device, FirewallKind, Network } from '@/engine';
+
 export interface Term {
   name: string;
   short?: string;
@@ -73,4 +75,32 @@ export type TermId = keyof typeof TERMS;
 
 export function isTermId(value: string): value is TermId {
   return Object.hasOwn(TERMS, value);
+}
+
+export interface EntityVariants {
+  network: Network['kind'];
+  device: Device['kind'];
+  firewall: FirewallKind;
+  edge: Network['edge'];
+  actor: Actor['kind'];
+}
+
+export type EntityKind = keyof EntityVariants;
+
+/** One entity of the map in one of its variants, as the entity catalog draws it. */
+export type EntityRef = { [Kind in EntityKind]: { kind: Kind; variant: EntityVariants[Kind] } }[EntityKind];
+
+/** The term that names each variant of each entity, or null while the ladder has no term for it. */
+export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
+  network: { office: null, vpc: 'vpc' },
+  device: { laptop: null, printer: null, 'ec2-instance': 'ec2-instance' },
+  firewall: { 'host-firewall': null, 'security-group': 'security-group' },
+  edge: { router: null, 'internet-gateway': 'internet-gateway' },
+  actor: { you: null, attacker: null },
+};
+
+/** Returns the term that names an entity in this variant, or null when it has none yet. */
+export function entityTerm(entity: EntityRef): TermId | null {
+  const terms: Record<string, TermId | null> = ENTITY_TERMS[entity.kind];
+  return terms[entity.variant];
 }

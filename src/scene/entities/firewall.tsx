@@ -1,16 +1,27 @@
+import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import type { Group } from 'three';
+import type { FirewallKind } from '@/engine';
 import { InkBox } from '@/scene/ink';
-import type { Vec2 } from '@/scene/layout';
-import { ACCENT } from '@/scene/theme';
+import type { Vec2, Vec3 } from '@/scene/layout';
+import { ACCENT, INK } from '@/scene/theme';
 
 const PULSE_SPEED = 4;
 const PULSE_AMPLITUDE = 0.35;
 const PULSE_STILL_SCALE = 1.5;
+const BAR: Record<FirewallKind, { size: Vec3; y: number }> = {
+  'security-group': { size: [1.2, 0.07, 0.07], y: 0.46 },
+  'host-firewall': { size: [1.2, 0.24, 0.1], y: 0.36 },
+};
+const BRICK_JOINTS: Vec3[] = [
+  [-0.6, 0, 0.051], [0.6, 0, 0.051],
+  [-0.3, 0.12, 0.051], [-0.3, 0, 0.051], [0.3, 0.12, 0.051], [0.3, 0, 0.051],
+  [0, 0, 0.051], [0, -0.12, 0.051],
+];
 
-/** A firewall standing in front of its device: its bar pulses while its task card is open, or stays thicker without animations. */
-export function FirewallPiece({ position, selected, still }: { position: Vec2; selected: boolean; still: boolean }) {
+/** A firewall standing in front of its device, a bar between two posts: a thin bar for a Security Group, a brick wall for the firewall of a laptop. Its bar pulses while its task card is open, or stays thicker without animations. */
+export function FirewallPiece({ position, variant, selected, still }: { position: Vec2; variant: FirewallKind; selected: boolean; still: boolean }) {
   const bar = useRef<Group>(null);
   const [x, z] = position;
   useFrame(({ clock }) => {
@@ -23,8 +34,9 @@ export function FirewallPiece({ position, selected, still }: { position: Vec2; s
     <group>
       <InkBox size={[0.1, 0.5, 0.1]} position={[x - 0.6, 0.25, z]} />
       <InkBox size={[0.1, 0.5, 0.1]} position={[x + 0.6, 0.25, z]} />
-      <group ref={bar} position={[x, 0.46, z]}>
-        <InkBox size={[1.2, 0.07, 0.07]} position={[0, 0, 0]} fill={ACCENT} lineWidth={1} />
+      <group ref={bar} position={[x, BAR[variant].y, z]}>
+        <InkBox size={BAR[variant].size} position={[0, 0, 0]} fill={ACCENT} lineWidth={1} />
+        {variant === 'host-firewall' && <Line points={BRICK_JOINTS} segments color={INK} lineWidth={1} />}
       </group>
     </group>
   );

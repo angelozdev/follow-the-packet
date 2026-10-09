@@ -1,9 +1,19 @@
-import type { Actor } from '@/engine';
+import type { Actor, FirewallKind, Network } from '@/engine';
 import type { TermText } from './term-text';
 
+const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
+  'security-group': (name) => `{{security-group}} ${name}`,
+  'host-firewall': (name) => `firewall ${name}`,
+};
+
+const EDGE_LABEL: Record<Network['edge'], TermText> = {
+  'internet-gateway': '{{internet-gateway}}',
+  router: 'router',
+};
+
 export const MAP_TEXT = {
-  firewall: (name: string): TermText => `{{security-group}} ${name}`,
-  edge: '{{internet-gateway}}',
+  firewall: FIREWALL_LABEL,
+  edge: EDGE_LABEL,
   locked: 'con candado',
   packet: (label: string) => `Paquete: ${label}`,
 } as const;
@@ -16,14 +26,17 @@ export const INSPECTION_TEXT = {
   echoIgnore: '{{icmp-echo-ignore-all}}',
   answersPing: '0: contesta el {{ping}}',
   ignoresPing: '1: no contesta el {{ping}}',
-  firewalls: '{{security-group|Security Groups}}',
-  inbound: '{{inbound-rule|Reglas de entrada}}',
+  firewalls: { 'security-group': '{{security-group|Security Groups}}', 'host-firewall': 'Firewall' } satisfies Record<FirewallKind, TermText>,
+  inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': 'Reglas de entrada' } satisfies Record<FirewallKind, TermText>,
   noRules: 'Ninguna: no deja entrar nada.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
   who: 'Quién es',
   ip: '{{public-ip}}',
   does: 'Qué hace',
-  edgeDoes: 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
+  edgeDoes: {
+    'internet-gateway': 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
+    router: 'Por aquí entra y sale el tráfico entre la oficina e internet.',
+  } satisfies Record<Network['edge'], TermText>,
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',

@@ -1,15 +1,14 @@
-import { MAP_TEXT, toPlainText, type TermText } from '@/copy';
+import { MAP_TEXT, toPlainText, type EntityRef, type TermText } from '@/copy';
 import { inspectHandlers, type OnInspect } from './inspect-handlers';
 
-export type MapPieceKind = 'device' | 'firewall' | 'actor' | 'edge';
+export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'actor';
 
-export interface MapPiece {
+export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   id: string;
-  kind: MapPieceKind;
   anchorId: string;
   label: TermText;
   locked: boolean;
-}
+};
 
 /** Returns the DOM id of a piece's label, so the focus can come back to it. */
 export function pieceDomId(pieceId: string): string {

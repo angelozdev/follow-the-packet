@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
-const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', anchorId: 'servidor2', label: 'servidor2', locked: true };
-const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false };
+const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: 'servidor2', locked: true };
+const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false };
 
 function renderLabel(piece: MapPiece) {
   const handlers = { onInspect: vi.fn(), onActivate: vi.fn() };

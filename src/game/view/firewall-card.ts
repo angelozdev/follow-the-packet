@@ -33,5 +33,5 @@ export function rowText(row: RuleRow): TermText {
 export function firewallCard(session: Session, pieceId: string): FirewallCard | null {
   const ref = parsePieceId(pieceId);
   const firewall = ref?.kind === 'firewall' ? session.world.firewalls.find((f) => f.id === ref.id) : undefined;
-  return firewall ? { firewallId: firewall.id, title: MAP_TEXT.firewall(firewall.name), rules: ruleRows(firewall, session.incident) } : null;
+  return firewall ? { firewallId: firewall.id, title: MAP_TEXT.firewall[firewall.kind](firewall.name), rules: ruleRows(firewall, session.incident) } : null;
 }

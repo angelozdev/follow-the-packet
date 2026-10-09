@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, isTermId, type Term, type TermId } from './terms';
+import { TERMS, entityTerm, isTermId, type Term, type TermId } from './terms';
 
 const MAX_DEFINITION_LENGTH = 120;
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -50,5 +50,22 @@ describe('term registry', () => {
 
   it('only the Security Group has a short form', () => {
     expect(Object.entries(TERMS).filter(([, term]) => 'short' in term).map(([id]) => id)).toEqual(['security-group']);
+  });
+});
+
+describe('entity terms', () => {
+  it('names a variant by the term the ladder already has, and leaves the office ones without a term until chapter 1', () => {
+    expect(entityTerm({ kind: 'device', variant: 'ec2-instance' })).toBe('ec2-instance');
+    expect(entityTerm({ kind: 'firewall', variant: 'security-group' })).toBe('security-group');
+    expect(entityTerm({ kind: 'edge', variant: 'internet-gateway' })).toBe('internet-gateway');
+    expect(entityTerm({ kind: 'network', variant: 'vpc' })).toBe('vpc');
+    expect(entityTerm({ kind: 'device', variant: 'laptop' })).toBeNull();
+    expect(entityTerm({ kind: 'firewall', variant: 'host-firewall' })).toBeNull();
+    expect(entityTerm({ kind: 'edge', variant: 'router' })).toBeNull();
+  });
+
+  it('gives a character no term: an actor is a person, not a piece of the network', () => {
+    expect(entityTerm({ kind: 'actor', variant: 'attacker' })).toBeNull();
+    expect(entityTerm({ kind: 'actor', variant: 'you' })).toBeNull();
   });
 });

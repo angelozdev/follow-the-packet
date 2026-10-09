@@ -1,5 +1,5 @@
-export { TERMS, isTermId } from './terms';
-export type { TermId } from './terms';
+export { ENTITY_TERMS, TERMS, entityTerm, isTermId } from './terms';
+export type { EntityKind, EntityRef, EntityVariants, TermId } from './terms';
 export { parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
 export type { TermText } from './term-text';
 export { describeReason } from './reasons';

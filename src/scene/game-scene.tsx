@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import type { Network } from '@/engine';
 import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, NetworkPiece } from './entities';
 import { HtmlLayerContext } from './html-layer';
-import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter } from './layout';
+import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter, type Layout } from './layout';
 import { CardAnchor } from './overlay/card-anchor';
 import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
@@ -27,6 +27,21 @@ export interface GameSceneProps {
   onActivate: (pieceId: string) => void;
 }
 
+function PieceShape({ piece, layout, intruded, selected, still }: { piece: MapPiece; layout: Layout; intruded: boolean; selected: boolean; still: boolean }) {
+  switch (piece.kind) {
+    case 'device': {
+      const spot = layout.devices[piece.anchorId];
+      return <DevicePiece position={[spot.x, spot.z]} variant={piece.variant} intruded={intruded} still={still} />;
+    }
+    case 'firewall':
+      return <FirewallPiece position={layout.devices[piece.anchorId].firewall} variant={piece.variant} selected={selected} still={still} />;
+    case 'edge':
+      return <EdgePiece position={layout.edge} variant={piece.variant} />;
+    case 'actor':
+      return <ActorPiece position={layout.actors[piece.anchorId]} variant={piece.variant} />;
+  }
+}
+
 export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world);
   const [cx, cz] = layoutCenter(layout);
@@ -44,19 +59,10 @@ export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, acti
           <ambientLight intensity={1.2} />
           <directionalLight position={[8, 14, 6]} intensity={1.1} />
           <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
-          <NetworkPiece width={layout.sheet.width} depth={layout.sheet.depth} />
+          <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />
           <Road layout={layout} />
-          <EdgePiece position={layout.edge} />
-          {world.devices.map((device) => (
-            <DevicePiece key={device.id} position={[layout.devices[device.id].x, layout.devices[device.id].z]} intruded={intrudedDeviceIds.has(device.id)} still={still} />
-          ))}
-          {pieces
-            .filter((piece) => piece.kind === 'firewall')
-            .map((piece) => (
-              <FirewallPiece key={piece.id} position={layout.devices[piece.anchorId].firewall} selected={piece.id === activePieceId} still={still} />
-            ))}
-          {world.actors.map((actor) => (
-            <ActorPiece key={actor.id} position={layout.actors[actor.id]} variant={actor.kind} />
+          {pieces.map((piece) => (
+            <PieceShape key={piece.id} piece={piece} layout={layout} intruded={intrudedDeviceIds.has(piece.anchorId)} selected={piece.id === activePieceId} still={still} />
           ))}
           {pieces.map((piece) => (
             <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
