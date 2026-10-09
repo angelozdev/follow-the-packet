@@ -458,13 +458,13 @@ export const TERMS = {
   },
   'inbound-rule': {
     name: 'regla de entrada',
-    definition: 'Inbound rule en la consola: un permiso del Security Group con Type (qué tráfico) y Source (desde dónde).',
+    definition: 'Inbound rule en la consola: un permiso del Security Group con Type (qué tráfico) y Source (su origen).',
   },
   icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre máquinas, como los del ping.' },
   'echo-request': { name: 'Echo Request', definition: 'El mensaje ICMP de ida del ping (tipo 8): le pregunta al destino si responde.' },
   'anywhere-ipv4': {
     name: 'Anywhere-IPv4',
-    definition: 'Un Source de la consola que equivale a 0.0.0.0/0: todas las direcciones IPv4, es decir, todo internet.',
+    definition: 'Un Source de la consola que equivale a 0.0.0.0/0: cualquier dirección IPv4, también las de internet.',
   },
   'internet-gateway': {
     name: 'Internet gateway',
@@ -982,7 +982,6 @@ describe('task card', () => {
 
   it('names its trays Type and Source, like the inbound rules of the console', () => {
     renderCard('04-01');
-    expect([TASK_CARD_TEXT.what, TASK_CARD_TEXT.from]).toEqual(['Type', 'Source']);
     expect(screen.getByRole('group', { name: TASK_CARD_TEXT.what })).toHaveTextContent(ECHO_REQUEST);
     expect(screen.getByRole('group', { name: TASK_CARD_TEXT.from })).toHaveTextContent(SG_SERVIDOR1);
   });
@@ -1111,7 +1110,7 @@ En `src/levels/04-iaas/02-open-just-enough.ts`:
   ],
 ```
 
-En `src/copy/incident-ui.ts`, dentro de `TASK_CARD_TEXT`:
+En `src/copy/incident-ui.ts`, dentro de `TASK_CARD_TEXT`, reemplazar las claves `what` y `from` que escribió la Tarea 2 (no agregar otras: una clave repetida es el error TS1117). Quedan así:
 
 ```ts
   what: 'Type',
@@ -1920,7 +1919,7 @@ En `src/styles.css`, debajo de `.term { font-weight: 600; }`, agregar:
 .term-tip { z-index: 100; width: max-content; max-width: min(18rem, calc(100vw - 16px)); padding: 0.4rem 0.6rem; font: 400 0.85rem/1.4 var(--font-body); color: var(--paper-fill); background: var(--ink); border-radius: 3px; box-shadow: 2px 2px 0 var(--accent); pointer-events: none; text-align: left; text-transform: none; letter-spacing: normal; }
 ```
 
-`z-index: 100` queda por encima de la barra del incidente (40), del cuadro de inspección (35) y de las capas de drei (hasta 30). `pointer-events: none` hace que el cuadrito nunca tape un clic.
+`z-index: 100` queda por encima de la barra del incidente (40) y del cuadro de inspección (35). No queda por encima de todo lo que dibuja drei: el `<Html>` de `src/scene/pieces.tsx` no fija `zIndexRange`, así que usa el rango por defecto de drei (`[16777271, 0]`), y la marca «!» que se ve con «Sin animaciones» puede quedar sobre el cuadrito. Este plan no cambia ese código. `pointer-events: none` hace que el cuadrito nunca tape un clic.
 
 - [ ] **Step 5: Anotar la elección de la librería**
 
@@ -2012,6 +2011,23 @@ function newWords(): HTMLElement {
     render(<Harness />);
     expect(glossary()).not.toHaveTextContent(TERMS['echo-reply'].name);
     expect(glossary()).not.toHaveTextContent(TERMS['least-privilege'].name);
+  });
+```
+
+5. El `<summary>` del glosario va antes que el botón de las pistas en el orden del Tab, y user-event lo cuenta como parada del Tab. El test `'keeps the focus on the button after hint 1, then moves it to the last hint'` pasa a empezar con un clic (es la misma versión que trae la Tarea 9):
+
+```tsx
+  it('keeps the focus on the button after hint 1, then moves it to the last hint', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const button = screen.getByRole('button', { name: LUCIA_TEXT.askHint });
+    await user.click(button);
+    expect(button).toHaveFocus();
+    await user.keyboard('{Enter}');
+    const lastHint = screen.getByText(LUCIA_TEXT.hint(2)).closest('p');
+    expect(lastHint).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole('region', { name: new RegExp(LUCIA_TEXT.name) })).toContainElement(lastHint);
   });
 ```
 
@@ -2472,7 +2488,7 @@ describe("Lucía's card", () => {
 });
 ```
 
-El test del foco de las pistas empieza con un clic y no con Tab, porque ahora el botón «Enviar solución» y el `<summary>` del glosario van antes en el orden del Tab. `[aria-live="polite"]` sigue siendo solo la región de las pistas: la respuesta usa `role="status"` sin atributo.
+El test del foco de las pistas sigue empezando con un clic, como desde la Tarea 7, porque el botón «Enviar solución» y el `<summary>` del glosario van antes en el orden del Tab. `[aria-live="polite"]` sigue siendo solo la región de las pistas: la respuesta usa `role="status"` sin atributo.
 
 `src/ui/incident/incident-screen.test.tsx` (reemplazar entero; Review Focus 2):
 
@@ -3198,10 +3214,10 @@ El texto de la respuesta va en tinta y el bermellón queda en el borde. Así no 
 - [ ] **Step 6: Comprobar que no quedó nada del reloj**
 
 ```bash
-grep -rnE "STABLE_MS|TICK_MS|taskMs|'tick'|useStabilityClock|use-stability-clock|isStable|advanceTasks|LUCIA_TEXT.steady|CLOSE_TIMEOUT_MS" src tests
+grep -rnE --include='*.ts' --include='*.tsx' "STABLE_MS|TICK_MS|taskMs|'tick'|useStabilityClock|use-stability-clock|isStable|advanceTasks|LUCIA_TEXT.steady|CLOSE_TIMEOUT_MS" src tests
 ```
 
-Expected: sin resultados.
+Expected: sin resultados. Solo mira código (`*.ts`, `*.tsx`): `src/ui/incident/CLAUDE.md` todavía nombra `use-stability-clock` y lo reescribe la Tarea 10.
 
 - [ ] **Step 7: Correr todo**
 
