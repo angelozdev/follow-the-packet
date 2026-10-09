@@ -32,7 +32,7 @@ describe('barrierCard', () => {
     expect(barrierCard(second, PIECE_ID.barrier(SG.servidor2))).toEqual({
       sgId: SG.servidor2,
       title: MAP_TEXT.barrier(S2.id),
-      rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.internet.label }],
+      rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.anywhere.label }],
     });
   });
 

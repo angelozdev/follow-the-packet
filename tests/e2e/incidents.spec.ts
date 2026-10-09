@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
 const DOOR = 'Security Group servidor2';
+const ECHO_REQUEST = 'ICMP · Echo Request';
+const SG_SERVIDOR1 = 'SG servidor1';
 const INSPECTED_SERVER = 'servidor2 con candado';
 const INSPECTION_TITLE = 'servidor2';
 const FULL_STARS = '3 de 3 estrellas';
@@ -59,8 +61,8 @@ async function playBoth(page: Page) {
   await page.goto('/');
   await page.getByRole('link', { name: '1. El primer ping' }).click();
   const first = await openDoor(page);
-  await first.getByRole('button', { name: 'Ping', exact: true }).click();
-  await first.getByRole('button', { name: 'servidor1', exact: true }).click();
+  await first.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
+  await first.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
   await first.getByRole('button', { name: 'Listo' }).click();
   await explainAndFinish(page, /no había ninguna para el ping de servidor1/);
 
@@ -69,9 +71,9 @@ async function playBoth(page: Page) {
   await expect(page.getByRole('listitem').filter({ hasText: 'vuelva a hacer' })).toContainText('pendiente');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const second = await openDoor(page);
-  await second.getByRole('button', { name: /^Quitar la regla Echo Reply/ }).click();
-  await second.getByRole('button', { name: 'Echo Request (ida)', exact: true }).click();
-  await second.getByRole('button', { name: 'servidor1', exact: true }).click();
+  await second.getByRole('button', { name: /^Quitar la regla ICMP · Echo Reply/ }).click();
+  await second.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
+  await second.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
   await second.getByRole('button', { name: 'Listo' }).click();
   await explainAndFinish(page, /solo hace falta permitir la ida/);
 }
@@ -136,8 +138,8 @@ test('focus goes to the card heading when a door opens, and back to the door on 
 test('focus goes to the question when the incident closes with the card still open', async ({ page }) => {
   await page.goto('/#/level/04-01');
   const card = await openDoor(page);
-  await card.getByRole('button', { name: 'Ping', exact: true }).click();
-  await card.getByRole('button', { name: 'servidor1', exact: true }).click();
+  await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
+  await card.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
   await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused({ timeout: CLOSE_TIMEOUT_MS });
   await expect(card).toHaveCount(0);
 });

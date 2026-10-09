@@ -9,8 +9,8 @@ import { INCIDENTS } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { LuciaCard } from './lucia-card';
 
-const FIX: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.servidor1.id };
-const WIDE: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.internet.id };
+const FIX: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
+const WIDE: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id };
 
 function Harness({ actions = [] }: { actions?: SessionAction[] }) {
   const [session, dispatch] = useReducer(sessionReducer, actions, (initial) => initial.reduce(sessionReducer, startSession(INCIDENTS, INCIDENTS[0].id)));

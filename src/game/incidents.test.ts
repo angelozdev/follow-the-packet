@@ -34,12 +34,12 @@ describe('04-01, the first ping', () => {
   const start = startWorld(INCIDENTS, first.id);
 
   it('a rule on the door of servidor1 does not help: the destination decides', () => {
-    const world = applyMove(start, first, { type: 'placeRule', sgId: SG.servidor1, whatId: WHAT.ping.id, fromId: FROM.servidor1.id });
+    const world = applyMove(start, first, { type: 'placeRule', sgId: SG.servidor1, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
     expect(holdsAll(first, world)).toBe(false);
   });
 
   it('ping from all of internet lets the attacker reach servidor2', () => {
-    const world = applyMove(start, first, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.internet.id });
+    const world = applyMove(start, first, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
     expect(runFlows(world, first.flows).find((run) => run.kind === 'forbidden')?.reached).toBe(true);
     expect(holdsAll(first, world)).toBe(false);
   });
@@ -48,7 +48,7 @@ describe('04-01, the first ping', () => {
 describe('04-02, only what is needed', () => {
   const second = incident('04-02');
   const start = startWorld(INCIDENTS, second.id);
-  const fromServer1 = (whatId: string) => applyMove(start, second, { type: 'placeRule', sgId: SG.servidor2, whatId, fromId: FROM.servidor1.id });
+  const fromServer1 = (whatId: string) => applyMove(start, second, { type: 'placeRule', sgId: SG.servidor2, whatId, fromId: FROM.sgServidor1.id });
   const withoutDayShift = (world: Network) => applyMove(world, second, { type: 'removeRule', sgId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id });
 
   it('the way back (Echo Reply) does not let the ping in', () => {

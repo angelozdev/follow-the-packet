@@ -48,11 +48,11 @@ describe('the world that grows', () => {
 describe('applyMove', () => {
   const first = incident('04-01');
   const start = startWorld(INCIDENTS, first.id);
-  const place: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.servidor1.id };
+  const place: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
 
   it('builds the rule from the chips', () => {
     expect(inbound(applyMove(start, first, place), SG.servidor2)).toEqual([
-      { id: ruleIdFor(WHAT.ping.id, FROM.servidor1.id), what: WHAT.ping.what, peer: FROM.servidor1.peer },
+      { id: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id), what: WHAT.echoRequest.what, peer: FROM.sgServidor1.peer },
     ]);
   });
 
@@ -64,8 +64,8 @@ describe('applyMove', () => {
   it('placing chips that equal a rule already on the door, with another id, changes nothing', () => {
     const second = incident('04-02');
     const dayShift = startWorld(INCIDENTS, second.id);
-    const sameAsDayShift: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoReply.id, fromId: FROM.internet.id };
-    expect(ruleIdFor(WHAT.echoReply.id, FROM.internet.id)).not.toBe(DAY_SHIFT_RULE.id);
+    const sameAsDayShift: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoReply.id, fromId: FROM.anywhere.id };
+    expect(ruleIdFor(WHAT.echoReply.id, FROM.anywhere.id)).not.toBe(DAY_SHIFT_RULE.id);
     expect(applyMove(dayShift, second, sameAsDayShift)).toBe(dayShift);
   });
 
@@ -76,7 +76,7 @@ describe('applyMove', () => {
 
   it('removes a rule by its id, and an unknown id changes nothing', () => {
     const once = applyMove(start, first, place);
-    const removed = applyMove(once, first, { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.ping.id, FROM.servidor1.id) });
+    const removed = applyMove(once, first, { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) });
     expect(inbound(removed, SG.servidor2)).toEqual([]);
     expect(applyMove(once, first, { type: 'removeRule', sgId: SG.servidor2, ruleId: 'ghost' })).toBe(once);
   });

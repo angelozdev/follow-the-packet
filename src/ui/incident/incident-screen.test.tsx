@@ -36,6 +36,8 @@ const ATTACKER_PACKET = 'ping de Atacante a servidor2';
 const FULL_STARS = 3;
 const FIRST = INCIDENTS[0];
 const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
+const ECHO_REQUEST = 'ICMP · Echo Request';
+const SG_SERVIDOR1 = 'SG servidor1';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -48,8 +50,8 @@ function renderFirst() {
 async function placeFix(user: User) {
   await user.click(screen.getByRole('button', { name: DOOR }));
   const card = screen.getByRole('dialog', { name: DOOR });
-  await user.click(within(card).getByRole('button', { name: 'Ping' }));
-  await user.click(within(card).getByRole('button', { name: 'servidor1' }));
+  await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
+  await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
   return card;
 }
 
@@ -73,18 +75,18 @@ describe('incident screen', () => {
     const user = userEvent.setup();
     renderFirst();
     const card = await placeFix(user);
-    expect(within(card).getByRole('button', { name: 'Quitar la regla Ping ← servidor1' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${SG_SERVIDOR1}`) })).toBeInTheDocument();
   });
 
   it('switching to another door opens its card with an empty slot', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: DOOR }));
-    await user.click(within(screen.getByRole('dialog', { name: DOOR })).getByRole('button', { name: 'Ping' }));
+    await user.click(within(screen.getByRole('dialog', { name: DOOR })).getByRole('button', { name: ECHO_REQUEST }));
     await user.click(screen.getByRole('button', { name: OTHER_DOOR }));
     const card = screen.getByRole('dialog', { name: OTHER_DOOR });
-    expect(within(card).queryByRole('button', { name: TASK_CARD_TEXT.giveBack('Ping') })).toBeNull();
-    expect(within(card).getByRole('button', { name: 'Ping', pressed: false })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: TASK_CARD_TEXT.giveBack(ECHO_REQUEST) })).toBeNull();
+    expect(within(card).getByRole('button', { name: ECHO_REQUEST, pressed: false })).toBeInTheDocument();
     expect(within(card).getByRole('heading', { name: OTHER_DOOR })).toHaveFocus();
   });
 

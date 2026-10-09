@@ -11,13 +11,13 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['echo-reply', 'least-privilege'],
   changes: [
-    { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.ping.id, FROM.servidor1.id) },
+    { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) },
     { type: 'addRule', sgId: SG.servidor2, rule: DAY_SHIFT_RULE },
   ],
   report: 'Alguien cambió el {{security-group}} de servidor2: dice que «abrió la respuesta del {{ping}}». Ahora el {{ping}} de servidor1 vuelve a fallar.',
   tasks: [{ id: 'ping', text: 'Que servidor1 vuelva a hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],
   flows: [FLOWS.pingToServer2, FLOWS.attackerPing],
-  chips: { what: [WHAT.echoRequest, WHAT.echoReply, WHAT.allIcmp], from: [FROM.servidor1, FROM.internet] },
+  chips: { what: [WHAT.echoRequest, WHAT.echoReply, WHAT.allIcmp], from: [FROM.sgServidor1, FROM.anywhere] },
   hints: [
     'Un {{ping}} tiene ida ({{echo-request}}) y vuelta ({{echo-reply}}). ¿Cuál de las dos entra a servidor2?',
     'En el {{security-group}} de servidor2: {{icmp}} · {{echo-request}} desde {{security-group|SG}} servidor1. Y quita la {{inbound-rule}} del turno de día.',
@@ -41,7 +41,7 @@ export default defineIncident({
   ],
   solution: [
     { type: 'removeRule', sgId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id },
-    { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.servidor1.id },
+    { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id },
   ],
   takeaway: 'Para recibir un {{ping}} basta con dejar entrar la ida ({{echo-request}}), y solo desde quien la necesita: eso es {{least-privilege}}.',
 });

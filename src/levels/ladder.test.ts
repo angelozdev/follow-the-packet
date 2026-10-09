@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, type TermId } from '@/copy';
+import { TERMS, termsIn, unofficialNames, type TermId } from '@/copy';
 import type { Incident } from './incident';
 import { configurableParts, incidentTexts, knownTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
@@ -25,6 +25,12 @@ describe('term ladder', () => {
       unknown.filter((other) => TERMS[term].definition.includes(TERMS[other].name)).map((other) => `${term} → ${other}`),
     );
     expect(leaks).toEqual([]);
+  });
+
+  it.each(BY_INCIDENT)('%s names each chip after a term, by its official name', (_id, incident) => {
+    const labels = [...incident.chips.what, ...incident.chips.from].map((chip) => chip.label);
+    expect(labels.filter((label) => termsIn(label).length === 0)).toEqual([]);
+    expect(unofficialNames(labels)).toEqual([]);
   });
 
   it('catches a text that uses a later term', () => {

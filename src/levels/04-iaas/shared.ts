@@ -6,7 +6,7 @@ export const CONCEPT = 'concepts/security-groups.md';
 
 const REGION = 'eu-west-1';
 const VPC_CIDR = '172.31.0.0/16';
-const ANYWHERE = '0.0.0.0/0';
+const ANYWHERE_IPV4 = '0.0.0.0/0';
 const SSH_PORT = 22;
 const ATTACKER = { id: 'attacker', name: 'Atacante', ip: '203.0.113.66' } as const;
 
@@ -27,7 +27,7 @@ function server(ips: { id: string; private: string; public: string }, subnetId: 
 }
 
 function allOutbound(id: string): Rule {
-  return { id, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANYWHERE } };
+  return { id, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANYWHERE_IPV4 } };
 }
 
 export const BASE_WORLD: Network = {
@@ -57,15 +57,14 @@ export const FLOWS = {
 export const PING_TASK_FLOWS = [FLOWS.pingToServer2.id, FLOWS.attackerPing.id];
 
 export const WHAT = {
-  ping: { id: 'ping', label: '{{ping|Ping}}', what: { kind: 'icmp', icmpType: 8 } },
-  echoRequest: { id: 'echo-request', label: '{{echo-request}} (ida)', what: { kind: 'icmp', icmpType: 8 } },
-  echoReply: { id: 'echo-reply', label: '{{echo-reply}} (vuelta)', what: { kind: 'icmp', icmpType: 0 } },
-  allIcmp: { id: 'all-icmp', label: '{{ping|Ping}} completo (todo {{icmp}})', what: { kind: 'icmp', icmpType: 'all' } },
+  echoRequest: { id: 'echo-request', label: '{{icmp}} · {{echo-request}}', what: { kind: 'icmp', icmpType: 8 } },
+  echoReply: { id: 'echo-reply', label: '{{icmp}} · {{echo-reply}}', what: { kind: 'icmp', icmpType: 0 } },
+  allIcmp: { id: 'all-icmp', label: 'All {{icmp}} - IPv4', what: { kind: 'icmp', icmpType: 'all' } },
 } satisfies Record<string, WhatChip>;
 
 export const FROM = {
-  servidor1: { id: 'servidor1', label: 'servidor1', peer: { kind: 'sg', sgId: SG.servidor1 } },
-  internet: { id: 'internet', label: 'Todo internet', peer: { kind: 'cidr', cidr: ANYWHERE } },
+  sgServidor1: { id: 'sg-servidor1', label: `{{security-group|SG}} ${S1.id}`, peer: { kind: 'sg', sgId: SG.servidor1 } },
+  anywhere: { id: 'anywhere-ipv4', label: `{{anywhere-ipv4}} (${ANYWHERE_IPV4})`, peer: { kind: 'cidr', cidr: ANYWHERE_IPV4 } },
 } satisfies Record<string, FromChip>;
 
-export const DAY_SHIFT_RULE: Rule = { id: 'day-shift-echo-reply', what: WHAT.echoReply.what, peer: FROM.internet.peer };
+export const DAY_SHIFT_RULE: Rule = { id: 'day-shift-echo-reply', what: WHAT.echoReply.what, peer: FROM.anywhere.peer };

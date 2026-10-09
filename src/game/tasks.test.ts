@@ -18,7 +18,7 @@ describe('tasks', () => {
   });
 
   it('a forbidden flow that gets in breaks the task even when the ping works', () => {
-    const wide = applyMove(solvedWorld(INCIDENTS, incident.id), incident, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.internet.id });
+    const wide = applyMove(solvedWorld(INCIDENTS, incident.id), incident, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
     expect(taskHolds(task, runFlows(wide, incident.flows))).toBe(false);
   });
 

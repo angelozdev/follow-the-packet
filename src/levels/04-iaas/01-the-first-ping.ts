@@ -14,7 +14,7 @@ export default defineIncident({
   report: 'servidor1 no logra hacer {{ping}} a servidor2. ¿Lo revisas?',
   tasks: [{ id: 'ping', text: 'Que servidor1 pueda hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],
   flows: [FLOWS.pingToServer2, FLOWS.attackerPing],
-  chips: { what: [WHAT.ping], from: [FROM.servidor1, FROM.internet] },
+  chips: { what: [WHAT.echoRequest], from: [FROM.sgServidor1, FROM.anywhere] },
   hints: [
     'Mira el {{security-group}} de servidor2: ¿qué deja pasar hoy?',
     'En el {{security-group}} de servidor2, agrega una {{inbound-rule}}: {{icmp}} · {{echo-request}}, desde {{security-group|SG}} servidor1.',
@@ -36,6 +36,6 @@ export default defineIncident({
       correct: false,
     },
   ],
-  solution: [{ type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.servidor1.id }],
+  solution: [{ type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id }],
   takeaway: 'El {{security-group}} de una {{ec2-instance}} solo deja pasar lo que una {{inbound-rule}} permite: Type + Source.',
 });

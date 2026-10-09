@@ -7,7 +7,7 @@ import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
 
 const first = startSession(INCIDENTS, '04-01');
-const fixed = sessionReducer(first, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.servidor1.id });
+const fixed = sessionReducer(first, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
 
 function plain(inspection: Inspection | null) {
   return inspection && { title: toPlainText(inspection.title), fields: inspection.fields.map((f) => [toPlainText(f.label), ...f.lines.map(toPlainText)]) };
@@ -39,7 +39,7 @@ describe('inspect', () => {
 
   it('a door lists what it lets in as chips', () => {
     expect(plain(inspect(startSession(INCIDENTS, '04-02'), PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([
-      ['Reglas de entrada', 'Echo Reply (vuelta) ← Todo internet'],
+      ['Reglas de entrada', 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)'],
     ]);
   });
 

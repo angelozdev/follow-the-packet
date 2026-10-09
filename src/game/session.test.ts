@@ -11,10 +11,10 @@ const SECOND_MS = 1000;
 const FULL_STARS = 3;
 const place = (sgId: string, whatId: string, fromId: string): SessionAction => ({ type: 'placeRule', sgId, whatId, fromId });
 const remove = (sgId: string, whatId: string, fromId: string): SessionAction => ({ type: 'removeRule', sgId, ruleId: ruleIdFor(whatId, fromId) });
-const FIX = place(SG.servidor2, WHAT.ping.id, FROM.servidor1.id);
-const UNFIX = remove(SG.servidor2, WHAT.ping.id, FROM.servidor1.id);
-const WIDE = place(SG.servidor2, WHAT.ping.id, FROM.internet.id);
-const UNWIDE = remove(SG.servidor2, WHAT.ping.id, FROM.internet.id);
+const FIX = place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id);
+const UNFIX = remove(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id);
+const WIDE = place(SG.servidor2, WHAT.echoRequest.id, FROM.anywhere.id);
+const UNWIDE = remove(SG.servidor2, WHAT.echoRequest.id, FROM.anywhere.id);
 const tick = (ms: number): SessionAction => ({ type: 'tick', ms });
 const choose = (index: number): SessionAction => ({ type: 'chooseExplanation', index });
 const RIGHT = FIRST.explanation.findIndex((option) => option.correct);
@@ -33,7 +33,7 @@ describe('incident session', () => {
   });
 
   it('a rule on the door of servidor1 does not fix the ping', () => {
-    const session = play(place(SG.servidor1, WHAT.ping.id, FROM.servidor1.id), tick(STABLE_MS));
+    const session = play(place(SG.servidor1, WHAT.echoRequest.id, FROM.sgServidor1.id), tick(STABLE_MS));
     expect(session.phase).toBe('playing');
     expect(taskMs(session)).toBe(0);
   });
@@ -59,7 +59,7 @@ describe('incident session', () => {
     expect(opened.alerts).toBe(1);
     const stillOpen = play(FIX, WIDE, tick(2 * STABLE_MS));
     expect(stillOpen.phase).toBe('playing');
-    expect(sessionReducer(opened, place(SG.servidor1, WHAT.ping.id, FROM.internet.id)).alerts).toBe(1);
+    expect(sessionReducer(opened, place(SG.servidor1, WHAT.echoRequest.id, FROM.anywhere.id)).alerts).toBe(1);
     expect([UNWIDE, WIDE].reduce(sessionReducer, opened).alerts).toBe(2);
   });
 

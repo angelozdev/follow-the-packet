@@ -51,8 +51,8 @@ export const LUCIA_TEXT = {
 export const TASK_CARD_TEXT = {
   noRules: 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
   slot: 'Regla de entrada nueva',
-  what: 'Qué',
-  from: 'Desde dónde',
+  what: 'Type',
+  from: 'Source',
   done: 'Listo',
   remove: (rule: string) => `Quitar la regla ${rule}`,
   giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,
