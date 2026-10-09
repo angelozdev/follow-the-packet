@@ -28,12 +28,13 @@ export type Reason =
   | { code: 'dns-unresolved'; name: string; fromInside: boolean }
   | { code: 'dns-resolved'; name: string; ip: string; fromInside: boolean }
   | { code: 'route-private-from-outside'; ip: string }
-  | { code: 'route-no-private-instance'; ip: string }
+  | { code: 'route-no-device'; ip: string }
   | { code: 'route-private' }
   | { code: 'route-no-public-device'; ip: string }
   | { code: 'route-no-public-ip'; deviceId: string }
   | { code: 'route-nat'; from: string; to: string }
   | { code: 'route-from-internet' }
+  | { code: 'route-self'; deviceId: string }
   | { code: 'firewall-out-pass'; deviceId: string }
   | { code: 'firewall-out-drop'; deviceId: string }
   | { code: 'firewall-in-pass'; deviceId: string }
@@ -46,7 +47,7 @@ export type Reason =
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
-export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved';
+export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'lost';
 
 export interface TcpdumpLine {
   deviceId: string;

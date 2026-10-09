@@ -3,7 +3,7 @@ import { CONTINUE, firewallsOf, stop, type Stage } from '@/engine/simulation/con
 
 export const firewallOutStage: Stage = (ctx) => {
   const device = ctx.source.device;
-  if (!device) return CONTINUE;
+  if (!device || ctx.path === 'self') return CONTINUE;
   const dest = ctx.dest!;
   const { allowed, checks } = checkRules(firewallsOf(ctx.net, device), 'outbound', ctx.packet, {
     ip: ctx.destIp!,

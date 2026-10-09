@@ -30,4 +30,5 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   refused: 'Llegó, pero ningún programa lo estaba esperando.',
   'arrived-no-reply': 'Llegó, pero nadie contestó.',
   unresolved: 'No salió: el nombre no se pudo convertir en una IP.',
+  lost: 'Se perdió: no llegó a ningún dispositivo.',
 };

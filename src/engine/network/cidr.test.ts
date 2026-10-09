@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from './cidr';
+import { ipInCidr, isIpv4, isPrivateCidr, isPrivateIpv4, parseCidr } from './cidr';
 
 describe('isIpv4', () => {
   it('accepts valid IPs and rejects names and out-of-range octets', () => {
@@ -43,5 +43,12 @@ describe('isPrivateCidr', () => {
 
   it('rejects a public range and a range that spills out of a private one', () => {
     for (const range of ['8.8.8.0/24', '172.32.0.0/16', '192.168.0.0/15', '172.0.0.0/11', '0.0.0.0/0']) expect(isPrivateCidr(range), range).toBe(false);
+  });
+});
+
+describe('isPrivateIpv4', () => {
+  it('knows the three private ranges of RFC 1918 and nothing else', () => {
+    for (const ip of ['10.0.0.5', '172.16.0.1', '172.31.38.97', '192.168.1.10']) expect(isPrivateIpv4(ip), ip).toBe(true);
+    for (const ip of ['172.32.0.1', '34.244.254.100', '203.0.113.66', '192.169.0.1']) expect(isPrivateIpv4(ip), ip).toBe(false);
   });
 });

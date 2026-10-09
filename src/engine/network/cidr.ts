@@ -29,6 +29,11 @@ export function ipInCidr(ip: string, cidr: string): boolean {
 
 const PRIVATE_RANGES = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 
+/** True when the IPv4 address is in a private range of RFC 1918, which the internet does not deliver. */
+export function isPrivateIpv4(ip: string): boolean {
+  return PRIVATE_RANGES.some((range) => ipInCidr(ip, range));
+}
+
 /** True when the whole range lies inside one private range of RFC 1918 (10.0.0.0/8, 172.16.0.0/12 or 192.168.0.0/16). */
 export function isPrivateCidr(cidr: string): boolean {
   const { prefix } = parseCidr(cidr);

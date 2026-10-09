@@ -7,7 +7,7 @@ export interface SimContext {
   source: { endpoint: Endpoint; id: string; ip: string; inside: boolean; device?: Device };
   destIp?: string;
   dest?: Device;
-  path?: 'private' | 'public';
+  path?: 'private' | 'public' | 'self';
   effectiveSource?: string;
   steps: Step[];
   tcpdump: TcpdumpLine[];

@@ -14,9 +14,9 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'dns-resolved':
       return `El {{dns}} convierte ${reason.name} en ${reason.ip} (se preguntó desde ${side(reason.fromInside)} de la {{vpc}}).`;
     case 'route-private-from-outside':
-      return `${reason.ip} es una {{private-ip}}: desde internet no hay camino hasta ella.`;
-    case 'route-no-private-instance':
-      return `Ninguna {{ec2-instance}} tiene la {{private-ip}} ${reason.ip}.`;
+      return 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.';
+    case 'route-no-device':
+      return 'Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.';
     case 'route-private':
       return 'Viaja por dentro de la {{vpc}}.';
     case 'route-no-public-device':
@@ -27,6 +27,8 @@ export function describeReason(reason: Reason, net: Network): TermText {
       return `Sale por el {{internet-gateway}} y su remitente cambia de ${reason.from} a ${reason.to}: eso es {{nat}}.`;
     case 'route-from-internet':
       return 'Entra desde internet por el {{internet-gateway}}.';
+    case 'route-self':
+      return 'Va a la propia IP del dispositivo: no sale a la red.';
     case 'firewall-out-pass':
       return `El {{security-group}} de ${deviceName(net, reason.deviceId)} lo deja salir.`;
     case 'firewall-out-drop':

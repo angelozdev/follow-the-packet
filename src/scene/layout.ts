@@ -45,6 +45,7 @@ const ACTOR_STAGGER_Z = 1.6;
 const LABEL = { serverY: 1.75, barrierY: 0.1, barrierDz: 0.8, actorY: 0.05, actorDz: 0.7, gatewayY: 2.6 } as const;
 const CARD_Y = 0.5;
 const STAMP_SPREAD = 0.8;
+const GATEWAY_PLACES = ['igw', 'internet'];
 
 /** Lays out one column per subnet, the devices of each subnet in a row, and the internet on the left. */
 export function computeLayout(net: Network): Layout {
@@ -120,7 +121,7 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[
   else points.push(layout.actors[from.id] ?? layout.igw);
 
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
-  if (trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && s.at === 'igw'))) points.push(layout.igw);
+  if (trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && GATEWAY_PLACES.includes(s.at)))) points.push(layout.igw);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 
   const dest = trace.destinationId ? layout.instances[trace.destinationId] : undefined;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint } from './checkpoints';
-import { actor, device, echoFrom, lab03Net, ping, tcp, withDevice, withInbound } from '@/testing';
+import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import type { Network } from '@/engine/network/types';
 
@@ -83,10 +83,10 @@ describe('lab 03 in the engine', () => {
     expect(trace.tcpdump.map((l) => l.summary)).toEqual(['TCP 80', 'TCP 80 RST']);
   });
 
-  it('a private IP from the internet has no path: timeout at the internet gateway', () => {
+  it('a private IP from the internet is lost in the internet, before the Internet gateway', () => {
     const trace = simulate(lab03Net(), ping(actor('attacker'), S2.private));
-    expect(trace.outcome).toBe('timeout');
-    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'igw' });
+    expect(trace.outcome).toBe('lost');
+    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'internet' });
   });
 
   it('V8: the default security group only lets its members in', () => {
@@ -116,5 +116,42 @@ describe('lab 03 in the engine', () => {
     const trace = simulate(lab03Net(), ping(device('servidor1'), 'no-existe.example'));
     expect(trace.outcome).toBe('unresolved');
     expect(deathPoint(trace)).toEqual({ stage: 'dns', at: 'servidor1' });
+  });
+});
+
+describe('lost packets and a device that pings itself', () => {
+  it('an IP of the office that no device has: the packet is lost in the network', () => {
+    const trace = simulate(officeNet(), ping(device('your-laptop'), OFFICE.nobody));
+    expect(trace.outcome).toBe('lost');
+    expect(trace.steps).toEqual([{ stage: 'route', at: 'office', verdict: 'drop', reason: { code: 'route-no-device', ip: OFFICE.nobody } }]);
+  });
+
+  it('a private IP from the internet: the packet is lost in the internet, before the router', () => {
+    const trace = simulate(officeNet(), ping(actor('attacker'), OFFICE.you));
+    expect(trace.outcome).toBe('lost');
+    expect(trace.steps).toEqual([{ stage: 'route', at: 'internet', verdict: 'drop', reason: { code: 'route-private-from-outside', ip: OFFICE.you } }]);
+  });
+
+  it('a private IP outside the network range is lost in the internet too', () => {
+    const trace = simulate(officeNet(), ping(actor('attacker'), '10.0.0.5'));
+    expect(trace.outcome).toBe('lost');
+    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'internet' });
+  });
+
+  it('a device that pings its own IP answers itself without the packet going out to the network', () => {
+    const trace = simulate(officeNet(), ping(device('your-laptop'), OFFICE.you));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.destinationId).toBe('your-laptop');
+    expect(trace.steps.map((step) => [step.stage, step.reason.code])).toEqual([
+      ['route', 'route-self'],
+      ['host', 'host-replies'],
+      ['reply', 'reply-stateful'],
+    ]);
+  });
+
+  it('an EC2 instance that pings its own private IP answers even with no inbound rule', () => {
+    const trace = simulate(lab03Net(), ping(device('servidor2'), S2.private));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.steps.filter((step) => step.stage === 'firewall-in' || step.stage === 'firewall-out')).toEqual([]);
   });
 });
