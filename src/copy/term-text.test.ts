@@ -18,6 +18,20 @@ describe('parseTermText', () => {
     expect(parseTermText('{{inbound-rule|Reglas de entrada}}')).toEqual([{ kind: 'term', id: 'inbound-rule', text: 'Reglas de entrada' }]);
   });
 
+  it('parses a resource name as its own segment', () => {
+    const text = '{{security-group}} [[servidor2]]';
+    expect(parseTermText(text)).toEqual([
+      { kind: 'term', id: 'security-group', text: 'Security Group' },
+      { kind: 'text', text: ' ' },
+      { kind: 'name', text: 'servidor2' },
+    ]);
+    expect(toPlainText(text)).toBe('Security Group servidor2');
+  });
+
+  it('rejects a name tag that is not closed', () => {
+    expect(() => parseTermText('[[servidor2')).toThrow('malformed term tag: [[servidor2');
+  });
+
   it('rejects a tag whose term is not registered', () => {
     expect(() => parseTermText('El {{firewall}} bloquea.')).toThrow('unknown term: firewall');
   });
@@ -31,6 +45,7 @@ describe('parseTermText', () => {
     ['a name every object inherits', '{{constructor}}', 'unknown term: constructor'],
     ['an unclosed tag', 'La {{rule falla.', 'malformed term tag: {{rule falla.'],
     ['a stray closing brace pair', 'La rule}} falla.', 'malformed term tag: }}'],
+    ['a stray closing name tag', 'servidor2]] falla.', 'malformed term tag: ]]'],
   ])('rejects a malformed tag: %s', (_name, text, message) => {
     expect(() => parseTermText(text)).toThrow(message);
     expect(() => termsIn(text)).toThrow(message);
@@ -48,11 +63,19 @@ describe('termsIn and toPlainText', () => {
   it('reads the way the player sees it', () => {
     expect(toPlainText(text)).toBe('Un ping pasa si una regla de entrada del Security Group lo permite.');
   });
+
+  it('does not count a resource name as a term', () => {
+    expect(termsIn('El {{security-group}} de [[servidor2]]')).toEqual(['security-group']);
+  });
 });
 
 describe('unofficialNames', () => {
   it('accepts the official name and the registered short form', () => {
     expect(unofficialNames(['El {{security-group}} de servidor2', '{{security-group|SG}} servidor1', 'Sin términos'])).toEqual([]);
+  });
+
+  it('ignores a resource name, whatever its words', () => {
+    expect(unofficialNames(['{{security-group}} [[puerta]]'])).toEqual([]);
   });
 
   it('names each term shown with other words', () => {

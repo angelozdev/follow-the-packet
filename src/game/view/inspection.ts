@@ -1,4 +1,4 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
 import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
@@ -56,7 +56,7 @@ function device(session: Session, own: Device): Inspection {
   const guards = firewalls.filter((firewall) => own.firewallIds.includes(firewall.id));
   return {
     entity: { kind: 'device', variant: own.kind },
-    title: own.name,
+    title: nameTag(own.name),
     fields: visible(
       [
         ...whatIs({ kind: 'device', variant: own.kind }),
@@ -106,7 +106,7 @@ function internet(session: Session): Inspection {
 function actor(session: Session, who: Actor): Inspection {
   return {
     entity: { kind: 'actor', variant: who.kind },
-    title: who.name,
+    title: nameTag(who.name),
     fields: visible(
       [
         { term: null, label: INSPECTION_TEXT.who, lines: () => [ACTOR_ROLE_TEXT[who.kind]] },

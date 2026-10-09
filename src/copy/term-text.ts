@@ -2,10 +2,10 @@ import { TERMS, isTermId, type Term, type TermId } from './terms';
 
 export type TermText = string;
 
-export type TermSegment = { kind: 'text'; text: string } | { kind: 'term'; id: TermId; text: string };
+export type TermSegment = { kind: 'text'; text: string } | { kind: 'term'; id: TermId; text: string } | { kind: 'name'; text: string };
 
-const TAG = /\{\{([^}|]+)(?:\|([^{}]+))?\}\}/g;
-const BROKEN_TAG = /\{\{[^}]*\}{0,2}|\}\}/;
+const TAG = /\{\{([^}|]+)(?:\|([^{}]+))?\}\}|\[\[([^[\]{}]+)\]\]/g;
+const BROKEN_TAG = /\{\{[^}]*\}{0,2}|\}\}|\[\[[^\]]*\]{0,2}|\]\]/;
 
 function plain(text: string): TermSegment {
   const broken = BROKEN_TAG.exec(text);
@@ -13,17 +13,27 @@ function plain(text: string): TermSegment {
   return { kind: 'text', text };
 }
 
-/** Splits a text into plain and term segments: `{{term-id}}` shows the term's name and `{{term-id|words}}` shows the given words; throws on an unregistered term and on any `{{` or `}}` that is not a well-formed tag. */
+function taggedSegment([, id, words, name]: RegExpExecArray): TermSegment {
+  if (name !== undefined) return { kind: 'name', text: name };
+  if (!isTermId(id)) throw new Error(`unknown term: ${id}`);
+  return { kind: 'term', id, text: words ?? TERMS[id].name };
+}
+
+/** Marks a resource's or actor's own name, so the player sees it apart from the entity: `[[servidor2]]`. */
+export function nameTag(name: string): TermText {
+  return `[[${name}]]`;
+}
+
+/** Splits a text into plain, term and name segments: `{{term-id}}` shows the term's name, `{{term-id|words}}` shows the given words and `[[name]]` shows a resource's own name; throws on an unregistered term and on any `{{`, `}}`, `[[` or `]]` that is not a well-formed tag. */
 export function parseTermText(text: TermText): TermSegment[] {
   const segments: TermSegment[] = [];
   const tags = new RegExp(TAG);
   let cursor = 0;
   for (let match = tags.exec(text); match !== null; match = tags.exec(text)) {
-    const [tag, id, words] = match;
-    if (!isTermId(id)) throw new Error(`unknown term: ${id}`);
+    const segment = taggedSegment(match);
     if (match.index > cursor) segments.push(plain(text.slice(cursor, match.index)));
-    segments.push({ kind: 'term', id, text: words ?? TERMS[id].name });
-    cursor = match.index + tag.length;
+    segments.push(segment);
+    cursor = match.index + match[0].length;
   }
   if (cursor < text.length) segments.push(plain(text.slice(cursor)));
   return segments;
@@ -45,7 +55,7 @@ export function toPlainText(text: TermText): string {
 export function unofficialNames(texts: TermText[]): string[] {
   return texts.flatMap((text) =>
     parseTermText(text).flatMap((segment) => {
-      if (segment.kind === 'text') return [];
+      if (segment.kind !== 'term') return [];
       const term: Term = TERMS[segment.id];
       return segment.text === term.name || segment.text === term.short ? [] : [`${segment.id}: ${segment.text}`];
     }),

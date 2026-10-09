@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { MAP_TEXT } from '@/copy';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
-const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: 'servidor2', locked: true, state: 'normal' };
-const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false, state: 'normal' };
+const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: '[[servidor2]]', locked: true, state: 'normal' };
+const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} [[servidor2]]', locked: false, state: 'normal' };
 
 function renderLabel(piece: MapPiece) {
   const handlers = { onInspect: vi.fn(), onActivate: vi.fn() };
@@ -18,6 +18,21 @@ describe('piece label', () => {
   it('reads its plain label and says when the piece is locked', () => {
     renderLabel(SERVER);
     expect(screen.getByRole('button', { name: 'servidor2 con candado' })).toBeInTheDocument();
+  });
+
+  it("draws the name of a firewall's device as a name tag", () => {
+    renderLabel(SG_PIECE);
+    const label = screen.getByRole('button', { name: 'Security Group servidor2' });
+    expect(label.querySelectorAll('.name-tag')).toHaveLength(1);
+    expect(screen.getByText('servidor2')).toHaveClass('name-tag');
+    expect(label).not.toHaveClass('map-button--name');
+  });
+
+  it('a label that is only a name looks like a name tag', () => {
+    renderLabel(SERVER);
+    const label = screen.getByRole('button', { name: `servidor2 ${MAP_TEXT.locked}` });
+    expect(label).toHaveClass('map-button--name');
+    expect(label.querySelector('.name-tag')).toHaveTextContent('servidor2');
   });
 
   it('draws the lock of a locked piece in ink, not as an emoji', () => {

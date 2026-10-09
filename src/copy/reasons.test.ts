@@ -5,7 +5,7 @@ import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 
 const NET = lab03Net();
-const SG_IN_DROP = 'Se queda en el {{security-group}} de servidor2: ninguna {{inbound-rule}} lo deja entrar.';
+const SG_IN_DROP = 'Se queda en el {{security-group}} de [[servidor2]]: ninguna {{inbound-rule}} lo deja entrar.';
 const PUBLIC_NAME = 'ec2-34-244-254-100.eu-west-1.compute.amazonaws.com';
 
 const CASES: [Reason, string][] = [
@@ -18,28 +18,28 @@ const CASES: [Reason, string][] = [
   [{ code: 'route-no-device', ip: '192.168.1.30' }, 'Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.'],
   [{ code: 'route-private' }, 'Viaja por dentro de la {{vpc}}.'],
   [{ code: 'route-no-public-device', ip: '52.0.0.1' }, 'Ninguna {{ec2-instance}} tiene la {{public-ip}} 52.0.0.1.'],
-  [{ code: 'route-no-public-ip', deviceId: 'servidor1' }, 'servidor1 no tiene {{public-ip}}: no puede salir a internet.'],
+  [{ code: 'route-no-public-ip', deviceId: 'servidor1' }, '[[servidor1]] no tiene {{public-ip}}: no puede salir a internet.'],
   [
     { code: 'route-nat', from: '172.31.16.131', to: '54.78.154.66' },
     'Sale por el {{internet-gateway}} y su remitente cambia de 172.31.16.131 a 54.78.154.66: eso es {{nat}}.',
   ],
   [{ code: 'route-from-internet' }, 'Entra desde internet por el {{internet-gateway}}.'],
   [{ code: 'route-self', deviceId: 'your-laptop' }, 'Va a la propia IP del dispositivo: no sale a la red.'],
-  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'security-group' }, 'El {{security-group}} de servidor1 lo deja salir.'],
+  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'security-group' }, 'El {{security-group}} de [[servidor1]] lo deja salir.'],
   [
     { code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'security-group' },
-    'Se queda en el {{security-group}} de servidor1: ninguna {{outbound-rule}} lo deja salir.',
+    'Se queda en el {{security-group}} de [[servidor1]]: ninguna {{outbound-rule}} lo deja salir.',
   ],
-  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'security-group' }, 'El {{security-group}} de servidor2 lo deja entrar.'],
+  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'security-group' }, 'El {{security-group}} de [[servidor2]] lo deja entrar.'],
   [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' }, SG_IN_DROP],
-  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'El firewall de servidor1 lo deja salir.'],
-  [{ code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'Se queda en el firewall de servidor1: ninguna regla lo deja salir.'],
-  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'El firewall de servidor2 lo deja entrar.'],
-  [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'Se queda en el firewall de servidor2: ninguna regla lo deja entrar.'],
+  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'El firewall de [[servidor1]] lo deja salir.'],
+  [{ code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'Se queda en el firewall de [[servidor1]]: ninguna regla lo deja salir.'],
+  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'El firewall de [[servidor2]] lo deja entrar.'],
+  [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'Se queda en el firewall de [[servidor2]]: ninguna regla lo deja entrar.'],
   [{ code: 'host-unsolicited-icmp', deviceId: 'servidor2', icmpType: 0 }, 'Un {{echo-reply}} es una respuesta: llegó, y nadie lo contesta.'],
-  [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'Llega, pero servidor2 tiene {{icmp-echo-ignore-all}} en 1 y no contesta.'],
-  [{ code: 'host-replies', deviceId: 'servidor2' }, 'servidor2 contesta.'],
-  [{ code: 'host-refused', deviceId: 'servidor2', port: 80 }, 'Llega, pero ningún programa escucha en el puerto 80: servidor2 lo rechaza.'],
+  [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'Llega, pero [[servidor2]] tiene {{icmp-echo-ignore-all}} en 1 y no contesta.'],
+  [{ code: 'host-replies', deviceId: 'servidor2' }, '[[servidor2]] contesta.'],
+  [{ code: 'host-refused', deviceId: 'servidor2', port: 80 }, 'Llega, pero ningún programa escucha en el puerto 80: [[servidor2]] lo rechaza.'],
   [{ code: 'host-accepts', deviceId: 'servidor2', port: 22 }, 'Un programa escucha en el puerto 22 y acepta.'],
   [{ code: 'host-udp-no-service', deviceId: 'servidor2', port: 53 }, 'Llega por UDP al puerto 53, pero en este juego ningún programa UDP contesta.'],
   [{ code: 'reply-stateful', deviceId: 'servidor2' }, 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.'],

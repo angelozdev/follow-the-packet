@@ -1,7 +1,7 @@
 export { ENTITY_REFS, ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId } from './terms';
 export type { EntityKind, EntityRef, EntityVariants, PacketMessage, TermId } from './terms';
-export { parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
-export type { TermText } from './term-text';
+export { nameTag, parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
+export type { TermSegment, TermText } from './term-text';
 export { describeReason } from './reasons';
 export { OUTCOME_TEXT, endpointName, packetLabel, packetMessage } from './packet-labels';
 export { CATALOG_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './ui';

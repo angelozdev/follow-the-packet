@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { CATALOG_TEXT, ENTITY_REFS, SCREEN_TEXT, entityName } from '@/copy';
+import { CATALOG_TEXT, ENTITY_REFS, SCREEN_TEXT, entityName, toPlainText } from '@/copy';
 import { EntitiesPage } from './entities-page';
 
 vi.mock('@/scene/catalog/catalog-scene', () => ({
@@ -14,7 +14,12 @@ describe('entities page', () => {
     render(<EntitiesPage />);
     const icons = within(screen.getByRole('region', { name: CATALOG_TEXT.icons })).getAllByRole('listitem');
     expect(icons).toHaveLength(ENTITY_REFS.length + 4);
-    for (const entity of ENTITY_REFS) expect(screen.getByText(entityName(entity))).toContainHTML('<svg');
+    for (const entity of ENTITY_REFS) expect(screen.getByText(toPlainText(entityName(entity))).closest('li')).toContainHTML('<svg');
+  });
+
+  it('shows the name of an actor as a name tag, apart from the entity', () => {
+    render(<EntitiesPage />);
+    expect(screen.getByText('Atacante')).toHaveClass('name-tag');
   });
 
   it('draws the pieces moving, and still once "Sin animaciones" is checked', async () => {

@@ -1,4 +1,4 @@
-import { MAP_TEXT, entityTerm, type EntityRef, type TermId, type TermText } from '@/copy';
+import { MAP_TEXT, entityTerm, nameTag, type EntityRef, type TermId, type TermText } from '@/copy';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
@@ -56,12 +56,12 @@ export function pieceViews(session: Session): PieceView[] {
     ...world.devices.map((device) =>
       piece(
         { kind: 'device', variant: device.kind },
-        { id: PIECE_ID.device(device.id), anchorId: device.id, label: device.name, locked: !parts.hostSettings, configurable: false, state: intruded.has(device.id) ? 'intruded' : 'normal' },
+        { id: PIECE_ID.device(device.id), anchorId: device.id, label: nameTag(device.name), locked: !parts.hostSettings, configurable: false, state: intruded.has(device.id) ? 'intruded' : 'normal' },
       ),
     ),
     ...firewalls(session),
     ...world.actors.map((actor) =>
-      piece({ kind: 'actor', variant: actor.kind }, { id: PIECE_ID.actor(actor.id), anchorId: actor.id, label: actor.name, locked: false, configurable: false, state: 'normal' }),
+      piece({ kind: 'actor', variant: actor.kind }, { id: PIECE_ID.actor(actor.id), anchorId: actor.id, label: nameTag(actor.name), locked: false, configurable: false, state: 'normal' }),
     ),
     ...outside(session),
   ];

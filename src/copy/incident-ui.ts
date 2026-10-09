@@ -1,9 +1,9 @@
 import type { Actor, FirewallKind, Network } from '@/engine';
-import type { TermText } from './term-text';
+import { nameTag, type TermText } from './term-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
-  'security-group': (name) => `{{security-group}} ${name}`,
-  'host-firewall': (name) => `firewall ${name}`,
+  'security-group': (name) => `{{security-group}} ${nameTag(name)}`,
+  'host-firewall': (name) => `firewall ${nameTag(name)}`,
 };
 
 const EDGE_LABEL: Record<Network['edge'], TermText> = {

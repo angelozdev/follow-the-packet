@@ -14,6 +14,13 @@ describe('TaggedText', () => {
     expect(screen.getByText(SECURITY_GROUP.name)).toHaveClass('term');
   });
 
+  it('draws a resource name as a name tag', () => {
+    const { container } = render(<TaggedText text="servidor1 a [[servidor2]]" />);
+    expect(container.querySelectorAll('.name-tag')).toHaveLength(1);
+    expect(screen.getByText('servidor2')).toHaveClass('name-tag');
+    expect(container).toHaveTextContent('servidor1 a servidor2');
+  });
+
   it('marks the new terms right after them', () => {
     render(<TaggedText text="Una {{inbound-rule}} del {{security-group}}." newTerms={new Set<TermId>(['inbound-rule'])} />);
     expect(screen.getAllByText(LUCIA_TEXT.newBadge)).toHaveLength(1);

@@ -45,6 +45,8 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .html-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
 .map-button { pointer-events: auto; font: 500 13px var(--font-body); color: var(--ink); background: var(--paper-fill); border: 1px solid var(--ink); padding: 1px 6px; white-space: nowrap; cursor: pointer; }
+.map-button--name { border-color: var(--ink-soft); border-radius: 3px; background: var(--paper-shade); }
+.map-button--name .name-tag { border: 0; padding: 0; background: none; font-size: 12px; }
 .map-button--locked { border-style: dashed; color: var(--ink-soft); }
 .map-button__alert { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font: 700 11px var(--font-body); color: var(--paper-fill); background: var(--accent); vertical-align: 1px; }
 .map-button__lock .entity-icon { margin-right: 0; }
@@ -63,6 +65,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .card { border: 1.5px solid var(--ink); background: var(--paper-fill); padding: 0.9rem 1rem; box-shadow: 3px 3px 0 var(--ink); }
 .term { font-weight: 600; }
 .term--tip { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.name-tag { font-family: var(--font-mono); font-weight: 400; font-size: 0.82em; line-height: 1.35; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-shade); padding: 0 0.35em; white-space: nowrap; }
 .term-tip { z-index: 100; width: max-content; max-width: min(18rem, calc(100vw - 16px)); padding: 0.4rem 0.6rem; font: 400 0.85rem/1.4 var(--font-body); color: var(--paper-fill); background: var(--ink); border-radius: 3px; box-shadow: 2px 2px 0 var(--accent); pointer-events: none; text-align: left; text-transform: none; letter-spacing: normal; }
 .term__new { margin-left: 0.2rem; font: 600 0.65rem var(--font-body); color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; vertical-align: super; }
 .lucia__alert { margin: 0.5rem 0; color: var(--accent); font-weight: 600; }

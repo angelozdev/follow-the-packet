@@ -1,3 +1,4 @@
+import { nameTag, type TermText } from './term-text';
 import type { EntityKind, EntityRef, EntityVariants } from './terms';
 
 export const ROADMAP_TEXT = {
@@ -15,13 +16,13 @@ export const NOTICE_TEXT = {
   back: 'Volver al roadmap',
 } as const;
 
-const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], string> } = {
+const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermText> } = {
   network: { office: 'red de la oficina', vpc: 'VPC' },
   device: { laptop: 'laptop', printer: 'impresora', 'ec2-instance': 'instancia EC2' },
   firewall: { 'host-firewall': 'firewall de la laptop', 'security-group': 'Security Group' },
   edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
   internet: { internet: 'internet' },
-  actor: { attacker: 'Atacante', you: 'Tu Mac' },
+  actor: { attacker: nameTag('Atacante'), you: nameTag('Tu Mac') },
   packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply' },
 };
 
@@ -45,9 +46,9 @@ export const CATALOG_TEXT = {
   },
 } as const;
 
-/** Returns the name of an entity in this variant, as the catalog shows it; an intruder's packet says so. */
-export function entityName(entity: EntityRef): string {
-  const names: Record<string, string> = ENTITY_NAMES[entity.kind];
+/** Returns the name of an entity in this variant, as the catalog shows it; an actor is a character, so its name is marked as a name, and an intruder's packet says so. */
+export function entityName(entity: EntityRef): TermText {
+  const names: Record<string, TermText> = ENTITY_NAMES[entity.kind];
   const name = names[entity.variant];
   return entity.kind === 'packet' && entity.intruder ? `${name} · ${CATALOG_TEXT.intruder}` : name;
 }

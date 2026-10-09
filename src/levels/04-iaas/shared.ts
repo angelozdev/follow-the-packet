@@ -1,3 +1,4 @@
+import { nameTag } from '@/copy';
 import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
 import type { Flow, FromChip, WhatChip } from '@/levels/incident';
 
@@ -66,7 +67,7 @@ export const WHAT = {
 } satisfies Record<string, WhatChip>;
 
 export const FROM = {
-  sgServidor1: { id: 'sg-servidor1', label: `{{security-group|SG}} ${S1.id}`, peer: { kind: 'sg', sgId: SG.servidor1 } },
+  sgServidor1: { id: 'sg-servidor1', label: `{{security-group|SG}} ${nameTag(S1.id)}`, peer: { kind: 'sg', sgId: SG.servidor1 } },
   anywhere: { id: 'anywhere-ipv4', label: `{{anywhere-ipv4}} (${ANYWHERE_IPV4})`, peer: { kind: 'cidr', cidr: ANYWHERE_IPV4 } },
 } satisfies Record<string, FromChip>;
 

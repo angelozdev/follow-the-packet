@@ -1,6 +1,7 @@
 import { CATALOG_TEXT, ENTITY_REFS, entityName } from '@/copy';
 import { CatalogScene, EntityIcon, StampIcon } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
+import { TaggedText } from '@/ui/tagged-text';
 import { useStillMode } from '@/ui/use-still-mode';
 
 const STAMP_STATES = ['arrived', 'blocked', 'lost', 'intruder'] as const;
@@ -28,7 +29,7 @@ export function EntitiesPage() {
             return (
               <li key={name}>
                 <EntityIcon entity={entity} />
-                {name}
+                <TaggedText text={name} tips={false} />
               </li>
             );
           })}

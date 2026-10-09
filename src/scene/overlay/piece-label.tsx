@@ -1,4 +1,5 @@
-import { MAP_TEXT, toPlainText, type EntityRef, type TermText } from '@/copy';
+import { Fragment } from 'react';
+import { MAP_TEXT, parseTermText, type EntityRef, type TermSegment, type TermText } from '@/copy';
 import { InkIcon } from '@/scene/ink';
 import { inspectHandlers, type OnInspect } from './inspect-handlers';
 
@@ -17,12 +18,21 @@ export function pieceDomId(pieceId: string): string {
   return `piece-${pieceId.replaceAll(':', '-')}`;
 }
 
+function isOnlyName(segments: TermSegment[]): boolean {
+  return segments.every((segment) => segment.kind === 'name');
+}
+
+function buttonClass(segments: TermSegment[], locked: boolean): string {
+  return ['map-button', isOnlyName(segments) && 'map-button--name', locked && 'map-button--locked'].filter(Boolean).join(' ');
+}
+
 export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; onInspect: OnInspect; onActivate: (pieceId: string) => void }) {
+  const segments = parseTermText(piece.label);
   return (
     <button
       type="button"
       id={pieceDomId(piece.id)}
-      className={piece.locked ? 'map-button map-button--locked' : 'map-button'}
+      className={buttonClass(segments, piece.locked)}
       onClick={() => onActivate(piece.id)}
       {...inspectHandlers(piece.id, onInspect)}
     >
@@ -33,7 +43,15 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
           </span>{' '}
         </>
       )}
-      {toPlainText(piece.label)}
+      {segments.map((segment, index) =>
+        segment.kind === 'name' ? (
+          <span key={index} className="name-tag">
+            {segment.text}
+          </span>
+        ) : (
+          <Fragment key={index}>{segment.text}</Fragment>
+        ),
+      )}
       {piece.locked && (
         <>
           {' '}

@@ -2,7 +2,7 @@ import type { FirewallKind, Network, Reason } from '@/engine';
 import { deviceName } from './packet-labels';
 import type { TermText } from './term-text';
 
-type FirewallSentence = (device: string) => TermText;
+type FirewallSentence = (device: TermText) => TermText;
 
 const FIREWALL_TEXT: Record<FirewallKind, { passOut: FirewallSentence; dropOut: FirewallSentence; passIn: FirewallSentence; dropIn: FirewallSentence }> = {
   'security-group': {

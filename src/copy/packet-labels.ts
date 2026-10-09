@@ -1,16 +1,19 @@
 import type { Endpoint, Network, Outcome, PacketSpec, Trace } from '@/engine';
-import type { TermText } from './term-text';
+import { nameTag, type TermText } from './term-text';
 import type { PacketMessage } from './terms';
 
 const INTERNET_NAME = 'Internet';
 
-export function deviceName(net: Network, deviceId: string): string {
-  return net.devices.find((d) => d.id === deviceId)?.name ?? deviceId;
+/** Returns the name of a device, marked as a name; an id that names no device stands for its name. */
+export function deviceName(net: Network, deviceId: string): TermText {
+  return nameTag(net.devices.find((d) => d.id === deviceId)?.name ?? deviceId);
 }
 
-export function endpointName(endpoint: Endpoint, net: Network): string {
+/** Returns the name of the device or the actor a packet comes from, marked as a name; the internet probe that is not on the map is plain "Internet". */
+export function endpointName(endpoint: Endpoint, net: Network): TermText {
   if (endpoint.kind === 'device') return deviceName(net, endpoint.id);
-  return net.actors.find((a) => a.id === endpoint.id)?.name ?? INTERNET_NAME;
+  const actor = net.actors.find((a) => a.id === endpoint.id);
+  return actor ? nameTag(actor.name) : INTERNET_NAME;
 }
 
 /** Names what a packet carries, with its term tagged. */
