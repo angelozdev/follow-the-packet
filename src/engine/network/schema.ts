@@ -2,14 +2,16 @@ import { z } from 'zod';
 import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from './cidr';
 
 const ip = z.string().refine(isIpv4, 'invalid IPv4');
-const cidr = z.string().refine((value) => {
+function isCidr(value: string): boolean {
   try {
     parseCidr(value);
     return true;
   } catch {
     return false;
   }
-}, 'invalid CIDR');
+}
+
+const cidr = z.string().refine(isCidr, 'invalid CIDR');
 const port = z.number().int().min(0).max(65535);
 
 export const icmpTypeSchema = z.union([z.literal(0), z.literal(8)]);
@@ -109,7 +111,7 @@ function checkVpc(net: NetworkShape, fail: Fail): void {
 function checkOffice(net: NetworkShape, fail: Fail): void {
   if (net.region !== undefined) fail('an office network has no region');
   if (net.subnets !== undefined) fail('an office network has no subnets');
-  if (!isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
+  if (isCidr(net.cidr) && !isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
   for (const firewall of net.firewalls) {
     if (firewall.kind !== 'host-firewall') fail(`${firewall.id}: an office firewall is a host firewall`);
   }

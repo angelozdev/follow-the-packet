@@ -59,6 +59,14 @@ describe('networkSchema', () => {
   it.each(BROKEN)('rejects %s', (_name, net, message) => {
     expect(problems(net)).toContain(message);
   });
+
+  it('reports a malformed office range as an issue instead of throwing', () => {
+    for (const cidr of ['garbage', '192.168.1.0', '10.0.0.0/33']) {
+      const issues = problems({ ...officeNet(), cidr });
+      expect(issues, cidr).toContain('invalid CIDR');
+      expect(issues, cidr).not.toContain(`${cidr} is not a private range (RFC 1918)`);
+    }
+  });
 });
 
 describe('packetSchema', () => {
