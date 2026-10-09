@@ -4,7 +4,7 @@ import { collectErrors } from './console-errors';
 const FONT_HOSTS = /fonts\.(googleapis|gstatic)\.com/;
 const PIECES = 'Piezas del mapa';
 const LAST_CAPTION = 'intruso';
-const FRAMES = 60;
+const WATCH_MS = 7000;
 
 test.use({ viewport: { width: 1280, height: 2200 }, deviceScaleFactor: 1 });
 
@@ -32,11 +32,11 @@ test('the entity catalog also runs with its animations, without errors', async (
   const errors = collectErrors(page);
   await openCatalog(page);
   await expect(page.getByLabel('Sin animaciones')).not.toBeChecked();
-  await page.evaluate((frames) => new Promise<void>((done) => {
-    let left = frames;
-    const tick = () => (--left > 0 ? requestAnimationFrame(tick) : done());
+  await page.evaluate((watchMs) => new Promise<void>((done) => {
+    const start = performance.now();
+    const tick = () => (performance.now() - start >= watchMs ? done() : requestAnimationFrame(tick));
     requestAnimationFrame(tick);
-  }), FRAMES);
+  }), WATCH_MS);
   expect(errors).toEqual([]);
 });
 
