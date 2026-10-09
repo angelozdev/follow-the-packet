@@ -8,13 +8,15 @@ export function privateDnsName(privateIp: string, region: string): string {
   return `ip-${privateIp.replaceAll('.', '-')}.${region}.compute.internal`;
 }
 
-/** Resolves an EC2 DNS name the way AWS does: from inside the VPC a public name gives the private IP and from outside the public IP; a private name resolves only inside. Returns null when nothing answers. */
+/** Resolves an EC2 DNS name the way AWS does: from inside the VPC a public name gives the private IP and from outside the public IP; a private name resolves only inside. Returns null when nothing answers, and always for a network without a region (an office has no EC2 names). */
 export function resolveName(net: Network, name: string, fromInsideVpc: boolean): string | null {
+  const { region } = net;
+  if (!region) return null;
   for (const device of net.devices) {
-    if (device.publicIp && name === publicDnsName(device.publicIp, net.region)) {
+    if (device.publicIp && name === publicDnsName(device.publicIp, region)) {
       return fromInsideVpc ? device.privateIp : device.publicIp;
     }
-    if (name === privateDnsName(device.privateIp, net.region)) {
+    if (name === privateDnsName(device.privateIp, region)) {
       return fromInsideVpc ? device.privateIp : null;
     }
   }

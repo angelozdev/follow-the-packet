@@ -36,6 +36,11 @@ function packetTerm(packet: PacketSpec): TermId | null {
   return packet.protocol === 'icmp' && packet.icmpType !== undefined ? ICMP_MESSAGE_TERM[packet.icmpType] : null;
 }
 
+function dnsNames(device: Device, region: string | undefined): string[] {
+  if (!region) return [];
+  return [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)];
+}
+
 function server(session: Session, device: Device): Inspection {
   const { region, firewalls } = session.world;
   const own = firewalls.filter((firewall) => device.firewallIds.includes(firewall.id));
@@ -46,11 +51,7 @@ function server(session: Session, device: Device): Inspection {
         whatIs(PIECE_TERM.server),
         { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [device.privateIp] },
         { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [device.publicIp ?? INSPECTION_TEXT.none] },
-        {
-          term: 'dns',
-          label: INSPECTION_TEXT.dnsNames,
-          lines: () => [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)],
-        },
+        { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(device, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [device.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
         { term: 'security-group', label: INSPECTION_TEXT.securityGroups, lines: () => own.map((firewall) => MAP_TEXT.barrier(firewall.name)) },
       ],

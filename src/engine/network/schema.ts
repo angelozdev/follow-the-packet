@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ipInCidr, isIpv4, parseCidr } from './cidr';
+import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from './cidr';
 
 const ip = z.string().refine(isIpv4, 'invalid IPv4');
 const cidr = z.string().refine((value) => {
@@ -31,6 +31,7 @@ export const ruleSchema = z.object({ id: z.string().min(1), what: ruleWhatSchema
 export const firewallSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  kind: z.enum(['host-firewall', 'security-group']),
   inbound: z.array(ruleSchema),
   outbound: z.array(ruleSchema),
 });
@@ -38,7 +39,8 @@ export const firewallSchema = z.object({
 export const deviceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  subnetId: z.string().min(1),
+  kind: z.enum(['laptop', 'printer', 'ec2-instance']),
+  subnetId: z.string().min(1).optional(),
   privateIp: ip,
   publicIp: ip.optional(),
   firewallIds: z.array(z.string().min(1)),
@@ -55,6 +57,20 @@ export const actorSchema = z.object({
   kind: z.enum(['you', 'attacker']),
 });
 
+const networkShape = z.object({
+  kind: z.enum(['office', 'vpc']),
+  cidr,
+  region: z.string().min(1).optional(),
+  subnets: z.array(subnetSchema).optional(),
+  devices: z.array(deviceSchema),
+  firewalls: z.array(firewallSchema),
+  edge: z.enum(['router', 'internet-gateway']),
+  actors: z.array(actorSchema),
+});
+
+type NetworkShape = z.infer<typeof networkShape>;
+type Fail = (message: string) => void;
+
 function safeInCidr(value: string, range: string): boolean {
   try {
     return ipInCidr(value, range);
@@ -63,46 +79,72 @@ function safeInCidr(value: string, range: string): boolean {
   }
 }
 
-export const networkSchema = z
-  .object({
-    region: z.string().min(1),
-    cidr,
-    subnets: z.array(subnetSchema).min(1),
-    devices: z.array(deviceSchema),
-    firewalls: z.array(firewallSchema),
-    actors: z.array(actorSchema),
-  })
-  .superRefine((net, ctx) => {
-    const fail = (message: string) => ctx.addIssue({ code: 'custom', message });
-    const ids = [
-      ...net.subnets.map((s) => s.id),
-      ...net.devices.map((d) => d.id),
-      ...net.firewalls.map((f) => f.id),
-      ...net.actors.map((a) => a.id),
-    ];
-    const repeated = ids.find((id, index) => ids.indexOf(id) !== index);
-    if (repeated) fail(`duplicate id: ${repeated}`);
-    for (const subnet of net.subnets) {
-      if (!safeInCidr(subnet.cidr.split('/')[0], net.cidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
+function checkIds(net: NetworkShape, fail: Fail): void {
+  const ids = [
+    ...(net.subnets ?? []).map((s) => s.id),
+    ...net.devices.map((d) => d.id),
+    ...net.firewalls.map((f) => f.id),
+    ...net.actors.map((a) => a.id),
+  ];
+  const repeated = ids.find((id, index) => ids.indexOf(id) !== index);
+  if (repeated) fail(`duplicate id: ${repeated}`);
+}
+
+function checkVpc(net: NetworkShape, fail: Fail): void {
+  const subnets = net.subnets ?? [];
+  if (!net.region) fail('a VPC needs a region');
+  if (subnets.length === 0) fail('a VPC needs at least one subnet');
+  for (const subnet of subnets) {
+    if (!safeInCidr(subnet.cidr.split('/')[0], net.cidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
+  }
+  for (const device of net.devices) {
+    const subnet = subnets.find((s) => s.id === device.subnetId);
+    if (!subnet) fail(`${device.id}: subnet ${device.subnetId} does not exist`);
+    else if (!safeInCidr(device.privateIp, subnet.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${subnet.cidr}`);
+    const hasSecurityGroup = net.firewalls.some((f) => f.kind === 'security-group' && device.firewallIds.includes(f.id));
+    if (!hasSecurityGroup) fail(`${device.id}: a device in a VPC needs at least one Security Group`);
+  }
+}
+
+function checkOffice(net: NetworkShape, fail: Fail): void {
+  if (net.region !== undefined) fail('an office network has no region');
+  if (net.subnets !== undefined) fail('an office network has no subnets');
+  if (!isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
+  for (const firewall of net.firewalls) {
+    if (firewall.kind !== 'host-firewall') fail(`${firewall.id}: an office firewall is a host firewall`);
+  }
+  for (const device of net.devices) {
+    if (device.publicIp !== undefined) fail(`${device.id}: an office device has no public IP`);
+    if (device.subnetId !== undefined) fail(`${device.id}: an office device has no subnet`);
+    if (!safeInCidr(device.privateIp, net.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${net.cidr}`);
+  }
+}
+
+function checkFirewalls(net: NetworkShape, fail: Fail): void {
+  const byId = new Map(net.firewalls.map((f) => [f.id, f]));
+  for (const device of net.devices) {
+    const missing = device.firewallIds.filter((id) => !byId.has(id));
+    for (const id of missing) fail(`${device.id}: firewall ${id} does not exist`);
+    const kinds = new Set(device.firewallIds.flatMap((id) => byId.get(id)?.kind ?? []));
+    if (kinds.size > 1) fail(`${device.id}: its firewalls mix kinds`);
+  }
+  for (const firewall of net.firewalls) {
+    for (const rule of [...firewall.inbound, ...firewall.outbound]) {
+      const peer = rule.peer;
+      if (peer.kind !== 'sg') continue;
+      if (firewall.kind !== 'security-group') fail(`${firewall.id}/${rule.id}: only a Security Group takes a Security Group as source`);
+      if (byId.get(peer.sgId)?.kind !== 'security-group') fail(`${firewall.id}/${rule.id}: ${peer.sgId} is not a Security Group of this network`);
     }
-    for (const device of net.devices) {
-      const subnet = net.subnets.find((s) => s.id === device.subnetId);
-      if (!subnet) fail(`${device.id}: subnet ${device.subnetId} does not exist`);
-      else if (!safeInCidr(device.privateIp, subnet.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${subnet.cidr}`);
-      for (const firewallId of device.firewallIds) {
-        if (!net.firewalls.some((f) => f.id === firewallId)) fail(`${device.id}: firewall ${firewallId} does not exist`);
-      }
-    }
-    for (const firewall of net.firewalls) {
-      for (const rule of [...firewall.inbound, ...firewall.outbound]) {
-        const peer = rule.peer;
-        if (peer.kind === 'sg') {
-          const sgId = peer.sgId;
-          if (!net.firewalls.some((f) => f.id === sgId)) fail(`${firewall.id}/${rule.id}: security group ${sgId} does not exist`);
-        }
-      }
-    }
-  });
+  }
+}
+
+export const networkSchema = networkShape.superRefine((net, ctx) => {
+  const fail: Fail = (message) => ctx.addIssue({ code: 'custom', message });
+  checkIds(net, fail);
+  if (net.kind === 'vpc') checkVpc(net, fail);
+  else checkOffice(net, fail);
+  checkFirewalls(net, fail);
+});
 
 export const endpointSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('device'), id: z.string().min(1) }),

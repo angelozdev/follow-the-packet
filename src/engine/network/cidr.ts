@@ -26,3 +26,12 @@ export function ipInCidr(ip: string, cidr: string): boolean {
   const value = ipToInt(ip);
   return value >= start && value < start + size;
 }
+
+const PRIVATE_RANGES = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
+
+/** True when the whole range lies inside one private range of RFC 1918 (10.0.0.0/8, 172.16.0.0/12 or 192.168.0.0/16). */
+export function isPrivateCidr(cidr: string): boolean {
+  const { prefix } = parseCidr(cidr);
+  const [base] = cidr.split('/');
+  return PRIVATE_RANGES.some((range) => prefix >= parseCidr(range).prefix && ipInCidr(base, range));
+}

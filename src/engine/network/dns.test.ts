@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { privateDnsName, publicDnsName, resolveName } from './dns';
-import { lab03Net } from '@/testing';
+import { OFFICE, lab03Net, officeNet } from '@/testing';
 
 describe('EC2 DNS names', () => {
   it('follow the format seen in lab 03', () => {
@@ -27,5 +27,9 @@ describe('resolveName (lab 03, V3)', () => {
 
   it('an unknown name does not resolve', () => {
     expect(resolveName(net, 'no-existe.example', true)).toBeNull();
+  });
+
+  it('an office has no region, so no EC2 name resolves there', () => {
+    expect(resolveName(officeNet(), privateDnsName(OFFICE.printer, 'eu-west-1'), true)).toBeNull();
   });
 });

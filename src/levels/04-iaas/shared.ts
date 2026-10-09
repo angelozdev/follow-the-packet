@@ -18,6 +18,7 @@ function server(ips: { id: string; private: string; public: string }, subnetId: 
   return {
     id: ips.id,
     name: ips.id,
+    kind: 'ec2-instance',
     subnetId,
     privateIp: ips.private,
     publicIp: ips.public,
@@ -31,6 +32,7 @@ function allOutbound(id: string): Rule {
 }
 
 export const BASE_WORLD: Network = {
+  kind: 'vpc',
   region: REGION,
   cidr: VPC_CIDR,
   subnets: [
@@ -39,9 +41,10 @@ export const BASE_WORLD: Network = {
   ],
   devices: [server(S1, 'subnet-a', SG.servidor1), server(S2, 'subnet-b', SG.servidor2)],
   firewalls: [
-    { id: SG.servidor1, name: S1.id, inbound: [], outbound: [allOutbound('all-out-servidor1')] },
-    { id: SG.servidor2, name: S2.id, inbound: [], outbound: [allOutbound('all-out-servidor2')] },
+    { id: SG.servidor1, name: S1.id, kind: 'security-group', inbound: [], outbound: [allOutbound('all-out-servidor1')] },
+    { id: SG.servidor2, name: S2.id, kind: 'security-group', inbound: [], outbound: [allOutbound('all-out-servidor2')] },
   ],
+  edge: 'internet-gateway',
   actors: [{ ...ATTACKER, kind: 'attacker' }],
 };
 

@@ -34,8 +34,8 @@ describe('matchesPeer', () => {
 
 describe('checkRules', () => {
   const firewalls: Firewall[] = [
-    { id: 'sg-a', name: 'a', inbound: [sshFromYou('ssh')], outbound: [] },
-    { id: 'sg-b', name: 'b', inbound: [echoFrom('echo', 'sg-servidor1')], outbound: [] },
+    { id: 'sg-a', name: 'a', kind: 'security-group', inbound: [sshFromYou('ssh')], outbound: [] },
+    { id: 'sg-b', name: 'b', kind: 'security-group', inbound: [echoFrom('echo', 'sg-servidor1')], outbound: [] },
   ];
 
   it('the rules of several security groups add up: one matching both what and from is enough', () => {

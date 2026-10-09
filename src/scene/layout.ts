@@ -48,13 +48,14 @@ const STAMP_SPREAD = 0.8;
 
 /** Lays out one column per subnet, the devices of each subnet in a row, and the internet on the left. */
 export function computeLayout(net: Network): Layout {
-  const widths = net.subnets.map((s) => Math.max(MIN_COLUMN, net.devices.filter((d) => d.subnetId === s.id).length * GAP + 1));
+  const columns = net.subnets ?? [];
+  const widths = columns.map((s) => Math.max(MIN_COLUMN, net.devices.filter((d) => d.subnetId === s.id).length * GAP + 1));
   const total = widths.reduce((a, b) => a + b, 0);
   const sheetWidth = total + 2;
   const subnets: Record<string, SubnetSpot> = {};
   const instances: Record<string, InstanceSpot> = {};
   let cursor = -total / 2;
-  net.subnets.forEach((subnet, index) => {
+  columns.forEach((subnet, index) => {
     const width = widths[index];
     const cx = cursor + width / 2;
     cursor += width;

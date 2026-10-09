@@ -1,6 +1,6 @@
 # engine
 
-The pure domain core: the AWS network model and the packet simulation. The same input always gives the same output.
+The pure domain core: the network model (an office or an AWS VPC) and the packet simulation. The same input always gives the same output.
 
 - Belongs here: network model (`network/`), simulation and its stages (`simulation/`), the exposure probes (`exposure/`).
 - Not here: text shown to the player (`src/copy/`), level content (`src/levels/`), anything that draws, stores or reads the clock.
