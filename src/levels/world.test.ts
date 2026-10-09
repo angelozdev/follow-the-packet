@@ -19,7 +19,7 @@ function inbound(world: Network, sgId: string) {
 const IDS = INCIDENTS.map((i) => [i.id]);
 
 describe('the world that grows', () => {
-  it('04-01 starts from the base world: doors with no inbound rules', () => {
+  it('04-01 starts from the base world: Security Groups with no inbound rules', () => {
     const start = startWorld(INCIDENTS, '04-01');
     expect(inbound(start, SG.servidor1)).toEqual([]);
     expect(inbound(start, SG.servidor2)).toEqual([]);
@@ -36,7 +36,7 @@ describe('the world that grows', () => {
     expect(networkSchema.safeParse(solvedWorld(INCIDENTS, id)).success).toBe(true);
   });
 
-  it.each(IDS)('%s can name every rule of its doors with its chips', (id) => {
+  it.each(IDS)('%s can name every rule of its Security Groups with its chips', (id) => {
     for (const world of [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)]) {
       for (const group of world.securityGroups) {
         for (const rule of group.inbound) expect(chipsOfRule(incident(id), rule), `${group.id}/${rule.id}`).not.toBeNull();
@@ -61,7 +61,7 @@ describe('applyMove', () => {
     expect(applyMove(once, first, place)).toBe(once);
   });
 
-  it('placing chips that equal a rule already on the door, with another id, changes nothing', () => {
+  it('placing chips that equal a rule already on the Security Group, with another id, changes nothing', () => {
     const second = incident('04-02');
     const dayShift = startWorld(INCIDENTS, second.id);
     const sameAsDayShift: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoReply.id, fromId: FROM.anywhere.id };
@@ -69,7 +69,7 @@ describe('applyMove', () => {
     expect(applyMove(dayShift, second, sameAsDayShift)).toBe(dayShift);
   });
 
-  it('a chip the incident does not offer, or an unknown door, changes nothing', () => {
+  it('a chip the incident does not offer, or an unknown Security Group, changes nothing', () => {
     expect(applyMove(start, first, { ...place, whatId: WHAT.echoReply.id })).toBe(start);
     expect(applyMove(start, first, { ...place, sgId: 'sg-ghost' })).toBe(start);
   });

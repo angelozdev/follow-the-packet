@@ -79,7 +79,7 @@ export function layoutCenter(layout: Layout): Vec2 {
   return [(left + layout.sheet.width / 2) / 2, 0];
 }
 
-/** Returns where the label of a piece floats: above a building, in front of a door, below an actor, above the internet entrance. */
+/** Returns where the label of a piece floats: above a building, in front of a Security Group, below an actor, above the Internet gateway. */
 export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
   switch (piece.kind) {
     case 'server': {
@@ -99,7 +99,7 @@ export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, l
   }
 }
 
-/** Returns where the task card of the door of this instance is anchored. */
+/** Returns where the task card of the Security Group of this instance is anchored. */
 export function cardAnchorPosition(instanceId: string, layout: Layout): Vec3 {
   const [x, z] = layout.instances[instanceId].barrier;
   return [x, CARD_Y, z];

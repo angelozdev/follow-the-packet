@@ -60,7 +60,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
   };
 }
 
-/** True when the door of this security group is on the map and the ladder lets the player change its inbound rules. */
+/** True when an instance has this Security Group, so it is on the map, and the ladder lets the player change its inbound rules. */
 export function canConfigure(session: Session, sgId: string): boolean {
   return session.parts.inboundRules && session.world.instances.some((instance) => instance.sgIds.includes(sgId));
 }

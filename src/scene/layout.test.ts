@@ -72,7 +72,7 @@ describe('anchors', () => {
     expect(x - left).toBeCloseTo(layout.sheet.width / 2 - x);
   });
 
-  it('a door label sits in front of its door, and a server label above its building', () => {
+  it('a Security Group label sits in front of its barrier, and a server label above its building', () => {
     const spot = layout.instances.servidor2;
     expect(labelPosition({ kind: 'barrier', anchorId: 'servidor2' }, layout)[2]).toBeGreaterThan(spot.barrier[1]);
     expect(labelPosition({ kind: 'server', anchorId: 'servidor2' }, layout)[1]).toBeGreaterThan(1);

@@ -8,7 +8,7 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (unknown door or chip, a rule that already exists, a rule id that is not there). */
+/** Applies a player move; returns the same world when the move changes nothing (unknown Security Group or chip, a rule that already exists, a rule id that is not there). */
 export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
   const group = world.securityGroups.find((g) => g.id === move.sgId);
   if (!group) return world;

@@ -23,11 +23,11 @@ function shownTexts(session: Session): TermText[] {
 function sessionsToCheck(incident: Incident): Session[] {
   const start = startSession(INCIDENTS, incident.id);
   const solved = incident.solution.reduce(sessionReducer, start);
-  const doors = pieceViews(start)
+  const barriers = pieceViews(start)
     .filter((piece) => piece.configurable)
     .flatMap((piece) => barrierCard(start, piece.id) ?? []);
-  const placed = doors.flatMap((door) =>
-    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', sgId: door.sgId, whatId: what.id, fromId: from.id }))),
+  const placed = barriers.flatMap((barrier) =>
+    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', sgId: barrier.sgId, whatId: what.id, fromId: from.id }))),
   );
   return [start, solved, ...placed];
 }

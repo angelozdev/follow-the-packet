@@ -16,7 +16,7 @@ export interface BarrierCard {
   rules: RuleRow[];
 }
 
-/** Names each inbound rule of the door with the incident's chips; throws for a rule without chips, which the incident tests rule out. */
+/** Names each inbound rule of the Security Group with the incident's chips; throws for a rule without chips, which the incident tests rule out. */
 export function ruleRows(group: SecurityGroup, incident: Incident): RuleRow[] {
   return group.inbound.map((rule) => {
     const chips = chipsOfRule(incident, rule);
@@ -29,7 +29,7 @@ export function rowText(row: RuleRow): TermText {
   return INSPECTION_TEXT.ruleRow(row.what, row.from);
 }
 
-/** Returns what the task card of a door shows, or null when the piece is not a door on the map. */
+/** Returns what the task card of a Security Group shows, or null when the piece is not a Security Group on the map. */
 export function barrierCard(session: Session, pieceId: string): BarrierCard | null {
   const ref = parsePieceId(pieceId);
   const group = ref?.kind === 'barrier' ? session.world.securityGroups.find((g) => g.id === ref.id) : undefined;

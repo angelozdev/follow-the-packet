@@ -27,7 +27,7 @@ vi.mock('@/scene/game-scene', async () => {
   };
 });
 
-const DOOR = 'Security Group servidor2';
+const SG_SERVIDOR2 = 'Security Group servidor2';
 const OTHER_DOOR = 'Security Group servidor1';
 const LOCKED_SERVER = 'servidor2 con candado';
 const ATTACKER_PACKET = 'ping de Atacante a servidor2';
@@ -47,8 +47,8 @@ function renderFirst() {
 }
 
 async function placeRule(user: User, source: string) {
-  await user.click(screen.getByRole('button', { name: DOOR }));
-  const card = screen.getByRole('dialog', { name: DOOR });
+  await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
   await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
   await user.click(within(card).getByRole('button', { name: source }));
   return card;
@@ -58,12 +58,12 @@ describe('incident screen', () => {
   it('opens the card from its Security Group, and Esc closes it and gives the focus back to it', async () => {
     const user = userEvent.setup();
     renderFirst();
-    const door = screen.getByRole('button', { name: DOOR });
-    await user.click(door);
-    expect(screen.getByRole('dialog', { name: DOOR })).toBeInTheDocument();
+    const barrier = screen.getByRole('button', { name: SG_SERVIDOR2 });
+    await user.click(barrier);
+    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(door).toHaveFocus();
+    expect(barrier).toHaveFocus();
   });
 
   it('a rule placed from the card shows up in it', async () => {
@@ -76,8 +76,8 @@ describe('incident screen', () => {
   it('switching to another Security Group opens its card with an empty slot', async () => {
     const user = userEvent.setup();
     renderFirst();
-    await user.click(screen.getByRole('button', { name: DOOR }));
-    await user.click(within(screen.getByRole('dialog', { name: DOOR })).getByRole('button', { name: ECHO_REQUEST }));
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    await user.click(within(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).getByRole('button', { name: ECHO_REQUEST }));
     await user.click(screen.getByRole('button', { name: OTHER_DOOR }));
     const card = screen.getByRole('dialog', { name: OTHER_DOOR });
     expect(within(card).queryByRole('button', { name: TASK_CARD_TEXT.giveBack(ECHO_REQUEST) })).toBeNull();
@@ -112,6 +112,7 @@ describe('incident screen', () => {
     await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
     const box = screen.getByRole('region', { name: ATTACKER_PACKET });
     expect(box).toHaveTextContent('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
+    expect(box.querySelector('.term')).toBeInTheDocument();
     expect(box.querySelector('.term--tip')).toBeNull();
   });
 
@@ -122,7 +123,7 @@ describe('incident screen', () => {
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.getByRole('status')).toHaveTextContent(LUCIA_TEXT.intruding);
     expect(screen.queryByRole('heading', { name: EXPLANATION_TEXT.asks })).toBeNull();
-    expect(within(card).getByRole('heading', { name: DOOR })).toBeInTheDocument();
+    expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toBeInTheDocument();
     await user.click(within(card).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${ANYWHERE}`) }));
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });

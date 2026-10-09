@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
-const DOOR = 'Security Group servidor2';
+const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
@@ -49,8 +49,8 @@ async function overlappingPairs(page: Page): Promise<string[]> {
 }
 
 async function openDoor(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: DOOR, exact: true }).click();
-  return page.getByRole('dialog', { name: DOOR });
+  await page.getByRole('button', { name: SG_SERVIDOR2, exact: true }).click();
+  return page.getByRole('dialog', { name: SG_SERVIDOR2 });
 }
 
 async function placeRule(card: Locator, source: string) {
@@ -113,10 +113,10 @@ test('a locked incident does not open from its URL', async ({ page }) => {
 
 test('labels and stamps do not overlap, and the open card does not cover its Security Group', async ({ page }) => {
   await page.goto('/#/level/04-01');
-  await expect(page.getByRole('button', { name: DOOR, exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: SG_SERVIDOR2, exact: true })).toBeVisible();
   await expect.poll(() => overlappingPairs(page)).toEqual([]);
   const card = await openDoor(page);
-  const label = page.getByRole('button', { name: DOOR, exact: true });
+  const label = page.getByRole('button', { name: SG_SERVIDOR2, exact: true });
   await expect.poll(async () => overlaps(await card.boundingBox(), await label.boundingBox())).toBe(false);
 });
 
@@ -138,7 +138,7 @@ test('focus goes to the card heading when a Security Group opens, and back to it
   await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(card).toHaveCount(0);
-  await expect(page.getByRole('button', { name: DOOR, exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: SG_SERVIDOR2, exact: true })).toBeFocused();
 });
 
 test('a term shows its definition inside the window, also from a chip of the open card', async ({ page }) => {

@@ -30,7 +30,7 @@ describe('TaggedText', () => {
     const term = screen.getByText(SECURITY_GROUP.name);
     await user.hover(term);
     const tooltip = await screen.findByRole('tooltip');
-    expect(tooltip).toHaveTextContent(SECURITY_GROUP.definition);
+    expect(tooltip).toHaveTextContent(`${SECURITY_GROUP.name}: ${SECURITY_GROUP.definition}`);
     expect(tooltip.parentElement).toBe(document.body);
     expect(screen.getByTestId('clipping-box')).not.toContainElement(tooltip);
     await user.unhover(term);

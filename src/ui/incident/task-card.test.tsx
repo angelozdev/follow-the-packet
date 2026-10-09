@@ -9,7 +9,7 @@ import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { TaskCard } from './task-card';
 
-const DOOR = 'Security Group servidor2';
+const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const DAY_SHIFT_ROW = 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)';
@@ -26,8 +26,8 @@ function renderCard(incidentId: string) {
 describe('task card', () => {
   it('opens with the focus on its title and says when the Security Group has no inbound rules', () => {
     renderCard('04-01');
-    expect(screen.getByRole('heading', { name: DOOR })).toHaveFocus();
-    expect(screen.getByRole('dialog', { name: DOOR })).toHaveTextContent(toPlainText(TASK_CARD_TEXT.noRules));
+    expect(screen.getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toHaveTextContent(toPlainText(TASK_CARD_TEXT.noRules));
   });
 
   it('names its trays Type and Source, like the inbound rules of the console', () => {
@@ -77,7 +77,7 @@ describe('task card', () => {
     expect(screen.getByRole('button', { name: TASK_CARD_TEXT.giveBack(ECHO_REQUEST) })).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('button', { name: ECHO_REQUEST })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('heading', { name: DOOR })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -90,7 +90,7 @@ describe('task card', () => {
     expect(removeButton).toHaveFocus();
     await user.keyboard('{Enter}');
     expect(onRemove).toHaveBeenCalledWith(DAY_SHIFT_RULE.id);
-    expect(screen.getByRole('heading', { name: DOOR })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
   });
 
   it('Esc and "Listo" close it', async () => {

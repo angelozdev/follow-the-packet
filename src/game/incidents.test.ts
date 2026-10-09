@@ -33,7 +33,7 @@ describe('04-01, the first ping', () => {
   const first = incident('04-01');
   const start = startWorld(INCIDENTS, first.id);
 
-  it('a rule on the door of servidor1 does not help: the destination decides', () => {
+  it('a rule on the Security Group of servidor1 does not help: the destination decides', () => {
     const world = applyMove(start, first, { type: 'placeRule', sgId: SG.servidor1, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
     expect(holdsAll(first, world)).toBe(false);
   });

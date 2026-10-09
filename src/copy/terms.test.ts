@@ -15,7 +15,7 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['internet-gateway', 'Internet gateway'],
   ['icmp-echo-ignore-all', 'icmp_echo_ignore_all'],
 ];
-const PLAN_2_IDS = ['server', 'rule', 'linux-ignore-ping'];
+const RETIRED_IDS = ['server', 'rule', 'linux-ignore-ping'];
 
 describe('term registry', () => {
   it.each(Object.entries(TERMS))('%s has a name and a short definition', (_id, term) => {
@@ -38,8 +38,8 @@ describe('term registry', () => {
     expect(TERMS[id].name).toBe(name);
   });
 
-  it('drops the ids named after the plain words of plan 2', () => {
-    expect(PLAN_2_IDS.filter(isTermId)).toEqual([]);
+  it('drops the ids named after retired plain words', () => {
+    expect(RETIRED_IDS.filter(isTermId)).toEqual([]);
   });
 
   it('a Security Group is the virtual firewall of an instance, shortened SG', () => {

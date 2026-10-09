@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
 const SERVER: MapPiece = { id: 'server:servidor2', kind: 'server', anchorId: 'servidor2', label: 'servidor2', locked: true };
-const DOOR: MapPiece = { id: 'barrier:sg-servidor2', kind: 'barrier', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false };
+const SG_PIECE: MapPiece = { id: 'barrier:sg-servidor2', kind: 'barrier', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false };
 
 function renderLabel(piece: MapPiece) {
   const handlers = { onInspect: vi.fn(), onActivate: vi.fn() };
@@ -21,27 +21,27 @@ describe('piece label', () => {
 
   it('hovering or focusing inspects the piece, and leaving stops', async () => {
     const user = userEvent.setup();
-    const { onInspect } = renderLabel(DOOR);
+    const { onInspect } = renderLabel(SG_PIECE);
     const label = screen.getByRole('button', { name: 'Security Group servidor2' });
     await user.hover(label);
-    expect(onInspect).toHaveBeenLastCalledWith(DOOR.id);
+    expect(onInspect).toHaveBeenLastCalledWith(SG_PIECE.id);
     await user.unhover(label);
     expect(onInspect).toHaveBeenLastCalledWith(null);
     await user.tab();
-    expect(onInspect).toHaveBeenLastCalledWith(DOOR.id);
+    expect(onInspect).toHaveBeenLastCalledWith(SG_PIECE.id);
   });
 
   it('a click or Enter activates it', async () => {
     const user = userEvent.setup();
-    const { onActivate } = renderLabel(DOOR);
+    const { onActivate } = renderLabel(SG_PIECE);
     await user.click(screen.getByRole('button', { name: 'Security Group servidor2' }));
     await user.keyboard('{Enter}');
     expect(onActivate).toHaveBeenCalledTimes(2);
-    expect(onActivate).toHaveBeenCalledWith(DOOR.id);
+    expect(onActivate).toHaveBeenCalledWith(SG_PIECE.id);
   });
 
   it('has a DOM id so the focus can come back to it', () => {
-    renderLabel(DOOR);
-    expect(screen.getByRole('button', { name: 'Security Group servidor2' })).toHaveAttribute('id', pieceDomId(DOOR.id));
+    renderLabel(SG_PIECE);
+    expect(screen.getByRole('button', { name: 'Security Group servidor2' })).toHaveAttribute('id', pieceDomId(SG_PIECE.id));
   });
 });

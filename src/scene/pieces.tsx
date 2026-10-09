@@ -74,7 +74,7 @@ export function Building({ spot, shaking, still }: { spot: InstanceSpot; shaking
   );
 }
 
-/** A server's door; its bar pulses while its task card is open, or stays thicker without animations. */
+/** A server's Security Group barrier; its bar pulses while its task card is open, or stays thicker without animations. */
 export function Barrier({ spot, active, still }: { spot: InstanceSpot; active: boolean; still: boolean }) {
   const bar = useRef<Group>(null);
   const [x, z] = spot.barrier;
