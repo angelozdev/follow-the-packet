@@ -1,10 +1,10 @@
 import { checkRules } from '@/engine/simulation/rules';
-import { CONTINUE, groupsOf, stop, type Stage } from '@/engine/simulation/context';
+import { CONTINUE, firewallsOf, stop, type Stage } from '@/engine/simulation/context';
 
 export const sgInStage: Stage = (ctx) => {
   const dest = ctx.dest!;
-  const sgIds = ctx.path === 'private' && ctx.source.instance ? ctx.source.instance.sgIds : [];
-  const { allowed, checks } = checkRules(groupsOf(ctx.net, dest), 'inbound', ctx.packet, { ip: ctx.effectiveSource!, sgIds });
+  const sgIds = ctx.path === 'private' && ctx.source.device ? ctx.source.device.firewallIds : [];
+  const { allowed, checks } = checkRules(firewallsOf(ctx.net, dest), 'inbound', ctx.packet, { ip: ctx.effectiveSource!, sgIds });
   ctx.steps.push({
     stage: 'sg-in',
     at: dest.id,

@@ -11,7 +11,7 @@ export const linuxStage: Stage = (ctx) => {
       ctx.steps.push({ stage: 'linux', at: dest.id, verdict: 'drop', reason: { code: 'linux-unsolicited-icmp', instanceId: dest.id, icmpType: p.icmpType! } });
       return stop('arrived-no-reply');
     }
-    if (dest.linux.ignoreIcmpEcho) {
+    if (dest.host.ignoreIcmpEcho) {
       ctx.steps.push({ stage: 'linux', at: dest.id, verdict: 'drop', reason: { code: 'linux-ignores-echo', instanceId: dest.id } });
       return stop('arrived-no-reply');
     }
@@ -20,7 +20,7 @@ export const linuxStage: Stage = (ctx) => {
   }
 
   if (p.protocol === 'tcp') {
-    if (!dest.linux.listeningTcpPorts.includes(p.port!)) {
+    if (!dest.host.listeningTcpPorts.includes(p.port!)) {
       ctx.tcpdump.push({ instanceId: dest.id, direction: 'Out', src: dest.privateIp, dst: src, summary: `TCP ${p.port} RST` });
       ctx.steps.push({ stage: 'linux', at: dest.id, verdict: 'reject', reason: { code: 'linux-refused', instanceId: dest.id, port: p.port! } });
       return stop('refused');

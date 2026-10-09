@@ -15,7 +15,7 @@ describe('stars', () => {
 
   it('ping from all of internet opens too much', () => {
     const incident = INCIDENTS[0];
-    const wide = applyMove(startWorld(INCIDENTS, incident.id), incident, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
+    const wide = applyMove(startWorld(INCIDENTS, incident.id), incident, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
     expect(isTight(wide, incident.flows)).toBe(false);
   });
 });

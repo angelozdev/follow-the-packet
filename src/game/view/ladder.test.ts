@@ -27,7 +27,7 @@ function sessionsToCheck(incident: Incident): Session[] {
     .filter((piece) => piece.configurable)
     .flatMap((piece) => barrierCard(start, piece.id) ?? []);
   const placed = barriers.flatMap((barrier) =>
-    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', sgId: barrier.sgId, whatId: what.id, fromId: from.id }))),
+    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', firewallId: barrier.firewallId, whatId: what.id, fromId: from.id }))),
   );
   return [start, solved, ...placed];
 }

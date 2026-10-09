@@ -22,8 +22,8 @@ const termIdSchema = z.custom<TermId>((value) => typeof value === 'string' && is
 export const flowKindSchema = z.enum(['required', 'forbidden', 'ambient']);
 
 export const playerMoveSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('placeRule'), sgId: id, whatId: id, fromId: id }),
-  z.object({ type: z.literal('removeRule'), sgId: id, ruleId: id }),
+  z.object({ type: z.literal('placeRule'), firewallId: id, whatId: id, fromId: id }),
+  z.object({ type: z.literal('removeRule'), firewallId: id, ruleId: id }),
 ]);
 
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });

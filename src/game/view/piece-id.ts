@@ -4,8 +4,8 @@ const ID_KINDS = ['server', 'barrier', 'actor', 'packet'] as const;
 const SEPARATOR = ':';
 
 export const PIECE_ID = {
-  server: (instanceId: string) => `server${SEPARATOR}${instanceId}`,
-  barrier: (sgId: string) => `barrier${SEPARATOR}${sgId}`,
+  server: (deviceId: string) => `server${SEPARATOR}${deviceId}`,
+  barrier: (firewallId: string) => `barrier${SEPARATOR}${firewallId}`,
   actor: (actorId: string) => `actor${SEPARATOR}${actorId}`,
   packet: (flowId: string) => `packet${SEPARATOR}${flowId}`,
   gateway: 'gateway',

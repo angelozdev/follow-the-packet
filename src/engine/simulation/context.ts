@@ -1,12 +1,12 @@
-import type { Endpoint, Instance, Network, PacketSpec, SecurityGroup } from '@/engine/network/types';
+import type { Device, Endpoint, Firewall, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, Step, TcpdumpLine } from './trace';
 
 export interface SimContext {
   net: Network;
   packet: PacketSpec;
-  source: { endpoint: Endpoint; id: string; ip: string; inside: boolean; instance?: Instance };
+  source: { endpoint: Endpoint; id: string; ip: string; inside: boolean; device?: Device };
   destIp?: string;
-  dest?: Instance;
+  dest?: Device;
   path?: 'private' | 'public';
   effectiveSource?: string;
   steps: Step[];
@@ -19,8 +19,8 @@ export type Stage = (ctx: SimContext) => StageResult;
 export const CONTINUE: StageResult = { done: false };
 export const stop = (outcome: Outcome): StageResult => ({ done: true, outcome });
 
-export function groupsOf(net: Network, instance: Instance): SecurityGroup[] {
-  return instance.sgIds.flatMap((id) => net.securityGroups.filter((g) => g.id === id));
+export function firewallsOf(net: Network, device: Device): Firewall[] {
+  return device.firewallIds.flatMap((id) => net.firewalls.filter((f) => f.id === id));
 }
 
 export function describePacket(p: Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>): string {

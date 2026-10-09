@@ -8,16 +8,16 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (unknown Security Group or chip, a rule that already exists, a rule id that is not there). */
+/** Applies a player move; returns the same world when the move changes nothing (unknown firewall or chip, a rule that already exists, a rule id that is not there). */
 export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
-  const group = world.securityGroups.find((g) => g.id === move.sgId);
-  if (!group) return world;
+  const firewall = world.firewalls.find((f) => f.id === move.firewallId);
+  if (!firewall) return world;
   if (move.type === 'removeRule') {
-    return group.inbound.some((r) => r.id === move.ruleId) ? applyAction(world, move) : world;
+    return firewall.inbound.some((r) => r.id === move.ruleId) ? applyAction(world, move) : world;
   }
   const rule = ruleFromChips(incident, move.whatId, move.fromId);
-  if (!rule || group.inbound.some((r) => sameRule(r, rule))) return world;
-  return applyAction(world, { type: 'addRule', sgId: move.sgId, rule });
+  if (!rule || firewall.inbound.some((r) => sameRule(r, rule))) return world;
+  return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule });
 }
 
 /** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in course order. */

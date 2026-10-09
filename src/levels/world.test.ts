@@ -12,8 +12,8 @@ function incident(id: string): Incident {
   return found;
 }
 
-function inbound(world: Network, sgId: string) {
-  return world.securityGroups.find((g) => g.id === sgId)?.inbound ?? [];
+function inbound(world: Network, firewallId: string) {
+  return world.firewalls.find((f) => f.id === firewallId)?.inbound ?? [];
 }
 
 const IDS = INCIDENTS.map((i) => [i.id]);
@@ -38,8 +38,8 @@ describe('the world that grows', () => {
 
   it.each(IDS)('%s can name every rule of its Security Groups with its chips', (id) => {
     for (const world of [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)]) {
-      for (const group of world.securityGroups) {
-        for (const rule of group.inbound) expect(chipsOfRule(incident(id), rule), `${group.id}/${rule.id}`).not.toBeNull();
+      for (const firewall of world.firewalls) {
+        for (const rule of firewall.inbound) expect(chipsOfRule(incident(id), rule), `${firewall.id}/${rule.id}`).not.toBeNull();
       }
     }
   });
@@ -48,7 +48,7 @@ describe('the world that grows', () => {
 describe('applyMove', () => {
   const first = incident('04-01');
   const start = startWorld(INCIDENTS, first.id);
-  const place: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
+  const place: PlayerMove = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
 
   it('builds the rule from the chips', () => {
     expect(inbound(applyMove(start, first, place), SG.servidor2)).toEqual([
@@ -64,20 +64,20 @@ describe('applyMove', () => {
   it('placing chips that equal a rule already on the Security Group, with another id, changes nothing', () => {
     const second = incident('04-02');
     const dayShift = startWorld(INCIDENTS, second.id);
-    const sameAsDayShift: PlayerMove = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoReply.id, fromId: FROM.anywhere.id };
+    const sameAsDayShift: PlayerMove = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoReply.id, fromId: FROM.anywhere.id };
     expect(ruleIdFor(WHAT.echoReply.id, FROM.anywhere.id)).not.toBe(DAY_SHIFT_RULE.id);
     expect(applyMove(dayShift, second, sameAsDayShift)).toBe(dayShift);
   });
 
   it('a chip the incident does not offer, or an unknown Security Group, changes nothing', () => {
     expect(applyMove(start, first, { ...place, whatId: WHAT.echoReply.id })).toBe(start);
-    expect(applyMove(start, first, { ...place, sgId: 'sg-ghost' })).toBe(start);
+    expect(applyMove(start, first, { ...place, firewallId: 'sg-ghost' })).toBe(start);
   });
 
   it('removes a rule by its id, and an unknown id changes nothing', () => {
     const once = applyMove(start, first, place);
-    const removed = applyMove(once, first, { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) });
+    const removed = applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) });
     expect(inbound(removed, SG.servidor2)).toEqual([]);
-    expect(applyMove(once, first, { type: 'removeRule', sgId: SG.servidor2, ruleId: 'ghost' })).toBe(once);
+    expect(applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: 'ghost' })).toBe(once);
   });
 });

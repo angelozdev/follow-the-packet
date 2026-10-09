@@ -11,10 +11,10 @@ import type { Outcome, Trace } from './trace';
 export const PIPELINE: Stage[] = [dnsStage, routeStage, sgOutStage, sgInStage, linuxStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
-  if (from.kind === 'instance') {
-    const instance = net.instances.find((i) => i.id === from.id);
-    if (!instance) throw new Error(`unknown instance ${from.id}`);
-    return { endpoint: from, id: instance.id, ip: instance.privateIp, inside: true, instance };
+  if (from.kind === 'device') {
+    const device = net.devices.find((d) => d.id === from.id);
+    if (!device) throw new Error(`unknown device ${from.id}`);
+    return { endpoint: from, id: device.id, ip: device.privateIp, inside: true, device };
   }
   const found = net.actors.find((a) => a.id === from.id);
   if (!found) throw new Error(`unknown actor ${from.id}`);

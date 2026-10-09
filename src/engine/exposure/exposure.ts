@@ -20,17 +20,17 @@ export function withProbeActor(net: Network): Network {
   return { ...net, actors: [...net.actors, PROBE_INTERNET] };
 }
 
-/** Builds the fixed probe battery: from every actor, from the internet and from every instance, to every IP of every other instance. */
+/** Builds the fixed probe battery: from every actor, from the internet and from every device, to every IP of every other device. */
 export function probePackets(net: Network): PacketSpec[] {
   const sources: Endpoint[] = [
     ...net.actors.map((a): Endpoint => ({ kind: 'actor', id: a.id })),
     { kind: 'actor', id: PROBE_INTERNET.id },
-    ...net.instances.map((i): Endpoint => ({ kind: 'instance', id: i.id })),
+    ...net.devices.map((d): Endpoint => ({ kind: 'device', id: d.id })),
   ];
   const packets: PacketSpec[] = [];
   for (const from of sources) {
-    for (const target of net.instances) {
-      if (from.kind === 'instance' && from.id === target.id) continue;
+    for (const target of net.devices) {
+      if (from.kind === 'device' && from.id === target.id) continue;
       const addresses = target.publicIp ? [target.privateIp, target.publicIp] : [target.privateIp];
       for (const to of addresses) for (const service of SERVICES) packets.push({ from, to, ...service });
     }

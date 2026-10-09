@@ -25,12 +25,12 @@ export const PIECE_TERM = {
 
 function barriers(session: Session): PieceView[] {
   const { world } = session;
-  return world.securityGroups.flatMap((group): PieceView[] => {
-    const owner = world.instances.find((instance) => instance.sgIds.includes(group.id));
+  return world.firewalls.flatMap((firewall): PieceView[] => {
+    const owner = world.devices.find((device) => device.firewallIds.includes(firewall.id));
     if (!owner) return [];
-    const configurable = canConfigure(session, group.id);
+    const configurable = canConfigure(session, firewall.id);
     return [
-      { id: PIECE_ID.barrier(group.id), kind: 'barrier', anchorId: owner.id, term: PIECE_TERM.barrier, label: MAP_TEXT.barrier(group.name), locked: !configurable, configurable },
+      { id: PIECE_ID.barrier(firewall.id), kind: 'barrier', anchorId: owner.id, term: PIECE_TERM.barrier, label: MAP_TEXT.barrier(firewall.name), locked: !configurable, configurable },
     ];
   });
 }
@@ -39,8 +39,8 @@ function barriers(session: Session): PieceView[] {
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   return [
-    ...world.instances.map(
-      (instance): PieceView => ({ id: PIECE_ID.server(instance.id), kind: 'server', anchorId: instance.id, term: PIECE_TERM.server, label: instance.name, locked: !parts.linuxSettings, configurable: false }),
+    ...world.devices.map(
+      (device): PieceView => ({ id: PIECE_ID.server(device.id), kind: 'server', anchorId: device.id, term: PIECE_TERM.server, label: device.name, locked: !parts.hostSettings, configurable: false }),
     ),
     ...barriers(session),
     ...world.actors.map(

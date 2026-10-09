@@ -1,4 +1,4 @@
-import type { Endpoint, Instance, Network, PacketSpec, Rule } from '@/engine';
+import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
 import type { Flow, FromChip, WhatChip } from '@/levels/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
@@ -14,15 +14,15 @@ export const S1 = { id: 'servidor1', private: '172.31.16.131', public: '54.78.15
 export const S2 = { id: 'servidor2', private: '172.31.38.97', public: '34.244.254.100' } as const;
 export const SG = { servidor1: 'sg-servidor1', servidor2: 'sg-servidor2' } as const;
 
-function server(ips: { id: string; private: string; public: string }, subnetId: string, sgId: string): Instance {
+function server(ips: { id: string; private: string; public: string }, subnetId: string, sgId: string): Device {
   return {
     id: ips.id,
     name: ips.id,
     subnetId,
     privateIp: ips.private,
     publicIp: ips.public,
-    sgIds: [sgId],
-    linux: { ignoreIcmpEcho: false, listeningTcpPorts: [SSH_PORT] },
+    firewallIds: [sgId],
+    host: { ignoreIcmpEcho: false, listeningTcpPorts: [SSH_PORT] },
   };
 }
 
@@ -32,13 +32,13 @@ function allOutbound(id: string): Rule {
 
 export const BASE_WORLD: Network = {
   region: REGION,
-  vpcCidr: VPC_CIDR,
+  cidr: VPC_CIDR,
   subnets: [
     { id: 'subnet-a', az: 'eu-west-1a', cidr: '172.31.16.0/20' },
     { id: 'subnet-b', az: 'eu-west-1b', cidr: '172.31.32.0/20' },
   ],
-  instances: [server(S1, 'subnet-a', SG.servidor1), server(S2, 'subnet-b', SG.servidor2)],
-  securityGroups: [
+  devices: [server(S1, 'subnet-a', SG.servidor1), server(S2, 'subnet-b', SG.servidor2)],
+  firewalls: [
     { id: SG.servidor1, name: S1.id, inbound: [], outbound: [allOutbound('all-out-servidor1')] },
     { id: SG.servidor2, name: S2.id, inbound: [], outbound: [allOutbound('all-out-servidor2')] },
   ],
@@ -50,7 +50,7 @@ function ping(from: Endpoint, to: string): PacketSpec {
 }
 
 export const FLOWS = {
-  pingToServer2: { id: 'ping-servidor1-servidor2', kind: 'required', packet: ping({ kind: 'instance', id: S1.id }, S2.private) },
+  pingToServer2: { id: 'ping-servidor1-servidor2', kind: 'required', packet: ping({ kind: 'device', id: S1.id }, S2.private) },
   attackerPing: { id: 'ping-attacker-servidor2', kind: 'forbidden', packet: ping({ kind: 'actor', id: ATTACKER.id }, S2.public) },
 } satisfies Record<string, Flow>;
 

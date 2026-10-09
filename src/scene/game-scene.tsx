@@ -46,8 +46,8 @@ export function GameScene({ world, pieces, flows, intrudedServerIds, still, acti
           <Sheet layout={layout} />
           <Road layout={layout} />
           <Gateway position={layout.igw} />
-          {world.instances.map((instance) => (
-            <Building key={instance.id} spot={layout.instances[instance.id]} shaking={intrudedServerIds.has(instance.id)} still={still} />
+          {world.devices.map((device) => (
+            <Building key={device.id} spot={layout.instances[device.id]} shaking={intrudedServerIds.has(device.id)} still={still} />
           ))}
           {pieces
             .filter((piece) => piece.kind === 'barrier')

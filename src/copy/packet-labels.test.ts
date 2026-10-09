@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
-import { actor, inst, lab03Net, ping } from '@/testing';
+import { actor, device, lab03Net, ping } from '@/testing';
 import { endpointName, packetLabel, serviceLabel } from './packet-labels';
 
 const NET = lab03Net();
 
 describe('packet labels', () => {
   it('name the service, the source and the destination server', () => {
-    const packet = ping(inst('servidor1'), '172.31.38.97');
+    const packet = ping(device('servidor1'), '172.31.38.97');
     expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a servidor2');
   });
 
@@ -18,7 +18,7 @@ describe('packet labels', () => {
   });
 
   it('keep the address when the packet reached no server', () => {
-    const packet = ping(inst('servidor1'), 'no-existe.example');
+    const packet = ping(device('servidor1'), 'no-existe.example');
     expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a no-existe.example');
   });
 

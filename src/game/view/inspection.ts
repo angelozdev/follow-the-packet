@@ -1,5 +1,5 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, type TermId, type TermText } from '@/copy';
-import { privateDnsName, publicDnsName, stopStep, type Actor, type Instance, type PacketSpec, type SecurityGroup } from '@/engine';
+import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type PacketSpec } from '@/engine';
 import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './barrier';
@@ -36,33 +36,33 @@ function packetTerm(packet: PacketSpec): TermId | null {
   return packet.protocol === 'icmp' && packet.icmpType !== undefined ? ICMP_MESSAGE_TERM[packet.icmpType] : null;
 }
 
-function server(session: Session, instance: Instance): Inspection {
-  const { region, securityGroups } = session.world;
-  const groups = securityGroups.filter((group) => instance.sgIds.includes(group.id));
+function server(session: Session, device: Device): Inspection {
+  const { region, firewalls } = session.world;
+  const own = firewalls.filter((firewall) => device.firewallIds.includes(firewall.id));
   return {
-    title: instance.name,
+    title: device.name,
     fields: visible(
       [
         whatIs(PIECE_TERM.server),
-        { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [instance.privateIp] },
-        { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [instance.publicIp ?? INSPECTION_TEXT.none] },
+        { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [device.privateIp] },
+        { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [device.publicIp ?? INSPECTION_TEXT.none] },
         {
           term: 'dns',
           label: INSPECTION_TEXT.dnsNames,
-          lines: () => [...(instance.publicIp ? [publicDnsName(instance.publicIp, region)] : []), privateDnsName(instance.privateIp, region)],
+          lines: () => [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)],
         },
-        { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [instance.linux.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
-        { term: 'security-group', label: INSPECTION_TEXT.securityGroups, lines: () => groups.map((group) => MAP_TEXT.barrier(group.name)) },
+        { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [device.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
+        { term: 'security-group', label: INSPECTION_TEXT.securityGroups, lines: () => own.map((firewall) => MAP_TEXT.barrier(firewall.name)) },
       ],
       session.known,
     ),
   };
 }
 
-function barrier(session: Session, group: SecurityGroup): Inspection {
-  const rows = ruleRows(group, session.incident);
+function barrier(session: Session, firewall: Firewall): Inspection {
+  const rows = ruleRows(firewall, session.incident);
   return {
-    title: MAP_TEXT.barrier(group.name),
+    title: MAP_TEXT.barrier(firewall.name),
     fields: visible(
       [whatIs(PIECE_TERM.barrier), { term: 'inbound-rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }],
       session.known,
@@ -111,11 +111,11 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
   const { world, runs } = session;
   switch (ref.kind) {
     case 'server': {
-      const found = world.instances.find((instance) => instance.id === ref.id);
+      const found = world.devices.find((device) => device.id === ref.id);
       return found ? server(session, found) : null;
     }
     case 'barrier': {
-      const found = world.securityGroups.find((group) => group.id === ref.id);
+      const found = world.firewalls.find((firewall) => firewall.id === ref.id);
       return found ? barrier(session, found) : null;
     }
     case 'actor': {

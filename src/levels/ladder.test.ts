@@ -4,7 +4,7 @@ import type { Incident } from './incident';
 import { configurableParts, incidentTexts, knownTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 
-const ONLY_INBOUND = { inboundRules: true, outboundRules: false, linuxSettings: false };
+const ONLY_INBOUND = { inboundRules: true, outboundRules: false, hostSettings: false };
 const ALL_TERMS = Object.keys(TERMS) as TermId[];
 const BY_INCIDENT = INCIDENTS.map((i): [string, Incident] => [i.id, i]);
 
@@ -47,8 +47,8 @@ describe('term ladder', () => {
     for (const incident of INCIDENTS) expect(configurableParts(knownTerms(INCIDENTS, incident.id))).toEqual(ONLY_INBOUND);
   });
 
-  it('outbound rules and the Linux setting open with their own terms', () => {
+  it('outbound rules and the host setting open with their own terms', () => {
     const later = new Set<TermId>(['inbound-rule', 'outbound-rule', 'icmp-echo-ignore-all']);
-    expect(configurableParts(later)).toEqual({ inboundRules: true, outboundRules: true, linuxSettings: true });
+    expect(configurableParts(later)).toEqual({ inboundRules: true, outboundRules: true, hostSettings: true });
   });
 });

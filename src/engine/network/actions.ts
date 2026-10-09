@@ -3,10 +3,10 @@ import { ruleSchema } from './schema';
 import type { Network } from './types';
 
 export const networkActionSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('addRule'), sgId: z.string().min(1), rule: ruleSchema }),
-  z.object({ type: z.literal('removeRule'), sgId: z.string().min(1), ruleId: z.string().min(1) }),
-  z.object({ type: z.literal('setAppTarget'), instanceId: z.string().min(1), target: z.string().min(1) }),
-  z.object({ type: z.literal('setIgnoreIcmpEcho'), instanceId: z.string().min(1), value: z.boolean() }),
+  z.object({ type: z.literal('addRule'), firewallId: z.string().min(1), rule: ruleSchema }),
+  z.object({ type: z.literal('removeRule'), firewallId: z.string().min(1), ruleId: z.string().min(1) }),
+  z.object({ type: z.literal('setAppTarget'), deviceId: z.string().min(1), target: z.string().min(1) }),
+  z.object({ type: z.literal('setIgnoreIcmpEcho'), deviceId: z.string().min(1), value: z.boolean() }),
 ]);
 
 export type NetworkAction = z.infer<typeof networkActionSchema>;
@@ -16,23 +16,21 @@ export function applyAction(net: Network, action: NetworkAction): Network {
     case 'addRule':
       return {
         ...net,
-        securityGroups: net.securityGroups.map((g) => (g.id === action.sgId ? { ...g, inbound: [...g.inbound, action.rule] } : g)),
+        firewalls: net.firewalls.map((f) => (f.id === action.firewallId ? { ...f, inbound: [...f.inbound, action.rule] } : f)),
       };
     case 'removeRule':
       return {
         ...net,
-        securityGroups: net.securityGroups.map((g) =>
-          g.id === action.sgId ? { ...g, inbound: g.inbound.filter((r) => r.id !== action.ruleId) } : g,
+        firewalls: net.firewalls.map((f) =>
+          f.id === action.firewallId ? { ...f, inbound: f.inbound.filter((r) => r.id !== action.ruleId) } : f,
         ),
       };
     case 'setAppTarget':
-      return { ...net, instances: net.instances.map((i) => (i.id === action.instanceId ? { ...i, appTarget: action.target } : i)) };
+      return { ...net, devices: net.devices.map((d) => (d.id === action.deviceId ? { ...d, appTarget: action.target } : d)) };
     case 'setIgnoreIcmpEcho':
       return {
         ...net,
-        instances: net.instances.map((i) =>
-          i.id === action.instanceId ? { ...i, linux: { ...i.linux, ignoreIcmpEcho: action.value } } : i,
-        ),
+        devices: net.devices.map((d) => (d.id === action.deviceId ? { ...d, host: { ...d.host, ignoreIcmpEcho: action.value } } : d)),
       };
   }
 }

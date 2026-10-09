@@ -6,6 +6,15 @@ import { applyMove, solvedWorld, startWorld } from '@/levels/world';
 
 const CHAPTER = 4;
 const FIXTURE = './golden-traces.json';
+const RECORDED_VALUES = new Map([['device', 'instance']]);
+
+function recorded(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(recorded);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, recorded(inner)]));
+  }
+  return typeof value === 'string' ? (RECORDED_VALUES.get(value) ?? value) : value;
+}
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -18,11 +27,11 @@ function canonical(value: unknown): unknown {
 
 function worlds(incident: Incident): [string, Network][] {
   const start = startWorld(INCIDENTS, incident.id);
-  const placed = start.securityGroups.flatMap((group) =>
+  const placed = start.firewalls.flatMap((firewall) =>
     incident.chips.what.flatMap((what) =>
       incident.chips.from.map((from): [string, Network] => [
-        `start+${group.id}:${what.id}<-${from.id}`,
-        applyMove(start, incident, { type: 'placeRule', sgId: group.id, whatId: what.id, fromId: from.id }),
+        `start+${firewall.id}:${what.id}<-${from.id}`,
+        applyMove(start, incident, { type: 'placeRule', firewallId: firewall.id, whatId: what.id, fromId: from.id }),
       ]),
     ),
   );
@@ -42,7 +51,7 @@ function references(): [string, unknown][] {
 }
 
 function serialize(entries: [string, unknown][]): string {
-  return `{\n${entries.map(([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(canonical(value))}`).join(',\n')}\n}\n`;
+  return `{\n${entries.map(([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(canonical(recorded(value)))}`).join(',\n')}\n}\n`;
 }
 
 describe('chapter 4 golden traces', () => {

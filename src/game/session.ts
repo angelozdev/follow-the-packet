@@ -60,9 +60,9 @@ export function startSession(incidents: Incident[], incidentId: string): Session
   };
 }
 
-/** True when an instance has this Security Group, so it is on the map, and the ladder lets the player change its inbound rules. */
-export function canConfigure(session: Session, sgId: string): boolean {
-  return session.parts.inboundRules && session.world.instances.some((instance) => instance.sgIds.includes(sgId));
+/** True when a device has this firewall, so it is on the map, and the ladder lets the player change its inbound rules. */
+export function canConfigure(session: Session, firewallId: string): boolean {
+  return session.parts.inboundRules && session.world.devices.some((device) => device.firewallIds.includes(firewallId));
 }
 
 /** True while a forbidden flow reaches its server. */
@@ -71,7 +71,7 @@ export function isIntruding(session: Session): boolean {
 }
 
 function move(state: Session, action: PlayerMove): Session {
-  if (state.phase !== 'playing' || !canConfigure(state, action.sgId)) return state;
+  if (state.phase !== 'playing' || !canConfigure(state, action.firewallId)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
   const runs = runFlows(world, state.incident.flows);

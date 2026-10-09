@@ -10,7 +10,7 @@ import { pieceViews } from './pieces';
 const WHAT_IS = 'Qué es';
 const ATTACKER_BLOCKED = ['Resultado', 'No llegó: no volvió ninguna respuesta.'];
 const first = startSession(INCIDENTS, '04-01');
-const fixed = sessionReducer(first, { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
+const fixed = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
 
 function plain(inspection: Inspection | null) {
   return inspection && { title: toPlainText(inspection.title), fields: inspection.fields.map((f) => [toPlainText(f.label), ...f.lines.map(toPlainText)]) };

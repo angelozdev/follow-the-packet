@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actor, inst, lab03Net, ping } from '@/testing';
+import { actor, device, lab03Net, ping } from '@/testing';
 import { incidentSchema, ruleIdFor } from './incident';
 
 const VALID: Record<string, unknown> = {
@@ -15,7 +15,7 @@ const VALID: Record<string, unknown> = {
   report: 'El {{ping}} falla.',
   tasks: [{ id: 'task', text: 'Que vuelva el {{ping}}.', flowIds: ['wanted', 'unwanted'] }],
   flows: [
-    { id: 'wanted', kind: 'required', packet: ping(inst('servidor1'), '172.31.38.97') },
+    { id: 'wanted', kind: 'required', packet: ping(device('servidor1'), '172.31.38.97') },
     { id: 'unwanted', kind: 'forbidden', packet: ping(actor('attacker'), '34.244.254.100') },
   ],
   chips: {
@@ -28,7 +28,7 @@ const VALID: Record<string, unknown> = {
     { text: 'B', feedback: 'b', correct: true },
     { text: 'C', feedback: 'c', correct: false },
   ],
-  solution: [{ type: 'placeRule', sgId: 'sg-servidor2', whatId: 'echo', fromId: 'one' }],
+  solution: [{ type: 'placeRule', firewallId: 'sg-servidor2', whatId: 'echo', fromId: 'one' }],
   takeaway: 'Una idea.',
 };
 
@@ -39,7 +39,7 @@ const BROKEN: [string, Record<string, unknown>][] = [
   ['a task with an unknown flow', { tasks: [{ id: 'task', text: 'x', flowIds: ['wanted', 'unwanted', 'ghost'] }] }],
   ['a forbidden flow outside every task', { tasks: [{ id: 'task', text: 'x', flowIds: ['wanted'] }] }],
   ['a task without a required flow', { tasks: [{ id: 'task', text: 'x', flowIds: ['unwanted'] }, { id: 'other', text: 'y', flowIds: ['wanted'] }] }],
-  ['a solution with a chip it does not offer', { solution: [{ type: 'placeRule', sgId: 'sg-servidor2', whatId: 'ghost', fromId: 'one' }] }],
+  ['a solution with a chip it does not offer', { solution: [{ type: 'placeRule', firewallId: 'sg-servidor2', whatId: 'ghost', fromId: 'one' }] }],
   ['an unknown term tag', { report: 'El {{firewall}} falla.' }],
   ['a term tag with capitals', { report: 'La {{Security-Group}} falla.' }],
   ['a term tag with an underscore', { report: 'La {{security_group}} falla.' }],

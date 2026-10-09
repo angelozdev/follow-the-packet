@@ -1,5 +1,5 @@
 import { ipInCidr } from '@/engine/network/cidr';
-import type { PacketSpec, RulePeer, RuleWhat, SecurityGroup } from '@/engine/network/types';
+import type { Firewall, PacketSpec, RulePeer, RuleWhat } from '@/engine/network/types';
 import type { RuleCheck } from './trace';
 
 type PacketKind = Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>;
@@ -25,16 +25,16 @@ export function matchesPeer(peer: RulePeer, ctx: PeerContext): boolean {
   return peer.kind === 'cidr' ? ipInCidr(ctx.ip, peer.cidr) : ctx.sgIds.includes(peer.sgId);
 }
 
-/** Checks a packet against every rule of the given groups; allowed when one rule matches both what and from. */
+/** Checks a packet against every rule of the given firewalls; allowed when one rule matches both what and from. */
 export function checkRules(
-  groups: SecurityGroup[],
+  firewalls: Firewall[],
   direction: 'inbound' | 'outbound',
   packet: PacketKind,
   ctx: PeerContext,
 ): { allowed: boolean; checks: RuleCheck[] } {
-  const checks = groups.flatMap((group) =>
-    group[direction].map((rule) => ({
-      sgId: group.id,
+  const checks = firewalls.flatMap((firewall) =>
+    firewall[direction].map((rule) => ({
+      sgId: firewall.id,
       ruleId: rule.id,
       what: matchesWhat(rule.what, packet),
       from: matchesPeer(rule.peer, ctx),

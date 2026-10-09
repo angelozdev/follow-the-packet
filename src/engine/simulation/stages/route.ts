@@ -5,12 +5,12 @@ export const routeStage: Stage = (ctx) => {
   const { net, source } = ctx;
   const destIp = ctx.destIp!;
 
-  if (ipInCidr(destIp, net.vpcCidr)) {
+  if (ipInCidr(destIp, net.cidr)) {
     if (!source.inside) {
       ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-private-from-outside', ip: destIp } });
       return stop('timeout');
     }
-    const dest = net.instances.find((i) => i.privateIp === destIp);
+    const dest = net.devices.find((d) => d.privateIp === destIp);
     if (!dest) {
       ctx.steps.push({ stage: 'route', at: 'vpc', verdict: 'drop', reason: { code: 'route-no-private-instance', ip: destIp } });
       return stop('timeout');
@@ -22,15 +22,15 @@ export const routeStage: Stage = (ctx) => {
     return CONTINUE;
   }
 
-  const dest = net.instances.find((i) => i.publicIp === destIp);
+  const dest = net.devices.find((d) => d.publicIp === destIp);
   if (!dest) {
     ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-instance', ip: destIp } });
     return stop('timeout');
   }
-  if (source.instance) {
-    const publicIp = source.instance.publicIp;
+  if (source.device) {
+    const publicIp = source.device.publicIp;
     if (!publicIp) {
-      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-ip', instanceId: source.instance.id } });
+      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-ip', instanceId: source.device.id } });
       return stop('timeout');
     }
     ctx.effectiveSource = publicIp;

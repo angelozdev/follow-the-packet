@@ -3,12 +3,12 @@ import type { TermText } from './term-text';
 
 const INTERNET_NAME = 'Internet';
 
-export function instanceName(net: Network, instanceId: string): string {
-  return net.instances.find((i) => i.id === instanceId)?.name ?? instanceId;
+export function deviceName(net: Network, deviceId: string): string {
+  return net.devices.find((d) => d.id === deviceId)?.name ?? deviceId;
 }
 
 export function endpointName(endpoint: Endpoint, net: Network): string {
-  if (endpoint.kind === 'instance') return instanceName(net, endpoint.id);
+  if (endpoint.kind === 'device') return deviceName(net, endpoint.id);
   return net.actors.find((a) => a.id === endpoint.id)?.name ?? INTERNET_NAME;
 }
 
@@ -18,9 +18,9 @@ export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icm
   return `${packet.protocol.toUpperCase()} ${packet.port}`;
 }
 
-/** Describes a packet as what, from whom and to whom, naming the server the trace reached or else the address it was sent to. */
+/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network): TermText {
-  const to = trace.destinationId ? instanceName(net, trace.destinationId) : packet.to;
+  const to = trace.destinationId ? deviceName(net, trace.destinationId) : packet.to;
   return `${serviceLabel(packet)} de ${endpointName(packet.from, net)} a ${to}`;
 }
 

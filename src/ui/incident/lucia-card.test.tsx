@@ -10,8 +10,8 @@ import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { LuciaCard } from './lucia-card';
 
 const FIRST = INCIDENTS[0];
-const FIX: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
-const WIDE: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id };
+const FIX: SessionAction = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
+const WIDE: SessionAction = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id };
 const SUBMIT: SessionAction = { type: 'submit' };
 const NOT_YET = toPlainText(LUCIA_TEXT.failing(FIRST.tasks[0].text));
 

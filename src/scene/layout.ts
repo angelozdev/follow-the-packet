@@ -46,9 +46,9 @@ const LABEL = { serverY: 1.75, barrierY: 0.1, barrierDz: 0.8, actorY: 0.05, acto
 const CARD_Y = 0.5;
 const STAMP_SPREAD = 0.8;
 
-/** Lays out one column per subnet, the instances of each subnet in a row, and the internet on the left. */
+/** Lays out one column per subnet, the devices of each subnet in a row, and the internet on the left. */
 export function computeLayout(net: Network): Layout {
-  const widths = net.subnets.map((s) => Math.max(MIN_COLUMN, net.instances.filter((i) => i.subnetId === s.id).length * GAP + 1));
+  const widths = net.subnets.map((s) => Math.max(MIN_COLUMN, net.devices.filter((d) => d.subnetId === s.id).length * GAP + 1));
   const total = widths.reduce((a, b) => a + b, 0);
   const sheetWidth = total + 2;
   const subnets: Record<string, SubnetSpot> = {};
@@ -59,10 +59,10 @@ export function computeLayout(net: Network): Layout {
     const cx = cursor + width / 2;
     cursor += width;
     subnets[subnet.id] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
-    const own = net.instances.filter((i) => i.subnetId === subnet.id);
-    own.forEach((instance, k) => {
+    const own = net.devices.filter((d) => d.subnetId === subnet.id);
+    own.forEach((device, k) => {
       const x = cx + (k - (own.length - 1) / 2) * GAP;
-      instances[instance.id] = { x, z: BUILDING_Z, barrier: [x, BARRIER_Z], door: [x, DOOR_Z], road: [x, ROAD_Z] };
+      instances[device.id] = { x, z: BUILDING_Z, barrier: [x, BARRIER_Z], door: [x, DOOR_Z], road: [x, ROAD_Z] };
     });
   });
   const igw: Vec2 = [-sheetWidth / 2 - GATEWAY_MARGIN, ROAD_Z];
@@ -99,9 +99,9 @@ export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, l
   }
 }
 
-/** Returns where the task card of the Security Group of this instance is anchored. */
-export function cardAnchorPosition(instanceId: string, layout: Layout): Vec3 {
-  const [x, z] = layout.instances[instanceId].barrier;
+/** Returns where the task card of the firewall of this device is anchored. */
+export function cardAnchorPosition(deviceId: string, layout: Layout): Vec3 {
+  const [x, z] = layout.instances[deviceId].barrier;
   return [x, CARD_Y, z];
 }
 
@@ -114,7 +114,7 @@ export function sideForNdc(ndcX: number): CardSide {
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[] {
   const points: Vec2[] = [];
   const from = packet.from;
-  const source = from.kind === 'instance' ? layout.instances[from.id] : undefined;
+  const source = from.kind === 'device' ? layout.instances[from.id] : undefined;
   if (source) points.push(source.door, source.barrier, source.road);
   else points.push(layout.actors[from.id] ?? layout.igw);
 

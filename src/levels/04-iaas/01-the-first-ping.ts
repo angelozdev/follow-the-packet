@@ -36,6 +36,6 @@ export default defineIncident({
       correct: false,
     },
   ],
-  solution: [{ type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id }],
+  solution: [{ type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id }],
   takeaway: 'El {{security-group}} de una {{ec2-instance}} solo deja pasar lo que una {{inbound-rule}} permite: Type + Source.',
 });

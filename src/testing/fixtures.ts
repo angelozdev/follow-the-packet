@@ -1,4 +1,4 @@
-import type { Endpoint, Instance, Network, PacketSpec, Rule } from '@/engine';
+import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
 
 export const YOU_IP = '198.51.100.7';
 export const ATTACKER_IP = '203.0.113.66';
@@ -15,29 +15,29 @@ export const echoFrom = (id: string, sgId: string, icmpType: 0 | 8 = 8): Rule =>
   peer: { kind: 'sg', sgId },
 });
 
-export const inst = (id: string): Endpoint => ({ kind: 'instance', id });
+export const device = (id: string): Endpoint => ({ kind: 'device', id });
 export const actor = (id: string): Endpoint => ({ kind: 'actor', id });
 export const ping = (from: Endpoint, to: string): PacketSpec => ({ from, to, protocol: 'icmp', icmpType: 8 });
 export const tcp = (from: Endpoint, to: string, port: number): PacketSpec => ({ from, to, protocol: 'tcp', port });
 
-/** Returns the lab 03 network: two servers in different availability zones, SSH only from your Mac. */
+/** Returns the lab 03 network: two EC2 instances in different availability zones, SSH only from your Mac. */
 export function lab03Net(): Network {
   return {
     region: 'eu-west-1',
-    vpcCidr: '172.31.0.0/16',
+    cidr: '172.31.0.0/16',
     subnets: [
       { id: 'subnet-a', az: 'eu-west-1a', cidr: '172.31.16.0/20' },
       { id: 'subnet-b', az: 'eu-west-1b', cidr: '172.31.32.0/20' },
     ],
-    instances: [
+    devices: [
       {
         id: 'servidor1',
         name: 'servidor1',
         subnetId: 'subnet-a',
         privateIp: '172.31.16.131',
         publicIp: '54.78.154.66',
-        sgIds: ['sg-servidor1'],
-        linux: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
+        firewallIds: ['sg-servidor1'],
+        host: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
       },
       {
         id: 'servidor2',
@@ -45,11 +45,11 @@ export function lab03Net(): Network {
         subnetId: 'subnet-b',
         privateIp: '172.31.38.97',
         publicIp: '34.244.254.100',
-        sgIds: ['sg-servidor2'],
-        linux: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
+        firewallIds: ['sg-servidor2'],
+        host: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
       },
     ],
-    securityGroups: [
+    firewalls: [
       { id: 'sg-servidor1', name: 'servidor1', inbound: [sshFromYou('ssh-1')], outbound: [allOut('out-1')] },
       { id: 'sg-servidor2', name: 'servidor2', inbound: [sshFromYou('ssh-2')], outbound: [allOut('out-2')] },
       {
@@ -66,13 +66,13 @@ export function lab03Net(): Network {
   };
 }
 
-export function withInbound(net: Network, sgId: string, ...rules: Rule[]): Network {
+export function withInbound(net: Network, firewallId: string, ...rules: Rule[]): Network {
   return {
     ...net,
-    securityGroups: net.securityGroups.map((g) => (g.id === sgId ? { ...g, inbound: [...g.inbound, ...rules] } : g)),
+    firewalls: net.firewalls.map((f) => (f.id === firewallId ? { ...f, inbound: [...f.inbound, ...rules] } : f)),
   };
 }
 
-export function withInstance(net: Network, id: string, patch: Partial<Instance>): Network {
-  return { ...net, instances: net.instances.map((i) => (i.id === id ? { ...i, ...patch } : i)) };
+export function withDevice(net: Network, id: string, patch: Partial<Device>): Network {
+  return { ...net, devices: net.devices.map((d) => (d.id === id ? { ...d, ...patch } : d)) };
 }

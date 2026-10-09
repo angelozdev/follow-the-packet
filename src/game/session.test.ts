@@ -7,13 +7,13 @@ import { countStars } from './stars';
 
 const FIRST = INCIDENTS[0];
 const FULL_STARS = 3;
-const place = (sgId: string, whatId: string, fromId: string): SessionAction => ({ type: 'placeRule', sgId, whatId, fromId });
-const remove = (sgId: string, whatId: string, fromId: string): SessionAction => ({ type: 'removeRule', sgId, ruleId: ruleIdFor(whatId, fromId) });
+const place = (firewallId: string, whatId: string, fromId: string): SessionAction => ({ type: 'placeRule', firewallId, whatId, fromId });
+const remove = (firewallId: string, whatId: string, fromId: string): SessionAction => ({ type: 'removeRule', firewallId, ruleId: ruleIdFor(whatId, fromId) });
 const FIX = place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id);
 const WIDE = place(SG.servidor2, WHAT.echoRequest.id, FROM.anywhere.id);
 const UNWIDE = remove(SG.servidor2, WHAT.echoRequest.id, FROM.anywhere.id);
 const SUBMIT: SessionAction = { type: 'submit' };
-const DROP_DAY_SHIFT: SessionAction = { type: 'removeRule', sgId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id };
+const DROP_DAY_SHIFT: SessionAction = { type: 'removeRule', firewallId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id };
 const choose = (index: number): SessionAction => ({ type: 'chooseExplanation', index });
 const RIGHT = FIRST.explanation.findIndex((option) => option.correct);
 const WRONG = FIRST.explanation.findIndex((option) => !option.correct);

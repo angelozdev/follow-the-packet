@@ -1,19 +1,19 @@
 import { checkRules } from '@/engine/simulation/rules';
-import { CONTINUE, groupsOf, stop, type Stage } from '@/engine/simulation/context';
+import { CONTINUE, firewallsOf, stop, type Stage } from '@/engine/simulation/context';
 
 export const sgOutStage: Stage = (ctx) => {
-  const instance = ctx.source.instance;
-  if (!instance) return CONTINUE;
+  const device = ctx.source.device;
+  if (!device) return CONTINUE;
   const dest = ctx.dest!;
-  const { allowed, checks } = checkRules(groupsOf(ctx.net, instance), 'outbound', ctx.packet, {
+  const { allowed, checks } = checkRules(firewallsOf(ctx.net, device), 'outbound', ctx.packet, {
     ip: ctx.destIp!,
-    sgIds: ctx.path === 'private' ? dest.sgIds : [],
+    sgIds: ctx.path === 'private' ? dest.firewallIds : [],
   });
   ctx.steps.push({
     stage: 'sg-out',
-    at: instance.id,
+    at: device.id,
     verdict: allowed ? 'pass' : 'drop',
-    reason: { code: allowed ? 'sg-out-pass' : 'sg-out-drop', instanceId: instance.id },
+    reason: { code: allowed ? 'sg-out-pass' : 'sg-out-drop', instanceId: device.id },
     checks,
   });
   return allowed ? CONTINUE : stop('timeout');

@@ -4,7 +4,7 @@ import type { Incident } from './incident';
 export interface ConfigurableParts {
   inboundRules: boolean;
   outboundRules: boolean;
-  linuxSettings: boolean;
+  hostSettings: boolean;
 }
 
 /** Returns every term introduced by the incident and the ones before it; incidents come in course order. */
@@ -19,7 +19,7 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   return {
     inboundRules: known.has('inbound-rule'),
     outboundRules: known.has('outbound-rule'),
-    linuxSettings: known.has('icmp-echo-ignore-all'),
+    hostSettings: known.has('icmp-echo-ignore-all'),
   };
 }
 

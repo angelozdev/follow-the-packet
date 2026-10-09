@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actor, echoFrom, inst, lab03Net, ping, withInbound } from '@/testing';
+import { actor, device, echoFrom, lab03Net, ping, withInbound } from '@/testing';
 import { simulate } from '@/engine/simulation/simulate';
 import { cardAnchorPosition, computeLayout, cumulativeLengths, labelPosition, layoutCenter, pathFor, pathLength, pointAt, roundTrip, sideForNdc, spreadStamps } from './layout';
 
@@ -33,14 +33,14 @@ describe('pathFor', () => {
   const layout = computeLayout(net);
 
   it('step 3: ends at the barrier of servidor2', () => {
-    const packet = ping(inst('servidor1'), S2);
+    const packet = ping(device('servidor1'), S2);
     const path = pathFor(simulate(net, packet), packet, layout);
     expect(path.at(-1)).toEqual(layout.instances.servidor2.barrier);
   });
 
   it('step 5: reaches the door of servidor2', () => {
     const solved = withInbound(net, 'sg-servidor2', echoFrom('echo', 'sg-servidor1'));
-    const packet = ping(inst('servidor1'), S2);
+    const packet = ping(device('servidor1'), S2);
     const path = pathFor(simulate(solved, packet), packet, layout);
     expect(path.at(-1)).toEqual(layout.instances.servidor2.door);
   });

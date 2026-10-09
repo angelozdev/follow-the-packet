@@ -62,11 +62,11 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           overlay={
             card && (
               <TaskCard
-                key={card.sgId}
+                key={card.firewallId}
                 card={card}
                 chips={session.incident.chips}
-                onPlace={(whatId, fromId) => dispatch({ type: 'placeRule', sgId: card.sgId, whatId, fromId })}
-                onRemove={(ruleId) => dispatch({ type: 'removeRule', sgId: card.sgId, ruleId })}
+                onPlace={(whatId, fromId) => dispatch({ type: 'placeRule', firewallId: card.firewallId, whatId, fromId })}
+                onRemove={(ruleId) => dispatch({ type: 'removeRule', firewallId: card.firewallId, ruleId })}
                 onClose={closeCard}
               />
             )

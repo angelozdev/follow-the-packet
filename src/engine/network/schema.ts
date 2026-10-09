@@ -28,21 +28,21 @@ export const rulePeerSchema = z.discriminatedUnion('kind', [
 
 export const ruleSchema = z.object({ id: z.string().min(1), what: ruleWhatSchema, peer: rulePeerSchema });
 
-export const securityGroupSchema = z.object({
+export const firewallSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   inbound: z.array(ruleSchema),
   outbound: z.array(ruleSchema),
 });
 
-export const instanceSchema = z.object({
+export const deviceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   subnetId: z.string().min(1),
   privateIp: ip,
   publicIp: ip.optional(),
-  sgIds: z.array(z.string().min(1)),
-  linux: z.object({ ignoreIcmpEcho: z.boolean(), listeningTcpPorts: z.array(port) }),
+  firewallIds: z.array(z.string().min(1)),
+  host: z.object({ ignoreIcmpEcho: z.boolean(), listeningTcpPorts: z.array(port) }),
   appTarget: z.string().min(1).optional(),
 });
 
@@ -66,46 +66,46 @@ function safeInCidr(value: string, range: string): boolean {
 export const networkSchema = z
   .object({
     region: z.string().min(1),
-    vpcCidr: cidr,
+    cidr,
     subnets: z.array(subnetSchema).min(1),
-    instances: z.array(instanceSchema),
-    securityGroups: z.array(securityGroupSchema),
+    devices: z.array(deviceSchema),
+    firewalls: z.array(firewallSchema),
     actors: z.array(actorSchema),
   })
   .superRefine((net, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: 'custom', message });
     const ids = [
       ...net.subnets.map((s) => s.id),
-      ...net.instances.map((i) => i.id),
-      ...net.securityGroups.map((g) => g.id),
+      ...net.devices.map((d) => d.id),
+      ...net.firewalls.map((f) => f.id),
       ...net.actors.map((a) => a.id),
     ];
     const repeated = ids.find((id, index) => ids.indexOf(id) !== index);
     if (repeated) fail(`duplicate id: ${repeated}`);
     for (const subnet of net.subnets) {
-      if (!safeInCidr(subnet.cidr.split('/')[0], net.vpcCidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
+      if (!safeInCidr(subnet.cidr.split('/')[0], net.cidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
     }
-    for (const instance of net.instances) {
-      const subnet = net.subnets.find((s) => s.id === instance.subnetId);
-      if (!subnet) fail(`${instance.id}: subnet ${instance.subnetId} does not exist`);
-      else if (!safeInCidr(instance.privateIp, subnet.cidr)) fail(`${instance.id}: ${instance.privateIp} is not in ${subnet.cidr}`);
-      for (const sgId of instance.sgIds) {
-        if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${instance.id}: security group ${sgId} does not exist`);
+    for (const device of net.devices) {
+      const subnet = net.subnets.find((s) => s.id === device.subnetId);
+      if (!subnet) fail(`${device.id}: subnet ${device.subnetId} does not exist`);
+      else if (!safeInCidr(device.privateIp, subnet.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${subnet.cidr}`);
+      for (const firewallId of device.firewallIds) {
+        if (!net.firewalls.some((f) => f.id === firewallId)) fail(`${device.id}: firewall ${firewallId} does not exist`);
       }
     }
-    for (const group of net.securityGroups) {
-      for (const rule of [...group.inbound, ...group.outbound]) {
+    for (const firewall of net.firewalls) {
+      for (const rule of [...firewall.inbound, ...firewall.outbound]) {
         const peer = rule.peer;
         if (peer.kind === 'sg') {
           const sgId = peer.sgId;
-          if (!net.securityGroups.some((g) => g.id === sgId)) fail(`${group.id}/${rule.id}: security group ${sgId} does not exist`);
+          if (!net.firewalls.some((f) => f.id === sgId)) fail(`${firewall.id}/${rule.id}: security group ${sgId} does not exist`);
         }
       }
     }
   });
 
 export const endpointSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('instance'), id: z.string().min(1) }),
+  z.object({ kind: z.literal('device'), id: z.string().min(1) }),
   z.object({ kind: z.literal('actor'), id: z.string().min(1) }),
 ]);
 

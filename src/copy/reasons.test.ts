@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
-import { inst, lab03Net, ping } from '@/testing';
+import { device, lab03Net, ping } from '@/testing';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 
@@ -47,7 +47,7 @@ describe('describeReason', () => {
   });
 
   it('a ping without an ICMP rule stops at the Security Group, named by its official name', () => {
-    const trace = simulate(NET, ping(inst('servidor1'), '172.31.38.97'));
+    const trace = simulate(NET, ping(device('servidor1'), '172.31.38.97'));
     const text = describeReason(trace.steps.at(-1)!.reason, NET);
     expect(text).toBe(SG_IN_DROP);
     expect(toPlainText(text)).toBe('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
