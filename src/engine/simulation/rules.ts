@@ -6,7 +6,7 @@ type PacketKind = Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>;
 
 export interface PeerContext {
   ip: string;
-  sgIds: string[];
+  firewallIds: string[];
 }
 
 export function matchesWhat(what: RuleWhat, packet: PacketKind): boolean {
@@ -22,7 +22,7 @@ export function matchesWhat(what: RuleWhat, packet: PacketKind): boolean {
 }
 
 export function matchesPeer(peer: RulePeer, ctx: PeerContext): boolean {
-  return peer.kind === 'cidr' ? ipInCidr(ctx.ip, peer.cidr) : ctx.sgIds.includes(peer.sgId);
+  return peer.kind === 'cidr' ? ipInCidr(ctx.ip, peer.cidr) : ctx.firewallIds.includes(peer.sgId);
 }
 
 /** Checks a packet against every rule of the given firewalls; allowed when one rule matches both what and from. */
@@ -34,7 +34,7 @@ export function checkRules(
 ): { allowed: boolean; checks: RuleCheck[] } {
   const checks = firewalls.flatMap((firewall) =>
     firewall[direction].map((rule) => ({
-      sgId: firewall.id,
+      firewallId: firewall.id,
       ruleId: rule.id,
       what: matchesWhat(rule.what, packet),
       from: matchesPeer(rule.peer, ctx),

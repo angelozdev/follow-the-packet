@@ -38,9 +38,9 @@ export function probePackets(net: Network): PacketSpec[] {
   return packets;
 }
 
-/** True when the packet passed the destination's inbound security group, even if Linux then stays silent. */
+/** True when the packet passed the destination's inbound firewalls, even if the host then stays silent. */
 export function reachesHost(trace: Trace): boolean {
-  return trace.steps.some((s) => s.stage === 'sg-in' && s.verdict === 'pass');
+  return trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'pass');
 }
 
 function keyFor(from: Endpoint, trace: Trace, p: Service): string {

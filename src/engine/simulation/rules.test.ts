@@ -26,9 +26,9 @@ describe('matchesWhat', () => {
 
 describe('matchesPeer', () => {
   it('a CIDR compares the IP; a security group compares membership', () => {
-    expect(matchesPeer({ kind: 'cidr', cidr: '198.51.100.7/32' }, { ip: '198.51.100.7', sgIds: [] })).toBe(true);
-    expect(matchesPeer({ kind: 'sg', sgId: 'sg-servidor1' }, { ip: '172.31.16.131', sgIds: ['sg-servidor1'] })).toBe(true);
-    expect(matchesPeer({ kind: 'sg', sgId: 'sg-servidor1' }, { ip: '172.31.16.131', sgIds: [] })).toBe(false);
+    expect(matchesPeer({ kind: 'cidr', cidr: '198.51.100.7/32' }, { ip: '198.51.100.7', firewallIds: [] })).toBe(true);
+    expect(matchesPeer({ kind: 'sg', sgId: 'sg-servidor1' }, { ip: '172.31.16.131', firewallIds: ['sg-servidor1'] })).toBe(true);
+    expect(matchesPeer({ kind: 'sg', sgId: 'sg-servidor1' }, { ip: '172.31.16.131', firewallIds: [] })).toBe(false);
   });
 });
 
@@ -39,21 +39,21 @@ describe('checkRules', () => {
   ];
 
   it('the rules of several security groups add up: one matching both what and from is enough', () => {
-    const result = checkRules(firewalls, 'inbound', echoRequest, { ip: '172.31.16.131', sgIds: ['sg-servidor1'] });
+    const result = checkRules(firewalls, 'inbound', echoRequest, { ip: '172.31.16.131', firewallIds: ['sg-servidor1'] });
     expect(result.allowed).toBe(true);
     expect(result.checks).toEqual([
-      { sgId: 'sg-a', ruleId: 'ssh', what: false, from: false },
-      { sgId: 'sg-b', ruleId: 'echo', what: true, from: true },
+      { firewallId: 'sg-a', ruleId: 'ssh', what: false, from: false },
+      { firewallId: 'sg-b', ruleId: 'echo', what: true, from: true },
     ]);
   });
 
   it('lab 03, V4: your IP is in the SSH rule, but the ping does not match on what', () => {
-    const result = checkRules(firewalls, 'inbound', echoRequest, { ip: '198.51.100.7', sgIds: [] });
+    const result = checkRules(firewalls, 'inbound', echoRequest, { ip: '198.51.100.7', firewallIds: [] });
     expect(result.allowed).toBe(false);
-    expect(result.checks[0]).toEqual({ sgId: 'sg-a', ruleId: 'ssh', what: false, from: true });
+    expect(result.checks[0]).toEqual({ firewallId: 'sg-a', ruleId: 'ssh', what: false, from: true });
   });
 
   it('with no rules nothing gets through (a security group only allows)', () => {
-    expect(checkRules([], 'inbound', echoRequest, { ip: '1.2.3.4', sgIds: [] })).toEqual({ allowed: false, checks: [] });
+    expect(checkRules([], 'inbound', echoRequest, { ip: '1.2.3.4', firewallIds: [] })).toEqual({ allowed: false, checks: [] });
   });
 });

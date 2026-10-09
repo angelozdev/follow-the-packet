@@ -16,27 +16,27 @@ describe('deathPoint', () => {
       outcome: 'timeout',
       steps: [
         { stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } },
-        { stage: 'sg-in', at: 'servidor2', verdict: 'drop', reason: { code: 'sg-in-drop', instanceId: 'servidor2' } },
+        { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2' } },
       ],
     };
-    expect(deathPoint(trace)).toEqual({ stage: 'sg-in', at: 'servidor2' });
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-in', at: 'servidor2' });
   });
 
   it('when nothing stops it, it is the reply at the destination', () => {
-    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', instanceId: 'servidor2' } }] };
+    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', deviceId: 'servidor2' } }] };
     expect(deathPoint(trace)).toEqual({ stage: 'reply', at: 'servidor2' });
   });
 });
 
 describe('stopStep', () => {
   it('is the step that dropped the packet', () => {
-    const drop = { stage: 'sg-in', at: 'servidor2', verdict: 'drop', reason: { code: 'sg-in-drop', instanceId: 'servidor2' } } as const;
+    const drop = { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2' } } as const;
     const trace: Trace = { ...base, outcome: 'timeout', steps: [{ stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } }, drop] };
     expect(stopStep(trace)).toEqual(drop);
   });
 
   it('is undefined when nothing stopped it', () => {
-    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', instanceId: 'servidor2' } }] };
+    const trace: Trace = { ...base, outcome: 'replied', steps: [{ stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', deviceId: 'servidor2' } }] };
     expect(stopStep(trace)).toBeUndefined();
   });
 });

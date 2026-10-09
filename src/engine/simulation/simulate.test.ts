@@ -12,21 +12,21 @@ describe('lab 03 in the engine', () => {
   it('step 3: without an ICMP rule the ping dies at the entrance of servidor2 and tcpdump sees nothing', () => {
     const trace = simulate(lab03Net(), ping(device('servidor1'), S2.private));
     expect(trace.outcome).toBe('timeout');
-    expect(deathPoint(trace)).toEqual({ stage: 'sg-in', at: 'servidor2' });
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-in', at: 'servidor2' });
     expect(trace.tcpdump).toEqual([]);
   });
 
   it('step 5: with Echo Request from the servidor1 SG it answers, and tcpdump sees In and Out', () => {
     const trace = simulate(withEcho(), ping(device('servidor1'), S2.private));
     expect(trace.outcome).toBe('replied');
-    expect(trace.tcpdump.map((l) => `${l.instanceId} ${l.direction}`)).toEqual(['servidor2 In', 'servidor2 Out']);
+    expect(trace.tcpdump.map((l) => `${l.deviceId} ${l.direction}`)).toEqual(['servidor2 In', 'servidor2 Out']);
   });
 
   it('V1: stateful; the reply returns without a rule on servidor1, but the reverse does not pass', () => {
     expect(simulate(withEcho(), ping(device('servidor1'), S2.private)).outcome).toBe('replied');
     const back = simulate(withEcho(), ping(device('servidor2'), S1.private));
     expect(back.outcome).toBe('timeout');
-    expect(deathPoint(back)).toEqual({ stage: 'sg-in', at: 'servidor1' });
+    expect(deathPoint(back)).toEqual({ stage: 'firewall-in', at: 'servidor1' });
   });
 
   it('V5: an Echo Reply rule does not let a ping in', () => {
@@ -39,8 +39,8 @@ describe('lab 03 in the engine', () => {
     expect(trace.steps.some((s) => s.stage === 'nat')).toBe(true);
     expect(trace.effectiveSource).toBe(S1.public);
     expect(trace.outcome).toBe('timeout');
-    const sgIn = trace.steps.find((s) => s.stage === 'sg-in');
-    expect(sgIn?.checks?.find((c) => c.ruleId === 'echo')).toMatchObject({ what: true, from: false });
+    const firewallIn = trace.steps.find((s) => s.stage === 'firewall-in');
+    expect(firewallIn?.checks?.find((c) => c.ruleId === 'echo')).toMatchObject({ what: true, from: false });
   });
 
   it('V2: with the public IP of servidor1 as /32 source, it does pass over the public path', () => {
@@ -61,14 +61,14 @@ describe('lab 03 in the engine', () => {
   it('V4: the ping from your Mac to the public IP is dropped even though your IP has SSH', () => {
     const trace = simulate(withEcho(), ping(actor('you'), S2.public));
     expect(trace.outcome).toBe('timeout');
-    expect(deathPoint(trace)).toEqual({ stage: 'sg-in', at: 'servidor2' });
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-in', at: 'servidor2' });
   });
 
   it('V6: Linux ignores the ping; it arrives (tcpdump In) but nobody answers', () => {
     const net = withDevice(withEcho(), 'servidor2', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [22] } });
     const trace = simulate(net, ping(device('servidor1'), S2.private));
     expect(trace.outcome).toBe('arrived-no-reply');
-    expect(deathPoint(trace)).toEqual({ stage: 'linux', at: 'servidor2' });
+    expect(deathPoint(trace)).toEqual({ stage: 'host', at: 'servidor2' });
     expect(trace.tcpdump.map((l) => l.direction)).toEqual(['In']);
   });
 
@@ -109,7 +109,7 @@ describe('lab 03 in the engine', () => {
       firewalls: withEcho().firewalls.map((f) => (f.id === 'sg-servidor1' ? { ...f, outbound: [] } : f)),
     };
     const trace = simulate(net, ping(device('servidor1'), S2.private));
-    expect(deathPoint(trace)).toEqual({ stage: 'sg-out', at: 'servidor1' });
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-out', at: 'servidor1' });
   });
 
   it('an unknown name does not resolve', () => {

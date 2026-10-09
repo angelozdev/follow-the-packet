@@ -1,6 +1,6 @@
 import type { IcmpType } from '@/engine/network/types';
 
-export type StepStage = 'dns' | 'route' | 'nat' | 'sg-out' | 'sg-in' | 'linux' | 'reply';
+export type StepStage = 'dns' | 'route' | 'nat' | 'firewall-out' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
 export type CheckpointStage = Exclude<StepStage, 'nat'>;
 
@@ -10,7 +10,7 @@ export interface Checkpoint {
 }
 
 export interface RuleCheck {
-  sgId: string;
+  firewallId: string;
   ruleId: string;
   what: boolean;
   from: boolean;
@@ -30,26 +30,26 @@ export type Reason =
   | { code: 'route-private-from-outside'; ip: string }
   | { code: 'route-no-private-instance'; ip: string }
   | { code: 'route-private' }
-  | { code: 'route-no-public-instance'; ip: string }
-  | { code: 'route-no-public-ip'; instanceId: string }
+  | { code: 'route-no-public-device'; ip: string }
+  | { code: 'route-no-public-ip'; deviceId: string }
   | { code: 'route-nat'; from: string; to: string }
   | { code: 'route-from-internet' }
-  | { code: 'sg-out-pass'; instanceId: string }
-  | { code: 'sg-out-drop'; instanceId: string }
-  | { code: 'sg-in-pass'; instanceId: string }
-  | { code: 'sg-in-drop'; instanceId: string }
-  | { code: 'linux-unsolicited-icmp'; instanceId: string; icmpType: IcmpType }
-  | { code: 'linux-ignores-echo'; instanceId: string }
-  | { code: 'linux-replies'; instanceId: string }
-  | { code: 'linux-refused'; instanceId: string; port: number }
-  | { code: 'linux-accepts'; instanceId: string; port: number }
-  | { code: 'linux-udp-no-service'; instanceId: string; port: number }
-  | { code: 'reply-stateful'; instanceId: string };
+  | { code: 'firewall-out-pass'; deviceId: string }
+  | { code: 'firewall-out-drop'; deviceId: string }
+  | { code: 'firewall-in-pass'; deviceId: string }
+  | { code: 'firewall-in-drop'; deviceId: string }
+  | { code: 'host-unsolicited-icmp'; deviceId: string; icmpType: IcmpType }
+  | { code: 'host-ignores-echo'; deviceId: string }
+  | { code: 'host-replies'; deviceId: string }
+  | { code: 'host-refused'; deviceId: string; port: number }
+  | { code: 'host-accepts'; deviceId: string; port: number }
+  | { code: 'host-udp-no-service'; deviceId: string; port: number }
+  | { code: 'reply-stateful'; deviceId: string };
 
 export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved';
 
 export interface TcpdumpLine {
-  instanceId: string;
+  deviceId: string;
   direction: 'In' | 'Out';
   src: string;
   dst: string;

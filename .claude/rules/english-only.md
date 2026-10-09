@@ -6,7 +6,7 @@ User-facing text is in Spanish, the product's language, and the project has no i
 
 - `src/copy/` holds the Spanish text maps, one file per area (UI, outcomes, reasons).
 - Level files (`src/levels/NN-<chapter>/*.ts`) are content files and keep their own texts: brief, hints, option labels, takeaway.
-- The engine never writes sentences. It returns a reason code with its data (for example `{ code: 'sg-in-drop', instanceId: 'servidor2' }`) and `src/copy/` turns it into Spanish.
+- The engine never writes sentences. It returns a reason code with its data (for example `{ code: 'host-refused', deviceId: 'servidor2', port: 80 }`) and `src/copy/` turns it into Spanish.
 
 Visible text never becomes an identifier: the identifier is English, and a Spanish term appears only in the displayed label.
 

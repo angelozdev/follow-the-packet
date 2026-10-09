@@ -6,12 +6,32 @@ import { applyMove, solvedWorld, startWorld } from '@/levels/world';
 
 const CHAPTER = 4;
 const FIXTURE = './golden-traces.json';
-const RECORDED_VALUES = new Map([['device', 'instance']]);
+const RECORDED_KEYS = new Map([
+  ['deviceId', 'instanceId'],
+  ['firewallId', 'sgId'],
+]);
+const RECORDED_VALUES = new Map([
+  ['device', 'instance'],
+  ['firewall-out', 'sg-out'],
+  ['firewall-in', 'sg-in'],
+  ['host', 'linux'],
+  ['firewall-out-pass', 'sg-out-pass'],
+  ['firewall-out-drop', 'sg-out-drop'],
+  ['firewall-in-pass', 'sg-in-pass'],
+  ['firewall-in-drop', 'sg-in-drop'],
+  ['host-unsolicited-icmp', 'linux-unsolicited-icmp'],
+  ['host-ignores-echo', 'linux-ignores-echo'],
+  ['host-replies', 'linux-replies'],
+  ['host-refused', 'linux-refused'],
+  ['host-accepts', 'linux-accepts'],
+  ['host-udp-no-service', 'linux-udp-no-service'],
+  ['route-no-public-device', 'route-no-public-instance'],
+]);
 
 function recorded(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(recorded);
   if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, recorded(inner)]));
+    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [RECORDED_KEYS.get(key) ?? key, recorded(inner)]));
   }
   return typeof value === 'string' ? (RECORDED_VALUES.get(value) ?? value) : value;
 }

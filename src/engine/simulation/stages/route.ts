@@ -24,13 +24,13 @@ export const routeStage: Stage = (ctx) => {
 
   const dest = net.devices.find((d) => d.publicIp === destIp);
   if (!dest) {
-    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-instance', ip: destIp } });
+    ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-device', ip: destIp } });
     return stop('timeout');
   }
   if (source.device) {
     const publicIp = source.device.publicIp;
     if (!publicIp) {
-      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-ip', instanceId: source.device.id } });
+      ctx.steps.push({ stage: 'route', at: 'igw', verdict: 'drop', reason: { code: 'route-no-public-ip', deviceId: source.device.id } });
       return stop('timeout');
     }
     ctx.effectiveSource = publicIp;

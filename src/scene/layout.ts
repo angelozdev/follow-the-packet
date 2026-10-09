@@ -118,14 +118,14 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[
   if (source) points.push(source.door, source.barrier, source.road);
   else points.push(layout.actors[from.id] ?? layout.igw);
 
-  if (trace.steps.some((s) => s.stage === 'sg-out' && s.verdict === 'drop')) return points.slice(0, 2);
+  if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
   if (trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && s.at === 'igw'))) points.push(layout.igw);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 
   const dest = trace.destinationId ? layout.instances[trace.destinationId] : undefined;
   if (!dest) return points;
   points.push(dest.road, dest.barrier);
-  if (trace.steps.some((s) => s.stage === 'sg-in' && s.verdict === 'drop')) return points;
+  if (trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return points;
   points.push(dest.door);
   return points;
 }
