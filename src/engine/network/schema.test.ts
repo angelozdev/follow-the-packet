@@ -18,10 +18,12 @@ function withFirewall(net: Network, firewall: Firewall): Network {
 const BROKEN: [string, Network, string][] = [
   ['a VPC without a region', { ...lab03Net(), region: undefined }, 'a VPC needs a region'],
   ['a VPC without subnets', { ...lab03Net(), subnets: [] }, 'a VPC needs at least one subnet'],
+  ['a VPC whose edge is a router', { ...lab03Net(), edge: 'router' }, 'a VPC reaches the internet through an Internet gateway'],
   ['a private IP outside its subnet', withDevice(lab03Net(), 'servidor1', { privateIp: '172.31.38.5' }), 'servidor1: 172.31.38.5 is not in 172.31.16.0/20'],
   ['an EC2 instance without a Security Group', withDevice(lab03Net(), 'servidor1', { firewallIds: [] }), 'servidor1: a device in a VPC needs at least one Security Group'],
   ['a firewall that does not exist', withDevice(lab03Net(), 'servidor1', { firewallIds: ['sg-fantasma'] }), 'servidor1: firewall sg-fantasma does not exist'],
   ['an office with a region', { ...officeNet(), region: 'eu-west-1' }, 'an office network has no region'],
+  ['an office whose edge is an Internet gateway', { ...officeNet(), edge: 'internet-gateway' }, 'an office reaches the internet through a router'],
   ['an office with subnets', { ...officeNet(), subnets: [{ id: 'subnet-a', az: 'eu-west-1a', cidr: '192.168.1.0/25' }] }, 'an office network has no subnets'],
   ['an office device with a public IP', withDevice(officeNet(), 'printer', { publicIp: '54.78.154.66' }), 'printer: an office device has no public IP'],
   ['an office device in a subnet', withDevice(officeNet(), 'printer', { subnetId: 'subnet-a' }), 'printer: an office device has no subnet'],

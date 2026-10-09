@@ -95,6 +95,7 @@ function checkIds(net: NetworkShape, fail: Fail): void {
 function checkVpc(net: NetworkShape, fail: Fail): void {
   const subnets = net.subnets ?? [];
   if (!net.region) fail('a VPC needs a region');
+  if (net.edge !== 'internet-gateway') fail('a VPC reaches the internet through an Internet gateway');
   if (subnets.length === 0) fail('a VPC needs at least one subnet');
   for (const subnet of subnets) {
     if (!safeInCidr(subnet.cidr.split('/')[0], net.cidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
@@ -110,6 +111,7 @@ function checkVpc(net: NetworkShape, fail: Fail): void {
 
 function checkOffice(net: NetworkShape, fail: Fail): void {
   if (net.region !== undefined) fail('an office network has no region');
+  if (net.edge !== 'router') fail('an office reaches the internet through a router');
   if (net.subnets !== undefined) fail('an office network has no subnets');
   if (isCidr(net.cidr) && !isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
   for (const firewall of net.firewalls) {

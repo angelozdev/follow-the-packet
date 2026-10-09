@@ -26,6 +26,7 @@ const RECORDED_VALUES = new Map([
   ['host-accepts', 'linux-accepts'],
   ['host-udp-no-service', 'linux-udp-no-service'],
   ['route-no-public-device', 'route-no-public-instance'],
+  ['internet-gateway', 'igw'],
 ]);
 const ADDED_KEYS = new Set(['firewallKind']);
 

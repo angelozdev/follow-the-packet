@@ -101,7 +101,7 @@ describe('lab 03 in the engine', () => {
     const net = withDevice(withEcho(), 'servidor1', { publicIp: undefined });
     const trace = simulate(net, ping(device('servidor1'), S2.public));
     expect(trace.outcome).toBe('timeout');
-    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'igw' });
+    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'internet-gateway' });
   });
 
   it('the outbound of the source also counts', () => {
@@ -131,6 +131,12 @@ describe('lost packets and a device that pings itself', () => {
     const trace = simulate(officeNet(), ping(actor('attacker'), OFFICE.you));
     expect(trace.outcome).toBe('lost');
     expect(trace.steps).toEqual([{ stage: 'route', at: 'internet', verdict: 'drop', reason: { code: 'route-private-from-outside', ip: OFFICE.you } }]);
+  });
+
+  it('a public IP that no device has stops at the edge of the network: the router of an office', () => {
+    const trace = simulate(officeNet(), ping(actor('attacker'), '34.244.254.100'));
+    expect(trace.outcome).toBe('timeout');
+    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'router' });
   });
 
   it('a private IP outside the network range is lost in the internet too', () => {

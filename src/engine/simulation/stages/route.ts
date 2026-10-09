@@ -2,7 +2,6 @@ import { ipInCidr, isPrivateIpv4 } from '@/engine/network/cidr';
 import { CONTINUE, stop, type Stage } from '@/engine/simulation/context';
 
 const INTERNET = 'internet';
-const GATEWAY = 'igw';
 
 export const routeStage: Stage = (ctx) => {
   const { net, source } = ctx;
@@ -36,20 +35,20 @@ export const routeStage: Stage = (ctx) => {
 
   const dest = net.devices.find((d) => d.publicIp === destIp);
   if (!dest) {
-    ctx.steps.push({ stage: 'route', at: GATEWAY, verdict: 'drop', reason: { code: 'route-no-public-device', ip: destIp } });
+    ctx.steps.push({ stage: 'route', at: net.edge, verdict: 'drop', reason: { code: 'route-no-public-device', ip: destIp } });
     return stop('timeout');
   }
   if (source.device) {
     const publicIp = source.device.publicIp;
     if (!publicIp) {
-      ctx.steps.push({ stage: 'route', at: GATEWAY, verdict: 'drop', reason: { code: 'route-no-public-ip', deviceId: source.device.id } });
+      ctx.steps.push({ stage: 'route', at: net.edge, verdict: 'drop', reason: { code: 'route-no-public-ip', deviceId: source.device.id } });
       return stop('timeout');
     }
     ctx.effectiveSource = publicIp;
-    ctx.steps.push({ stage: 'nat', at: GATEWAY, verdict: 'info', reason: { code: 'route-nat', from: source.ip, to: publicIp } });
+    ctx.steps.push({ stage: 'nat', at: net.edge, verdict: 'info', reason: { code: 'route-nat', from: source.ip, to: publicIp } });
   } else {
     ctx.effectiveSource = source.ip;
-    ctx.steps.push({ stage: 'route', at: GATEWAY, verdict: 'pass', reason: { code: 'route-from-internet' } });
+    ctx.steps.push({ stage: 'route', at: net.edge, verdict: 'pass', reason: { code: 'route-from-internet' } });
   }
   ctx.dest = dest;
   ctx.path = 'public';
