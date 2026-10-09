@@ -28,7 +28,7 @@ function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionFiel
 
 function server(session: Session, instance: Instance): Inspection {
   const { region, securityGroups } = session.world;
-  const doors = securityGroups.filter((group) => instance.sgIds.includes(group.id));
+  const groups = securityGroups.filter((group) => instance.sgIds.includes(group.id));
   return {
     title: instance.name,
     fields: visible(
@@ -40,8 +40,8 @@ function server(session: Session, instance: Instance): Inspection {
           label: INSPECTION_TEXT.dnsNames,
           lines: () => [...(instance.publicIp ? [publicDnsName(instance.publicIp, region)] : []), privateDnsName(instance.privateIp, region)],
         },
-        { term: 'linux-ignore-ping', label: INSPECTION_TEXT.linuxPing, lines: () => [instance.linux.ignoreIcmpEcho ? INSPECTION_TEXT.no : INSPECTION_TEXT.yes] },
-        { term: 'security-group', label: INSPECTION_TEXT.doors, lines: () => doors.map((group) => MAP_TEXT.barrier(group.name)) },
+        { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [instance.linux.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
+        { term: 'security-group', label: INSPECTION_TEXT.securityGroups, lines: () => groups.map((group) => MAP_TEXT.barrier(group.name)) },
       ],
       session.known,
     ),
@@ -52,7 +52,7 @@ function barrier(session: Session, group: SecurityGroup): Inspection {
   const rows = ruleRows(group, session.incident);
   return {
     title: MAP_TEXT.barrier(group.name),
-    fields: visible([{ term: 'rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }], session.known),
+    fields: visible([{ term: 'inbound-rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }], session.known),
   };
 }
 

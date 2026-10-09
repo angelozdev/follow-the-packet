@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
-const DOOR = 'puerta de servidor2';
+const DOOR = 'Security Group servidor2';
 const INSPECTED_SERVER = 'servidor2 con candado';
 const INSPECTION_TITLE = 'servidor2';
 const FULL_STARS = '3 de 3 estrellas';

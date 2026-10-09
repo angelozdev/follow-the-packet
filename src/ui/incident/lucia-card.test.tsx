@@ -27,16 +27,16 @@ describe("Lucía's card", () => {
   it('defines the new terms of the incident', () => {
     render(<Harness />);
     expect(screen.getByText(TERMS['security-group'].definition)).toBeInTheDocument();
-    expect(screen.getByText(TERMS.rule.definition)).toBeInTheDocument();
+    expect(screen.getByText(TERMS['inbound-rule'].definition)).toBeInTheDocument();
   });
 
   it('gives hint 1, then hint 2, then no more', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
-    expect(screen.getByText(LUCIA_TEXT.hint(1)).closest('p')).toHaveTextContent('Mira la puerta de servidor2: ¿qué deja pasar hoy?');
+    expect(screen.getByText(LUCIA_TEXT.hint(1)).closest('p')).toHaveTextContent('Mira el Security Group de servidor2: ¿qué deja pasar hoy?');
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
-    expect(screen.getByText(LUCIA_TEXT.hint(2)).closest('p')).toHaveTextContent('En la puerta de servidor2, agrega: Ping, desde servidor1.');
+    expect(screen.getByText(LUCIA_TEXT.hint(2)).closest('p')).toHaveTextContent('En el Security Group de servidor2, agrega una regla de entrada: ICMP · Echo Request, desde SG servidor1.');
     expect(screen.queryByRole('button', { name: LUCIA_TEXT.askHint })).toBeNull();
   });
 

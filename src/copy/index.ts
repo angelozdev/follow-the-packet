@@ -1,6 +1,6 @@
 export { TERMS, isTermId } from './terms';
 export type { TermId } from './terms';
-export { parseTermText, termsIn, toPlainText } from './term-text';
+export { parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
 export type { TermText } from './term-text';
 export { describeReason } from './reasons';
 export { OUTCOME_TEXT, endpointName, packetLabel } from './packet-labels';

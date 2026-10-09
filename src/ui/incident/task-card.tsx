@@ -86,7 +86,9 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
           ))}
         </ul>
       ) : (
-        <p className="muted">{TASK_CARD_TEXT.noRules}</p>
+        <p className="muted">
+          <TaggedText text={TASK_CARD_TEXT.noRules} />
+        </p>
       )}
       <div role="group" aria-label={TASK_CARD_TEXT.slot} className="slot">
         <SlotChip chip={pickedWhat} placeholder={TASK_CARD_TEXT.what} onGiveBack={() => giveBack('what')} />

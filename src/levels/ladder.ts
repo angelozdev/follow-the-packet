@@ -17,9 +17,9 @@ export function knownTerms(incidents: Incident[], incidentId: string): ReadonlyS
 /** Returns which parts of the map the player may change once these terms are known. */
 export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts {
   return {
-    inboundRules: known.has('rule'),
+    inboundRules: known.has('inbound-rule'),
     outboundRules: known.has('outbound-rule'),
-    linuxSettings: known.has('linux-ignore-ping'),
+    linuxSettings: known.has('icmp-echo-ignore-all'),
   };
 }
 

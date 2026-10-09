@@ -9,32 +9,32 @@ export default defineIncident({
   role: 'defender',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['icmp', 'echo-request', 'echo-reply', 'least-privilege'],
+  introduces: ['echo-reply', 'least-privilege'],
   changes: [
     { type: 'removeRule', sgId: SG.servidor2, ruleId: ruleIdFor(WHAT.ping.id, FROM.servidor1.id) },
     { type: 'addRule', sgId: SG.servidor2, rule: DAY_SHIFT_RULE },
   ],
-  report: 'Alguien cambió la {{security-group}} de servidor2: dice que «abrió la respuesta del {{ping}}». Ahora el {{ping}} de servidor1 vuelve a fallar.',
+  report: 'Alguien cambió el {{security-group}} de servidor2: dice que «abrió la respuesta del {{ping}}». Ahora el {{ping}} de servidor1 vuelve a fallar.',
   tasks: [{ id: 'ping', text: 'Que servidor1 vuelva a hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],
   flows: [FLOWS.pingToServer2, FLOWS.attackerPing],
   chips: { what: [WHAT.echoRequest, WHAT.echoReply, WHAT.allIcmp], from: [FROM.servidor1, FROM.internet] },
   hints: [
-    'Un {{ping}} tiene ida y vuelta. ¿Cuál de las dos entra a servidor2?',
-    'En la {{security-group}} de servidor2: {{echo-request}} desde servidor1. Y quita la {{rule}} del turno de día.',
+    'Un {{ping}} tiene ida ({{echo-request}}) y vuelta ({{echo-reply}}). ¿Cuál de las dos entra a servidor2?',
+    'En el {{security-group}} de servidor2: {{icmp}} · {{echo-request}} desde {{security-group|SG}} servidor1. Y quita la {{inbound-rule}} del turno de día.',
   ],
   explanation: [
     {
       text: 'Había que abrir la vuelta, porque es la que llega a servidor2.',
-      feedback: 'No: lo que llega a servidor2 es la ida, el {{echo-request}}. Por eso la {{rule}} del turno de día no arreglaba nada.',
+      feedback: 'No: lo que llega a servidor2 es la ida, el {{echo-request}}. Por eso la {{inbound-rule}} del turno de día no arreglaba nada.',
       correct: false,
     },
     {
-      text: 'Abrir todo el {{icmp}} desde todo internet es suficiente y no tiene riesgo.',
+      text: 'Abrir All {{icmp}} desde {{anywhere-ipv4}} es suficiente y no tiene riesgo.',
       feedback: 'Funciona, pero también deja entrar al atacante. Abrir más de lo necesario siempre es un riesgo.',
       correct: false,
     },
     {
-      text: 'Un {{ping}} tiene ida ({{echo-request}}) y vuelta ({{echo-reply}}). Para entrar a servidor2 solo hace falta permitir la ida, y solo desde servidor1.',
+      text: 'Un {{ping}} tiene ida ({{echo-request}}) y vuelta ({{echo-reply}}). Para entrar a servidor2 solo hace falta permitir la ida, y solo desde {{security-group|SG}} servidor1.',
       feedback: 'Eso es. Abrir solo lo que hace falta, y solo para quien lo necesita, se llama {{least-privilege}}.',
       correct: true,
     },
@@ -43,5 +43,5 @@ export default defineIncident({
     { type: 'removeRule', sgId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id },
     { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.servidor1.id },
   ],
-  takeaway: 'Para recibir un {{ping}} basta con dejar entrar la ida ({{echo-request}}), y solo desde quien la necesita.',
+  takeaway: 'Para recibir un {{ping}} basta con dejar entrar la ida ({{echo-request}}), y solo desde quien la necesita: eso es {{least-privilege}}.',
 });

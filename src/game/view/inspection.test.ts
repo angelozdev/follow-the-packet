@@ -23,23 +23,23 @@ describe('inspect', () => {
       title: 'servidor2',
       fields: [
         ['IP privada', S2.private],
-        ['Puerta', 'puerta de servidor2'],
+        ['Security Groups', 'Security Group servidor2'],
       ],
     });
   });
 
   it('later terms add their fields', () => {
     const fields = plain(inspect(knowing(first, 'public-ip', 'dns'), PIECE_ID.server(S2.id)))?.fields.map(([label]) => label);
-    expect(fields).toEqual(['IP privada', 'IP pública', 'Nombres DNS', 'Puerta']);
+    expect(fields).toEqual(['IP privada', 'IP pública', 'Nombres DNS', 'Security Groups']);
   });
 
   it('a door without rules says it lets nothing in', () => {
-    expect(plain(inspect(first, PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([['Deja entrar', 'Nada: no tiene reglas.']]);
+    expect(plain(inspect(first, PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([['Reglas de entrada', 'Ninguna: no deja entrar nada.']]);
   });
 
   it('a door lists what it lets in as chips', () => {
     expect(plain(inspect(startSession(INCIDENTS, '04-02'), PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([
-      ['Deja entrar', 'Echo Reply (vuelta) ← Todo internet'],
+      ['Reglas de entrada', 'Echo Reply (vuelta) ← Todo internet'],
     ]);
   });
 
@@ -48,7 +48,7 @@ describe('inspect', () => {
       title: 'ping de Atacante a servidor2',
       fields: [
         ['Resultado', 'No llegó: no volvió ninguna respuesta.'],
-        ['Dónde y por qué se detuvo', 'Se queda en la puerta de servidor2: ninguna regla lo deja entrar.'],
+        ['Dónde y por qué se detuvo', 'Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.'],
       ],
     });
   });
@@ -58,7 +58,7 @@ describe('inspect', () => {
   });
 
   it('the attacker says who it is, but not its IP yet', () => {
-    expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', ACTOR_ROLE_TEXT.attacker]]);
+    expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
   });
 
   it('the internet entrance explains what it does', () => {

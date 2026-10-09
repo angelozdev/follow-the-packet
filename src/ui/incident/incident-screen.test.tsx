@@ -29,8 +29,8 @@ vi.mock('@/scene/game-scene', async () => {
   };
 });
 
-const DOOR = 'puerta de servidor2';
-const OTHER_DOOR = 'puerta de servidor1';
+const DOOR = 'Security Group servidor2';
+const OTHER_DOOR = 'Security Group servidor1';
 const LOCKED_SERVER = 'servidor2 con candado';
 const ATTACKER_PACKET = 'ping de Atacante a servidor2';
 const FULL_STARS = 3;
@@ -111,7 +111,7 @@ describe('incident screen', () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
-    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toHaveTextContent('Se queda en la puerta de servidor2: ninguna regla lo deja entrar.');
+    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toHaveTextContent('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
   });
 
   it('closing with the card open moves the focus to Lucía’s question, and the right answer gives 3 stars', async () => {

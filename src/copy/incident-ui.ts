@@ -2,7 +2,7 @@ import type { Actor } from '@/engine';
 import type { TermText } from './term-text';
 
 export const MAP_TEXT = {
-  barrier: (name: string): TermText => `{{security-group}} de ${name}`,
+  barrier: (name: string): TermText => `{{security-group}} ${name}`,
   gateway: '{{internet-gateway}}',
   gatewayPlain: 'entrada desde internet',
   locked: 'con candado',
@@ -13,24 +13,24 @@ export const INSPECTION_TEXT = {
   privateIp: '{{private-ip}}',
   publicIp: '{{public-ip}}',
   dnsNames: 'Nombres {{dns}}',
-  linuxPing: 'Linux contesta el {{ping}}',
-  doors: '{{security-group|Puerta}}',
-  inbound: 'Deja entrar',
-  noRules: 'Nada: no tiene {{rule|reglas}}.',
+  echoIgnore: '{{icmp-echo-ignore-all}}',
+  answersPing: '0: contesta el {{ping}}',
+  ignoresPing: '1: no contesta el {{ping}}',
+  securityGroups: '{{security-group|Security Groups}}',
+  inbound: '{{inbound-rule|Reglas de entrada}}',
+  noRules: 'Ninguna: no deja entrar nada.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
   who: 'Quién es',
-  ip: '{{public-ip|IP}}',
+  ip: '{{public-ip}}',
   does: 'Qué hace',
-  gatewayDoes: 'Por aquí entra y sale el tráfico de internet.',
+  gatewayDoes: 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
-  yes: 'Sí',
-  no: 'No',
   none: 'No tiene',
 } as const;
 
 export const ACTOR_ROLE_TEXT: Record<Actor['kind'], TermText> = {
-  attacker: 'Alguien de internet que prueba puertas ajenas.',
+  attacker: 'Alguien de internet que prueba si los {{security-group|Security Groups}} ajenos lo dejan entrar.',
   you: 'Tu computadora.',
 };
 
@@ -49,8 +49,8 @@ export const LUCIA_TEXT = {
 } as const;
 
 export const TASK_CARD_TEXT = {
-  noRules: 'No tiene reglas: no deja entrar nada.',
-  slot: 'Regla nueva',
+  noRules: 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
+  slot: 'Regla de entrada nueva',
   what: 'Qué',
   from: 'Desde dónde',
   done: 'Listo',

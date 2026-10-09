@@ -9,13 +9,16 @@ export default defineIncident({
   role: 'defender',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['server', 'vpc', 'private-ip', 'ping', 'security-group', 'rule'],
+  introduces: ['ec2-instance', 'vpc', 'private-ip', 'ping', 'security-group', 'inbound-rule', 'icmp', 'echo-request', 'anywhere-ipv4'],
   base: BASE_WORLD,
   report: 'servidor1 no logra hacer {{ping}} a servidor2. ¿Lo revisas?',
   tasks: [{ id: 'ping', text: 'Que servidor1 pueda hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],
   flows: [FLOWS.pingToServer2, FLOWS.attackerPing],
   chips: { what: [WHAT.ping], from: [FROM.servidor1, FROM.internet] },
-  hints: ['Mira la {{security-group}} de servidor2: ¿qué deja pasar hoy?', 'En la {{security-group}} de servidor2, agrega: {{ping|Ping}}, desde servidor1.'],
+  hints: [
+    'Mira el {{security-group}} de servidor2: ¿qué deja pasar hoy?',
+    'En el {{security-group}} de servidor2, agrega una {{inbound-rule}}: {{icmp}} · {{echo-request}}, desde {{security-group|SG}} servidor1.',
+  ],
   explanation: [
     {
       text: 'servidor2 estaba apagado.',
@@ -23,16 +26,16 @@ export default defineIncident({
       correct: false,
     },
     {
-      text: 'La {{security-group}} de servidor2 solo deja pasar lo que una {{rule}} permite, y no había ninguna para el {{ping}} de servidor1.',
-      feedback: 'Eso es. Sin una {{rule}} que lo permita, la {{security-group}} no deja pasar nada.',
+      text: 'El {{security-group}} de servidor2 solo deja pasar lo que una {{inbound-rule}} permite, y no había ninguna para el {{ping}} de servidor1.',
+      feedback: 'Eso es. Sin una {{inbound-rule}} que lo permita, el {{security-group}} no deja pasar nada.',
       correct: true,
     },
     {
-      text: 'Faltaba una {{rule}} que prohibiera al atacante.',
-      feedback: 'La {{security-group}} no tiene {{rule|reglas}} para prohibir: lo que ninguna regla permite ya queda fuera.',
+      text: 'Faltaba una {{inbound-rule|regla}} que prohibiera al atacante.',
+      feedback: 'Un {{security-group}} no tiene reglas para prohibir: lo que ninguna {{inbound-rule}} permite ya queda fuera.',
       correct: false,
     },
   ],
   solution: [{ type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.ping.id, fromId: FROM.servidor1.id }],
-  takeaway: 'La {{security-group}} de un {{server}} solo deja pasar lo que una {{rule}} permite: qué + desde dónde.',
+  takeaway: 'El {{security-group}} de una {{ec2-instance}} solo deja pasar lo que una {{inbound-rule}} permite: Type + Source.',
 });

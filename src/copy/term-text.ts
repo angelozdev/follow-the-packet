@@ -1,4 +1,4 @@
-import { TERMS, isTermId, type TermId } from './terms';
+import { TERMS, isTermId, type Term, type TermId } from './terms';
 
 export type TermText = string;
 
@@ -39,4 +39,15 @@ export function toPlainText(text: TermText): string {
   return parseTermText(text)
     .map((segment) => segment.text)
     .join('');
+}
+
+/** Returns, as "term-id: words", every term the texts show with words other than its official name or its short form. */
+export function unofficialNames(texts: TermText[]): string[] {
+  return texts.flatMap((text) =>
+    parseTermText(text).flatMap((segment) => {
+      if (segment.kind === 'text') return [];
+      const term: Term = TERMS[segment.id];
+      return segment.text === term.name || segment.text === term.short ? [] : [`${segment.id}: ${segment.text}`];
+    }),
+  );
 }

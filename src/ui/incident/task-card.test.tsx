@@ -2,14 +2,14 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { TASK_CARD_TEXT } from '@/copy';
+import { TASK_CARD_TEXT, toPlainText } from '@/copy';
 import { barrierCard, startSession } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { TaskCard } from './task-card';
 
-const DOOR = 'puerta de servidor2';
+const DOOR = 'Security Group servidor2';
 
 function renderCard(incidentId: string) {
   const session = startSession(INCIDENTS, incidentId);
@@ -24,7 +24,7 @@ describe('task card', () => {
   it('opens with the focus on its title and says when the door has no rules', () => {
     renderCard('04-01');
     expect(screen.getByRole('heading', { name: DOOR })).toHaveFocus();
-    expect(screen.getByText(TASK_CARD_TEXT.noRules)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: DOOR })).toHaveTextContent(toPlainText(TASK_CARD_TEXT.noRules));
   });
 
   it('builds a rule with clicks: one chip from each tray', async () => {

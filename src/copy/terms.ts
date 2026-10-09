@@ -1,33 +1,72 @@
 export interface Term {
   name: string;
+  short?: string;
   definition: string;
 }
 
 export const TERMS = {
-  server: { name: 'servidor', definition: 'Una computadora en la nube que corre tus programas. En AWS se llama instancia EC2.' },
-  vpc: { name: 'red privada (VPC)', definition: 'Tu red dentro de AWS. Los servidores de adentro se hablan entre sí.' },
-  'private-ip': { name: 'IP privada', definition: 'La dirección de un servidor dentro de la red privada. Desde internet no se llega a ella.' },
-  ping: { name: 'ping', definition: 'Un mensaje corto que pregunta «¿estás ahí?». Si vuelve la respuesta, hay camino.' },
-  'security-group': { name: 'puerta', definition: 'Security Group (SG): la puerta de cada servidor. Solo deja pasar lo que una regla permite.' },
-  rule: { name: 'regla', definition: 'Un permiso de la puerta con dos partes: qué puede pasar y desde dónde.' },
-  icmp: { name: 'ICMP', definition: 'El tipo de mensaje que usa el ping: avisos cortos entre máquinas.' },
-  'echo-request': { name: 'Echo Request', definition: 'La ida del ping: «¿estás ahí?».' },
-  'echo-reply': { name: 'Echo Reply', definition: 'La vuelta del ping: «sí, aquí estoy».' },
-  'least-privilege': { name: 'mínimo privilegio', definition: 'Abrir solo lo justo: lo que hace falta y solo para quien lo necesita.' },
-  stateful: { name: 'stateful', definition: 'La puerta recuerda la conversación: la respuesta a algo que salió vuelve sin otra regla.' },
-  'outbound-rule': { name: 'regla de salida', definition: 'Un permiso para lo que sale del servidor.' },
-  cidr: { name: 'CIDR', definition: 'Una forma de escribir un rango de IPs: /32 es una sola IP y 0.0.0.0/0 es todo internet.' },
-  'vpc-range': { name: 'rango de la VPC', definition: 'Todas las IPs privadas de tu red, escritas como un CIDR.' },
-  'public-ip': { name: 'IP pública', definition: 'La dirección de un servidor en internet.' },
-  'internet-gateway': { name: 'internet gateway', definition: 'La entrada y la salida entre tu red privada e internet.' },
-  nat: { name: 'NAT', definition: 'El cambio del remitente al salir a internet: la IP privada se cambia por la pública.' },
-  dns: { name: 'DNS', definition: 'La agenda de internet: convierte un nombre en una IP.' },
-  'public-dns-name': { name: 'nombre público', definition: 'El nombre DNS de un servidor en internet. Desde dentro de la red da la IP privada.' },
-  'private-dns-name': { name: 'nombre privado', definition: 'El nombre DNS de un servidor que solo funciona dentro de la red privada.' },
-  tcpdump: { name: 'tcpdump', definition: 'Un programa que muestra los paquetes que llegan a un servidor y salen de él.' },
-  'linux-ignore-ping': { name: 'Linux ignora el ping', definition: 'Un ajuste de Linux: el ping llega, pero nadie lo contesta.' },
-  'default-sg': { name: 'puerta default', definition: 'El SG que AWS crea con cada red: deja entrar solo a sus propios miembros.' },
-  'multiple-sgs': { name: 'varias puertas', definition: 'Un servidor puede tener varias puertas: pasa lo que permita cualquiera de ellas.' },
+  'ec2-instance': {
+    name: 'instancia EC2',
+    definition: 'Un servidor virtual en la nube de AWS (Amazon EC2), con su sistema operativo, sus IPs y sus Security Groups.',
+  },
+  vpc: { name: 'VPC', definition: 'Virtual Private Cloud: una red virtual aislada dentro de AWS, con su propio rango de IPs privadas.' },
+  'private-ip': { name: 'IP privada', definition: 'La dirección IPv4 de una instancia dentro de su VPC. Desde internet no se llega a ella.' },
+  ping: { name: 'ping', definition: 'Un comando que manda un ICMP Echo Request a una IP y espera la respuesta: prueba si hay camino de ida y vuelta.' },
+  'security-group': {
+    name: 'Security Group',
+    short: 'SG',
+    definition: 'Un firewall virtual de una instancia EC2: solo deja pasar el tráfico que permite una de sus reglas.',
+  },
+  'inbound-rule': {
+    name: 'regla de entrada',
+    definition: 'Inbound rule en la consola: un permiso del Security Group con Type (qué tráfico) y Source (su origen).',
+  },
+  icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre máquinas, como los del ping.' },
+  'echo-request': { name: 'Echo Request', definition: 'El mensaje ICMP de ida del ping (tipo 8): le pregunta al destino si responde.' },
+  'anywhere-ipv4': {
+    name: 'Anywhere-IPv4',
+    definition: 'Un Source de la consola que equivale a 0.0.0.0/0: cualquier dirección IPv4, también las de internet.',
+  },
+  'internet-gateway': {
+    name: 'Internet gateway',
+    definition: 'El componente de la VPC que permite la comunicación entre la VPC e internet, en los dos sentidos.',
+  },
+  'echo-reply': { name: 'Echo Reply', definition: 'El mensaje ICMP de vuelta del ping (tipo 0): la respuesta del destino.' },
+  'least-privilege': { name: 'mínimo privilegio', definition: 'Dar solo los permisos necesarios para una tarea, y solo a quien los necesita.' },
+  stateful: { name: 'stateful', definition: 'El Security Group recuerda cada conexión que deja pasar: su respuesta vuelve sin que se evalúen reglas.' },
+  'outbound-rule': {
+    name: 'regla de salida',
+    definition: 'Outbound rule en la consola: un permiso del Security Group para el tráfico que sale, con Type y Destination.',
+  },
+  cidr: { name: 'CIDR', definition: 'Una notación para un rango de IPs, IP/número: /32 es una sola IP; /16, 65 536; 0.0.0.0/0, todas las IPv4.' },
+  'vpc-range': { name: 'rango CIDR de la VPC', definition: 'El rango de IPs privadas de la VPC, escrito como un CIDR (por ejemplo 172.31.0.0/16).' },
+  'public-ip': { name: 'IP pública', definition: 'La dirección IPv4 de una instancia que se alcanza desde internet.' },
+  nat: {
+    name: 'NAT',
+    definition: 'Network Address Translation: al salir por el Internet gateway, la IP privada del remitente se cambia por su IP pública.',
+  },
+  dns: { name: 'DNS', definition: 'Domain Name System: el sistema que traduce un nombre a una IP.' },
+  'public-dns-name': {
+    name: 'nombre DNS público',
+    definition: 'Public IPv4 DNS en la consola: el nombre público de la instancia. Desde dentro de la VPC resuelve a la IP privada.',
+  },
+  'private-dns-name': {
+    name: 'nombre DNS privado',
+    definition: 'Private IP DNS name en la consola: el nombre de la instancia que solo resuelve dentro de la VPC.',
+  },
+  tcpdump: { name: 'tcpdump', definition: 'Un programa de Linux que muestra los paquetes que pasan por la interfaz de red de la máquina.' },
+  'icmp-echo-ignore-all': {
+    name: 'icmp_echo_ignore_all',
+    definition: 'Un ajuste del kernel de Linux: en 1, la instancia recibe el Echo Request pero no lo contesta.',
+  },
+  'default-sg': {
+    name: 'Security Group default',
+    definition: 'El Security Group que AWS crea con cada VPC: deja entrar solo el tráfico de lo que tiene ese mismo Security Group.',
+  },
+  'multiple-sgs': {
+    name: 'varios Security Groups',
+    definition: 'Una instancia puede tener varios Security Groups: sus reglas se suman y basta con que una permita el tráfico.',
+  },
 } as const satisfies Record<string, Term>;
 
 export type TermId = keyof typeof TERMS;
