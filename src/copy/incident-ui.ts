@@ -9,6 +9,7 @@ export const MAP_TEXT = {
 } as const;
 
 export const INSPECTION_TEXT = {
+  whatIs: 'Qué es',
   privateIp: '{{private-ip}}',
   publicIp: '{{public-ip}}',
   dnsNames: 'Nombres {{dns}}',
@@ -77,5 +78,5 @@ export const RESULT_TEXT = {
 export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
-  inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver cómo está.',
+  inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
 } as const;

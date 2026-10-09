@@ -2,7 +2,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT } from '@/copy';
+import { EXPLANATION_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS } from '@/copy';
 import { STABLE_MS } from '@/game';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
@@ -98,11 +98,13 @@ describe('incident screen', () => {
     expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
   });
 
-  it('the inspection box leaves out fields whose term comes later', async () => {
+  it('the inspection box starts with what the piece is and leaves out fields whose term comes later', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
     const box = screen.getByRole('region', { name: 'servidor2' });
+    expect(box.querySelector('dt')).toHaveTextContent('Qué es');
+    expect(box.querySelector('dd')).toHaveTextContent(TERMS['ec2-instance'].definition);
     expect(box).toHaveTextContent('IP privada');
     expect(box).toHaveTextContent('172.31.38.97');
     expect(box).not.toHaveTextContent('IP pública');
