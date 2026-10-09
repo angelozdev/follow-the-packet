@@ -81,7 +81,7 @@ El arte se queda.
 
    El cuadro solo muestra los datos que la escalera ya introdujo. Las herramientas (tcpdump desde el incidente 7) son objetos que se ponen sobre el mapa.
 
-   En los textos (aviso, tareas, pistas, explicaciones, fichas), cada término va subrayado con puntos y muestra su definición al pasar el mouse, en un cuadrito que se dibuja por encima de todo. Los términos no son paradas del Tab: para el teclado y el lector de pantalla, la tarjeta de Lucía lista «Palabras nuevas» y un «Glosario» plegado con todos los términos conocidos.
+   En los textos (aviso, tareas, pistas, explicaciones, fichas), cada término va subrayado con puntos y muestra su definición al pasar el mouse, en un cuadrito que se dibuja por encima de todo. Los términos no son paradas del Tab: para el teclado y el lector de pantalla, la tarjeta de Lucía tiene un «Glosario» plegado con todos los términos conocidos: primero los que introduce el incidente, con la marca «nuevo», y después los anteriores. No hay una lista abierta aparte (cambio del 2026-10-09: al pasar el mouse la lista sobraba y empujaba las pistas).
 4. **Tarjeta de tarea.**
    - Se abre con clic o Enter en un Security Group.
    - Aparece pegada al Security Group, del lado con más espacio libre, sin tapar el Security Group ni el camino principal.
@@ -289,7 +289,7 @@ Se mantiene el stack (Vite, TypeScript, React, React Three Fiber, drei, three, z
   - anima los paquetes a partir de los recorridos (el reloj vive aquí, en un hook `use-*.ts`);
   - detecta el mouse sobre las piezas;
   - expone dónde anclar las tarjetas.
-- **`ui`:** la tarjeta de Lucía con tareas, «Enviar solución», pistas, palabras nuevas y glosario; la definición de cada término al pasar el mouse; la tarjeta de tarea, el cuadro de inspección, la pregunta final, el resultado y el roadmap con desbloqueo en orden.
+- **`ui`:** la tarjeta de Lucía con tareas, «Enviar solución», pistas y glosario plegado (los términos nuevos primero); la definición de cada término al pasar el mouse; la tarjeta de tarea, el cuadro de inspección, la pregunta final, el resultado y el roadmap con desbloqueo en orden.
 - **`storage`:** progreso por incidente, con los arreglos del backlog:
   - fusiona en memoria y guarda lo que pueda;
   - un dato malo descarta solo esa entrada.

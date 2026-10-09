@@ -1,6 +1,6 @@
 # ui/incident
 
-The incident screen: Lucía's card (tasks, the "Enviar solución" button and her reply, new terms, the folded glossary and hints), the task card of a Security Group, the inspection box, Lucía's question and the result.
+The incident screen: Lucía's card (tasks, the "Enviar solución" button and her reply, the folded glossary with this incident's new terms first, and hints), the task card of a Security Group, the inspection box, Lucía's question and the result.
 
 - State lives in the session reducer of `@/game`; there is no game clock.
 - Effects live in `use-*.ts` hooks next to their first consumer.

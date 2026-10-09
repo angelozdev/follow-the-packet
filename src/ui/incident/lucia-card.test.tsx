@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useReducer } from 'react';
 import { describe, expect, it } from 'vitest';
-import { LUCIA_TEXT, TERMS, toPlainText } from '@/copy';
+import { LUCIA_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { sessionReducer, startSession, type SessionAction } from '@/game';
 import { INCIDENTS } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
@@ -26,10 +26,12 @@ function glossary(): HTMLElement {
   return details;
 }
 
-function newWords(): HTMLElement {
-  const list = screen.getByText(LUCIA_TEXT.newTerms).nextElementSibling;
-  if (!(list instanceof HTMLElement)) throw new Error('missing new words');
-  return list;
+function glossaryNames(): (string | null | undefined)[] {
+  return [...glossary().querySelectorAll('dt')].map((dt) => dt.firstChild?.textContent);
+}
+
+function namesOf(ids: TermId[]): string[] {
+  return ids.map((id) => TERMS[id].name).sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 describe("Lucía's card", () => {
@@ -44,18 +46,20 @@ describe("Lucía's card", () => {
     expect(screen.getByRole('listitem')).toHaveTextContent(LUCIA_TEXT.done);
   });
 
-  it('defines the new terms of the incident', () => {
-    render(<Harness />);
-    expect(within(newWords()).getByText(TERMS['security-group'].definition)).toBeInTheDocument();
-    expect(within(newWords()).getByText(TERMS['inbound-rule'].definition)).toBeInTheDocument();
+  it('keeps the definitions in one folded glossary, with no open list beside it', () => {
+    const { container } = render(<Harness />);
+    expect(glossary()).not.toHaveAttribute('open');
+    expect(container.querySelectorAll('dl')).toHaveLength(1);
+    expect(within(glossary()).getByText(TERMS['security-group'].definition)).toBeInTheDocument();
   });
 
-  it('folds a glossary with every known term, from earlier incidents too, in alphabetical order', () => {
+  it('lists the new terms first, marked new, and then every earlier term, each group in alphabetical order', () => {
     render(<Harness incidentId="04-02" />);
-    const names = [...startSession(INCIDENTS, '04-02').known].map((id) => TERMS[id].name).sort((a, b) => a.localeCompare(b, 'es'));
-    expect(glossary()).not.toHaveAttribute('open');
-    expect([...glossary().querySelectorAll('dt')].map((dt) => dt.textContent)).toEqual(names);
-    expect(within(glossary()).getByText(TERMS['security-group'].definition)).toBeInTheDocument();
+    const second = INCIDENTS[1];
+    const earlier = [...startSession(INCIDENTS, second.id).known].filter((id) => !second.introduces.includes(id));
+    expect(glossaryNames()).toEqual([...namesOf(second.introduces), ...namesOf(earlier)]);
+    const marked = [...glossary().querySelectorAll('dt')].filter((dt) => within(dt).queryByText(LUCIA_TEXT.newBadge));
+    expect(marked.map((dt) => dt.firstChild?.textContent)).toEqual(namesOf(second.introduces));
   });
 
   it('the glossary of 04-01 has no term from a later incident', () => {

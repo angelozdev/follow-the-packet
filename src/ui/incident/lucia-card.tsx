@@ -34,14 +34,19 @@ function byName(a: TermId, b: TermId): number {
   return TERMS[a].name.localeCompare(TERMS[b].name, 'es');
 }
 
-function TermList({ terms, markNew }: { terms: TermId[]; markNew: boolean }) {
+/** Orders the glossary: the terms this incident introduces first, then the earlier ones, each group by name. */
+function glossaryOrder(known: ReadonlySet<TermId>, newTerms: ReadonlySet<TermId>): TermId[] {
+  return [...known].sort((a, b) => Number(newTerms.has(b)) - Number(newTerms.has(a)) || byName(a, b));
+}
+
+function Glossary({ terms, newTerms }: { terms: TermId[]; newTerms: ReadonlySet<TermId> }) {
   return (
     <dl className="glossary">
       {terms.map((id) => (
         <div key={id}>
           <dt>
             {TERMS[id].name}
-            {markNew && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
+            {newTerms.has(id) && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
           </dt>
           <dd>{TERMS[id].definition}</dd>
         </div>
@@ -102,11 +107,9 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
       <div role="status" className="lucia__reply">
         {session.rejection && <RejectionReply key={session.rejection.attempt} rejection={session.rejection} tasks={incident.tasks} />}
       </div>
-      <h3>{LUCIA_TEXT.newTerms}</h3>
-      <TermList terms={incident.introduces} markNew />
       <details className="lucia__glossary">
         <summary>{LUCIA_TEXT.glossary}</summary>
-        <TermList terms={[...session.known].sort(byName)} markNew={false} />
+        <Glossary terms={glossaryOrder(session.known, newTerms)} newTerms={newTerms} />
       </details>
       <div aria-live="polite">
         {incident.hints.slice(0, session.hintsShown).map((hint, index) => {

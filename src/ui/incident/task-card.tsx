@@ -78,7 +78,9 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
         <ul className="rules">
           {card.rules.map((row) => (
             <li key={row.id}>
-              <TaggedText text={rowText(row)} />
+              <span className="rules__text">
+                <TaggedText text={rowText(row)} />
+              </span>
               <button type="button" className="btn btn--small" aria-label={TASK_CARD_TEXT.remove(toPlainText(rowText(row)))} onClick={() => remove(row.id)}>
                 ×
               </button>

@@ -44,7 +44,6 @@ export const LUCIA_TEXT = {
   failing: (task: TermText): TermText => `Todavía no se cumple: «${task}»`,
   intruding: 'Además, algo prohibido está entrando.',
   intrusion: '¡Algo raro está entrando!',
-  newTerms: 'Palabras nuevas',
   newBadge: 'nuevo',
   glossary: 'Glosario',
   askHint: '¿Alguna pista?',
