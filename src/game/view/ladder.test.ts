@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { TermText } from '@/copy';
+import { termsIn, toPlainText, unofficialNames, type TermText } from '@/copy';
 import { INCIDENTS, type Incident } from '@/levels';
-import { unknownTerms } from '@/levels/ladder';
+import { incidentTexts, unknownTerms } from '@/levels/ladder';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { barrierCard } from './barrier';
 import { inspect } from './inspection';
-import { pieceViews } from './pieces';
+import { pieceViews, type PieceKind } from './pieces';
+
+const NAMED_BY_KIND: PieceKind[] = ['barrier', 'gateway'];
+const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
 
 function shownTexts(session: Session): TermText[] {
   const pieces = pieceViews(session);
@@ -32,5 +35,18 @@ function sessionsToCheck(incident: Incident): Session[] {
 describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s on the map', (_id, incident) => {
   it('shows only terms introduced in it or before', () => {
     for (const session of sessionsToCheck(incident)) expect(unknownTerms(shownTexts(session), session.known)).toEqual([]);
+  });
+
+  it('names every piece by the official name of its term', () => {
+    for (const session of sessionsToCheck(incident)) {
+      const pieces = pieceViews(session);
+      expect(unofficialNames(pieces.map((piece) => piece.label))).toEqual([]);
+      for (const piece of pieces.filter((candidate) => NAMED_BY_KIND.includes(candidate.kind))) expect(termsIn(piece.label), piece.id).toContain(piece.term);
+    }
+  });
+
+  it('uses none of the names the first playtest retired', () => {
+    const texts = [...incidentTexts(incident), ...sessionsToCheck(incident).flatMap(shownTexts)].map((text) => toPlainText(text).toLowerCase());
+    expect(RETIRED_NAMES.filter((name) => texts.some((text) => text.includes(name)))).toEqual([]);
   });
 });

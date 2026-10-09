@@ -4,7 +4,6 @@ import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './barrier';
 import { parsePieceId } from './piece-id';
-import { gatewayLabel } from './pieces';
 
 export interface InspectionField {
   label: TermText;
@@ -84,7 +83,7 @@ function packet(session: Session, run: FlowRun): Inspection {
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
-  if (ref.kind === 'gateway') return { title: gatewayLabel(session.known), fields: [{ label: INSPECTION_TEXT.does, lines: [INSPECTION_TEXT.gatewayDoes] }] };
+  if (ref.kind === 'gateway') return { title: MAP_TEXT.gateway, fields: [{ label: INSPECTION_TEXT.does, lines: [INSPECTION_TEXT.gatewayDoes] }] };
   const { world, runs } = session;
   switch (ref.kind) {
     case 'server': {

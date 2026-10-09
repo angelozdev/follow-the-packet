@@ -61,8 +61,8 @@ describe('inspect', () => {
     expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
   });
 
-  it('the internet entrance explains what it does', () => {
-    expect(plain(inspect(first, PIECE_ID.gateway))?.title).toBe('entrada desde internet');
+  it('the Internet gateway is named so from 04-01 on', () => {
+    expect(plain(inspect(first, PIECE_ID.gateway))?.title).toBe('Internet gateway');
   });
 
   it('an id that names nothing shows nothing', () => {

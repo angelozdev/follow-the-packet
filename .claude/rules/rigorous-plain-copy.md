@@ -11,3 +11,9 @@ Every AWS service, resource or setting the player reads is called by its officia
 - Keep the surrounding copy plain: one idea per screen, panel or message, and short sentences. Cut side notes the player does not need for the next action.
 - An analogy may come after the name, never in its place: "Security Group: un firewall virtual de la instancia", never "la puerta".
 - Visible text lives in `src/copy/` or in the level files, as [[english-only]] says, so editing copy never means editing logic.
+
+Enforcement:
+- `unofficialNames` (`src/copy/term-text.ts`) rejects a piece or a chip that shows a term with words other than its official name or short form, in `src/levels/ladder.test.ts` (chips) and `src/game/view/ladder.test.ts` (pieces).
+- `src/game/view/ladder.test.ts` also rejects the plain names the first playtest retired.
+- `src/copy/terms.test.ts` checks that every term has a definition of at most 120 characters.
+- `src/levels/ladder.test.ts` rejects a definition that names a term the player does not know yet.

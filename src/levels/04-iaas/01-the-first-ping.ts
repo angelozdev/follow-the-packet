@@ -9,7 +9,7 @@ export default defineIncident({
   role: 'defender',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['ec2-instance', 'vpc', 'private-ip', 'ping', 'security-group', 'inbound-rule', 'icmp', 'echo-request', 'anywhere-ipv4'],
+  introduces: ['ec2-instance', 'vpc', 'private-ip', 'ping', 'security-group', 'inbound-rule', 'icmp', 'echo-request', 'anywhere-ipv4', 'internet-gateway'],
   base: BASE_WORLD,
   report: 'servidor1 no logra hacer {{ping}} a servidor2. ¿Lo revisas?',
   tasks: [{ id: 'ping', text: 'Que servidor1 pueda hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],

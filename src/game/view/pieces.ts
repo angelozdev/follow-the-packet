@@ -8,6 +8,7 @@ export interface PieceView {
   id: string;
   kind: PieceKind;
   anchorId: string;
+  term: TermId | null;
   label: TermText;
   locked: boolean;
   configurable: boolean;
@@ -15,10 +16,12 @@ export interface PieceView {
 
 export const GATEWAY_ANCHOR = 'igw';
 
-/** Names the internet entrance plainly until its term is known. */
-export function gatewayLabel(known: ReadonlySet<TermId>): TermText {
-  return known.has('internet-gateway') ? MAP_TEXT.gateway : MAP_TEXT.gatewayPlain;
-}
+export const PIECE_TERM = {
+  server: 'ec2-instance',
+  barrier: 'security-group',
+  gateway: 'internet-gateway',
+  actor: null,
+} as const satisfies Record<PieceKind, TermId | null>;
 
 function barriers(session: Session): PieceView[] {
   const { world } = session;
@@ -26,17 +29,23 @@ function barriers(session: Session): PieceView[] {
     const owner = world.instances.find((instance) => instance.sgIds.includes(group.id));
     if (!owner) return [];
     const configurable = canConfigure(session, group.id);
-    return [{ id: PIECE_ID.barrier(group.id), kind: 'barrier', anchorId: owner.id, label: MAP_TEXT.barrier(group.name), locked: !configurable, configurable }];
+    return [
+      { id: PIECE_ID.barrier(group.id), kind: 'barrier', anchorId: owner.id, term: PIECE_TERM.barrier, label: MAP_TEXT.barrier(group.name), locked: !configurable, configurable },
+    ];
   });
 }
 
-/** Returns every piece the map shows, with labels that respect the ladder and whether the player may open it. */
+/** Returns every piece the map shows, with its term, its label by official name and whether the player may open it. */
 export function pieceViews(session: Session): PieceView[] {
-  const { world, parts, known } = session;
+  const { world, parts } = session;
   return [
-    ...world.instances.map((instance): PieceView => ({ id: PIECE_ID.server(instance.id), kind: 'server', anchorId: instance.id, label: instance.name, locked: !parts.linuxSettings, configurable: false })),
+    ...world.instances.map(
+      (instance): PieceView => ({ id: PIECE_ID.server(instance.id), kind: 'server', anchorId: instance.id, term: PIECE_TERM.server, label: instance.name, locked: !parts.linuxSettings, configurable: false }),
+    ),
     ...barriers(session),
-    ...world.actors.map((actor): PieceView => ({ id: PIECE_ID.actor(actor.id), kind: 'actor', anchorId: actor.id, label: actor.name, locked: false, configurable: false })),
-    { id: PIECE_ID.gateway, kind: 'gateway', anchorId: GATEWAY_ANCHOR, label: gatewayLabel(known), locked: true, configurable: false },
+    ...world.actors.map(
+      (actor): PieceView => ({ id: PIECE_ID.actor(actor.id), kind: 'actor', anchorId: actor.id, term: PIECE_TERM.actor, label: actor.name, locked: false, configurable: false }),
+    ),
+    { id: PIECE_ID.gateway, kind: 'gateway', anchorId: GATEWAY_ANCHOR, term: PIECE_TERM.gateway, label: MAP_TEXT.gateway, locked: true, configurable: false },
   ];
 }

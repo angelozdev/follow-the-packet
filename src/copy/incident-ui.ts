@@ -4,7 +4,6 @@ import type { TermText } from './term-text';
 export const MAP_TEXT = {
   barrier: (name: string): TermText => `{{security-group}} ${name}`,
   gateway: '{{internet-gateway}}',
-  gatewayPlain: 'entrada desde internet',
   locked: 'con candado',
   packet: (label: string) => `Paquete: ${label}`,
 } as const;
