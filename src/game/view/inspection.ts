@@ -11,6 +11,7 @@ export interface InspectionField {
 }
 
 export interface Inspection {
+  entity: EntityRef;
   title: TermText;
   fields: InspectionField[];
 }
@@ -54,6 +55,7 @@ function device(session: Session, own: Device): Inspection {
   const { region, firewalls } = session.world;
   const guards = firewalls.filter((firewall) => own.firewallIds.includes(firewall.id));
   return {
+    entity: { kind: 'device', variant: own.kind },
     title: own.name,
     fields: visible(
       [
@@ -72,6 +74,7 @@ function device(session: Session, own: Device): Inspection {
 function firewall(session: Session, own: Firewall): Inspection {
   const rows = ruleRows(own, session.incident);
   return {
+    entity: { kind: 'firewall', variant: own.kind },
     title: MAP_TEXT.firewall[own.kind](own.name),
     fields: visible(
       [
@@ -86,6 +89,7 @@ function firewall(session: Session, own: Firewall): Inspection {
 function edge(session: Session): Inspection {
   const variant = session.world.edge;
   return {
+    entity: { kind: 'edge', variant },
     title: MAP_TEXT.edge[variant],
     fields: visible([...whatIs({ kind: 'edge', variant }), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.edgeDoes[variant]] }], session.known),
   };
@@ -93,6 +97,7 @@ function edge(session: Session): Inspection {
 
 function internet(session: Session): Inspection {
   return {
+    entity: { kind: 'internet', variant: 'internet' },
     title: MAP_TEXT.internet,
     fields: visible([...whatIs({ kind: 'internet', variant: 'internet' }), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.internetDoes] }], session.known),
   };
@@ -100,6 +105,7 @@ function internet(session: Session): Inspection {
 
 function actor(session: Session, who: Actor): Inspection {
   return {
+    entity: { kind: 'actor', variant: who.kind },
     title: who.name,
     fields: visible(
       [
@@ -114,6 +120,7 @@ function actor(session: Session, who: Actor): Inspection {
 function packet(session: Session, run: FlowRun): Inspection {
   const step = stopStep(run.trace);
   return {
+    entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.kind === 'forbidden' },
     title: run.label,
     fields: [
       ...visible(definition(packetTerm(run.packet)), session.known),

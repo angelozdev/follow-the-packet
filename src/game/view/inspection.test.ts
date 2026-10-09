@@ -111,6 +111,13 @@ describe('inspect', () => {
     expect(plain(inspect(first, PIECE_ID.internet))).toEqual({ title: 'internet', fields: [['Qué hace', 'Lleva los paquetes de una red a otra.']] });
   });
 
+  it('says which entity it shows, so the box can draw its icon: an intruder packet is told apart from a legitimate one', () => {
+    expect(inspect(first, PIECE_ID.device(S2.id))?.entity).toEqual({ kind: 'device', variant: 'ec2-instance' });
+    expect(inspect(office, PIECE_ID.edge)?.entity).toEqual({ kind: 'edge', variant: 'router' });
+    expect(inspect(first, PIECE_ID.packet(FLOWS.attackerPing.id))?.entity).toEqual({ kind: 'packet', variant: 'echo-request', intruder: true });
+    expect(inspect(first, PIECE_ID.packet(FLOWS.pingToServer2.id))?.entity).toEqual({ kind: 'packet', variant: 'echo-request', intruder: false });
+  });
+
   it('an id that names nothing shows nothing', () => {
     expect(inspect(first, PIECE_ID.device('ghost'))).toBeNull();
     expect(inspect(first, 'nonsense')).toBeNull();

@@ -1,4 +1,5 @@
 import { Billboard, Line } from '@react-three/drei';
+import { InkIcon } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
 import { INK, PAPER_FILL } from '@/scene/theme';
 
@@ -35,5 +36,16 @@ export function InternetPiece({ position }: { position: Vec2 }) {
         <Line points={OUTLINE} color={INK} lineWidth={1.5} />
       </Billboard>
     </group>
+  );
+}
+
+/** The internet's icon: the globe with its equator and a meridian. */
+export function InternetIcon() {
+  return (
+    <InkIcon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+    </InkIcon>
   );
 }

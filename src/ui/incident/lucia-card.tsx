@@ -1,7 +1,8 @@
 import type { RefObject } from 'react';
-import { LUCIA_TEXT, TERMS, type TermId, type TermText } from '@/copy';
+import { LUCIA_TEXT, TERMS, TERM_ENTITY, type TermId, type TermText } from '@/copy';
 import { isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import type { IncidentTask } from '@/levels';
+import { EntityIcon } from '@/scene';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
 
@@ -42,15 +43,19 @@ function glossaryOrder(known: ReadonlySet<TermId>, newTerms: ReadonlySet<TermId>
 function Glossary({ terms, newTerms }: { terms: TermId[]; newTerms: ReadonlySet<TermId> }) {
   return (
     <dl className="glossary">
-      {terms.map((id) => (
-        <div key={id}>
-          <dt>
-            {TERMS[id].name}
-            {newTerms.has(id) && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
-          </dt>
-          <dd>{TERMS[id].definition}</dd>
-        </div>
-      ))}
+      {terms.map((id) => {
+        const entity = TERM_ENTITY[id];
+        return (
+          <div key={id}>
+            <dt>
+              {entity && <EntityIcon entity={entity} />}
+              <span className="glossary__name">{TERMS[id].name}</span>
+              {newTerms.has(id) && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
+            </dt>
+            <dd>{TERMS[id].definition}</dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }

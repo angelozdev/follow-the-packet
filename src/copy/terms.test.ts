@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, entityTerm, isTermId, type Term, type TermId } from './terms';
+import { ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId, type EntityRef, type Term, type TermId } from './terms';
 
 const MAX_DEFINITION_LENGTH = 120;
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -67,5 +67,22 @@ describe('entity terms', () => {
   it('gives a character no term: an actor is a person, not a piece of the network', () => {
     expect(entityTerm({ kind: 'actor', variant: 'attacker' })).toBeNull();
     expect(entityTerm({ kind: 'actor', variant: 'you' })).toBeNull();
+  });
+});
+
+describe('term icons', () => {
+  it('every term that names a variant shows that variant\'s entity as its icon', () => {
+    const named = Object.entries(ENTITY_TERMS).flatMap(([kind, variants]) =>
+      Object.entries(variants).flatMap(([variant, term]) => (term === null ? [] : [{ term, kind, variant }])),
+    );
+    for (const { term, kind, variant } of named) expect(TERM_ENTITY[term as TermId], term).toMatchObject({ kind, variant });
+  });
+
+  it('every icon belongs to the term that names its entity', () => {
+    for (const [term, entity] of Object.entries(TERM_ENTITY)) expect(entityTerm(entity as EntityRef)).toBe(term);
+  });
+
+  it('a term with no entity, like least-privilege, has no icon', () => {
+    expect(TERM_ENTITY['least-privilege']).toBeUndefined();
   });
 });

@@ -98,6 +98,7 @@ describe('incident screen', () => {
     renderFirst();
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
     const box = screen.getByRole('region', { name: 'servidor2' });
+    expect(within(box).getByRole('heading', { name: 'servidor2' }).querySelector('svg.entity-icon')).toBeInTheDocument();
     expect(box.querySelector('dt')).toHaveTextContent('Qué es');
     expect(box.querySelector('dd')).toHaveTextContent(TERMS['ec2-instance'].definition);
     expect(box).toHaveTextContent('IP privada');

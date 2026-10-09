@@ -91,8 +91,10 @@ export interface EntityVariants {
 
 export type EntityKind = keyof EntityVariants;
 
-/** One entity of the map in one of its variants, as the entity catalog draws it. */
-export type EntityRef = { [Kind in EntityKind]: { kind: Kind; variant: EntityVariants[Kind] } }[EntityKind];
+type VariantOf<Kind extends EntityKind> = { kind: Kind; variant: EntityVariants[Kind] };
+
+/** One entity of the map in one of its variants, as the entity catalog draws it; a packet can also be an intruder's. */
+export type EntityRef = { [Kind in EntityKind]: Kind extends 'packet' ? VariantOf<Kind> & { intruder?: boolean } : VariantOf<Kind> }[EntityKind];
 
 /** The term that names each variant of each entity, or null while the ladder has no term for it. */
 export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
@@ -103,6 +105,16 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   internet: { internet: null },
   actor: { you: null, attacker: null },
   packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply' },
+};
+
+/** The entity whose icon goes with each term that names one; a term left out, like least-privilege, has no icon. */
+export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
+  vpc: { kind: 'network', variant: 'vpc' },
+  'ec2-instance': { kind: 'device', variant: 'ec2-instance' },
+  'security-group': { kind: 'firewall', variant: 'security-group' },
+  'internet-gateway': { kind: 'edge', variant: 'internet-gateway' },
+  'echo-request': { kind: 'packet', variant: 'echo-request' },
+  'echo-reply': { kind: 'packet', variant: 'echo-reply' },
 };
 
 /** Returns the term that names an entity in this variant, or null when it has none yet. */

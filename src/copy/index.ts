@@ -1,4 +1,4 @@
-export { ENTITY_TERMS, TERMS, entityTerm, isTermId } from './terms';
+export { ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId } from './terms';
 export type { EntityKind, EntityRef, EntityVariants, PacketMessage, TermId } from './terms';
 export { parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
 export type { TermText } from './term-text';

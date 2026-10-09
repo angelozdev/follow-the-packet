@@ -1,5 +1,5 @@
 import type { Network } from '@/engine';
-import { InkBox } from '@/scene/ink';
+import { InkBox, InkIcon } from '@/scene/ink';
 import { PAPER_SHADE } from '@/scene/theme';
 
 const WALL_HEIGHT = 0.5;
@@ -12,5 +12,15 @@ export function NetworkPiece({ variant, width, depth }: { variant: Network['kind
       <InkBox size={[width, 0.2, depth]} position={[0, -0.1, 0]} lineWidth={2} />
       {variant === 'office' && <InkBox size={[width, WALL_HEIGHT, WALL_DEPTH]} position={[0, WALL_HEIGHT / 2, (WALL_DEPTH - depth) / 2]} fill={PAPER_SHADE} />}
     </group>
+  );
+}
+
+/** The network's icon: its slab, with the office's wall behind it. */
+export function NetworkIcon({ variant }: { variant: Network['kind'] }) {
+  return (
+    <InkIcon>
+      <rect x="2" y="15" width="20" height="4" rx="0.5" />
+      {variant === 'office' && <path d="M3 15V9h18v6" />}
+    </InkIcon>
   );
 }

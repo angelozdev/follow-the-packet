@@ -4,7 +4,7 @@ import { useRef, type ReactNode } from 'react';
 import type { Group } from 'three';
 import type { Device } from '@/engine';
 import { boxEdgePoints } from '@/scene/edges';
-import { InkBox } from '@/scene/ink';
+import { InkBox, InkIcon } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
 import { INK, PAPER_SHADE } from '@/scene/theme';
 
@@ -79,4 +79,32 @@ export function DevicePiece({ position, variant, selected, intruded, still }: { 
       {intruded && still && <DoubleBorder x={x} z={z} variant={variant} />}
     </group>
   );
+}
+
+const DEVICE_ICON: Record<Device['kind'], ReactNode> = {
+  laptop: (
+    <>
+      <rect x="5" y="5" width="14" height="10" rx="1" />
+      <path d="M3 19l2-4h14l2 4z" />
+    </>
+  ),
+  printer: (
+    <>
+      <path d="M7 10V4h10v6" />
+      <rect x="3" y="10" width="18" height="7" rx="1" />
+      <path d="M7 17v3h10v-3" />
+    </>
+  ),
+  'ec2-instance': (
+    <>
+      <rect x="4" y="5" width="16" height="3" />
+      <rect x="5" y="8" width="14" height="12" />
+      <rect x="10" y="14" width="4" height="6" />
+    </>
+  ),
+};
+
+/** The device's icon: the front of its piece. */
+export function DeviceIcon({ variant }: { variant: Device['kind'] }) {
+  return <InkIcon>{DEVICE_ICON[variant]}</InkIcon>;
 }

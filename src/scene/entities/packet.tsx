@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
 import type { PacketMessage } from '@/copy';
 import { cumulativeLengths, pathLength, pointAt, roundTrip, type Vec2, type Vec3 } from '@/scene/layout';
+import { InkIcon } from '@/scene/ink';
 import { ACCENT, INK } from '@/scene/theme';
 
 export type PacketEnd = 'replied' | 'arrived' | 'blocked' | 'lost';
@@ -117,5 +118,17 @@ export function PacketTrace({ path, message, intruder, end }: PacketLook) {
         </group>
       )}
     </>
+  );
+}
+
+const PACKET_ICON_PATH = { round: 'M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z', rhombus: 'M12 5l7 7-7 7-7-7z' } as const;
+
+/** The packet's icon, the same shape as on the map: filled for an Echo Request, hollow for an Echo Reply, a rhombus for an intruder. */
+export function PacketIcon({ message, intruder }: { message: PacketMessage; intruder: boolean }) {
+  const request = message === 'echo-request';
+  return (
+    <InkIcon>
+      <path d={PACKET_ICON_PATH[intruder ? 'rhombus' : 'round']} fill={request ? 'currentColor' : 'none'} strokeWidth={request ? 1.6 : 2.6} />
+    </InkIcon>
   );
 }

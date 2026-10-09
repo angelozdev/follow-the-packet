@@ -26,8 +26,18 @@ function glossary(): HTMLElement {
   return details;
 }
 
+function nameOf(dt: Element): string | null | undefined {
+  return dt.querySelector('.glossary__name')?.textContent;
+}
+
 function glossaryNames(): (string | null | undefined)[] {
-  return [...glossary().querySelectorAll('dt')].map((dt) => dt.firstChild?.textContent);
+  return [...glossary().querySelectorAll('dt')].map(nameOf);
+}
+
+function termRow(name: string): HTMLElement {
+  const row = [...glossary().querySelectorAll('dt')].find((dt) => nameOf(dt) === name);
+  if (!(row instanceof HTMLElement)) throw new Error(`missing glossary row ${name}`);
+  return row;
 }
 
 function namesOf(ids: TermId[]): string[] {
@@ -59,7 +69,14 @@ describe("Lucía's card", () => {
     const earlier = [...startSession(INCIDENTS, second.id).known].filter((id) => !second.introduces.includes(id));
     expect(glossaryNames()).toEqual([...namesOf(second.introduces), ...namesOf(earlier)]);
     const marked = [...glossary().querySelectorAll('dt')].filter((dt) => within(dt).queryByText(LUCIA_TEXT.newBadge));
-    expect(marked.map((dt) => dt.firstChild?.textContent)).toEqual(namesOf(second.introduces));
+    expect(marked.map(nameOf)).toEqual(namesOf(second.introduces));
+  });
+
+  it('shows the icon of the entity a term names, and none for a term with no entity', () => {
+    render(<Harness incidentId="04-02" />);
+    expect(termRow(TERMS['security-group'].name).querySelector('svg.entity-icon')).toBeInTheDocument();
+    expect(termRow(TERMS['echo-reply'].name).querySelector('svg.entity-icon')).toBeInTheDocument();
+    expect(termRow(TERMS['least-privilege'].name).querySelector('svg')).toBeNull();
   });
 
   it('the glossary of 04-01 has no term from a later incident', () => {

@@ -2,6 +2,7 @@
 
 The incident screen: Lucía's card (tasks, the "Enviar solución" button and her reply, the folded glossary with this incident's new terms first, and hints), the task card of a Security Group, the inspection box, Lucía's question and the result.
 
+- The glossary shows the icon of each term that names an entity, and the inspection box shows the icon of what it inspects in its heading (`EntityIcon` from `@/scene`).
 - State lives in the session reducer of `@/game`; there is no game clock.
 - Effects live in `use-*.ts` hooks next to their first consumer.
 - Not here: session state and what the panels show (`src/game/`), the map and its labels (`src/scene/`), visible Spanish text (`src/copy/`).
