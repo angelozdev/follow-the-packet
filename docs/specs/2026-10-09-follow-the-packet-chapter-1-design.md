@@ -192,7 +192,7 @@ Cada entidad tiene **una ficha de diseño** (esta sección) y **un componente pr
 2. **Forma:** cómo se ve en el mapa isométrico de papel y tinta, y la misma silueta en pequeño como ícono 2D (SVG de un color, `currentColor`).
 3. **Variantes:** cada una con su nombre oficial y su término.
 4. **Estados:** los que la pieza puede mostrar. La pieza no decide nada: recibe la variante y el estado por props.
-5. **Etiqueta:** nombre oficial, con la definición al pasar el mouse.
+5. **Etiqueta:** nombre oficial, con la definición al pasar el mouse. El nombre propio de un recurso o de un actor («servidor2», «Atacante») se ve como etiqueta: letra monoespaciada en una cajita sombreada, como el valor de la etiqueta `Name` en AWS. La entidad («Security Group») sigue en texto normal. Lo pidió el estudiante tras jugar el plan 2 (2026-10-09).
 6. **Movimiento:** la animación y su versión quieta para «Sin animaciones».
 7. **Accesibilidad:** nunca solo color: forma más texto. La pieza tiene una etiqueta para el lector de pantalla.
 

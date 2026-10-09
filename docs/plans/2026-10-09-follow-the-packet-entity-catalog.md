@@ -6130,6 +6130,126 @@ git commit -m "fix(scene): draw the lock in ink, mark the selected firewall, cle
 
 ---
 
+### Task 11: El nombre propio se ve como etiqueta
+
+Tras jugar con el plan 2, el estudiante pidió que el nombre propio de cada recurso se distinga de la entidad: «quiero que el "servidor1" tenga otro estilo porque es un label. El nombre de la entidad está bien como está». Eligió el estilo B del [prototipo](https://claude.ai/artifact/MDFXJtYLUqMHtJgxxQHQ71): el nombre va en letra monoespaciada, dentro de una cajita sombreada. En AWS, «servidor2» es justamente el valor de la etiqueta `Name` del recurso.
+
+Esta tarea **no está ensayada**: trae lo que el cambio debe cumplir, sus tests y pistas de código. El orden es TDD.
+
+**La regla.** Todo nombre de un recurso o de un actor que el código arma a partir del mundo se marca como nombre:
+- la etiqueta del mapa (dispositivo, firewall y actor);
+- el título de la tarjeta del firewall y el de la caja de inspección;
+- las filas de reglas;
+- las líneas de la caja;
+- la descripción de un paquete;
+- los motivos.
+
+La entidad («Security Group», «Internet gateway», «firewall») sigue en texto normal. Los textos escritos a mano en los incidentes (el mensaje de Lucía, las tareas, las pistas, la explicación y la pregunta final) **no cambian**: quedan como idea en la hoja de ruta.
+
+**Files:**
+- Modify:
+  - `src/copy/term-text.ts`, `src/copy/packet-labels.ts`, `src/copy/incident-ui.ts`, `src/copy/ui.ts`, `src/copy/index.ts`, `src/copy/CLAUDE.md`
+  - `src/levels/04-iaas/shared.ts`
+  - `src/game/view/pieces.ts`, `src/game/view/inspection.ts`
+  - `src/ui/tagged-text.tsx`
+  - `src/scene/overlay/piece-label.tsx`, `src/scene/layout.ts`
+  - `src/styles.css`
+  - `tests/e2e/snapshots/entities-darwin.png` (se regraba)
+- Test:
+  - `src/copy/term-text.test.ts`, `src/ui/tagged-text.test.tsx`, `src/scene/overlay/piece-label.test.tsx`
+  - y los tests que hoy comparan textos con nombres: `src/copy/reasons.test.ts`, `src/copy/packet-labels.test.ts`, `src/game/view/pieces.test.ts`, `src/game/view/inspection.test.ts` y los que el implementador encuentre con `npx vitest run`.
+
+**Interfaces:**
+- Consumes: `TermText`, `parseTermText`, `toPlainText`, `TermSegment` (`src/copy/term-text.ts`); `deviceName`, `endpointName` (`src/copy/packet-labels.ts`); `MAP_TEXT.firewall` (`src/copy/incident-ui.ts`); `PieceLabel` (`src/scene/overlay/piece-label.tsx`); `TaggedText` (`src/ui/tagged-text.tsx`); `LABEL_OFFSET` (`src/scene/layout.ts`).
+- Produces:
+  - **La marca.** `[[nombre]]` dentro de un `TermText`. `TermSegment` suma la variante `{ kind: 'name'; text: string }`. `parseTermText` la reconoce, y un `[[` o `]]` suelto lanza un error, como hoy un `{{` suelto. `toPlainText` devuelve solo el nombre, sin corchetes.
+  - **La función que marca.** `nameTag(name: string): TermText` devuelve `[[${name}]]`. Se exporta desde el barrel de `@/copy`.
+  - **Dónde se usa `nameTag`:**
+    - `deviceName` y `endpointName` devuelven el nombre ya marcado y pasan a tipar `TermText`; el `'Internet'` de reserva no es un nombre y queda sin marcar;
+    - `MAP_TEXT.firewall[kind](name)` marca el nombre;
+    - `pieces.ts` marca el nombre del dispositivo y el del actor;
+    - `inspection.ts` marca los títulos `own.name` y `who.name`;
+    - en `levels/04-iaas/shared.ts`, las fichas que nombran un recurso (`sgServidor1` y cualquier otra con `${S1.id}` o `${S2.id}`) marcan el nombre;
+    - `CATALOG` y `MAP_TEXT` en `copy/ui.ts`: los actores del catálogo (`Atacante`, `Tu Mac`) son nombres de personajes y se marcan.
+  - **El dibujo.** `TaggedText` dibuja un segmento `name` como `<span className="name-tag">nombre</span>`. `PieceLabel` deja de aplanar la etiqueta con `toPlainText`: dibuja cada segmento, con el nombre en `<span className="name-tag">`. Si todos los segmentos con texto son nombres, el botón suma la clase `map-button--name`.
+  - **Atributos.** Todo `TermText` que termina en un atributo (`aria-label`, `title`) pasa por `toPlainText`. Revisar `task-card.tsx`, `stamp.tsx` y cualquier otro con `grep -rn "aria-label={" src`.
+
+- [ ] **Step 1: Escribir los tests**
+
+Cada test nuevo, en su archivo:
+
+1. **`src/copy/term-text.test.ts`:**
+   - `parses a resource name as its own segment`: `parseTermText('{{security-group}} [[servidor2]]')` devuelve el término, el espacio como texto y `{ kind: 'name', text: 'servidor2' }`. `toPlainText` de lo mismo es `'Security Group servidor2'`.
+   - `rejects a name tag that is not closed`: `parseTermText('[[servidor2')` lanza.
+2. **`src/ui/tagged-text.test.tsx`:** `draws a resource name as a name tag`. El texto `servidor1 a [[servidor2]]` deja un solo `.name-tag`, con `servidor2`, y el texto visible completo sigue siendo `servidor1 a servidor2`.
+3. **`src/scene/overlay/piece-label.test.tsx`:**
+   - `draws the name of a firewall's device as a name tag`: con la pieza `SG_PIECE` y su etiqueta `'{{security-group}} [[servidor2]]'`, el botón tiene un `.name-tag` con `servidor2`, no tiene la clase `map-button--name`, y su nombre accesible sigue siendo `Security Group servidor2`.
+   - `a label that is only a name looks like a name tag`: con `SERVER` y la etiqueta `'[[servidor2]]'`, el botón tiene la clase `map-button--name`, y su nombre accesible sigue diciendo `servidor2` y «con candado».
+
+Actualizar las constantes de prueba de `piece-label.test.tsx` (`SERVER`, `SG_PIECE`) para que sus etiquetas lleven la marca.
+
+- [ ] **Step 2: Verlos fallar**
+
+```bash
+npx vitest run src/copy/term-text.test.ts src/ui/tagged-text.test.tsx src/scene/overlay/piece-label.test.tsx
+```
+
+Expected: FAIL. Los tests nuevos fallan porque `[[` todavía no se reconoce: pasa como texto, o lanza en los que esperan un error.
+
+- [ ] **Step 3: Implementar**
+
+1. **En `term-text.ts`:**
+   - Reconocer `[[nombre]]` junto a `{{término}}`, en una sola pasada y en orden de aparición. Ojo: un nombre no puede contener `[`, `]`, `{` ni `}`.
+   - Ampliar `BROKEN_TAG` para detectar `[[` o `]]` sueltos.
+   - `termsIn` y `unofficialNames` ignoran los segmentos `name`.
+   - Exportar `nameTag`, con su JSDoc.
+2. **Marcar los nombres** en los lugares que lista «Produces», usando siempre `nameTag`: nada de escribir `[[` a mano fuera de `term-text.ts`.
+3. **Estilos en `src/styles.css`:**
+   - Junto a `.term`, agregar `.name-tag { font-family: var(--font-mono); font-weight: 400; font-size: 0.82em; line-height: 1.35; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-shade); padding: 0 0.35em; white-space: nowrap; }`.
+   - Junto a `.map-button`:
+     - `.map-button--name { border-color: var(--ink-soft); border-radius: 3px; background: var(--paper-shade); }`
+     - `.map-button--name .name-tag { border: 0; padding: 0; background: none; font-size: 12px; }`
+   - Una etiqueta con candado conserva el borde punteado: `.map-button--locked` ya lo pone.
+4. **La etiqueta del actor** (hallazgo del plan 2: tapa la mitad de abajo de su cubo). En `LABEL_OFFSET`, bajar la del actor, hoy `actor: [0, 0.05, 0.7]`, hasta que quede debajo del cubo sin taparlo; por ejemplo, `z` en `1.0`. Se comprueba en la captura y en el 04-01.
+5. **Actualizar los tests que comparan textos con nombres** (motivos, descripciones de paquetes, piezas e inspección) para que esperen la marca. Ojo: un test que compara lo que se ve en pantalla (Testing Library, Playwright) no cambia, porque el texto visible es el mismo.
+6. **`src/copy/CLAUDE.md`:** documentar la marca `[[nombre]]` y `nameTag`, junto a la de los términos.
+
+- [ ] **Step 4: Verificar y regrabar la captura**
+
+```bash
+npx vitest run
+npx playwright test entities --update-snapshots=all
+```
+
+Expected: Vitest PASS (512 más los tests nuevos de este paso; anotar el número). Abrir con la herramienta Read:
+- `tests/e2e/snapshots/entities-darwin.png`;
+- una captura del 04-01 en «Sin animaciones», con la tarjeta del Security Group de servidor2 abierta y el mouse sobre su etiqueta (se toma con un script de Playwright en el scratchpad, nunca en los puertos 5173 ni 5180).
+
+En las dos, comprobar:
+- `servidor1`, `servidor2` y `Atacante` se ven como etiqueta, con letra monoespaciada y cajita sombreada;
+- «Security Group» e «Internet gateway» no cambian;
+- la etiqueta del actor ya no tapa su cubo;
+- nada se superpone.
+
+- [ ] **Step 5: Verificar todo**
+
+```bash
+git diff --exit-code src/levels/04-iaas/golden-traces.json
+npm run check
+npm run check
+```
+
+Expected: `git diff` sin salida. `npm run check` PASS dos veces seguidas: 0 clones, 14 tests de Playwright, incluido el de etiquetas y sellos sin superponerse en el 04-01.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src tests
+git commit -m "feat(ui): show a resource's own name as a name tag, apart from its entity"
+```
+
+---
+
 ## Cobertura del spec
 
 | Pide el spec (plan 2) | Dónde |
@@ -6153,3 +6273,4 @@ git commit -m "fix(scene): draw the lock in ink, mark the selected firewall, cle
 | F3: tests de escena del ping a la propia IP y de la IP que nadie tiene | Tarea 5 |
 | Renombres que el plan 1 dejó para este plan | Tarea 2 |
 | Ajustes de la revisión del plan: candado en tinta, firewall seleccionado con alfombra, antenas del router visibles, sellos cercanos separados | Tarea 10 |
+| Pedido del estudiante tras jugar: el nombre propio de un recurso se ve como etiqueta (estilo B); la etiqueta del actor no tapa su cubo | Tarea 11 |

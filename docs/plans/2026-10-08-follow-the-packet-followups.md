@@ -6,7 +6,9 @@
 
 > **Estado (plan 3, `docs/plans/2026-10-08-follow-the-packet-rigor-and-submit.md`):** hechos E2 (nombres oficiales de AWS, definición al pasar el mouse, glosario y la regla `rigorous-plain-copy`) y E3 («Enviar solución», sin la barra de 3 s). Siguen pendientes E4 a E10, A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
 
-> **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. Siguen pendientes E4, E5, E8 a E10, F4 a F6 (plan 3), A1, A2 y el bloque D.
+> **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. E5 quedó resuelto con los sellos cercanos (Tarea 10 y arreglo final). Siguen pendientes E4, E8 a E10, F4 a F6 (plan 3), el bloque G, A1, A2 y el bloque D.
+
+Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
 
@@ -97,7 +99,7 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | E2 | «Puerta debe llamarse explícitamente Security Group y al hacerle hover sí se muestre una descripción de lo que es» | Hecho en el plan 3 |
 | E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Hecho en el plan 3 |
 | E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente (revisión del plan 2) |
-| E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Pendiente (revisión del plan 2) |
+| E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Hecho en el capítulo 1, plan 2 (`f1aeecf`, `f2fee1e`): los sellos cercanos se separan según su lugar en la pantalla |
 | E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Hecho en el capítulo 1, plan 2 (Tarea 6): el «!» va dentro de la etiqueta |
 | E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Decidido en el capítulo 1, plan 2: la ficha de Actor no lleva candado (es un personaje) |
 | E8 | Pantallas bajas en horizontal: el cuadro de inspección se corta; a 390 px la tarjeta queda fuera de pantalla y a 320 px «Roadmap» pisa una etiqueta | Pendiente |
@@ -116,6 +118,22 @@ Todo es inalcanzable desde el juego de hoy. Lo encontraron las revisiones del pl
 | F4 | Los textos de la respuesta y de `route-private` todavía nombran el Security Group y la VPC, también en una oficina | Plan 3 (textos por tipo) |
 | F5 | El esquema acepta dos dispositivos con la misma IP privada | Plan 3 (regla del esquema con su test) |
 | F6 | Una VPC con rango no privado (por ejemplo `100.64.0.0/16`) deja que un actor de internet llegue a una IP privada; antes del plan 1 se bloqueaba. El spec dice que en el juego toda VPC usa rangos de RFC 1918 | Plan 3: el esquema exige un `cidr` de RFC 1918 también en la VPC |
+
+## Bloque G: lo que dejó el catálogo de entidades (capítulo 1, plan 2, 2026-10-09)
+
+Lo encontraron las revisiones del plan `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md` (commits `91f30b1..f2fee1e`). Ninguno rompe el capítulo 4 de hoy. El detalle está en `.superpowers/sdd/2026-10-09-follow-the-packet-entity-catalog/progress.md`, que git ignora.
+
+| # | Hallazgo | Destino |
+|---|----------|---------|
+| G1 | La captura de `#/entidades` tolera un 1 % de píxeles distintos (unos 24 000): si volviera el candado dorado o faltara la alfombra del firewall seleccionado, la prueba pasaría (`tests/e2e/entities.spec.ts:26`) | Design system (hoja de ruta): bajar la tolerancia o sumar comprobaciones de la página |
+| G2 | La lógica de cada cuadro de `PacketRun` no tiene test unitario (`src/scene/entities/packet.tsx:56`): si el arreglo del paquete perdido se rompiera, solo se vería en el mapa animado | Pendiente |
+| G3 | Todo `timeout` que no es «perdido» se dibuja como un bloqueo de firewall, con ✕ y estallido (`src/scene/traffic/flow-look.ts`): un `timeout` de ruta o de DNS parecería un firewall que dice no | Plan 3 |
+| G4 | En una oficina sin nadie afuera, un paquete a una IP pública suma el punto del borde, que no se dibuja: el paquete viajaría a un lugar invisible (`src/scene/layout.ts`, `pathFor`) | Plan 3 |
+| G5 | `spreadStamps` no tiene test del encadenamiento (A cerca de B, B cerca de C, A lejos de C) y no compara grupos entre sí: `[[0,0],[0,0],[1,0]]` deja dos sellos a 0.72, bajo el mínimo de 0.8 (`src/scene/layout.ts`) | Plan 3: en la oficina caen varios sellos en el mismo dispositivo |
+| G6 | La etiqueta del actor tapa la mitad de abajo de su cubo (`LABEL_OFFSET.actor` en `src/scene/layout.ts`) | Plan 2, Tarea 11 |
+| G7 | `inspect()` devuelve la inspección del borde y de internet aunque nadie esté afuera y esas piezas no se dibujen (`src/game/view/inspection.ts:131-132`); hoy la interfaz no llega ahí | Plan 3 |
+| G8 | El lector de pantalla no dice el estado del sello: ✓, ✕ y ? suenan igual (`src/scene/entities/stamp.tsx`). Viene de antes del plan 2 | Plan 3 (los sellos de «enviar») |
+| G9 | La prueba animada del catálogo espera 7 s calculados a mano (`WATCH_MS` en `tests/e2e/entities.spec.ts:7`): si el horario crece, deja de cubrir el último paquete sin avisar | Pendiente: calcularlo desde el horario |
 
 ## Fuera de este backlog (decide el estudiante)
 
