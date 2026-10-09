@@ -39,6 +39,12 @@ describe('inspect', () => {
     });
   });
 
+  it('titles a piece with its own name marked as a name, and keeps the entity plain', () => {
+    expect(inspect(first, PIECE_ID.device(S2.id))?.title).toBe('[[servidor2]]');
+    expect(inspect(first, PIECE_ID.firewall(SG.servidor2))?.title).toBe('{{security-group}} [[servidor2]]');
+    expect(inspect(first, PIECE_ID.actor('attacker'))?.title).toBe('[[Atacante]]');
+  });
+
   it('later terms add their fields', () => {
     const fields = plain(inspect(knowing(first, 'public-ip', 'dns'), PIECE_ID.device(S2.id)))?.fields.map(([label]) => label);
     expect(fields).toEqual([WHAT_IS, 'IP privada', 'IP pública', 'Nombres DNS', 'Security Groups']);

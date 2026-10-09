@@ -16,8 +16,8 @@ describe('pieceViews', () => {
     expect(pieceViews(first).map(({ id, variant, term, label, locked, configurable }) => ({ id, variant, term, label, locked, configurable }))).toEqual([
       { id: PIECE_ID.device(S1.id), variant: 'ec2-instance', term: 'ec2-instance', label: nameTag(S1.id), locked: true, configurable: false },
       { id: PIECE_ID.device(S2.id), variant: 'ec2-instance', term: 'ec2-instance', label: nameTag(S2.id), locked: true, configurable: false },
-      { id: PIECE_ID.firewall(SG.servidor1), variant: 'security-group', term: 'security-group', label: MAP_TEXT.firewall['security-group'](S1.id), locked: false, configurable: true },
-      { id: PIECE_ID.firewall(SG.servidor2), variant: 'security-group', term: 'security-group', label: MAP_TEXT.firewall['security-group'](S2.id), locked: false, configurable: true },
+      { id: PIECE_ID.firewall(SG.servidor1), variant: 'security-group', term: 'security-group', label: '{{security-group}} [[servidor1]]', locked: false, configurable: true },
+      { id: PIECE_ID.firewall(SG.servidor2), variant: 'security-group', term: 'security-group', label: '{{security-group}} [[servidor2]]', locked: false, configurable: true },
       { id: PIECE_ID.actor('attacker'), variant: 'attacker', term: null, label: '[[Atacante]]', locked: false, configurable: false },
       { id: PIECE_ID.edge, variant: 'internet-gateway', term: 'internet-gateway', label: MAP_TEXT.edge['internet-gateway'], locked: true, configurable: false },
       { id: PIECE_ID.internet, variant: 'internet', term: null, label: MAP_TEXT.internet, locked: false, configurable: false },
@@ -57,7 +57,7 @@ describe('firewallCard', () => {
     const second = startSession(INCIDENTS, '04-02');
     expect(firewallCard(second, PIECE_ID.firewall(SG.servidor2))).toEqual({
       firewallId: SG.servidor2,
-      title: MAP_TEXT.firewall['security-group'](S2.id),
+      title: '{{security-group}} [[servidor2]]',
       rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.anywhere.label }],
     });
   });

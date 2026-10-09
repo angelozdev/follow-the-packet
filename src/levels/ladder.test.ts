@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, termsIn, unofficialNames, type TermId } from '@/copy';
+import { FROM } from './04-iaas/shared';
 import type { Incident } from './incident';
 import { configurableParts, incidentTexts, knownTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
@@ -31,6 +32,10 @@ describe('term ladder', () => {
     const labels = [...incident.chips.what, ...incident.chips.from].map((chip) => chip.label);
     expect(labels.filter((label) => termsIn(label).length === 0)).toEqual([]);
     expect(unofficialNames(labels)).toEqual([]);
+  });
+
+  it('marks the resource name in the Security Group chip, apart from its term', () => {
+    expect(FROM.sgServidor1.label).toBe('{{security-group|SG}} [[servidor1]]');
   });
 
   it('catches a text that uses a later term', () => {
