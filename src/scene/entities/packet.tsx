@@ -53,7 +53,7 @@ export function PacketRun({ path, message, intruder, end }: PacketLook) {
   const route = useMemo(() => travelPath(path, end), [path, end]);
   const lengths = useMemo(() => cumulativeLengths(route), [route]);
   const total = lengths.at(-1) ?? 0;
-  const turn = end === 'replied' ? pathLength(path) : total;
+  const turn = end === 'replied' ? pathLength(path) : Infinity;
   const going = useRef<Group>(null);
   const back = useRef<Group>(null);
   const burst = useRef<Group>(null);
