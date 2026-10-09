@@ -4,6 +4,7 @@ export { EdgePiece } from './edge';
 export { FirewallPiece } from './firewall';
 export { InternetPiece } from './internet';
 export { NetworkPiece } from './network';
-export { PACKET_END_S, PACKET_SPEED, PacketRun, PacketTrace } from './packet';
+export { PACKET_END_S, PACKET_SPEED, PacketGlyph, PacketRun, PacketTrace, travelPath } from './packet';
+export type { PacketEnd, PacketLook } from './packet';
 export { StampPiece } from './stamp';
 export type { StampState } from './stamp';

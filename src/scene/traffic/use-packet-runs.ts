@@ -1,20 +1,15 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
-import type { Vec2 } from '@/scene/layout';
+import type { PacketLook } from '@/scene/entities';
 import { runSeconds, sendsBetween } from './schedule';
 
-export interface Trip {
-  path: Vec2[];
-  blocked: boolean;
-}
-
-interface Run extends Trip {
+interface Run extends PacketLook {
   key: number;
   endsAt: number;
 }
 
-/** Sends a packet along the latest trip once per period and forgets it when it finishes; packets already travelling keep the trip they started with. */
-export function usePacketRuns(trip: Trip, flowIndex: number): Run[] {
+/** Sends a packet with the latest look once per period and forgets it when it finishes; packets already travelling keep the look they started with. */
+export function usePacketRuns(look: PacketLook, flowIndex: number): Run[] {
   const [runs, setRuns] = useState<Run[]>([]);
   const clock = useRef(-Number.EPSILON);
   const nextKey = useRef(0);
@@ -26,7 +21,7 @@ export function usePacketRuns(trip: Trip, flowIndex: number): Run[] {
     if (!sends && !runs.some((run) => run.endsAt <= now)) return;
     const key = nextKey.current;
     if (sends) nextKey.current += 1;
-    const sent = sends ? [{ ...trip, key, endsAt: now + runSeconds(trip.path) }] : [];
+    const sent = sends ? [{ ...look, key, endsAt: now + runSeconds(look) }] : [];
     setRuns((current) => [...current.filter((run) => run.endsAt > now), ...sent]);
   });
   return runs;

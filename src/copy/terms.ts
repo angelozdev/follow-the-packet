@@ -77,6 +77,8 @@ export function isTermId(value: string): value is TermId {
   return Object.hasOwn(TERMS, value);
 }
 
+export type PacketMessage = 'echo-request' | 'echo-reply';
+
 export interface EntityVariants {
   network: Network['kind'];
   device: Device['kind'];
@@ -84,6 +86,7 @@ export interface EntityVariants {
   edge: Network['edge'];
   internet: 'internet';
   actor: Actor['kind'];
+  packet: PacketMessage;
 }
 
 export type EntityKind = keyof EntityVariants;
@@ -99,6 +102,7 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   edge: { router: null, 'internet-gateway': 'internet-gateway' },
   internet: { internet: null },
   actor: { you: null, attacker: null },
+  packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply' },
 };
 
 /** Returns the term that names an entity in this variant, or null when it has none yet. */

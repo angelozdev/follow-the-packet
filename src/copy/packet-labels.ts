@@ -1,5 +1,6 @@
 import type { Endpoint, Network, Outcome, PacketSpec, Trace } from '@/engine';
 import type { TermText } from './term-text';
+import type { PacketMessage } from './terms';
 
 const INTERNET_NAME = 'Internet';
 
@@ -16,6 +17,11 @@ export function endpointName(endpoint: Endpoint, net: Network): string {
 export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>): TermText {
   if (packet.protocol === 'icmp') return packet.icmpType === 8 ? '{{ping}}' : '{{echo-reply}}';
   return `${packet.protocol.toUpperCase()} ${packet.port}`;
+}
+
+/** Returns the message a packet is drawn as: an Echo Reply answers, and every other packet (an Echo Request, or TCP and UDP, which no flow sends yet) asks. */
+export function packetMessage(packet: Pick<PacketSpec, 'protocol' | 'icmpType'>): PacketMessage {
+  return packet.protocol === 'icmp' && packet.icmpType === 0 ? 'echo-reply' : 'echo-request';
 }
 
 /** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to. */

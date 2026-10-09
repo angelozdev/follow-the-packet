@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PACKET_END_S, PACKET_SPEED } from '@/scene/entities';
+import type { Vec2 } from '@/scene/layout';
 import { FLOW_OFFSET_S, FLOW_PERIOD_S, runSeconds, sendsBetween } from './schedule';
 
 const FRAME_S = 1 / 60;
@@ -21,7 +22,9 @@ describe('traffic schedule', () => {
     expect(sent).toBe(2);
   });
 
-  it('a packet stays its travel time plus its end', () => {
-    expect(runSeconds([[0, 0], [PACKET_SPEED, 0]])).toBeCloseTo(1 + PACKET_END_S);
+  it('a packet stays its travel time plus its end, and its travel back too when it is answered', () => {
+    const path: Vec2[] = [[0, 0], [PACKET_SPEED, 0]];
+    expect(runSeconds({ path, end: 'blocked' })).toBeCloseTo(1 + PACKET_END_S);
+    expect(runSeconds({ path, end: 'replied' })).toBeCloseTo(2 + PACKET_END_S);
   });
 });

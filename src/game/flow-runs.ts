@@ -11,6 +11,7 @@ export interface FlowRun {
   trace: Trace;
   replied: boolean;
   reached: boolean;
+  lost: boolean;
   label: TermText;
 }
 
@@ -26,6 +27,7 @@ export function runFlows(world: Network, flows: Flow[]): FlowRun[] {
       trace,
       replied: trace.outcome === 'replied',
       reached: reachesHost(trace),
+      lost: trace.outcome === 'lost',
       label: packetLabel(flow.packet, trace, world),
     };
   });

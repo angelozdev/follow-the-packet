@@ -1,4 +1,4 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
 import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
@@ -21,7 +21,6 @@ interface FieldSpec {
   lines: () => TermText[];
 }
 
-const ICMP_MESSAGE_TERM = { 8: 'echo-request', 0: 'echo-reply' } as const satisfies Record<NonNullable<PacketSpec['icmpType']>, TermId>;
 const RULES_TERM: Record<FirewallKind, TermId | null> = { 'security-group': 'inbound-rule', 'host-firewall': null };
 
 function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionField[] {
@@ -37,7 +36,7 @@ function whatIs(entity: EntityRef): FieldSpec[] {
 }
 
 function packetTerm(packet: PacketSpec): TermId | null {
-  return packet.protocol === 'icmp' && packet.icmpType !== undefined ? ICMP_MESSAGE_TERM[packet.icmpType] : null;
+  return packet.protocol === 'icmp' ? entityTerm({ kind: 'packet', variant: packetMessage(packet) }) : null;
 }
 
 function dnsNames(device: Device, region: string | undefined): string[] {

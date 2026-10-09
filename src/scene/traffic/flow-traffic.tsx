@@ -1,14 +1,12 @@
-import { PacketRun } from '@/scene/entities';
-import { roundTrip, type Vec2 } from '@/scene/layout';
-import type { MapFlow } from './traffic';
+import { PacketRun, type PacketLook } from '@/scene/entities';
 import { usePacketRuns } from './use-packet-runs';
 
-export function FlowTraffic({ path, flow, index }: { path: Vec2[]; flow: MapFlow; index: number }) {
-  const runs = usePacketRuns({ path: flow.replied ? roundTrip(path) : path, blocked: !flow.reached }, index);
+export function FlowTraffic({ look, index }: { look: PacketLook; index: number }) {
+  const runs = usePacketRuns(look, index);
   return (
     <>
       {runs.map((run) => (
-        <PacketRun key={run.key} path={run.path} blocked={run.blocked} intruder={flow.kind === 'forbidden'} />
+        <PacketRun key={run.key} path={run.path} message={run.message} intruder={run.intruder} end={run.end} />
       ))}
     </>
   );

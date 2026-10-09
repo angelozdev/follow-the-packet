@@ -3,13 +3,13 @@ import { useHtmlPortal } from '@/scene/html-layer';
 import type { Vec2 } from '@/scene/layout';
 import { inspectHandlers, type OnInspect } from '@/scene/overlay/inspect-handlers';
 
-export type StampState = 'arrived' | 'blocked' | 'intruder';
+export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder';
 
 const STAMP_Y = 0.9;
 const STAMP_LAYERS: [number, number] = [15, 5];
-const STAMP_GLYPH: Record<StampState, string> = { arrived: '✓', blocked: '✕', intruder: '✓' };
+const STAMP_GLYPH: Record<StampState, string> = { arrived: '✓', blocked: '✕', lost: '?', intruder: '✓' };
 
-/** The fixed stamp at the end of a packet's path: ✓ when it gets in, ✕ when it is blocked, a double ring for an intruder; hovering or focusing it inspects the packet. */
+/** The fixed stamp at the end of a packet's path: ✓ when it gets in, ✕ when a firewall blocks it, ? when it is lost, and a double ring for an intruder that gets in; hovering or focusing it inspects the packet. */
 export function StampPiece({ position, state, name, pieceId, onInspect }: { position: Vec2; state: StampState; name: string; pieceId: string; onInspect: OnInspect }) {
   const portal = useHtmlPortal();
   return (

@@ -4,6 +4,7 @@ The entity catalog: one file per entity of the map (`network`, `device`, `firewa
 
 - A piece takes its position, its variant and its state as props and decides nothing: whether a packet got in, whether a device is under attack or whether a card is open comes from the caller.
 - Lines are ink (`INK`) on paper (`PAPER_FILL`); vermilion (`ACCENT`) is only for danger: blocked, intruder and alert. A state is never shown by colour alone: it also changes the shape or the text.
+- A packet is drawn by its message (an Echo Request is a filled dot, an Echo Reply a ring) and as a vermilion rhombus for an intruder; an answered packet comes back as an Echo Reply. A blocked packet bursts and leaves ✕; a lost one shrinks away and leaves a dashed ?.
 - Every animation has a still version for "Sin animaciones", chosen by the `still` prop.
 - The rest of the game reaches the catalog only through `index.ts` (`@/scene/entities`); files inside import each other directly (`./x`).
 - Not here: where a piece sits (`src/scene/layout.ts`), the traffic clock (`src/scene/traffic/`), labels as buttons (`src/scene/overlay/`).
