@@ -3,9 +3,15 @@ import type { Network } from '@/engine';
 import { applyMove, configurableParts, knownTerms, startWorld, type ConfigurableParts, type Incident, type PlayerMove } from '@/levels';
 import { runFlows, type FlowRun } from './flow-runs';
 import { isTight, type Stars } from './stars';
-import { advanceTasks, isStable } from './tasks';
+import { advanceTasks, failingTaskIds, isStable } from './tasks';
 
 export type SessionPhase = 'playing' | 'explaining' | 'result';
+
+export interface Rejection {
+  attempt: number;
+  failingTaskIds: string[];
+  intruding: boolean;
+}
 
 export interface Session {
   incident: Incident;
@@ -13,6 +19,7 @@ export interface Session {
   parts: ConfigurableParts;
   world: Network;
   runs: FlowRun[];
+  rejection: Rejection | null;
   taskMs: Record<string, number>;
   alerts: number;
   hintsShown: number;
@@ -24,6 +31,7 @@ export interface Session {
 export type SessionAction =
   | PlayerMove
   | { type: 'tick'; ms: number }
+  | { type: 'submit' }
   | { type: 'showHint' }
   | { type: 'chooseExplanation'; index: number }
   | { type: 'showResult' };
@@ -45,6 +53,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     parts: configurableParts(known),
     world,
     runs,
+    rejection: null,
     taskMs: Object.fromEntries(incident.tasks.map((task) => [task.id, 0])),
     alerts: hasIntrusion(runs) ? 1 : 0,
     hintsShown: 0,
@@ -70,7 +79,14 @@ function move(state: Session, action: PlayerMove): Session {
   if (world === state.world) return state;
   const runs = runFlows(world, state.incident.flows);
   const startsEpisode = hasIntrusion(runs) && !hasIntrusion(state.runs);
-  return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0) };
+  return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
+}
+
+function submit(state: Session): Session {
+  if (state.phase !== 'playing') return state;
+  const failing = failingTaskIds(state.incident.tasks, state.runs);
+  if (failing.length === 0) return { ...state, phase: 'explaining', tight: isTight(state.world, state.incident.flows), rejection: null };
+  return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
 
 function tick(state: Session, ms: number): Session {
@@ -92,6 +108,8 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
       return move(state, action);
     case 'tick':
       return tick(state, action.ms);
+    case 'submit':
+      return submit(state);
     case 'showHint':
       return { ...state, hintsShown: Math.min(state.hintsShown + 1, state.incident.hints.length) };
     case 'chooseExplanation':

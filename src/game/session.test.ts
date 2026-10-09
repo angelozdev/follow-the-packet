@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS } from '@/levels';
-import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
+import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor } from '@/levels/incident';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -19,6 +19,9 @@ const tick = (ms: number): SessionAction => ({ type: 'tick', ms });
 const choose = (index: number): SessionAction => ({ type: 'chooseExplanation', index });
 const RIGHT = FIRST.explanation.findIndex((option) => option.correct);
 const WRONG = FIRST.explanation.findIndex((option) => !option.correct);
+const SUBMIT: SessionAction = { type: 'submit' };
+const PING_TASK = FIRST.tasks[0].id;
+const DROP_DAY_SHIFT: SessionAction = { type: 'removeRule', sgId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id };
 
 const play = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession(INCIDENTS, FIRST.id));
 const taskMs = (session: Session): number => session.taskMs[session.incident.tasks[0].id];
@@ -97,5 +100,46 @@ describe('incident session', () => {
     const start = startSession(INCIDENTS, FIRST.id);
     const closedDoors: Session = { ...start, parts: { ...start.parts, inboundRules: false } };
     expect(sessionReducer(closedDoors, FIX)).toBe(closedDoors);
+  });
+});
+
+describe('sending the solution', () => {
+  it('with the task failing, the incident stays open and the reply names the task', () => {
+    const session = play(place(SG.servidor1, WHAT.echoRequest.id, FROM.sgServidor1.id), SUBMIT);
+    expect(session.phase).toBe('playing');
+    expect(session.rejection).toEqual({ attempt: 1, failingTaskIds: [PING_TASK], intruding: false });
+  });
+
+  it('with something forbidden getting in, the reply says so', () => {
+    const session = play(FIX, WIDE, SUBMIT);
+    expect(session.phase).toBe('playing');
+    expect(session.rejection).toEqual({ attempt: 1, failingTaskIds: [PING_TASK], intruding: true });
+  });
+
+  it('sending again without a change counts a new attempt, so Lucía answers again', () => {
+    expect(play(SUBMIT, SUBMIT).rejection?.attempt).toBe(2);
+  });
+
+  it('the reply goes away when a rule changes, and stays when a move or a hint changes nothing', () => {
+    const rejected = play(FIX, WIDE, SUBMIT);
+    expect(sessionReducer(rejected, WIDE)).toBe(rejected);
+    expect(sessionReducer(rejected, { type: 'showHint' }).rejection).toEqual(rejected.rejection);
+    expect(sessionReducer(rejected, UNWIDE).rejection).toBeNull();
+  });
+
+  it('with every task done it closes and measures only-what-is-needed right then', () => {
+    const second = startSession(INCIDENTS, '04-02');
+    const keptDayShift = [place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id), SUBMIT].reduce(sessionReducer, second);
+    expect(keptDayShift.phase).toBe('explaining');
+    expect(keptDayShift.rejection).toBeNull();
+    expect(starsOf(keptDayShift)).toMatchObject({ closed: true, tight: false });
+    expect(sessionReducer(keptDayShift, DROP_DAY_SHIFT)).toBe(keptDayShift);
+    const cleaned = [DROP_DAY_SHIFT, place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id), SUBMIT].reduce(sessionReducer, second);
+    expect(starsOf(cleaned)).toMatchObject({ closed: true, tight: true });
+  });
+
+  it('sending once the incident is closed changes nothing', () => {
+    const closed = play(FIX, SUBMIT);
+    expect(sessionReducer(closed, SUBMIT)).toBe(closed);
   });
 });
