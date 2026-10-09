@@ -1,4 +1,4 @@
-import type { IcmpType } from '@/engine/network/types';
+import type { FirewallKind, IcmpType } from '@/engine/network/types';
 
 export type StepStage = 'dns' | 'route' | 'nat' | 'firewall-out' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
@@ -35,10 +35,10 @@ export type Reason =
   | { code: 'route-nat'; from: string; to: string }
   | { code: 'route-from-internet' }
   | { code: 'route-self'; deviceId: string }
-  | { code: 'firewall-out-pass'; deviceId: string }
-  | { code: 'firewall-out-drop'; deviceId: string }
-  | { code: 'firewall-in-pass'; deviceId: string }
-  | { code: 'firewall-in-drop'; deviceId: string }
+  | { code: 'firewall-out-pass'; deviceId: string; firewallKind: FirewallKind }
+  | { code: 'firewall-out-drop'; deviceId: string; firewallKind: FirewallKind }
+  | { code: 'firewall-in-pass'; deviceId: string; firewallKind: FirewallKind }
+  | { code: 'firewall-in-drop'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'host-unsolicited-icmp'; deviceId: string; icmpType: IcmpType }
   | { code: 'host-ignores-echo'; deviceId: string }
   | { code: 'host-replies'; deviceId: string }

@@ -38,8 +38,12 @@ export function probePackets(net: Network): PacketSpec[] {
   return packets;
 }
 
-/** True when the packet passed the destination's inbound firewalls, even if the host then stays silent. */
+/** True when the packet got to the destination's host, past its firewalls or with none, even if the host then stays silent. */
 export function reachesHost(trace: Trace): boolean {
+  return trace.steps.some((s) => s.stage === 'host');
+}
+
+function passesFirewall(trace: Trace): boolean {
   return trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'pass');
 }
 
@@ -53,12 +57,12 @@ export function flowKey(net: Network, packet: PacketSpec): string | null {
   return trace.destinationId ? keyFor(packet.from, trace, packet) : null;
 }
 
-/** Returns the probes that reach a host without matching any expected flow. */
+/** Returns the probes that a firewall lets in without matching any expected flow; a device without firewalls opens nothing. */
 export function extraOpenings(net: Network, expected: PacketSpec[]): PacketSpec[] {
   const probeNet = withProbeActor(net);
   const allowed = new Set(expected.map((p) => flowKey(net, p)).filter((k): k is string => k !== null));
   return probePackets(net).filter((packet) => {
     const trace = simulate(probeNet, packet);
-    return reachesHost(trace) && trace.destinationId !== null && !allowed.has(keyFor(packet.from, trace, packet));
+    return passesFirewall(trace) && trace.destinationId !== null && !allowed.has(keyFor(packet.from, trace, packet));
   });
 }

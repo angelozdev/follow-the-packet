@@ -27,11 +27,16 @@ const RECORDED_VALUES = new Map([
   ['host-udp-no-service', 'linux-udp-no-service'],
   ['route-no-public-device', 'route-no-public-instance'],
 ]);
+const ADDED_KEYS = new Set(['firewallKind']);
 
 function recorded(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(recorded);
   if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [RECORDED_KEYS.get(key) ?? key, recorded(inner)]));
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !ADDED_KEYS.has(key))
+        .map(([key, inner]) => [RECORDED_KEYS.get(key) ?? key, recorded(inner)]),
+    );
   }
   return typeof value === 'string' ? (RECORDED_VALUES.get(value) ?? value) : value;
 }

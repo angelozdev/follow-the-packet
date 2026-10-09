@@ -16,7 +16,7 @@ describe('deathPoint', () => {
       outcome: 'timeout',
       steps: [
         { stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } },
-        { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2' } },
+        { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' } },
       ],
     };
     expect(deathPoint(trace)).toEqual({ stage: 'firewall-in', at: 'servidor2' });
@@ -30,7 +30,7 @@ describe('deathPoint', () => {
 
 describe('stopStep', () => {
   it('is the step that dropped the packet', () => {
-    const drop = { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2' } } as const;
+    const drop = { stage: 'firewall-in', at: 'servidor2', verdict: 'drop', reason: { code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' } } as const;
     const trace: Trace = { ...base, outcome: 'timeout', steps: [{ stage: 'route', at: 'vpc', verdict: 'pass', reason: { code: 'route-private' } }, drop] };
     expect(stopStep(trace)).toEqual(drop);
   });

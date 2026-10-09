@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { extraOpenings, flowKey, probePackets } from './exposure';
-import { actor, device, echoFrom, lab03Net, ping, tcp, withInbound } from '@/testing';
+import { simulate } from '@/engine/simulation/simulate';
+import { extraOpenings, flowKey, probePackets, reachesHost } from './exposure';
+import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 const expected = [
@@ -76,5 +77,19 @@ describe('probePackets', () => {
   it('a device is not probed from itself', () => {
     const packets = probePackets(lab03Net());
     expect(packets.some((p) => p.from.kind === 'device' && p.from.id === 'servidor1' && p.to === '172.31.16.131')).toBe(false);
+  });
+});
+
+describe('devices without a firewall', () => {
+  it('a packet gets to them, but they open nothing', () => {
+    const net = officeNet();
+    expect(reachesHost(simulate(net, ping(device('your-laptop'), OFFICE.printer)))).toBe(true);
+    expect(extraOpenings(net, [])).toEqual([]);
+  });
+
+  it('a host firewall that lets in more than the expected ping is an opening', () => {
+    const guarded = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    const fromPrinter = { id: 'echo-printer', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.printer}/32` } } as const;
+    expect(extraOpenings(withInbound(guarded, 'fw-lucia', fromPrinter), [ping(device('your-laptop'), OFFICE.lucia)])).toEqual([ping(device('printer'), OFFICE.lucia)]);
   });
 });

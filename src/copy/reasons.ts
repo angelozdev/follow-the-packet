@@ -1,6 +1,23 @@
-import type { Network, Reason } from '@/engine';
+import type { FirewallKind, Network, Reason } from '@/engine';
 import { deviceName } from './packet-labels';
 import type { TermText } from './term-text';
+
+type FirewallSentence = (device: string) => TermText;
+
+const FIREWALL_TEXT: Record<FirewallKind, { passOut: FirewallSentence; dropOut: FirewallSentence; passIn: FirewallSentence; dropIn: FirewallSentence }> = {
+  'security-group': {
+    passOut: (device) => `El {{security-group}} de ${device} lo deja salir.`,
+    dropOut: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{outbound-rule}} lo deja salir.`,
+    passIn: (device) => `El {{security-group}} de ${device} lo deja entrar.`,
+    dropIn: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{inbound-rule}} lo deja entrar.`,
+  },
+  'host-firewall': {
+    passOut: (device) => `El firewall de ${device} lo deja salir.`,
+    dropOut: (device) => `Se queda en el firewall de ${device}: ninguna regla lo deja salir.`,
+    passIn: (device) => `El firewall de ${device} lo deja entrar.`,
+    dropIn: (device) => `Se queda en el firewall de ${device}: ninguna regla lo deja entrar.`,
+  },
+};
 
 function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
@@ -30,15 +47,15 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'route-self':
       return 'Va a la propia IP del dispositivo: no sale a la red.';
     case 'firewall-out-pass':
-      return `El {{security-group}} de ${deviceName(net, reason.deviceId)} lo deja salir.`;
+      return FIREWALL_TEXT[reason.firewallKind].passOut(deviceName(net, reason.deviceId));
     case 'firewall-out-drop':
-      return `Se queda en el {{security-group}} de ${deviceName(net, reason.deviceId)}: ninguna {{outbound-rule}} lo deja salir.`;
+      return FIREWALL_TEXT[reason.firewallKind].dropOut(deviceName(net, reason.deviceId));
     case 'firewall-in-pass':
-      return `El {{security-group}} de ${deviceName(net, reason.deviceId)} lo deja entrar.`;
+      return FIREWALL_TEXT[reason.firewallKind].passIn(deviceName(net, reason.deviceId));
     case 'firewall-in-drop':
-      return `Se queda en el {{security-group}} de ${deviceName(net, reason.deviceId)}: ninguna {{inbound-rule}} lo deja entrar.`;
+      return FIREWALL_TEXT[reason.firewallKind].dropIn(deviceName(net, reason.deviceId));
     case 'host-unsolicited-icmp':
-      return `Llega un {{echo-reply}} que nadie pidió: ${deviceName(net, reason.deviceId)} no contesta.`;
+      return 'Un {{echo-reply}} es una respuesta: llegó, y nadie lo contesta.';
     case 'host-ignores-echo':
       return `Llega, pero ${deviceName(net, reason.deviceId)} tiene {{icmp-echo-ignore-all}} en 1 y no contesta.`;
     case 'host-replies':

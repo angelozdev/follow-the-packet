@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deathPoint } from './checkpoints';
+import { deathPoint, stopStep } from './checkpoints';
 import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import type { Network } from '@/engine/network/types';
@@ -7,6 +7,7 @@ import type { Network } from '@/engine/network/types';
 const S1 = { private: '172.31.16.131', public: '54.78.154.66' };
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 const withEcho = (): Network => withInbound(lab03Net(), 'sg-servidor2', echoFrom('echo', 'sg-servidor1'));
+const guardedOffice = (): Network => withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
 
 describe('lab 03 in the engine', () => {
   it('step 3: without an ICMP rule the ping dies at the entrance of servidor2 and tcpdump sees nothing', () => {
@@ -153,5 +154,31 @@ describe('lost packets and a device that pings itself', () => {
     const trace = simulate(lab03Net(), ping(device('servidor2'), S2.private));
     expect(trace.outcome).toBe('replied');
     expect(trace.steps.filter((step) => step.stage === 'firewall-in' || step.stage === 'firewall-out')).toEqual([]);
+  });
+});
+
+describe('devices and their firewalls', () => {
+  it('a device without a firewall receives everything: an Echo Reply arrives and nobody answers it', () => {
+    const trace = simulate(officeNet(), { from: device('your-laptop'), to: OFFICE.lucia, protocol: 'icmp', icmpType: 0 });
+    expect(trace.outcome).toBe('arrived-no-reply');
+    expect(trace.steps.map((step) => step.stage)).toEqual(['route', 'host']);
+    expect(stopStep(trace)?.reason).toEqual({ code: 'host-unsolicited-icmp', deviceId: 'lucia-laptop', icmpType: 0 });
+  });
+
+  it('a host firewall without inbound rules blocks the ping, and its step names its kind', () => {
+    const trace = simulate(guardedOffice(), ping(device('your-laptop'), OFFICE.lucia));
+    expect(trace.outcome).toBe('timeout');
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-in', at: 'lucia-laptop' });
+    expect(stopStep(trace)?.reason).toEqual({ code: 'firewall-in-drop', deviceId: 'lucia-laptop', firewallKind: 'host-firewall' });
+  });
+
+  it('a host firewall rule for Echo Request from your laptop lets the ping in, and the reply comes back', () => {
+    const fromYou = { id: 'echo-you', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.you}/32` } } as const;
+    expect(simulate(withInbound(guardedOffice(), 'fw-lucia', fromYou), ping(device('your-laptop'), OFFICE.lucia)).outcome).toBe('replied');
+  });
+
+  it('a Security Group step names its kind too', () => {
+    const trace = simulate(lab03Net(), ping(device('servidor1'), S2.private));
+    expect(stopStep(trace)?.reason).toEqual({ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' });
   });
 });
