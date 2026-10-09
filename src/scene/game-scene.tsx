@@ -19,7 +19,6 @@ export interface GameSceneProps {
   world: Network;
   pieces: MapPiece[];
   flows: MapFlow[];
-  intrudedDeviceIds: ReadonlySet<string>;
   still: boolean;
   activePieceId: string | null;
   overlay: ReactNode;
@@ -27,13 +26,13 @@ export interface GameSceneProps {
   onActivate: (pieceId: string) => void;
 }
 
-function PieceShape({ piece, layout, intruded, selected, still }: { piece: MapPiece; layout: Layout; intruded: boolean; selected: boolean; still: boolean }) {
+function PieceShape({ piece, layout, selected, still }: { piece: MapPiece; layout: Layout; selected: boolean; still: boolean }) {
   const position = piecePosition(piece, layout);
   switch (piece.kind) {
     case 'device':
-      return <DevicePiece position={position} variant={piece.variant} intruded={intruded} still={still} />;
+      return <DevicePiece position={position} variant={piece.variant} selected={selected} intruded={piece.state === 'intruded'} still={still} />;
     case 'firewall':
-      return <FirewallPiece position={position} variant={piece.variant} selected={selected} still={still} />;
+      return <FirewallPiece position={position} variant={piece.variant} selected={selected} blocking={piece.state === 'blocking'} still={still} />;
     case 'edge':
       return <EdgePiece position={position} variant={piece.variant} />;
     case 'internet':
@@ -43,7 +42,7 @@ function PieceShape({ piece, layout, intruded, selected, still }: { piece: MapPi
   }
 }
 
-export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world, pieces.some((piece) => piece.kind === 'edge'));
   const [cx, cz] = layoutCenter(layout);
   const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
@@ -63,7 +62,7 @@ export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, acti
           <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />
           <Road layout={layout} />
           {pieces.map((piece) => (
-            <PieceShape key={piece.id} piece={piece} layout={layout} intruded={intrudedDeviceIds.has(piece.anchorId)} selected={piece.id === activePieceId} still={still} />
+            <PieceShape key={piece.id} piece={piece} layout={layout} selected={piece.id === activePieceId} still={still} />
           ))}
           {pieces.map((piece) => (
             <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />

@@ -8,6 +8,7 @@ const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const SUBMIT = 'Enviar solución';
 const INTRUDING = 'algo prohibido está entrando';
 const INSPECTED_SERVER = 'servidor2 con candado';
+const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo prohibido';
 const INSPECTION_TITLE = 'servidor2';
 const FULL_STARS = '3 de 3 estrellas';
 const QUESTION = /¿Qué pasó\?/;
@@ -103,6 +104,15 @@ test.describe('Sin animaciones', () => {
     await expect(page.getByLabel('Sin animaciones')).toBeChecked();
     await playBoth(page);
     expect(errors).toEqual([]);
+  });
+
+  test('an intrusion shows its alert inside the label of the device, and no label or stamp overlaps', async ({ page }) => {
+    await page.goto('/#/level/04-01');
+    const card = await openDoor(page);
+    await placeRule(card, ANYWHERE);
+    await card.getByRole('button', { name: 'Listo' }).click();
+    await expect(page.getByRole('button', { name: ATTACKED_SERVER, exact: true })).toBeVisible();
+    await expect.poll(() => overlappingPairs(page)).toEqual([]);
   });
 });
 

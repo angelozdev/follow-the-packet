@@ -1,7 +1,7 @@
 import { useReducedMotion } from '@mantine/hooks';
 import { useReducer, useState } from 'react';
 import { SCREEN_TEXT } from '@/copy';
-import { countStars, firewallCard, inspect, intrudedDeviceIds, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { ExplanationCard } from './explanation-card';
@@ -56,7 +56,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           world={session.world}
           pieces={pieces}
           flows={session.runs}
-          intrudedDeviceIds={intrudedDeviceIds(session.runs)}
           still={still}
           activePieceId={card ? cardPieceId : null}
           overlay={

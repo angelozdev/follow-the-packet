@@ -1,4 +1,3 @@
-export { intrudedDeviceIds } from './flow-runs';
 export { isIntruding, sessionReducer, startSession, starsOf } from './session';
 export type { Rejection, Session, SessionAction } from './session';
 export { countStars } from './stars';

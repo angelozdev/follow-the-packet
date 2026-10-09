@@ -5,7 +5,7 @@ import type { Group } from 'three';
 import type { FirewallKind } from '@/engine';
 import { InkBox } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
-import { ACCENT, INK } from '@/scene/theme';
+import { ACCENT, INK, PAPER_SHADE } from '@/scene/theme';
 
 const PULSE_SPEED = 4;
 const PULSE_AMPLITUDE = 0.35;
@@ -20,8 +20,8 @@ const BRICK_JOINTS: Vec3[] = [
   [0, 0, 0.051], [0, -0.12, 0.051],
 ];
 
-/** A firewall standing in front of its device, a bar between two posts: a thin bar for a Security Group, a brick wall for the firewall of a laptop. Its bar pulses while its task card is open, or stays thicker without animations. */
-export function FirewallPiece({ position, variant, selected, still }: { position: Vec2; variant: FirewallKind; selected: boolean; still: boolean }) {
+/** A firewall standing in front of its device, a bar between two posts: a thin bar for a Security Group, a brick wall for the firewall of a laptop. The bar turns vermilion while it stops a packet; it pulses while its task card is open, or stays thicker without animations. */
+export function FirewallPiece({ position, variant, selected, blocking, still }: { position: Vec2; variant: FirewallKind; selected: boolean; blocking: boolean; still: boolean }) {
   const bar = useRef<Group>(null);
   const [x, z] = position;
   useFrame(({ clock }) => {
@@ -35,7 +35,7 @@ export function FirewallPiece({ position, variant, selected, still }: { position
       <InkBox size={[0.1, 0.5, 0.1]} position={[x - 0.6, 0.25, z]} />
       <InkBox size={[0.1, 0.5, 0.1]} position={[x + 0.6, 0.25, z]} />
       <group ref={bar} position={[x, BAR[variant].y, z]}>
-        <InkBox size={BAR[variant].size} position={[0, 0, 0]} fill={ACCENT} lineWidth={1} />
+        <InkBox size={BAR[variant].size} position={[0, 0, 0]} fill={blocking ? ACCENT : PAPER_SHADE} lineWidth={1} />
         {variant === 'host-firewall' && <Line points={BRICK_JOINTS} segments color={INK} lineWidth={1} />}
       </group>
     </group>

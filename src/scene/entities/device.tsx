@@ -1,18 +1,21 @@
-import { Html } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import type { Group } from 'three';
 import type { Device } from '@/engine';
-import { useHtmlPortal } from '@/scene/html-layer';
+import { boxEdgePoints } from '@/scene/edges';
 import { InkBox } from '@/scene/ink';
-import type { Vec2 } from '@/scene/layout';
-import { PAPER_SHADE } from '@/scene/theme';
+import type { Vec2, Vec3 } from '@/scene/layout';
+import { INK, PAPER_SHADE } from '@/scene/theme';
 
 const SHAKE_SPEED = 40;
 const SHAKE_AMPLITUDE = 0.05;
-const WARNING_Y = 2.1;
+const DOUBLE_BORDER_GAP = 0.16;
+const MAT: Vec3 = [2.1, 0.04, 1.8];
 
-function Server({ x, z }: { x: number; z: number }) {
+type Spot = { x: number; z: number };
+
+function Server({ x, z }: Spot) {
   return (
     <>
       <InkBox size={[1.6, 1.1, 1.2]} position={[x, 0.55, z]} />
@@ -22,7 +25,7 @@ function Server({ x, z }: { x: number; z: number }) {
   );
 }
 
-function Laptop({ x, z }: { x: number; z: number }) {
+function Laptop({ x, z }: Spot) {
   return (
     <>
       <InkBox size={[1.4, 0.12, 1]} position={[x, 0.06, z]} />
@@ -33,7 +36,7 @@ function Laptop({ x, z }: { x: number; z: number }) {
   );
 }
 
-function Printer({ x, z }: { x: number; z: number }) {
+function Printer({ x, z }: Spot) {
   return (
     <>
       <InkBox size={[1.4, 0.6, 1]} position={[x, 0.3, z]} />
@@ -44,11 +47,25 @@ function Printer({ x, z }: { x: number; z: number }) {
   );
 }
 
-const DEVICE_SHAPE = { laptop: Laptop, printer: Printer, 'ec2-instance': Server } satisfies Record<Device['kind'], (spot: { x: number; z: number }) => unknown>;
+const DEVICE_SHAPE: Record<Device['kind'], (spot: Spot) => ReactNode> = { laptop: Laptop, printer: Printer, 'ec2-instance': Server };
+const DEVICE_BOX: Record<Device['kind'], { size: Vec3; y: number }> = {
+  laptop: { size: [1.4, 1.02, 1], y: 0.51 },
+  printer: { size: [1.4, 1.11, 1.4], y: 0.555 },
+  'ec2-instance': { size: [1.7, 1.22, 1.3], y: 0.61 },
+};
 
-/** A device of the network, drawn by its variant: it shakes while something forbidden gets in, or shows a fixed warning mark without animations. */
-export function DevicePiece({ position, variant, intruded, still }: { position: Vec2; variant: Device['kind']; intruded: boolean; still: boolean }) {
-  const portal = useHtmlPortal();
+function DoubleBorder({ x, z, variant }: Spot & { variant: Device['kind'] }) {
+  const { size, y } = DEVICE_BOX[variant];
+  const [w, h, d] = size.map((side) => side + DOUBLE_BORDER_GAP);
+  return (
+    <group position={[x, y, z]}>
+      <Line points={boxEdgePoints(w, h, d)} segments color={INK} lineWidth={1.5} />
+    </group>
+  );
+}
+
+/** A device of the network, drawn by its variant: on a paper mat while selected; shaking while something forbidden gets in, or with a double border without animations. */
+export function DevicePiece({ position, variant, selected, intruded, still }: { position: Vec2; variant: Device['kind']; selected: boolean; intruded: boolean; still: boolean }) {
   const group = useRef<Group>(null);
   const [x, z] = position;
   const Shape = DEVICE_SHAPE[variant];
@@ -57,14 +74,9 @@ export function DevicePiece({ position, variant, intruded, still }: { position: 
   });
   return (
     <group ref={group}>
+      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={1} />}
       <Shape x={x} z={z} />
-      {intruded && still && (
-        <Html portal={portal} position={[x, WARNING_Y, z]} center>
-          <span className="stamp stamp--blocked" aria-hidden="true">
-            !
-          </span>
-        </Html>
-      )}
+      {intruded && still && <DoubleBorder x={x} z={z} variant={variant} />}
     </group>
   );
 }

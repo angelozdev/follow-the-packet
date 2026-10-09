@@ -35,3 +35,8 @@ export function runFlows(world: Network, flows: Flow[]): FlowRun[] {
 export function intrudedDeviceIds(runs: FlowRun[]): ReadonlySet<string> {
   return new Set(runs.flatMap((run) => (run.kind === 'forbidden' && run.reached && run.trace.destinationId ? [run.trace.destinationId] : [])));
 }
+
+/** Returns the devices whose firewalls stop a flow, on the way out or on the way in. */
+export function blockingDeviceIds(runs: FlowRun[]): ReadonlySet<string> {
+  return new Set(runs.flatMap((run) => run.trace.steps.filter((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop').map((step) => step.at)));
+}

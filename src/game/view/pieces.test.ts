@@ -3,7 +3,7 @@ import { MAP_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { officeNet, withDevice } from '@/testing';
-import { startSession, type Session } from '@/game/session';
+import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './firewall-card';
 import { PIECE_ID } from './piece-id';
 import { pieceViews } from './pieces';
@@ -34,6 +34,16 @@ describe('pieceViews', () => {
       { kind: 'edge', variant: 'router', term: null, label: 'router' },
       { kind: 'internet', variant: 'internet', term: null, label: 'internet' },
     ]);
+  });
+
+  it('marks the Security Group that stops a packet as blocking, and the instance a forbidden flow reaches as intruded', () => {
+    const states = (session: Session) => pieceViews(session).map(({ id, state }) => [id, state]);
+    expect(states(first)).toContainEqual([PIECE_ID.firewall(SG.servidor2), 'blocking']);
+    expect(states(first)).toContainEqual([PIECE_ID.firewall(SG.servidor1), 'normal']);
+    expect(states(first)).toContainEqual([PIECE_ID.device(S2.id), 'normal']);
+    const wide = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
+    expect(states(wide)).toContainEqual([PIECE_ID.device(S2.id), 'intruded']);
+    expect(states(wide)).toContainEqual([PIECE_ID.firewall(SG.servidor2), 'normal']);
   });
 
   it('shows no router and no internet while nobody is outside the office', () => {

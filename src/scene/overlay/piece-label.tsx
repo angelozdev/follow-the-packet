@@ -8,6 +8,7 @@ export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   anchorId: string;
   label: TermText;
   locked: boolean;
+  state: 'normal' | 'intruded' | 'blocking';
 };
 
 /** Returns the DOM id of a piece's label, so the focus can come back to it. */
@@ -24,6 +25,13 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
       onClick={() => onActivate(piece.id)}
       {...inspectHandlers(piece.id, onInspect)}
     >
+      {piece.state === 'intruded' && (
+        <>
+          <span className="map-button__alert" aria-hidden="true">
+            !
+          </span>{' '}
+        </>
+      )}
       {toPlainText(piece.label)}
       {piece.locked && (
         <>
@@ -31,6 +39,12 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
           <span aria-hidden="true">🔒</span>
           {' '}
           <span className="sr-only">{MAP_TEXT.locked}</span>
+        </>
+      )}
+      {piece.state === 'intruded' && (
+        <>
+          {' '}
+          <span className="sr-only">{MAP_TEXT.alert}</span>
         </>
       )}
     </button>

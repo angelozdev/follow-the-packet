@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
-const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: 'servidor2', locked: true };
-const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false };
+const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: 'servidor2', locked: true, state: 'normal' };
+const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} servidor2', locked: false, state: 'normal' };
 
 function renderLabel(piece: MapPiece) {
   const handlers = { onInspect: vi.fn(), onActivate: vi.fn() };
@@ -38,6 +38,17 @@ describe('piece label', () => {
     await user.keyboard('{Enter}');
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(onActivate).toHaveBeenCalledWith(SG_PIECE.id);
+  });
+
+  it('a device under attack carries its alert inside its label, read as text, so it never covers the label', () => {
+    renderLabel({ ...SERVER, state: 'intruded' });
+    const label = screen.getByRole('button', { name: 'servidor2 con candado con alerta: entra algo prohibido' });
+    expect(label).toContainElement(screen.getByText('!'));
+  });
+
+  it('a firewall that stops a packet shows no alert in its label', () => {
+    renderLabel({ ...SG_PIECE, state: 'blocking' });
+    expect(screen.getByRole('button', { name: 'Security Group servidor2' })).not.toHaveTextContent('!');
   });
 
   it('has a DOM id so the focus can come back to it', () => {
