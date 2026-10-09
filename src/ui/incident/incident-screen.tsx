@@ -9,7 +9,6 @@ import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './lucia-card';
 import { ResultCard } from './result-card';
 import { TaskCard } from './task-card';
-import { useStabilityClock } from './use-stability-clock';
 
 interface IncidentScreenProps {
   incidents: Incident[];
@@ -24,7 +23,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const prefersStill = useReducedMotion(false, { getInitialValueInEffect: false });
   const [stillChoice, setStillChoice] = useState<boolean | null>(null);
-  useStabilityClock(dispatch);
 
   const still = stillChoice ?? prefersStill;
   const playing = session.phase === 'playing';
@@ -79,7 +77,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         <div aria-live="polite" className="incident__inspection">{inspection ? <InspectionBox inspection={inspection} /> : <p className="muted">{SCREEN_TEXT.inspectHelp}</p>}</div>
       </div>
       <aside className="incident__side">
-        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} />
+        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
         {session.phase === 'explaining' && (
           <ExplanationCard options={session.incident.explanation} choice={session.choice} onChoose={(index) => dispatch({ type: 'chooseExplanation', index })} onContinue={showResult} />
         )}

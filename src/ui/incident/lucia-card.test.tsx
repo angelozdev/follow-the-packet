@@ -3,18 +3,21 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useReducer } from 'react';
 import { describe, expect, it } from 'vitest';
-import { LUCIA_TEXT, TERMS } from '@/copy';
-import { STABLE_MS, sessionReducer, startSession, type SessionAction } from '@/game';
+import { LUCIA_TEXT, TERMS, toPlainText } from '@/copy';
+import { sessionReducer, startSession, type SessionAction } from '@/game';
 import { INCIDENTS } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { LuciaCard } from './lucia-card';
 
+const FIRST = INCIDENTS[0];
 const FIX: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
 const WIDE: SessionAction = { type: 'placeRule', sgId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id };
+const SUBMIT: SessionAction = { type: 'submit' };
+const NOT_YET = toPlainText(LUCIA_TEXT.failing(FIRST.tasks[0].text));
 
-function Harness({ incidentId = INCIDENTS[0].id, actions = [] }: { incidentId?: string; actions?: SessionAction[] }) {
+function Harness({ incidentId = FIRST.id, actions = [] }: { incidentId?: string; actions?: SessionAction[] }) {
   const [session, dispatch] = useReducer(sessionReducer, actions, (initial) => initial.reduce(sessionReducer, startSession(INCIDENTS, incidentId)));
-  return <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} />;
+  return <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch(SUBMIT)} />;
 }
 
 function glossary(): HTMLElement {
@@ -34,6 +37,11 @@ describe("Lucía's card", () => {
     render(<Harness />);
     expect(screen.getByText(/no logra hacer/)).toBeInTheDocument();
     expect(screen.getByRole('listitem')).toHaveTextContent(LUCIA_TEXT.pending);
+  });
+
+  it('marks the task done as soon as it holds, with no wait', () => {
+    render(<Harness actions={[FIX]} />);
+    expect(screen.getByRole('listitem')).toHaveTextContent(LUCIA_TEXT.done);
   });
 
   it('defines the new terms of the incident', () => {
@@ -56,13 +64,50 @@ describe("Lucía's card", () => {
     expect(glossary()).not.toHaveTextContent(TERMS['least-privilege'].name);
   });
 
+  it('sending with the task failing: Lucía says which one, and the game goes on', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('status')).toHaveTextContent(NOT_YET);
+    expect(screen.getByRole('status')).not.toHaveTextContent(LUCIA_TEXT.intruding);
+    expect(screen.getByRole('button', { name: LUCIA_TEXT.submit })).toBeInTheDocument();
+  });
+
+  it('sending with Anywhere-IPv4 open also says that something forbidden is getting in', async () => {
+    const user = userEvent.setup();
+    render(<Harness actions={[FIX, WIDE]} />);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('status')).toHaveTextContent(NOT_YET);
+    expect(screen.getByRole('status')).toHaveTextContent(LUCIA_TEXT.intruding);
+  });
+
+  it('sending again repeats the reply as a new message, so it is announced again', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const submit = screen.getByRole('button', { name: LUCIA_TEXT.submit });
+    await user.click(submit);
+    const status = screen.getByRole('status');
+    const firstReply = status.firstElementChild;
+    await user.click(submit);
+    expect(status.firstElementChild).not.toBe(firstReply);
+    expect(status).toHaveTextContent(NOT_YET);
+  });
+
+  it('the button and the reply go away once the incident is closed', () => {
+    render(<Harness actions={[FIX, SUBMIT]} />);
+    expect(screen.queryByRole('button', { name: LUCIA_TEXT.submit })).toBeNull();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
   it('gives hint 1, then hint 2, then no more', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
     expect(screen.getByText(LUCIA_TEXT.hint(1)).closest('p')).toHaveTextContent('Mira el Security Group de servidor2: ¿qué deja pasar hoy?');
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
-    expect(screen.getByText(LUCIA_TEXT.hint(2)).closest('p')).toHaveTextContent('En el Security Group de servidor2, agrega una regla de entrada: ICMP · Echo Request, desde SG servidor1.');
+    expect(screen.getByText(LUCIA_TEXT.hint(2)).closest('p')).toHaveTextContent(
+      'En el Security Group de servidor2, agrega una regla de entrada: ICMP · Echo Request, desde SG servidor1.',
+    );
     expect(screen.queryByRole('button', { name: LUCIA_TEXT.askHint })).toBeNull();
   });
 
@@ -91,10 +136,5 @@ describe("Lucía's card", () => {
   it('warns when something forbidden gets in', () => {
     render(<Harness actions={[WIDE]} />);
     expect(screen.getByRole('alert')).toHaveTextContent(LUCIA_TEXT.intrusion);
-  });
-
-  it('marks the task done once it holds for 3 seconds', () => {
-    render(<Harness actions={[FIX, { type: 'tick', ms: STABLE_MS }]} />);
-    expect(screen.getByRole('listitem')).toHaveTextContent(LUCIA_TEXT.done);
   });
 });

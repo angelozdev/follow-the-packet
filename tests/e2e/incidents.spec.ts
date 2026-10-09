@@ -4,11 +4,13 @@ import { collectErrors } from './console-errors';
 const DOOR = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
+const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
+const SUBMIT = 'Enviar solución';
+const INTRUDING = 'algo prohibido está entrando';
 const INSPECTED_SERVER = 'servidor2 con candado';
 const INSPECTION_TITLE = 'servidor2';
 const FULL_STARS = '3 de 3 estrellas';
 const QUESTION = /¿Qué pasó\?/;
-const CLOSE_TIMEOUT_MS = 15_000;
 
 interface Box {
   name: string;
@@ -51,8 +53,14 @@ async function openDoor(page: Page): Promise<Locator> {
   return page.getByRole('dialog', { name: DOOR });
 }
 
-async function explainAndFinish(page: Page, answer: RegExp) {
-  await page.getByRole('button', { name: answer }).click({ timeout: CLOSE_TIMEOUT_MS });
+async function placeRule(card: Locator, source: string) {
+  await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
+  await card.getByRole('button', { name: source, exact: true }).click();
+}
+
+async function submitAndFinish(page: Page, answer: RegExp) {
+  await page.getByRole('button', { name: SUBMIT }).click();
+  await page.getByRole('button', { name: answer }).click();
   await page.getByRole('button', { name: 'Ver resultado' }).click();
   await expect(page.getByText(FULL_STARS)).toBeVisible();
 }
@@ -61,10 +69,9 @@ async function playBoth(page: Page) {
   await page.goto('/');
   await page.getByRole('link', { name: '1. El primer ping' }).click();
   const first = await openDoor(page);
-  await first.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
-  await first.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
+  await placeRule(first, SG_SERVIDOR1);
   await first.getByRole('button', { name: 'Listo' }).click();
-  await explainAndFinish(page, /no había ninguna para el ping de servidor1/);
+  await submitAndFinish(page, /no había ninguna para el ping de servidor1/);
 
   await page.getByRole('link', { name: 'Siguiente incidente' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Abre lo justo' })).toBeVisible();
@@ -72,10 +79,9 @@ async function playBoth(page: Page) {
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const second = await openDoor(page);
   await second.getByRole('button', { name: /^Quitar la regla ICMP · Echo Reply/ }).click();
-  await second.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
-  await second.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
+  await placeRule(second, SG_SERVIDOR1);
   await second.getByRole('button', { name: 'Listo' }).click();
-  await explainAndFinish(page, /solo hace falta permitir la ida/);
+  await submitAndFinish(page, /solo hace falta permitir la ida/);
 }
 
 test('04-01 and 04-02 reach 3 stars, and the progress survives a reload', async ({ page }) => {
@@ -105,7 +111,7 @@ test('a locked incident does not open from its URL', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Incidente bloqueado' })).toBeVisible();
 });
 
-test('labels and stamps do not overlap, and the open card does not cover its door', async ({ page }) => {
+test('labels and stamps do not overlap, and the open card does not cover its Security Group', async ({ page }) => {
   await page.goto('/#/level/04-01');
   await expect(page.getByRole('button', { name: DOOR, exact: true })).toBeVisible();
   await expect.poll(() => overlappingPairs(page)).toEqual([]);
@@ -126,22 +132,13 @@ test('the inspection box floats inside the window and covers no label or stamp',
   expect(covered).toEqual([]);
 });
 
-test('focus goes to the card heading when a door opens, and back to the door on Escape', async ({ page }) => {
+test('focus goes to the card heading when a Security Group opens, and back to it on Escape', async ({ page }) => {
   await page.goto('/#/level/04-01');
   const card = await openDoor(page);
   await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(card).toHaveCount(0);
   await expect(page.getByRole('button', { name: DOOR, exact: true })).toBeFocused();
-});
-
-test('focus goes to the question when the incident closes with the card still open', async ({ page }) => {
-  await page.goto('/#/level/04-01');
-  const card = await openDoor(page);
-  await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
-  await card.getByRole('button', { name: SG_SERVIDOR1, exact: true }).click();
-  await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused({ timeout: CLOSE_TIMEOUT_MS });
-  await expect(card).toHaveCount(0);
 });
 
 test('a term shows its definition inside the window, also from a chip of the open card', async ({ page }) => {
@@ -156,5 +153,22 @@ test('a term shows its definition inside the window, also from a chip of the ope
   await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();
   await expect(tooltip).toContainText('tipo 8');
   expect(isInside(size, await tooltip.boundingBox())).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('sending with Anywhere-IPv4 open gets Lucía’s reply, and with the card still open the fix closes it and focuses the question', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/#/level/04-01');
+  const card = await openDoor(page);
+  await placeRule(card, ANYWHERE);
+  await page.getByRole('button', { name: SUBMIT }).click();
+  await expect(page.getByRole('status')).toContainText(INTRUDING);
+  await expect(page.getByRole('heading', { name: QUESTION })).toHaveCount(0);
+  await card.getByRole('button', { name: /^Quitar la regla/ }).click();
+  await expect(page.getByRole('status')).toBeEmpty();
+  await placeRule(card, SG_SERVIDOR1);
+  await page.getByRole('button', { name: SUBMIT }).click();
+  await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused();
+  await expect(card).toHaveCount(0);
   expect(errors).toEqual([]);
 });

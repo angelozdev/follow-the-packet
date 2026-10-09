@@ -3,7 +3,7 @@ import type { Network } from '@/engine';
 import { applyMove, configurableParts, knownTerms, startWorld, type ConfigurableParts, type Incident, type PlayerMove } from '@/levels';
 import { runFlows, type FlowRun } from './flow-runs';
 import { isTight, type Stars } from './stars';
-import { advanceTasks, failingTaskIds, isStable } from './tasks';
+import { failingTaskIds } from './tasks';
 
 export type SessionPhase = 'playing' | 'explaining' | 'result';
 
@@ -20,7 +20,6 @@ export interface Session {
   world: Network;
   runs: FlowRun[];
   rejection: Rejection | null;
-  taskMs: Record<string, number>;
   alerts: number;
   hintsShown: number;
   phase: SessionPhase;
@@ -30,7 +29,6 @@ export interface Session {
 
 export type SessionAction =
   | PlayerMove
-  | { type: 'tick'; ms: number }
   | { type: 'submit' }
   | { type: 'showHint' }
   | { type: 'chooseExplanation'; index: number }
@@ -40,7 +38,7 @@ function hasIntrusion(runs: FlowRun[]): boolean {
   return runs.some((run) => run.kind === 'forbidden' && run.reached);
 }
 
-/** Starts an incident from its canonical world, with every task at zero. */
+/** Starts an incident from its canonical world, with Lucía's reply empty. */
 export function startSession(incidents: Incident[], incidentId: string): Session {
   const incident = incidents.find((i) => i.id === incidentId);
   if (!incident) throw new Error(`unknown incident ${incidentId}`);
@@ -54,7 +52,6 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     world,
     runs,
     rejection: null,
-    taskMs: Object.fromEntries(incident.tasks.map((task) => [task.id, 0])),
     alerts: hasIntrusion(runs) ? 1 : 0,
     hintsShown: 0,
     phase: 'playing',
@@ -89,13 +86,6 @@ function submit(state: Session): Session {
   return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
 
-function tick(state: Session, ms: number): Session {
-  if (state.phase !== 'playing') return state;
-  const taskMs = advanceTasks(state.incident.tasks, state.runs, state.taskMs, ms);
-  if (!Object.values(taskMs).every(isStable)) return { ...state, taskMs };
-  return { ...state, taskMs, phase: 'explaining', tight: isTight(state.world, state.incident.flows) };
-}
-
 function choose(state: Session, index: number): Session {
   const valid = Number.isInteger(index) && index >= 0 && index < state.incident.explanation.length;
   return state.phase === 'explaining' && state.choice === null && valid ? { ...state, choice: index } : state;
@@ -106,8 +96,6 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
     case 'placeRule':
     case 'removeRule':
       return move(state, action);
-    case 'tick':
-      return tick(state, action.ms);
     case 'submit':
       return submit(state);
     case 'showHint':

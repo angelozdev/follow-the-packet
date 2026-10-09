@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
-import { act, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS } from '@/copy';
-import { STABLE_MS } from '@/game';
+import { describe, expect, it, vi } from 'vitest';
+import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { IncidentScreen } from './incident-screen';
-import { TICK_MS } from './use-stability-clock';
 
 vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
@@ -33,11 +31,12 @@ const DOOR = 'Security Group servidor2';
 const OTHER_DOOR = 'Security Group servidor1';
 const LOCKED_SERVER = 'servidor2 con candado';
 const ATTACKER_PACKET = 'ping de Atacante a servidor2';
+const ECHO_REQUEST = 'ICMP · Echo Request';
+const SG_SERVIDOR1 = 'SG servidor1';
+const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const FULL_STARS = 3;
 const FIRST = INCIDENTS[0];
 const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
-const ECHO_REQUEST = 'ICMP · Echo Request';
-const SG_SERVIDOR1 = 'SG servidor1';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -47,20 +46,16 @@ function renderFirst() {
   return onFinish;
 }
 
-async function placeFix(user: User) {
+async function placeRule(user: User, source: string) {
   await user.click(screen.getByRole('button', { name: DOOR }));
   const card = screen.getByRole('dialog', { name: DOOR });
   await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
-  await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
+  await user.click(within(card).getByRole('button', { name: source }));
   return card;
 }
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
 describe('incident screen', () => {
-  it('opens the card from its door, and Esc closes it and gives the focus back to the door', async () => {
+  it('opens the card from its Security Group, and Esc closes it and gives the focus back to it', async () => {
     const user = userEvent.setup();
     renderFirst();
     const door = screen.getByRole('button', { name: DOOR });
@@ -74,11 +69,11 @@ describe('incident screen', () => {
   it('a rule placed from the card shows up in it', async () => {
     const user = userEvent.setup();
     renderFirst();
-    const card = await placeFix(user);
+    const card = await placeRule(user, SG_SERVIDOR1);
     expect(within(card).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${SG_SERVIDOR1}`) })).toBeInTheDocument();
   });
 
-  it('switching to another door opens its card with an empty slot', async () => {
+  it('switching to another Security Group opens its card with an empty slot', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: DOOR }));
@@ -120,14 +115,23 @@ describe('incident screen', () => {
     expect(box.querySelector('.term--tip')).toBeNull();
   });
 
-  it('closing with the card open moves the focus to Lucía’s question, and the right answer gives 3 stars', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  it('sending with Anywhere-IPv4 open gets Lucía’s reply and the incident goes on, until a rule changes', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const card = await placeRule(user, ANYWHERE);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('status')).toHaveTextContent(LUCIA_TEXT.intruding);
+    expect(screen.queryByRole('heading', { name: EXPLANATION_TEXT.asks })).toBeNull();
+    expect(within(card).getByRole('heading', { name: DOOR })).toBeInTheDocument();
+    await user.click(within(card).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${ANYWHERE}`) }));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('sending with every task done and the card open closes the card, moves the focus to Lucía’s question, and the right answer gives 3 stars', async () => {
+    const user = userEvent.setup();
     const onFinish = renderFirst();
-    await placeFix(user);
-    await act(async () => {
-      vi.advanceTimersByTime(STABLE_MS + TICK_MS);
-    });
+    await placeRule(user, SG_SERVIDOR1);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('heading', { name: EXPLANATION_TEXT.asks })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: RIGHT_ANSWER }));

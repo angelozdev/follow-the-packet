@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { LUCIA_TEXT, TERMS, type TermId, type TermText } from '@/copy';
-import { STABLE_MS, isIntruding, isStable, type Session } from '@/game';
+import { isIntruding, taskHolds, type Rejection, type Session } from '@/game';
+import type { IncidentTask } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
 
@@ -8,6 +9,12 @@ interface HintLineProps {
   number: number;
   text: TermText;
   lineRef?: RefObject<HTMLParagraphElement | null>;
+}
+
+interface LuciaCardProps {
+  session: Session;
+  onAskHint: () => void;
+  onSubmit: () => void;
 }
 
 function HintLine({ number, text, lineRef }: HintLineProps) {
@@ -43,7 +50,22 @@ function TermList({ terms, markNew }: { terms: TermId[]; markNew: boolean }) {
   );
 }
 
-export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint: () => void }) {
+function RejectionReply({ rejection, tasks }: { rejection: Rejection; tasks: IncidentTask[] }) {
+  return (
+    <>
+      {tasks
+        .filter((task) => rejection.failingTaskIds.includes(task.id))
+        .map((task) => (
+          <p key={task.id}>
+            <TaggedText text={LUCIA_TEXT.failing(task.text)} />
+          </p>
+        ))}
+      {rejection.intruding && <p>{LUCIA_TEXT.intruding}</p>}
+    </>
+  );
+}
+
+export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
   const { incident } = session;
   const newTerms = new Set(incident.introduces);
   return (
@@ -62,18 +84,24 @@ export function LuciaCard({ session, onAskHint }: { session: Session; onAskHint:
       <h3>{LUCIA_TEXT.tasks}</h3>
       <ul className="tasks">
         {incident.tasks.map((task) => {
-          const ms = session.taskMs[task.id] ?? 0;
-          const done = isStable(ms);
+          const done = taskHolds(task, session.runs);
           return (
             <li key={task.id} className="task">
               <span aria-hidden="true">{done ? '✓ ' : '☐ '}</span>
               <TaggedText text={task.text} newTerms={newTerms} />
               <span className="sr-only"> ({done ? LUCIA_TEXT.done : LUCIA_TEXT.pending})</span>
-              <progress aria-label={LUCIA_TEXT.steady} max={STABLE_MS} value={ms} />
             </li>
           );
         })}
       </ul>
+      {session.phase === 'playing' && (
+        <button type="button" className="btn btn--primary" onClick={onSubmit}>
+          {LUCIA_TEXT.submit}
+        </button>
+      )}
+      <div role="status" className="lucia__reply">
+        {session.rejection && <RejectionReply key={session.rejection.attempt} rejection={session.rejection} tasks={incident.tasks} />}
+      </div>
       <h3>{LUCIA_TEXT.newTerms}</h3>
       <TermList terms={incident.introduces} markNew />
       <details className="lucia__glossary">

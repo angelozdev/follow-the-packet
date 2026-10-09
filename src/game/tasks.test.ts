@@ -2,14 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { runFlows } from './flow-runs';
-import { STABLE_MS, advanceTasks, failingTaskIds, isStable, taskHolds } from './tasks';
+import { failingTaskIds, taskHolds } from './tasks';
 
 const incident = INCIDENTS[0];
 const [task] = incident.tasks;
 const failing = runFlows(startWorld(INCIDENTS, incident.id), incident.flows);
 const holding = runFlows(solvedWorld(INCIDENTS, incident.id), incident.flows);
-const SOME_MS = 2500;
-const STEP_MS = 1000;
 
 describe('tasks', () => {
   it('a task holds when its required flow gets its reply and nothing forbidden gets in', () => {
@@ -25,18 +23,5 @@ describe('tasks', () => {
   it('lists the tasks that do not hold, in the order of the incident', () => {
     expect(failingTaskIds(incident.tasks, failing)).toEqual([task.id]);
     expect(failingTaskIds(incident.tasks, holding)).toEqual([]);
-  });
-
-  it('adds time while the task holds, up to STABLE_MS', () => {
-    expect(advanceTasks(incident.tasks, holding, { [task.id]: SOME_MS }, STEP_MS)).toEqual({ [task.id]: STABLE_MS });
-  });
-
-  it('drops to zero when the task breaks', () => {
-    expect(advanceTasks(incident.tasks, failing, { [task.id]: SOME_MS }, STEP_MS)).toEqual({ [task.id]: 0 });
-  });
-
-  it('is stable from STABLE_MS on', () => {
-    expect(isStable(STABLE_MS - 1)).toBe(false);
-    expect(isStable(STABLE_MS)).toBe(true);
   });
 });
