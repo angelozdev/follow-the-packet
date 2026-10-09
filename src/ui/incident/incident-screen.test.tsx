@@ -111,11 +111,13 @@ describe('incident screen', () => {
     expect(box).not.toHaveTextContent('34.244.254.100');
   });
 
-  it('a packet says where and why it stopped', async () => {
+  it('a packet says where and why it stopped, and the box shows no hover definitions', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
-    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toHaveTextContent('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expect(box).toHaveTextContent('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
+    expect(box.querySelector('.term--tip')).toBeNull();
   });
 
   it('closing with the card open moves the focus to Lucía’s question, and the right answer gives 3 stars', async () => {

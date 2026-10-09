@@ -16,6 +16,7 @@
     "check": "npm run typecheck && npm run lint && npm run structure && npm run dup && npm run test && npm run e2e"
   },
   "dependencies": {
+    "@floating-ui/react-dom": "2.1.9",
     "@mantine/hooks": "9.7.1",
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.1",

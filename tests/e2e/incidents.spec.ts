@@ -143,3 +143,18 @@ test('focus goes to the question when the incident closes with the card still op
   await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused({ timeout: CLOSE_TIMEOUT_MS });
   await expect(card).toHaveCount(0);
 });
+
+test('a term shows its definition inside the window, also from a chip of the open card', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto('/#/level/04-01');
+  const size = await windowSize(page);
+  const tooltip = page.locator('body > [role="tooltip"]');
+  await page.getByRole('region', { name: /Lucía/ }).getByText('ping', { exact: true }).first().hover();
+  await expect(tooltip).toContainText('Echo Request');
+  expect(isInside(size, await tooltip.boundingBox())).toBe(true);
+  const card = await openDoor(page);
+  await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();
+  await expect(tooltip).toContainText('tipo 8');
+  expect(isInside(size, await tooltip.boundingBox())).toBe(true);
+  expect(errors).toEqual([]);
+});
