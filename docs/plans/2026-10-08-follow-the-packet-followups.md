@@ -102,6 +102,19 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | E9 | Menores de la revisión: las estrellas se guardan solo al pulsar «Ver resultado»; tras el cierre los Security Groups parecen editables pero no responden; Esc solo cierra la tarjeta con el foco dentro; el bermellón tiene contraste de unos 3.5:1 | Pendiente |
 | E10 | `projects/follow-the-packet/` tiene `pnpm-lock.yaml` y `pnpm-workspace.yaml` sin seguimiento; el proyecto usa npm | Decide el estudiante: borrarlos o ignorarlos |
 
+## Bloque F: lo que dejó el modelo genérico (capítulo 1, plan 1, 2026-10-09)
+
+Todo es inalcanzable desde el juego de hoy. Lo encontraron las revisiones del plan `docs/plans/2026-10-09-follow-the-packet-generic-model.md` (commits `8f916a9..1a84c42`). El detalle completo está en `.superpowers/sdd/2026-10-09-follow-the-packet-generic-model/progress.md`, que git ignora.
+
+| # | Hallazgo | Destino |
+|---|----------|---------|
+| F1 | Los dispositivos de una red `office` no tienen posición en el mapa (`scene/layout.ts`): etiquetas, tarjetas y `Building` fallarían al dibujar una oficina | Plan 2 (catálogo de entidades) |
+| F2 | `edge` (`router` o `internet-gateway`) no se usa ni se valida contra el `kind` de la red; la etapa `route` escribe `igw` aunque la red sea una oficina | Plan 2 |
+| F3 | Faltan tests de escena para el ping a la propia IP y para la IP que nadie tiene | Plan 2 |
+| F4 | Los textos de la respuesta y de `route-private` todavía nombran el Security Group y la VPC, también en una oficina | Plan 3 (textos por tipo) |
+| F5 | El esquema acepta dos dispositivos con la misma IP privada | Plan 3 (regla del esquema con su test) |
+| F6 | Una VPC con rango no privado (por ejemplo `100.64.0.0/16`) deja que un actor de internet llegue a una IP privada; antes del plan 1 se bloqueaba. El spec dice que en el juego toda VPC usa rangos de RFC 1918 | Plan 3: el esquema exige un `cidr` de RFC 1918 también en la VPC |
+
 ## Fuera de este backlog (decide el estudiante)
 
 - `git push` de `main` (2 commits: `55dadac`, `6daf19a`) y de la rama.
