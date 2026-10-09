@@ -96,14 +96,6 @@
         "enforced: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in npm run lint."
       ]
     },
-    "plain-language-copy": {
-      "origin": "frontend/plain-language-copy",
-      "version": 1,
-      "notes": [
-        "reader: the student, no networking background, reads Spanish",
-        "copy lives in src/copy/ and level files"
-      ]
-    },
     "prefer-established-libraries": {
       "origin": "core/prefer-established-libraries",
       "version": 1,
@@ -149,5 +141,7 @@
       ]
     }
   },
-  "declined": {}
+  "declined": {
+    "plain-language-copy": "replaced on 2026-10-08 by the local rule rigorous-plain-copy (.claude/rules/rigorous-plain-copy.md) after the first playtest: official AWS names as the English console shows them, each defined where it appears; the store version puts the plain word first. The local rule is not synced with the personal store."
+  }
 }

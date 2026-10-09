@@ -4,5 +4,5 @@ Every Spanish text the player sees, as named constants and formatters, one file 
 
 - A text that uses a term tags it: `{{security-group}}` shows the term's name and `{{rule|reglas}}` shows other words. An unknown tag throws.
 - Not here: logic that decides outcomes (`src/engine/`), incident content (`src/levels/`).
-- Text follows `.claude/rules/plain-language-copy.md`.
+- Text follows `.claude/rules/rigorous-plain-copy.md`.
 - May import: `@/engine`.
