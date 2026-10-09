@@ -204,12 +204,14 @@ function nearGroup(points: Vec2[], start: number): number[] {
   return group.sort((a, b) => a - b);
 }
 
-/** Moves stamps that are close together (less than one unit apart, chained: A near B and B near C make one group) apart along the screen's horizontal (x up, z down), keeping each group centered on the average of its points. A stamp with no close neighbour stays where it is. */
+/** Moves stamps that are close together (less than one unit apart, chained: A near B and B near C make one group) apart along the screen's horizontal (x up, z down), keeping each group centered on the average of its points. Within a group the slots go in the order of the points' screen x (x - z), ties by input index, so each stamp stays on its own side of the screen. A stamp with no close neighbour stays where it is. */
 export function spreadStamps(points: Vec2[]): Vec2[] {
+  const screenX = (member: number) => points[member][0] - points[member][1];
   return points.map((_, index): Vec2 => {
     const group = nearGroup(points, index);
     const average = (axis: 0 | 1) => group.reduce((sum, member) => sum + points[member][axis], 0) / group.length;
-    const shift = (group.indexOf(index) - (group.length - 1) / 2) * STAMP_SPREAD;
+    const slots = [...group].sort((a, b) => screenX(a) - screenX(b) || a - b);
+    const shift = (slots.indexOf(index) - (slots.length - 1) / 2) * STAMP_SPREAD;
     return [average(0) + shift, average(1) - shift];
   });
 }

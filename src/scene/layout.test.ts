@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withInbound } from '@/testing';
 import { simulate } from '@/engine/simulation/simulate';
-import { cardAnchorPosition, computeLayout, cumulativeLengths, labelPosition, layoutCenter, pathFor, pathLength, pointAt, roundTrip, sideForNdc, spreadStamps } from './layout';
+import { cardAnchorPosition, computeLayout, cumulativeLengths, labelPosition, layoutCenter, pathFor, pathLength, pointAt, roundTrip, sideForNdc, spreadStamps, type Vec2 } from './layout';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 
@@ -175,5 +175,15 @@ describe('paths and stamps', () => {
     stamps.forEach((stamp, index) => {
       for (const other of stamps.slice(index + 1)) expect(Math.hypot(stamp[0] - other[0], stamp[1] - other[1])).toBeGreaterThanOrEqual(minimumGap);
     });
+  });
+
+  it('keeps each spread stamp on its own side of the screen, whatever the order of the points', () => {
+    const { door, firewall } = computeLayout(lab03Net(), true).devices.servidor2;
+    const screenX = (point: Vec2) => point[0] - point[1];
+    const [doorStamp, firewallStamp] = spreadStamps([door, firewall]);
+    expect(screenX(firewall)).toBeLessThan(screenX(door));
+    expect(screenX(firewallStamp)).toBeLessThan(screenX(doorStamp));
+    expect(Math.hypot(doorStamp[0] - door[0], doorStamp[1] - door[1])).toBeLessThan(0.45);
+    expect(Math.hypot(firewallStamp[0] - firewall[0], firewallStamp[1] - firewall[1])).toBeLessThan(0.45);
   });
 });

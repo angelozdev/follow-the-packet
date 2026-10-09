@@ -9,4 +9,4 @@ The entity catalog: one file per entity of the map (`network`, `device`, `firewa
 - Every animation has a still version for "Sin animaciones", chosen by the `still` prop.
 - The rest of the game reaches the catalog only through `index.ts` (`@/scene/entities`); files inside import each other directly (`./x`).
 - Not here: where a piece sits (`src/scene/layout.ts`), the traffic clock (`src/scene/traffic/`), labels as buttons (`src/scene/overlay/`).
-- May import: `@/copy`, only types from `@/engine`, and the scene's drawing helpers (`@/scene/ink`, `@/scene/theme`, `@/scene/layout`, `@/scene/html-layer`, `@/scene/overlay/inspect-handlers`).
+- May import: `@/copy`, only types from `@/engine`, and the scene's drawing helpers (`@/scene/ink`, `@/scene/theme`, `@/scene/layout`, `@/scene/edges`, `@/scene/html-layer`, `@/scene/overlay/inspect-handlers`).
