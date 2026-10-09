@@ -1,4 +1,4 @@
-import type { Network, PacketSpec, Trace } from '@/engine';
+import type { Device, Network, PacketSpec, Trace } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 
 export type Vec2 = [number, number];
@@ -17,6 +17,7 @@ export interface DeviceSpot {
   z: number;
   firewall: Vec2;
   door: Vec2;
+  doorstep: Vec2;
   road: Vec2;
 }
 
@@ -27,78 +28,105 @@ export interface Layout {
   roadZ: number;
   roadFromX: number;
   roadToX: number;
+  outside: boolean;
   edge: Vec2;
+  internet: Vec2;
   actors: Record<string, Vec2>;
+}
+
+interface Column {
+  subnetId: string | null;
+  devices: Device[];
 }
 
 const GAP = 3.2;
 const MIN_COLUMN = 5;
 const DEPTH = 6;
 const ROAD_Z = 1.9;
+const ROAD_INSET = 0.5;
 const DEVICE_Z = -0.9;
 const FIREWALL_Z = 0.7;
 const DOOR_Z = -0.2;
+const DOORSTEP_Z = 0.25;
 const EDGE_MARGIN = 1.5;
-const ACTOR_GAP = 3.5;
+const INTERNET_GAP = 3.6;
+const ACTOR_GAP = 3;
 const ACTOR_SPACING = 2.5;
 const ACTOR_STAGGER_Z = 1.6;
-const LABEL = { deviceY: 1.75, firewallY: 0.1, firewallDz: 0.8, actorY: 0.05, actorDz: 0.7, edgeY: 2.6 } as const;
+const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 0.7], edge: [0, 2.6, 0], internet: [0, 2.1, 0] };
 const CARD_Y = 0.5;
 const STAMP_SPREAD = 0.8;
-const EDGE_PLACES = ['internet-gateway', 'router', 'internet'];
+const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
 
-/** Lays out one column per subnet, the devices of each subnet in a row, and the internet on the left. */
-export function computeLayout(net: Network): Layout {
-  const columns = net.subnets ?? [];
-  const widths = columns.map((s) => Math.max(MIN_COLUMN, net.devices.filter((d) => d.subnetId === s.id).length * GAP + 1));
+function columnsOf(net: Network): Column[] {
+  if (!net.subnets) return [{ subnetId: null, devices: net.devices }];
+  return net.subnets.map((subnet) => ({ subnetId: subnet.id, devices: net.devices.filter((d) => d.subnetId === subnet.id) }));
+}
+
+/** Lays out one column per subnet (a single one for an office), the devices of each column in a row and, when the map shows the outside, the edge, the internet and its actors on the left. */
+export function computeLayout(net: Network, outside: boolean): Layout {
+  const columns = columnsOf(net);
+  const widths = columns.map((column) => Math.max(MIN_COLUMN, column.devices.length * GAP + 1));
   const total = widths.reduce((a, b) => a + b, 0);
   const sheetWidth = total + 2;
   const subnets: Record<string, SubnetSpot> = {};
   const devices: Record<string, DeviceSpot> = {};
   let cursor = -total / 2;
-  columns.forEach((subnet, index) => {
+  columns.forEach((column, index) => {
     const width = widths[index];
     const cx = cursor + width / 2;
     cursor += width;
-    subnets[subnet.id] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
-    const own = net.devices.filter((d) => d.subnetId === subnet.id);
-    own.forEach((device, k) => {
-      const x = cx + (k - (own.length - 1) / 2) * GAP;
-      devices[device.id] = { x, z: DEVICE_Z, firewall: [x, FIREWALL_Z], door: [x, DOOR_Z], road: [x, ROAD_Z] };
+    if (column.subnetId) subnets[column.subnetId] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
+    column.devices.forEach((device, k) => {
+      const x = cx + (k - (column.devices.length - 1) / 2) * GAP;
+      devices[device.id] = { x, z: DEVICE_Z, firewall: [x, FIREWALL_Z], door: [x, DOOR_Z], doorstep: [x, DOORSTEP_Z], road: [x, ROAD_Z] };
     });
   });
   const edge: Vec2 = [-sheetWidth / 2 - EDGE_MARGIN, ROAD_Z];
+  const internet: Vec2 = [edge[0] - INTERNET_GAP, ROAD_Z];
   const actors: Record<string, Vec2> = {};
   net.actors.forEach((a, k) => {
-    actors[a.id] = [edge[0] - ACTOR_GAP - k * ACTOR_SPACING, ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
+    actors[a.id] = [internet[0] - ACTOR_GAP - k * ACTOR_SPACING, ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
   });
-  return { sheet: { width: sheetWidth, depth: DEPTH }, subnets, devices, roadZ: ROAD_Z, roadFromX: edge[0], roadToX: sheetWidth / 2 - 0.5, edge, actors };
+  const roadFromX = outside ? edge[0] : -sheetWidth / 2 + ROAD_INSET;
+  return { sheet: { width: sheetWidth, depth: DEPTH }, subnets, devices, roadZ: ROAD_Z, roadFromX, roadToX: sheetWidth / 2 - ROAD_INSET, outside, edge, internet, actors };
 }
 
 /** Returns the middle of everything drawn, so the camera can look at it. */
 export function layoutCenter(layout: Layout): Vec2 {
-  const left = Math.min(layout.edge[0], ...Object.values(layout.actors).map(([x]) => x));
+  const outsideXs = layout.outside ? [layout.internet[0], ...Object.values(layout.actors).map(([x]) => x)] : [];
+  const left = Math.min(-layout.sheet.width / 2, ...outsideXs);
   return [(left + layout.sheet.width / 2) / 2, 0];
 }
 
-/** Returns where the label of a piece floats: above a device, in front of its firewall, below an actor, above the edge. */
-export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
+/** Returns where a piece of this kind stands on the ground: a device, the firewall in front of its device, an actor, the edge or the internet. */
+export function piecePosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec2 {
   switch (piece.kind) {
     case 'device': {
       const spot = layout.devices[piece.anchorId];
-      return [spot.x, LABEL.deviceY, spot.z];
+      return [spot.x, spot.z];
     }
-    case 'firewall': {
-      const [x, z] = layout.devices[piece.anchorId].firewall;
-      return [x, LABEL.firewallY, z + LABEL.firewallDz];
-    }
-    case 'actor': {
-      const [x, z] = layout.actors[piece.anchorId];
-      return [x, LABEL.actorY, z + LABEL.actorDz];
-    }
+    case 'firewall':
+      return layout.devices[piece.anchorId].firewall;
+    case 'actor':
+      return layout.actors[piece.anchorId];
     case 'edge':
-      return [layout.edge[0], LABEL.edgeY, layout.edge[1]];
+      return layout.edge;
+    case 'internet':
+      return layout.internet;
   }
+}
+
+/** Returns where the label of a piece floats from the point it stands on: above a device, in front of a firewall, below an actor, above the edge and the internet. */
+export function labelOffset(kind: MapPieceKind): Vec3 {
+  return LABEL_OFFSET[kind];
+}
+
+/** Returns where the label of a piece floats on the map. */
+export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
+  const [x, z] = piecePosition(piece, layout);
+  const [dx, y, dz] = labelOffset(piece.kind);
+  return [x + dx, y, z + dz];
 }
 
 /** Returns where the task card of the firewall of this device is anchored. */
@@ -112,15 +140,15 @@ export function sideForNdc(ndcX: number): CardSide {
   return ndcX > 0 ? 'left' : 'right';
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped. */
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[] {
-  const points: Vec2[] = [];
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
-  if (source) points.push(source.door, source.firewall, source.road);
-  else points.push(layout.actors[from.id] ?? layout.edge);
+  if (source && trace.steps.some((s) => s.reason.code === 'route-self')) return [source.door, source.doorstep];
+  const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [layout.actors[from.id] ?? layout.internet, layout.internet];
 
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
+  if (trace.steps.some((s) => s.reason.code === 'route-no-device')) return [...points, [layout.roadToX, layout.roadZ]];
   if (trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 

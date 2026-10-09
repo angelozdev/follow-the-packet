@@ -82,6 +82,7 @@ export interface EntityVariants {
   device: Device['kind'];
   firewall: FirewallKind;
   edge: Network['edge'];
+  internet: 'internet';
   actor: Actor['kind'];
 }
 
@@ -96,6 +97,7 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   device: { laptop: null, printer: null, 'ec2-instance': 'ec2-instance' },
   firewall: { 'host-firewall': null, 'security-group': 'security-group' },
   edge: { router: null, 'internet-gateway': 'internet-gateway' },
+  internet: { internet: null },
   actor: { you: null, attacker: null },
 };
 

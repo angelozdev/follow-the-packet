@@ -2,9 +2,9 @@ import { ContactShadows, MapControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useState, type ReactNode } from 'react';
 import type { Network } from '@/engine';
-import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, NetworkPiece } from './entities';
+import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, InternetPiece, NetworkPiece } from './entities';
 import { HtmlLayerContext } from './html-layer';
-import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter, type Layout } from './layout';
+import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter, piecePosition, type Layout } from './layout';
 import { CardAnchor } from './overlay/card-anchor';
 import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
@@ -28,22 +28,23 @@ export interface GameSceneProps {
 }
 
 function PieceShape({ piece, layout, intruded, selected, still }: { piece: MapPiece; layout: Layout; intruded: boolean; selected: boolean; still: boolean }) {
+  const position = piecePosition(piece, layout);
   switch (piece.kind) {
-    case 'device': {
-      const spot = layout.devices[piece.anchorId];
-      return <DevicePiece position={[spot.x, spot.z]} variant={piece.variant} intruded={intruded} still={still} />;
-    }
+    case 'device':
+      return <DevicePiece position={position} variant={piece.variant} intruded={intruded} still={still} />;
     case 'firewall':
-      return <FirewallPiece position={layout.devices[piece.anchorId].firewall} variant={piece.variant} selected={selected} still={still} />;
+      return <FirewallPiece position={position} variant={piece.variant} selected={selected} still={still} />;
     case 'edge':
-      return <EdgePiece position={layout.edge} variant={piece.variant} />;
+      return <EdgePiece position={position} variant={piece.variant} />;
+    case 'internet':
+      return <InternetPiece position={position} />;
     case 'actor':
-      return <ActorPiece position={layout.actors[piece.anchorId]} variant={piece.variant} />;
+      return <ActorPiece position={position} variant={piece.variant} />;
   }
 }
 
 export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
-  const layout = computeLayout(world);
+  const layout = computeLayout(world, pieces.some((piece) => piece.kind === 'edge'));
   const [cx, cz] = layoutCenter(layout);
   const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
   const active = pieces.find((piece) => piece.id === activePieceId);

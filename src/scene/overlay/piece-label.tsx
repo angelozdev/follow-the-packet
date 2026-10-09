@@ -1,7 +1,7 @@
 import { MAP_TEXT, toPlainText, type EntityRef, type TermText } from '@/copy';
 import { inspectHandlers, type OnInspect } from './inspect-handlers';
 
-export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'actor';
+export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 
 export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   id: string;

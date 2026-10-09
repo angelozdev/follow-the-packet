@@ -14,6 +14,7 @@ const EDGE_LABEL: Record<Network['edge'], TermText> = {
 export const MAP_TEXT = {
   firewall: FIREWALL_LABEL,
   edge: EDGE_LABEL,
+  internet: 'internet',
   locked: 'con candado',
   packet: (label: string) => `Paquete: ${label}`,
 } as const;
@@ -37,6 +38,7 @@ export const INSPECTION_TEXT = {
     'internet-gateway': 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
     router: 'Por aquí entra y sale el tráfico entre la oficina e internet.',
   } satisfies Record<Network['edge'], TermText>,
+  internetDoes: 'Lleva los paquetes de una red a otra.',
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',

@@ -2,7 +2,7 @@ import { MAP_TEXT, entityTerm, type EntityRef, type TermId, type TermText } from
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
 
-export type PieceKind = 'device' | 'firewall' | 'edge' | 'actor';
+export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 
 type PieceEntity = Extract<EntityRef, { kind: PieceKind }>;
 
@@ -17,6 +17,7 @@ interface PieceFacts {
 export type PieceView = PieceEntity & PieceFacts & { term: TermId | null };
 
 export const EDGE_ANCHOR = 'edge';
+export const INTERNET_ANCHOR = 'internet';
 
 function piece(entity: PieceEntity, facts: PieceFacts): PieceView {
   return { ...entity, ...facts, term: entityTerm(entity) };
@@ -33,7 +34,16 @@ function firewalls(session: Session): PieceView[] {
   });
 }
 
-/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name and whether the player may open it. */
+function outside(session: Session): PieceView[] {
+  const { world } = session;
+  if (world.actors.length === 0) return [];
+  return [
+    piece({ kind: 'edge', variant: world.edge }, { id: PIECE_ID.edge, anchorId: EDGE_ANCHOR, label: MAP_TEXT.edge[world.edge], locked: true, configurable: false }),
+    piece({ kind: 'internet', variant: 'internet' }, { id: PIECE_ID.internet, anchorId: INTERNET_ANCHOR, label: MAP_TEXT.internet, locked: false, configurable: false }),
+  ];
+}
+
+/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name and whether the player may open it; the edge and the internet show only when someone is outside the network. */
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   return [
@@ -42,6 +52,6 @@ export function pieceViews(session: Session): PieceView[] {
     ),
     ...firewalls(session),
     ...world.actors.map((actor) => piece({ kind: 'actor', variant: actor.kind }, { id: PIECE_ID.actor(actor.id), anchorId: actor.id, label: actor.name, locked: false, configurable: false })),
-    piece({ kind: 'edge', variant: world.edge }, { id: PIECE_ID.edge, anchorId: EDGE_ANCHOR, label: MAP_TEXT.edge[world.edge], locked: true, configurable: false }),
+    ...outside(session),
   ];
 }

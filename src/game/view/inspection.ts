@@ -92,6 +92,13 @@ function edge(session: Session): Inspection {
   };
 }
 
+function internet(session: Session): Inspection {
+  return {
+    title: MAP_TEXT.internet,
+    fields: visible([...whatIs({ kind: 'internet', variant: 'internet' }), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.internetDoes] }], session.known),
+  };
+}
+
 function actor(session: Session, who: Actor): Inspection {
   return {
     title: who.name,
@@ -122,6 +129,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
   if (ref.kind === 'edge') return edge(session);
+  if (ref.kind === 'internet') return internet(session);
   const { world, runs } = session;
   switch (ref.kind) {
     case 'device': {

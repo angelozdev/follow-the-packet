@@ -12,7 +12,7 @@ const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
 
 describe('pieceViews', () => {
-  it('shows both instances locked, both Security Groups open to edit, the attacker and the Internet gateway, each with its variant and its term', () => {
+  it('shows both instances locked, both Security Groups open to edit, the attacker, the Internet gateway and the internet, each with its variant and its term', () => {
     expect(pieceViews(first).map(({ id, variant, term, label, locked, configurable }) => ({ id, variant, term, label, locked, configurable }))).toEqual([
       { id: PIECE_ID.device(S1.id), variant: 'ec2-instance', term: 'ec2-instance', label: S1.id, locked: true, configurable: false },
       { id: PIECE_ID.device(S2.id), variant: 'ec2-instance', term: 'ec2-instance', label: S2.id, locked: true, configurable: false },
@@ -20,6 +20,7 @@ describe('pieceViews', () => {
       { id: PIECE_ID.firewall(SG.servidor2), variant: 'security-group', term: 'security-group', label: MAP_TEXT.firewall['security-group'](S2.id), locked: false, configurable: true },
       { id: PIECE_ID.actor('attacker'), variant: 'attacker', term: null, label: 'Atacante', locked: false, configurable: false },
       { id: PIECE_ID.edge, variant: 'internet-gateway', term: 'internet-gateway', label: MAP_TEXT.edge['internet-gateway'], locked: true, configurable: false },
+      { id: PIECE_ID.internet, variant: 'internet', term: null, label: MAP_TEXT.internet, locked: false, configurable: false },
     ]);
   });
 
@@ -31,7 +32,13 @@ describe('pieceViews', () => {
       { kind: 'firewall', variant: 'host-firewall', term: null, label: 'firewall lucia-laptop' },
       { kind: 'actor', variant: 'attacker', term: null, label: 'Atacante' },
       { kind: 'edge', variant: 'router', term: null, label: 'router' },
+      { kind: 'internet', variant: 'internet', term: null, label: 'internet' },
     ]);
+  });
+
+  it('shows no router and no internet while nobody is outside the office', () => {
+    const alone: Session = { ...office, world: { ...office.world, actors: [] } };
+    expect(pieceViews(alone).map((piece) => piece.kind)).toEqual(['device', 'device', 'device', 'firewall']);
   });
 });
 

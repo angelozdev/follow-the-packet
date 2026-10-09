@@ -27,8 +27,8 @@ function whatIs(term: TermId): string[] {
 }
 
 describe('inspect', () => {
-  it('every piece but the attacker, and every packet, starts with what it is', () => {
-    const ids = [...pieceViews(first).filter((piece) => piece.kind !== 'actor').map((piece) => piece.id), ...first.runs.map((run) => run.pieceId)];
+  it('every piece with a term, and every packet, starts with what it is', () => {
+    const ids = [...pieceViews(first).filter((piece) => piece.term !== null).map((piece) => piece.id), ...first.runs.map((run) => run.pieceId)];
     expect(ids.map((id) => inspect(first, id)?.fields[0]?.label)).toEqual(ids.map(() => WHAT_IS));
   });
 
@@ -105,6 +105,10 @@ describe('inspect', () => {
       title: 'router',
       fields: [['Qué hace', 'Por aquí entra y sale el tráfico entre la oficina e internet.']],
     });
+  });
+
+  it('the internet says what it does, with no definition while its term does not exist', () => {
+    expect(plain(inspect(first, PIECE_ID.internet))).toEqual({ title: 'internet', fields: [['Qué hace', 'Lleva los paquetes de una red a otra.']] });
   });
 
   it('an id that names nothing shows nothing', () => {
