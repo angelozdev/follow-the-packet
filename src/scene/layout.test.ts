@@ -12,19 +12,19 @@ describe('computeLayout', () => {
     const a = layout.subnets['subnet-a'];
     const b = layout.subnets['subnet-b'];
     expect(a.x).toBeLessThan(b.x);
-    expect(Math.abs(layout.instances.servidor1.x - a.x)).toBeLessThan(a.width / 2);
-    expect(Math.abs(layout.instances.servidor2.x - b.x)).toBeLessThan(b.width / 2);
+    expect(Math.abs(layout.devices.servidor1.x - a.x)).toBeLessThan(a.width / 2);
+    expect(Math.abs(layout.devices.servidor2.x - b.x)).toBeLessThan(b.width / 2);
   });
 
-  it('the barrier and the road sit in front of the building (greater z, toward the camera)', () => {
-    const spot = layout.instances.servidor2;
-    expect(spot.barrier[1]).toBeGreaterThan(spot.z);
-    expect(layout.roadZ).toBeGreaterThan(spot.barrier[1]);
+  it('the firewall and the road sit in front of the device (greater z, toward the camera)', () => {
+    const spot = layout.devices.servidor2;
+    expect(spot.firewall[1]).toBeGreaterThan(spot.z);
+    expect(layout.roadZ).toBeGreaterThan(spot.firewall[1]);
   });
 
-  it('the internet gateway and the actors sit on the left of the sheet', () => {
-    expect(layout.igw[0]).toBeLessThan(-layout.sheet.width / 2);
-    expect(layout.actors.attacker[0]).toBeLessThan(layout.igw[0]);
+  it('the edge and the actors sit on the left of the sheet', () => {
+    expect(layout.edge[0]).toBeLessThan(-layout.sheet.width / 2);
+    expect(layout.actors.attacker[0]).toBeLessThan(layout.edge[0]);
   });
 });
 
@@ -32,23 +32,23 @@ describe('pathFor', () => {
   const net = lab03Net();
   const layout = computeLayout(net);
 
-  it('step 3: ends at the barrier of servidor2', () => {
+  it('step 3: ends at the firewall of servidor2', () => {
     const packet = ping(device('servidor1'), S2);
     const path = pathFor(simulate(net, packet), packet, layout);
-    expect(path.at(-1)).toEqual(layout.instances.servidor2.barrier);
+    expect(path.at(-1)).toEqual(layout.devices.servidor2.firewall);
   });
 
   it('step 5: reaches the door of servidor2', () => {
     const solved = withInbound(net, 'sg-servidor2', echoFrom('echo', 'sg-servidor1'));
     const packet = ping(device('servidor1'), S2);
     const path = pathFor(simulate(solved, packet), packet, layout);
-    expect(path.at(-1)).toEqual(layout.instances.servidor2.door);
+    expect(path.at(-1)).toEqual(layout.devices.servidor2.door);
   });
 
-  it('a private IP from the internet ends at the internet gateway', () => {
+  it('a private IP from the internet ends at the edge', () => {
     const packet = ping(actor('attacker'), S2);
     const path = pathFor(simulate(net, packet), packet, layout);
-    expect(path.at(-1)).toEqual(layout.igw);
+    expect(path.at(-1)).toEqual(layout.edge);
   });
 });
 
@@ -72,11 +72,11 @@ describe('anchors', () => {
     expect(x - left).toBeCloseTo(layout.sheet.width / 2 - x);
   });
 
-  it('a Security Group label sits in front of its barrier, and a server label above its building', () => {
-    const spot = layout.instances.servidor2;
-    expect(labelPosition({ kind: 'barrier', anchorId: 'servidor2' }, layout)[2]).toBeGreaterThan(spot.barrier[1]);
-    expect(labelPosition({ kind: 'server', anchorId: 'servidor2' }, layout)[1]).toBeGreaterThan(1);
-    expect(cardAnchorPosition('servidor2', layout)[0]).toBe(spot.barrier[0]);
+  it('a Security Group label sits in front of its firewall, and a device label above it', () => {
+    const spot = layout.devices.servidor2;
+    expect(labelPosition({ kind: 'firewall', anchorId: 'servidor2' }, layout)[2]).toBeGreaterThan(spot.firewall[1]);
+    expect(labelPosition({ kind: 'device', anchorId: 'servidor2' }, layout)[1]).toBeGreaterThan(1);
+    expect(cardAnchorPosition('servidor2', layout)[0]).toBe(spot.firewall[0]);
   });
 
   it('a card opens on the side of the screen with more room', () => {

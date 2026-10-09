@@ -58,12 +58,12 @@ describe('incident screen', () => {
   it('opens the card from its Security Group, and Esc closes it and gives the focus back to it', async () => {
     const user = userEvent.setup();
     renderFirst();
-    const barrier = screen.getByRole('button', { name: SG_SERVIDOR2 });
-    await user.click(barrier);
+    const label = screen.getByRole('button', { name: SG_SERVIDOR2 });
+    await user.click(label);
     expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(barrier).toHaveFocus();
+    expect(label).toHaveFocus();
   });
 
   it('a rule placed from the card shows up in it', async () => {

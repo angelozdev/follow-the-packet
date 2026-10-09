@@ -3,11 +3,11 @@ import { termsIn, toPlainText, unofficialNames, type TermText } from '@/copy';
 import { INCIDENTS, type Incident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
 import { sessionReducer, startSession, type Session } from '@/game/session';
-import { barrierCard } from './barrier';
+import { firewallCard } from './firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
 
-const NAMED_BY_KIND: PieceKind[] = ['barrier', 'gateway'];
+const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
 
 function shownTexts(session: Session): TermText[] {
@@ -23,11 +23,11 @@ function shownTexts(session: Session): TermText[] {
 function sessionsToCheck(incident: Incident): Session[] {
   const start = startSession(INCIDENTS, incident.id);
   const solved = incident.solution.reduce(sessionReducer, start);
-  const barriers = pieceViews(start)
+  const cards = pieceViews(start)
     .filter((piece) => piece.configurable)
-    .flatMap((piece) => barrierCard(start, piece.id) ?? []);
-  const placed = barriers.flatMap((barrier) =>
-    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', firewallId: barrier.firewallId, whatId: what.id, fromId: from.id }))),
+    .flatMap((piece) => firewallCard(start, piece.id) ?? []);
+  const placed = cards.flatMap((card) =>
+    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', firewallId: card.firewallId, whatId: what.id, fromId: from.id }))),
   );
   return [start, solved, ...placed];
 }

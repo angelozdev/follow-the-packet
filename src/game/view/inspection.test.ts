@@ -31,23 +31,23 @@ describe('inspect', () => {
   });
 
   it('an instance shows what an EC2 instance is, its private IP and its Security Group, and nothing of later terms', () => {
-    expect(plain(inspect(first, PIECE_ID.server(S2.id)))).toEqual({
+    expect(plain(inspect(first, PIECE_ID.device(S2.id)))).toEqual({
       title: 'servidor2',
       fields: [whatIs('ec2-instance'), ['IP privada', S2.private], ['Security Groups', 'Security Group servidor2']],
     });
   });
 
   it('later terms add their fields', () => {
-    const fields = plain(inspect(knowing(first, 'public-ip', 'dns'), PIECE_ID.server(S2.id)))?.fields.map(([label]) => label);
+    const fields = plain(inspect(knowing(first, 'public-ip', 'dns'), PIECE_ID.device(S2.id)))?.fields.map(([label]) => label);
     expect(fields).toEqual([WHAT_IS, 'IP privada', 'IP pública', 'Nombres DNS', 'Security Groups']);
   });
 
   it('a Security Group without rules says it lets nothing in', () => {
-    expect(plain(inspect(first, PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([whatIs('security-group'), ['Reglas de entrada', 'Ninguna: no deja entrar nada.']]);
+    expect(plain(inspect(first, PIECE_ID.firewall(SG.servidor2)))?.fields).toEqual([whatIs('security-group'), ['Reglas de entrada', 'Ninguna: no deja entrar nada.']]);
   });
 
   it('a Security Group lists its inbound rules as chips', () => {
-    expect(plain(inspect(startSession(INCIDENTS, '04-02'), PIECE_ID.barrier(SG.servidor2)))?.fields).toEqual([
+    expect(plain(inspect(startSession(INCIDENTS, '04-02'), PIECE_ID.firewall(SG.servidor2)))?.fields).toEqual([
       whatIs('security-group'),
       ['Reglas de entrada', 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)'],
     ]);
@@ -78,14 +78,14 @@ describe('inspect', () => {
   });
 
   it('the Internet gateway says what it is and what it does', () => {
-    expect(plain(inspect(first, PIECE_ID.gateway))).toEqual({
+    expect(plain(inspect(first, PIECE_ID.edge))).toEqual({
       title: 'Internet gateway',
       fields: [whatIs('internet-gateway'), ['Qué hace', 'Por aquí entra y sale el tráfico entre la VPC e internet.']],
     });
   });
 
   it('an id that names nothing shows nothing', () => {
-    expect(inspect(first, PIECE_ID.server('ghost'))).toBeNull();
+    expect(inspect(first, PIECE_ID.device('ghost'))).toBeNull();
     expect(inspect(first, 'nonsense')).toBeNull();
   });
 });

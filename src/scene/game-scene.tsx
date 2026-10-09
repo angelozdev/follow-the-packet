@@ -18,7 +18,7 @@ export interface GameSceneProps {
   world: Network;
   pieces: MapPiece[];
   flows: MapFlow[];
-  intrudedServerIds: ReadonlySet<string>;
+  intrudedDeviceIds: ReadonlySet<string>;
   still: boolean;
   activePieceId: string | null;
   overlay: ReactNode;
@@ -26,7 +26,7 @@ export interface GameSceneProps {
   onActivate: (pieceId: string) => void;
 }
 
-export function GameScene({ world, pieces, flows, intrudedServerIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, intrudedDeviceIds, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world);
   const [cx, cz] = layoutCenter(layout);
   const [htmlLayer, setHtmlLayer] = useState<HTMLDivElement | null>(null);
@@ -45,14 +45,14 @@ export function GameScene({ world, pieces, flows, intrudedServerIds, still, acti
           <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
           <Sheet layout={layout} />
           <Road layout={layout} />
-          <Gateway position={layout.igw} />
+          <Gateway position={layout.edge} />
           {world.devices.map((device) => (
-            <Building key={device.id} spot={layout.instances[device.id]} shaking={intrudedServerIds.has(device.id)} still={still} />
+            <Building key={device.id} spot={layout.devices[device.id]} shaking={intrudedDeviceIds.has(device.id)} still={still} />
           ))}
           {pieces
-            .filter((piece) => piece.kind === 'barrier')
+            .filter((piece) => piece.kind === 'firewall')
             .map((piece) => (
-              <Barrier key={piece.id} spot={layout.instances[piece.anchorId]} active={piece.id === activePieceId} still={still} />
+              <Barrier key={piece.id} spot={layout.devices[piece.anchorId]} active={piece.id === activePieceId} still={still} />
             ))}
           {world.actors.map((actor) => (
             <ActorMark key={actor.id} position={layout.actors[actor.id]} actor={actor} />

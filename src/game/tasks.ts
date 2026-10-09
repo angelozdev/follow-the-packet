@@ -12,7 +12,7 @@ function runIsFine(run: FlowRun): boolean {
   }
 }
 
-/** True when every required flow of the task gets its reply and none of its forbidden flows reaches a server. */
+/** True when every required flow of the task gets its reply and none of its forbidden flows reaches a device. */
 export function taskHolds(task: IncidentTask, runs: FlowRun[]): boolean {
   return runs.filter((run) => task.flowIds.includes(run.id)).every(runIsFine);
 }

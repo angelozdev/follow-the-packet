@@ -6,7 +6,7 @@ import { endpointName, packetLabel, serviceLabel } from './packet-labels';
 const NET = lab03Net();
 
 describe('packet labels', () => {
-  it('name the service, the source and the destination server', () => {
+  it('name the service, the source and the destination device', () => {
     const packet = ping(device('servidor1'), '172.31.38.97');
     expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a servidor2');
   });
@@ -17,7 +17,7 @@ describe('packet labels', () => {
     expect(endpointName(actor('probe-internet'), NET)).toBe('Internet');
   });
 
-  it('keep the address when the packet reached no server', () => {
+  it('keep the address when the packet reached no device', () => {
     const packet = ping(device('servidor1'), 'no-existe.example');
     expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de servidor1 a no-existe.example');
   });

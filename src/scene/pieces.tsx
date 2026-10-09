@@ -5,7 +5,7 @@ import type { Group } from 'three';
 import type { Actor } from '@/engine';
 import { boxEdgePoints } from './edges';
 import { useHtmlPortal } from './html-layer';
-import type { InstanceSpot, Layout, Vec2, Vec3 } from './layout';
+import type { DeviceSpot, Layout, Vec2, Vec3 } from './layout';
 import { ACCENT, INK, PAPER_FILL, PAPER_SHADE } from './theme';
 
 const SHAKE_SPEED = 40;
@@ -41,7 +41,7 @@ export function Road({ layout }: { layout: Layout }) {
       </mesh>
       <Line points={[[x1, 0.02, z - 0.35], [x2, 0.02, z - 0.35]]} color={INK} lineWidth={1} />
       <Line points={[[x1, 0.02, z + 0.35], [x2, 0.02, z + 0.35]]} color={INK} lineWidth={1} />
-      {Object.entries(layout.instances).map(([id, spot]) => (
+      {Object.entries(layout.devices).map(([id, spot]) => (
         <mesh key={id} rotation-x={-Math.PI / 2} position={[spot.x, 0.012, (spot.door[1] + z) / 2]}>
           <planeGeometry args={[0.5, z - spot.door[1]]} />
           <meshBasicMaterial color={PAPER_SHADE} />
@@ -51,8 +51,8 @@ export function Road({ layout }: { layout: Layout }) {
   );
 }
 
-/** A server's building; it shakes while something forbidden gets in, or shows a fixed warning mark without animations. */
-export function Building({ spot, shaking, still }: { spot: InstanceSpot; shaking: boolean; still: boolean }) {
+/** A device's building; it shakes while something forbidden gets in, or shows a fixed warning mark without animations. */
+export function Building({ spot, shaking, still }: { spot: DeviceSpot; shaking: boolean; still: boolean }) {
   const portal = useHtmlPortal();
   const group = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -74,10 +74,10 @@ export function Building({ spot, shaking, still }: { spot: InstanceSpot; shaking
   );
 }
 
-/** A server's Security Group barrier; its bar pulses while its task card is open, or stays thicker without animations. */
-export function Barrier({ spot, active, still }: { spot: InstanceSpot; active: boolean; still: boolean }) {
+/** A device's Security Group barrier; its bar pulses while its task card is open, or stays thicker without animations. */
+export function Barrier({ spot, active, still }: { spot: DeviceSpot; active: boolean; still: boolean }) {
   const bar = useRef<Group>(null);
-  const [x, z] = spot.barrier;
+  const [x, z] = spot.firewall;
   useFrame(({ clock }) => {
     if (!bar.current) return;
     const pulse = still ? PULSE_STILL_SCALE : 1 + Math.abs(Math.sin(clock.elapsedTime * PULSE_SPEED)) * PULSE_AMPLITUDE;

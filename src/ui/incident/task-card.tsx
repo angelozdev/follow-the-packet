@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
-import { rowText, type BarrierCard } from '@/game';
+import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, WhatChip } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -12,7 +12,7 @@ type Chip = { id: string; label: TermText };
 const EMPTY_SLOT: Slot = { what: null, from: null };
 
 interface TaskCardProps {
-  card: BarrierCard;
+  card: FirewallCard;
   chips: { what: WhatChip[]; from: FromChip[] };
   onPlace: (whatId: string, fromId: string) => void;
   onRemove: (ruleId: string) => void;

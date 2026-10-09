@@ -10,7 +10,7 @@ export interface RuleRow {
   from: TermText;
 }
 
-export interface BarrierCard {
+export interface FirewallCard {
   firewallId: string;
   title: TermText;
   rules: RuleRow[];
@@ -30,8 +30,8 @@ export function rowText(row: RuleRow): TermText {
 }
 
 /** Returns what the task card of a firewall shows, or null when the piece is not a firewall on the map. */
-export function barrierCard(session: Session, pieceId: string): BarrierCard | null {
+export function firewallCard(session: Session, pieceId: string): FirewallCard | null {
   const ref = parsePieceId(pieceId);
-  const firewall = ref?.kind === 'barrier' ? session.world.firewalls.find((f) => f.id === ref.id) : undefined;
-  return firewall ? { firewallId: firewall.id, title: MAP_TEXT.barrier(firewall.name), rules: ruleRows(firewall, session.incident) } : null;
+  const firewall = ref?.kind === 'firewall' ? session.world.firewalls.find((f) => f.id === ref.id) : undefined;
+  return firewall ? { firewallId: firewall.id, title: MAP_TEXT.firewall(firewall.name), rules: ruleRows(firewall, session.incident) } : null;
 }

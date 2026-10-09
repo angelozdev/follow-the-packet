@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TASK_CARD_TEXT, toPlainText } from '@/copy';
-import { barrierCard, startSession } from '@/game';
+import { firewallCard, startSession } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
@@ -16,7 +16,7 @@ const DAY_SHIFT_ROW = 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)';
 
 function renderCard(incidentId: string) {
   const session = startSession(INCIDENTS, incidentId);
-  const card = barrierCard(session, PIECE_ID.barrier(SG.servidor2));
+  const card = firewallCard(session, PIECE_ID.firewall(SG.servidor2));
   if (!card) throw new Error('missing Security Group');
   const handlers = { onPlace: vi.fn(), onRemove: vi.fn(), onClose: vi.fn() };
   render(<TaskCard card={card} chips={session.incident.chips} {...handlers} />);

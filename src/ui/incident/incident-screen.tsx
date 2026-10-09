@@ -1,7 +1,7 @@
 import { useReducedMotion } from '@mantine/hooks';
 import { useReducer, useState } from 'react';
 import { SCREEN_TEXT } from '@/copy';
-import { barrierCard, countStars, inspect, intrudedServerIds, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { countStars, firewallCard, inspect, intrudedDeviceIds, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { ExplanationCard } from './explanation-card';
@@ -27,7 +27,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const still = stillChoice ?? prefersStill;
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
-  const card = playing && cardPieceId ? barrierCard(session, cardPieceId) : null;
+  const card = playing && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const inspection = inspecting ? inspect(session, inspecting) : null;
 
   const activate = (pieceId: string) => {
@@ -56,7 +56,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           world={session.world}
           pieces={pieces}
           flows={session.runs}
-          intrudedServerIds={intrudedServerIds(session.runs)}
+          intrudedDeviceIds={intrudedDeviceIds(session.runs)}
           still={still}
           activePieceId={card ? cardPieceId : null}
           overlay={

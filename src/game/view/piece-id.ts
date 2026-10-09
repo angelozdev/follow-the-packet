@@ -1,14 +1,14 @@
-export type PieceRef = { kind: 'server' | 'barrier' | 'actor' | 'packet'; id: string } | { kind: 'gateway' };
+export type PieceRef = { kind: 'device' | 'firewall' | 'actor' | 'packet'; id: string } | { kind: 'edge' };
 
-const ID_KINDS = ['server', 'barrier', 'actor', 'packet'] as const;
+const ID_KINDS = ['device', 'firewall', 'actor', 'packet'] as const;
 const SEPARATOR = ':';
 
 export const PIECE_ID = {
-  server: (deviceId: string) => `server${SEPARATOR}${deviceId}`,
-  barrier: (firewallId: string) => `barrier${SEPARATOR}${firewallId}`,
+  device: (deviceId: string) => `device${SEPARATOR}${deviceId}`,
+  firewall: (firewallId: string) => `firewall${SEPARATOR}${firewallId}`,
   actor: (actorId: string) => `actor${SEPARATOR}${actorId}`,
   packet: (flowId: string) => `packet${SEPARATOR}${flowId}`,
-  gateway: 'gateway',
+  edge: 'edge',
 } as const;
 
 function isIdKind(value: string): value is (typeof ID_KINDS)[number] {
@@ -17,7 +17,7 @@ function isIdKind(value: string): value is (typeof ID_KINDS)[number] {
 
 /** Reads a piece id back into what it names, or null when it names nothing the map draws. */
 export function parsePieceId(pieceId: string): PieceRef | null {
-  if (pieceId === PIECE_ID.gateway) return { kind: 'gateway' };
+  if (pieceId === PIECE_ID.edge) return { kind: 'edge' };
   const separator = pieceId.indexOf(SEPARATOR);
   const kind = pieceId.slice(0, separator);
   return separator > 0 && isIdKind(kind) ? { kind, id: pieceId.slice(separator + 1) } : null;

@@ -31,7 +31,7 @@ export function runFlows(world: Network, flows: Flow[]): FlowRun[] {
   });
 }
 
-/** Returns the servers that a forbidden flow reaches. */
-export function intrudedServerIds(runs: FlowRun[]): ReadonlySet<string> {
+/** Returns the devices that a forbidden flow reaches. */
+export function intrudedDeviceIds(runs: FlowRun[]): ReadonlySet<string> {
   return new Set(runs.flatMap((run) => (run.kind === 'forbidden' && run.reached && run.trace.destinationId ? [run.trace.destinationId] : [])));
 }

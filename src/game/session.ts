@@ -65,7 +65,7 @@ export function canConfigure(session: Session, firewallId: string): boolean {
   return session.parts.inboundRules && session.world.devices.some((device) => device.firewallIds.includes(firewallId));
 }
 
-/** True while a forbidden flow reaches its server. */
+/** True while a forbidden flow reaches its device. */
 export function isIntruding(session: Session): boolean {
   return hasIntrusion(session.runs);
 }

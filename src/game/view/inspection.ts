@@ -2,7 +2,7 @@ import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, descri
 import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type PacketSpec } from '@/engine';
 import type { FlowRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
-import { rowText, ruleRows } from './barrier';
+import { rowText, ruleRows } from './firewall-card';
 import { parsePieceId } from './piece-id';
 import { PIECE_TERM } from './pieces';
 
@@ -41,40 +41,40 @@ function dnsNames(device: Device, region: string | undefined): string[] {
   return [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)];
 }
 
-function server(session: Session, device: Device): Inspection {
+function device(session: Session, own: Device): Inspection {
   const { region, firewalls } = session.world;
-  const own = firewalls.filter((firewall) => device.firewallIds.includes(firewall.id));
+  const guards = firewalls.filter((firewall) => own.firewallIds.includes(firewall.id));
   return {
-    title: device.name,
+    title: own.name,
     fields: visible(
       [
-        whatIs(PIECE_TERM.server),
-        { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [device.privateIp] },
-        { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [device.publicIp ?? INSPECTION_TEXT.none] },
-        { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(device, region) },
-        { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [device.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
-        { term: 'security-group', label: INSPECTION_TEXT.securityGroups, lines: () => own.map((firewall) => MAP_TEXT.barrier(firewall.name)) },
+        whatIs(PIECE_TERM.device),
+        { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [own.privateIp] },
+        { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] },
+        { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
+        { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
+        { term: 'security-group', label: INSPECTION_TEXT.firewalls, lines: () => guards.map((firewall) => MAP_TEXT.firewall(firewall.name)) },
       ],
       session.known,
     ),
   };
 }
 
-function barrier(session: Session, firewall: Firewall): Inspection {
-  const rows = ruleRows(firewall, session.incident);
+function firewall(session: Session, own: Firewall): Inspection {
+  const rows = ruleRows(own, session.incident);
   return {
-    title: MAP_TEXT.barrier(firewall.name),
+    title: MAP_TEXT.firewall(own.name),
     fields: visible(
-      [whatIs(PIECE_TERM.barrier), { term: 'inbound-rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }],
+      [whatIs(PIECE_TERM.firewall), { term: 'inbound-rule', label: INSPECTION_TEXT.inbound, lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) }],
       session.known,
     ),
   };
 }
 
-function gateway(session: Session): Inspection {
+function edge(session: Session): Inspection {
   return {
-    title: MAP_TEXT.gateway,
-    fields: visible([whatIs(PIECE_TERM.gateway), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.gatewayDoes] }], session.known),
+    title: MAP_TEXT.edge,
+    fields: visible([whatIs(PIECE_TERM.edge), { term: null, label: INSPECTION_TEXT.does, lines: () => [INSPECTION_TEXT.edgeDoes] }], session.known),
   };
 }
 
@@ -108,16 +108,16 @@ function packet(session: Session, run: FlowRun): Inspection {
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
-  if (ref.kind === 'gateway') return gateway(session);
+  if (ref.kind === 'edge') return edge(session);
   const { world, runs } = session;
   switch (ref.kind) {
-    case 'server': {
-      const found = world.devices.find((device) => device.id === ref.id);
-      return found ? server(session, found) : null;
+    case 'device': {
+      const found = world.devices.find((candidate) => candidate.id === ref.id);
+      return found ? device(session, found) : null;
     }
-    case 'barrier': {
-      const found = world.firewalls.find((firewall) => firewall.id === ref.id);
-      return found ? barrier(session, found) : null;
+    case 'firewall': {
+      const found = world.firewalls.find((candidate) => candidate.id === ref.id);
+      return found ? firewall(session, found) : null;
     }
     case 'actor': {
       const found = world.actors.find((candidate) => candidate.id === ref.id);

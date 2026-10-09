@@ -2,7 +2,7 @@ import { MAP_TEXT, type TermId, type TermText } from '@/copy';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
 
-export type PieceKind = 'server' | 'barrier' | 'actor' | 'gateway';
+export type PieceKind = 'device' | 'firewall' | 'actor' | 'edge';
 
 export interface PieceView {
   id: string;
@@ -14,23 +14,23 @@ export interface PieceView {
   configurable: boolean;
 }
 
-export const GATEWAY_ANCHOR = 'igw';
+export const EDGE_ANCHOR = 'edge';
 
 export const PIECE_TERM = {
-  server: 'ec2-instance',
-  barrier: 'security-group',
-  gateway: 'internet-gateway',
+  device: 'ec2-instance',
+  firewall: 'security-group',
+  edge: 'internet-gateway',
   actor: null,
 } as const satisfies Record<PieceKind, TermId | null>;
 
-function barriers(session: Session): PieceView[] {
+function firewalls(session: Session): PieceView[] {
   const { world } = session;
   return world.firewalls.flatMap((firewall): PieceView[] => {
     const owner = world.devices.find((device) => device.firewallIds.includes(firewall.id));
     if (!owner) return [];
     const configurable = canConfigure(session, firewall.id);
     return [
-      { id: PIECE_ID.barrier(firewall.id), kind: 'barrier', anchorId: owner.id, term: PIECE_TERM.barrier, label: MAP_TEXT.barrier(firewall.name), locked: !configurable, configurable },
+      { id: PIECE_ID.firewall(firewall.id), kind: 'firewall', anchorId: owner.id, term: PIECE_TERM.firewall, label: MAP_TEXT.firewall(firewall.name), locked: !configurable, configurable },
     ];
   });
 }
@@ -40,12 +40,12 @@ export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   return [
     ...world.devices.map(
-      (device): PieceView => ({ id: PIECE_ID.server(device.id), kind: 'server', anchorId: device.id, term: PIECE_TERM.server, label: device.name, locked: !parts.hostSettings, configurable: false }),
+      (device): PieceView => ({ id: PIECE_ID.device(device.id), kind: 'device', anchorId: device.id, term: PIECE_TERM.device, label: device.name, locked: !parts.hostSettings, configurable: false }),
     ),
-    ...barriers(session),
+    ...firewalls(session),
     ...world.actors.map(
       (actor): PieceView => ({ id: PIECE_ID.actor(actor.id), kind: 'actor', anchorId: actor.id, term: PIECE_TERM.actor, label: actor.name, locked: false, configurable: false }),
     ),
-    { id: PIECE_ID.gateway, kind: 'gateway', anchorId: GATEWAY_ANCHOR, term: PIECE_TERM.gateway, label: MAP_TEXT.gateway, locked: true, configurable: false },
+    { id: PIECE_ID.edge, kind: 'edge', anchorId: EDGE_ANCHOR, term: PIECE_TERM.edge, label: MAP_TEXT.edge, locked: true, configurable: false },
   ];
 }

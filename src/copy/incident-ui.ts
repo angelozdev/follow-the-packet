@@ -2,8 +2,8 @@ import type { Actor } from '@/engine';
 import type { TermText } from './term-text';
 
 export const MAP_TEXT = {
-  barrier: (name: string): TermText => `{{security-group}} ${name}`,
-  gateway: '{{internet-gateway}}',
+  firewall: (name: string): TermText => `{{security-group}} ${name}`,
+  edge: '{{internet-gateway}}',
   locked: 'con candado',
   packet: (label: string) => `Paquete: ${label}`,
 } as const;
@@ -16,14 +16,14 @@ export const INSPECTION_TEXT = {
   echoIgnore: '{{icmp-echo-ignore-all}}',
   answersPing: '0: contesta el {{ping}}',
   ignoresPing: '1: no contesta el {{ping}}',
-  securityGroups: '{{security-group|Security Groups}}',
+  firewalls: '{{security-group|Security Groups}}',
   inbound: '{{inbound-rule|Reglas de entrada}}',
   noRules: 'Ninguna: no deja entrar nada.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
   who: 'Quién es',
   ip: '{{public-ip}}',
   does: 'Qué hace',
-  gatewayDoes: 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
+  edgeDoes: 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',

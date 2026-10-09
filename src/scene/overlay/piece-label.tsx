@@ -1,7 +1,7 @@
 import { MAP_TEXT, toPlainText, type TermText } from '@/copy';
 import { inspectHandlers, type OnInspect } from './inspect-handlers';
 
-export type MapPieceKind = 'server' | 'barrier' | 'actor' | 'gateway';
+export type MapPieceKind = 'device' | 'firewall' | 'actor' | 'edge';
 
 export interface MapPiece {
   id: string;
