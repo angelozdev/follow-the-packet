@@ -12,4 +12,4 @@ The hook name should tell you what the effect does without reading its body. Eff
 
 React hooks are imported by name, and a namespace import of react is rejected because it would import useEffect.
 
-Enforcement: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in npm run lint.
+Enforcement: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in pnpm lint.

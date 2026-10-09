@@ -10,4 +10,4 @@
 - A function may build and mutate local state internally (like the simulation context), as long as its callers see a pure function.
 - The engine returns data (codes and values), never display text: `src/copy/` turns that data into Spanish (see [[english-only]]).
 
-Enforcement: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in npm run lint.
+Enforcement: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in pnpm lint.

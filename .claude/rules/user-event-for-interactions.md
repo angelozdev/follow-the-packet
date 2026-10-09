@@ -10,4 +10,4 @@ Tests that simulate what a user does (click, type, tab, hover, select) use `@tes
 
 **How to apply:** the project has no shared render helper, so each test calls `const user = userEvent.setup()` once (not at module scope), is `async`, and awaits every interaction before asserting. The first interaction test arrives with the incident screen (plan 2).
 
-Enforcement: no-restricted-imports bans fireEvent from the Testing Library packages in npm run lint.
+Enforcement: no-restricted-imports bans fireEvent from the Testing Library packages in pnpm lint.

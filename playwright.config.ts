@@ -14,7 +14,7 @@ export default defineConfig({
     launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4183 --strictPort',
+    command: 'pnpm build && pnpm preview --port 4183 --strictPort',
     url: 'http://localhost:4183',
     reuseExistingServer: false,
     timeout: 120_000,

@@ -6,7 +6,7 @@
 
 > **Estado (plan 3, `docs/plans/2026-10-08-follow-the-packet-rigor-and-submit.md`):** hechos E2 (nombres oficiales de AWS, definición al pasar el mouse, glosario y la regla `rigorous-plain-copy`) y E3 («Enviar solución», sin la barra de 3 s). Siguen pendientes E4 a E10, A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
 
-> **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. E5 quedó resuelto con los sellos cercanos (Tarea 10 y arreglo final). Siguen pendientes E4, E8 a E10, F4 a F6 (plan 3), el bloque G, A1, A2 y el bloque D.
+> **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. E5 quedó resuelto con los sellos cercanos (Tarea 10 y arreglo final). Siguen pendientes E4, E8 y E9, F4 a F6 (plan 3), el bloque G, A1, A2 y el bloque D.
 
 Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
@@ -104,7 +104,7 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Decidido en el capítulo 1, plan 2: la ficha de Actor no lleva candado (es un personaje) |
 | E8 | Pantallas bajas en horizontal: el cuadro de inspección se corta; a 390 px la tarjeta queda fuera de pantalla y a 320 px «Roadmap» pisa una etiqueta | Pendiente |
 | E9 | Menores de la revisión: las estrellas se guardan solo al pulsar «Ver resultado»; tras el cierre los Security Groups parecen editables pero no responden; Esc solo cierra la tarjeta con el foco dentro; el bermellón tiene contraste de unos 3.5:1 | Pendiente |
-| E10 | `projects/follow-the-packet/` tiene `pnpm-lock.yaml` y `pnpm-workspace.yaml` sin seguimiento; el proyecto usa npm | Decide el estudiante: borrarlos o ignorarlos |
+| E10 | `projects/follow-the-packet/` tiene `pnpm-lock.yaml` y `pnpm-workspace.yaml` sin seguimiento; el proyecto usa npm | Hecho (2026-10-09): el proyecto usa solo pnpm 11.3.0; se borraron `package-lock.json` y `.npmrc`, y `saveExact` pasó a `pnpm-workspace.yaml` porque pnpm 11 no lo lee de `.npmrc`. |
 
 ## Bloque F: lo que dejó el modelo genérico (capítulo 1, plan 1, 2026-10-09)
 

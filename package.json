@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,7 +14,7 @@
     "e2e": "playwright test",
     "structure": "node scripts/check-structure.ts",
     "dup": "jscpd src tests scripts",
-    "check": "npm run typecheck && npm run lint && npm run structure && npm run dup && npm run test && npm run e2e"
+    "check": "pnpm typecheck && pnpm lint && pnpm structure && pnpm dup && pnpm test && pnpm e2e"
   },
   "dependencies": {
     "@floating-ui/react-dom": "2.1.9",

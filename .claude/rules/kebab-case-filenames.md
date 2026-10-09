@@ -6,4 +6,4 @@ This only affects the filename. The exported symbol inside still uses normal JS/
 
 Middle extensions are ignored: `*.test.ts`, `*.test.tsx`, `*.spec.ts`. Root config files (`vite.config.ts`, `eslint.config.js`, `playwright.config.ts`) are tool-required names and already comply.
 
-Enforcement: eslint-plugin-check-file on src/ and tests/ in npm run lint.
+Enforcement: eslint-plugin-check-file on src/ and tests/ in pnpm lint.

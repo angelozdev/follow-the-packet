@@ -6,13 +6,13 @@ Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live
 
 ## Run
 
-    npm install
-    npx playwright install chromium
-    npm run dev
+    pnpm install
+    pnpm exec playwright install chromium
+    pnpm dev
 
 ## Check
 
-    npm run check
+    pnpm check
 
 Runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector, unit tests and Playwright. "Done" means it passes entirely.
 

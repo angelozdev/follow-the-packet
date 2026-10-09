@@ -12,7 +12,7 @@
       "origin": "core/dry",
       "version": 1,
       "notes": [
-        "enforced: jscpd with threshold 0 in npm run check (npm run dup)."
+        "enforced: jscpd with threshold 0 in pnpm check (pnpm dup)."
       ]
     },
     "english-only": {
@@ -28,8 +28,8 @@
       "origin": "core/exact-dependency-versions",
       "version": 1,
       "notes": [
-        "npm (package-lock.json); npm does not gate install scripts",
-        "enforced: .npmrc with save-exact=true; package.json has no ^ or ~ ranges.",
+        "pnpm (pnpm-lock.yaml, packageManager pnpm@11.3.0); pnpm runs no dependency install script unless allowed in pnpm-workspace.yaml",
+        "enforced: pnpm-workspace.yaml with saveExact: true; package.json has no ^ or ~ ranges.",
         "typescript stays on 6.0.x: typescript-eslint 8.71 accepts TypeScript below 6.1"
       ]
     },
@@ -41,7 +41,7 @@
         "import direction: app -> ui -> game, scene, storage -> levels -> copy -> engine; no peers",
         "alias @/ -> src/; all ../ imports banned; one index.ts barrel per layer",
         "cap 12 files per folder, tests and barrel included; guide file CLAUDE.md per folder",
-        "enforced: no-restricted-imports rules generated from the layer table in eslint.config.js (npm run lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (npm run structure).",
+        "enforced: no-restricted-imports rules generated from the layer table in eslint.config.js (pnpm lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (pnpm structure).",
         "deviation: boundaries use core no-restricted-imports generated from the layer table instead of eslint-plugin-boundaries (no extra dependency or alias resolver)"
       ]
     },
@@ -50,7 +50,7 @@
       "version": 1,
       "notes": [
         "covers src/ and tests/; suffixes *.test.ts, *.test.tsx, *.spec.ts; no exemptions",
-        "enforced: eslint-plugin-check-file on src/ and tests/ in npm run lint.",
+        "enforced: eslint-plugin-check-file on src/ and tests/ in pnpm lint.",
         "accepted risk (2026-10-08): npm audit reports 3 high findings in braces (GHSA-vfj7-8cjw-p6xm) through eslint-plugin-check-file > micromatch; dev-only, the plugin only matches patterns written in eslint.config.js, no fix published; revisit when a fixed braces release ships"
       ]
     },
@@ -75,7 +75,7 @@
       "notes": [
         "decision reasoning: commit messages and repo-root docs/specs/, docs/plans/",
         "allowed directive: // @vitest-environment jsdom",
-        "enforced: eslint-plugin-no-comments in npm run lint; only JSDoc and tool directives pass."
+        "enforced: eslint-plugin-no-comments in pnpm lint; only JSDoc and tool directives pass."
       ]
     },
     "no-magic-strings": {
@@ -93,7 +93,7 @@
         "hook files use-*.ts next to their first consumer",
         "convention: no namespace import of react in components (the effect ban rejects it)",
         "hooks library: @mantine/hooks (useHash, useReducedMotion, useWindowEvent, useInterval, useTimeout, useDidUpdate, useMounted)",
-        "enforced: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in npm run lint."
+        "enforced: no-restricted-imports and no-restricted-syntax forbid useEffect and useLayoutEffect outside use-*.ts files in pnpm lint."
       ]
     },
     "prefer-established-libraries": {
@@ -116,7 +116,7 @@
       "version": 1,
       "notes": [
         "core: src/engine/; banned there: react, react-dom, three, @react-three/*, browser storage",
-        "enforced: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in npm run lint."
+        "enforced: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in pnpm lint."
       ]
     },
     "single-responsibility": {
@@ -129,7 +129,7 @@
       "notes": [
         "paths: src/**/*.test.tsx",
         "no shared render helper: userEvent.setup() per test; first interaction test arrives with the incident screen",
-        "enforced: no-restricted-imports bans fireEvent from the Testing Library packages in npm run lint."
+        "enforced: no-restricted-imports bans fireEvent from the Testing Library packages in pnpm lint."
       ]
     },
     "view-renders-domain-result": {

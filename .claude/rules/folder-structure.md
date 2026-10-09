@@ -41,4 +41,4 @@ Answer in order; the first "yes" decides:
 - `src/testing/` (fixtures, repository helpers) is imported only by tests, never by production code.
 - AWS vocabulary is this project's domain language, not an external platform, so it is allowed everywhere.
 
-Enforcement: no-restricted-imports rules generated from the layer table in eslint.config.js (npm run lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (npm run structure).
+Enforcement: no-restricted-imports rules generated from the layer table in eslint.config.js (pnpm lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (pnpm structure).

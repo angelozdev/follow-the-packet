@@ -7,9 +7,9 @@ Generic infrastructure — timing (intervals, timeouts, debounce), animation, ho
 **How to apply:**
 
 - Before writing a generic helper or hook, look for a library that covers it. A library qualifies when it is maintained (a release in the last 12 months), ships TypeScript types, is widely used, is small or tree-shakeable, and does not overlap a dependency the project already has.
-- Check those facts with `npm view <pkg> version time.modified peerDependencies`, never from memory, and record the choice with its date below.
+- Check those facts with `pnpm view <pkg> version time.modified peerDependencies`, never from memory, and record the choice with its date below.
 - One library per job: never add a second library that does what an existing dependency already does.
-- Install it with `npm install` together with the first code that uses it (see [[exact-dependency-versions]]). Collection helpers follow [[prefer-just-utilities]].
+- Install it with `pnpm add` together with the first code that uses it (see [[exact-dependency-versions]]). Collection helpers follow [[prefer-just-utilities]].
 
 **Choices so far:**
 
