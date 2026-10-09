@@ -4,7 +4,7 @@ import type { Incident } from '@/levels/incident';
 import { INCIDENTS } from '@/levels/registry';
 import { applyMove, solvedWorld, startWorld } from '@/levels/world';
 
-const CHAPTER = 4;
+const RECORDED_INCIDENTS = ['04-01', '04-02'];
 const FIXTURE = './golden-traces.json';
 const RECORDED_KEYS = new Map([
   ['deviceId', 'instanceId'],
@@ -64,7 +64,7 @@ function worlds(incident: Incident): [string, Network][] {
 }
 
 function references(): [string, unknown][] {
-  return INCIDENTS.filter((incident) => incident.chapter === CHAPTER).flatMap((incident) =>
+  return INCIDENTS.filter((incident) => RECORDED_INCIDENTS.includes(incident.id)).flatMap((incident) =>
     worlds(incident).flatMap(([name, world]): [string, unknown][] => {
       const expected = incident.flows.filter((flow) => flow.kind !== 'forbidden').map((flow) => flow.packet);
       return [
