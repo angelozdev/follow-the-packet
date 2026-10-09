@@ -14,13 +14,14 @@ const BAR: Record<FirewallKind, { size: Vec3; y: number }> = {
   'security-group': { size: [1.2, 0.07, 0.07], y: 0.46 },
   'host-firewall': { size: [1.2, 0.24, 0.1], y: 0.36 },
 };
+const MAT: Vec3 = [1.6, 0.04, 0.6];
 const BRICK_JOINTS: Vec3[] = [
   [-0.6, 0, 0.051], [0.6, 0, 0.051],
   [-0.3, 0.12, 0.051], [-0.3, 0, 0.051], [0.3, 0.12, 0.051], [0.3, 0, 0.051],
   [0, 0, 0.051], [0, -0.12, 0.051],
 ];
 
-/** A firewall standing in front of its device, a bar between two posts: a thin bar for a Security Group, a brick wall for the firewall of a laptop. The bar turns vermilion while it stops a packet; it pulses while its task card is open, or stays thicker without animations. */
+/** A firewall standing in front of its device, a bar between two posts: a thin bar for a Security Group, a brick wall for the firewall of a laptop. While selected (its task card is open) it stands on a paper mat and its bar pulses, or stays thicker without animations; the bar turns vermilion while it stops a packet. */
 export function FirewallPiece({ position, variant, selected, blocking, still }: { position: Vec2; variant: FirewallKind; selected: boolean; blocking: boolean; still: boolean }) {
   const bar = useRef<Group>(null);
   const [x, z] = position;
@@ -32,6 +33,7 @@ export function FirewallPiece({ position, variant, selected, blocking, still }: 
   });
   return (
     <group>
+      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={1} />}
       <InkBox size={[0.1, 0.5, 0.1]} position={[x - 0.6, 0.25, z]} />
       <InkBox size={[0.1, 0.5, 0.1]} position={[x + 0.6, 0.25, z]} />
       <group ref={bar} position={[x, BAR[variant].y, z]}>

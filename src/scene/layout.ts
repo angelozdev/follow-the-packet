@@ -53,9 +53,10 @@ const INTERNET_GAP = 3.6;
 const ACTOR_GAP = 3;
 const ACTOR_SPACING = 2.5;
 const ACTOR_STAGGER_Z = 1.6;
-const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 0.7], edge: [0, 2.6, 0], internet: [0, 2.1, 0] };
+const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 0.7], edge: [0, 3.1, 0], internet: [0, 2.1, 0] };
 const CARD_Y = 0.5;
 const STAMP_SPREAD = 0.8;
+const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
 
 function columnsOf(net: Network): Column[] {
@@ -188,16 +189,27 @@ export function pathLength(path: Vec2[]): number {
   return cumulativeLengths(path).at(-1) ?? 0;
 }
 
-function samePoint(point: Vec2) {
-  return (other: Vec2) => other[0] === point[0] && other[1] === point[1];
+function distance(a: Vec2, b: Vec2): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
-/** Moves stamps that share a point apart along the screen's horizontal (x up, z down), keeping each group centered on its point. */
+/** Returns, in order, the indexes of the points chained to the one at `start` by gaps shorter than `STAMP_NEAR`, `start` included. */
+function nearGroup(points: Vec2[], start: number): number[] {
+  const group = [start];
+  for (const member of group) {
+    points.forEach((point, index) => {
+      if (!group.includes(index) && distance(point, points[member]) < STAMP_NEAR) group.push(index);
+    });
+  }
+  return group.sort((a, b) => a - b);
+}
+
+/** Moves stamps that are close together (less than one unit apart, chained: A near B and B near C make one group) apart along the screen's horizontal (x up, z down), keeping each group centered on the average of its points. A stamp with no close neighbour stays where it is. */
 export function spreadStamps(points: Vec2[]): Vec2[] {
-  return points.map((point, index): Vec2 => {
-    const group = points.filter(samePoint(point)).length;
-    const rank = points.slice(0, index).filter(samePoint(point)).length;
-    const shift = (rank - (group - 1) / 2) * STAMP_SPREAD;
-    return [point[0] + shift, point[1] - shift];
+  return points.map((_, index): Vec2 => {
+    const group = nearGroup(points, index);
+    const average = (axis: 0 | 1) => group.reduce((sum, member) => sum + points[member][axis], 0) / group.length;
+    const shift = (group.indexOf(index) - (group.length - 1) / 2) * STAMP_SPREAD;
+    return [average(0) + shift, average(1) - shift];
   });
 }

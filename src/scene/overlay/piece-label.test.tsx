@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { MAP_TEXT } from '@/copy';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
 const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: 'servidor2', locked: true, state: 'normal' };
@@ -17,6 +18,13 @@ describe('piece label', () => {
   it('reads its plain label and says when the piece is locked', () => {
     renderLabel(SERVER);
     expect(screen.getByRole('button', { name: 'servidor2 con candado' })).toBeInTheDocument();
+  });
+
+  it('draws the lock of a locked piece in ink, not as an emoji', () => {
+    renderLabel(SERVER);
+    const label = screen.getByRole('button', { name: `servidor2 ${MAP_TEXT.locked}` });
+    expect(label).not.toHaveTextContent('🔒');
+    expect(label.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
   it('hovering or focusing inspects the piece, and leaving stops', async () => {

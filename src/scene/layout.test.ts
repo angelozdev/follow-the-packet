@@ -167,4 +167,13 @@ describe('paths and stamps', () => {
     expect(a[0] - 1).toBeCloseTo(-(a[1] - 1));
     expect(c).toEqual([5, 5]);
   });
+
+  it('moves apart stamps whose points are close but not the same, such as the door, the doorstep and the firewall of one device', () => {
+    const minimumGap = 0.8;
+    const { door, doorstep, firewall } = computeLayout(officeNet(), false).devices['your-laptop'];
+    const stamps = spreadStamps([door, doorstep, firewall]);
+    stamps.forEach((stamp, index) => {
+      for (const other of stamps.slice(index + 1)) expect(Math.hypot(stamp[0] - other[0], stamp[1] - other[1])).toBeGreaterThanOrEqual(minimumGap);
+    });
+  });
 });
