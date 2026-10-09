@@ -69,7 +69,7 @@ Qué define cada fuente:
 
 - **Error en una página de AWS:** la página «What is ICMP» de AWS dice «Types 8 and 10» para Echo. Es un error: el 10 es Router Solicitation. Las cifras se toman de RFC 792 e IANA.
 - **IP privada en una VPC:** AWS llama IP privada a cualquier IP dentro del CIDR de la VPC, aunque no sea de RFC 1918 (página CIDR blocks). En el juego todas las VPC usan rangos de RFC 1918, así que la definición de abajo es exacta para el juego.
-- **Simplificación declarada:** el juego no modela ARP. En una red real, si ningún dispositivo tiene la IP de destino, la laptop pregunta en la red quién la tiene y, sin respuesta, el Echo Request ni sale. El juego dibuja el paquete perdido en la red. El texto dice solo lo exacto: «ningún dispositivo de la red tiene esa IP; el ping no obtiene respuesta».
+- **Simplificación declarada:** el juego no modela ARP. En una red real, si ningún dispositivo tiene la IP de destino, la laptop pregunta en la red quién la tiene y, sin respuesta, el Echo Request ni sale. El juego dibuja el paquete perdido en la red. El texto dice solo lo exacto: «Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.»
 
 ## Capítulo 1 · Introducción: «Tu primer día»
 
@@ -253,17 +253,18 @@ network = {
 - **Validación de una red `office`:**
   - sin `region`, sin `subnets` y sin `publicIp`;
   - las IP de los dispositivos caen en su `cidr`;
-  - el `cidr` es un rango de RFC 1918.
+  - el `cidr` es un rango de RFC 1918;
+  - sus firewalls son de tipo `host-firewall`.
 - **Dispositivos de la oficina hacia afuera:** el juego no modela la NAT de la oficina. El esquema del incidente rechaza un flujo o una combinación de fichas que mande un paquete de un dispositivo de la oficina a un destino fuera de ella.
 - **Resultados nuevos del recorrido:**
 
 | Caso | Resultado | Razón en `src/copy/reasons.ts` |
 |------|-----------|--------------------------------|
-| Desde adentro, a una IP de la red que no tiene ningún dispositivo | perdido en la red | «Ningún dispositivo de la red tiene esa IP: el ping no obtiene respuesta.» |
+| Desde adentro, a una IP de la red que no tiene ningún dispositivo | perdido en la red | «Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.» |
 | Desde internet, a una IP privada | perdido en internet | «Internet no entrega paquetes a una IP privada: la misma IP se repite en muchas redes.» |
 | Echo Reply que llega a un dispositivo | llegó, sin vuelta | «Un Echo Reply es una respuesta: llegó, y nadie lo contesta.» |
-| Un dispositivo a su propia IP | llegó y volvió, sin salir a la red | «Un dispositivo que se hace ping a sí mismo se contesta sin que el paquete salga a la red.» |
-| Bloqueado por un firewall de tipo `host-firewall` | bloqueado | «Ninguna regla del firewall deja pasar este tráfico.» |
+| Un dispositivo a su propia IP | llegó y volvió, sin salir a la red | «Va a la propia IP del dispositivo: no sale a la red.» |
+| Bloqueado por un firewall de tipo `host-firewall` | bloqueado | «Se queda en el firewall de X: ninguna regla lo deja entrar.» (X es el dispositivo, como en los motivos del Security Group) |
 
 - **Capítulo 4 sin cambios visibles:**
   - Antes del refactor se guardan como referencia los recorridos de todos los flujos del 04-01 y el 04-02 y el resultado de la batería de sondas.
@@ -410,4 +411,5 @@ Hay tres planes, en este orden. Cada uno termina con `npm run check` en verde.
 
 - **Capturas de WebGL:** pueden variar entre máquinas. Se fijan el modo quieto, el tamaño de ventana y la densidad de píxeles, con una tolerancia pequeña. Si aun así fallan sin motivo, la prueba pasa a comparar la estructura de la página en vez de los píxeles.
 - **Tamaño del refactor:** el plan 1 toca casi todas las capas. Lo protege la prueba de recorridos de referencia.
+- **Nombres dentro de los motivos:** los motivos arman «el firewall de <nombre>». Los nombres de la oficina deben leerse bien ahí: «el firewall de la laptop de Lucía», no «de laptop de Lucía». El plan 3 elige el nombre de cada dispositivo con eso en mente.
 - **Primer día lento:** cuatro incidentes antes del capítulo 4 pueden sentirse lentos. La prueba humana del plan 3 decide si alguno se fusiona.
