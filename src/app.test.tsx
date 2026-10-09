@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { NOTICE_TEXT } from '@/copy';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CATALOG_TEXT, NOTICE_TEXT } from '@/copy';
 import { CHAPTERS, INCIDENTS } from '@/levels';
 import { App } from './app';
+
+vi.mock('@/scene/catalog/catalog-scene', () => ({ CatalogScene: () => null }));
 
 const SOON_COUNT = CHAPTERS.length - new Set(INCIDENTS.map((i) => i.chapter)).size;
 
@@ -30,6 +32,17 @@ describe('App', () => {
     window.location.hash = `#/level/${INCIDENTS[1].id}`;
     render(<App />);
     expect(screen.getByRole('heading', { name: NOTICE_TEXT.locked.title })).toBeInTheDocument();
+  });
+
+  it('the roadmap does not link to the entity catalog', () => {
+    render(<App />);
+    expect(document.querySelector('a[href="#/entidades"]')).toBeNull();
+  });
+
+  it('the entity catalog opens from its URL', () => {
+    window.location.hash = '#/entidades';
+    render(<App />);
+    expect(screen.getByRole('heading', { level: 1, name: CATALOG_TEXT.title })).toBeInTheDocument();
   });
 
   it('corrupt saved progress does not break the roadmap', () => {

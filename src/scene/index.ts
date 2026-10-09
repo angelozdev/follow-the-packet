@@ -1,3 +1,4 @@
+export { CatalogScene } from './catalog/catalog-scene';
 export { EntityIcon, StampIcon } from './entities';
 export { GameScene } from './game-scene';
 export type { GameSceneProps } from './game-scene';

@@ -122,3 +122,18 @@ export function entityTerm(entity: EntityRef): TermId | null {
   const terms: Record<string, TermId | null> = ENTITY_TERMS[entity.kind];
   return terms[entity.variant];
 }
+
+function variantsOf<Kind extends EntityKind>(kind: Kind): EntityVariants[Kind][] {
+  return Object.keys(ENTITY_TERMS[kind]) as EntityVariants[Kind][];
+}
+
+/** Every entity in every variant, in the order of ENTITY_TERMS, with each packet also as an intruder's. */
+export const ENTITY_REFS: EntityRef[] = [
+  ...variantsOf('network').map((variant) => ({ kind: 'network', variant }) as const),
+  ...variantsOf('device').map((variant) => ({ kind: 'device', variant }) as const),
+  ...variantsOf('firewall').map((variant) => ({ kind: 'firewall', variant }) as const),
+  ...variantsOf('edge').map((variant) => ({ kind: 'edge', variant }) as const),
+  ...variantsOf('internet').map((variant) => ({ kind: 'internet', variant }) as const),
+  ...variantsOf('actor').map((variant) => ({ kind: 'actor', variant }) as const),
+  ...variantsOf('packet').flatMap((variant) => [{ kind: 'packet', variant } as const, { kind: 'packet', variant, intruder: true } as const]),
+];

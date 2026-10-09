@@ -1,8 +1,8 @@
-export { ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId } from './terms';
+export { ENTITY_REFS, ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId } from './terms';
 export type { EntityKind, EntityRef, EntityVariants, PacketMessage, TermId } from './terms';
 export { parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
 export type { TermText } from './term-text';
 export { describeReason } from './reasons';
 export { OUTCOME_TEXT, endpointName, packetLabel, packetMessage } from './packet-labels';
-export { NOTICE_TEXT, ROADMAP_TEXT } from './ui';
+export { CATALOG_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './ui';
 export { ACTOR_ROLE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, RESULT_TEXT, SCREEN_TEXT, TASK_CARD_TEXT } from './incident-ui';

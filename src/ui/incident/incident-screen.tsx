@@ -1,9 +1,10 @@
-import { useReducedMotion } from '@mantine/hooks';
 import { useReducer, useState } from 'react';
 import { SCREEN_TEXT } from '@/copy';
 import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
+import { MotionToggle } from '@/ui/motion-toggle';
+import { useStillMode } from '@/ui/use-still-mode';
 import { ExplanationCard } from './explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './lucia-card';
@@ -21,10 +22,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [inspecting, setInspecting] = useState<string | null>(null);
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
-  const prefersStill = useReducedMotion(false, { getInitialValueInEffect: false });
-  const [stillChoice, setStillChoice] = useState<boolean | null>(null);
-
-  const still = stillChoice ?? prefersStill;
+  const [still, setStill] = useStillMode();
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const card = playing && cardPieceId ? firewallCard(session, cardPieceId) : null;
@@ -48,9 +46,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         <header className="incident__bar">
           <a href="#/">{SCREEN_TEXT.back}</a>
           <h1>{session.incident.title}</h1>
-          <label className="incident__motion">
-            <input type="checkbox" checked={still} onChange={(event) => setStillChoice(event.target.checked)} /> {SCREEN_TEXT.motion}
-          </label>
+          <MotionToggle still={still} className="incident__motion" onChange={setStill} />
         </header>
         <GameScene
           world={session.world}

@@ -5,7 +5,7 @@ export { EntityIcon } from './entity-icon';
 export { FirewallIcon, FirewallPiece } from './firewall';
 export { InternetIcon, InternetPiece } from './internet';
 export { NetworkIcon, NetworkPiece } from './network';
-export { PACKET_END_S, PACKET_SPEED, PacketGlyph, PacketIcon, PacketRun, PacketTrace, travelPath } from './packet';
+export { PACKET_END_S, PACKET_SPEED, PACKET_Y, PacketGlyph, PacketIcon, PacketRun, PacketTrace, travelPath } from './packet';
 export type { PacketEnd, PacketLook } from './packet';
 export { StampIcon, StampPiece } from './stamp';
 export type { StampState } from './stamp';

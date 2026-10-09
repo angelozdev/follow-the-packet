@@ -18,7 +18,7 @@ export interface PacketLook {
 
 export const PACKET_SPEED = 3.2;
 export const PACKET_END_S = 0.5;
-const PACKET_Y = 0.3;
+export const PACKET_Y = 0.3;
 const DOT_RADIUS = 0.17;
 const RHOMBUS_RADIUS = 0.26;
 const HOLLOW = 0.55;

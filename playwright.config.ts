@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  snapshotPathTemplate: '{testDir}/snapshots/{arg}-{platform}{ext}',
   timeout: 60_000,
   fullyParallel: false,
   reporter: 'list',

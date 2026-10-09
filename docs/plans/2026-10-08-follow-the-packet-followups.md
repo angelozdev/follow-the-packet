@@ -6,6 +6,8 @@
 
 > **Estado (plan 3, `docs/plans/2026-10-08-follow-the-packet-rigor-and-submit.md`):** hechos E2 (nombres oficiales de AWS, definición al pasar el mouse, glosario y la regla `rigorous-plain-copy`) y E3 («Enviar solución», sin la barra de 3 s). Siguen pendientes E4 a E10, A1 (llega con servidor3 en 04-04), A2 (04-07) y el bloque D.
 
+> **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. Siguen pendientes E4, E5, E8 a E10, F4 a F6 (plan 3), A1, A2 y el bloque D.
+
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
 
 - **Rama base:** `feat/follow-the-packet` (13 commits, `5aff501…712c076`, sin push).
@@ -96,8 +98,8 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Hecho en el plan 3 |
 | E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente (revisión del plan 2) |
 | E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Pendiente (revisión del plan 2) |
-| E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Pendiente (revisión del plan 2) |
-| E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Pendiente de decidir (revisión del plan 2) |
+| E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Hecho en el capítulo 1, plan 2 (Tarea 6): el «!» va dentro de la etiqueta |
+| E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Decidido en el capítulo 1, plan 2: la ficha de Actor no lleva candado (es un personaje) |
 | E8 | Pantallas bajas en horizontal: el cuadro de inspección se corta; a 390 px la tarjeta queda fuera de pantalla y a 320 px «Roadmap» pisa una etiqueta | Pendiente |
 | E9 | Menores de la revisión: las estrellas se guardan solo al pulsar «Ver resultado»; tras el cierre los Security Groups parecen editables pero no responden; Esc solo cierra la tarjeta con el foco dentro; el bermellón tiene contraste de unos 3.5:1 | Pendiente |
 | E10 | `projects/follow-the-packet/` tiene `pnpm-lock.yaml` y `pnpm-workspace.yaml` sin seguimiento; el proyecto usa npm | Decide el estudiante: borrarlos o ignorarlos |
@@ -108,9 +110,9 @@ Todo es inalcanzable desde el juego de hoy. Lo encontraron las revisiones del pl
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
-| F1 | Los dispositivos de una red `office` no tienen posición en el mapa (`scene/layout.ts`): etiquetas, tarjetas y `Building` fallarían al dibujar una oficina | Plan 2 (catálogo de entidades) |
-| F2 | `edge` (`router` o `internet-gateway`) no se usa ni se valida contra el `kind` de la red; la etapa `route` escribe `igw` aunque la red sea una oficina | Plan 2 |
-| F3 | Faltan tests de escena para el ping a la propia IP y para la IP que nadie tiene | Plan 2 |
+| F1 | Los dispositivos de una red `office` no tienen posición en el mapa (`scene/layout.ts`): etiquetas, tarjetas y `Building` fallarían al dibujar una oficina | Hecho en el plan 2 (Tarea 5) |
+| F2 | `edge` (`router` o `internet-gateway`) no se usa ni se valida contra el `kind` de la red; la etapa `route` escribe `igw` aunque la red sea una oficina | Hecho en el plan 2 (Tareas 1 y 5) |
+| F3 | Faltan tests de escena para el ping a la propia IP y para la IP que nadie tiene | Hecho en el plan 2 (Tarea 5) |
 | F4 | Los textos de la respuesta y de `route-private` todavía nombran el Security Group y la VPC, también en una oficina | Plan 3 (textos por tipo) |
 | F5 | El esquema acepta dos dispositivos con la misma IP privada | Plan 3 (regla del esquema con su test) |
 | F6 | Una VPC con rango no privado (por ejemplo `100.64.0.0/16`) deja que un actor de internet llegue a una IP privada; antes del plan 1 se bloqueaba. El spec dice que en el juego toda VPC usa rangos de RFC 1918 | Plan 3: el esquema exige un `cidr` de RFC 1918 también en la VPC |

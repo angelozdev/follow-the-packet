@@ -122,3 +122,14 @@ button.stamp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2
   .incident { grid-template-columns: 1fr; grid-template-rows: 65vh auto; height: auto; }
   .incident__side { border-left: none; border-top: 1.5px solid var(--ink); }
 }
+
+.catalog { padding: 2rem 1.5rem 3rem; }
+.catalog__head { max-width: 880px; display: grid; gap: 0.4rem; margin-bottom: 1.5rem; }
+.catalog__head .lede { margin: 0; }
+.catalog__motion { font-size: 0.9rem; }
+.catalog__section { margin-bottom: 2rem; }
+.catalog__section h2 { margin-bottom: 0.8rem; }
+.catalog__canvas { position: relative; border: 1.5px solid var(--ink); background: var(--paper-fill); }
+.catalog__caption { margin: 0; font: 400 12px var(--font-body); color: var(--ink-soft); white-space: nowrap; }
+.catalog__icons { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.6rem 1.2rem; }
+.catalog__icons li { display: flex; align-items: center; }

@@ -1,3 +1,5 @@
+import type { EntityKind, EntityRef, EntityVariants } from './terms';
+
 export const ROADMAP_TEXT = {
   title: 'Sigue el paquete',
   lede: 'Un capítulo por módulo del curso. Cada incidente repasa una lección jugando.',
@@ -12,3 +14,40 @@ export const NOTICE_TEXT = {
   locked: { title: 'Incidente bloqueado', body: (id: string) => `Para abrir el ${id}, termina antes los incidentes anteriores.` },
   back: 'Volver al roadmap',
 } as const;
+
+const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], string> } = {
+  network: { office: 'red de la oficina', vpc: 'VPC' },
+  device: { laptop: 'laptop', printer: 'impresora', 'ec2-instance': 'instancia EC2' },
+  firewall: { 'host-firewall': 'firewall de la laptop', 'security-group': 'Security Group' },
+  edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
+  internet: { internet: 'internet' },
+  actor: { attacker: 'Atacante', you: 'Tu Mac' },
+  packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply' },
+};
+
+export const CATALOG_TEXT = {
+  title: 'Catálogo de entidades',
+  lede: 'Cada pieza del mapa en sus variantes y sus estados, con su ícono.',
+  pieces: 'Piezas del mapa',
+  icons: 'Íconos',
+  intruder: 'intruso',
+  state: {
+    normal: 'normal',
+    locked: 'con candado',
+    configurable: 'configurable',
+    selected: 'seleccionado',
+    alert: 'alerta',
+    blocking: 'bloqueó algo',
+    replied: 'llegó y volvió',
+    arrived: 'llegó',
+    blocked: 'bloqueado',
+    lost: 'perdido',
+  },
+} as const;
+
+/** Returns the name of an entity in this variant, as the catalog shows it; an intruder's packet says so. */
+export function entityName(entity: EntityRef): string {
+  const names: Record<string, string> = ENTITY_NAMES[entity.kind];
+  const name = names[entity.variant];
+  return entity.kind === 'packet' && entity.intruder ? `${name} · ${CATALOG_TEXT.intruder}` : name;
+}
