@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { actor, device, lab03Net, officeNet, ping, sendIncident } from '@/testing';
-import { officeLeaks, packetFromChips } from './chips';
-import { incidentSchema, ruleIdFor } from './incident';
+import { OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
+import { officeLeaks, packetFromChips, probeFromChips } from './chips';
+import { incidentSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
 const VALID: Record<string, unknown> = {
@@ -97,14 +97,113 @@ describe('send incident contract', () => {
   });
 });
 
+const PING_TTL_3 = { id: 'ping-3', label: 'TTL 3', icmpType: 8, command: 'ping', ttl: 3 } satisfies MessageChip;
+const TRACEROUTE = { id: 'trace', label: 'traceroute', icmpType: 8, command: 'traceroute' } satisfies MessageChip;
+const SERVER = { id: 'server', address: OFFICE_FLOORS.server.ip };
+
+function withMessages(...message: MessageChip[]): SendIncident {
+  return { ...SEND, send: { ...SEND.send, message: [...SEND.send.message, ...message] } };
+}
+
+function withMessage(message: Record<string, unknown>) {
+  return { ...SEND, send: { ...SEND.send, message: [...SEND.send.message, message] } };
+}
+
+function expecting(outcome: string, by?: string) {
+  return { ...SEND, tasks: [{ ...SEND.tasks[0], expect: { ...SEND.tasks[0].expect, outcome, by } }] };
+}
+
+describe('send task expectations', () => {
+  it.each(['unreachable', 'ttl-exceeded', 'timeout', 'no-route', 'invalid-address', 'reached', 'any', 'replied'])('accepts %s as the expected outcome', (outcome) => {
+    expect(incidentSchema.safeParse(expecting(outcome)).success).toBe(true);
+  });
+
+  it('accepts an expected outcome that is a warning, a silence or a local error', () => {
+    expect(incidentSchema.safeParse(expecting('unreachable', 'your-laptop')).success).toBe(true);
+    expect(incidentSchema.safeParse(expecting('timeout', 'fw-lucia')).success).toBe(true);
+    expect(incidentSchema.safeParse(expecting('no-route')).success).toBe(true);
+  });
+
+  it('rejects an expected outcome that no packet can have', () => {
+    expect(incidentSchema.safeParse(expecting('banana')).success).toBe(false);
+  });
+
+  it('rejects an empty id of whoever answers', () => {
+    expect(incidentSchema.safeParse(expecting('replied', '')).success).toBe(false);
+  });
+});
+
+describe('message chips', () => {
+  it('rejects a ping with a TTL outside 1 to 255', () => {
+    for (const ttl of [0, 256, -1, 1.5]) {
+      expect(incidentSchema.safeParse(withMessage({ ...PING_TTL_3, ttl })).success).toBe(false);
+    }
+    for (const ttl of [1, 255]) {
+      expect(incidentSchema.safeParse(withMessage({ ...PING_TTL_3, ttl })).success).toBe(true);
+    }
+  });
+
+  it('rejects a TTL on a message that is not a ping', () => {
+    expect(incidentSchema.safeParse(withMessage({ ...TRACEROUTE, ttl: 3 })).success).toBe(false);
+    expect(incidentSchema.safeParse(withMessage({ ...PING_TTL_3, command: 'packet' })).success).toBe(false);
+    expect(incidentSchema.safeParse(withMessage({ id: 'bare', label: 'Eco', icmpType: 8, ttl: 3 })).success).toBe(false);
+  });
+
+  it('rejects a ping or a traceroute that is not an Echo Request', () => {
+    expect(incidentSchema.safeParse(withMessage({ ...PING_TTL_3, icmpType: 0, ttl: undefined })).success).toBe(false);
+    expect(incidentSchema.safeParse(withMessage({ ...TRACEROUTE, icmpType: 0 })).success).toBe(false);
+  });
+
+  it('rejects a command that is not a packet, a ping or a traceroute', () => {
+    expect(incidentSchema.safeParse(withMessage({ ...TRACEROUTE, command: 'curl' })).success).toBe(false);
+  });
+
+  it('accepts a ping with a TTL, a traceroute and a packet by hand', () => {
+    expect(incidentSchema.safeParse(withMessages(PING_TTL_3, TRACEROUTE, { id: 'raw', label: 'Eco', icmpType: 0, command: 'packet' })).success).toBe(true);
+  });
+
+  it('builds the packet of three chips with the TTL of the message chip', () => {
+    const incident = withMessages(PING_TTL_3);
+    expect(packetFromChips(incident, { fromId: 'you', toId: 'printer', messageId: 'ping-3' })).toEqual({ from: device('your-laptop'), to: '192.168.1.20', protocol: 'icmp', icmpType: 8, ttl: 3 });
+    expect(packetFromChips(incident, { fromId: 'you', toId: 'printer', messageId: 'ping' })).not.toHaveProperty('ttl');
+  });
+
+  it('a traceroute message builds no single packet', () => {
+    const incident = withMessages(TRACEROUTE);
+    expect(packetFromChips(incident, { fromId: 'you', toId: 'printer', messageId: 'trace' })).toBeNull();
+  });
+
+  it('a traceroute message stands for the Echo Request its probes repeat, and no other message does', () => {
+    const incident = withMessages(TRACEROUTE, PING_TTL_3);
+    expect(probeFromChips(incident, { fromId: 'you', toId: 'printer', messageId: 'trace' })).toEqual({ from: device('your-laptop'), to: '192.168.1.20', protocol: 'icmp', icmpType: 8 });
+    expect(probeFromChips(incident, { fromId: 'you', toId: 'printer', messageId: 'ping-3' })).toBeNull();
+    expect(probeFromChips(incident, { fromId: 'you', toId: 'ghost', messageId: 'trace' })).toBeNull();
+  });
+});
+
 describe('office leaks', () => {
-  it('a chip that sends from the office to an address outside it is a leak, and from the internet it is not', () => {
+  it('a packet that leaves an office with no router is a leak; with a router it is allowed', () => {
+    const toDns = { ...SEND, send: { ...SEND.send, to: [...SEND.send.to, { id: 'dns', address: '8.8.8.8' }] } };
+    expect(officeLeaks(toDns, officeNet())).toEqual(['your-laptop → 8.8.8.8', 'your-laptop → 8.8.8.8']);
+    expect(officeLeaks(toDns, officeTwoFloorsNet())).toEqual([]);
+    const flowOut = { ...SEND, flows: [{ id: 'out', kind: 'ambient' as const, packet: ping(device('printer'), '8.8.8.8') }] };
+    expect(officeLeaks(flowOut, officeNet())).toEqual(['printer → 8.8.8.8']);
+    expect(officeLeaks(flowOut, officeTwoFloorsNet())).toEqual([]);
+  });
+
+  it('the probes of a traceroute count as packets that leave the office', () => {
+    const tracing = { ...SEND, send: { ...SEND.send, to: [SERVER], message: [TRACEROUTE] } };
+    expect(officeLeaks(tracing, officeNet())).toEqual([`your-laptop → ${OFFICE_FLOORS.server.ip}`]);
+    expect(officeLeaks(tracing, officeTwoFloorsNet())).toEqual([]);
+  });
+
+  it('a chip that sends from the office with no router to an address outside it is a leak, and from the internet it is not', () => {
     const leaking = { ...SEND, send: { ...SEND.send, to: [...SEND.send.to, { id: 'dns', address: '8.8.8.8' }] } };
     expect(officeLeaks(SEND, officeNet())).toEqual([]);
     expect(officeLeaks(leaking, officeNet())).toEqual(['your-laptop → 8.8.8.8', 'your-laptop → 8.8.8.8']);
   });
 
-  it('a flow from the office to an address outside it is a leak, and a VPC has none', () => {
+  it('a flow from the office with no router to an address outside it is a leak, and a VPC has none', () => {
     const leaking = { ...SEND, flows: [{ id: 'out', kind: 'ambient' as const, packet: ping(device('printer'), '8.8.8.8') }] };
     expect(officeLeaks(leaking, officeNet())).toEqual(['printer → 8.8.8.8']);
     expect(officeLeaks(leaking, lab03Net())).toEqual([]);

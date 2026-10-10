@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { endpointSchema, icmpTypeSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from '@/engine';
+import { OUTCOMES, endpointSchema, icmpTypeSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from '@/engine';
 
 const id = z.string().min(1);
+const ECHO_REQUEST = 8;
 
 function termTextProblem(text: string): string | undefined {
   try {
@@ -30,16 +31,30 @@ export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, r
 
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });
 const filterTaskSchema = z.object({ id, text: termText, flowIds: z.array(id).min(1) });
+const expectedOutcomeSchema = z.enum([...OUTCOMES, 'reached', 'any'] as const);
 const sendTaskSchema = z.object({
   id,
   text: termText,
-  expect: z.object({ fromId: id, toId: id, messageId: id, outcome: z.enum(['replied', 'any']) }),
+  expect: z.object({ fromId: id, toId: id, messageId: id, outcome: expectedOutcomeSchema, by: id.optional() }),
 });
 const whatChipSchema = z.object({ id, label: termText, what: ruleWhatSchema });
 const fromChipSchema = z.object({ id, label: termText, peer: rulePeerSchema });
 const originChipSchema = z.object({ id, endpoint: endpointSchema });
 const addressChipSchema = z.object({ id, address: id });
-const messageChipSchema = z.object({ id, label: termText, icmpType: icmpTypeSchema });
+const messageChipSchema = z
+  .object({
+    id,
+    label: termText,
+    icmpType: icmpTypeSchema,
+    command: z.enum(['packet', 'ping', 'traceroute']).optional(),
+    ttl: packetSchema.shape.ttl,
+  })
+  .superRefine((chip, ctx) => {
+    if (chip.ttl !== undefined && chip.command !== 'ping') ctx.addIssue({ code: 'custom', message: 'a TTL belongs to a ping', path: ['ttl'] });
+    if ((chip.command === 'ping' || chip.command === 'traceroute') && chip.icmpType !== ECHO_REQUEST) {
+      ctx.addIssue({ code: 'custom', message: `a ${chip.command} sends an Echo Request`, path: ['icmpType'] });
+    }
+  });
 const optionSchema = z.object({ text: termText, feedback: termText, correct: z.boolean() });
 
 const common = {
@@ -165,6 +180,7 @@ export type FromChip = FilterIncident['chips']['from'][number];
 export type OriginChip = SendIncident['send']['from'][number];
 export type AddressChip = SendIncident['send']['to'][number];
 export type MessageChip = SendIncident['send']['message'][number];
+export type ExpectedOutcome = SendTask['expect']['outcome'];
 export type PlayerMove = z.infer<typeof playerMoveSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
 export type ExplanationOption = Incident['explanation'][number];

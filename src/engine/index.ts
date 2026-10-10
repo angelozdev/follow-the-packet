@@ -26,6 +26,7 @@ export { ipInCidr, isIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/traceroute';
+export { OUTCOMES } from './simulation/trace';
 export type { Checkpoint, Hop, Notice, Outcome, PacketHeader, Reason, Step, Trace } from './simulation/trace';
 export { extraOpenings, reachesHost } from './exposure/exposure';
 export { privateDnsName, publicDnsName } from './network/naming/dns';

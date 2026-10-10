@@ -61,7 +61,9 @@ export type Reason =
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
-export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'no-route' | 'unreachable' | 'ttl-exceeded' | 'lost';
+export const OUTCOMES = ['replied', 'timeout', 'refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'unreachable', 'ttl-exceeded', 'lost'] as const;
+
+export type Outcome = (typeof OUTCOMES)[number];
 
 export type NoticeKind = 'host-unreachable' | 'net-unreachable' | 'time-exceeded';
 

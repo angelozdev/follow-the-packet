@@ -1,6 +1,6 @@
 import { TERMINAL_TEXT, endpointName, packetMessage, type TermText } from '@/copy';
 import type { Endpoint } from '@/engine';
-import type { SendIncident } from '@/levels';
+import type { MessageChip, SendIncident } from '@/levels';
 import type { Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 
@@ -64,11 +64,27 @@ export function terminalCard(session: Session, pieceId: string): TerminalCard | 
   };
 }
 
-/** Returns the line the terminal shows for an address and a message: the real ping command for an Echo Request, a packet made by hand for any other message; null until both are picked. */
-export function terminalLine(session: Session, { to, message }: Partial<SendPicks>): TermText | null {
+function lineKindOf(message: MessageChip): NonNullable<MessageChip['command']> | 'handmade' {
+  if (message.command) return message.command;
+  return packetMessage({ protocol: 'icmp', icmpType: message.icmpType }) === 'echo-request' ? 'ping' : 'handmade';
+}
+
+/** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. Null until the address and the message (and, for a packet, the origin) are picked. */
+export function terminalLine(session: Session, { from, to, message }: Partial<SendPicks>): TermText | null {
   const incident = sendingIncident(session);
   const address = incident?.send.to.find((chip) => chip.id === to)?.address;
   const picked = incident?.send.message.find((chip) => chip.id === message);
-  if (!address || !picked) return null;
-  return packetMessage({ protocol: 'icmp', icmpType: picked.icmpType }) === 'echo-request' ? TERMINAL_TEXT.ping(address) : TERMINAL_TEXT.handmade(picked.label, address);
+  if (!incident || !address || !picked) return null;
+  switch (lineKindOf(picked)) {
+    case 'ping':
+      return TERMINAL_TEXT.ping(address, picked.ttl);
+    case 'traceroute':
+      return TERMINAL_TEXT.traceroute(address);
+    case 'packet': {
+      const origin = incident.send.from.find((chip) => chip.id === from);
+      return origin ? TERMINAL_TEXT.packet(endpointName(origin.endpoint, session.world), address) : null;
+    }
+    case 'handmade':
+      return TERMINAL_TEXT.handmade(picked.label, address);
+  }
 }

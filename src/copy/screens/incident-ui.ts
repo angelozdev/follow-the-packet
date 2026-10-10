@@ -84,7 +84,9 @@ export const TASK_CARD_TEXT = {
 export const TERMINAL_TEXT = {
   title: (origin: TermText): TermText => `Terminal de ${origin}`,
   trays: { from: 'Origen', to: 'Destino', message: 'Mensaje' },
-  ping: (address: string): TermText => `ping ${address}`,
+  ping: (address: string, ttl?: number): TermText => (ttl === undefined ? `ping ${address}` : `ping -t ${ttl} ${address}`),
+  traceroute: (address: string): TermText => `traceroute -I ${address}`,
+  packet: (origin: TermText, address: string): TermText => `paquete de ${origin} a ${address}`,
   handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
   incomplete: 'Elige una ficha de cada bandeja.',
   send: 'Enviar',

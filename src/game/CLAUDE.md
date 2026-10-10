@@ -2,6 +2,8 @@
 
 The session of one incident, as a pure reducer: the current world, the run of every flow, the packets the player sent (the last one of each combination of chips, with the number of its send), the tasks (done or not, read from the runs and the sent packets at once), the sent solution and Lucía's reply, hints, the explanation and the stars. The middle star depends on the mechanic: only what is needed for a filter, no hints for a send. What the map and the panels show lives in `view/`.
 
+- Every run (a flow or a sent packet) carries `by`: the ids of whoever answered, warned or dropped the packet (a device, a router or an actor; for a packet a firewall dropped, the ids of the firewalls of that device; for a local error such as `no-route`, the sender; none when the network lost it). A send task holds when the outcome of the trace is the expected one and, if it names `by`, that id is among them.
+- A traceroute sent from a terminal is one entry of the sent packets: the run of the last probe it sent (the one that ended it), with all its probes in `route`. A single packet has no `route`.
 - No game clock: the session changes only with player actions; nothing here reads the clock, storage or the DOM.
 - Not here: network rules (`src/engine/`), incident content and the world chain (`src/levels/`), drawing (`src/scene/`, `src/ui/`).
 - May import: `@/engine`, `@/copy`, `@/levels`. Files inside import each other directly (`./x`, `./view/x`, `@/game/<folder>/x`).

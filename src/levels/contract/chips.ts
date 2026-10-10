@@ -1,6 +1,6 @@
 import compare from 'just-compare';
 import { ipInCidr, isIpv4, type Network, type PacketSpec, type Rule } from '@/engine';
-import { ruleIdFor, type FromChip, type Incident, type SendIncident, type SendMove, type WhatChip } from './incident';
+import { ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type SendIncident, type SendMove, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
 type Combination = Omit<SendMove, 'type'>;
@@ -26,12 +26,34 @@ export function chipsOfRule(incident: Incident, rule: RuleShape): { what: WhatCh
   return what && from ? { what, from } : null;
 }
 
-/** Builds the packet three send chips stand for: an ICMP message from the origin to the address; null when the incident does not offer one of them. */
-export function packetFromChips(incident: SendIncident, { fromId, toId, messageId }: Combination): PacketSpec | null {
+interface PickedChips {
+  from: OriginChip;
+  to: AddressChip;
+  message: MessageChip;
+}
+
+function pickedChips(incident: SendIncident, { fromId, toId, messageId }: Combination): PickedChips | null {
   const from = incident.send.from.find((chip) => chip.id === fromId);
   const to = incident.send.to.find((chip) => chip.id === toId);
   const message = incident.send.message.find((chip) => chip.id === messageId);
-  return from && to && message ? { from: from.endpoint, to: to.address, protocol: 'icmp', icmpType: message.icmpType } : null;
+  return from && to && message ? { from, to, message } : null;
+}
+
+function icmpPacket({ from, to, message }: PickedChips): PacketSpec {
+  return { from: from.endpoint, to: to.address, protocol: 'icmp', icmpType: message.icmpType };
+}
+
+/** Builds the packet three send chips stand for: an ICMP message from the origin to the address, with the TTL of the message chip when it has one; null when the incident does not offer one of them, and null for a traceroute, which sends a packet per hop and not a single one. */
+export function packetFromChips(incident: SendIncident, combination: Combination): PacketSpec | null {
+  const picked = pickedChips(incident, combination);
+  if (!picked || picked.message.command === 'traceroute') return null;
+  return picked.message.ttl === undefined ? icmpPacket(picked) : { ...icmpPacket(picked), ttl: picked.message.ttl };
+}
+
+/** Builds the Echo Request that a traceroute repeats with a growing TTL, from the origin to the address; null unless the message chip is a traceroute the incident offers with these two chips. */
+export function probeFromChips(incident: SendIncident, combination: Combination): PacketSpec | null {
+  const picked = pickedChips(incident, combination);
+  return picked?.message.command === 'traceroute' ? icmpPacket(picked) : null;
 }
 
 /** Returns every combination of the incident's send chips, one origin, one address and one message each. */
@@ -44,13 +66,20 @@ export function sendCombinations(incident: SendIncident): Combination[] {
 function packetsOf(incident: Incident): PacketSpec[] {
   const flows = incident.flows.map((flow) => flow.packet);
   if (incident.mechanic !== 'send') return flows;
-  return [...flows, ...sendCombinations(incident).flatMap((combination) => packetFromChips(incident, combination) ?? [])];
+  return [...flows, ...sendCombinations(incident).flatMap((combination) => packetFromChips(incident, combination) ?? probeFromChips(incident, combination) ?? [])];
 }
 
-/** Returns, as "device → address", every flow and every combination of send chips that sends a packet from a device of an office to an address outside it: the game does not model the office's NAT. */
+/** Returns, as "device → address", every flow and every combination of send chips (a traceroute through its probe) that sends a packet from a device of an office to an address outside it: the game does not model the office's NAT. An office with routers has a modelled way out, so it has no leaks. */
 export function officeLeaks(incident: Incident, world: Network): string[] {
-  if (world.kind !== 'office') return [];
+  if (world.kind !== 'office' || (world.routers ?? []).length > 0) return [];
   return packetsOf(incident)
     .filter((packet) => packet.from.kind === 'device' && isIpv4(packet.to) && !ipInCidr(packet.to, world.cidr))
     .map((packet) => `${packet.from.id} → ${packet.to}`);
+}
+
+/** Returns, in the order of the tasks, the ids that a send incident expects to answer, warn or drop (`expect.by`) and that name no device, router, actor or firewall of the world. */
+export function unknownExpectedIds(incident: Incident, world: Network): string[] {
+  if (incident.mechanic !== 'send') return [];
+  const known = new Set([...world.devices, ...(world.routers ?? []), ...world.actors, ...world.firewalls].map((thing) => thing.id));
+  return incident.tasks.flatMap(({ expect }) => (expect.by !== undefined && !known.has(expect.by) ? [expect.by] : []));
 }

@@ -2,6 +2,7 @@ export { CHAPTERS, TIERS } from './chapters';
 export type { Chapter, Tier } from './chapters';
 export type {
   AddressChip,
+  ExpectedOutcome,
   ExplanationOption,
   FilterIncident,
   FilterTask,
@@ -22,7 +23,7 @@ export type {
   WhatChip,
 } from './contract/incident';
 export { INCIDENTS } from './registry';
-export { chipsOfRule, packetFromChips, sendCombinations } from './contract/chips';
+export { chipsOfRule, packetFromChips, probeFromChips, sendCombinations } from './contract/chips';
 export { applyMove, solvedWorld, startWorld } from './world';
 export { configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';

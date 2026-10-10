@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INCIDENTS, type SendIncident } from '@/levels';
+import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
 import { sendIncident } from '@/testing';
 import { startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
@@ -59,3 +59,43 @@ describe('terminalLine', () => {
     expect(terminalLine(session, { message: 'ping' })).toBeNull();
   });
 });
+
+describe('terminalLine of a message with a command', () => {
+  const PING_TTL_3: MessageChip = { id: 'ping-3', label: 'TTL 3', icmpType: 8, command: 'ping', ttl: 3 };
+  const PING_PLAIN: MessageChip = { id: 'ping-plain', label: 'ping', icmpType: 8, command: 'ping' };
+  const TRACEROUTE: MessageChip = { id: 'trace', label: 'traceroute', icmpType: 8, command: 'traceroute' };
+  const PACKET: MessageChip = { id: 'raw', label: '{{echo-request}}', icmpType: 8, command: 'packet' };
+  const commanded = withTrays({ message: [PING_TTL_3, PING_PLAIN, TRACEROUTE, PACKET] });
+
+  it('the line of a ping with a TTL uses the option -t of Linux', () => {
+    expect(terminalLine(commanded, { to: 'printer', message: 'ping-3' })).toBe('ping -t 3 192.168.1.20');
+  });
+
+  it('the line of a ping without a TTL is the plain command', () => {
+    expect(terminalLine(commanded, { to: 'printer', message: 'ping-plain' })).toBe('ping 192.168.1.20');
+  });
+
+  it('the line of a traceroute is the Linux command with -I, because the engine sends ICMP Echo', () => {
+    expect(terminalLine(commanded, { to: 'lucia', message: 'trace' })).toBe('traceroute -I 192.168.1.11');
+  });
+
+  it('the line of a packet message does not say ping', () => {
+    const line = terminalLine(commanded, { from: 'you', to: 'lucia', message: 'raw' });
+    expect(line).toBe('paquete de [[your-laptop]] a 192.168.1.11');
+    expect(line).not.toMatch(/ping/i);
+  });
+
+  it('the line of a packet message names the origin that was picked', () => {
+    expect(terminalLine(commanded, { from: 'attacker', to: 'lucia', message: 'raw' })).toBe('paquete de [[Atacante]] a 192.168.1.11');
+  });
+
+  it('the line of a packet message is null until its origin is picked too', () => {
+    expect(terminalLine(commanded, { to: 'lucia', message: 'raw' })).toBeNull();
+    expect(terminalLine(commanded, { from: 'ghost', to: 'lucia', message: 'raw' })).toBeNull();
+  });
+
+  it('a message of type 8 with a command that is a packet is still a packet and not a ping', () => {
+    expect(terminalLine(commanded, { from: 'you', to: 'printer', message: 'raw' })).not.toMatch(/ping/i);
+  });
+});
+
