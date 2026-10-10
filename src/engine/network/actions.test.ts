@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, withDevice } from '@/testing';
-import { applyAction, type NetworkAction } from './actions';
+import { applyAction, networkActionSchema, type NetworkAction } from './actions';
 import { networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from './topology';
 import type { Actor, Device, Firewall, Lan, Network, Router } from './types';
@@ -9,7 +9,8 @@ const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
 const OFFICE_ACTIONS = new Set<NetworkAction['type']>(['updateRouter', 'connectDevice', 'setGateway']);
 
-const inboundIds = (net: ReturnType<typeof lab03Net>, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.inbound.map((r) => r.id);
+const inboundIds = (net: Network, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.inbound.map((r) => r.id);
+const outboundIds = (net: Network, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.outbound.map((r) => r.id);
 const deviceOf = (net: Network, id: string) => net.devices.find((d) => d.id === id);
 const routerOf = (net: Network, id: string) => net.routers?.find((r) => r.id === id);
 const validate = (net: Network) => networkSchema.safeParse(net).error?.issues.map((issue) => issue.message) ?? [];
@@ -21,6 +22,7 @@ const UNKNOWN_IDS: [string, NetworkAction][] = [
   ['removeRule on a firewall', { type: 'removeRule', firewallId: GHOST, ruleId: 'ssh-1' }],
   ['removeRule of a rule', { type: 'removeRule', firewallId: 'sg-servidor1', ruleId: GHOST }],
   ['removeRule of an inbound rule from the outbound list', { type: 'removeRule', firewallId: 'sg-servidor1', ruleId: 'ssh-1', direction: 'outbound' }],
+  ['removeRule of an outbound rule from the inbound list', { type: 'removeRule', firewallId: 'sg-servidor1', ruleId: 'out-1' }],
   ['setAppTarget on a device', { type: 'setAppTarget', deviceId: GHOST, target: '172.31.38.97' }],
   ['setIgnoreIcmpEcho on a device', { type: 'setIgnoreIcmpEcho', deviceId: GHOST, value: true }],
   ['addFirewall on a device', { type: 'addFirewall', deviceId: GHOST, firewall: { id: 'fw', name: 'fw', kind: 'security-group', inbound: [], outbound: [] } }],
@@ -57,14 +59,35 @@ describe('applyAction', () => {
     expect(guarded.devices.find((d) => d.id === 'your-laptop')?.firewallIds).toEqual([]);
   });
 
-  it('adds and removes outbound rules without touching the inbound list', () => {
+  it('addRule with direction outbound adds the rule to the outbound list', () => {
     const added = applyAction(lab03Net(), { type: 'addRule', firewallId: 'sg-servidor2', rule: allOut('out-extra'), direction: 'outbound' });
-    const outboundIds = (net: Network) => net.firewalls.find((f) => f.id === 'sg-servidor2')?.outbound.map((r) => r.id);
-    expect(outboundIds(added)).toEqual(['out-2', 'out-extra']);
+    expect(outboundIds(added, 'sg-servidor2')).toEqual(['out-2', 'out-extra']);
     expect(inboundIds(added, 'sg-servidor2')).toEqual(['ssh-2']);
+    expect(outboundIds(added, 'sg-servidor1')).toEqual(['out-1']);
+  });
+
+  it('addRule without direction adds an inbound rule, as before', () => {
+    const added = applyAction(lab03Net(), { type: 'addRule', firewallId: 'sg-servidor2', rule: echoFrom('echo', 'sg-servidor1') });
+    expect(inboundIds(added, 'sg-servidor2')).toEqual(['ssh-2', 'echo']);
+    expect(outboundIds(added, 'sg-servidor2')).toEqual(['out-2']);
+    expect(applyAction(lab03Net(), { type: 'addRule', firewallId: 'sg-servidor2', rule: echoFrom('echo', 'sg-servidor1'), direction: 'inbound' })).toEqual(added);
+  });
+
+  it('removeRule with direction outbound removes it', () => {
+    const added = applyAction(lab03Net(), { type: 'addRule', firewallId: 'sg-servidor2', rule: allOut('out-extra'), direction: 'outbound' });
     const removed = applyAction(added, { type: 'removeRule', firewallId: 'sg-servidor2', ruleId: 'out-2', direction: 'outbound' });
-    expect(outboundIds(removed)).toEqual(['out-extra']);
+    expect(outboundIds(removed, 'sg-servidor2')).toEqual(['out-extra']);
     expect(inboundIds(removed, 'sg-servidor2')).toEqual(['ssh-2']);
+  });
+
+  it('the action schema takes a direction on both rule actions and refuses any other', () => {
+    const rule = allOut('out');
+    for (const type of ['addRule', 'removeRule'] as const) {
+      const base = type === 'addRule' ? { type, firewallId: 'sg-servidor2', rule } : { type, firewallId: 'sg-servidor2', ruleId: 'out-2' };
+      expect(networkActionSchema.safeParse(base).success).toBe(true);
+      expect(networkActionSchema.safeParse({ ...base, direction: 'outbound' }).success).toBe(true);
+      expect(networkActionSchema.safeParse({ ...base, direction: 'sideways' }).success).toBe(false);
+    }
   });
 });
 

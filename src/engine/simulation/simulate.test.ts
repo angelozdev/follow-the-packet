@@ -3,8 +3,8 @@ import { deathPoint, stopStep } from './checkpoints';
 import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
-import { applyAction } from '@/engine/network/actions';
-import type { Network, PacketSpec, Route, Rule } from '@/engine/network/types';
+import { applyAction, type NetworkAction } from '@/engine/network/actions';
+import type { Firewall, Network, PacketSpec, Route, Rule } from '@/engine/network/types';
 import type { Trace } from './trace';
 
 const S1 = { private: '172.31.16.131', public: '54.78.154.66' };
@@ -199,6 +199,46 @@ describe('devices and their firewalls', () => {
   it('a Security Group step names its kind too', () => {
     const trace = simulate(lab03Net(), ping(device('servidor1'), S2.private));
     expect(stopStep(trace)?.reason).toEqual({ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' });
+  });
+});
+
+describe('outbound rules of a device', () => {
+  const SEALED_FIREWALLS = { 'your-laptop': 'fw-you', 'lucia-laptop': 'fw-lucia' } as const;
+  const echoRule = (id: string, peerIp: string): Rule => ({ id, what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${peerIp}/32` } });
+  const sealedOffice = (): Network => {
+    const guarded = Object.entries(SEALED_FIREWALLS).reduce((net, [deviceId, firewallId]) => withDevice(net, deviceId, { firewallIds: [firewallId] }), officeNet());
+    const sealed = (id: string): Firewall => ({ id, name: id, kind: 'host-firewall', inbound: [], outbound: [] });
+    return { ...guarded, firewalls: Object.values(SEALED_FIREWALLS).map(sealed) };
+  };
+  const toLucia = (): PacketSpec => ping(device('your-laptop'), OFFICE.lucia);
+
+  it('an outbound rule for the destination lets the ping leave and the reply is not filtered', () => {
+    const stopped = simulate(sealedOffice(), toLucia());
+    expect(deathPoint(stopped)).toEqual({ stage: 'firewall-out', at: 'your-laptop' });
+
+    const open = [
+      { type: 'addRule', firewallId: 'fw-you', rule: echoRule('echo-to-lucia', OFFICE.lucia), direction: 'outbound' },
+      { type: 'addRule', firewallId: 'fw-lucia', rule: echoRule('echo-from-you', OFFICE.you) },
+    ] satisfies NetworkAction[];
+    const trace = simulate(open.reduce(applyAction, sealedOffice()), toLucia());
+    expect(trace.outcome).toBe('replied');
+    const firewallSteps = trace.steps.filter((step) => step.stage === 'firewall-in' || step.stage === 'firewall-out');
+    expect(firewallSteps.map((step) => [step.stage, step.at, step.verdict])).toEqual([
+      ['firewall-out', 'your-laptop', 'pass'],
+      ['firewall-in', 'lucia-laptop', 'pass'],
+    ]);
+    expect(firewallSteps[0].checks).toEqual([{ firewallId: 'fw-you', ruleId: 'echo-to-lucia', what: true, from: true }]);
+    expect(trace.steps.slice(trace.steps.findIndex((step) => step.stage === 'host')).map((step) => step.stage)).toEqual(['host', 'reply']);
+  });
+
+  it('an inbound rule on the sender does not let the packet out', () => {
+    const net = applyAction(sealedOffice(), { type: 'addRule', firewallId: 'fw-you', rule: echoRule('echo-to-lucia', OFFICE.lucia) });
+    const trace = simulate(net, toLucia());
+    expect(trace.outcome).toBe('timeout');
+    expect(deathPoint(trace)).toEqual({ stage: 'firewall-out', at: 'your-laptop' });
+    expect(stopStep(trace)?.reason).toEqual({ code: 'firewall-out-drop', deviceId: 'your-laptop', firewallKind: 'host-firewall' });
+    expect(stopStep(trace)?.checks).toEqual([]);
+    expect(trace.steps.some((step) => step.stage === 'forward')).toBe(false);
   });
 });
 
