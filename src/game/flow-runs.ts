@@ -1,5 +1,5 @@
 import { packetLabel, type TermText } from '@/copy';
-import { reachesHost, simulate, type Network, type PacketSpec, type Trace } from '@/engine';
+import { reachesHost, simulate, type Network, type PacketSpec, type Step, type Trace } from '@/engine';
 import { packetFromChips, type Flow, type FlowKind, type SendIncident, type SendMove } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
 
@@ -10,7 +10,8 @@ export interface PacketRun {
   trace: Trace;
   replied: boolean;
   reached: boolean;
-  lost: boolean;
+  blocked: boolean;
+  intruder: boolean;
   label: TermText;
 }
 
@@ -25,7 +26,11 @@ export interface SentPacket extends PacketRun {
   send: number;
 }
 
-function runPacket(world: Network, id: string, packet: PacketSpec): PacketRun {
+function firewallStops(trace: Trace): Step[] {
+  return trace.steps.filter((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop');
+}
+
+function runPacket(world: Network, id: string, packet: PacketSpec, intruder: boolean): PacketRun {
   const trace = simulate(world, packet);
   return {
     id,
@@ -34,20 +39,21 @@ function runPacket(world: Network, id: string, packet: PacketSpec): PacketRun {
     trace,
     replied: trace.outcome === 'replied',
     reached: reachesHost(trace),
-    lost: trace.outcome === 'lost',
+    blocked: firewallStops(trace).length > 0,
+    intruder,
     label: packetLabel(packet, trace, world),
   };
 }
 
-/** Simulates every flow on the world and returns one run per flow, in the same order. */
+/** Simulates every flow on the world and returns one run per flow, in the same order; a forbidden flow's packet is an intruder. */
 export function runFlows(world: Network, flows: Flow[]): FlowRun[] {
-  return flows.map((flow) => ({ ...runPacket(world, flow.id, flow.packet), kind: flow.kind }));
+  return flows.map((flow) => ({ ...runPacket(world, flow.id, flow.packet, flow.kind === 'forbidden'), kind: flow.kind }));
 }
 
 /** Simulates the packet three send chips stand for, as the send number `send`; null when the incident does not offer one of the chips. Its id names the combination, so a new send of the same chips replaces the old one. */
 export function sendPacket(world: Network, incident: SendIncident, { fromId, toId, messageId }: SendMove, send: number): SentPacket | null {
   const packet = packetFromChips(incident, { fromId, toId, messageId });
-  return packet && { ...runPacket(world, `sent-${fromId}-${toId}-${messageId}`, packet), fromId, toId, messageId, send };
+  return packet && { ...runPacket(world, `sent-${fromId}-${toId}-${messageId}`, packet, false), fromId, toId, messageId, send };
 }
 
 /** Returns the devices that a forbidden flow reaches. */
@@ -57,5 +63,5 @@ export function intrudedDeviceIds(runs: FlowRun[]): ReadonlySet<string> {
 
 /** Returns the devices whose firewalls stop a flow, on the way out or on the way in. */
 export function blockingDeviceIds(runs: FlowRun[]): ReadonlySet<string> {
-  return new Set(runs.flatMap((run) => run.trace.steps.filter((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop').map((step) => step.at)));
+  return new Set(runs.flatMap((run) => firewallStops(run.trace).map((step) => step.at)));
 }

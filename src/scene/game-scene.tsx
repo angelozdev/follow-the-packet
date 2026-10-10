@@ -9,7 +9,7 @@ import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
 import { Road } from './road';
-import { Traffic, type MapFlow } from './traffic/traffic';
+import { Traffic, type MapFlow, type MapSent } from './traffic/traffic';
 
 const CAMERA_OFFSET = 14;
 const CAMERA_ZOOM = 38;
@@ -18,6 +18,7 @@ export interface GameSceneProps {
   world: Network;
   pieces: MapPiece[];
   flows: MapFlow[];
+  sent: MapSent[];
   still: boolean;
   activePieceId: string | null;
   overlay: ReactNode;
@@ -41,7 +42,7 @@ function PieceShape({ piece, layout, selected, still }: { piece: MapPiece; layou
   }
 }
 
-export function GameScene({ world, pieces, flows, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, sent, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world, pieces.some((piece) => piece.kind === 'edge'));
   const [cx, cz] = layoutCenter(layout);
   const active = pieces.find((piece) => piece.id === activePieceId);
@@ -56,8 +57,8 @@ export function GameScene({ world, pieces, flows, still, activePieceId, overlay,
       {pieces.map((piece) => (
         <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
       ))}
-      <Traffic flows={flows} layout={layout} still={still} onInspect={onInspect} />
-      {active && overlay && <CardAnchor position={cardAnchorPosition(active.anchorId, layout)}>{overlay}</CardAnchor>}
+      <Traffic flows={flows} sent={sent} layout={layout} still={still} onInspect={onInspect} />
+      {active && overlay && <CardAnchor position={cardAnchorPosition(active, layout)}>{overlay}</CardAnchor>}
       <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
     </MapCanvas>
   );

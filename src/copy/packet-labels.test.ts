@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
 import { actor, device, lab03Net, ping } from '@/testing';
-import { deviceName, endpointName, packetLabel, packetMessage, serviceLabel } from './packet-labels';
+import { deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
 
 const NET = lab03Net();
 
@@ -31,6 +31,12 @@ describe('packet labels', () => {
     expect(packetMessage({ protocol: 'icmp', icmpType: 0 })).toBe('echo-reply');
     expect(packetMessage({ protocol: 'icmp', icmpType: 8 })).toBe('echo-request');
     expect(packetMessage({ protocol: 'tcp' })).toBe('echo-request');
+  });
+
+  it('name a stamp by its packet and by how it ended, so a screen reader tells ✓, ✕ and ? apart', () => {
+    const labels = (['arrived', 'blocked', 'lost', 'intruder'] as const).map((state) => stampLabel('ping de tu-laptop a impresora', state));
+    expect(labels[0]).toBe('Paquete: ping de tu-laptop a impresora. Llegó.');
+    expect(new Set(labels).size).toBe(4);
   });
 
   it('tag Echo Reply and leave TCP plain', () => {

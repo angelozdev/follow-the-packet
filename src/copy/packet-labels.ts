@@ -33,6 +33,15 @@ export function packetLabel(packet: PacketSpec, trace: Trace, net: Network): Ter
   return `${serviceLabel(packet)} de ${endpointName(packet.from, net)} a ${to}`;
 }
 
+export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder';
+
+const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró sin permiso.' };
+
+/** Names a stamp for a screen reader: the packet it stands for and how it ended, since its mark is only drawn. */
+export function stampLabel(packet: string, state: StampState): string {
+  return `Paquete: ${packet}. ${STAMP_TEXT[state]}`;
+}
+
 export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   replied: 'Llegó y volvió la respuesta.',
   timeout: 'No llegó: no volvió ninguna respuesta.',

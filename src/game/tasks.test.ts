@@ -51,7 +51,7 @@ describe('send tasks', () => {
 
   it('a task that expects any result holds as soon as its combination is sent, even when the packet is lost', () => {
     const lost = sent('attacker', 'lucia', 'ping');
-    expect(lost[0].lost).toBe(true);
+    expect(lost[0].reached).toBe(false);
     expect(taskHolds(outside, [], lost)).toBe(true);
     expect(failingTaskIds(sending.tasks, [], lost)).toEqual([printer.id]);
   });

@@ -130,9 +130,9 @@ export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, l
   return [x + dx, y, z + dz];
 }
 
-/** Returns where the task card of the firewall of this device is anchored. */
-export function cardAnchorPosition(deviceId: string, layout: Layout): Vec3 {
-  const [x, z] = layout.devices[deviceId].firewall;
+/** Returns where the card of a piece is anchored: beside a firewall, a device or an actor. */
+export function cardAnchorPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
+  const [x, z] = piecePosition(piece, layout);
   return [x, CARD_Y, z];
 }
 
@@ -141,7 +141,7 @@ export function sideForNdc(ndcX: number): CardSide {
   return ndcX > 0 ? 'left' : 'right';
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. */
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. It crosses the edge only while the map shows the outside. */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
@@ -150,7 +150,7 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[
 
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
   if (trace.steps.some((s) => s.reason.code === 'route-no-device')) return [...points, [layout.roadToX, layout.roadZ]];
-  if (trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
+  if (layout.outside && trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 
   const dest = trace.destinationId ? layout.devices[trace.destinationId] : undefined;
@@ -193,25 +193,52 @@ function distance(a: Vec2, b: Vec2): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
-/** Returns, in order, the indexes of the points chained to the one at `start` by gaps shorter than `STAMP_NEAR`, `start` included. */
-function nearGroup(points: Vec2[], start: number): number[] {
-  const group = [start];
-  for (const member of group) {
-    points.forEach((point, index) => {
-      if (!group.includes(index) && distance(point, points[member]) < STAMP_NEAR) group.push(index);
+/** Returns the group of each point: points chained by gaps shorter than `STAMP_NEAR` share one (A near B and B near C make one group). */
+function nearGroups(points: Vec2[]): number[] {
+  const groups = points.map((_, index) => index);
+  points.forEach((point, index) => {
+    points.forEach((other, otherIndex) => {
+      if (groups[otherIndex] !== groups[index] && distance(point, other) < STAMP_NEAR) merge(groups, groups[index], groups[otherIndex]);
     });
-  }
-  return group.sort((a, b) => a - b);
+  });
+  return groups;
 }
 
-/** Moves stamps that are close together (less than one unit apart, chained: A near B and B near C make one group) apart along the screen's horizontal (x up, z down), keeping each group centered on the average of its points. Within a group the slots go in the order of the points' screen x (x - z), ties by input index, so each stamp stays on its own side of the screen. A stamp with no close neighbour stays where it is. */
-export function spreadStamps(points: Vec2[]): Vec2[] {
+function merge(groups: number[], keep: number, drop: number): void {
+  groups.forEach((group, index) => {
+    if (group === drop) groups[index] = keep;
+  });
+}
+
+/** Places each group's stamps along the screen's horizontal (x up, z down), STAMP_SPREAD apart and centered on the average of its points, in the order of the points' screen x (x - z), ties by input index. */
+function placeGroups(points: Vec2[], groups: number[]): Vec2[] {
   const screenX = (member: number) => points[member][0] - points[member][1];
   return points.map((_, index): Vec2 => {
-    const group = nearGroup(points, index);
+    const group = points.flatMap((__, member) => (groups[member] === groups[index] ? [member] : []));
     const average = (axis: 0 | 1) => group.reduce((sum, member) => sum + points[member][axis], 0) / group.length;
     const slots = [...group].sort((a, b) => screenX(a) - screenX(b) || a - b);
     const shift = (slots.indexOf(index) - (slots.length - 1) / 2) * STAMP_SPREAD;
     return [average(0) + shift, average(1) - shift];
   });
+}
+
+/** Returns two stamps of different groups that ended up closer than `STAMP_NEAR`, or null when there are none. */
+function closePair(stamps: Vec2[], groups: number[]): [number, number] | null {
+  for (let a = 0; a < stamps.length; a++) {
+    for (let b = a + 1; b < stamps.length; b++) {
+      if (groups[a] !== groups[b] && distance(stamps[a], stamps[b]) < STAMP_NEAR) return [a, b];
+    }
+  }
+  return null;
+}
+
+/** Moves stamps that are close together apart along the screen's horizontal, so no two end up closer than `STAMP_NEAR`: points chained by gaps shorter than `STAMP_NEAR` form a group spread around its average, and two groups whose spread stamps come too close join into one. Each stamp keeps its side of the screen within its group; a stamp with no close neighbour stays where it is. */
+export function spreadStamps(points: Vec2[]): Vec2[] {
+  const groups = nearGroups(points);
+  for (;;) {
+    const stamps = placeGroups(points, groups);
+    const pair = closePair(stamps, groups);
+    if (!pair) return stamps;
+    merge(groups, groups[pair[0]], groups[pair[1]]);
+  }
 }

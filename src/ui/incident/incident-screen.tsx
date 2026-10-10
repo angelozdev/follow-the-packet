@@ -53,6 +53,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           world={session.world}
           pieces={pieces}
           flows={session.runs}
+          sent={session.sent}
           still={still}
           activePieceId={card ? cardPieceId : null}
           overlay={

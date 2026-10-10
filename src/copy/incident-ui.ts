@@ -17,7 +17,6 @@ export const MAP_TEXT = {
   internet: 'internet',
   locked: 'con candado',
   alert: 'con alerta: entra algo prohibido',
-  packet: (label: string) => `Paquete: ${label}`,
 } as const;
 
 export const INSPECTION_TEXT = {

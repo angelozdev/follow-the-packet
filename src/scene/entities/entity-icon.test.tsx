@@ -2,9 +2,9 @@
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
-import { ENTITY_TERMS, type EntityKind, type EntityRef } from '@/copy';
+import { ENTITY_TERMS, type EntityKind, type EntityRef, type StampState } from '@/copy';
 import { EntityIcon } from './entity-icon';
-import { StampIcon, type StampState } from './stamp';
+import { StampIcon } from './stamp';
 
 const STAMP_STATES: StampState[] = ['arrived', 'blocked', 'lost', 'intruder'];
 

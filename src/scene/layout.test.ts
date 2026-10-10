@@ -113,6 +113,15 @@ describe('pathFor in an office', () => {
     const packet = ping(actor('attacker'), OFFICE.you);
     expect(pathFor(simulate(net, packet), packet, layout)).toEqual([layout.actors.attacker, layout.internet]);
   });
+
+  it('while the map does not show the outside, a packet never travels to the edge it does not draw', () => {
+    const alone = { ...net, actors: [] };
+    const inside = computeLayout(alone, false);
+    const packet = ping(device('your-laptop'), '8.8.8.8');
+    const path = pathFor(simulate(alone, packet), packet, inside);
+    expect(path).not.toContainEqual(inside.edge);
+    expect(path.at(-1)).toEqual(inside.devices['your-laptop'].road);
+  });
 });
 
 describe('path interpolation', () => {
@@ -139,7 +148,13 @@ describe('anchors', () => {
     const spot = layout.devices.servidor2;
     expect(labelPosition({ kind: 'firewall', anchorId: 'servidor2' }, layout)[2]).toBeGreaterThan(spot.firewall[1]);
     expect(labelPosition({ kind: 'device', anchorId: 'servidor2' }, layout)[1]).toBeGreaterThan(1);
-    expect(cardAnchorPosition('servidor2', layout)[0]).toBe(spot.firewall[0]);
+    expect(cardAnchorPosition({ kind: 'firewall', anchorId: 'servidor2' }, layout)[0]).toBe(spot.firewall[0]);
+  });
+
+  it('a card can open beside a device or an actor too', () => {
+    const [x, , z] = cardAnchorPosition({ kind: 'actor', anchorId: 'attacker' }, layout);
+    expect([x, z]).toEqual(layout.actors.attacker);
+    expect(cardAnchorPosition({ kind: 'device', anchorId: 'servidor2' }, layout)[0]).toBe(layout.devices.servidor2.x);
   });
 
   it('the internet label floats above the internet', () => {
@@ -168,8 +183,19 @@ describe('paths and stamps', () => {
     expect(c).toEqual([5, 5]);
   });
 
+  const minimumGap = 0.8;
+  const gaps = (stamps: Vec2[]) => stamps.flatMap((stamp, index) => stamps.slice(index + 1).map((other) => Math.hypot(stamp[0] - other[0], stamp[1] - other[1])));
+
+  it('chains close points into one group: A near B and B near C spread together, although A is far from C', () => {
+    const points: Vec2[] = [[0, 0], [0.9, 0], [1.8, 0]];
+    for (const gap of gaps(spreadStamps(points))) expect(gap).toBeGreaterThanOrEqual(minimumGap);
+  });
+
+  it('a spread group that comes close to another stamp takes it in, so no two stamps end up closer than the minimum', () => {
+    for (const gap of gaps(spreadStamps([[0, 0], [0, 0], [1, 0]]))) expect(gap).toBeGreaterThanOrEqual(minimumGap);
+  });
+
   it('moves apart stamps whose points are close but not the same, such as the door, the doorstep and the firewall of one device', () => {
-    const minimumGap = 0.8;
     const { door, doorstep, firewall } = computeLayout(officeNet(), false).devices['your-laptop'];
     const stamps = spreadStamps([door, doorstep, firewall]);
     stamps.forEach((stamp, index) => {

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CATALOG_TEXT, entityName, type EntityRef, type PacketMessage } from '@/copy';
+import { CATALOG_TEXT, entityName, type EntityRef, type PacketMessage, type StampState } from '@/copy';
 import type { Actor, Device, FirewallKind, Network } from '@/engine';
 import {
   ActorPiece,
@@ -13,7 +13,6 @@ import {
   PacketTrace,
   StampPiece,
   type PacketEnd,
-  type StampState,
 } from '@/scene/entities';
 import { labelOffset, type Vec2 } from '@/scene/layout';
 import { PieceAnchor } from '@/scene/overlay/piece-anchor';

@@ -1,14 +1,13 @@
-import { packetMessage, type PacketMessage } from '@/copy';
+import { packetMessage, type PacketMessage, type StampState } from '@/copy';
 import type { PacketSpec } from '@/engine';
-import type { FlowKind } from '@/levels';
-import type { PacketEnd, StampState } from '@/scene/entities';
+import type { PacketEnd } from '@/scene/entities';
 
 export interface FlowResult {
-  kind: FlowKind;
   packet: PacketSpec;
+  intruder: boolean;
   reached: boolean;
   replied: boolean;
-  lost: boolean;
+  blocked: boolean;
 }
 
 export interface FlowLook {
@@ -20,18 +19,16 @@ export interface FlowLook {
 
 function packetEnd(flow: FlowResult): PacketEnd {
   if (flow.replied) return 'replied';
-  if (flow.lost) return 'lost';
-  return flow.reached ? 'arrived' : 'blocked';
+  if (flow.reached) return 'arrived';
+  return flow.blocked ? 'blocked' : 'lost';
 }
 
-function stampState(flow: FlowResult, intruder: boolean): StampState {
-  if (flow.lost) return 'lost';
-  if (!flow.reached) return 'blocked';
-  return intruder ? 'intruder' : 'arrived';
+function stampState(flow: FlowResult): StampState {
+  if (flow.reached) return flow.intruder ? 'intruder' : 'arrived';
+  return flow.blocked ? 'blocked' : 'lost';
 }
 
-/** Turns a flow's computed result into the look of its packet and its stamp: the message it carries, whether it is an intruder, how its run ends and which stamp it leaves. */
+/** Turns a packet's computed result into its look and its stamp: the message it carries, whether it is an intruder, how its run ends and which stamp it leaves. Only a firewall blocks: a packet that reaches no device and that no firewall stopped is lost. */
 export function flowLook(flow: FlowResult): FlowLook {
-  const intruder = flow.kind === 'forbidden';
-  return { message: packetMessage(flow.packet), intruder, end: packetEnd(flow), stamp: stampState(flow, intruder) };
+  return { message: packetMessage(flow.packet), intruder: flow.intruder, end: packetEnd(flow), stamp: stampState(flow) };
 }
