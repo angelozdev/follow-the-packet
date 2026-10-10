@@ -5,7 +5,7 @@ import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { officeNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
-import { firewallCard } from './firewall-card';
+import { firewallCard } from './cards/firewall-card';
 import { PIECE_ID } from './piece-id';
 import { pieceViews } from './pieces';
 

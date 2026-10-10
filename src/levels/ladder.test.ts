@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TERMS, termsIn, unofficialNames, type TermId } from '@/copy';
 import { filterIncident } from '@/testing';
 import { FROM } from './04-iaas/shared';
-import type { Incident } from './incident';
+import type { Incident } from './contract/incident';
 import { chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 

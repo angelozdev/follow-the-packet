@@ -1,4 +1,4 @@
-import type { Network, PacketSpec } from './types';
+import type { Network, PacketSpec } from '@/engine/network/types';
 
 export const APP_TARGET = '@appTarget';
 

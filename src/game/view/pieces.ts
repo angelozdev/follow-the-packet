@@ -3,7 +3,7 @@ import type { Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
-import { originPieces } from './terminal-card';
+import { originPieces } from './cards/terminal-card';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 export type PieceState = 'normal' | 'intruded' | 'blocking';

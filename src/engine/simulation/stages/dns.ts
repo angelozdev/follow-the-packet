@@ -1,5 +1,5 @@
 import { isIpv4 } from '@/engine/network/cidr';
-import { resolveName } from '@/engine/network/dns';
+import { resolveName } from '@/engine/network/naming/dns';
 import { CONTINUE, stop, type Stage } from '@/engine/simulation/context';
 
 export const dnsStage: Stage = (ctx) => {

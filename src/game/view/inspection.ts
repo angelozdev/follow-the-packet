@@ -2,7 +2,7 @@ import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, descri
 import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
-import { rowText, ruleRows } from './firewall-card';
+import { rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { showsOutside } from './pieces';
 

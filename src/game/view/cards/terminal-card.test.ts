@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { INCIDENTS, type SendIncident } from '@/levels';
 import { sendIncident } from '@/testing';
 import { startSession, type Session } from '@/game/session';
-import { PIECE_ID } from './piece-id';
+import { PIECE_ID } from '@/game/view/piece-id';
 import { terminalCard, terminalLine } from './terminal-card';
 
 const SENDING = sendIncident();

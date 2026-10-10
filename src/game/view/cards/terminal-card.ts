@@ -2,7 +2,7 @@ import { TERMINAL_TEXT, endpointName, packetMessage, type TermText } from '@/cop
 import type { Endpoint } from '@/engine';
 import type { SendIncident } from '@/levels';
 import type { Session } from '@/game/session';
-import { PIECE_ID } from './piece-id';
+import { PIECE_ID } from '@/game/view/piece-id';
 
 export type SendTrayName = 'from' | 'to' | 'message';
 export type SendPicks = Record<SendTrayName, string>;

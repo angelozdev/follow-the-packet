@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extraOpenings, simulate, type Network } from '@/engine';
-import type { FilterIncident } from '@/levels/incident';
+import type { FilterIncident } from '@/levels/contract/incident';
 import { INCIDENTS } from '@/levels/registry';
 import { applyMove, solvedWorld, startWorld } from '@/levels/world';
 

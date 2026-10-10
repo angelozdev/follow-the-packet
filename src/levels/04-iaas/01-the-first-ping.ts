@@ -1,4 +1,4 @@
-import { defineIncident } from '@/levels/incident';
+import { defineIncident } from '@/levels/contract/incident';
 import { BASE_WORLD, CONCEPT, FLOWS, FROM, LESSON, PING_TASK_FLOWS, SG, WHAT } from './shared';
 
 export default defineIncident({

@@ -1,4 +1,4 @@
-import type { Network } from './types';
+import type { Network } from '@/engine/network/types';
 
 export function publicDnsName(publicIp: string, region: string): string {
   return `ec2-${publicIp.replaceAll('.', '-')}.${region}.compute.amazonaws.com`;

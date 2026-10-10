@@ -1,6 +1,6 @@
 import { applyAction, type Network } from '@/engine';
-import { ruleFromChips, sameRule } from './chips';
-import type { Incident, PlayerMove } from './incident';
+import { ruleFromChips, sameRule } from './contract/chips';
+import type { Incident, PlayerMove } from './contract/incident';
 
 function findIncident(incidents: Incident[], incidentId: string): Incident {
   const found = incidents.find((i) => i.id === incidentId);

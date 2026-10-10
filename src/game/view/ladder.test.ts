@@ -3,10 +3,10 @@ import { termsIn, toPlainText, unofficialNames, type TermText } from '@/copy';
 import { INCIDENTS, sendCombinations, type Incident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
 import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
-import { firewallCard } from './firewall-card';
+import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
-import { terminalCard, terminalLine } from './terminal-card';
+import { terminalCard, terminalLine } from './cards/terminal-card';
 
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];

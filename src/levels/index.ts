@@ -20,9 +20,9 @@ export type {
   SendMove,
   SendTask,
   WhatChip,
-} from './incident';
+} from './contract/incident';
 export { INCIDENTS } from './registry';
-export { chipsOfRule, packetFromChips, sendCombinations } from './chips';
+export { chipsOfRule, packetFromChips, sendCombinations } from './contract/chips';
 export { applyMove, solvedWorld, startWorld } from './world';
 export { configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';

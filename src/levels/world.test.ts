@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, networkSchema, type Network } from '@/engine';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
-import { chipsOfRule } from './chips';
-import { ruleIdFor, type Incident, type PlayerMove } from './incident';
+import { chipsOfRule } from './contract/chips';
+import { ruleIdFor, type Incident, type PlayerMove } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { applyMove, solvedWorld, startWorld } from './world';
 

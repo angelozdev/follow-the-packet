@@ -1,5 +1,5 @@
 import type { Actor, FirewallKind, Network } from '@/engine';
-import { nameTag, type TermText } from './term-text';
+import { nameTag, type TermText } from '@/copy/term-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
   'security-group': (name) => `{{security-group}} ${nameTag(name)}`,

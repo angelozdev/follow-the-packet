@@ -1,6 +1,6 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
 import type { FirewallKind } from '@/engine';
-import type { Incident } from './incident';
+import type { Incident } from './contract/incident';
 
 export interface ConfigurableParts {
   inboundRules: Record<FirewallKind, boolean>;

@@ -1,4 +1,4 @@
-import { defineIncident } from '@/levels/incident';
+import { defineIncident } from '@/levels/contract/incident';
 import { ADDRESS, CONCEPT, LESSON, MESSAGE, ORIGIN, PING_TO_LUCIA } from './shared';
 
 export default defineIncident({

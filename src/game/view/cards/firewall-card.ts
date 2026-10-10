@@ -2,7 +2,7 @@ import { INSPECTION_TEXT, MAP_TEXT, TASK_CARD_TEXT, type TermText } from '@/copy
 import type { Firewall } from '@/engine';
 import { chipsOfRule, type Incident } from '@/levels';
 import type { Session } from '@/game/session';
-import { parsePieceId } from './piece-id';
+import { parsePieceId } from '@/game/view/piece-id';
 
 export interface RuleRow {
   id: string;

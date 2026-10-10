@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
 import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
-import type { Flow, FromChip, WhatChip } from '@/levels/incident';
+import type { Flow, FromChip, WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';

@@ -1,6 +1,6 @@
 # game/view
 
-What the map and the panels show, computed from the session: piece ids, piece labels and locks, a firewall's rules named by chips (`firewall-card.ts`), the terminal of an origin (`terminal-card.ts`) and the inspection box.
+What the map and the panels show, computed from the session: piece ids, piece labels and locks, the inspection box, and, in `cards/`, a firewall's rules named by chips (`firewall-card.ts`) and the terminal of an origin (`terminal-card.ts`).
 
 - Every piece is an entity of the catalog in the variant of its model (`EntityRef`): a device and a firewall by their `kind`, the edge by the network's `edge`, an actor by its `kind`. Its term comes from `entityTerm` (`ENTITY_TERMS` in `src/copy/terms.ts`): `device` for a laptop or a printer, `firewall` for the firewall of a laptop, `router`, `internet`, and the AWS ones (`ec2-instance`, `security-group`, `internet-gateway`); none ever for an actor. A firewall label, the edge label and the internet label carry their term's name (`Security Group servidor2`, `firewall laptop-lucia`, `router`, `internet`); a device's label is its name (`servidor2`, `tu-laptop`) and an actor's label is its own name.
 - The inspection of a piece whose variant has a term, or of a packet, starts with `INSPECTION_TEXT.whatIs`, the definition of that term, once the term is known (a packet's term is its ICMP message, and `packet` while that one is not known); a piece without a term has no definition. A device's IP is its dirección IP until the term IP privada is known.

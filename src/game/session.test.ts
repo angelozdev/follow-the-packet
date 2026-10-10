@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import { ruleIdFor } from '@/levels/incident';
+import { ruleIdFor } from '@/levels/contract/incident';
 import { filterIncident, sendIncident } from '@/testing';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';

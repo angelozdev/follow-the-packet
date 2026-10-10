@@ -1,4 +1,4 @@
-import { defineIncident } from '@/levels/incident';
+import { defineIncident } from '@/levels/contract/incident';
 import { ADDRESS, BASE_WORLD, CONCEPT, LESSON, MESSAGE, ORIGIN } from './shared';
 
 export default defineIncident({

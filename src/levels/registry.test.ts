@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT, syllabusLessons } from '@/testing';
 import { CHAPTERS } from './chapters';
-import { officeLeaks } from './chips';
-import { incidentSchema, type Incident } from './incident';
+import { officeLeaks } from './contract/chips';
+import { incidentSchema, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
 

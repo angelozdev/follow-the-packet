@@ -1,5 +1,5 @@
-import { nameTag, type TermText } from './term-text';
-import type { EntityKind, EntityRef, EntityVariants } from './terms';
+import { nameTag, type TermText } from '@/copy/term-text';
+import type { EntityKind, EntityRef, EntityVariants } from '@/copy/terms';
 
 export const ROADMAP_TEXT = {
   title: 'Sigue el paquete',

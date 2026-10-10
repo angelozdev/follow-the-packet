@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
 import type { Actor, Device, Firewall, Network, PacketSpec } from '@/engine';
-import type { AddressChip, Flow, FromChip, MessageChip, OriginChip, SendMove, SendTask, WhatChip } from '@/levels/incident';
+import type { AddressChip, Flow, FromChip, MessageChip, OriginChip, SendMove, SendTask, WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';

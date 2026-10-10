@@ -1,4 +1,4 @@
-import { defineIncident, ruleIdFor } from '@/levels/incident';
+import { defineIncident, ruleIdFor } from '@/levels/contract/incident';
 import { CONCEPT, DAY_SHIFT_RULE, FLOWS, FROM, LESSON, PING_TASK_FLOWS, SG, WHAT } from './shared';
 
 export default defineIncident({
