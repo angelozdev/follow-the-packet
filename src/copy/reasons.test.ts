@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
 import { OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
+import { deviceName } from './packet-labels';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 
@@ -95,6 +96,60 @@ const DELIVERY_CASES: [Reason, string, string[]][] = [
   ],
 ];
 
+const { officeRouter, provider, server } = OFFICE_FLOORS;
+
+const ROUTER_CASES: [Reason, string, string[]][] = [
+  [
+    { code: 'forward-hop', routerId: officeRouter.id, ip: floor1.gateway, ttlLeft: 63 },
+    'Pasa por [[router-office]] (192.168.1.1), un {{hop|salto}} más: el {{ttl}} baja a 63.',
+    ['hop', 'ttl'],
+  ],
+  [
+    { code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice },
+    'El {{ttl}} llega a 0 en [[router-provider]] (203.0.113.1): el {{router}} {{drop|descarta}} el {{packet|paquete}} y avisa a quien lo envió con {{time-exceeded}}.',
+    ['ttl', 'router', 'drop', 'packet', 'time-exceeded'],
+  ],
+  [
+    { code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true },
+    '[[router-provider]] no sabe a qué {{router}} mandar un {{packet|paquete}} para 8.8.8.8: lo {{drop|descarta}} y avisa a quien lo envió que no pudo entregarlo.',
+    ['router', 'packet', 'drop'],
+  ],
+  [
+    { code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: false },
+    '[[router-provider]] no sabe a qué {{router}} mandar un {{packet|paquete}} para 8.8.8.8: lo {{drop|descarta}} y no avisa a nadie.',
+    ['router', 'packet', 'drop'],
+  ],
+  [
+    { code: 'forward-private-dropped', routerId: provider.id, ip: '10.0.0.10' },
+    '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. [[router-provider]], ya fuera de la oficina, {{drop|descarta}} el {{packet|paquete}} sin avisar.',
+    ['private-ip', 'internet', 'drop', 'packet'],
+  ],
+  [
+    { code: 'forward-router-replies', routerId: officeRouter.id, ip: floor1.gateway },
+    'La IP 192.168.1.1 es de [[router-office]], un {{router}}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.',
+    ['router', 'packet'],
+  ],
+];
+
+const TRIP_CASES: [Reason, string, string[]][] = [
+  [
+    { code: 'route-leaves-office', ip: server.ip },
+    '198.51.100.50 está fuera de la {{network|red}} de la oficina: el {{packet|paquete}} va a la {{default-gateway}}, que lo saca de ella.',
+    ['network', 'packet', 'default-gateway'],
+  ],
+  [
+    { code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: true },
+    '[[router-backbone]] tiene conectada la {{network|red}} de 198.51.100.77, pero ningún {{device|dispositivo}} tiene esa IP: {{drop|descarta}} el {{packet|paquete}} y avisa a quien lo envió que no pudo entregarlo.',
+    ['network', 'device', 'drop', 'packet'],
+  ],
+  [
+    { code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: false },
+    '[[router-backbone]] tiene conectada la {{network|red}} de 198.51.100.77, pero ningún {{device|dispositivo}} tiene esa IP: {{drop|descarta}} el {{packet|paquete}} y no avisa a nadie.',
+    ['network', 'device', 'drop', 'packet'],
+  ],
+  [{ code: 'host-replies', deviceId: server.id }, '[[servidor-internet]] contesta.', []],
+];
+
 describe('describeReason', () => {
   it.each(CASES)('describes %o', (reason, text) => {
     expect(describeReason(reason, NET)).toBe(text);
@@ -119,6 +174,35 @@ describe('describeReason', () => {
       expect(describeReason(reason, FLOORS)).toBe(text);
       expect(termsIn(text)).toEqual(terms);
       expect(toPlainText(text)).not.toMatch(/\b(arp|mac)\b/i);
+    }
+  });
+
+  it('describes forward-hop, forward-ttl-exceeded, forward-no-route, forward-private-dropped and forward-router-replies with registered terms only', () => {
+    for (const [reason, text, terms] of ROUTER_CASES) {
+      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(termsIn(text)).toEqual(terms);
+      expect(toPlainText(text)).not.toMatch(/\b(nat|windows|linux|macos)\b|ruta|ARP/i);
+    }
+  });
+
+  it('describes the exit from the office, a router that finds no host, and a server that answers, naming routers and servers', () => {
+    for (const [reason, text, terms] of TRIP_CASES) {
+      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(termsIn(text)).toEqual(terms);
+    }
+    expect(deviceName(FLOORS, server.id)).toBe('[[servidor-internet]]');
+  });
+
+  it('the trip out of the office never names NAT or the public IP, in any step the player reads', () => {
+    const packets = [ping(device('your-laptop'), server.ip), { ...ping(device('your-laptop'), server.ip), ttl: 2 }, ping(device('your-laptop'), '10.0.0.10')];
+    for (const packet of packets) {
+      for (const step of simulate(FLOORS, packet).steps) {
+        const text = describeReason(step.reason, FLOORS);
+        expect(() => termsIn(text)).not.toThrow();
+        expect(termsIn(text)).not.toContain('nat');
+        expect(termsIn(text)).not.toContain('public-ip');
+        expect(toPlainText(text)).not.toMatch(/\bnat\b|IP pública/i);
+      }
     }
   });
 

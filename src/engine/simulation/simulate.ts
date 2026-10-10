@@ -28,16 +28,17 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     steps: ctx.steps,
     outcome,
     resolvedIp: ctx.destIp ?? null,
-    destinationId: ctx.dest?.id ?? null,
+    destinationId: ctx.dest?.id ?? ctx.responder?.id ?? null,
     effectiveSource: ctx.effectiveSource ?? ctx.source.ip,
     tcpdump: ctx.tcpdump,
     ...(ctx.notice && { notice: ctx.notice }),
+    ...(ctx.hops.length > 0 && { hops: ctx.hops }),
   };
 }
 
 /** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. */
 export function simulate(net: Network, packet: PacketSpec): Trace {
-  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), steps: [], tcpdump: [] };
+  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), hops: [], steps: [], tcpdump: [] };
   for (const stage of PIPELINE) {
     const result = stage(ctx);
     if (result.done) return finish(ctx, result.outcome);

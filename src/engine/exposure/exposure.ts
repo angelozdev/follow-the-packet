@@ -1,3 +1,4 @@
+import { isClientActor } from '@/engine/network/topology';
 import type { Actor, Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import { simulate } from '@/engine/simulation/simulate';
 import type { Trace } from '@/engine/simulation/trace';
@@ -20,10 +21,10 @@ export function withProbeActor(net: Network): Network {
   return { ...net, actors: [...net.actors, PROBE_INTERNET] };
 }
 
-/** Builds the fixed probe battery: from every actor, from the internet and from every device, to every IP of every other device. */
+/** Builds the fixed probe battery: from every actor that sends packets (a server of the internet only answers), from the internet and from every device, to every IP of every other device. */
 export function probePackets(net: Network): PacketSpec[] {
   const sources: Endpoint[] = [
-    ...net.actors.map((a): Endpoint => ({ kind: 'actor', id: a.id })),
+    ...net.actors.filter(isClientActor).map((a): Endpoint => ({ kind: 'actor', id: a.id })),
     { kind: 'actor', id: PROBE_INTERNET.id },
     ...net.devices.map((d): Endpoint => ({ kind: 'device', id: d.id })),
   ];

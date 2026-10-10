@@ -14,10 +14,10 @@ function deliverToSelf(ctx: SimContext, device: Device, reason: Reason): StageRe
   return CONTINUE;
 }
 
-function handToNetwork(ctx: SimContext, ip: string, viaGateway: boolean): StageResult {
+function handToNetwork(ctx: SimContext, ip: string, viaGateway: boolean, reason: Reason = { code: 'route-private' }): StageResult {
   ctx.delivery = { ip, viaGateway };
   ctx.effectiveSource = ctx.source.ip;
-  ctx.steps.push({ stage: 'route', at: ctx.net.kind, verdict: 'pass', reason: { code: 'route-private' } });
+  ctx.steps.push({ stage: 'route', at: ctx.net.kind, verdict: 'pass', reason });
   return CONTINUE;
 }
 
@@ -26,13 +26,14 @@ function stayAtSender(ctx: SimContext, device: Device, reason: Reason): StageRes
   return stop('no-route');
 }
 
-/** Decides how a device of an office sends the packet (RFC 1122, §3.3.1.1): a destination in its own LAN goes straight to it, one in another LAN of the office goes to its default gateway, and a device that has no cable, or has no gateway for a destination outside its LAN, sends nothing. It returns undefined for a destination outside the office, which the rest of the stage handles. */
+/** Decides how a device of an office sends the packet (RFC 1122, §3.3.1.1): a destination in its own LAN goes straight to it, one in another LAN of the office goes to its default gateway, and a device that has no cable, or has no gateway for a destination outside its LAN, sends nothing. A destination outside the office goes to the gateway too when the office has routers to carry it, and otherwise it returns undefined, which the rest of the stage handles. */
 function routeFromOffice(ctx: SimContext, device: Device): StageResult | undefined {
   const destIp = ctx.destIp!;
   if (!isConnected(device)) return stayAtSender(ctx, device, { code: 'route-not-connected', deviceId: device.id });
   if (ipInCidr(destIp, lanOf(ctx.net, device)?.cidr ?? ctx.net.cidr)) return handToNetwork(ctx, destIp, false);
   if (!device.gateway) return stayAtSender(ctx, device, { code: 'route-no-gateway', deviceId: device.id, ip: destIp });
-  return ipInCidr(destIp, ctx.net.cidr) ? handToNetwork(ctx, device.gateway, true) : undefined;
+  if (ipInCidr(destIp, ctx.net.cidr)) return handToNetwork(ctx, device.gateway, true);
+  return (ctx.net.routers ?? []).length > 0 ? handToNetwork(ctx, device.gateway, true, { code: 'route-leaves-office', ip: destIp }) : undefined;
 }
 
 function routeInsideNetwork(ctx: SimContext): StageResult | undefined {

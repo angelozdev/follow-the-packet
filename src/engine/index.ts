@@ -21,10 +21,10 @@ export type {
   Subnet,
 } from './network/types';
 export { isClientActor } from './network/topology';
-export { ROUTE_DEFAULT, endpointSchema, icmpTypeSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
+export { DEFAULT_TTL, ROUTE_DEFAULT, endpointSchema, icmpTypeSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';
-export type { Checkpoint, Notice, Outcome, Reason, Step, Trace } from './simulation/trace';
+export type { Checkpoint, Hop, Notice, Outcome, Reason, Step, Trace } from './simulation/trace';
 export { extraOpenings, reachesHost } from './exposure/exposure';
 export { privateDnsName, publicDnsName } from './network/naming/dns';
 export { stopStep } from './simulation/checkpoints';

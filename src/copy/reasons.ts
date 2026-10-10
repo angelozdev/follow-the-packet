@@ -25,6 +25,11 @@ const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
 };
 
 const SENDER_WARNS: TermText = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
+const ROUTER_DROPS: TermText = '{{drop|descarta}} el {{packet|paquete}}';
+
+function routerOutcome(warns: boolean): TermText {
+  return warns ? 'y avisa a quien lo envió que no pudo entregarlo.' : 'y no avisa a nadie.';
+}
 
 function sought(reason: Extract<Reason, { code: 'forward-no-owner' }>): TermText {
   return reason.viaGateway ? `${reason.ip}, su {{default-gateway}},` : reason.ip;
@@ -77,8 +82,22 @@ export function describeReason(reason: Reason, net: Network): TermText {
       return `${deviceName(net, reason.deviceId)} no tiene conexión a la {{network|red}}: ni envía ni recibe {{packet|paquetes}}.`;
     case 'route-gateway-not-a-router':
       return `${deviceName(net, reason.deviceId)} tiene la IP ${reason.ip}, la {{default-gateway}} que se configuró, pero no es un {{router}}: recibe el {{packet|paquete}}, no lo reenvía y no vuelve nada.`;
+    case 'route-leaves-office':
+      return `${reason.ip} está fuera de la {{network|red}} de la oficina: el {{packet|paquete}} va a la {{default-gateway}}, que lo saca de ella.`;
     case 'forward-no-owner':
       return `${deviceName(net, reason.deviceId)} buscó en su {{network|red}} quién tenía la IP ${sought(reason)} y nadie contestó. ${SENDER_WARNS}`;
+    case 'forward-hop':
+      return `Pasa por ${deviceName(net, reason.routerId)} (${reason.ip}), un {{hop|salto}} más: el {{ttl}} baja a ${reason.ttlLeft}.`;
+    case 'forward-ttl-exceeded':
+      return `El {{ttl}} llega a 0 en ${deviceName(net, reason.routerId)} (${reason.ip}): el {{router}} ${ROUTER_DROPS} y avisa a quien lo envió con {{time-exceeded}}.`;
+    case 'forward-no-route':
+      return `${deviceName(net, reason.routerId)} no sabe a qué {{router}} mandar un {{packet|paquete}} para ${reason.ip}: lo {{drop|descarta}} ${routerOutcome(reason.warns)}`;
+    case 'forward-no-host':
+      return `${deviceName(net, reason.routerId)} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${ROUTER_DROPS} ${routerOutcome(reason.warns)}`;
+    case 'forward-private-dropped':
+      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${deviceName(net, reason.routerId)}, ya fuera de la oficina, ${ROUTER_DROPS} sin avisar.`;
+    case 'forward-router-replies':
+      return `La IP ${reason.ip} es de ${deviceName(net, reason.routerId)}, un {{router}}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;
     case 'firewall-out-pass':
       return FIREWALL_TEXT[reason.firewallKind].passOut(deviceName(net, reason.deviceId));
     case 'firewall-out-drop':

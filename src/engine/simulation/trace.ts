@@ -41,7 +41,14 @@ export type Reason =
   | { code: 'route-no-gateway'; deviceId: string; ip: string }
   | { code: 'route-not-connected'; deviceId: string }
   | { code: 'route-gateway-not-a-router'; deviceId: string; ip: string }
+  | { code: 'route-leaves-office'; ip: string }
   | { code: 'forward-no-owner'; deviceId: string; ip: string; viaGateway: boolean }
+  | { code: 'forward-hop'; routerId: string; ip: string; ttlLeft: number }
+  | { code: 'forward-ttl-exceeded'; routerId: string; ip: string }
+  | { code: 'forward-no-route'; routerId: string; ip: string; warns: boolean }
+  | { code: 'forward-no-host'; routerId: string; ip: string; warns: boolean }
+  | { code: 'forward-private-dropped'; routerId: string; ip: string }
+  | { code: 'forward-router-replies'; routerId: string; ip: string }
   | { code: 'firewall-out-pass'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-out-drop'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-in-pass'; deviceId: string; firewallKind: FirewallKind }
@@ -54,7 +61,7 @@ export type Reason =
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
-export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'no-route' | 'unreachable' | 'lost';
+export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'no-route' | 'unreachable' | 'ttl-exceeded' | 'lost';
 
 export type NoticeKind = 'host-unreachable' | 'net-unreachable' | 'time-exceeded';
 
@@ -63,6 +70,13 @@ export interface Notice {
   kind: NoticeKind;
   fromId: string;
   fromIp: string;
+}
+
+/** A router that took the packet: the IP of its interface towards the sender and the TTL the packet had left after it. */
+export interface Hop {
+  routerId: string;
+  ip: string;
+  ttlLeft: number;
 }
 
 export interface TcpdumpLine {
@@ -81,4 +95,5 @@ export interface Trace {
   effectiveSource: string;
   tcpdump: TcpdumpLine[];
   notice?: Notice;
+  hops?: Hop[];
 }

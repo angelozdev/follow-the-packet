@@ -1,34 +1,35 @@
-import { CONTINUE, describePacket, stop, type Stage } from '@/engine/simulation/context';
+import { CONTINUE, describePacket, logAt, receiverOf, stop, type Stage } from '@/engine/simulation/context';
 
 export const hostStage: Stage = (ctx) => {
-  const dest = ctx.dest!;
+  const receiver = receiverOf(ctx);
+  const { id, ip, host } = receiver;
   const p = ctx.packet;
   const src = ctx.effectiveSource!;
-  ctx.tcpdump.push({ deviceId: dest.id, direction: 'In', src, dst: dest.privateIp, summary: describePacket(p) });
+  logAt(ctx, receiver, 'In', src, ip, describePacket(p));
 
   if (p.protocol === 'icmp') {
     if (p.icmpType !== 8) {
-      ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'drop', reason: { code: 'host-unsolicited-icmp', deviceId: dest.id, icmpType: p.icmpType! } });
+      ctx.steps.push({ stage: 'host', at: id, verdict: 'drop', reason: { code: 'host-unsolicited-icmp', deviceId: id, icmpType: p.icmpType! } });
       return stop('arrived-no-reply');
     }
-    if (dest.host.ignoreIcmpEcho) {
-      ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'drop', reason: { code: 'host-ignores-echo', deviceId: dest.id } });
+    if (host.ignoreIcmpEcho) {
+      ctx.steps.push({ stage: 'host', at: id, verdict: 'drop', reason: { code: 'host-ignores-echo', deviceId: id } });
       return stop('arrived-no-reply');
     }
-    ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'pass', reason: { code: 'host-replies', deviceId: dest.id } });
+    ctx.steps.push({ stage: 'host', at: id, verdict: 'pass', reason: receiver.replies });
     return CONTINUE;
   }
 
   if (p.protocol === 'tcp') {
-    if (!dest.host.listeningTcpPorts.includes(p.port!)) {
-      ctx.tcpdump.push({ deviceId: dest.id, direction: 'Out', src: dest.privateIp, dst: src, summary: `TCP ${p.port} RST` });
-      ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'reject', reason: { code: 'host-refused', deviceId: dest.id, port: p.port! } });
+    if (!host.listeningTcpPorts.includes(p.port!)) {
+      logAt(ctx, receiver, 'Out', ip, src, `TCP ${p.port} RST`);
+      ctx.steps.push({ stage: 'host', at: id, verdict: 'reject', reason: { code: 'host-refused', deviceId: id, port: p.port! } });
       return stop('refused');
     }
-    ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'pass', reason: { code: 'host-accepts', deviceId: dest.id, port: p.port! } });
+    ctx.steps.push({ stage: 'host', at: id, verdict: 'pass', reason: { code: 'host-accepts', deviceId: id, port: p.port! } });
     return CONTINUE;
   }
 
-  ctx.steps.push({ stage: 'host', at: dest.id, verdict: 'drop', reason: { code: 'host-udp-no-service', deviceId: dest.id, port: p.port! } });
+  ctx.steps.push({ stage: 'host', at: id, verdict: 'drop', reason: { code: 'host-udp-no-service', deviceId: id, port: p.port! } });
   return stop('arrived-no-reply');
 };

@@ -4,6 +4,8 @@ import { lanOf, lansOf } from './topology';
 
 export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;
+/** The TTL a packet leaves with when nobody sets one: 64, which IANA recommends and Linux uses. */
+export const DEFAULT_TTL = 64;
 
 export const ipSchema = z.string().refine(isIpv4, 'invalid IPv4');
 function isCidr(value: string): boolean {

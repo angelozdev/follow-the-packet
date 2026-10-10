@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine/simulation/simulate';
 import { extraOpenings, flowKey, probePackets, reachesHost } from './exposure';
-import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 const expected = [
@@ -91,5 +91,32 @@ describe('devices without a firewall', () => {
     const guarded = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
     const fromPrinter = { id: 'echo-printer', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.printer}/32` } } as const;
     expect(extraOpenings(withInbound(guarded, 'fw-lucia', fromPrinter), [ping(device('your-laptop'), OFFICE.lucia)])).toEqual([ping(device('printer'), OFFICE.lucia)]);
+  });
+});
+
+describe('an office with two LANs, routers and a server of the internet', () => {
+  const { floor2, server } = OFFICE_FLOORS;
+  const guarded = () => withDevice(officeTwoFloorsNet(), 'andres-laptop', { firewallIds: ['fw-andres'] });
+  const withFirewall = (rules: Parameters<typeof withInbound>[2][]) => ({
+    ...guarded(),
+    firewalls: [{ id: 'fw-andres', name: 'laptop-andres', kind: 'host-firewall' as const, inbound: rules, outbound: [] }],
+  });
+  const openToAll = { id: 'echo-all', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: '0.0.0.0/0' } } as const;
+  const fromYou = { id: 'echo-you', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE_FLOORS.floor1.you}/32` } } as const;
+  const expected = [ping(device('your-laptop'), floor2.andres)];
+
+  it('the probe battery still finds the extra opening of an open rule in an office with two LANs', () => {
+    const open = extraOpenings(withFirewall([openToAll]), expected);
+    expect(open).toContainEqual(ping(device('marta-laptop'), floor2.andres));
+    expect(open).toContainEqual(ping(device('lucia-laptop'), floor2.andres));
+    expect(open).not.toContainEqual(expected[0]);
+    expect(open.every((probe) => probe.to === floor2.andres)).toBe(true);
+    expect(extraOpenings(withFirewall([fromYou]), expected)).toEqual([]);
+  });
+
+  it('a server of the internet only answers, so the battery never probes from it', () => {
+    const packets = probePackets(officeTwoFloorsNet());
+    expect(packets.some((probe) => probe.from.kind === 'actor' && probe.from.id === server.id)).toBe(false);
+    expect(packets.some((probe) => probe.to === server.ip)).toBe(false);
   });
 });

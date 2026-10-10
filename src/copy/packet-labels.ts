@@ -4,9 +4,10 @@ import type { PacketMessage } from './terms';
 
 const INTERNET_NAME = 'Internet';
 
-/** Returns the name of a device, marked as a name; an id that names no device stands for its name. */
+/** Returns the name of a device, a router or a server of the internet, marked as a name; an id that names none of them stands for its name. */
 export function deviceName(net: Network, deviceId: string): TermText {
-  return nameTag(net.devices.find((d) => d.id === deviceId)?.name ?? deviceId);
+  const named = [...net.devices, ...(net.routers ?? []), ...net.actors.filter((actor) => actor.kind === 'server')].find((node) => node.id === deviceId);
+  return nameTag(named?.name ?? deviceId);
 }
 
 /** Returns the name of the device or the actor a packet comes from, marked as a name; the internet probe that is not on the map is plain "Internet". */
@@ -56,5 +57,6 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   'invalid-address': 'No salió del dispositivo: la dirección no es una {{ipv4}} válida.',
   'no-route': 'No salió del dispositivo: no tiene por dónde sacar el paquete.',
   unreachable: 'No llegó: volvió un aviso de que no se pudo llegar al destino.',
+  'ttl-exceeded': 'No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo {{drop|descartó}} y avisó con {{time-exceeded}}.',
   lost: 'Se perdió: no llegó a ningún dispositivo.',
 };

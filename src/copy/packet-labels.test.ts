@@ -63,4 +63,15 @@ describe('packet labels', () => {
     expect(OUTCOME_TEXT[warned.outcome]).toBe('No llegó: volvió un aviso de que no se pudo llegar al destino.');
     expect([...termsIn(OUTCOME_TEXT['no-route']), ...termsIn(OUTCOME_TEXT.unreachable)]).toEqual([]);
   });
+
+  it('says that a router dropped the packet when its TTL reached zero, and names a router and a server of the internet', () => {
+    const floors = officeTwoFloorsNet();
+    const expired = simulate(floors, { ...ping(device('your-laptop'), OFFICE_FLOORS.server.ip), ttl: 1 });
+    expect(expired.outcome).toBe('ttl-exceeded');
+    expect(OUTCOME_TEXT[expired.outcome]).toBe('No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo {{drop|descartó}} y avisó con {{time-exceeded}}.');
+    expect(termsIn(OUTCOME_TEXT['ttl-exceeded'])).toEqual(['ttl', 'router', 'drop', 'time-exceeded']);
+    expect([OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.server.id].map((id) => deviceName(floors, id))).toEqual(['[[router-office]]', '[[servidor-internet]]']);
+    const answered = ping(device('your-laptop'), OFFICE_FLOORS.server.ip);
+    expect(packetLabel(answered, simulate(floors, answered), floors)).toBe('{{ping}} de [[tu-laptop]] a [[servidor-internet]]');
+  });
 });
