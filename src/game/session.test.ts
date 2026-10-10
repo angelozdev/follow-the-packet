@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor } from '@/levels/incident';
+import { filterIncident, sendIncident } from '@/testing';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 
-const FIRST = INCIDENTS[0];
+const FIRST = filterIncident('04-01');
 const FULL_STARS = 3;
 const place = (firewallId: string, whatId: string, fromId: string): SessionAction => ({ type: 'placeRule', firewallId, whatId, fromId });
 const remove = (firewallId: string, whatId: string, fromId: string): SessionAction => ({ type: 'removeRule', firewallId, ruleId: ruleIdFor(whatId, fromId) });
@@ -40,7 +41,7 @@ describe('incident session', () => {
 
   it('closing tight with the right explanation gives 3 stars', () => {
     const explained = play(FIX, SUBMIT, choose(RIGHT));
-    expect(starsOf(explained)).toEqual({ closed: true, tight: true, explained: true });
+    expect(starsOf(explained)).toEqual({ closed: true, middle: true, explained: true });
     expect(countStars(starsOf(explained))).toBe(FULL_STARS);
   });
 
@@ -104,14 +105,64 @@ describe('sending the solution', () => {
     const keptDayShift = [place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id), SUBMIT].reduce(sessionReducer, second);
     expect(keptDayShift.phase).toBe('explaining');
     expect(keptDayShift.rejection).toBeNull();
-    expect(starsOf(keptDayShift)).toMatchObject({ closed: true, tight: false });
+    expect(starsOf(keptDayShift)).toMatchObject({ closed: true, middle: false });
     expect(sessionReducer(keptDayShift, DROP_DAY_SHIFT)).toBe(keptDayShift);
     const cleaned = [DROP_DAY_SHIFT, place(SG.servidor2, WHAT.echoRequest.id, FROM.sgServidor1.id), SUBMIT].reduce(sessionReducer, second);
-    expect(starsOf(cleaned)).toMatchObject({ closed: true, tight: true });
+    expect(starsOf(cleaned)).toMatchObject({ closed: true, middle: true });
   });
 
   it('sending once the incident is closed changes nothing', () => {
     const closed = play(FIX, SUBMIT);
     expect(sessionReducer(closed, SUBMIT)).toBe(closed);
+  });
+});
+
+describe('sending packets', () => {
+  const SENDING = sendIncident();
+  const send = (fromId: string, toId: string, messageId: string): SessionAction => ({ type: 'sendPacket', fromId, toId, messageId });
+  const PING_PRINTER = send('you', 'printer', 'ping');
+  const FROM_OUTSIDE = send('attacker', 'lucia', 'ping');
+  const sending = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([SENDING], SENDING.id));
+
+  it('starts with nothing sent', () => {
+    expect(sending().sent).toEqual([]);
+  });
+
+  it('simulates the packet of three chips and keeps it with its combination and its result', () => {
+    const [packet] = sending(PING_PRINTER).sent;
+    expect(packet).toMatchObject({ fromId: 'you', toId: 'printer', messageId: 'ping', replied: true, send: 1 });
+    expect(packet.packet).toEqual({ from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.20', protocol: 'icmp', icmpType: 8 });
+  });
+
+  it('keeps only the last packet of each combination, in its place, with the number of its last send', () => {
+    const session = sending(PING_PRINTER, FROM_OUTSIDE, PING_PRINTER);
+    expect(session.sent.map((packet) => [packet.id, packet.send])).toEqual([
+      ['sent-you-printer-ping', 3],
+      ['sent-attacker-lucia-ping', 2],
+    ]);
+    expect(session.sends).toBe(3);
+  });
+
+  it('chips the incident does not offer change nothing, and a filter incident sends nothing', () => {
+    const start = sending();
+    expect(sessionReducer(start, send('you', 'ghost', 'ping'))).toBe(start);
+    const first = play();
+    expect(sessionReducer(first, PING_PRINTER)).toBe(first);
+  });
+
+  it('tasks hold from the packets sent, and a new send takes Lucía’s reply away', () => {
+    const rejected = sending(PING_PRINTER, SUBMIT);
+    expect(rejected.rejection).toEqual({ attempt: 1, failingTaskIds: ['outside'], intruding: false });
+    expect(sessionReducer(rejected, FROM_OUTSIDE).rejection).toBeNull();
+  });
+
+  it('closing without hints earns the middle star, and with a hint it does not', () => {
+    expect(starsOf(sending(PING_PRINTER, FROM_OUTSIDE, SUBMIT))).toMatchObject({ closed: true, middle: true });
+    expect(starsOf(sending({ type: 'showHint' }, PING_PRINTER, FROM_OUTSIDE, SUBMIT))).toMatchObject({ closed: true, middle: false });
+  });
+
+  it('nothing is sent once the incident is closed', () => {
+    const closed = sending(PING_PRINTER, FROM_OUTSIDE, SUBMIT);
+    expect(sessionReducer(closed, PING_PRINTER)).toBe(closed);
   });
 });

@@ -23,14 +23,20 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   };
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, hints, explanation and takeaway. */
+/** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send (an origin is named after the world and an address is only an address). */
+export function chipLabels(incident: Incident): TermText[] {
+  const chips = incident.mechanic === 'filter' ? [...incident.chips.what, ...incident.chips.from] : incident.send.message;
+  return chips.map((chip) => chip.label);
+}
+
+/** Returns every text of the incident the player reads: report, tasks, chips, hints, the question, the explanation and the takeaway. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
     ...incident.tasks.map((task) => task.text),
-    ...incident.chips.what.map((chip) => chip.label),
-    ...incident.chips.from.map((chip) => chip.label),
+    ...chipLabels(incident),
     ...incident.hints,
+    ...(incident.question ? [incident.question] : []),
     ...incident.explanation.flatMap((option) => [option.text, option.feedback]),
     incident.takeaway,
   ];

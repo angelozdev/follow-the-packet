@@ -1,9 +1,9 @@
 import { extraOpenings, type Network } from '@/engine';
-import type { Flow } from '@/levels';
+import type { Flow, Incident } from '@/levels';
 
 export interface Stars {
   closed: boolean;
-  tight: boolean;
+  middle: boolean;
   explained: boolean;
 }
 
@@ -15,4 +15,9 @@ export function countStars(stars: Stars): number {
 export function isTight(world: Network, flows: Flow[]): boolean {
   const expected = flows.filter((flow) => flow.kind !== 'forbidden').map((flow) => flow.packet);
   return extraOpenings(world, expected).length === 0;
+}
+
+/** True when the close earns the middle star: for a filter, nothing opened beyond what is needed; for a send, no hint asked. */
+export function earnsMiddle(incident: Incident, world: Network, hintsShown: number): boolean {
+  return incident.mechanic === 'filter' ? isTight(world, incident.flows) : hintsShown === 0;
 }

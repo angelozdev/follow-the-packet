@@ -1,9 +1,10 @@
-import { EXPLANATION_TEXT } from '@/copy';
+import { EXPLANATION_TEXT, type TermText } from '@/copy';
 import type { ExplanationOption } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
 
 interface ExplanationCardProps {
+  question: TermText;
   options: ExplanationOption[];
   choice: number | null;
   onChoose: (index: number) => void;
@@ -19,12 +20,12 @@ function ContinueButton({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-export function ExplanationCard({ options, choice, onChoose, onContinue }: ExplanationCardProps) {
+export function ExplanationCard({ question, options, choice, onChoose, onContinue }: ExplanationCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
     <section className="card explanation" aria-labelledby="explanation-title">
       <h2 id="explanation-title" ref={heading} tabIndex={-1}>
-        {EXPLANATION_TEXT.asks}
+        <TaggedText text={EXPLANATION_TEXT.asks(question)} />
       </h2>
       <ol className="options">
         {options.map((option, index) => (

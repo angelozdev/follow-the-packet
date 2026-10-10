@@ -7,6 +7,7 @@ export default defineIncident({
   order: 2,
   title: 'Abre lo justo',
   role: 'defender',
+  mechanic: 'filter',
   lesson: LESSON,
   concept: CONCEPT,
   introduces: ['echo-reply', 'least-privilege'],

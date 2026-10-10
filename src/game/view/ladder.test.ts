@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { termsIn, toPlainText, unofficialNames, type TermText } from '@/copy';
-import { INCIDENTS, type Incident } from '@/levels';
+import { INCIDENTS, sendCombinations, type Incident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
-import { sessionReducer, startSession, type Session } from '@/game/session';
+import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
@@ -20,16 +20,20 @@ function shownTexts(session: Session): TermText[] {
   return [...pieces.map((piece) => piece.label), ...session.runs.map((run) => run.label), ...inspected];
 }
 
-function sessionsToCheck(incident: Incident): Session[] {
-  const start = startSession(INCIDENTS, incident.id);
-  const solved = incident.solution.reduce(sessionReducer, start);
+function movesToTry(incident: Incident, start: Session): SessionAction[] {
+  if (incident.mechanic === 'send') return sendCombinations(incident).map((combination) => ({ type: 'sendPacket', ...combination }));
   const cards = pieceViews(start)
     .filter((piece) => piece.configurable)
     .flatMap((piece) => firewallCard(start, piece.id) ?? []);
-  const placed = cards.flatMap((card) =>
-    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => sessionReducer(start, { type: 'placeRule', firewallId: card.firewallId, whatId: what.id, fromId: from.id }))),
+  return cards.flatMap((card) =>
+    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => ({ type: 'placeRule', firewallId: card.firewallId, whatId: what.id, fromId: from.id }) as const)),
   );
-  return [start, solved, ...placed];
+}
+
+function sessionsToCheck(incident: Incident): Session[] {
+  const start = startSession(INCIDENTS, incident.id);
+  const solved = incident.solution.reduce(sessionReducer, start);
+  return [start, solved, ...movesToTry(incident, start).map((move) => sessionReducer(start, move))];
 }
 
 describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s on the map', (_id, incident) => {

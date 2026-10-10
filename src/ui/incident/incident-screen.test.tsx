@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS } from '@/copy';
+import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { IncidentScreen } from './incident-screen';
@@ -37,6 +37,7 @@ const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const FULL_STARS = 3;
 const FIRST = INCIDENTS[0];
 const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
+const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened));
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -123,7 +124,7 @@ describe('incident screen', () => {
     const card = await placeRule(user, ANYWHERE);
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.getByRole('status')).toHaveTextContent(LUCIA_TEXT.intruding);
-    expect(screen.queryByRole('heading', { name: EXPLANATION_TEXT.asks })).toBeNull();
+    expect(screen.queryByRole('heading', { name: QUESTION })).toBeNull();
     expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toBeInTheDocument();
     await user.click(within(card).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${ANYWHERE}`) }));
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
@@ -135,7 +136,7 @@ describe('incident screen', () => {
     await placeRule(user, SG_SERVIDOR1);
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('heading', { name: EXPLANATION_TEXT.asks })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: RIGHT_ANSWER }));
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
     expect(onFinish).toHaveBeenCalledWith(FULL_STARS);

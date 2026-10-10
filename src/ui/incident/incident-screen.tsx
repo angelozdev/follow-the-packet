@@ -1,5 +1,5 @@
 import { useReducer, useState } from 'react';
-import { SCREEN_TEXT } from '@/copy';
+import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
@@ -25,7 +25,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [still, setStill] = useStillMode();
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
-  const card = playing && cardPieceId ? firewallCard(session, cardPieceId) : null;
+  const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
+  const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const inspection = inspecting ? inspect(session, inspecting) : null;
 
   const activate = (pieceId: string) => {
@@ -55,11 +56,12 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           still={still}
           activePieceId={card ? cardPieceId : null}
           overlay={
-            card && (
+            card &&
+            chips && (
               <TaskCard
                 key={card.firewallId}
                 card={card}
-                chips={session.incident.chips}
+                chips={chips}
                 onPlace={(whatId, fromId) => dispatch({ type: 'placeRule', firewallId: card.firewallId, whatId, fromId })}
                 onRemove={(ruleId) => dispatch({ type: 'removeRule', firewallId: card.firewallId, ruleId })}
                 onClose={closeCard}
@@ -74,9 +76,15 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
         {session.phase === 'explaining' && (
-          <ExplanationCard options={session.incident.explanation} choice={session.choice} onChoose={(index) => dispatch({ type: 'chooseExplanation', index })} onContinue={showResult} />
+          <ExplanationCard
+            question={session.incident.question ?? EXPLANATION_TEXT.whatHappened}
+            options={session.incident.explanation}
+            choice={session.choice}
+            onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
+            onContinue={showResult}
+          />
         )}
-        {session.phase === 'result' && <ResultCard stars={starsOf(session)} takeaway={session.incident.takeaway} nextId={nextId} />}
+        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={session.incident.mechanic} takeaway={session.incident.takeaway} nextId={nextId} />}
       </aside>
     </main>
   );

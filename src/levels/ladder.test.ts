@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TERMS, termsIn, unofficialNames, type TermId } from '@/copy';
 import { FROM } from './04-iaas/shared';
 import type { Incident } from './incident';
-import { configurableParts, incidentTexts, knownTerms, unknownTerms } from './ladder';
+import { chipLabels, configurableParts, incidentTexts, knownTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 
 const ONLY_INBOUND = { inboundRules: true, outboundRules: false, hostSettings: false };
@@ -29,7 +29,7 @@ describe('term ladder', () => {
   });
 
   it.each(BY_INCIDENT)('%s names each chip after a term, by its official name', (_id, incident) => {
-    const labels = [...incident.chips.what, ...incident.chips.from].map((chip) => chip.label);
+    const labels = chipLabels(incident);
     expect(labels.filter((label) => termsIn(label).length === 0)).toEqual([]);
     expect(unofficialNames(labels)).toEqual([]);
   });

@@ -7,6 +7,7 @@ import { firewallCard, startSession } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
+import { filterIncident } from '@/testing/incidents';
 import { TaskCard } from './task-card';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
@@ -19,7 +20,7 @@ function renderCard(incidentId: string) {
   const card = firewallCard(session, PIECE_ID.firewall(SG.servidor2));
   if (!card) throw new Error('missing Security Group');
   const handlers = { onPlace: vi.fn(), onRemove: vi.fn(), onClose: vi.fn() };
-  render(<TaskCard card={card} chips={session.incident.chips} {...handlers} />);
+  render(<TaskCard card={card} chips={filterIncident(incidentId).chips} {...handlers} />);
   return handlers;
 }
 

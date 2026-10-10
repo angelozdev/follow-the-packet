@@ -3,8 +3,10 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT, syllabusLessons } from '@/testing';
 import { CHAPTERS } from './chapters';
+import { officeLeaks } from './chips';
 import { incidentSchema, type Incident } from './incident';
 import { INCIDENTS } from './registry';
+import { startWorld } from './world';
 
 const PROTOTYPE_IDS = ['04-01', '04-02'];
 const HINT_COUNT = 2;
@@ -31,6 +33,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
   it('has two hints and exactly one correct explanation', () => {
     expect(incident.hints).toHaveLength(HINT_COUNT);
     expect(incident.explanation.filter((option) => option.correct)).toHaveLength(1);
+  });
+
+  it('sends nothing from the office to the outside, neither in a flow nor with its chips', () => {
+    expect(officeLeaks(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
   });
 
   it('brings the base world only when it opens its chapter', () => {

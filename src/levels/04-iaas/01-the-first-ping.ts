@@ -7,6 +7,7 @@ export default defineIncident({
   order: 1,
   title: 'El primer ping',
   role: 'defender',
+  mechanic: 'filter',
   lesson: LESSON,
   concept: CONCEPT,
   introduces: ['ec2-instance', 'vpc', 'private-ip', 'ping', 'security-group', 'inbound-rule', 'icmp', 'echo-request', 'anywhere-ipv4', 'internet-gateway'],

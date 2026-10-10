@@ -78,7 +78,8 @@ export const TASK_CARD_TEXT = {
 } as const;
 
 export const EXPLANATION_TEXT = {
-  asks: 'Lucía: «¿Qué pasó?»',
+  whatHappened: '¿Qué pasó?',
+  asks: (question: TermText): TermText => `Lucía: «${question}»`,
   right: 'Correcto.',
   wrong: 'No es eso.',
   seeResult: 'Ver resultado',
@@ -86,7 +87,8 @@ export const EXPLANATION_TEXT = {
 
 export const RESULT_TEXT = {
   title: 'Incidente cerrado',
-  stars: { closed: 'Cerraste el incidente', tight: 'Abriste solo lo justo', explained: 'Explicaste qué pasó a la primera' },
+  stars: { closed: 'Cerraste el incidente', explained: 'Explicaste qué pasó a la primera' },
+  middle: { filter: 'Abriste solo lo justo', send: 'Lo resolviste sin pistas' },
   earned: 'conseguida',
   missed: 'sin conseguir',
   takeaway: 'Lo que te llevas',

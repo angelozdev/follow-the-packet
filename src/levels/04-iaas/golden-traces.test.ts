@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extraOpenings, simulate, type Network } from '@/engine';
-import type { Incident } from '@/levels/incident';
+import type { FilterIncident } from '@/levels/incident';
 import { INCIDENTS } from '@/levels/registry';
 import { applyMove, solvedWorld, startWorld } from '@/levels/world';
 
@@ -51,7 +51,7 @@ function canonical(value: unknown): unknown {
   return value;
 }
 
-function worlds(incident: Incident): [string, Network][] {
+function worlds(incident: FilterIncident): [string, Network][] {
   const start = startWorld(INCIDENTS, incident.id);
   const placed = start.firewalls.flatMap((firewall) =>
     incident.chips.what.flatMap((what) =>
@@ -65,7 +65,8 @@ function worlds(incident: Incident): [string, Network][] {
 }
 
 function references(): [string, unknown][] {
-  return INCIDENTS.filter((incident) => RECORDED_INCIDENTS.includes(incident.id)).flatMap((incident) =>
+  const recordedIncidents = INCIDENTS.flatMap((incident) => (incident.mechanic === 'filter' && RECORDED_INCIDENTS.includes(incident.id) ? [incident] : []));
+  return recordedIncidents.flatMap((incident) =>
     worlds(incident).flatMap(([name, world]): [string, unknown][] => {
       const expected = incident.flows.filter((flow) => flow.kind !== 'forbidden').map((flow) => flow.packet);
       return [

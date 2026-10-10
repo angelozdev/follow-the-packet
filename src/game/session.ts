@@ -1,9 +1,11 @@
 import type { TermId } from '@/copy';
 import type { Network } from '@/engine';
-import { applyMove, configurableParts, knownTerms, startWorld, type ConfigurableParts, type Incident, type PlayerMove } from '@/levels';
-import { runFlows, type FlowRun } from './flow-runs';
-import { isTight, type Stars } from './stars';
+import { applyMove, configurableParts, knownTerms, startWorld, type ConfigurableParts, type Incident, type PlayerMove, type SendMove } from '@/levels';
+import { runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
+import { earnsMiddle, type Stars } from './stars';
 import { failingTaskIds } from './tasks';
+
+type RuleMove = Exclude<PlayerMove, SendMove>;
 
 export type SessionPhase = 'playing' | 'explaining' | 'result';
 
@@ -19,11 +21,13 @@ export interface Session {
   parts: ConfigurableParts;
   world: Network;
   runs: FlowRun[];
+  sent: SentPacket[];
+  sends: number;
   rejection: Rejection | null;
   alerts: number;
   hintsShown: number;
   phase: SessionPhase;
-  tight: boolean;
+  middle: boolean;
   choice: number | null;
 }
 
@@ -51,11 +55,13 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     parts: configurableParts(known),
     world,
     runs,
+    sent: [],
+    sends: 0,
     rejection: null,
     alerts: hasIntrusion(runs) ? 1 : 0,
     hintsShown: 0,
     phase: 'playing',
-    tight: false,
+    middle: false,
     choice: null,
   };
 }
@@ -70,7 +76,7 @@ export function isIntruding(session: Session): boolean {
   return hasIntrusion(session.runs);
 }
 
-function move(state: Session, action: PlayerMove): Session {
+function move(state: Session, action: RuleMove): Session {
   if (state.phase !== 'playing' || !canConfigure(state, action.firewallId)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
@@ -79,10 +85,20 @@ function move(state: Session, action: PlayerMove): Session {
   return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
 }
 
+/** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. */
+function send(state: Session, action: SendMove): Session {
+  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
+  const packet = sendPacket(state.world, state.incident, action, state.sends + 1);
+  if (!packet) return state;
+  const again = state.sent.some((other) => other.id === packet.id);
+  const sent = again ? state.sent.map((other) => (other.id === packet.id ? packet : other)) : [...state.sent, packet];
+  return { ...state, sent, sends: packet.send, rejection: null };
+}
+
 function submit(state: Session): Session {
   if (state.phase !== 'playing') return state;
-  const failing = failingTaskIds(state.incident.tasks, state.runs);
-  if (failing.length === 0) return { ...state, phase: 'explaining', tight: isTight(state.world, state.incident.flows), rejection: null };
+  const failing = failingTaskIds(state.incident.tasks, state.runs, state.sent);
+  if (failing.length === 0) return { ...state, phase: 'explaining', middle: earnsMiddle(state.incident, state.world, state.hintsShown), rejection: null };
   return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
 
@@ -96,6 +112,8 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
     case 'placeRule':
     case 'removeRule':
       return move(state, action);
+    case 'sendPacket':
+      return send(state, action);
     case 'submit':
       return submit(state);
     case 'showHint':
@@ -107,11 +125,11 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
   }
 }
 
-/** Returns the stars as they stand: closed, only what is needed at the close, and the first explanation right. */
+/** Returns the stars as they stand: closed, the middle star of the mechanic at the close (only what is needed, or no hints), and the first explanation right. */
 export function starsOf(session: Session): Stars {
   return {
     closed: session.phase !== 'playing',
-    tight: session.tight,
+    middle: session.middle,
     explained: session.choice !== null && session.incident.explanation[session.choice].correct,
   };
 }

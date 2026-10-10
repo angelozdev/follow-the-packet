@@ -1,36 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import type { Network } from '@/engine';
-import { INCIDENTS, applyMove, solvedWorld, startWorld, type Incident } from '@/levels';
+import { INCIDENTS, applyMove, startWorld, type FilterIncident, type Incident } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
+import { filterIncident } from '@/testing';
 import { runFlows } from './flow-runs';
+import { sessionReducer, startSession, starsOf } from './session';
 import { isTight } from './stars';
 import { taskHolds } from './tasks';
 
-function incident(id: string): Incident {
-  const found = INCIDENTS.find((i) => i.id === id);
-  if (!found) throw new Error(`missing incident ${id}`);
-  return found;
-}
-
-function holdsAll(of: Incident, world: Network): boolean {
+function holdsAll(of: FilterIncident, world: Network): boolean {
   const runs = runFlows(world, of.flows);
-  return of.tasks.every((task) => taskHolds(task, runs));
+  return of.tasks.every((task) => taskHolds(task, runs, []));
 }
 
 describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s', (id, of) => {
+  const start = startSession(INCIDENTS, id);
+
   it('starts with a task to fix', () => {
-    expect(holdsAll(of, startWorld(INCIDENTS, id))).toBe(false);
+    expect(of.tasks.some((task) => !taskHolds(task, start.runs, start.sent))).toBe(true);
   });
 
-  it('its reference solution fixes every task and opens nothing extra', () => {
-    const world = solvedWorld(INCIDENTS, id);
-    expect(holdsAll(of, world)).toBe(true);
-    expect(isTight(world, of.flows)).toBe(true);
+  it('its reference solution fixes every task and earns every star but the explanation', () => {
+    const solved = [...of.solution, { type: 'submit' } as const].reduce(sessionReducer, start);
+    expect(solved.phase).toBe('explaining');
+    expect(starsOf(solved)).toMatchObject({ closed: true, middle: true });
   });
 });
 
 describe('04-01, the first ping', () => {
-  const first = incident('04-01');
+  const first = filterIncident('04-01');
   const start = startWorld(INCIDENTS, first.id);
 
   it('a rule on the Security Group of servidor1 does not help: the destination decides', () => {
@@ -46,7 +44,7 @@ describe('04-01, the first ping', () => {
 });
 
 describe('04-02, only what is needed', () => {
-  const second = incident('04-02');
+  const second = filterIncident('04-02');
   const start = startWorld(INCIDENTS, second.id);
   const fromServer1 = (whatId: string) => applyMove(start, second, { type: 'placeRule', firewallId: SG.servidor2, whatId, fromId: FROM.sgServidor1.id });
   const withoutDayShift = (world: Network) => applyMove(world, second, { type: 'removeRule', firewallId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id });
