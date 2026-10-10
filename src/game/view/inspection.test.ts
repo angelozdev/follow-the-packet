@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { officeNet, withDevice } from '@/testing';
+import { officeNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
 import { pieceViews } from './pieces';
 
 const WHAT_IS = 'Qué es';
+const ECHO_REQUEST = ['Mensaje', 'ICMP · Echo Request'];
 const ATTACKER_BLOCKED = ['Resultado', 'No llegó: no volvió ninguna respuesta.'];
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
@@ -66,6 +67,7 @@ describe('inspect', () => {
       title: 'ping de Atacante a servidor2',
       fields: [
         whatIs('echo-request'),
+        ECHO_REQUEST,
         ATTACKER_BLOCKED,
         ['Dónde y por qué se detuvo', 'Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.'],
       ],
@@ -73,7 +75,7 @@ describe('inspect', () => {
   });
 
   it('a packet that gets its reply has no stop', () => {
-    expect(plain(inspect(fixed, PIECE_ID.packet(FLOWS.pingToServer2.id)))?.fields).toEqual([whatIs('echo-request'), ['Resultado', 'Llegó y volvió la respuesta.']]);
+    expect(plain(inspect(fixed, PIECE_ID.packet(FLOWS.pingToServer2.id)))?.fields).toEqual([whatIs('echo-request'), ECHO_REQUEST, ['Resultado', 'Llegó y volvió la respuesta.']]);
   });
 
   it('a packet whose term is not known yet leaves out what it is', () => {
@@ -111,6 +113,29 @@ describe('inspect', () => {
       title: 'router',
       fields: [['Qué hace', 'Por aquí entra y sale el tráfico entre la oficina e internet.']],
     });
+  });
+
+  it('the edge and the internet show nothing while nobody is outside, as they are not on the map', () => {
+    const alone: Session = { ...office, world: { ...office.world, actors: [] } };
+    expect(inspect(alone, PIECE_ID.edge)).toBeNull();
+    expect(inspect(alone, PIECE_ID.internet)).toBeNull();
+  });
+
+  it('a packet the player sent is inspected like a flow: an Echo Reply names its message and says it arrived and nobody answers it', () => {
+    const sending = sendIncident();
+    const start = startSession([sending], sending.id);
+    const sent = sessionReducer(start, { type: 'sendPacket', fromId: 'you', toId: 'lucia', messageId: 'reply' });
+    const [packet] = sent.sent;
+    expect(plain(inspect(sent, packet.pieceId))).toEqual({
+      title: 'Echo Reply de your-laptop a lucia-laptop',
+      fields: [
+        whatIs('echo-reply'),
+        ['Mensaje', 'ICMP · Echo Reply'],
+        ['Resultado', 'Llegó, pero nadie contestó.'],
+        ['Dónde y por qué se detuvo', 'Un Echo Reply es una respuesta: llegó, y nadie lo contesta.'],
+      ],
+    });
+    expect(inspect(sent, packet.pieceId)?.entity).toEqual({ kind: 'packet', variant: 'echo-reply', intruder: false });
   });
 
   it('the internet says what it does, with no definition while its term does not exist', () => {

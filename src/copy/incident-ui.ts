@@ -39,6 +39,7 @@ export const INSPECTION_TEXT = {
     router: 'Por aquí entra y sale el tráfico entre la oficina e internet.',
   } satisfies Record<Network['edge'], TermText>,
   internetDoes: 'Lleva los paquetes de una red a otra.',
+  message: 'Mensaje',
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',
@@ -74,6 +75,15 @@ export const TASK_CARD_TEXT = {
   done: 'Listo',
   remove: (rule: string) => `Quitar la regla ${rule}`,
   giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,
+} as const;
+
+export const TERMINAL_TEXT = {
+  title: (origin: TermText): TermText => `Terminal de ${origin}`,
+  trays: { from: 'Origen', to: 'Destino', message: 'Mensaje' },
+  ping: (address: string): TermText => `ping ${address}`,
+  handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
+  incomplete: 'Elige una ficha de cada bandeja.',
+  send: 'Enviar',
 } as const;
 
 export const EXPLANATION_TEXT = {

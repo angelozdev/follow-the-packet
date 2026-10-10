@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { officeNet, withDevice } from '@/testing';
+import { officeNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './firewall-card';
 import { PIECE_ID } from './piece-id';
@@ -44,6 +44,14 @@ describe('pieceViews', () => {
     const wide = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
     expect(states(wide)).toContainEqual([PIECE_ID.device(S2.id), 'intruded']);
     expect(states(wide)).toContainEqual([PIECE_ID.firewall(SG.servidor2), 'normal']);
+  });
+
+  it('in a send incident, every origin opens its terminal and has no lock; the other devices stay locked', () => {
+    const sending = sendIncident();
+    const opening = pieceViews(startSession([sending], sending.id)).map(({ id, locked, configurable }) => ({ id, locked, configurable }));
+    expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: false, configurable: true });
+    expect(opening).toContainEqual({ id: PIECE_ID.actor('attacker'), locked: false, configurable: true });
+    expect(opening).toContainEqual({ id: PIECE_ID.device('printer'), locked: true, configurable: false });
   });
 
   it('shows no router and no internet while nobody is outside the office', () => {

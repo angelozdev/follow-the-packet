@@ -9,3 +9,5 @@ export type { FirewallCard } from './view/firewall-card';
 export { inspect } from './view/inspection';
 export type { Inspection } from './view/inspection';
 export { pieceViews } from './view/pieces';
+export { terminalCard, terminalLine } from './view/terminal-card';
+export type { SendPicks, SendTrayName, TerminalCard } from './view/terminal-card';

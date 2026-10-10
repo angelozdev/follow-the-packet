@@ -18,7 +18,7 @@ export function sendIncident(): SendIncident {
     role: 'defender',
     lesson: 'Una lección',
     concept: 'concepts/una-nota.md',
-    introduces: ['ping', 'echo-reply'],
+    introduces: ['ping', 'echo-request', 'echo-reply'],
     base: officeNet(),
     mechanic: 'send',
     report: 'Haz {{ping}} a la impresora.',

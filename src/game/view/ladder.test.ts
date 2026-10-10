@@ -6,18 +6,29 @@ import { sessionReducer, startSession, type Session, type SessionAction } from '
 import { firewallCard } from './firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
+import { terminalCard, terminalLine } from './terminal-card';
 
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
 
+function terminalTexts(session: Session, pieceIds: string[]): TermText[] {
+  return pieceIds.flatMap((id) => {
+    const card = terminalCard(session, id);
+    if (!card) return [];
+    const lines = session.sent.flatMap((packet) => terminalLine(session, { to: packet.toId, message: packet.messageId }) ?? []);
+    return [card.title, ...card.trays.flatMap((tray) => tray.chips.map((chip) => chip.label)), ...lines];
+  });
+}
+
 function shownTexts(session: Session): TermText[] {
   const pieces = pieceViews(session);
-  const ids = [...pieces.map((piece) => piece.id), ...session.runs.map((run) => run.pieceId)];
+  const packets = [...session.runs, ...session.sent];
+  const ids = [...pieces.map((piece) => piece.id), ...packets.map((packet) => packet.pieceId)];
   const inspected = ids.flatMap((id) => {
     const shown = inspect(session, id);
     return shown ? [shown.title, ...shown.fields.flatMap((field) => [field.label, ...field.lines])] : [];
   });
-  return [...pieces.map((piece) => piece.label), ...session.runs.map((run) => run.label), ...inspected];
+  return [...pieces.map((piece) => piece.label), ...packets.map((packet) => packet.label), ...inspected, ...terminalTexts(session, ids)];
 }
 
 function movesToTry(incident: Incident, start: Session): SessionAction[] {

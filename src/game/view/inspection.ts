@@ -1,9 +1,10 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, messageLabel, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
 import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
-import type { FlowRun } from '@/game/flow-runs';
+import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './firewall-card';
 import { parsePieceId } from './piece-id';
+import { showsOutside } from './pieces';
 
 export interface InspectionField {
   label: TermText;
@@ -117,26 +118,32 @@ function actor(session: Session, who: Actor): Inspection {
   };
 }
 
-function packet(session: Session, run: FlowRun): Inspection {
+function messageField(packet: PacketSpec): FieldSpec[] {
+  return packet.protocol === 'icmp' ? [{ term: 'echo-request', label: INSPECTION_TEXT.message, lines: () => [messageLabel(packetMessage(packet))] }] : [];
+}
+
+function packet(session: Session, run: PacketRun): Inspection {
   const step = stopStep(run.trace);
   return {
-    entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.kind === 'forbidden' },
+    entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.intruder },
     title: run.label,
     fields: [
-      ...visible(definition(packetTerm(run.packet)), session.known),
+      ...visible([...definition(packetTerm(run.packet)), ...messageField(run.packet)], session.known),
       { label: INSPECTION_TEXT.result, lines: [OUTCOME_TEXT[run.trace.outcome]] },
       ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world)] }] : []),
     ],
   };
 }
 
-/** Returns what the inspection box shows for a piece or a packet, starting with what it is, or null when the id names nothing on the map. */
+/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (the edge and the internet are not on it while nobody is outside). */
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
-  if (ref.kind === 'edge') return edge(session);
-  if (ref.kind === 'internet') return internet(session);
-  const { world, runs } = session;
+  const { world, runs, sent } = session;
+  if (ref.kind === 'edge' || ref.kind === 'internet') {
+    if (!showsOutside(world)) return null;
+    return ref.kind === 'edge' ? edge(session) : internet(session);
+  }
   switch (ref.kind) {
     case 'device': {
       const found = world.devices.find((candidate) => candidate.id === ref.id);
@@ -151,7 +158,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
       return found ? actor(session, found) : null;
     }
     case 'packet': {
-      const found = runs.find((run) => run.id === ref.id);
+      const found = [...runs, ...sent].find((run) => run.id === ref.id);
       return found ? packet(session, found) : null;
     }
   }

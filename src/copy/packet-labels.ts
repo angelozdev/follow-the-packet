@@ -27,6 +27,11 @@ export function packetMessage(packet: Pick<PacketSpec, 'protocol' | 'icmpType'>)
   return packet.protocol === 'icmp' && packet.icmpType === 0 ? 'echo-reply' : 'echo-request';
 }
 
+/** Names an ICMP message by its protocol and its type, with both terms tagged. */
+export function messageLabel(message: PacketMessage): TermText {
+  return `{{icmp}} · {{${message}}}`;
+}
+
 /** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network): TermText {
   const to = trace.destinationId ? deviceName(net, trace.destinationId) : packet.to;

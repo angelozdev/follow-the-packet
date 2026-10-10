@@ -1,11 +1,12 @@
 # game/view
 
-What the map and the panels show, computed from the session: piece ids, piece labels and locks, a firewall's rules named by chips (`firewall-card.ts`), and the inspection box.
+What the map and the panels show, computed from the session: piece ids, piece labels and locks, a firewall's rules named by chips (`firewall-card.ts`), the terminal of an origin (`terminal-card.ts`) and the inspection box.
 
 - Every piece is an entity of the catalog in the variant of its model (`EntityRef`): a device and a firewall by their `kind`, the edge by the network's `edge`, an actor by its `kind`. Its term comes from `entityTerm` (`ENTITY_TERMS` in `src/copy/terms.ts`): `ec2-instance`, `security-group` and `internet-gateway` today, none yet for the office variants, and none ever for an actor. A firewall label and the edge label carry their term's official name (`Security Group servidor2`, `Internet gateway`); a device's label is its name (`servidor2`) and an actor's label is its own name.
 - The inspection of a piece whose variant has a term, or of a packet with an ICMP message, starts with `INSPECTION_TEXT.whatIs`, the definition of that term, once the term is known (a packet's term is its ICMP message); a piece without a term has no definition.
 - The edge and the internet are pieces only while the world has an actor: something outside the network is what makes the way out matter. An office of chapter 1 shows them from the incident that brings Lucía's house.
 - Every piece has a state, read from the runs: a device is `intruded` while a forbidden flow reaches it, a firewall is `blocking` while its device's firewalls stop a flow, and every other piece is `normal`.
-- Every inspection field declares the term it uses; a field whose term is not known yet is left out.
+- Every inspection field declares the term it uses; a field whose term is not known yet is left out. A packet shows its message once Echo Request is known; a packet the player sent is inspected like a flow's. The edge and the internet are inspected only while they are on the map.
+- In a send incident, every origin of its chips (a device or an actor) opens its terminal and has no lock. The terminal shows the trays with a choice to make; a tray with a single chip is fixed, not shown, and its chip is always picked. Its line is the real `ping` command for an Echo Request and a packet made by hand for any other message: no common command sends a lone Echo Reply.
 - Not here: the session state and its reducer (`src/game/`), drawing the map or a panel (`src/scene/`, `src/ui/`), the Spanish text of a term or a reason (`src/copy/`).
 - May import: `@/engine`, `@/copy`, `@/levels`, and other files of `src/game/` (`@/game/<file>`).
