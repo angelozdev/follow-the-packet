@@ -3,14 +3,14 @@ import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import type { Network, Outcome } from '@/engine';
 import type { MessageChip, SendIncident, SendTask } from '@/levels';
-import { OFFICE_FLOORS, device, filterIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { runFlows, sendPacket, type SentPacket } from './flow-runs';
 import { failingTaskIds, taskHolds } from './tasks';
 
 const incident = filterIncident('04-01');
 const [task] = incident.tasks;
-const failing = runFlows(startWorld(INCIDENTS, incident.id), incident.flows);
-const holding = runFlows(solvedWorld(INCIDENTS, incident.id), incident.flows);
+const failing = runFlows(startWorld(INCIDENTS, incident.id), incident.flows, EVERY_TERM);
+const holding = runFlows(solvedWorld(INCIDENTS, incident.id), incident.flows, EVERY_TERM);
 
 describe('tasks', () => {
   it('a task holds when its required flow gets its reply and nothing forbidden gets in', () => {
@@ -20,7 +20,7 @@ describe('tasks', () => {
 
   it('a forbidden flow that gets in breaks the task even when the ping works', () => {
     const wide = applyMove(solvedWorld(INCIDENTS, incident.id), incident, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
-    expect(taskHolds(task, runFlows(wide, incident.flows), [])).toBe(false);
+    expect(taskHolds(task, runFlows(wide, incident.flows, EVERY_TERM), [])).toBe(false);
   });
 
   it('lists the tasks that do not hold, in the order of the incident', () => {
@@ -33,7 +33,7 @@ describe('send tasks', () => {
   const sending = sendIncident();
   const [printer, outside] = sending.tasks;
   const sent = (fromId: string, toId: string, messageId: string, world: Network = officeNet(), incident: SendIncident = sending): SentPacket[] => {
-    const packet = sendPacket(world, incident, { type: 'sendPacket', fromId, toId, messageId }, 1);
+    const packet = sendPacket(world, incident, { type: 'sendPacket', fromId, toId, messageId }, 1, EVERY_TERM);
     return packet ? [packet] : [];
   };
   const expecting = (toId: string, messageId: string, outcome: SendTask['expect']['outcome'], by?: string): SendTask => ({
@@ -124,7 +124,7 @@ describe('send tasks in an office with routers', () => {
       message: [ping('ping'), ping('ping-1', 1), traceroute],
     },
   };
-  const sentFrom = (toId: string, messageId: string) => sendPacket(world, incident, { type: 'sendPacket', fromId: 'you', toId, messageId }, 1);
+  const sentFrom = (toId: string, messageId: string) => sendPacket(world, incident, { type: 'sendPacket', fromId: 'you', toId, messageId }, 1, EVERY_TERM);
   const task = (toId: string, messageId: string, outcome: SendTask['expect']['outcome'], by?: string): SendTask => ({
     id: 'task',
     text: 'Una tarea.',
@@ -153,7 +153,7 @@ describe('send tasks in an office with routers', () => {
 
   it('a laptop with no default gateway holds as a local error by that laptop', () => {
     const unplugged = withDevice(world, 'your-laptop', { gateway: undefined });
-    const packet = sendPacket(unplugged, incident, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'ping' }, 1);
+    const packet = sendPacket(unplugged, incident, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'ping' }, 1, EVERY_TERM);
     expect(holds(packet, task('server', 'ping', 'no-route', 'your-laptop'))).toBe(true);
     expect(holds(packet, task('server', 'ping', 'no-route', server.id))).toBe(false);
   });
@@ -172,7 +172,7 @@ describe('send tasks in an office with routers', () => {
 
   it('a traceroute that ends in a local error has no lines and holds as that error', () => {
     const unplugged = withDevice(world, 'your-laptop', { gateway: undefined });
-    const packet = sendPacket(unplugged, incident, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'trace' }, 1);
+    const packet = sendPacket(unplugged, incident, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'trace' }, 1, EVERY_TERM);
     expect(packet?.route?.lines).toEqual([]);
     expect(holds(packet, task('server', 'trace', 'no-route', 'your-laptop'))).toBe(true);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText } from '@/copy';
+import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
@@ -11,6 +11,7 @@ import { pieceViews } from './pieces';
 
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
+const knowingNot = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
 
 describe('pieceViews', () => {
   it('shows both instances locked, both Security Groups open to edit, the attacker, the Internet gateway and the internet, each with its variant and its term', () => {
@@ -64,9 +65,45 @@ describe('pieceViews', () => {
     expect(pieces.map((piece) => piece.id)).not.toContain(PIECE_ID.actor(OFFICE_FLOORS.server.id));
   });
 
-  it('shows no router and no internet while nobody is outside the office', () => {
+  it('shows no router and no internet until their terms are known, even with someone outside', () => {
+    const early = knowingNot(office, 'router', 'internet');
+    expect(early.world.actors).not.toHaveLength(0);
+    expect(pieceViews(early).map((piece) => piece.kind)).toEqual(['device', 'device', 'device', 'firewall', 'actor']);
+  });
+
+  it('does not draw a firewall piece until its term is known', () => {
+    const kinds = (session: Session) => pieceViews(session).map((piece) => piece.kind);
+    expect(kinds(office)).toContain('firewall');
+    expect(kinds(knowingNot(office, 'firewall'))).not.toContain('firewall');
+    expect(kinds(knowingNot(first, 'security-group'))).not.toContain('firewall');
+    expect(kinds(first)).toContain('firewall');
+  });
+
+  it('draws the router and the internet once their terms are known, with or without an actor', () => {
     const alone: Session = { ...office, world: { ...office.world, actors: [] } };
-    expect(pieceViews(alone).map((piece) => piece.kind)).toEqual(['device', 'device', 'device', 'firewall']);
+    for (const session of [office, alone]) {
+      const drawn = pieceViews(session);
+      expect(drawn.filter((piece) => piece.kind === 'edge' || piece.kind === 'internet').map(({ id, variant }) => ({ id, variant }))).toEqual([
+        { id: PIECE_ID.edge, variant: 'router' },
+        { id: PIECE_ID.internet, variant: 'internet' },
+      ]);
+      expect(pieceViews(knowingNot(session, 'router')).map((piece) => piece.kind)).not.toContain('edge');
+      expect(pieceViews(knowingNot(session, 'internet')).map((piece) => piece.kind)).not.toContain('internet');
+    }
+  });
+
+  it('still draws the edge and the internet of chapter 4 in 04-01', () => {
+    const drawn = pieceViews(first).filter((piece) => piece.kind === 'edge' || piece.kind === 'internet');
+    expect(drawn.map(({ id, variant }) => ({ id, variant }))).toEqual([
+      { id: PIECE_ID.edge, variant: 'internet-gateway' },
+      { id: PIECE_ID.internet, variant: 'internet' },
+    ]);
+    expect(pieceViews(startSession(INCIDENTS, '04-02')).map((piece) => piece.kind)).toEqual(expect.arrayContaining(['edge', 'internet']));
+  });
+
+  it('always draws the devices and the actors, which are the base of the map', () => {
+    const bare = knowingNot(office, 'router', 'internet', 'firewall');
+    expect(pieceViews(bare).map((piece) => piece.kind)).toEqual(['device', 'device', 'device', 'actor']);
   });
 });
 

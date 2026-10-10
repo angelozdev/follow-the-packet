@@ -134,10 +134,18 @@ describe('inspect', () => {
     });
   });
 
-  it('the edge and the internet show nothing while nobody is outside, as they are not on the map', () => {
+  it('the firewall, the edge and the internet show nothing until their terms are known, as they are not on the map, whoever is outside', () => {
+    const early = knowingOnly(office, 'device', 'ip-address');
     const alone: Session = { ...office, world: { ...office.world, actors: [] } };
-    expect(inspect(alone, PIECE_ID.edge)).toBeNull();
-    expect(inspect(alone, PIECE_ID.internet)).toBeNull();
+    for (const id of [PIECE_ID.firewall('fw-lucia'), PIECE_ID.edge, PIECE_ID.internet]) expect(inspect(early, id)).toBeNull();
+    for (const id of [PIECE_ID.edge, PIECE_ID.internet]) expect(inspect(alone, id)).not.toBeNull();
+    expect(inspect(knowing(early, 'firewall'), PIECE_ID.firewall('fw-lucia'))).not.toBeNull();
+  });
+
+  it('the device does not list its firewall until the firewall is known', () => {
+    const fields = (session: Session) => plain(inspect(session, PIECE_ID.device('lucia-laptop')))?.fields;
+    expect(fields(knowingOnly(office, 'device', 'private-ip'))).toEqual([whatIs('device'), ['IP privada', '192.168.1.11']]);
+    expect(fields(knowingOnly(office, 'device', 'private-ip', 'firewall'))).toEqual([whatIs('device'), ['IP privada', '192.168.1.11'], ['firewall', 'firewall lucia-laptop']]);
   });
 
   it('a packet the player sent is inspected like a flow: an Echo Reply names its message and says it arrived and nobody answers it', () => {
@@ -171,5 +179,46 @@ describe('inspect', () => {
   it('an id that names nothing shows nothing', () => {
     expect(inspect(first, PIECE_ID.device('ghost'))).toBeNull();
     expect(inspect(first, 'nonsense')).toBeNull();
+  });
+
+  describe('a packet that a firewall stops', () => {
+    const guarded = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    const sentTo = (toId: string, ...introduced: TermId[]) => {
+      const incident = { ...sendIncident(), base: guarded, introduces: [...sendIncident().introduces, ...introduced] };
+      const session = sessionReducer(startSession([incident], incident.id), { type: 'sendPacket', fromId: 'you', toId, messageId: 'ping' });
+      return { session, pieceId: session.sent[0].pieceId };
+    };
+    const text = (inspection: Inspection | null) => JSON.stringify(plain(inspection)).toLowerCase();
+
+    it('a packet dropped by a firewall the player does not know yet says only that nothing came back', () => {
+      const { session, pieceId } = sentTo('lucia');
+      expect(session.sent[0].trace.steps).toContainEqual(expect.objectContaining({ stage: 'firewall-in', verdict: 'drop' }));
+      expect(plain(inspect(session, pieceId))?.fields).toEqual([
+        whatIs('echo-request'),
+        ECHO_REQUEST,
+        ['Resultado', 'No llegó: no volvió ninguna respuesta.'],
+        ['Dónde y por qué se detuvo', 'No volvió ninguna respuesta.'],
+      ]);
+      expect(text(inspect(session, pieceId))).not.toMatch(/firewall|regla|descart/);
+    });
+
+    it('says that the firewall dropped it, without any rule, once the firewall is known and its rules are not', () => {
+      const { session, pieceId } = sentTo('lucia', 'firewall');
+      expect(plain(inspect(session, pieceId))?.fields.at(-1)).toEqual(['Dónde y por qué se detuvo', 'El firewall de lucia-laptop descartó el paquete sin avisar.']);
+      expect(text(inspect(session, pieceId))).not.toMatch(/regla/);
+    });
+
+    it('names the missing rule once the firewall and its rules are known', () => {
+      const { session, pieceId } = sentTo('lucia', 'firewall', 'rule');
+      expect(plain(inspect(session, pieceId))?.fields.at(-1)).toEqual(['Dónde y por qué se detuvo', 'Se queda en el firewall de lucia-laptop: ninguna regla lo deja entrar.']);
+    });
+
+    it('the outcome text of a packet says only that it arrived while Echo Reply is not a known term', () => {
+      const { session, pieceId } = sentTo('printer');
+      const result = (known: ReadonlySet<TermId>) => plain(inspect({ ...session, known }, pieceId))?.fields.find(([label]) => label === 'Resultado');
+      expect(session.sent[0].replied).toBe(true);
+      expect(result(new Set<TermId>(['ping', 'echo-request']))).toEqual(['Resultado', 'Llegó.']);
+      expect(result(new Set<TermId>(['ping', 'echo-request', 'echo-reply']))).toEqual(['Resultado', 'Llegó y volvió la respuesta.']);
+    });
   });
 });

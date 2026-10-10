@@ -1,10 +1,10 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, messageLabel, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, entityTerm, messageLabel, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
 import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
-import { showsOutside } from './pieces';
+import { isDrawn } from './pieces';
 
 export interface InspectionField {
   label: TermText;
@@ -137,29 +137,29 @@ function packet(session: Session, run: PacketRun): Inspection {
     title: run.label,
     fields: [
       ...visible([...definition(packetTerm(run.packet, session.known)), ...messageField(run.packet)], session.known),
-      { label: INSPECTION_TEXT.result, lines: [OUTCOME_TEXT[run.trace.outcome]] },
-      ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world)] }] : []),
+      { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known)] },
+      ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known)] }] : []),
     ],
   };
 }
 
-/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (the edge and the internet are not on it while nobody is outside). */
+/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (a firewall, the edge and the internet are not on it while their terms are unknown). */
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
-  const { world, runs, sent } = session;
-  if (ref.kind === 'edge' || ref.kind === 'internet') {
-    if (!showsOutside(world)) return null;
-    return ref.kind === 'edge' ? edge(session) : internet(session);
-  }
+  const { world, runs, sent, known } = session;
   switch (ref.kind) {
+    case 'edge':
+      return isDrawn(known, { kind: 'edge', variant: world.edge }) ? edge(session) : null;
+    case 'internet':
+      return isDrawn(known, { kind: 'internet', variant: 'internet' }) ? internet(session) : null;
     case 'device': {
       const found = world.devices.find((candidate) => candidate.id === ref.id);
       return found ? device(session, found) : null;
     }
     case 'firewall': {
       const found = world.firewalls.find((candidate) => candidate.id === ref.id);
-      return found ? firewall(session, found) : null;
+      return found && isDrawn(known, { kind: 'firewall', variant: found.kind }) ? firewall(session, found) : null;
     }
     case 'actor': {
       const found = world.actors.filter(isClientActor).find((candidate) => candidate.id === ref.id);

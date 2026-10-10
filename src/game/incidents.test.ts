@@ -3,14 +3,14 @@ import type { Network, Outcome } from '@/engine';
 import { INCIDENTS, applyMove, startWorld, type FilterIncident, type Incident } from '@/levels';
 import { ADDRESS, FROM as OFFICE_FROM, LUCIA_FIREWALL, MESSAGE, ORIGIN, WHAT as OFFICE_WHAT } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import { filterIncident } from '@/testing';
+import { EVERY_TERM, filterIncident } from '@/testing';
 import { runFlows } from './flow-runs';
 import { sessionReducer, startSession, starsOf, type Session } from './session';
 import { isTight } from './stars';
 import { taskHolds } from './tasks';
 
 function holdsAll(of: FilterIncident, world: Network): boolean {
-  const runs = runFlows(world, of.flows);
+  const runs = runFlows(world, of.flows, EVERY_TERM);
   return of.tasks.every((task) => taskHolds(task, runs, []));
 }
 
@@ -119,7 +119,7 @@ describe('04-01, the first ping', () => {
 
   it('ping from all of internet lets the attacker reach servidor2', () => {
     const world = applyMove(start, first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id });
-    expect(runFlows(world, first.flows).find((run) => run.kind === 'forbidden')?.reached).toBe(true);
+    expect(runFlows(world, first.flows, EVERY_TERM).find((run) => run.kind === 'forbidden')?.reached).toBe(true);
     expect(holdsAll(first, world)).toBe(false);
   });
 });

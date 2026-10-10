@@ -1,4 +1,8 @@
+import { TERMS, type TermId } from '@/copy';
 import { ROUTE_DEFAULT, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule } from '@/engine';
+
+/** Every registered term, for the tests that do not care what the player knows yet. */
+export const EVERY_TERM: ReadonlySet<TermId> = new Set(Object.keys(TERMS) as TermId[]);
 
 export const YOU_IP = '198.51.100.7';
 export const ATTACKER_IP = '203.0.113.66';

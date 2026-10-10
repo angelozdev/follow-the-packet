@@ -11,6 +11,7 @@ export interface MapFlow extends FlowResult {
   pieceId: string;
   trace: Trace;
   label: TermText;
+  hiddenStop: boolean;
 }
 
 export interface MapSent extends MapFlow {
@@ -20,7 +21,7 @@ export interface MapSent extends MapFlow {
 /** Draws every live flow and every packet the player sent along its path, each with its stamp at the end; without animations, each path is drawn still. */
 export function Traffic({ flows, sent, layout, still, onInspect }: { flows: MapFlow[]; sent: MapSent[]; layout: Layout; still: boolean; onInspect: OnInspect }) {
   const packets: (MapFlow & { send?: number })[] = [...flows, ...sent];
-  const paths = packets.map((packet) => pathFor(packet.trace, packet.packet, layout));
+  const paths = packets.map((packet) => pathFor(packet.trace, packet.packet, layout, packet.hiddenStop));
   const stamps = spreadStamps(paths.map((path) => path[path.length - 1]));
   return (
     <>

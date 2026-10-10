@@ -1,23 +1,55 @@
 import type { FirewallKind, Network, Reason } from '@/engine';
-import { deviceName } from './packet-labels';
+import { NOT_DELIVERED, deviceName } from './packet-labels';
 import type { TermText } from './term-text';
+import type { TermId } from './terms';
 
 type FirewallSentence = (device: TermText) => TermText;
+type Way = 'out' | 'in';
+type Verdict = 'pass' | 'drop';
+type FirewallReason = Extract<Reason, { firewallKind: FirewallKind }>;
 
-const FIREWALL_TEXT: Record<FirewallKind, { passOut: FirewallSentence; dropOut: FirewallSentence; passIn: FirewallSentence; dropIn: FirewallSentence }> = {
+const FIREWALL_STEP: Record<FirewallReason['code'], { way: Way; verdict: Verdict }> = {
+  'firewall-out-pass': { way: 'out', verdict: 'pass' },
+  'firewall-out-drop': { way: 'out', verdict: 'drop' },
+  'firewall-in-pass': { way: 'in', verdict: 'pass' },
+  'firewall-in-drop': { way: 'in', verdict: 'drop' },
+};
+
+const FIREWALL_TEXT: Record<FirewallKind, { term: TermId; rules: Record<Way, TermId>; pass: Record<Way, FirewallSentence>; drop: Record<Way, FirewallSentence> }> = {
   'security-group': {
-    passOut: (device) => `El {{security-group}} de ${device} lo deja salir.`,
-    dropOut: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{outbound-rule}} lo deja salir.`,
-    passIn: (device) => `El {{security-group}} de ${device} lo deja entrar.`,
-    dropIn: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{inbound-rule}} lo deja entrar.`,
+    term: 'security-group',
+    rules: { out: 'outbound-rule', in: 'inbound-rule' },
+    pass: {
+      out: (device) => `El {{security-group}} de ${device} lo deja salir.`,
+      in: (device) => `El {{security-group}} de ${device} lo deja entrar.`,
+    },
+    drop: {
+      out: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{outbound-rule}} lo deja salir.`,
+      in: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{inbound-rule}} lo deja entrar.`,
+    },
   },
   'host-firewall': {
-    passOut: (device) => `El {{firewall}} de ${device} lo deja salir.`,
-    dropOut: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja salir.`,
-    passIn: (device) => `El {{firewall}} de ${device} lo deja entrar.`,
-    dropIn: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja entrar.`,
+    term: 'firewall',
+    rules: { out: 'rule', in: 'rule' },
+    pass: {
+      out: (device) => `El {{firewall}} de ${device} lo deja salir.`,
+      in: (device) => `El {{firewall}} de ${device} lo deja entrar.`,
+    },
+    drop: {
+      out: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja salir.`,
+      in: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja entrar.`,
+    },
   },
 };
+
+const NOTHING_CAME_BACK: TermText = 'No volvió ninguna respuesta.';
+const KEEPS_GOING: TermText = 'Sigue su camino.';
+const REPLY_ARRIVES: TermText = 'Llega la respuesta.';
+
+/** Writes a word as the tagged term when the player knows it, and as the plain word before. */
+function word(known: ReadonlySet<TermId>, term: TermId, text: string): TermText {
+  return known.has(term) ? `{{${term}|${text}}}` : text;
+}
 
 const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
   vpc: 'Viaja por dentro de la {{vpc}}.',
@@ -35,11 +67,11 @@ function sought(reason: Extract<Reason, { code: 'forward-no-owner' }>): TermText
   return reason.viaGateway ? `${reason.ip}, su {{default-gateway}},` : reason.ip;
 }
 
-function replyText(net: Network, deviceId: string): TermText {
+function replyText(net: Network, deviceId: string, known: ReadonlySet<TermId>): TermText {
   const device = net.devices.find((d) => d.id === deviceId);
   const kind = net.firewalls.find((f) => device?.firewallIds.includes(f.id))?.kind;
-  if (kind === 'security-group') return 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.';
-  if (kind === 'host-firewall') return `La respuesta vuelve sola: el {{firewall}} de ${deviceName(net, deviceId)} recuerda la conversación.`;
+  if (kind === 'security-group') return known.has('stateful') ? 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.' : REPLY_ARRIVES;
+  if (kind === 'host-firewall') return REPLY_ARRIVES;
   return 'La respuesta vuelve por el mismo camino.';
 }
 
@@ -47,8 +79,45 @@ function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
 }
 
-/** Turns an engine reason into the sentence the player reads, with its terms tagged. */
-export function describeReason(reason: Reason, net: Network): TermText {
+function firewallReason(reason: FirewallReason, net: Network, known: ReadonlySet<TermId>): TermText {
+  const { way, verdict } = FIREWALL_STEP[reason.code];
+  const text = FIREWALL_TEXT[reason.firewallKind];
+  const device = deviceName(net, reason.deviceId);
+  if (!known.has(text.term)) return verdict === 'pass' ? KEEPS_GOING : NOTHING_CAME_BACK;
+  if (verdict === 'drop' && !known.has(text.rules[way])) return `El {{${text.term}}} de ${device} ${word(known, 'drop', 'descartó')} el ${word(known, 'packet', 'paquete')} sin avisar.`;
+  return text[verdict][way](device);
+}
+
+interface HiddenCause {
+  term: TermId;
+  text: TermText;
+}
+
+function warning(term: TermId): HiddenCause {
+  return { term, text: NOT_DELIVERED };
+}
+
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back. */
+function hiddenCause(reason: Reason): HiddenCause | null {
+  switch (reason.code) {
+    case 'forward-no-owner':
+      return warning('host-unreachable');
+    case 'forward-no-route':
+    case 'forward-no-host':
+      return reason.warns ? warning('host-unreachable') : null;
+    case 'forward-ttl-exceeded':
+      return warning('time-exceeded');
+    case 'host-ignores-echo':
+      return { term: 'icmp-echo-ignore-all', text: NOTHING_CAME_BACK };
+    default:
+      return null;
+  }
+}
+
+/** Turns an engine reason into the sentence the player reads, with the terms they know tagged; while the term that names a hidden cause is unknown, the sentence says only what the player saw: that nothing came back, or that the packet did not reach its destination. */
+export function describeReason(reason: Reason, net: Network, known: ReadonlySet<TermId>): TermText {
+  const hidden = hiddenCause(reason);
+  if (hidden && !known.has(hidden.term)) return hidden.text;
   switch (reason.code) {
     case 'address-invalid':
       return `${reason.address} no es una dirección {{ipv4}} válida: cada uno de sus cuatro números debe ir de 0 a 255. El {{packet|paquete}} no sale del {{device|dispositivo}}.`;
@@ -99,13 +168,10 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'forward-router-replies':
       return `La IP ${reason.ip} es de ${deviceName(net, reason.routerId)}, un {{router}}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;
     case 'firewall-out-pass':
-      return FIREWALL_TEXT[reason.firewallKind].passOut(deviceName(net, reason.deviceId));
     case 'firewall-out-drop':
-      return FIREWALL_TEXT[reason.firewallKind].dropOut(deviceName(net, reason.deviceId));
     case 'firewall-in-pass':
-      return FIREWALL_TEXT[reason.firewallKind].passIn(deviceName(net, reason.deviceId));
     case 'firewall-in-drop':
-      return FIREWALL_TEXT[reason.firewallKind].dropIn(deviceName(net, reason.deviceId));
+      return firewallReason(reason, net, known);
     case 'host-unsolicited-icmp':
       return 'Un {{echo-reply}} es una respuesta: llegó, y nadie lo contesta.';
     case 'host-ignores-echo':
@@ -119,6 +185,6 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'host-udp-no-service':
       return `Llega por UDP al puerto ${reason.port}, pero en este juego ningún programa UDP contesta.`;
     case 'reply-stateful':
-      return replyText(net, reason.deviceId);
+      return replyText(net, reason.deviceId, known);
   }
 }

@@ -48,7 +48,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
   if (!incident) throw new Error(`unknown incident ${incidentId}`);
   const known = knownTerms(incidents, incidentId);
   const world = startWorld(incidents, incidentId);
-  const runs = runFlows(world, incident.flows);
+  const runs = runFlows(world, incident.flows, known);
   return {
     incident,
     known,
@@ -81,7 +81,7 @@ function move(state: Session, action: RuleMove): Session {
   if (state.phase !== 'playing' || !canConfigure(state, action.firewallId)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
-  const runs = runFlows(world, state.incident.flows);
+  const runs = runFlows(world, state.incident.flows, state.known);
   const startsEpisode = hasIntrusion(runs) && !hasIntrusion(state.runs);
   return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
 }
@@ -89,7 +89,7 @@ function move(state: Session, action: RuleMove): Session {
 /** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. */
 function send(state: Session, action: SendMove): Session {
   if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
-  const packet = sendPacket(state.world, state.incident, action, state.sends + 1);
+  const packet = sendPacket(state.world, state.incident, action, state.sends + 1, state.known);
   if (!packet) return state;
   const again = state.sent.some((other) => other.id === packet.id);
   const sent = again ? state.sent.map((other) => (other.id === packet.id ? packet : other)) : [...state.sent, packet];

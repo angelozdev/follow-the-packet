@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { termsIn, toPlainText, unofficialNames, type TermText } from '@/copy';
-import { INCIDENTS, sendCombinations, type Incident } from '@/levels';
+import { termsIn, toPlainText, unofficialNames, type TermId, type TermText } from '@/copy';
+import type { Firewall, Network } from '@/engine';
+import { INCIDENTS, sendCombinations, type Incident, type SendIncident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
+import { officeNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
@@ -63,5 +65,41 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s 
   it('uses none of the names the first playtest retired', () => {
     const texts = [...incidentTexts(incident), ...sessionsToCheck(incident).flatMap(shownTexts)].map((text) => toPlainText(text).toLowerCase());
     expect(RETIRED_NAMES.filter((name) => texts.some((text) => text.includes(name)))).toEqual([]);
+  });
+});
+
+describe('the firewall before the incident that introduces it', () => {
+  const OUTBOUND_FIREWALL: Firewall = { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] };
+  const WORLDS: Network[] = [
+    withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }),
+    withDevice({ ...officeNet(), firewalls: [OUTBOUND_FIREWALL] }, 'your-laptop', { firewallIds: [OUTBOUND_FIREWALL.id] }),
+  ];
+  const incidentOn = (base: Network, ...introduced: TermId[]): SendIncident => ({ ...sendIncident(), base, introduces: [...sendIncident().introduces, ...introduced] });
+
+  function sessionsOf(incident: SendIncident): Session[] {
+    const start = startSession([incident], incident.id);
+    return [start, ...sendCombinations(incident).map((combination) => sessionReducer(start, { type: 'sendPacket', ...combination }))];
+  }
+
+  const runsOf = (sessions: Session[]) => sessions.flatMap((session) => [...session.runs, ...session.sent]);
+  const mentionsFirewall = (sessions: Session[]) => sessions.flatMap(shownTexts).filter((text) => /firewall|regla/i.test(toPlainText(text)) || termsIn(text).some((term) => term === 'firewall' || term === 'rule'));
+
+  it('shows no firewall, in any text or piece, before the incident that introduces it', () => {
+    for (const base of WORLDS) {
+      const hidden = sessionsOf(incidentOn(base));
+      expect(runsOf(hidden).filter((run) => run.hiddenStop).length).toBeGreaterThan(0);
+      expect(runsOf(hidden).filter((run) => run.blocked)).toEqual([]);
+      expect(hidden.flatMap(pieceViews).filter((piece) => piece.kind === 'firewall')).toEqual([]);
+      expect(mentionsFirewall(hidden)).toEqual([]);
+    }
+  });
+
+  it('shows it once the incident introduces it, so the check above can fail', () => {
+    for (const base of WORLDS) {
+      const shown = sessionsOf(incidentOn(base, 'firewall'));
+      expect(runsOf(shown).filter((run) => run.blocked).length).toBeGreaterThan(0);
+      expect(shown.flatMap(pieceViews).filter((piece) => piece.kind === 'firewall')).not.toEqual([]);
+      expect(mentionsFirewall(shown)).not.toEqual([]);
+    }
   });
 });

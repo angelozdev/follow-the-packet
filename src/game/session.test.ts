@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { INCIDENTS } from '@/levels';
+import type { TermId } from '@/copy';
+import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor } from '@/levels/contract/incident';
-import { filterIncident, sendIncident } from '@/testing';
+import { filterIncident, officeNet, sendIncident, withDevice } from '@/testing';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 
@@ -164,5 +165,49 @@ describe('sending packets', () => {
   it('nothing is sent once the incident is closed', () => {
     const closed = sending(PING_PRINTER, FROM_OUTSIDE, SUBMIT);
     expect(sessionReducer(closed, PING_PRINTER)).toBe(closed);
+  });
+});
+
+describe('a firewall the player does not know yet', () => {
+  const guard = (id: string, name: string) => ({ id, name, kind: 'host-firewall' as const, inbound: [], outbound: [] });
+  const base = (deviceId: string) => {
+    const net = officeNet();
+    return withDevice({ ...net, firewalls: [...net.firewalls, guard('fw-you', 'tu-laptop')] }, deviceId, { firewallIds: [deviceId === 'your-laptop' ? 'fw-you' : 'fw-lucia'] });
+  };
+  const sending = (guarded: string, ...introduced: TermId[]): Session => {
+    const incident = { ...sendIncident(), base: base(guarded), introduces: [...sendIncident().introduces, ...introduced] };
+    return startSession([incident], incident.id);
+  };
+  const pingLucia = (session: Session) => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId: 'lucia', messageId: 'ping' }).sent[0];
+
+  it('stops a packet that comes in without blocking it: the run is hidden, and its result is the same', () => {
+    const hidden = pingLucia(sending('lucia-laptop'));
+    const shown = pingLucia(sending('lucia-laptop', 'firewall'));
+    expect(hidden).toMatchObject({ blocked: false, hiddenStop: true, reached: false, replied: false, by: ['fw-lucia'] });
+    expect(shown).toMatchObject({ blocked: true, hiddenStop: false, reached: false, replied: false, by: ['fw-lucia'] });
+    expect(hidden.trace).toEqual(shown.trace);
+    expect(hidden.trace.steps).toContainEqual(expect.objectContaining({ stage: 'firewall-in', verdict: 'drop', at: 'lucia-laptop' }));
+  });
+
+  it('stops a packet that goes out without blocking it either', () => {
+    const hidden = pingLucia(sending('your-laptop'));
+    expect(hidden.trace.steps).toContainEqual(expect.objectContaining({ stage: 'firewall-out', verdict: 'drop', at: 'your-laptop' }));
+    expect(hidden).toMatchObject({ blocked: false, hiddenStop: true });
+    expect(pingLucia(sending('your-laptop', 'firewall'))).toMatchObject({ blocked: true, hiddenStop: false });
+  });
+
+  it('hides the stop of a flow of the incident in the same way', () => {
+    const fourth = filterIncident('01-04');
+    const unaware = { ...fourth, changes: undefined, base: startWorld(INCIDENTS, fourth.id), introduces: ['traffic' as const, 'rule' as const] };
+    const [run] = startSession([unaware], unaware.id).runs;
+    expect(run).toMatchObject({ blocked: false, hiddenStop: true, reached: false });
+    expect(startSession(INCIDENTS, fourth.id).runs[0]).toMatchObject({ blocked: true, hiddenStop: false });
+  });
+
+  it('is not hidden when no firewall stops the packet', () => {
+    const session = sending('lucia-laptop');
+    const sendTo = (toId: string) => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId: 'ping' }).sent[0];
+    expect(sendTo('printer')).toMatchObject({ replied: true, blocked: false, hiddenStop: false });
+    expect(sendTo('nobody')).toMatchObject({ replied: false, blocked: false, hiddenStop: false });
   });
 });

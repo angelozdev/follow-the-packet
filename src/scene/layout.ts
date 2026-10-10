@@ -201,14 +201,14 @@ export function terminalSide(anchorX: number, avoidXs: number[], room: number, g
   return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : preferred;
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. It crosses the edge only while the map shows the outside. */
-export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[] {
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
+export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hiddenStop = false): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
   if (source && trace.steps.some((s) => s.reason.code === 'route-self')) return [source.door, source.doorstep];
   const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [layout.actors[from.id] ?? layout.internet, layout.internet];
 
-  if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
+  if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return source && hiddenStop ? [source.door, source.doorstep] : points.slice(0, 2);
   if (trace.steps.some((s) => NOBODY_HAS_IT.includes(s.reason.code))) return [...points, [layout.roadToX, layout.roadZ]];
   if (layout.outside && trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
@@ -216,7 +216,7 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[
   const dest = trace.destinationId ? layout.devices[trace.destinationId] : undefined;
   if (!dest) return points;
   points.push(dest.road, dest.firewall);
-  if (trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return points;
+  if (!hiddenStop && trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return points;
   points.push(dest.door);
   return points;
 }

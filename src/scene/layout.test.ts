@@ -1,6 +1,7 @@
 import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withInbound } from '@/testing';
+import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withDevice, withInbound } from '@/testing';
+import type { Firewall } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 import { simulate } from '@/engine/simulation/simulate';
 import {
@@ -147,6 +148,36 @@ describe('pathFor in an office', () => {
     const path = pathFor(simulate(alone, packet), packet, inside);
     expect(path).not.toContainEqual(inside.edge);
     expect(path.at(-1)).toEqual(inside.devices['your-laptop'].road);
+  });
+});
+
+describe('pathFor when a firewall the player does not know stops the packet', () => {
+  const base = officeNet();
+  const layout = computeLayout(base, true);
+  const you = layout.devices['your-laptop'];
+  const lucia = layout.devices['lucia-laptop'];
+  const outbound: Firewall = { id: 'fw-you', name: 'your-laptop', kind: 'host-firewall', inbound: [], outbound: [] };
+
+  it('ends at the door of the device that guards the way in, where a delivered packet ends, and not in front of the firewall', () => {
+    const guarded = withDevice(base, 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    const packet = ping(device('your-laptop'), OFFICE.lucia);
+    const trace = simulate(guarded, packet);
+    expect(pathFor(trace, packet, layout).at(-1)).toEqual(lucia.firewall);
+    expect(pathFor(trace, packet, layout, true)).toEqual([you.door, you.firewall, you.road, lucia.road, lucia.firewall, lucia.door]);
+  });
+
+  it('stays at the doorstep of the device that guards the way out, as a packet to its own IP does', () => {
+    const guarded = withDevice({ ...base, firewalls: [outbound] }, 'your-laptop', { firewallIds: ['fw-you'] });
+    const packet = ping(device('your-laptop'), OFFICE.lucia);
+    const trace = simulate(guarded, packet);
+    expect(pathFor(trace, packet, layout)).toEqual([you.door, you.firewall]);
+    expect(pathFor(trace, packet, layout, true)).toEqual([you.door, you.doorstep]);
+  });
+
+  it('changes nothing for a packet that no firewall stopped', () => {
+    const packet = ping(device('your-laptop'), OFFICE.nobody);
+    const trace = simulate(base, packet);
+    expect(pathFor(trace, packet, layout, true)).toEqual(pathFor(trace, packet, layout));
   });
 });
 

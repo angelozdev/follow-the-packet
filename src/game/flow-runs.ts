@@ -1,4 +1,4 @@
-import { packetLabel, type TermText } from '@/copy';
+import { entityTerm, packetLabel, type TermId, type TermText } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
 import { packetFromChips, probeFromChips, type Flow, type FlowKind, type SendIncident, type SendMove } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
@@ -11,6 +11,7 @@ export interface PacketRun {
   replied: boolean;
   reached: boolean;
   blocked: boolean;
+  hiddenStop: boolean;
   by: string[];
   intruder: boolean;
   label: TermText;
@@ -32,6 +33,13 @@ function firewallStops(trace: Trace): Step[] {
   return trace.steps.filter((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop');
 }
 
+/** True when the firewall that dropped the packet at this step is a term the player knows. */
+function firewallKnown(step: Step, known: ReadonlySet<TermId>): boolean {
+  if (!('firewallKind' in step.reason)) return false;
+  const term = entityTerm({ kind: 'firewall', variant: step.reason.firewallKind });
+  return term === null || known.has(term);
+}
+
 const LOCAL_ERRORS: ReadonlySet<Outcome> = new Set(['invalid-address', 'unresolved', 'no-route']);
 
 function stoppedBy(world: Network, packet: PacketSpec, trace: Trace): string[] {
@@ -49,8 +57,10 @@ function stoppedBy(world: Network, packet: PacketSpec, trace: Trace): string[] {
   }
 }
 
-function runPacket(world: Network, id: string, packet: PacketSpec, intruder: boolean): PacketRun {
+function runPacket(world: Network, known: ReadonlySet<TermId>, id: string, packet: PacketSpec, intruder: boolean): PacketRun {
   const trace = simulate(world, packet);
+  const stops = firewallStops(trace);
+  const blocked = stops.some((step) => firewallKnown(step, known));
   return {
     id,
     pieceId: PIECE_ID.packet(id),
@@ -58,32 +68,33 @@ function runPacket(world: Network, id: string, packet: PacketSpec, intruder: boo
     trace,
     replied: trace.outcome === 'replied',
     reached: reachesHost(trace),
-    blocked: firewallStops(trace).length > 0,
+    blocked,
+    hiddenStop: stops.length > 0 && !blocked,
     by: stoppedBy(world, packet, trace),
     intruder,
     label: packetLabel(packet, trace, world),
   };
 }
 
-/** Simulates every flow on the world and returns one run per flow, in the same order; a forbidden flow's packet is an intruder. */
-export function runFlows(world: Network, flows: Flow[]): FlowRun[] {
-  return flows.map((flow) => ({ ...runPacket(world, flow.id, flow.packet, flow.kind === 'forbidden'), kind: flow.kind }));
+/** Simulates every flow on the world and returns one run per flow, in the same order; a forbidden flow's packet is an intruder. A firewall the player does not know yet (a term not in `known`) stops a packet without blocking it: the run is `hiddenStop`, not `blocked`, and it is the only thing that changes. */
+export function runFlows(world: Network, flows: Flow[], known: ReadonlySet<TermId>): FlowRun[] {
+  return flows.map((flow) => ({ ...runPacket(world, known, flow.id, flow.packet, flow.kind === 'forbidden'), kind: flow.kind }));
 }
 
-function sentRun(world: Network, { fromId, toId, messageId }: SendMove, send: number, packet: PacketSpec, route?: TracerouteResult): SentPacket {
-  const run = runPacket(world, `sent-${fromId}-${toId}-${messageId}`, packet, false);
+function sentRun(world: Network, known: ReadonlySet<TermId>, { fromId, toId, messageId }: SendMove, send: number, packet: PacketSpec, route?: TracerouteResult): SentPacket {
+  const run = runPacket(world, known, `sent-${fromId}-${toId}-${messageId}`, packet, false);
   return { ...run, fromId, toId, messageId, send, ...(route && { route }) };
 }
 
 /** Simulates what three send chips stand for, as the send number `send`; null when the incident does not offer one of the chips. A message that is a single packet is simulated as it is. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe. Its id names the combination, so a new send of the same chips replaces the old one. */
-export function sendPacket(world: Network, incident: SendIncident, move: SendMove, send: number): SentPacket | null {
+export function sendPacket(world: Network, incident: SendIncident, move: SendMove, send: number, known: ReadonlySet<TermId>): SentPacket | null {
   const packet = packetFromChips(incident, move);
-  if (packet) return sentRun(world, move, send, packet);
+  if (packet) return sentRun(world, known, move, send, packet);
   const probe = probeFromChips(incident, move);
   if (!probe) return null;
   const route = traceroute(world, probe.from, probe.to, TRACEROUTE_MAX_HOPS);
   const last = route.lines.at(-1);
-  return sentRun(world, move, send, last ? { ...probe, ttl: last.hop } : probe, route);
+  return sentRun(world, known, move, send, last ? { ...probe, ttl: last.hop } : probe, route);
 }
 
 /** Returns the devices that a forbidden flow reaches. */

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
-import { OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
-import { OUTCOME_TEXT, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
+import { EVERY_TERM, OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
+import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
+import type { TermId } from './terms';
 
 const NET = lab03Net();
 
@@ -75,3 +76,27 @@ describe('packet labels', () => {
     expect(packetLabel(answered, simulate(floors, answered), floors)).toBe('{{ping}} de [[tu-laptop]] a [[servidor-internet]]');
   });
 });
+
+describe('describeOutcome', () => {
+  const without = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
+
+  it('says only that a packet arrived while Echo Reply is not a known term', () => {
+    expect(describeOutcome('replied', without('echo-reply'))).toBe('Llegó.');
+    expect(describeOutcome('replied', EVERY_TERM)).toBe(OUTCOME_TEXT.replied);
+  });
+
+  it('says only that the packet did not reach its destination while the warning that came back is not a known term, never that nothing came back', () => {
+    expect(describeOutcome('unreachable', without('host-unreachable'))).toBe('No llegó a su destino.');
+    expect(describeOutcome('ttl-exceeded', without('time-exceeded'))).toBe('No llegó a su destino.');
+    expect(describeOutcome('unreachable', EVERY_TERM)).toBe(OUTCOME_TEXT.unreachable);
+    expect(describeOutcome('ttl-exceeded', EVERY_TERM)).toBe(OUTCOME_TEXT['ttl-exceeded']);
+  });
+
+  it('keeps the text of every other outcome whatever the player knows', () => {
+    const none = new Set<TermId>();
+    for (const outcome of ['timeout', 'refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'lost'] as const) {
+      expect(describeOutcome(outcome, none)).toBe(OUTCOME_TEXT[outcome]);
+    }
+  });
+});
+

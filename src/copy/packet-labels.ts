@@ -1,6 +1,6 @@
 import type { Endpoint, Network, Outcome, PacketSpec, Trace } from '@/engine';
 import { nameTag, type TermText } from './term-text';
-import type { PacketMessage } from './terms';
+import type { PacketMessage, TermId } from './terms';
 
 const INTERNET_NAME = 'Internet';
 
@@ -60,3 +60,17 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   'ttl-exceeded': 'No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo {{drop|descartó}} y avisó con {{time-exceeded}}.',
   lost: 'Se perdió: no llegó a ningún dispositivo.',
 };
+
+export const NOT_DELIVERED: TermText = 'No llegó a su destino.';
+
+const UNKNOWN_OUTCOME: Partial<Record<Outcome, { term: TermId; text: TermText }>> = {
+  replied: { term: 'echo-reply', text: 'Llegó.' },
+  unreachable: { term: 'host-unreachable', text: NOT_DELIVERED },
+  'ttl-exceeded': { term: 'time-exceeded', text: NOT_DELIVERED },
+};
+
+/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived or that it did not reach its destination, and never that nothing came back, since a warning did. */
+export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>): TermText {
+  const hidden = UNKNOWN_OUTCOME[outcome];
+  return hidden && !known.has(hidden.term) ? hidden.text : OUTCOME_TEXT[outcome];
+}

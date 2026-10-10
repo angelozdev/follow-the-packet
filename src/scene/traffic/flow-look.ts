@@ -28,7 +28,7 @@ function stampState(flow: FlowResult): StampState {
   return flow.blocked ? 'blocked' : 'lost';
 }
 
-/** Turns a packet's computed result into its look and its stamp: the message it carries, whether it is an intruder, how its run ends and which stamp it leaves. Only a firewall blocks: a packet that reaches no device and that no firewall stopped is lost. */
+/** Turns a packet's computed result into its look and its stamp: the message it carries, whether it is an intruder, how its run ends and which stamp it leaves. Only a firewall the player knows blocks: a packet that reaches no device and that no known firewall stopped is lost. */
 export function flowLook(flow: FlowResult): FlowLook {
   return { message: packetMessage(flow.packet), intruder: flow.intruder, end: packetEnd(flow), stamp: stampState(flow) };
 }

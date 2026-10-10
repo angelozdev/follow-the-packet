@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
-import { OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
 import { deviceName } from './packet-labels';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
+import type { TermId } from './terms';
 
 const NET = lab03Net();
 const SG_IN_DROP = 'Se queda en el {{security-group}} de [[servidor2]]: ninguna {{inbound-rule}} lo deja entrar.';
@@ -152,26 +153,26 @@ const TRIP_CASES: [Reason, string, string[]][] = [
 
 describe('describeReason', () => {
   it.each(CASES)('describes %o', (reason, text) => {
-    expect(describeReason(reason, NET)).toBe(text);
+    expect(describeReason(reason, NET, EVERY_TERM)).toBe(text);
   });
 
   it.each(CASES)('tags only registered terms: %o', (reason) => {
-    expect(() => termsIn(describeReason(reason, NET))).not.toThrow();
+    expect(() => termsIn(describeReason(reason, NET, EVERY_TERM))).not.toThrow();
   });
 
   it('describes address-invalid, address-localhost and route-loopback with registered terms only', () => {
     for (const [reason, text, terms] of ADDRESS_CASES) {
-      expect(describeReason(reason, NET)).toBe(text);
+      expect(describeReason(reason, NET, EVERY_TERM)).toBe(text);
       expect(termsIn(text)).toEqual(terms);
     }
-    const invalid = describeReason(ADDRESS_CASES[0][0], NET);
+    const invalid = describeReason(ADDRESS_CASES[0][0], NET, EVERY_TERM);
     expect(termsIn(invalid)).not.toContain('dns');
     expect(toPlainText(invalid)).not.toMatch(/dns|nombre/i);
   });
 
   it('describes route-no-gateway, route-not-connected, route-gateway-not-a-router and forward-no-owner with registered terms only', () => {
     for (const [reason, text, terms] of DELIVERY_CASES) {
-      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(describeReason(reason, FLOORS, EVERY_TERM)).toBe(text);
       expect(termsIn(text)).toEqual(terms);
       expect(toPlainText(text)).not.toMatch(/\b(arp|mac)\b/i);
     }
@@ -179,7 +180,7 @@ describe('describeReason', () => {
 
   it('describes forward-hop, forward-ttl-exceeded, forward-no-route, forward-private-dropped and forward-router-replies with registered terms only', () => {
     for (const [reason, text, terms] of ROUTER_CASES) {
-      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(describeReason(reason, FLOORS, EVERY_TERM)).toBe(text);
       expect(termsIn(text)).toEqual(terms);
       expect(toPlainText(text)).not.toMatch(/\b(nat|windows|linux|macos)\b|ruta|ARP/i);
     }
@@ -187,7 +188,7 @@ describe('describeReason', () => {
 
   it('describes the exit from the office, a router that finds no host, and a server that answers, naming routers and servers', () => {
     for (const [reason, text, terms] of TRIP_CASES) {
-      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(describeReason(reason, FLOORS, EVERY_TERM)).toBe(text);
       expect(termsIn(text)).toEqual(terms);
     }
     expect(deviceName(FLOORS, server.id)).toBe('[[servidor-internet]]');
@@ -197,7 +198,7 @@ describe('describeReason', () => {
     const packets = [ping(device('your-laptop'), server.ip), { ...ping(device('your-laptop'), server.ip), ttl: 2 }, ping(device('your-laptop'), '10.0.0.10')];
     for (const packet of packets) {
       for (const step of simulate(FLOORS, packet).steps) {
-        const text = describeReason(step.reason, FLOORS);
+        const text = describeReason(step.reason, FLOORS, EVERY_TERM);
         expect(() => termsIn(text)).not.toThrow();
         expect(termsIn(text)).not.toContain('nat');
         expect(termsIn(text)).not.toContain('public-ip');
@@ -208,17 +209,100 @@ describe('describeReason', () => {
 
   it('an office names its own network and its own firewalls, not the VPC nor a Security Group', () => {
     const office = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
-    expect(describeReason({ code: 'route-private' }, office)).toBe('Viaja por dentro de la {{network|red}} de la oficina.');
-    expect(describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office)).toBe(
-      'La respuesta vuelve sola: el {{firewall}} de [[lucia-laptop]] recuerda la conversación.',
-    );
-    expect(describeReason({ code: 'reply-stateful', deviceId: 'printer' }, office)).toBe('La respuesta vuelve por el mismo camino.');
+    expect(describeReason({ code: 'route-private' }, office, EVERY_TERM)).toBe('Viaja por dentro de la {{network|red}} de la oficina.');
+    expect(describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office, EVERY_TERM)).toBe('Llega la respuesta.');
+    expect(describeReason({ code: 'reply-stateful', deviceId: 'printer' }, office, EVERY_TERM)).toBe('La respuesta vuelve por el mismo camino.');
   });
 
   it('a ping without an ICMP rule stops at the Security Group, named by its official name', () => {
     const trace = simulate(NET, ping(device('servidor1'), '172.31.38.97'));
-    const text = describeReason(trace.steps.at(-1)!.reason, NET);
+    const text = describeReason(trace.steps.at(-1)!.reason, NET, EVERY_TERM);
     expect(text).toBe(SG_IN_DROP);
     expect(toPlainText(text)).toBe('Se queda en el Security Group de servidor2: ninguna regla de entrada lo deja entrar.');
+  });
+});
+
+const NOTHING_CAME_BACK = 'No volvió ninguna respuesta.';
+const without = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
+const dropAt = (code: 'firewall-in-drop' | 'firewall-out-drop', firewallKind: 'host-firewall' | 'security-group'): Reason => ({ code, deviceId: 'servidor2', firewallKind });
+
+const NOT_DELIVERED = 'No llegó a su destino.';
+
+const HIDDEN_CAUSES: [Reason, TermId, string][] = [
+  [dropAt('firewall-in-drop', 'host-firewall'), 'firewall', NOTHING_CAME_BACK],
+  [dropAt('firewall-out-drop', 'host-firewall'), 'firewall', NOTHING_CAME_BACK],
+  [dropAt('firewall-in-drop', 'security-group'), 'security-group', NOTHING_CAME_BACK],
+  [dropAt('firewall-out-drop', 'security-group'), 'security-group', NOTHING_CAME_BACK],
+  [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'icmp-echo-ignore-all', NOTHING_CAME_BACK],
+  [{ code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: false }, 'host-unreachable', NOT_DELIVERED],
+  [{ code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true }, 'host-unreachable', NOT_DELIVERED],
+  [{ code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: true }, 'host-unreachable', NOT_DELIVERED],
+  [{ code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice }, 'time-exceeded', NOT_DELIVERED],
+];
+
+describe('describeReason with what the player knows', () => {
+  it('describes a reason with the terms the player knows', () => {
+    const drop = dropAt('firewall-in-drop', 'host-firewall');
+    expect(describeReason(drop, NET, without('firewall', 'rule', 'drop'))).toBe(NOTHING_CAME_BACK);
+    expect(describeReason(drop, NET, without('rule', 'drop'))).toBe('El {{firewall}} de [[servidor2]] descartó el {{packet|paquete}} sin avisar.');
+    expect(describeReason(drop, NET, without('rule'))).toBe('El {{firewall}} de [[servidor2]] {{drop|descartó}} el {{packet|paquete}} sin avisar.');
+    expect(describeReason(drop, NET, EVERY_TERM)).toBe('Se queda en el {{firewall}} de [[servidor2]]: ninguna {{rule|regla}} lo deja entrar.');
+    const sgOut = dropAt('firewall-out-drop', 'security-group');
+    expect(describeReason(sgOut, NET, without('security-group'))).toBe(NOTHING_CAME_BACK);
+    expect(describeReason(sgOut, NET, without('outbound-rule'))).toBe('El {{security-group}} de [[servidor2]] {{drop|descartó}} el {{packet|paquete}} sin avisar.');
+    expect(describeReason(sgOut, NET, EVERY_TERM)).toBe('Se queda en el {{security-group}} de [[servidor2]]: ninguna {{outbound-rule}} lo deja salir.');
+  });
+
+  it.each(HIDDEN_CAUSES)('says only what the player saw while the term of the cause is unknown: %o', (reason, term, text) => {
+    expect(describeReason(reason, FLOORS, without(term))).toBe(text);
+    expect(describeReason(reason, FLOORS, EVERY_TERM)).not.toBe(text);
+  });
+
+  it('never says that nothing came back when a warning did', () => {
+    const warnings = HIDDEN_CAUSES.filter(([, , text]) => text === NOT_DELIVERED);
+    expect(warnings).toHaveLength(4);
+    for (const [reason, term] of warnings) expect(describeReason(reason, FLOORS, without(term))).not.toBe(NOTHING_CAME_BACK);
+  });
+
+  it('keeps the text of a router that drops without warning, since no warning hides behind an unknown term', () => {
+    const silent: Reason = { code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: false };
+    expect(describeReason(silent, FLOORS, without('host-unreachable'))).toBe(describeReason(silent, FLOORS, EVERY_TERM));
+  });
+
+  it('a firewall that drops tags only the terms the player knows, whichever of its terms is missing', () => {
+    const drops = HIDDEN_CAUSES.flatMap(([reason]) => (reason.code === 'firewall-in-drop' || reason.code === 'firewall-out-drop' ? [reason] : []));
+    expect(drops).toHaveLength(4);
+    for (const reason of drops) {
+      for (const missing of ['firewall', 'security-group', 'rule', 'outbound-rule', 'inbound-rule', 'drop', 'packet'] as const) {
+        const known = without(missing);
+        expect(termsIn(describeReason(reason, NET, known)).filter((tagged) => !known.has(tagged))).toEqual([]);
+      }
+    }
+  });
+
+  it('a firewall the player does not know yet leaves no sentence about letting a packet through', () => {
+    const passes: Reason[] = [
+      { code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' },
+      { code: 'firewall-out-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' },
+    ];
+    for (const pass of passes) {
+      expect(describeReason(pass, NET, without('firewall'))).toBe('Sigue su camino.');
+      expect(termsIn(describeReason(pass, NET, without('firewall')))).toEqual([]);
+    }
+  });
+
+  it('the reply through the firewall of a laptop gives no reason for letting it through', () => {
+    const office = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    for (const known of [EVERY_TERM, without('firewall'), without('stateful', 'firewall', 'rule')]) {
+      const text = describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office, known);
+      expect(text).toBe('Llega la respuesta.');
+      expect(toPlainText(text)).not.toMatch(/conversación|recuerda|mismo camino|porque|stateful/i);
+    }
+  });
+
+  it('the reply through a Security Group names stateful only once that term is known', () => {
+    const reply: Reason = { code: 'reply-stateful', deviceId: 'servidor2' };
+    expect(describeReason(reply, NET, EVERY_TERM)).toBe('La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.');
+    expect(describeReason(reply, NET, without('stateful'))).toBe('Llega la respuesta.');
   });
 });
