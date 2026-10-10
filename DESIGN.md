@@ -1,10 +1,10 @@
 # Design system
 
-How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitives and the rules for using them. The code lives in `src/design/`. The review page is `#/entidades`: its section "Elementos de la interfaz" shows every primitive in every variant and state, and its section "Piezas del mapa" shows every map piece with its label and stamp. Playwright compares both with a capture that tolerates no changed pixel.
+How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitives and the rules for using them. The code lives in `src/design/`. The review page is `#/entidades`: its section "Elementos de la interfaz" shows every primitive in every variant and state, and its section "Piezas del mapa" shows every map piece with its label and stamp. Playwright compares both with a capture that tolerates no changed pixel, except the edges pixelmatch counts as anti-aliasing. The captures use the system fonts of the machine, so after an OS or browser update that changes them, look at the diff images before re-recording.
 
 ## Principles
 
-- **Paper and ink.** Text and lines are ink on paper. Vermilion means danger.
+- **Paper and ink.** Text and lines are ink on paper. Vermilion is the value of three roles, danger, emphasis and focus; only `--color-danger` means danger.
 - **Never colour alone.** A state also changes a shape or a text: a dashed border, a double ring, a word.
 - **One standard per element.** Every action or link is a `Button`, every chip or option a `Choice`, every tray of chips a `ChipTray`, every panel a `Card`, every own name a `NameTag`, every small heading a caption. A new look is a new variant of its primitive, never a sibling element and never a class added at the call site.
 
@@ -60,7 +60,7 @@ Vermilion is for danger. Emphasis and focus share its value today, but they are 
 
 ## Space
 
-A 4 px grid. Every margin, padding and gap uses a step.
+A 4 px grid. Every margin, padding and gap uses a step, except the one-off measures listed below.
 
 | Step | Value |
 |------|-------|
@@ -79,12 +79,12 @@ A 4 px grid. Every margin, padding and gap uses a step.
 - **Radii:** `--radius` 3 px (buttons, name tags, tooltips), `--radius-pill` (chips), `--radius-round` (stamps, the alert mark).
 - **Shadows:** `--shadow-sm` (buttons), `--shadow-md` (cards), `--shadow-tip` (the tooltip, in emphasis).
 - **Focus:** one rule for every element, `:focus-visible` with `--focus-ring` at `--focus-offset`. No element sets its own outline.
-- **One-off measures** that belong to a single rule stay in it: the side panel (380 px), the inspection box (22 rem), the stamp (32 px), the alert mark (15 px), the padding of a map label (1 px 6 px) and of a name tag (0.35 em).
-- **A card on the map** takes its width and its gap from its piece from `src/scene/layout.ts`, which needs them to pick the card's side: the anchor hands them to `.map-card` as `--card-width` and `--card-gap`, and a card docked in the corner of the map also gets `--card-x` and `--card-y`. They are not tokens.
+- **One-off measures** that belong to a single rule stay in it: the side panel (380 px), the inspection box (22 rem), the stamp (32 px), the alert mark (15 px), the padding of a map label (1 px 6 px) and of a name tag (0.35 em), and two measures relative to their own text: the right margin of `.entity-icon` (`0.35em`) and the font size of `.name-tag` (`0.82em`).
+- **A card on the map** takes its width and its gap to its piece from `src/scene/layout.ts`, which needs them to pick the card's side: `card-anchor.tsx` sets `--card-width`, `--card-gap`, `--card-x` and `--card-y` on every map card, and only the docked card (`.map-card--dock`, in the corner of the map) reads x and y. They are not tokens.
 
 ## Primitives
 
-All in `src/design/`, imported through `@/design`. A primitive takes no `className`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
+All in `src/design/`, imported through `@/design`. A primitive takes no `className` and no `style`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
 
 | Primitive | Variants | Use it for |
 |-----------|----------|------------|
@@ -102,9 +102,9 @@ The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) 
 1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `primitives.css`, with tokens only.
 2. Add its specimen to `src/ui/catalog/interface-section.tsx`, with its caption in `INTERFACE_TEXT`.
 3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen.
-4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/`, its test, its specimen and a row in the table above that says why.
+4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/`, its test, its specimen and a row in the table above that says why. `src/design/` holds 11 of the 12 files the folder rule allows, so a new primitive with its test first needs the folder split (for example into `tokens/` and `primitives/`).
 5. A new token is only for a role no token serves: a colour enters the palette and gets a role; a size, a space or a line joins its scale.
 
 ## What guards the standard
 
-The two zero-tolerance captures of `#/entidades` show any pixel that moves, and TypeScript rejects a `className` on a primitive. On the student's choice (2026-10-09) there is no test over the CSS, no lint rule against a raw `<button>` or `<a>`, and no rule file for the standard: a review finds a sixth button.
+The two zero-tolerance captures of `#/entidades` show any pixel that moves (except the edges pixelmatch counts as anti-aliasing), and TypeScript rejects a `className` or a `style` on a primitive. On the student's choice (2026-10-09) there is no test over the CSS, no lint rule against a raw `<button>` or `<a>`, and no rule file for the standard: a review finds a sixth button.

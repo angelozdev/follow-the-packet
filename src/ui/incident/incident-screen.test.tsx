@@ -148,6 +148,7 @@ describe('incident screen', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: RIGHT_ANSWER }));
+    expect(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
     expect(onFinish).toHaveBeenCalledWith(FULL_STARS);
     expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeInTheDocument();

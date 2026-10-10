@@ -4,7 +4,9 @@ import { token, tokenPx } from './tokens';
 describe('design tokens', () => {
   it('follows a role down to the raw colour of its palette entry', () => {
     expect(token('--color-danger')).toBe(token('--palette-vermilion'));
-    expect(token('--color-danger')).toMatch(/^#[0-9a-f]{6}$/);
+    for (const role of ['--color-ink', '--color-surface', '--color-shade', '--color-danger']) {
+      expect(token(role)).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 
   it('reads a length in pixels as a number', () => {

@@ -9,8 +9,8 @@ const BUTTON_CLASS: Record<ButtonVariant, string> = {
   text: 'link',
 };
 
-type ActionProps = Omit<ComponentProps<'button'>, 'className' | 'type'> & { href?: undefined };
-type LinkProps = Omit<ComponentProps<'a'>, 'className'> & { href: string };
+type ActionProps = Omit<ComponentProps<'button'>, 'className' | 'style' | 'type'> & { href?: undefined };
+type LinkProps = Omit<ComponentProps<'a'>, 'className' | 'style'> & { href: string };
 
 export type ButtonProps = (ActionProps | LinkProps) & { variant?: ButtonVariant; children: ReactNode };
 

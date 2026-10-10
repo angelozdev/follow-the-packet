@@ -28,6 +28,7 @@ describe('Choice', () => {
     render(<ChipTray name="Type" chips={[{ id: 'request', label: 'Echo Request' }, { id: 'reply', label: 'Echo Reply' }]} picked="request" onPick={onPick} />);
     const tray = within(screen.getByRole('group', { name: 'Type' }));
     expect(tray.getAllByRole('button', { pressed: true }).map((chip) => chip.textContent)).toEqual(['Echo Request']);
+    expect(tray.getByRole('button', { name: 'Echo Reply' })).toHaveAttribute('aria-pressed', 'false');
     await user.click(tray.getByRole('button', { name: 'Echo Reply' }));
     expect(onPick).toHaveBeenCalledWith('reply');
   });

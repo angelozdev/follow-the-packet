@@ -7,7 +7,7 @@ export interface TrayChip {
   label: ReactNode;
 }
 
-type ChoiceProps = Omit<ComponentProps<'button'>, 'className' | 'type' | 'aria-pressed'> & {
+type ChoiceProps = Omit<ComponentProps<'button'>, 'className' | 'style' | 'type' | 'aria-pressed'> & {
   variant?: ChoiceVariant;
   pressed?: boolean;
   children: ReactNode;

@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 
 export type CardVariant = 'default' | 'soon';
 
-type CardProps = Omit<ComponentProps<'section'>, 'className' | 'ref'> & {
+type CardProps = Omit<ComponentProps<'section'>, 'className' | 'style' | 'ref'> & {
   as?: 'section' | 'li';
   variant?: CardVariant;
   children: ReactNode;
