@@ -109,13 +109,13 @@ const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewal
 const CARD_Y = 0.5;
 const CAMERA_OFFSET = 14;
 const FIREWALL_CARD_GAP = 110;
-const ORIGIN_CARD_GAP = 68;
+const ORIGIN_CARD_GAP = 70;
 const CARD_MARGIN = 12;
 const DOCK_MARGIN = 6;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
-const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device', 'forward-no-owner'];
+const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device'];
 
 function isServer(actor: Actor): actor is ServerActor {
   return actor.kind === SERVER_KIND;
@@ -349,7 +349,7 @@ export function terminalSide(anchorX: number, avoidXs: number[], room: number, g
   return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : preferred;
 }
 
-const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid'];
+const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid', 'forward-no-owner'];
 const DROPPED_BY_A_ROUTER: Reason['code'][] = ['forward-ttl-exceeded', 'forward-no-route', 'forward-no-host', 'forward-private-dropped'];
 
 function spotOfActor(layout: Layout, id: string): Vec2 | undefined {
@@ -389,7 +389,7 @@ function toResponder(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
   return spot ? [...points, spot] : points;
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address or to an address that is not valid, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address, to an address that is not valid or to an IP that nobody in its network has (its own device warns, so nothing goes out), at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hiddenStop = false): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;

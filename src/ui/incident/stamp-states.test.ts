@@ -5,7 +5,7 @@ import { INCIDENTS } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { computeLayout, pathFor } from '@/scene/layout';
 import { flowLook } from '@/scene/traffic/flow-look';
-import { officeNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import type { Firewall } from '@/engine';
 
 type Run = Session['runs'][number] | Session['sent'][number];
@@ -109,6 +109,58 @@ describe('a packet that a firewall the player does not know yet stops', () => {
     const known = lostAt(officeSession(guardedLucia(), 'firewall'), 'lucia');
     expect(known.path.at(-1)).toEqual(known.layout.devices['lucia-laptop'].firewall);
     expect(known.look).toMatchObject({ end: 'blocked', stamp: 'blocked' });
+  });
+});
+
+describe('a warning that comes back to the sender', () => {
+  const { floor1, officeRouter, server } = OFFICE_FLOORS;
+  const WARNINGS: TermId[] = ['host-unreachable', 'time-exceeded'];
+  const floorsSession = (...introduced: TermId[]) => {
+    const base = sendIncident();
+    const incident = {
+      ...base,
+      base: officeTwoFloorsNet(),
+      introduces: [...base.introduces, ...introduced],
+      send: {
+        ...base.send,
+        to: [...base.send.to, { id: 'nobody-here', address: floor1.nobody }, { id: 'server', address: server.ip }],
+        message: [...base.send.message, { id: 'ping-1', label: '{{ping}}', icmpType: 8 as const, command: 'ping' as const, ttl: 1 }],
+      },
+    };
+    return startSession([incident], incident.id);
+  };
+  const sendOver = (session: Session, toId: string, messageId = 'ping') => {
+    const run = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId }).sent[0];
+    const layout = computeLayout(session.world, true);
+    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop), ...drawn(run) };
+  };
+
+  it('a warning that the sender itself generates leaves the stamp of a warning at its own doorstep, and nothing travels back', () => {
+    const { run, layout, path, look, name } = sendOver(floorsSession(...WARNINGS), 'nobody-here');
+    expect(run.trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: 'your-laptop' });
+    expect(run.warning).toEqual({ term: 'host-unreachable', by: 'sender' });
+    expect(look).toMatchObject({ end: 'self-warned', stamp: 'warned' });
+    expect(path).toEqual([layout.devices['your-laptop'].door, layout.devices['your-laptop'].doorstep]);
+    expect(name).toMatch(/Apareció un aviso\.$/);
+  });
+
+  it('a warning from a router travels back from that router and leaves the stamp of a warning where the router stands', () => {
+    const { run, layout, path, look, name } = sendOver(floorsSession(...WARNINGS), 'server', 'ping-1');
+    expect(run.trace.notice).toMatchObject({ kind: 'time-exceeded', fromId: officeRouter.id });
+    expect(look).toMatchObject({ end: 'warned', stamp: 'warned' });
+    expect(path.at(-1)).toEqual(layout.routers[officeRouter.id]);
+    expect(name).toMatch(/Apareció un aviso\.$/);
+  });
+
+  it('a warning whose term the player does not know yet leaves the lost stamp, as a packet nobody answered does, at the same place', () => {
+    const own = sendOver(floorsSession(), 'nobody-here');
+    expect(own.run.trace.notice).toBeDefined();
+    expect(own.look).toMatchObject({ end: 'lost', stamp: 'lost' });
+    expect(own.name).toMatch(/Perdido\.$/);
+    expect(own.path).toEqual([own.layout.devices['your-laptop'].door, own.layout.devices['your-laptop'].doorstep]);
+    const routed = sendOver(floorsSession('host-unreachable'), 'server', 'ping-1');
+    expect(routed.look).toMatchObject({ end: 'lost', stamp: 'lost' });
+    expect(routed.path.at(-1)).toEqual(routed.layout.routers[officeRouter.id]);
   });
 });
 

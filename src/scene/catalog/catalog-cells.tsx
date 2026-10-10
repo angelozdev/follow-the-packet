@@ -28,6 +28,12 @@ export interface CatalogCell {
 }
 
 type PieceEntity = Extract<EntityRef, { kind: MapPieceKind }>;
+interface TraceEnd {
+  end: Extract<PacketEnd, keyof typeof CATALOG_TEXT.state>;
+  message: PacketMessage;
+  intruder: boolean;
+  stamp: StampState;
+}
 
 const ORIGIN: Vec2 = [0, 0];
 const NETWORK_SIZE = { width: 3.2, depth: 2.2 };
@@ -35,13 +41,14 @@ const TRACE_HALF = 1.7;
 const TRACE: Vec2[] = [screenToGround(-TRACE_HALF, 0), screenToGround(TRACE_HALF, 0)];
 const DEVICE_STATES = ['normal', 'locked', 'selected', 'alert'] as const;
 const FIREWALL_STATES = ['locked', 'configurable', 'selected', 'blocking'] as const;
-const TRACE_ENDS: { end: PacketEnd; message: PacketMessage; intruder: boolean; stamp: StampState }[] = [
+const TRACE_ENDS: TraceEnd[] = [
   { end: 'replied', message: 'echo-request', intruder: false, stamp: 'arrived' },
   { end: 'arrived', message: 'echo-reply', intruder: false, stamp: 'arrived' },
   { end: 'blocked', message: 'echo-request', intruder: false, stamp: 'blocked' },
   { end: 'lost', message: 'echo-request', intruder: false, stamp: 'lost' },
   { end: 'arrived', message: 'echo-request', intruder: true, stamp: 'intruder' },
 ];
+const WARNED_END: TraceEnd = { end: 'warned', message: 'echo-request', intruder: false, stamp: 'warned' };
 const ignore = () => {};
 
 function Label({ id, entity, locked, state }: { id: string; entity: PieceEntity; locked: boolean; state: MapPiece['state'] }) {
@@ -138,7 +145,7 @@ function packetCell(message: PacketMessage, intruder: boolean): CatalogCell {
   };
 }
 
-function traceCell({ end, message, intruder, stamp }: (typeof TRACE_ENDS)[number], index: number): CatalogCell {
+function traceCell({ end, message, intruder, stamp }: TraceEnd, index: number): CatalogCell {
   const id = `trace-${end}-${stamp}`;
   const look = { path: TRACE, message, intruder, end };
   const caption = intruder ? CATALOG_TEXT.intruder : CATALOG_TEXT.state[end];
@@ -164,6 +171,6 @@ export const CATALOG_ROWS: CatalogCell[][] = [
   firewallRow('security-group'),
   [edgeCell('router'), edgeCell('internet-gateway'), INTERNET_CELL],
   [actorCell('attacker'), actorCell('you'), actorCell('home')],
-  [packetCell('echo-request', false), packetCell('echo-reply', false), packetCell('echo-request', true), packetCell('echo-reply', true)],
+  [packetCell('echo-request', false), packetCell('echo-reply', false), packetCell('echo-request', true), packetCell('echo-reply', true), traceCell(WARNED_END, TRACE_ENDS.length)],
   TRACE_ENDS.map(traceCell),
 ];

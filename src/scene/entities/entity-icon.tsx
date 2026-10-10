@@ -23,6 +23,6 @@ export function EntityIcon({ entity }: { entity: EntityRef }) {
     case 'actor':
       return <ActorIcon variant={entity.variant} />;
     case 'packet':
-      return <PacketIcon message={entity.variant} intruder={entity.intruder ?? false} />;
+      return <PacketIcon message={entity.variant} intruder={'intruder' in entity && entity.intruder === true} />;
   }
 }

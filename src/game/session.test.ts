@@ -3,7 +3,8 @@ import type { TermId } from '@/copy';
 import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor } from '@/levels/contract/incident';
-import { filterIncident, officeNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
+import { runFlows } from './flow-runs';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 
@@ -211,3 +212,39 @@ describe('a firewall the player does not know yet', () => {
     expect(sendTo('nobody')).toMatchObject({ replied: false, blocked: false, hiddenStop: false });
   });
 });
+
+describe('a warning that comes back to the sender', () => {
+  const floors = officeTwoFloorsNet();
+  const { floor1, server } = OFFICE_FLOORS;
+  const flow = (id: string, packet: ReturnType<typeof ping>) => ({ id, kind: 'ambient' as const, packet });
+  const flows = [
+    flow('own', ping(device('your-laptop'), floor1.nobody)),
+    flow('expired', { ...ping(device('your-laptop'), server.ip), ttl: 1 }),
+    flow('no-route', ping(device('your-laptop'), '8.8.8.8')),
+    flow('silent', ping(device('your-laptop'), '10.0.0.10')),
+    flow('answered', ping(device('your-laptop'), server.ip)),
+  ];
+  const without = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
+  const warnings = (known: ReadonlySet<TermId>) => Object.fromEntries(runFlows(floors, flows, known).map((run) => [run.id, run.warning]));
+
+  it('is part of the result of its run, with the kind of warning and who generated it', () => {
+    expect(warnings(EVERY_TERM)).toEqual({
+      own: { term: 'host-unreachable', by: 'sender' },
+      expired: { term: 'time-exceeded', by: 'router' },
+      'no-route': { term: 'host-unreachable', by: 'router' },
+      silent: null,
+      answered: null,
+    });
+  });
+
+  it('is left out of the result while its term is not known, and then nothing else about the run changes', () => {
+    const [own, expired] = runFlows(floors, flows, without('host-unreachable', 'time-exceeded'));
+    expect([own.warning, expired.warning]).toEqual([null, null]);
+    const [knownOwn, knownExpired] = runFlows(floors, flows, EVERY_TERM);
+    expect({ ...own, warning: null }).toEqual({ ...knownOwn, warning: null });
+    expect({ ...expired, warning: null }).toEqual({ ...knownExpired, warning: null });
+    expect(warnings(without('time-exceeded')).own).toEqual({ term: 'host-unreachable', by: 'sender' });
+    expect(warnings(without('host-unreachable')).expired).toEqual({ term: 'time-exceeded', by: 'router' });
+  });
+});
+

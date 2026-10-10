@@ -4,7 +4,7 @@ import { flowLook, type FlowResult } from './flow-look';
 
 const PING: PacketSpec = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.20', protocol: 'icmp', icmpType: 8 };
 const ECHO_REPLY: PacketSpec = { ...PING, icmpType: 0 };
-const flow = (result: Partial<FlowResult>): FlowResult => ({ packet: PING, intruder: false, reached: false, replied: false, blocked: false, ...result });
+const flow = (result: Partial<FlowResult>): FlowResult => ({ packet: PING, intruder: false, reached: false, replied: false, blocked: false, warning: null, ...result });
 
 describe('flowLook', () => {
   it('an answered ping comes back and leaves ✓', () => {
@@ -30,5 +30,22 @@ describe('flowLook', () => {
 
   it('a forbidden packet that is lost leaves the stamp of a lost packet, not the one of an intrusion', () => {
     expect(flowLook(flow({ intruder: true }))).toEqual({ message: 'echo-request', intruder: true, end: 'lost', stamp: 'lost' });
+  });
+
+  it('a packet that ends in a warning looks like its warning and leaves the stamp of the warning', () => {
+    expect(flowLook(flow({ warning: { term: 'time-exceeded', by: 'router' } }))).toEqual({ message: 'echo-request', intruder: false, end: 'warned', stamp: 'warned' });
+    expect(flowLook(flow({ warning: { term: 'host-unreachable', by: 'router' } }))).toMatchObject({ end: 'warned', stamp: 'warned' });
+  });
+
+  it('a warning that the sender generates itself leaves the same stamp, but never travels back', () => {
+    expect(flowLook(flow({ warning: { term: 'host-unreachable', by: 'sender' } }))).toEqual({ message: 'echo-request', intruder: false, end: 'self-warned', stamp: 'warned' });
+  });
+
+  it('a packet that ends in silence leaves the lost stamp', () => {
+    expect(flowLook(flow({}))).toEqual({ message: 'echo-request', intruder: false, end: 'lost', stamp: 'lost' });
+  });
+
+  it('the packet of an intruder keeps its shape on the way out, and the warning that comes back is not an intruder', () => {
+    expect(flowLook(flow({ intruder: true, warning: { term: 'time-exceeded', by: 'router' } }))).toMatchObject({ intruder: true, end: 'warned', stamp: 'warned' });
   });
 });

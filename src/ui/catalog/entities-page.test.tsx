@@ -13,7 +13,7 @@ describe('entities page', () => {
   it('names every entity in every variant beside its icon, and every stamp', () => {
     render(<EntitiesPage />);
     const icons = within(screen.getByRole('region', { name: CATALOG_TEXT.icons }));
-    expect(icons.getAllByRole('listitem')).toHaveLength(ENTITY_REFS.length + 4);
+    expect(icons.getAllByRole('listitem')).toHaveLength(ENTITY_REFS.length + 5);
     for (const entity of ENTITY_REFS) expect(icons.getByText(toPlainText(entityName(entity))).closest('li')).toContainHTML('<svg');
   });
 

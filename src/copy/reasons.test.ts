@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
-import { deviceName } from './packet-labels';
+import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
@@ -262,6 +262,36 @@ describe('describeReason with what the player knows', () => {
     const warnings = HIDDEN_CAUSES.filter(([, , text]) => text === NOT_DELIVERED);
     expect(warnings).toHaveLength(4);
     for (const [reason, term] of warnings) expect(describeReason(reason, FLOORS, without(term))).not.toBe(NOTHING_CAME_BACK);
+  });
+
+  it('the text of a warning quotes no operating system and says only what the player saw', () => {
+    const quotesAnOperatingSystem = /windows|linux|macos|mac os|ubuntu|android|\b(arp|mac)\b|reply from|request timed out|general failure|icmp_seq|bytes from|ttl expired in transit|time to live exceeded|destination (host|net) unreachable/i;
+    const warnings = HIDDEN_CAUSES.filter(([, , text]) => text === NOT_DELIVERED);
+    for (const [reason, term] of warnings) {
+      expect(describeReason(reason, FLOORS, without(term))).toBe(NOT_DELIVERED);
+      expect(toPlainText(describeReason(reason, FLOORS, EVERY_TERM))).not.toMatch(quotesAnOperatingSystem);
+    }
+    const sent = [
+      ping(device('your-laptop'), floor1.nobody),
+      { ...ping(device('your-laptop'), OFFICE_FLOORS.server.ip), ttl: 1 },
+      ping(device('your-laptop'), '8.8.8.8'),
+      ping(device('your-laptop'), '198.51.100.77'),
+    ].map((packet) => simulate(FLOORS, packet));
+    const warned = sent.filter((trace) => trace.notice);
+    expect(warned.map((trace) => trace.notice?.kind)).toContain('host-unreachable');
+    expect(warned.map((trace) => trace.notice?.kind)).toContain('time-exceeded');
+    for (const trace of warned) {
+      for (const text of [OUTCOME_TEXT[trace.outcome], ...trace.steps.map((step) => describeReason(step.reason, FLOORS, EVERY_TERM))]) {
+        expect(toPlainText(text)).not.toMatch(quotesAnOperatingSystem);
+      }
+    }
+  });
+
+  it('the text of a warning that the sender generates itself says that its own device warns, and that of a router names the router', () => {
+    const own = describeReason({ code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: false }, FLOORS, EVERY_TERM);
+    expect(toPlainText(own)).toMatch(/propio dispositivo avisa/);
+    const routed = describeReason({ code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice }, FLOORS, EVERY_TERM);
+    expect(toPlainText(routed)).toContain('router-provider');
   });
 
   it('keeps the text of a router that drops without warning, since no warning hides behind an unknown term', () => {

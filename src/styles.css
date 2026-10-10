@@ -29,7 +29,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-card--left { transform: translate(calc(-100% - var(--card-gap)), -50%); }
 .map-card--dock { transform: translate(var(--card-x), calc(var(--card-y) - 100%)); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: var(--weight-bold) var(--text-lg) var(--font-display); background: var(--color-surface); border: var(--stroke-heavy) solid currentColor; border-radius: var(--radius-round); transform: rotate(-8deg); }
-.stamp--arrived { color: var(--color-ink); }
+.stamp--arrived, .stamp--warned { color: var(--color-ink); }
 .stamp--blocked { color: var(--color-danger); }
 
 .term { font-weight: var(--weight-bold); }

@@ -165,6 +165,9 @@ export function isTermId(value: string): value is TermId {
 
 export type PacketMessage = 'echo-request' | 'echo-reply';
 
+/** What a packet is drawn as: one of the messages a sender sends, or the warning that comes back to it. Every kind of warning (Destination Host Unreachable, Time Exceeded) is one look, named by its own term in the trace and by none here. */
+export type PacketVariant = PacketMessage | 'warning';
+
 export interface EntityVariants {
   network: Network['kind'];
   device: Device['kind'] | 'internet-server';
@@ -172,15 +175,17 @@ export interface EntityVariants {
   edge: Network['edge'];
   internet: 'internet';
   actor: ClientActor['kind'];
-  packet: PacketMessage;
+  packet: PacketVariant;
 }
 
 export type EntityKind = keyof EntityVariants;
 
 type VariantOf<Kind extends EntityKind> = { kind: Kind; variant: EntityVariants[Kind] };
 
-/** One entity of the map in one of its variants, as the entity catalog draws it; a packet can also be an intruder's. */
-export type EntityRef = { [Kind in EntityKind]: Kind extends 'packet' ? VariantOf<Kind> & { intruder?: boolean } : VariantOf<Kind> }[EntityKind];
+type PacketRef = { kind: 'packet'; variant: PacketMessage; intruder?: boolean } | { kind: 'packet'; variant: 'warning' };
+
+/** One entity of the map in one of its variants, as the entity catalog draws it; a message a sender sends can also be an intruder's, and a warning never is: it comes from the network, not from the sender. */
+export type EntityRef = { [Kind in Exclude<EntityKind, 'packet'>]: VariantOf<Kind> }[Exclude<EntityKind, 'packet'>] | PacketRef;
 
 /** The term that names each variant of each entity, or null while the ladder has no term for it. */
 export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
@@ -190,10 +195,10 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   edge: { router: 'router', 'internet-gateway': 'internet-gateway' },
   internet: { internet: 'internet' },
   actor: { you: null, attacker: null, home: null },
-  packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply' },
+  packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', warning: null },
 };
 
-/** The entity whose icon goes with each term that names one: a term that names several variants (device) shows the first one, and `packet`, which names every packet, shows an Echo Request. A term left out, like least-privilege, has no icon. */
+/** The entity whose icon goes with each term that names one: a term that names several variants (device) shows the first one, `packet`, which names every packet, shows an Echo Request, and the terms of the two warnings, which name no variant of their own, show the warning. A term left out, like least-privilege, has no icon. */
 export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
   network: { kind: 'network', variant: 'office' },
   device: { kind: 'device', variant: 'laptop' },
@@ -207,6 +212,8 @@ export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
   'internet-gateway': { kind: 'edge', variant: 'internet-gateway' },
   'echo-request': { kind: 'packet', variant: 'echo-request' },
   'echo-reply': { kind: 'packet', variant: 'echo-reply' },
+  'host-unreachable': { kind: 'packet', variant: 'warning' },
+  'time-exceeded': { kind: 'packet', variant: 'warning' },
 };
 
 /** Returns the term that names an entity in this variant, or null when it has none yet. */
@@ -219,7 +226,7 @@ function variantsOf<Kind extends EntityKind>(kind: Kind): EntityVariants[Kind][]
   return Object.keys(ENTITY_TERMS[kind]) as EntityVariants[Kind][];
 }
 
-/** Every entity in every variant, in the order of ENTITY_TERMS, with each packet also as an intruder's. */
+/** Every entity in every variant, in the order of ENTITY_TERMS, with each message a sender sends also as an intruder's. */
 export const ENTITY_REFS: EntityRef[] = [
   ...variantsOf('network').map((variant) => ({ kind: 'network', variant }) as const),
   ...variantsOf('device').map((variant) => ({ kind: 'device', variant }) as const),
@@ -227,5 +234,7 @@ export const ENTITY_REFS: EntityRef[] = [
   ...variantsOf('edge').map((variant) => ({ kind: 'edge', variant }) as const),
   ...variantsOf('internet').map((variant) => ({ kind: 'internet', variant }) as const),
   ...variantsOf('actor').map((variant) => ({ kind: 'actor', variant }) as const),
-  ...variantsOf('packet').flatMap((variant) => [{ kind: 'packet', variant } as const, { kind: 'packet', variant, intruder: true } as const]),
+  ...variantsOf('packet').flatMap((variant): EntityRef[] =>
+    variant === 'warning' ? [{ kind: 'packet', variant }] : [{ kind: 'packet', variant }, { kind: 'packet', variant, intruder: true }],
+  ),
 ];

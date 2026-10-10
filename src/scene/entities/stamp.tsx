@@ -7,9 +7,9 @@ import { inspectHandlers, type OnInspect } from '@/scene/overlay/inspect-handler
 
 const STAMP_Y = 0.9;
 const STAMP_LAYERS: [number, number] = [15, 5];
-const STAMP_GLYPH: Record<StampState, string> = { arrived: '✓', blocked: '✕', lost: '?', intruder: '✓' };
+const STAMP_GLYPH: Record<StampState, string> = { arrived: '✓', blocked: '✕', lost: '?', intruder: '✓', warned: '!' };
 
-/** The fixed stamp at the end of a packet's path: ✓ when it gets in, ✕ when a firewall blocks it, ? when it is lost, and a double ring for an intruder that gets in. A screen reader hears the packet and how it ended; hovering or focusing it inspects the packet. */
+/** The fixed stamp at the end of a packet's path: ✓ when it gets in, ✕ when a firewall blocks it, ? when it is lost, ! when a warning came back, and a double ring for an intruder that gets in. A screen reader hears the packet and how it ended; hovering or focusing it inspects the packet. */
 export function StampPiece({ position, state, name, pieceId, onInspect }: { position: Vec2; state: StampState; name: string; pieceId: string; onInspect: OnInspect }) {
   const portal = useHtmlPortal();
   return (
@@ -27,6 +27,7 @@ const STAMP_ICON: Record<StampState, { mark: string; dashed: boolean; double: bo
   blocked: { mark: 'M9 9l6 6M15 9l-6 6', dashed: false, double: false },
   lost: { mark: 'M9.8 9.5a2.3 2.3 0 1 1 3.3 2.1c-.7.4-1.1.9-1.1 1.6v.6M12 17h.01', dashed: true, double: false },
   intruder: { mark: CHECK, dashed: false, double: true },
+  warned: { mark: 'M12 7.5v6M12 17h.01', dashed: false, double: false },
 };
 
 /** The stamp's icon: its ring and its mark, dashed when the packet is lost and doubled for an intruder. */

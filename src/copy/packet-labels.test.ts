@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -39,6 +39,29 @@ describe('packet labels', () => {
     const labels = (['arrived', 'blocked', 'lost', 'intruder'] as const).map((state) => stampLabel('ping de tu-laptop a impresora', state));
     expect(labels[0]).toBe('Paquete: ping de tu-laptop a impresora. Llegó.');
     expect(new Set(labels).size).toBe(4);
+  });
+
+  it('names the stamp of a warning for a screen reader', () => {
+    const label = stampLabel('ping de tu-laptop a 192.168.1.99', 'warned');
+    expect(label).toBe('Paquete: ping de tu-laptop a 192.168.1.99. Apareció un aviso.');
+    const others = (['arrived', 'blocked', 'lost', 'intruder'] as const).map((state) => stampLabel('ping de tu-laptop a 192.168.1.99', state));
+    expect(others).not.toContain(label);
+    expect(label).not.toMatch(/windows|linux|macos|arp|destination|unreachable|time exceeded|ttl|icmp|router/i);
+  });
+
+  it('names each notice by its term, and a net unreachable by the host one, which shares its ICMP type', () => {
+    const from = device('your-laptop');
+    expect(warningOf({ kind: 'host-unreachable', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'host-unreachable' });
+    expect(warningOf({ kind: 'net-unreachable', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'host-unreachable' });
+    expect(warningOf({ kind: 'time-exceeded', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'time-exceeded' });
+  });
+
+  it('says that a warning comes from the sender only when its own device generated it, and from a router otherwise', () => {
+    const floors = officeTwoFloorsNet();
+    const own = simulate(floors, ping(device('your-laptop'), OFFICE_FLOORS.floor1.nobody));
+    const routed = simulate(floors, { ...ping(device('your-laptop'), OFFICE_FLOORS.server.ip), ttl: 1 });
+    expect(warningOf(own.notice!, { from: device('your-laptop') })).toEqual({ term: 'host-unreachable', by: 'sender' });
+    expect(warningOf(routed.notice!, { from: device('your-laptop') })).toEqual({ term: 'time-exceeded', by: 'router' });
   });
 
   it('tag Echo Reply and leave TCP plain', () => {

@@ -115,11 +115,13 @@ All in `src/design/primitives/`, imported through `@/design`. A primitive takes 
 
 The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `src/design/primitives/primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
 
+A packet on the map is a variant of one piece, drawn flat and facing the camera: an ink dot (Echo Request), an ink ring (Echo Reply), a vermilion rhombus (an intruder's) or an ink triangle with an exclamation mark cut out of it (a warning, the `warning` variant, which is never an intruder's). Its stamp is a state of one piece too: ✓, ✕, ? (dashed), a double ring (an intruder that gets in) or ! (a warning came back, in ink with a solid ring: `warned`). A warning is never a sibling element of the packet, and its stamp is never a sibling of the stamp.
+
 ## Adding a variant instead of a new element
 
 1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `src/design/primitives/primitives.css`, with tokens only.
 2. Add its specimen to `src/ui/catalog/interface-section.tsx`, with its caption in `INTERFACE_TEXT`.
-3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen.
+3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen. A specimen goes in a free cell of the catalog grid (`src/scene/catalog/catalog-cells.tsx`, 5 columns by 10 rows): a sixth column makes the canvas 1260 px wide, more than the 1232 px section, and a new row, or a longer list of icons, moves the interface section down, which changes its zero-tolerance capture (measured on 2026-10-10: moving the section down by 216 px or by 184 px, a new row of 192 px plus or minus the change in the icon list, changed about 70 % of its pixels, because the page's grain is a 160 px tile anchored to the document; a shift of exactly 160 px still changed 4 pixels, at rounded corners).
 4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 7 of the 12 files the folder rule allows; if it ever fills, split it by family before adding a file.
 5. A new token is only for a role no token serves: a colour enters the palette and gets a role; a size, a space or a line joins its scale.
 

@@ -126,10 +126,22 @@ describe('pathFor in an office', () => {
     expect(you.doorstep[1]).toBeLessThan(you.firewall[1]);
   });
 
-  it('a ping to an IP that no device has runs to the far end of the road and stops there', () => {
+  it('a ping to an IP that no device has stays at its own doorstep: its own device warns, so nothing goes out', () => {
     const packet = ping(device('your-laptop'), OFFICE.nobody);
-    const path = pathFor(simulate(net, packet), packet, layout);
-    expect(path).toEqual([you.door, you.firewall, you.road, [layout.roadToX, layout.roadZ]]);
+    const trace = simulate(net, packet);
+    expect(trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: 'your-laptop' });
+    expect(pathFor(trace, packet, layout)).toEqual([you.door, you.doorstep]);
+  });
+
+  it('a ping to an IP that no instance of a VPC has runs to the far end of the road and stops there', () => {
+    const vpc = lab03Net();
+    const inside = computeLayout(vpc, true);
+    const packet = ping(device('servidor1'), '172.31.99.99');
+    const trace = simulate(vpc, packet);
+    expect(trace.steps.map((step) => step.reason.code)).toContain('route-no-device');
+    const path = pathFor(trace, packet, inside);
+    expect(path.at(-1)).toEqual([inside.roadToX, inside.roadZ]);
+    expect(path).toContainEqual(inside.devices.servidor1.firewall);
   });
 
   it('a ping between two laptops runs along the road from one door to the other', () => {
@@ -384,6 +396,23 @@ describe('pathFor in an office with routers', () => {
     expect(pathFor(expiring.trace, expiring.packet, layout)).toEqual([you.door, you.firewall, you.road, at(officeRouter.id), at(provider.id)]);
     const first = trace('your-laptop', server.ip, 1);
     expect(pathFor(first.trace, first.packet, layout).at(-1)).toEqual(at(officeRouter.id));
+  });
+
+  it('a warning that the sender itself generates never leaves the device: it appears at its own doorstep', () => {
+    const toNobody = trace('your-laptop', floor1.nobody);
+    expect(toNobody.trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: 'your-laptop' });
+    expect(pathFor(toNobody.trace, toNobody.packet, layout)).toEqual([you.door, you.doorstep]);
+    const toGuest = trace('your-laptop', floor1.guest);
+    expect(pathFor(toGuest.trace, toGuest.packet, layout)).toEqual([you.door, you.doorstep]);
+  });
+
+  it('a warning from a router is generated where the packet dies, so the path it comes back along ends at that router', () => {
+    const noHost = trace('your-laptop', '198.51.100.77');
+    expect(noHost.trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: backbone.id });
+    expect(pathFor(noHost.trace, noHost.packet, layout).at(-1)).toEqual(at(backbone.id));
+    const expiring = trace('your-laptop', server.ip, 2);
+    expect(expiring.trace.notice).toMatchObject({ kind: 'time-exceeded', fromId: provider.id });
+    expect(pathFor(expiring.trace, expiring.packet, layout).at(-1)).toEqual(at(provider.id));
   });
 
   it('a packet that dies at a router that is not drawn ends between the last drawn piece it crossed and the next one', () => {

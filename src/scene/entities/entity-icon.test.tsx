@@ -7,12 +7,13 @@ import { CATALOG_ROWS } from '@/scene/catalog/catalog-cells';
 import { EntityIcon } from './entity-icon';
 import { StampIcon } from './stamp';
 
-const STAMP_STATES: StampState[] = ['arrived', 'blocked', 'lost', 'intruder'];
+const STAMP_STATES: StampState[] = ['arrived', 'blocked', 'lost', 'intruder', 'warned'];
 
 function variantsOf(kind: EntityKind): EntityRef[] {
-  return Object.keys(ENTITY_TERMS[kind]).flatMap((variant) =>
-    kind === 'packet' ? [false, true].map((intruder) => ({ kind, variant, intruder }) as EntityRef) : [{ kind, variant } as EntityRef],
-  );
+  return Object.keys(ENTITY_TERMS[kind]).flatMap((variant) => {
+    if (kind !== 'packet') return [{ kind, variant } as EntityRef];
+    return variant === 'warning' ? [{ kind, variant }] : [false, true].map((intruder) => ({ kind, variant, intruder }) as EntityRef);
+  });
 }
 
 function drawn(icon: ReactElement): SVGElement {
@@ -57,6 +58,23 @@ describe('the device icon', () => {
       expect(iconOf(variant).innerHTML, variant).not.toBe('');
       expect(cells.some((id) => id.startsWith(`device-${variant}-`)), variant).toBe(true);
     }
+  });
+});
+
+describe('the packet icon', () => {
+  const iconOf = (variant: EntityVariants['packet']) => drawn(<EntityIcon entity={{ kind: 'packet', variant } as EntityRef} />).innerHTML;
+
+  it('every packet variant has an icon and every stamp state has its own shape', () => {
+    const variants = Object.keys(ENTITY_TERMS.packet) as EntityVariants['packet'][];
+    const cells = CATALOG_ROWS.flat().map((cell) => cell.id);
+    for (const variant of variants) expect(iconOf(variant), variant).not.toBe('');
+    for (const variant of variants.filter((other) => other !== 'warning')) expect(cells.some((id) => id.startsWith(`packet-${variant}-`)), variant).toBe(true);
+    expect(cells).toContain('trace-warned-warned');
+    expect(new Set(STAMP_STATES.map((state) => drawn(<StampIcon state={state} />).innerHTML)).size).toBe(STAMP_STATES.length);
+  });
+
+  it('draws the warning as a triangle, apart from the dot of an Echo Request and the ring of an Echo Reply', () => {
+    expect([iconOf('echo-request'), iconOf('echo-reply')]).not.toContain(iconOf('warning'));
   });
 });
 

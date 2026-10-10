@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId, type EntityRef, type Term, type TermId } from './terms';
+import { warningOf } from './packet-labels';
+import { ENTITY_REFS, ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId, type EntityRef, type Term, type TermId } from './terms';
 
 const MAX_DEFINITION_LENGTH = 120;
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -101,6 +102,22 @@ describe('entity terms', () => {
     expect(TERM_ENTITY.device).toEqual({ kind: 'device', variant: 'laptop' });
   });
 
+  it('every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded', () => {
+    expect(Object.keys(ENTITY_TERMS.packet).sort()).toEqual(['echo-reply', 'echo-request', 'warning']);
+    for (const term of Object.values(ENTITY_TERMS.packet)) expect(term === null || isTermId(term)).toBe(true);
+    expect(entityTerm({ kind: 'packet', variant: 'warning' })).toBeNull();
+    const from = { kind: 'device', id: 'your-laptop' } as const;
+    const named = (['host-unreachable', 'net-unreachable', 'time-exceeded'] as const).map((kind) => warningOf({ kind, fromId: 'router', fromIp: '192.168.1.1' }, { from }).term);
+    expect(named).toEqual(['host-unreachable', 'host-unreachable', 'time-exceeded']);
+    for (const term of new Set(named)) expect(TERM_ENTITY[term]).toEqual({ kind: 'packet', variant: 'warning' });
+  });
+
+  it('a warning is never an intruder: only the messages a sender sends are listed as an intruder too', () => {
+    const packets = ENTITY_REFS.filter((entity) => entity.kind === 'packet');
+    expect(packets.filter((entity) => 'intruder' in entity && entity.intruder).map((entity) => entity.variant).sort()).toEqual(['echo-reply', 'echo-request']);
+    expect(packets.filter((entity) => entity.variant === 'warning')).toEqual([{ kind: 'packet', variant: 'warning' }]);
+  });
+
   it('gives a character no term: an actor is a person, not a piece of the network', () => {
     expect(entityTerm({ kind: 'actor', variant: 'attacker' })).toBeNull();
     expect(entityTerm({ kind: 'actor', variant: 'you' })).toBeNull();
@@ -109,7 +126,7 @@ describe('entity terms', () => {
 });
 
 describe('term icons', () => {
-  const GENERAL_TERMS: TermId[] = ['packet'];
+  const GENERAL_TERMS: TermId[] = ['packet', 'host-unreachable', 'time-exceeded'];
 
   it('every term that names a variant shows the entity of one of the variants it names as its icon', () => {
     const named = Object.entries(ENTITY_TERMS).flatMap(([kind, variants]) =>

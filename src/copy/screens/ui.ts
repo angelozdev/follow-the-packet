@@ -25,7 +25,7 @@ const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermTex
   edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
   internet: { internet: 'internet' },
   actor: { attacker: nameTag('Atacante'), you: nameTag('Tu Mac'), home: nameTag('Casa de Lucía') },
-  packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply' },
+  packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply', warning: 'aviso' },
 };
 
 export const CATALOG_TEXT = {
@@ -45,6 +45,7 @@ export const CATALOG_TEXT = {
     arrived: 'llegó',
     blocked: 'bloqueado',
     lost: 'perdido',
+    warned: 'volvió un aviso',
   },
 } as const;
 
@@ -99,5 +100,5 @@ export const INTERFACE_TEXT = {
 export function entityName(entity: EntityRef): TermText {
   const names: Record<string, TermText> = ENTITY_NAMES[entity.kind];
   const name = names[entity.variant];
-  return entity.kind === 'packet' && entity.intruder ? `${name} · ${CATALOG_TEXT.intruder}` : name;
+  return entity.kind === 'packet' && 'intruder' in entity && entity.intruder ? `${name} · ${CATALOG_TEXT.intruder}` : name;
 }
