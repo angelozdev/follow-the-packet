@@ -29,6 +29,17 @@ describe('packet labels', () => {
     expect(packetLabel(packet, simulate(NET, packet), NET)).toBe('{{ping}} de [[servidor1]] a no-existe.example');
   });
 
+  it('pings to 127.0.0.1, localhost and your own IP have different labels, each with the destination as the player wrote it', () => {
+    const floors = officeTwoFloorsNet();
+    const { you } = OFFICE_FLOORS.floor1;
+    const labels = ['127.0.0.1', 'localhost', you, OFFICE_FLOORS.floor1.printer].map((to) => {
+      const packet = ping(device('your-laptop'), to);
+      return packetLabel(packet, simulate(floors, packet), floors);
+    });
+    expect(labels).toEqual(['{{ping}} de [[tu-laptop]] a 127.0.0.1', '{{ping}} de [[tu-laptop]] a localhost', `{{ping}} de [[tu-laptop]] a ${you}`, '{{ping}} de [[tu-laptop]] a [[impresora]]']);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
   it('draw an Echo Reply as a reply, and an Echo Request or any other packet as a request', () => {
     expect(packetMessage({ protocol: 'icmp', icmpType: 0 })).toBe('echo-reply');
     expect(packetMessage({ protocol: 'icmp', icmpType: 8 })).toBe('echo-request');
@@ -94,7 +105,7 @@ describe('packet labels', () => {
     const warned = simulate(floors, ping(device('your-laptop'), OFFICE_FLOORS.floor1.nobody));
     expect([stays.outcome, warned.outcome]).toEqual(['no-route', 'unreachable']);
     expect(OUTCOME_TEXT[stays.outcome]).toBe('No salió del dispositivo: no tiene por dónde sacar el paquete.');
-    expect(OUTCOME_TEXT[warned.outcome]).toBe('No llegó: volvió un aviso de que no se pudo llegar al destino.');
+    expect(OUTCOME_TEXT[warned.outcome]).toBe('No llegó. Apareció un aviso: no se pudo llegar al destino.');
     expect([...termsIn(OUTCOME_TEXT['no-route']), ...termsIn(OUTCOME_TEXT.unreachable)]).toEqual([]);
   });
 
@@ -127,9 +138,16 @@ describe('describeOutcome', () => {
     expect(describeOutcome('ttl-exceeded', EVERY_TERM)).toBe(OUTCOME_TEXT['ttl-exceeded']);
   });
 
+  it('says that the waiting time passed and nothing came back, with the term timeout only once it is known', () => {
+    expect(describeOutcome('timeout', without('timeout'))).toBe('Pasó el tiempo de espera y no volvió nada.');
+    expect(describeOutcome('timeout', EVERY_TERM)).toBe(OUTCOME_TEXT.timeout);
+    expect(OUTCOME_TEXT.timeout).toBe('{{timeout}}: pasó el tiempo de espera y no volvió nada.');
+    expect(toPlainText(OUTCOME_TEXT.timeout)).not.toMatch(/No llegó/);
+  });
+
   it('keeps the text of every other outcome whatever the player knows', () => {
     const none = new Set<TermId>();
-    for (const outcome of ['timeout', 'refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'lost'] as const) {
+    for (const outcome of ['refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'lost'] as const) {
       expect(describeOutcome(outcome, none)).toBe(OUTCOME_TEXT[outcome]);
     }
   });

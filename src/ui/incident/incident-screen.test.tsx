@@ -339,7 +339,7 @@ describe('incident screen of a diagnose incident', () => {
   const { cases } = DIAGNOSE.diagnose;
   const KNOW = CASE_TEXT.know;
   const NEXT = CASE_TEXT.next;
-  const LOOPBACK_PING = 'ping de tu-laptop a tu-laptop';
+  const LOOPBACK_PING = 'ping de tu-laptop a 127.0.0.1';
   const optionOf = (number: number, right: boolean) => toPlainText(cases[number - 1].cause.options.find((option) => option.correct === right)?.text ?? '');
 
   function renderDiagnosing() {

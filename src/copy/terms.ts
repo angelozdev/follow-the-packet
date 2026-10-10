@@ -22,16 +22,14 @@ export const TERMS = {
   },
   'source-ip': { name: 'IP de origen', definition: 'La dirección IP del dispositivo que envía el paquete.' },
   'destination-ip': { name: 'IP de destino', definition: 'La dirección IP del dispositivo al que va el paquete: la red lo entrega al que tiene esa IP.' },
-  ping: { name: 'ping', definition: 'Un comando que manda un paquete a una dirección IP y espera que vuelva otro: prueba el camino de ida y vuelta.' },
+  ping: { name: 'ping', definition: 'Un comando que manda un Echo Request a una dirección IP y espera un Echo Reply: prueba si el destino contesta.' },
   protocol: {
     name: 'protocolo',
     definition: 'Un acuerdo entre dispositivos sobre cómo intercambiar datos: qué mensajes existen y qué significa cada uno.',
   },
-  request: { name: 'solicitud', definition: 'Un mensaje que le pide algo a otro dispositivo.' },
-  response: { name: 'respuesta', definition: 'El mensaje con que un dispositivo contesta una solicitud.' },
   icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre dispositivos, como los del ping.' },
-  'echo-request': { name: 'Echo Request', definition: 'La solicitud ICMP del ping (tipo 8): le pide al destino que conteste con un Echo Reply.' },
-  'echo-reply': { name: 'Echo Reply', definition: 'La respuesta ICMP del ping (tipo 0). Solo se envía al recibir un Echo Request, y nadie la contesta.' },
+  'echo-request': { name: 'Echo Request', definition: 'El mensaje ICMP con que empieza un ping: le pide al destino que conteste con un Echo Reply.' },
+  'echo-reply': { name: 'Echo Reply', definition: 'El mensaje ICMP con que el destino contesta un Echo Request. Nadie contesta un Echo Reply.' },
   loopback: {
     name: 'loopback',
     definition: 'Las direcciones IP 127.x.x.x, como 127.0.0.1: son del propio dispositivo, y un paquete enviado a ellas no sale de él.',
@@ -47,7 +45,7 @@ export const TERMS = {
   },
   'host-unreachable': {
     name: 'Destination Host Unreachable',
-    definition: 'Un aviso ICMP (tipo 3) de que no se llegó al dispositivo de destino. Lo manda quien intentaba entregarle el paquete.',
+    definition: 'Un aviso ICMP de que no se llegó al dispositivo de destino. Lo manda quien intentaba entregarle el paquete.',
   },
   lan: {
     name: 'red local',

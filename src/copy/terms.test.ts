@@ -20,7 +20,9 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['time-exceeded', 'Time Exceeded'],
   ['host-unreachable', 'Destination Host Unreachable'],
 ];
-const RETIRED_IDS = ['server', 'linux-ignore-ping'];
+const RETIRED_IDS = ['server', 'linux-ignore-ping', 'request', 'response'];
+const PING_TERMS: TermId[] = ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'];
+const RETIRED_WORDS = /solicitud|respuesta/i;
 const TERMS_OF_THE_FOURTEEN: TermId[] = [
   'header',
   'loopback',
@@ -84,6 +86,18 @@ describe('term registry', () => {
 
   it('drops the ids named after retired plain words', () => {
     expect(RETIRED_IDS.filter(isTermId)).toEqual([]);
+  });
+
+  it('the terms of the ping do not call a message a solicitud or a respuesta, which stopped being terms', () => {
+    expect(PING_TERMS.filter((id) => RETIRED_WORDS.test(TERMS[id].definition))).toEqual([]);
+  });
+
+  it('the ping, the Echo Request and the Echo Reply are defined by each other and by ICMP', () => {
+    expect(TERMS.ping.definition).toContain(TERMS['echo-request'].name);
+    expect(TERMS.ping.definition).toContain(TERMS['echo-reply'].name);
+    expect(TERMS['echo-request'].definition).toContain(TERMS['echo-reply'].name);
+    expect(TERMS['echo-reply'].definition).toContain(TERMS['echo-request'].name);
+    for (const id of ['echo-request', 'echo-reply'] as const) expect(TERMS[id].definition).toContain(TERMS.icmp.name);
   });
 
   it('a Security Group is the virtual firewall of an instance, shortened SG', () => {

@@ -4,6 +4,7 @@ import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, sendComb
 import { incidentSchema, isGuided, playerMoveSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
+const LOOPBACK_ADDRESSES = ['127.0.0.1', '127.1.2.3', 'localhost'];
 const VALID: Record<string, unknown> = {
   id: '09-03',
   chapter: 9,
@@ -256,6 +257,12 @@ describe('office leaks', () => {
     const flowOut = { ...SEND, flows: [{ id: 'out', kind: 'ambient' as const, packet: ping(device('printer'), '8.8.8.8') }] };
     expect(officeLeaks(flowOut, officeNet())).toEqual(['printer → 8.8.8.8']);
     expect(officeLeaks(flowOut, officeTwoFloorsNet())).toEqual([]);
+  });
+
+  it('a packet to a loopback address or to localhost is no leak: it never leaves the device', () => {
+    const toItself = { ...SEND, send: { ...SEND.send, to: LOOPBACK_ADDRESSES.map((address, index) => ({ id: `itself-${index}`, address })) } };
+    expect(officeLeaks(toItself, officeNet())).toEqual([]);
+    expect(officeLeaks({ ...toItself, send: { ...toItself.send, to: [...toItself.send.to, { id: 'dns', address: '8.8.8.8' }] } }, officeNet())).toEqual(['your-laptop → 8.8.8.8', 'your-laptop → 8.8.8.8']);
   });
 
   it('the probes of a traceroute count as packets that leave the office', () => {

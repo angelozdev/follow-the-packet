@@ -54,6 +54,7 @@ export const INSPECTION_TEXT = {
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',
   header: '{{header|Encabezado}}',
+  requestHeader: '{{header|Encabezado}} del {{echo-request}}',
   replyHeader: '{{header|Encabezado}} del {{echo-reply}}',
   source: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('source-ip') ? '{{source-ip}}' : 'Origen'}: ${ip}`,
   destination: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('destination-ip') ? '{{destination-ip}}' : 'Destino'}: ${ip}`,

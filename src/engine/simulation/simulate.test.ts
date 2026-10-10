@@ -689,6 +689,8 @@ describe('routers, TTL, warnings and the internet', () => {
 });
 
 describe('the header, the reply and the round trip time', () => {
+  const LOOPBACK = '127.0.0.1';
+  const OTHER_LOOPBACK = '127.5.5.5';
   const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
   const floors = (): Network => officeTwoFloorsNet();
   const sendFromYou = (to: string, ttl?: number): Trace => simulate(floors(), { ...ping(device('your-laptop'), to), ...(ttl !== undefined && { ttl }) });
@@ -714,12 +716,26 @@ describe('the header, the reply and the round trip time', () => {
     expect(sendFromYou(floor1.printer).header?.request).toEqual({ source: floor1.you, destination: floor1.printer, ttl: 64 });
     expect(sendFromYou(server.ip).header?.request).toEqual({ source: floor1.you, destination: server.ip, ttl: 64 });
     expect(sendFromYou(server.ip, 5).header?.request).toEqual({ source: floor1.you, destination: server.ip, ttl: 5 });
-    expect(sendFromYou('localhost').header?.request).toEqual({ source: floor1.you, destination: '127.0.0.1', ttl: 64 });
     expect(simulate(officeNet(), ping(device('your-laptop'), OFFICE.lucia)).header?.request).toEqual({ source: OFFICE.you, destination: OFFICE.lucia, ttl: 64 });
 
     const unanswered = sendFromYou(server.ip, 1);
     expect(unanswered.outcome).toBe('ttl-exceeded');
     expect(unanswered.header?.request.ttl).toBe(1);
+  });
+
+  it('a loopback ping leaves with source 127.0.0.1, and a ping to your own IP with your own IP', () => {
+    const ttl = 64;
+    expect(sendFromYou('127.0.0.1').header).toEqual({ request: { source: LOOPBACK, destination: LOOPBACK, ttl }, reply: { source: LOOPBACK, destination: LOOPBACK } });
+    expect(sendFromYou('localhost').header).toEqual({ request: { source: LOOPBACK, destination: LOOPBACK, ttl }, reply: { source: LOOPBACK, destination: LOOPBACK } });
+    expect(sendFromYou(OTHER_LOOPBACK).header).toEqual({ request: { source: LOOPBACK, destination: OTHER_LOOPBACK, ttl }, reply: { source: OTHER_LOOPBACK, destination: LOOPBACK } });
+    expect(sendFromYou(floor1.you).header).toEqual({ request: { source: floor1.you, destination: floor1.you, ttl }, reply: { source: floor1.you, destination: floor1.you } });
+  });
+
+  it('a loopback ping needs no cable, and a packet to an address that is not loopback keeps the private source', () => {
+    const noCable = simulate(floors(), ping(device('guest-laptop'), '127.0.0.1'));
+    expect(noCable.outcome).toBe('replied');
+    expect(noCable.header?.request.source).toBe(LOOPBACK);
+    expect(sendFromYou(floor1.printer).header?.request.source).toBe(floor1.you);
   });
 
   it('the reply header swaps source and destination', () => {

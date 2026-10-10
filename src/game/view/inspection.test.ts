@@ -12,7 +12,9 @@ import { pieceViews } from './pieces';
 
 const WHAT_IS = 'Qué es';
 const ECHO_REQUEST = ['Mensaje', 'ICMP · Echo Request'];
-const ATTACKER_BLOCKED = ['Resultado', 'No llegó: no volvió ninguna respuesta.'];
+const ATTACKER_BLOCKED = ['Resultado', 'timeout: pasó el tiempo de espera y no volvió nada.'];
+const WAITED_FOR_NOTHING = ['Resultado', 'Pasó el tiempo de espera y no volvió nada.'];
+const REQUEST_HEADER = 'Encabezado del Echo Request';
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
 const fixed = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
@@ -86,7 +88,7 @@ describe('inspect', () => {
 
   it('a packet whose term is not known yet leaves out what it is', () => {
     const unaware: Session = { ...first, known: new Set<TermId>() };
-    expect(plain(inspect(unaware, PIECE_ID.packet(FLOWS.attackerPing.id)))?.fields[0]).toEqual(ATTACKER_BLOCKED);
+    expect(plain(inspect(unaware, PIECE_ID.packet(FLOWS.attackerPing.id)))?.fields[0]).toEqual(WAITED_FOR_NOTHING);
   });
 
   it('the attacker says who it is, but not its IP yet', () => {
@@ -286,7 +288,7 @@ describe('inspect', () => {
       expect(plain(inspect(session, pieceId))?.fields).toEqual([
         whatIs('echo-request'),
         ECHO_REQUEST,
-        ['Resultado', 'No llegó: no volvió ninguna respuesta.'],
+        WAITED_FOR_NOTHING,
         ['Dónde y por qué se detuvo', 'No volvió ninguna respuesta.'],
       ]);
       expect(text(inspect(session, pieceId))).not.toMatch(/firewall|regla|descart/);
@@ -334,7 +336,7 @@ describe('a packet of an office with routers', () => {
 
   it('a packet that came back shows its time after the result, and a warning that came back shows it too', () => {
     const labels = (session: Session) => lastBox(session)?.fields.map(([name]) => name);
-    expect(labels(sentTo(start, 'printer'))).toEqual(['Qué es', 'Mensaje', 'Encabezado', 'Encabezado del Echo Reply', 'Resultado', ROUND_TRIP]);
+    expect(labels(sentTo(start, 'printer'))).toEqual(['Qué es', 'Mensaje', REQUEST_HEADER, 'Encabezado del Echo Reply', 'Resultado', ROUND_TRIP]);
     const expired = sentTo(start, 'server', 'ping-2');
     expect(expired.sent[0].trace.outcome).toBe('ttl-exceeded');
     expect(labels(expired)?.slice(-3)).toEqual(['Resultado', ROUND_TRIP, 'Dónde y por qué se detuvo']);
@@ -392,10 +394,18 @@ describe('a packet of an office with routers', () => {
 
   it('the header of a packet shows the source and the destination IP once the term header is known', () => {
     const printer = sentTo(start, 'printer');
-    expect(field(printer, 'Encabezado')).toEqual(['Encabezado', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21', 'TTL: 64']);
-    expect(field(sentTo(without(start, 'ttl'), 'printer'), 'Encabezado')).toEqual(['Encabezado', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
-    expect(field(sentTo(without(start, 'header'), 'printer'), 'Encabezado')).toBeUndefined();
+    expect(field(printer, REQUEST_HEADER)).toEqual([REQUEST_HEADER, 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21', 'TTL: 64']);
+    expect(field(sentTo(without(start, 'ttl'), 'printer'), REQUEST_HEADER)).toEqual([REQUEST_HEADER, 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
+    expect(field(sentTo(without(start, 'header'), 'printer'), REQUEST_HEADER)).toBeUndefined();
     expect(field(sentTo(start, 'server', 'ping-2'), 'Encabezado')?.at(-1)).toBe('TTL: 2');
+  });
+
+  it('the header of the request is called the header of the Echo Request only while the reply header is shown beside it', () => {
+    expect(field(sentTo(start, 'printer'), 'Encabezado')).toBeUndefined();
+    expect(field(sentTo(without(start, 'echo-reply'), 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
+    expect(field(sentTo(without(start, 'echo-reply'), 'printer'), REQUEST_HEADER)).toBeUndefined();
+    expect(field(sentTo(start, 'private'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 10.0.0.10']);
+    expect(field(sentTo(start, 'private'), REQUEST_HEADER)).toBeUndefined();
   });
 
   it('the header of the reply swaps the source and the destination, and waits for the term Echo Reply', () => {
@@ -406,17 +416,17 @@ describe('a packet of an office with routers', () => {
   });
 
   it('keeps the private source of the header across the routers', () => {
-    expect(field(sentTo(start, 'server'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
+    expect(field(sentTo(start, 'server'), REQUEST_HEADER)?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
   });
 
   it('names the lines of the header by the terms IP de origen and IP de destino only once they are known, and by plain words before', () => {
     const plainWords = without(start, 'source-ip', 'destination-ip');
-    expect(field(sentTo(plainWords, 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'Destino: 192.168.1.21']);
-    expect(field(sentTo(without(start, 'source-ip'), 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
+    expect(field(sentTo(plainWords, 'printer'), REQUEST_HEADER)?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'Destino: 192.168.1.21']);
+    expect(field(sentTo(without(start, 'source-ip'), 'printer'), REQUEST_HEADER)?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
   });
 
   it('tags only the terms the player knows in the fields of the header, the path and the time, whichever of their terms is missing', () => {
-    const OWN_FIELDS = ['Encabezado', 'Encabezado del Echo Reply', 'Saltos', 'Pasó por', ROUND_TRIP];
+    const OWN_FIELDS = ['Encabezado', REQUEST_HEADER, 'Encabezado del Echo Reply', 'Saltos', 'Pasó por', ROUND_TRIP];
     for (const missing of ['header', 'ttl', 'echo-reply', 'hop', 'rtt', 'time-exceeded', 'router'] as const) {
       const unaware = without(start, missing);
       for (const [to, message] of [['printer', 'ping'], ['server', 'ping'], ['server', 'ping-2'], ['nobody', 'ping']] as const) {
@@ -429,7 +439,7 @@ describe('a packet of an office with routers', () => {
 
   it('a traceroute packet is inspected as the last probe it sent', () => {
     const traced = sentTo(start, 'server', 'trace');
-    expect(field(traced, 'Encabezado')?.at(-1)).toBe('TTL: 4');
+    expect(field(traced, REQUEST_HEADER)?.at(-1)).toBe('TTL: 4');
     expect(field(traced, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
     expect(field(traced, ROUND_TRIP)?.[1]).toBe('84 ms');
   });

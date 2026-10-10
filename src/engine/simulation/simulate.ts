@@ -7,6 +7,7 @@ import { forwardStage } from './stages/forward';
 import { hostStage } from './stages/host';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
+import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/cidr';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, PacketHeader, Trace } from './trace';
@@ -27,10 +28,15 @@ function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
 const HOST_ONLY_RTT_MS = 0.05;
 const COMES_BACK: ReadonlySet<Outcome> = new Set(['replied', 'refused', 'unreachable', 'ttl-exceeded']);
 
-/** The header of the packet the sender put on the wire, in an office: its private IP as source, the resolved destination and the TTL it left with. A packet that stopped at its sender (an address that is not valid, a name nobody resolved, no cable or no gateway) has none, and neither has a VPC. The reply is the request with source and destination swapped (RFC 792), and only a packet that was answered has one. */
+/** Returns the source IP a packet leaves with: the private IP of the sender, or `127.0.0.1` when a device sends to a loopback address, which never leaves it. */
+function sourceIpOf(ctx: SimContext, destIp: string): string {
+  return ctx.source.device && isLoopbackIpv4(destIp) ? LOOPBACK_IP : ctx.source.ip;
+}
+
+/** The header of the packet the sender put on the wire, in an office: its private IP as source (`127.0.0.1` for a packet to a loopback address), the resolved destination and the TTL it left with. A packet that stopped at its sender (an address that is not valid, a name nobody resolved, no cable or no gateway) has none, and neither has a VPC. The reply is the request with source and destination swapped (RFC 792), and only a packet that was answered has one. */
 function headerOf(ctx: SimContext, outcome: Outcome): PacketHeader | undefined {
   if (ctx.net.kind !== 'office' || ctx.destIp === undefined || outcome === 'no-route') return undefined;
-  const request = { source: ctx.source.ip, destination: ctx.destIp, ttl: ctx.packet.ttl ?? DEFAULT_TTL };
+  const request = { source: sourceIpOf(ctx, ctx.destIp), destination: ctx.destIp, ttl: ctx.packet.ttl ?? DEFAULT_TTL };
   return { request, ...(outcome === 'replied' && { reply: { source: request.destination, destination: request.source } }) };
 }
 

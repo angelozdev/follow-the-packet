@@ -134,7 +134,7 @@ test('a term shows its definition inside the window, also from a chip of the ope
   expect(isInside(size, await tooltip.boundingBox())).toBe(true);
   const card = await openDoor(page);
   await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();
-  await expect(tooltip).toContainText('tipo 8');
+  await expect(tooltip).toContainText('le pide al destino que conteste');
   expect(isInside(size, await tooltip.boundingBox())).toBe(true);
   expect(errors).toEqual([]);
 });

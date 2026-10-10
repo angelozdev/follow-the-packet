@@ -40,9 +40,10 @@ export function messageLabel(message: PacketMessage): TermText {
   return `{{icmp}} · {{${message}}}`;
 }
 
-/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). */
+/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). A packet that never left its sender (to `127.0.0.1`, `localhost` or its own IP) names the address as it was written, so these packets are told apart. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
-  const to = trace.destinationId ? deviceName(net, trace.destinationId) : packet.to;
+  const staysAtSender = packet.from.kind === 'device' && trace.destinationId === packet.from.id;
+  const to = trace.destinationId && !staysAtSender ? deviceName(net, trace.destinationId) : packet.to;
   return `${serviceLabel(packet, known)} de ${endpointName(packet.from, net)} a ${to}`;
 }
 
@@ -74,13 +75,13 @@ export function stampLabel(packet: string, state: StampState): string {
 
 export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   replied: 'Llegó y volvió la respuesta.',
-  timeout: 'No llegó: no volvió ninguna respuesta.',
+  timeout: '{{timeout}}: pasó el tiempo de espera y no volvió nada.',
   refused: 'Llegó, pero ningún programa lo estaba esperando.',
   'arrived-no-reply': 'Llegó, pero nadie contestó.',
   unresolved: 'No salió: el nombre no se pudo convertir en una IP.',
   'invalid-address': 'No salió del dispositivo: la dirección no es una {{ipv4}} válida.',
   'no-route': 'No salió del dispositivo: no tiene por dónde sacar el paquete.',
-  unreachable: 'No llegó: volvió un aviso de que no se pudo llegar al destino.',
+  unreachable: 'No llegó. Apareció un aviso: no se pudo llegar al destino.',
   'ttl-exceeded': 'No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo {{drop|descartó}} y avisó con {{time-exceeded}}.',
   lost: 'Se perdió: no llegó a ningún dispositivo.',
 };
@@ -89,11 +90,12 @@ export const NOT_DELIVERED: TermText = 'No llegó a su destino.';
 
 const UNKNOWN_OUTCOME: Partial<Record<Outcome, { term: TermId; text: (destination?: TermText) => TermText }>> = {
   replied: { term: 'echo-reply', text: (destination) => (destination === undefined ? 'Llegó.' : `Llegó a ${destination}.`) },
+  timeout: { term: 'timeout', text: () => 'Pasó el tiempo de espera y no volvió nada.' },
   unreachable: { term: 'host-unreachable', text: () => NOT_DELIVERED },
   'ttl-exceeded': { term: 'time-exceeded', text: () => NOT_DELIVERED },
 };
 
-/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived (and, when `destination` is given, where) or that it did not reach its destination, and never that nothing came back, since a warning did. */
+/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived (and, when `destination` is given, where) or that it did not reach its destination, and never that nothing came back, since a warning did. While the term timeout is unknown, the silence is told without the term. */
 export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>, destination?: TermText): TermText {
   const hidden = UNKNOWN_OUTCOME[outcome];
   return hidden && !known.has(hidden.term) ? hidden.text(destination) : OUTCOME_TEXT[outcome];

@@ -23,7 +23,7 @@ export type {
 export { isClientActor, isConnected } from './network/topology';
 export { facesALan } from './network/routing';
 export { DEFAULT_DIRECTION, DEFAULT_TTL, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
-export { ipInCidr, isIpv4 } from './network/cidr';
+export { ipInCidr, isIpv4, isLoopbackIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/traceroute';

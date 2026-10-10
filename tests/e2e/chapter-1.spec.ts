@@ -15,6 +15,8 @@ const NOTE_RULE = 'La nota de Lucía estaba mal';
 const ABOUT_THE_OFFICE = /en IPv4 cada uno de los cuatro números va de 0 a 255/;
 const ABOUT_THE_ENVELOPE = /su IP de destino era la de laptop-marta/;
 const FIRST_PING_LINK = '1. El primer ping';
+const LAST_BUILT_OF_CHAPTER_1 = '01-05';
+const ARE_YOU_THERE_LINK = '3. ¿Estás ahí?';
 
 function card(page: Page, name: string): Locator {
   return page.getByRole('dialog', { name });
@@ -71,7 +73,7 @@ test('chapter 1 opens at 01-01 and 04-01 opens once the incident before it has a
   await expect(page.getByRole('link', { name: '1. La oficina' })).toHaveAttribute('href', '#/level/01-01');
   await expect(page.locator('li[data-level-id="01-02"]')).toContainText(LOCKED);
   await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify({ '01-02': 1 })]);
+  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify({ [LAST_BUILT_OF_CHAPTER_1]: 1 })]);
   await page.reload();
   await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
   await expect(page.locator('li[data-level-id="04-01"]')).not.toContainText(LOCKED);
@@ -93,7 +95,8 @@ test('01-01 and 01-02 are played with the mouse alone and each reaches 3 stars',
 
   await page.getByRole('link', { name: 'Volver al roadmap' }).click();
   for (const id of ['01-01', '01-02']) await expect(page.locator(`li[data-level-id="${id}"]`)).toContainText(FULL_STARS);
-  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toBeVisible();
+  await expect(page.getByRole('link', { name: ARE_YOU_THERE_LINK })).toHaveAttribute('href', '#/level/01-03');
+  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
   expect(errors).toEqual([]);
 });
 

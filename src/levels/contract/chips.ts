@@ -1,5 +1,5 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, ipInCidr, isIpv4, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
+import { DEFAULT_DIRECTION, ipInCidr, isIpv4, isLoopbackIpv4, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
 import { peerIdOf, ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
@@ -94,11 +94,11 @@ function packetsOf(incident: Incident): PacketSpec[] {
   return [...incident.flows.map((flow) => flow.packet), ...sendOwnersOf(incident).flatMap(sendPacketsOf)];
 }
 
-/** Returns, as "device → address", every flow and every combination of send chips (of every case, in a diagnose incident) (a traceroute through its probe) that sends a packet from a device of an office to an address outside it: the game does not model the office's NAT. An office with routers has a modelled way out, so it has no leaks. */
+/** Returns, as "device → address", every flow and every combination of send chips (of every case, in a diagnose incident) (a traceroute through its probe) that sends a packet from a device of an office to an address outside it: the game does not model the office's NAT. A loopback address is the device itself and never leaves it, so a packet to one is no leak. An office with routers has a modelled way out, so it has no leaks. */
 export function officeLeaks(incident: Incident, world: Network): string[] {
   if (world.kind !== 'office' || (world.routers ?? []).length > 0) return [];
   return packetsOf(incident)
-    .filter((packet) => packet.from.kind === 'device' && isIpv4(packet.to) && !ipInCidr(packet.to, world.cidr))
+    .filter((packet) => packet.from.kind === 'device' && isIpv4(packet.to) && !isLoopbackIpv4(packet.to) && !ipInCidr(packet.to, world.cidr))
     .map((packet) => `${packet.from.id} → ${packet.to}`);
 }
 

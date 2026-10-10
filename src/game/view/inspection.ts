@@ -154,15 +154,16 @@ function messageField(packet: PacketSpec): FieldSpec[] {
   return packet.protocol === 'icmp' ? [{ term: 'echo-request', label: INSPECTION_TEXT.message, lines: () => [messageLabel(packetMessage(packet))] }] : [];
 }
 
-/** The fields with the addresses a packet carries: the header it left with and, when the player knows Echo Reply, the header of the answer, which swaps source and destination. The TTL is listed once its term is known. */
+/** The fields with the addresses a packet carries: the header it left with and, when the player knows Echo Reply, the header of the answer, which swaps source and destination (then the first one is called the header of the Echo Request, once that term is known). The TTL is listed once its term is known. */
 function headerFields({ request, reply }: PacketHeader, known: ReadonlySet<TermId>): FieldSpec[] {
+  const answered = reply !== undefined && known.has('echo-reply');
   const outbound: FieldSpec = {
     term: 'header',
-    label: INSPECTION_TEXT.header,
+    label: answered && known.has('echo-request') ? INSPECTION_TEXT.requestHeader : INSPECTION_TEXT.header,
     lines: () => [INSPECTION_TEXT.source(request.source, known), INSPECTION_TEXT.destination(request.destination, known), ...(known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])],
   };
   const answer: FieldSpec[] =
-    reply && known.has('echo-reply') ? [{ term: 'header', label: INSPECTION_TEXT.replyHeader, lines: () => [INSPECTION_TEXT.source(reply.source, known), INSPECTION_TEXT.destination(reply.destination, known)] }] : [];
+    reply && answered ? [{ term: 'header', label: INSPECTION_TEXT.replyHeader, lines: () => [INSPECTION_TEXT.source(reply.source, known), INSPECTION_TEXT.destination(reply.destination, known)] }] : [];
   return [outbound, ...answer];
 }
 
