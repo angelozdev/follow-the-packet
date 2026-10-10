@@ -13,7 +13,7 @@
 1. **Decisiones, estructura y términos (Tareas 0 a 2).** Los prototipos y las decisiones del estudiante (Tarea 0). `src/levels/` y otras carpetas están en el tope de 12 archivos o cerca de él: una mudanza sin cambio de comportamiento les da espacio y los incidentes se reparten en una carpeta por bloque (Tarea 1); otra mudanza hace sitio en `src/design/` para la primitiva nueva (Tarea 1a). Los términos nuevos se registran antes de que nada los etiquete (Tarea 2).
 2. **Motor (Tareas 3 a 9).** Un solo motor. Dos etapas nuevas, `address` y `forward`, y campos nuevos y opcionales en el modelo y en la traza que solo llenan las redes de oficina; las trazas de la VPC del capítulo 4 no cambian ni en un campo.
 3. **Contrato, sistema de diseño y juego (Tareas 10 a 15).** Se amplía el contrato `send`. El sistema de diseño estrena el estilo B para todas las tarjetas (Tarea 11a) y la primitiva `Tabs` (Tarea 11b). Después se suman dos mecánicas pequeñas (`identify` y `diagnose`), el ajuste de la puerta de enlace como una tarjeta propia, «Ajustes de red», y la tarjeta del firewall gana la dirección con las pestañas «Entrada» y «Salida». No hay predicción: la comprensión se verifica con la pregunta final a Lucía. Todo reutiliza las primitivas de `@/design`, y las tarjetas nuevas nacen en el estilo B.
-4. **Escena (Tareas 16 a 18).** Pisos, routers y servidor; el aviso como paquete y sello; el RTT y la salida de traceroute. La 16 sigue bloqueada por una decisión visual (V6, el mapa que crece); las decisiones de la 17 y la 18 ya están tomadas.
+4. **Escena (Tareas 16 a 18).** Pisos, routers y servidor; el aviso como paquete y sello; el RTT y la salida de traceroute. Las decisiones visuales de la 16 (V6: el mapa sigue la historia, opción b), la 17 y la 18 ya están tomadas.
 5. **Contenido (Tareas 19 a 26).** Los catorce incidentes por bloques. Un «puente» temporal en el 04-01 mantiene verde el capítulo 4 mientras se construye.
 6. **Cierre (Tareas 27 y 28).** Playwright del capítulo entero y los documentos.
 
@@ -68,7 +68,7 @@ Lo que este plan dejaba abierto lo decidió el estudiante el 2026-10-10. Las tar
 
 ## Decisiones abiertas
 
-Quedan dos: **V6** (el mapa que crece) y **D-12** (cómo da el 01 la IP de la impresora). El resto de la elección visual la decidió el estudiante el 2026-10-10. Ninguna tarea bloqueada por V6 o por D-12 empieza hasta que el estudiante elija, y la Tarea 0 sigue abierta hasta entonces; las demás avanzan en su orden.
+Queda una decisión: **D-12** (cómo da el 01 la IP de la impresora). **V6** (el mapa que crece) la decidió el estudiante el 2026-10-10: la opción **b**, «el mapa sigue la historia». El resto de la elección visual también la decidió ese día. Quedan además dos pendientes del estilo B que solo tocan la Tarea 11a: la aprobación del inventario de tarjetas (fila «V8 · inventario») y si el botón primario toma el aspecto de sello (fila «Botón primario · sello»). Ninguna tarea bloqueada por D-12 empieza hasta que el estudiante elija, y la Tarea 0 sigue abierta hasta entonces; las demás avanzan en su orden.
 
 ### D-6. Elecciones visuales (prototipos renderizados, no ASCII)
 
@@ -81,18 +81,23 @@ Toda elección visual nueva se le muestra al estudiante con prototipos renderiza
 | V3 | El ajuste de la puerta de enlace | `ChipTray` dentro de una tarjeta de fichas | **b.** Una tarjeta aparte de la laptop, «Ajustes de red», y no una bandeja dentro de la terminal. La puerta de enlace es un ajuste guardado del dispositivo y no parte de un comando; en macOS, `networksetup -getinfo Wi-Fi` la llama «Router» (verificado por el copiloto en el Mac del estudiante el 2026-10-10) | 13, 22, 27 |
 | V4 | El aviso (Destination Host Unreachable, Time Exceeded) como paquete y su sello | El catálogo de paquetes y sellos | **a.** Un paquete con forma propia y un sello nuevo | 17 |
 | V5 | El servidor de internet | La pieza de dispositivo | **b.** Una variante de la pieza de dispositivo, no de la de actor. El modelo no cambia (ver «Decididas sin el estudiante», punto 2) | 16 |
-| V6 | Un mapa que crece: dos pisos y los routers | La losa de la red y la columna del layout | **Abierta.** Ver «V6 en detalle» | 16, 22, 23 |
+| V6 | Un mapa que crece: dos pisos y los routers | La losa de la red y la columna del layout | **b.** El mapa sigue la historia: cada pantalla se dibuja a tamaño completo (100 %) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio de un subcapítulo a otro (en el 10, de los dispositivos de la oficina solo queda `tu-laptop`). Ver «V6 en detalle» | 16, 18, 22, 23, 27 |
 | V7 | Dónde termina un paquete cuya causa está oculta | El sello de perdido | **a.** Se detiene en la puerta del equipo, con «?» | 11 |
 | V8 | El aspecto de las tarjetas, las de identificar (01) y de casos (14) incluidas | `Card`, `Choice`, `ChipTray` y `ChipCard` | **B del prototipo de estilos, como el estilo NUEVO de TODAS las tarjetas del juego, también las del capítulo 4:** franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. No son tarjetas propias de cada mecánica: sigue siendo UNA primitiva por familia y el estilo cambia la primitiva, nunca suma hermanas. Falta que el estudiante apruebe el prototipo del inventario de tarjetas | 11a, y por ella 12 a 15 |
 | V9 | La tarjeta del firewall con entrada y salida | `TaskCard` y `ChipTray` | **b, con Radix.** Pestañas «Entrada» y «Salida» con `@radix-ui/react-tabs` (versión exacta, publicada al menos dos semanas antes), envuelto como la primitiva `Tabs` de `src/design/` con los tokens del juego. Servirá también para la entrada y la salida del Security Group y de la NACL en capítulos posteriores | 11b, 15 |
 
-**V6 en detalle (abierta).** Las dos opciones anteriores (una losa por piso lado a lado, o los pisos apilados) se veían saturadas. Idea aprobada: el mapa crece y cada subcapítulo muestra solo las piezas que usa (06: dos pisos con pocos dispositivos y un router; internet aparece en el 08; los routers del proveedor solo en el 09 y el 10). El copiloto prototipa dos opciones nuevas para el 06, el 08 y el 10 (la opción 1 y la opción 2) y el estudiante elige una. Qué toca, sin decidir cuál:
-- **Tarea 16:** la distribución (una columna por LAN, los routers a lo largo del camino, el servidor al final) y su test de que las etiquetas de dos pisos no se pisan. Inventario, fila 26.
-- **Tarea 11:** su regla de piezas depende del término conocido, y el término `router` es uno solo para el router de la oficina y para los del proveedor. No alcanza para mostrar uno en el 06 y los otros en el 09 y el 10: hace falta una regla de visibilidad por incidente, o que los mundos del 06 al 10 traigan solo lo que cada uno usa.
-- **Tareas 22 y 23 y las fichas 06 a 10 («Mundo»):** los mundos y esa regla. Hoy la ficha 08 dibuja los routers del proveedor y la idea aprobada los muestra desde el 09; hoy la ficha 06 parte del mundo base de cinco dispositivos y la idea aprobada muestra «pocos dispositivos»; y el intro de las fichas dice que el mundo base es común a todas.
-- **Rigor:** lo que se dibuja y lo que dice la caja deben coincidir. Si un router no se dibuja, ni el campo «Pasó por» de la Tarea 18 ni el motivo del paquete que muere en el primer router fuera de la oficina (08) pueden nombrarlo; o el router se dibuja. Hay que decidir dónde queda el sello de ese paquete.
-- **Tarea 27 y Review Focus 11:** las pruebas de geometría del 06 y del 08, cuyo nombre y lo que miden dependen de la opción.
-- **Tarea 0:** sigue abierta hasta que el estudiante elija.
+**V6 en detalle (decidida: b, 2026-10-10).** Las dos opciones anteriores (una losa por piso lado a lado, o los pisos apilados) se veían saturadas. Idea aprobada: el mapa crece y cada subcapítulo muestra solo las piezas que usa. El copiloto prototipó dos opciones para el 06, el 08 y el 10: la **a**, un solo mapa con la cámara fija que crece hacia el espacio vacío (todo se veía al 77 % desde el 06), y la **b**, el mapa que sigue la historia. El estudiante eligió la **b**: cada pantalla se dibuja a tamaño completo (100 %, es decir, con el mismo zoom `CAMERA_ZOOM` en todos los incidentes) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio de un subcapítulo al siguiente. Lo que se paga, y el estudiante aceptó al elegir: la oficina se mueve, y el router donde muere el ping a `10.0.0.10` en el 08 todavía no se dibuja, así que el sello de ese ping no puede ir en él. Lo que muestra el prototipo (opción b):
+- **06:** el piso 1 con `tu-laptop`, `laptop-lucia` e `impresora`, y el piso 2 con `laptop-andres` y `router-oficina`. El ping a la impresora va directo; el de `laptop-andres` pasa por el router. No hay internet ni routers del proveedor. `laptop-marta` y `laptop-visita` están en el mundo y no se dibujan.
+- **08:** la oficina del 06 más el globo `internet` y `servidor-internet`. Los routers del proveedor no se dibujan. El ping al servidor vuelve; el ping a `10.0.0.10` se pierde sin aviso y su sello «?» queda en el camino entre `router-oficina` y el globo, porque el router de afuera que lo descarta no se dibuja. Es exacto: el ping murió afuera de la oficina, antes de llegar al servidor.
+- **10:** de los dispositivos de la oficina solo queda `tu-laptop` (en su losa del piso 1): `laptop-lucia`, `impresora` y `laptop-andres` no se dibujan porque este ping no las usa. Se dibujan además `router-oficina` (el salto 1 del traceroute), los dos routers del proveedor (`203.0.113.1` y `203.0.113.2`), el globo y `servidor-internet`. El tramo roto está entre `203.0.113.1` y `203.0.113.2`, y el sello «?» queda justo después de `203.0.113.1`. La terminal de `tu-laptop` muestra `traceroute -I 198.51.100.50` con 1 `192.168.1.1`, 2 `203.0.113.1`, 3 `*` y 4 `*`.
+
+Qué cambia en el plan:
+- **Tarea 16:** la distribución coloca solo las piezas que el incidente dibuja, a tamaño completo y sin una cámara común. Qué piezas usa cada incidente lo dice una lista propia del incidente (punto 20 de «Decididas sin el estudiante», _para revisar_). Inventario, fila 26.
+- **Tarea 11:** su regla de piezas queda como está (una pieza se dibuja cuando su término es conocido). El término `router` es uno solo para el de la oficina y los del proveedor, así que esa regla no alcanza para mostrar uno en el 06 y los otros en el 09 y el 10: la Tarea 16 le suma la lista del incidente (una pieza se dibuja si el incidente la lista y su término es conocido).
+- **Tareas 22 y 23 y las fichas 06 a 10:** cada incidente trae su lista. El mundo no cambia por eso: el 08 conserva en el modelo los routers del proveedor, porque el ping a `10.0.0.10` necesita uno que lo descarte; cambia lo que se dibuja. El 07 y el 09 no se prototiparon; sus mapas se deducen de la misma regla y se revisan en la prueba humana del bloque 3.
+- **Rigor:** lo que se dibuja y lo que dice la caja deben coincidir. Un router que no se dibuja no lo nombra el campo «Pasó por» (Tarea 18), ni el motivo del paquete que muere afuera de la oficina (08), ni una línea de traceroute: el motivo dice que el ping murió afuera de la oficina, sin nombrar el router. Los routers que avisan (09) o que contestan un traceroute (10) sí se dibujan.
+- **Tarea 27 y Review Focus 11:** las pruebas de geometría del 06 y del 08 conservan su nombre y miden el mapa a tamaño completo; se suma una de ajuste para el 06, el 08 y el 10.
+- **Tarea 0:** ya no espera a V6; queda escrita en «Decisiones visuales aprobadas».
 
 **D-12. Cómo da el 01 la IP de la impresora (abierta).** Forma 1 (la de este plan hoy): fichas para elegir. Forma 2: un campo de texto donde el jugador escribe la IP y un botón «Comprobar». La forma 2 cambia la mecánica `identify`:
 - **Tarea 12:** `identify.cards` suma un campo de texto por tarjeta (`fields`) y la tarea espera `{ deviceId, fieldId, value }` en vez de `chipId`; las bandejas quedan para «¿Está en la red?». `Session.answers` guarda el texto escrito y el resultado de «Comprobar», que calcula `game` con las reglas del motor (no la vista): correcta, no es IPv4, es la IP de otro dispositivo o no la tiene ninguno. `@/design` no tiene ningún campo de texto: haría falta una primitiva nueva (con su test, su especimen, su fila en `DESIGN.md` y las capturas regrabadas a propósito), y `src/design/primitives/` tiene sitio para ella gracias a la Tarea 1a. Los tests de la tarjeta hablan de escribir y comprobar, no de fichas.
@@ -121,6 +126,7 @@ La decisión queda escrita en este documento (sección «Decisiones visuales apr
 17. **traceroute termina en el primer aviso de inalcanzable.** Esa línea lleva la IP que avisó y `unreachable: 'host' | 'net'`, con su tiempo si avisó un router y sin tiempo si avisó el propio emisor. Fuente: `traceroute(8)` de FreeBSD (ya en la tabla de fuentes del spec): si las sondas reciben un inalcanzable, traceroute se rinde. Antes el plan solo decía «termina al llegar al destino o al máximo».
 18. **Dos motivos más de los que listaba el plan.** `route-leaves-office` (el destino está fuera del rango de la oficina y el paquete va a la puerta de enlace; `route-private` decía «por dentro de la red de la oficina», falso para un paquete que sale) y `forward-no-host` (un router tiene conectada la red del destino pero ningún dispositivo tiene esa IP).
 19. **Simplificación del modelo.** El enlace de un router con un servidor es el /24 de la IP de su interfaz, porque una interfaz no tiene máscara. No se muestra.
+20. **Qué piezas dibuja un incidente (V6 b).** _Para revisar._ Una lista explícita y opcional en el incidente, `shown`, con los ids del mundo (dispositivos, routers y actores) que dibuja; sin ella dibuja todo el mundo, como hoy. Se descartó derivarla de lo que nombran las fichas y las tareas de envío o de los saltos de las trazas: en el 08 el prototipo dibuja `laptop-lucia` y `laptop-andres`, que ni las fichas ni las tareas de ese incidente nombran, y en el 10 dibuja los dos routers del proveedor, que tampoco nombran; y los saltos dependen de lo que el jugador envíe, así que el mapa cambiaría a media partida. La lista es un dato más del incidente, junto a su mundo (`base` y `changes`), y un test del registro comprueba que cada id exista en ese mundo. Quedan por decidir al escribir sus bloques: el 07 y el 09, que se dedujeron sin prototipo, y del 11 al 14, que con el mundo entero pueden no caber a tamaño completo (la opción a del prototipo lo mostraba al 77 %); mientras no traigan lista dibujan el mundo entero.
 
 ## Inventario de mecánicas
 
@@ -153,7 +159,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 | 23 | Ajustar la puerta de enlace | Un movimiento de envío nunca cambia el mundo | 07 | `settings` en `send`, que el jugador cambia en la tarjeta «Ajustes de red» de la laptop (no en su terminal), y el movimiento `setSetting`; limpia los envíos viejos | 13 |
 | 24 | Casos | Un incidente es un mundo | 14 | Mecánica `diagnose` con `caseIndex` | 14 |
 | 25 | Regla con dirección | La tarjeta solo tiene reglas de entrada | 13 | Las pestañas «Entrada» y «Salida» (la primitiva `Tabs`) cuando la tarjeta tiene las dos; `configurableParts.outboundRules` por tipo de firewall | 11b, 15 |
-| 26 | Pisos, routers y servidor en el mapa | `computeLayout` hace una columna por subred de una VPC o una fila para una oficina; el camino es fijo | 06 a 10 | Una columna por LAN, routers a lo largo del camino y el camino por los saltos; un mapa que crece según el incidente (V6, abierta); el servidor, como variante de la pieza de dispositivo (V5 b) | 16 |
+| 26 | Pisos, routers y servidor en el mapa | `computeLayout` hace una columna por subred de una VPC o una fila para una oficina; el camino es fijo | 06 a 10 | Una columna por LAN, routers a lo largo del camino y el camino por los saltos; cada incidente dibuja solo las piezas que usa, a tamaño completo (V6 b); el servidor, como variante de la pieza de dispositivo (V5 b) | 16 |
 | 27 | El aviso en el mapa | Dos paquetes (Echo Request y Echo Reply) y cuatro sellos | 05, 09, 10 | Un paquete con forma propia y un sello nuevo (V4 a) | 17 |
 | 28 | RTT y traceroute en la vista | No existe | 04, 10 | Un campo «Tiempo de ida y vuelta» en la caja (V1 a) y la salida de la sonda como lista numerada en la tarjeta (V2 a) | 18 |
 | 29 | Términos | 18 del capítulo 1 en cuatro incidentes | 01 a 13 | 20 ids nuevos (18 en la Tarea 2 y 2 en la 20); los viejos cambian de incidente | 2, 20 a 26 |
@@ -237,7 +243,7 @@ Los campos nuevos de la traza están ausentes (no `null`) en toda traza que el t
 
 Cada ficha: mecánica, términos, mundo, qué viaja, qué hace el jugador y con qué fichas, éxito, fallo y causa, pregunta de Lucía con la idea de la correcta y el error que refleja cada incorrecta, y las dos pistas. Los números del mundo pueden ajustarse al escribir. Los términos de cada incidente salen de la tabla «Los catorce» del spec. Todas las respuestas correctas cambian de lugar entre incidentes para que no se adivinen.
 
-El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `laptop-lucia` (.11), `laptop-marta` (.12), `impresora` (.21) y `laptop-visita` (.30, sin cable). Ninguna tiene firewall: el de `laptop-marta` llega en el 05 y no se ve hasta el 11. El mundo crece con las acciones que cada ficha nombra.
+El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `laptop-lucia` (.11), `laptop-marta` (.12), `impresora` (.21) y `laptop-visita` (.30, sin cable). Ninguna tiene firewall: el de `laptop-marta` llega en el 05 y no se ve hasta el 11. El mundo crece con las acciones que cada ficha nombra. El mundo es común; lo que se dibuja no: del 06 al 10 cada incidente dibuja solo las piezas que usa (V6 b, punto 20 de «Decididas sin el estudiante»), y el mundo base no se ve entero en todos.
 
 ### Bloque 1 · Dónde estás
 
@@ -301,7 +307,7 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Tareas:** que vuelvan el ping a la impresora y el ping a `laptop-andres`.
 - **Pregunta:** «¿Por qué el ping a `laptop-andres` pasó por el router y el de la impresora no?» Correcta: `laptop-andres` está en otra red local y lo que sale de tu red local pasa por el router. Incorrectas: «el router es más rápido que el cable» (confunde su función con velocidad); «todo pasa por el router, también dentro del piso» (cree que el router media todo, aunque el ping a la impresora fue directo).
 - **Pistas:** (1) mira qué empieza igual que tu IP. (2) los de otra red local pasan por el router.
-- **Pendiente (V6, abierta):** el mundo de esta ficha parte del mundo base de cinco dispositivos; la idea aprobada del mapa que crece muestra en el 06 «dos pisos con pocos dispositivos y un router». Qué se dibuja lo decide la opción de V6.
+- **Mapa (V6 b, decidida el 2026-10-10):** a tamaño completo y solo con lo que usa este incidente: el piso 1 con `tu-laptop`, `laptop-lucia` e `impresora`, y el piso 2 con `laptop-andres` y `router-oficina`. `laptop-marta` y `laptop-visita` siguen en el mundo y no se dibujan. No hay internet ni routers del proveedor. El ping a la impresora va directo y el de `laptop-andres` pasa por el router (prototipo, opción b, 06). El incidente trae esa lista en `shown`.
 
 **01-07 · A quién mandas lo de afuera** · `send` con ajuste · término: puerta de enlace predeterminada (V3 b, decidida)
 - **Mundo:** `setGateway` de `tu-laptop` a ninguna («reinstalaron tu laptop»).
@@ -315,14 +321,14 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Nota de texto (rigor):** en macOS el mismo ajuste se llama «Router» (`networksetup -getinfo Wi-Fi`, verificado por el copiloto en el Mac del estudiante el 2026-10-10); en los demás sistemas no se verificó. El texto del juego usa el término puerta de enlace predeterminada y no cita el nombre de ningún sistema; si la definición lo hiciera, diría solo lo verificado.
 
 **01-08 · La red de redes** · `send` · términos: internet, IP privada, IP pública (D-3 y D-5, decididas)
-- **Mundo:** `addRouter` del proveedor y de destino, `addActor` del servidor de internet (`198.51.100.50`), con direcciones de documentación. Aparecen las piezas de internet y de los routers. La salida de la oficina es una caja negra.
+- **Mundo:** `addRouter` del proveedor y de destino, `addActor` del servidor de internet (`198.51.100.50`), con direcciones de documentación. Aparecen internet y el servidor; los routers del proveedor existen en el mundo (el ping a `10.0.0.10` necesita uno que lo descarte) y el mapa no los dibuja hasta el 09 (V6 b). La salida de la oficina es una caja negra.
 - **Qué viaja:** dos pings: al servidor de internet y a la impresora de otra oficina (`10.0.0.10`).
 - **Jugador y fichas:** destino: `198.51.100.50`, `10.0.0.10`, `192.168.1.21`.
 - **Tareas:** (1) que el ping al servidor vuelva; (2) probar el ping a `10.0.0.10` y ver que no vuelve (`expect.outcome = timeout`).
 - **Fallo y causa:** `10.0.0.10` muere en el primer router fuera de la oficina, sin aviso: miles de redes usan esa IP y internet no la enruta.
 - **Pregunta:** «¿Por qué el ping a la impresora de otra oficina no llegó?» Correcta: `10.0.0.10` es una IP privada y internet no la enruta. Incorrectas: «el servidor de internet bloqueó el ping» (el ping murió antes de llegar a él); «tu router no deja salir pings» (el otro ping sí salió).
 - **Pistas:** (1) compara a dónde llegó cada ping. (2) una IP privada no se entrega fuera de su red.
-- **Pendiente (V6, abierta):** el «Mundo» de arriba dibuja ahora los routers del proveedor; la idea aprobada del mapa que crece muestra internet en el 08 y los routers del proveedor solo en el 09 y el 10. Si V6 la sigue, el mundo del 08 cambia, y hay que decidir dónde queda el sello del ping a `10.0.0.10`, que hoy muere en el primer router fuera de la oficina.
+- **Mapa (V6 b, decidida el 2026-10-10):** la oficina del 06 (los dos pisos y el router) más el globo `internet` y `servidor-internet`, a tamaño completo. Los routers del proveedor no se dibujan. El ping a `10.0.0.10` muere en el primer router de afuera, que no se dibuja: su sello «?» queda en el camino entre `router-oficina` y el globo, y ni la caja ni el motivo nombran ese router; dicen que el ping murió afuera de la oficina, antes de llegar al servidor (prototipo, opción b, 08).
 
 **01-09 · Contar saltos** · `send` · términos: salto (hop), TTL, Time Exceeded
 - **Mundo:** `updateRouter` del proveedor: su ruta por defecto apunta de vuelta al router de la oficina (un bucle, dado). El jugador no configura rutas.
@@ -332,7 +338,7 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Fallo y causa:** con TTL 64 el paquete da vueltas entre los dos routers hasta que el TTL llega a 0.
 - **Pregunta:** «¿Por qué el ping con TTL 64 no llegó al servidor?» Correcta: en el bucle el paquete pasa una y otra vez por los mismos routers; cada salto resta 1 hasta llegar a 0 y el router lo descarta y avisa. Incorrectas: «el servidor lo bloqueó»; «64 es demasiado alto para internet».
 - **Pistas:** (1) cada router resta 1. (2) prueba TTL 1 y TTL 2 y mira quién avisa.
-- **Pendiente (V6, abierta):** los routers del proveedor se dibujan desde aquí (el 09 y el 10), con la distribución de la opción de V6 que elija el estudiante.
+- **Mapa (V6 b; no se prototipó, se deduce de la misma regla y se revisa en la prueba humana del bloque 3):** `tu-laptop`, los dos routers del bucle (`router-oficina` y el del proveedor, que se dibuja desde aquí), el globo `internet` y `servidor-internet`, que es el destino de todos los pings aunque ninguno llegue. No se dibujan las demás laptops ni la impresora, ni el router de destino del proveedor, que ningún paquete cruza. Cada Time Exceeded vuelve desde un router dibujado.
 
 **01-10 · Ver el camino** · `send` con traceroute · término: traceroute
 - **Mundo:** `updateRouter` quita el bucle y deja un tramo roto sin aviso detrás del segundo router (`sendsUnreachable` falso).
@@ -343,7 +349,7 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Fallo y causa:** el problema está justo después del último router que contestó.
 - **Pregunta:** «¿Dónde está el tramo roto?» Correcta: después del último router que contestó, el segundo. Incorrectas: «en tu laptop» (el primer salto contestó); «en el servidor» (los saltos 3 y siguientes también callan, así que el problema empieza antes).
 - **Pistas:** (1) cada línea es un router que avisó. (2) fíjate en dónde empiezan los asteriscos.
-- **Pendiente (V6, abierta):** igual que el 09; además, la salida de traceroute (lista numerada, V2 a) no puede nombrar un router que el mapa no dibuje.
+- **Mapa (V6 b, decidida el 2026-10-10):** de los dispositivos de la oficina solo queda `tu-laptop`, en su losa del piso 1; `laptop-lucia`, `impresora` y `laptop-andres` no se dibujan porque este ping no las usa. Se dibujan además `router-oficina` (el salto 1), los dos routers del proveedor (`203.0.113.1` y `203.0.113.2`), el globo `internet` y `servidor-internet`. El tramo roto queda entre `203.0.113.1` y `203.0.113.2`, y el sello «?» justo después de `203.0.113.1`. La salida de traceroute (lista numerada, V2 a) nombra solo routers dibujados: `192.168.1.1`, `203.0.113.1` y luego asteriscos (prototipo, opción b, 10).
 
 ### Bloque 4 · El guardia
 
@@ -423,7 +429,7 @@ Cada riesgo, con la prueba que lo guarda.
 8. **Los casos del 14 se cuentan bien.** Tests: `the middle star is no hint asked in any case`, `the explained star needs every cause right at the first try` y `each case starts from the world before the incident plus its own changes, not from the case before`.
 9. **Un almacenamiento limpio.** Test: `starts empty and removes the progress saved under the old key`. No hay migración (D-1).
 10. **Un texto de aviso no cita el de ningún sistema.** Test: `the text of a warning quotes no operating system and says only what the player saw`.
-11. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 27): `after the pings of 08, no label or stamp overlaps` y `in 06 the open terminal covers neither the router nor the labels of the second floor`, a 1280×800 y a 1440×900. Su forma depende de la opción de V6 (abierta).
+11. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 27): `after the pings of 08, no label or stamp overlaps`, `in 06 the open terminal covers neither the router nor the labels of the second floor` y `in 06, 08 and 10 the whole map and its labels fit the area of the map at full size`, a 1280×800 y a 1440×900. Con V6 b cada incidente dibuja solo lo que usa y a tamaño completo; el ajuste lo prueba la Tarea 27 y el sitio de cada pieza, la 16.
 12. **Las capturas cambian solo lo que se quiso.** Cada vez que se regraban (Tareas 11a, 11b, 16 y 17, y la 12 si D-12 elige la forma 2): en la 11a el diff es el repintado de las tarjetas que el estudiante aprobó en el prototipo del inventario, y nada más se mueve; en la 11b, la 16 y la 17 el diff muestra solo los especímenes nuevos. Playwright `entities` pasa después.
 13. **Carpetas.** `pnpm structure` pasa en cada tarea; el tope de 12 no se rompe.
 14. **Texto llano.** Los hitos de prueba humana (Tareas 20, 21, 23, 25 y 26) son la comprobación: el estudiante lee cada bloque y dice si algún mensaje lo pierde.
@@ -474,9 +480,9 @@ Cada riesgo, con la prueba que lo guarda.
 
 ### Tarea 0: Prototipos y decisiones visuales (sin código del juego)
 
-**Bloquea:** 12 (D-12, la forma de la IP del 01), 16 (V6) y, por V6, la 22 y la 23. **No bloquea:** 1, 1a, 2 a 11, 11b, 13 a 15, 17 y 18. La 11a espera otra aprobación, la del inventario de tarjetas en estilo B.
+**Bloquea:** 12 (D-12, la forma de la IP del 01). **No bloquea:** 1, 1a, 2 a 11, 11b y 13 a 18, ni la 22 ni la 23: V6, que las bloqueaba, la decidió el estudiante el 2026-10-10 (opción b). La 11a espera otra aprobación, la del inventario de tarjetas en estilo B.
 
-Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue abierto y elija. El 2026-10-10 eligió V1 a V5 y V7 a V9 (están en «Decisiones visuales aprobadas»); quedan **V6** y **D-12**, y la Tarea 0 sigue abierta hasta que elija las dos. Es la única tarea de este plan sin código del juego. La aprobación del prototipo del inventario de tarjetas en estilo B se anota en la misma tabla, en la fila «V8 · inventario»; no cierra ni retiene la Tarea 0, solo desbloquea la 11a.
+Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue abierto y elija. El 2026-10-10 eligió V1 a V9 (están en «Decisiones visuales aprobadas»; en V6 eligió la b); queda **D-12**, y la Tarea 0 sigue abierta hasta que elija. Es la única tarea de este plan sin código del juego. La aprobación del prototipo del inventario de tarjetas en estilo B se anota en la misma tabla, en la fila «V8 · inventario», y la decisión del botón primario como sello, en la fila «Botón primario · sello»; ninguna cierra ni retiene la Tarea 0, y solo tocan la 11a (el inventario la desbloquea).
 
 **Archivos:**
 - Modify: este documento (la sección «Decisiones visuales aprobadas», al final) y `../../docs/plans/follow-the-packet-roadmap.md` (la fila del capítulo 1 en catorce pasa a `en curso`).
@@ -484,9 +490,9 @@ Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue ab
 
 **Pasos:**
 - [x] Preparar la página de prototipos y mostrársela al estudiante (2026-10-10: V1 a V5 y V7 a V9 elegidas).
-- [ ] V6: mostrar las dos opciones del mapa que crece para el 06, el 08 y el 10; recoger una.
+- [x] V6: mostrar las dos opciones del mapa que crece para el 06, el 08 y el 10; recoger una (2026-10-10: b, el mapa sigue la historia).
 - [ ] D-12: mostrar la forma 1 (fichas) y la forma 2 (campo de texto con «Comprobar») en la tarjeta del 01; recoger una.
-- [ ] Escribir las dos elecciones en «Decisiones visuales aprobadas» y en «Decisiones abiertas» (que pasa a decir que no queda nada abierto). Si el estudiante pide un aspecto nuevo para un elemento, la tarea correspondiente suma una variante a su primitiva (`DESIGN.md`, «Adding a variant instead of a new element») y esa tarea cambia la captura de la interfaz a propósito.
+- [ ] Escribir la elección de D-12 en «Decisiones visuales aprobadas» y en «Decisiones abiertas» (que pasa a decir que no queda nada abierto). V6 (b) ya está escrita en las dos. Si el estudiante pide un aspecto nuevo para un elemento, la tarea correspondiente suma una variante a su primitiva (`DESIGN.md`, «Adding a variant instead of a new element») y esa tarea cambia la captura de la interfaz a propósito.
 
 **Cierre:** `git status --short` solo muestra los dos documentos. Commit: `docs: record the visual decisions for the fourteen subchapters`.
 
@@ -814,6 +820,7 @@ Propósito: V8, decidida el 2026-10-10. El estilo B del prototipo es el estilo N
 - `Choice`: la ficha como interruptor y la opción con letra. La letra y el interruptor son marcas visuales: no cambian el nombre accesible ni `aria-pressed`. Las opciones con letra de la pregunta de Lucía y de los casos no delatan la correcta: la correcta cambia de lugar entre incidentes, como ya exige el plan.
 - La variante `soon` de `Card` sigue a media opacidad y su bajo contraste sigue siendo deliberado (`DESIGN.md`, «Contrast»).
 - Si el estilo trae un sello en la tarjeta, dice solo lo que el motor calculó (`view-renders-domain-result`); la tarea no inventa estados.
+- **Pendiente (estudiante, 2026-10-10):** si el botón primario toma el aspecto de sello del estilo B. Solo afecta a esta tarea: si lo toma, la 11a modifica también `src/design/primitives/button.tsx` y su test (el botón primario es una variante de `Button`, no un botón hermano) y la captura de la interfaz lo recoge; si no, `Button` queda como hoy. Se anota en la fila «Botón primario · sello» de «Decisiones visuales aprobadas».
 - Lo que dice cada tarjeta y lo que calcula no cambia: solo cómo se ve. El tipo de cada tarjeta (el texto de la franja) sale de `src/copy/screens/` y nombra cada cosa por su nombre oficial (`rigorous-plain-copy`).
 
 **Tests:**
@@ -995,27 +1002,47 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 ### Tarea 16: Escena: pisos, routers y servidor de internet
 
-**Bloqueada por la Tarea 0 (V6, abierta). Cambia la captura de entidades.** V5 b, decidida el 2026-10-10: el servidor de internet se dibuja como una variante de la pieza de dispositivo, no de la de actor. El modelo conserva el actor `server` («Decididas sin el estudiante», punto 2, _para revisar_).
+**Desbloqueada: V6 (b) está decidida (2026-10-10). Cambia la captura de entidades.** V5 b, decidida el 2026-10-10: el servidor de internet se dibuja como una variante de la pieza de dispositivo, no de la de actor. El modelo conserva el actor `server` («Decididas sin el estudiante», punto 2, _para revisar_).
 
 **Archivos:**
-- Modify: `src/scene/layout.ts` y su test, `game-scene.tsx`, `entities/device.tsx` (la variante nueva `internet-server` de la pieza de dispositivo; sus tablas, hoy exhaustivas sobre `Device['kind']`, la suman), `entities/entity-icon.test.tsx`, `entities/index.ts`, `catalog/catalog-cells.tsx` (una celda de dispositivo para la variante), `src/game/view/pieces.ts` y su test (un actor `server` se convierte en una pieza de dispositivo de esa variante; su id sigue siendo el de un actor), `src/game/view/inspection.ts` y su test (la caja del servidor es la de un dispositivo: lo que es y su IP, no el «Quién es» de un actor), `src/copy/terms.ts`, `src/scene/CLAUDE.md`, `src/scene/entities/CLAUDE.md`, `DESIGN.md` (solo si suma una variante), `tests/e2e/snapshots/entities-darwin.png`.
+- Modify: `src/scene/layout.ts` y su test, `game-scene.tsx`, `entities/device.tsx` (la variante nueva `internet-server` de la pieza de dispositivo; sus tablas, hoy exhaustivas sobre `Device['kind']`, la suman), `entities/entity-icon.test.tsx`, `entities/index.ts`, `catalog/catalog-cells.tsx` (una celda de dispositivo para la variante), `src/game/view/pieces.ts` y su test (un actor `server` se convierte en una pieza de dispositivo de esa variante; su id sigue siendo el de un actor; y calcula el conjunto de ids que se dibujan según la lista del incidente, V6 b), `src/game/view/inspection.ts` y su test (la caja del servidor es la de un dispositivo: lo que es y su IP, no el «Quién es» de un actor), `src/copy/terms.ts`, `src/levels/contract/incident.ts` y `incident.test.ts` (el campo `shown`, V6 b), `src/levels/registry.test.ts`, `src/levels/contract/CLAUDE.md`, `src/game/view/CLAUDE.md`, `src/scene/CLAUDE.md`, `src/scene/entities/CLAUDE.md`, `DESIGN.md` (solo si suma una variante), `tests/e2e/snapshots/entities-darwin.png`.
 - `src/copy/terms.ts`: `EntityVariants.device` suma `internet-server` a `Device['kind']`; `ENTITY_TERMS.device['internet-server']` es `device` (un servidor es un dispositivo); `TERM_ENTITY` no cambia.
 
-**Interfaces:** una columna por LAN; los routers a lo largo del camino a la izquierda, en orden, y el servidor pasado el último; el camino de un paquete pasa por los saltos de su traza y se detiene en el router que lo descarta. La pieza de un dispositivo desconectado se dibuja fuera de la losa. Esta tarea recibe los saltos ya calculados en la traza (`Trace.hops`). Todo esto está sujeto a V6: si el mapa crece, cada incidente dibuja solo las piezas que usa y la forma exacta de la distribución depende de la opción que elija el estudiante (ver «V6 en detalle»). El especimen del servidor de internet se distingue del de `ec2-instance`, que ya dibuja un servidor: el estudiante lo compara en el diff de la captura.
+**Interfaces:** una columna por LAN que tenga una pieza dibujada; los routers dibujados a lo largo del camino a la izquierda, en orden, y el servidor pasado el último; el camino de un paquete pasa por los saltos de su traza que se dibujan y se detiene en el router que lo descarta, si ese router se dibuja. La pieza de un dispositivo desconectado se dibuja fuera de la losa. Esta tarea recibe los saltos ya calculados en la traza (`Trace.hops`). El especimen del servidor de internet se distingue del de `ec2-instance`, que ya dibuja un servidor: el estudiante lo compara en el diff de la captura.
+
+**El mapa sigue la historia (V6 b, decidida el 2026-10-10).** Cada incidente dibuja solo las piezas que usa, a tamaño completo, y la oficina puede quedar en otro sitio que en el incidente anterior:
+- **Qué piezas usa un incidente (_para revisar_, punto 20 de «Decididas sin el estudiante»).** El incidente gana un campo opcional, `shown`: la lista de ids del mundo (dispositivos, routers y actores) que dibuja. Sin la lista dibuja todo el mundo, como hoy; así el capítulo 4 y todo incidente que no la traiga no cambian. Con la lista, una pieza se dibuja si está en ella y su término es conocido (la regla de la Tarea 11). Un firewall se dibuja con su dispositivo; una losa de piso, si alguna de sus piezas se dibuja; el globo de internet y el borde no llevan id y siguen solo la regla de términos.
+- **Quién lo calcula.** `game` (`pieceViews`) calcula una sola vez el conjunto de ids que se dibujan y se lo pasa a `computeLayout`; el layout no lee la lista ni decide qué se ve (`view-renders-domain-result`). La forma exacta de la firma la decide quien implementa.
+- **Tamaño y sitio.** El zoom del mapa (`CAMERA_ZOOM`) y el tamaño de cada pieza no cambian de un incidente a otro: nada se reduce para que quepa. Cada incidente se coloca solo con sus piezas, así que la oficina cambia de sitio cuando cambian las piezas. Que el mapa cabe en el ancho que le queda (900 px en 1280×800, con el panel de 380 px a la derecha) lo prueba la Tarea 27.
+- **Un router que no se dibuja.** El mundo lo conserva (el ping a `10.0.0.10` del 08 necesita uno que lo descarte); el mapa no. El camino se traza directo entre las piezas dibujadas que lo rodean, y un paquete que muere en él termina en el tramo entre la última pieza dibujada que cruzó y la siguiente (en el 08, entre `router-oficina` y el globo), con el sello de perdido. Ningún texto nombra ese router (Tarea 18).
+- **Qué incidentes la traen.** El 06, el 08 y el 10 (prototipados) y, deducidos de la misma regla y sin prototipo, el 07 (el mismo mapa que el 06) y el 09. Del 01 al 05 y del 11 al 14 no se decide aquí: sin lista dibujan el mundo entero (la ficha 11 dice que los routers siguen en el mapa) y cada uno puede traer la suya al escribirse su bloque. _Para revisar._
 
 **Notas de la implementación (Tareas 3 a 9, 2026-10-10):**
 - `pathFor` en `src/scene/layout.ts` solo reconoce `route-self`. Una traza de loopback (`route-loopback`, también por `localhost`) y una de `invalid-address` dibujarían un camino que sale por la puerta; el layout debe dejarlas dentro del dispositivo.
 - `layout.ts` ya recibe los actores `server` (la Tarea 4 los sacó de las piezas de actor y de la inspección); aquí se dibujan como la variante de dispositivo (V5 b).
 
 **Tests:**
-- `layout.test.ts`, `lays out one column per LAN in an office`.
-- `layout.test.ts`, `lays out the routers along the road between the office and the internet, in order`.
-- `layout.test.ts`, `a server of the internet stands past the last router`.
+- `layout.test.ts`, `lays out one column per LAN that has a drawn piece`.
+- `layout.test.ts`, `lays out the drawn routers along the road between the office and the internet, in order`.
+- `layout.test.ts`, `a server of the internet stands past the last drawn router`.
 - `layout.test.ts`, `a device that is not connected stands outside the slab`.
-- `layout.test.ts`, `the path of a packet goes through the routers it crossed, in order`.
-- `layout.test.ts`, `a packet that dies at a router ends at that router`.
+- `layout.test.ts`, `the path of a packet goes through the drawn routers it crossed, in order`.
+- `layout.test.ts`, `a packet that dies at a drawn router ends at that router`.
+- `layout.test.ts`, `a packet that dies at a router that is not drawn ends between the last drawn piece it crossed and the next one`.
 - `layout.test.ts`, `the labels of two floors do not overlap`.
 - `layout.test.ts`, `a loopback ping and an invalid address never draw a path out of the device`.
+- `layout.test.ts`, `gives a spot only to the pieces it is given`.
+- `layout.test.ts`, `a floor with no drawn piece has no slab and no label`.
+- `layout.test.ts`, `the office keeps full size in every incident, whichever pieces it draws`: el zoom (`CAMERA_ZOOM`) y el tamaño de una pieza son los mismos con la oficina entera y con una sola pieza.
+- `layout.test.ts`, `the place of the office depends only on the pieces its incident draws`.
+- `layout.test.ts`, `when only the sender of the office is drawn, no other device of the office gets a spot and the office router keeps its own, as in 10`.
+- `pieces.test.ts`, `each incident draws only the pieces it uses`: con una lista, solo las piezas que están en ella y cuyo término se conoce.
+- `pieces.test.ts`, `an incident with no list draws every piece of its world, as before`.
+- `pieces.test.ts`, `the firewall of a device that is not drawn is not drawn`.
+- `incident.test.ts`, `accepts an incident with a list of shown ids and one without it`.
+- `incident.test.ts`, `rejects a list of shown ids with a repeated id`.
+- `registry.test.ts`, `every id in the list of shown pieces of an incident names something in its world`.
+- `registry.test.ts`, `the list of shown pieces of an incident holds its sender, every destination that has an owner and every expected id`.
 - `entity-icon.test.tsx`, `draws the server of the internet as a device`.
 - `entity-icon.test.tsx`, `every device variant has an icon and a catalog cell`.
 - `pieces.test.ts`, `an actor of kind server is drawn as the internet-server variant of the device piece`.
@@ -1057,10 +1084,11 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 **Archivos:**
 - Modify: `src/game/view/inspection.ts` y su test (el campo del camino de un paquete se llama «Pasó por» mientras `hop` es desconocido y «Saltos» después), `src/game/view/cards/terminal-card.ts`, `src/copy/screens/ui.ts` y `incident-ui.ts`, `src/ui/incident/inspection-box.tsx`, `src/ui/incident/map-cards/terminal-card.tsx` y su test, las guías.
 
-**Interfaces:** la caja de inspección de un paquete suma el campo «Tiempo de ida y vuelta» cuando el término `rtt` se conoce (V1 a) y solo si `rttMs` existe: nunca para el silencio ni para un aviso que genera el propio emisor (punto 16 de «Decididas sin el estudiante»); la línea de salida del ping en la terminal no lleva el tiempo. Un traceroute se muestra como una lista numerada en la tarjeta de la terminal (V2 a): una línea por salto, con la IP que avisó (o un asterisco) y su tiempo. Lo que lista el campo «Pasó por» y lo que el mapa dibuja deben coincidir; V6 (abierta) decide cómo.
+**Interfaces:** la caja de inspección de un paquete suma el campo «Tiempo de ida y vuelta» cuando el término `rtt` se conoce (V1 a) y solo si `rttMs` existe: nunca para el silencio ni para un aviso que genera el propio emisor (punto 16 de «Decididas sin el estudiante»); la línea de salida del ping en la terminal no lleva el tiempo. Un traceroute se muestra como una lista numerada en la tarjeta de la terminal (V2 a): una línea por salto, con la IP que avisó (o un asterisco) y su tiempo. Lo que lista el campo «Pasó por» y lo que el mapa dibuja deben coincidir (V6 b): el campo, los motivos y las líneas de traceroute nombran solo routers que el incidente dibuja, y un tramo que cruza routers sin dibujar se escribe «fuera de la oficina» sin nombrarlos (_para revisar_). Por eso un incidente dibuja los routers que avisan (09) o que contestan un traceroute (10).
 
 **Tests:**
 - `inspection.test.ts`, `a packet that came back shows its round trip time once the term is known`.
+- `the path of a packet names only the routers its incident draws, and writes outside the office for the stretch through routers that are not drawn`.
 - `a packet that never came back shows no time` (ni el silencio ni el aviso del propio emisor llevan tiempo).
 - `a traceroute lists its hops with the IP and the time, and a star for a silent hop`.
 - `the header of a packet shows the source and the destination IP once the term header is known`.
@@ -1155,7 +1183,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 ### Tarea 22: Bloque 3, primera parte · 06 y 07
 
-**Bloqueada por la Tarea 13** (la tarjeta «Ajustes de red» que usa el 07) **y por la Tarea 0** (V6: qué piezas dibuja el 06). Presenta 06 y 07.
+**Bloqueada por la Tarea 13** (la tarjeta «Ajustes de red» que usa el 07; la 13 espera a la 11a, que espera la aprobación del inventario de tarjetas). V6 (b) está decidida y ya no la bloquea: cada incidente trae su lista `shown`, el campo que suma la Tarea 16, y la de estos dos queda en sus fichas. Presenta 06 y 07.
 
 **Archivos:**
 - Create: `src/levels/01-first-day/leaving-the-office/06-your-network-and-the-router.ts`, `07-who-gets-whats-outside.ts`, `leaving-the-office/CLAUDE.md`.
@@ -1164,6 +1192,9 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 **Tests:**
 - `chapter-1.test.ts`, `01-06: a ping to the printer goes straight and a ping to laptop-andres goes through the router`.
 - `01-06: the box says the ping to the second floor went through the router and shows its IP, without the word hop`.
+- `01-06: draws tu-laptop, laptop-lucia, the printer, laptop-andres and the office router, and no other device`.
+- `01-06: draws no internet and no router of the provider`.
+- `01-07: draws the same pieces as 01-06` (_para revisar_: el 07 no se prototipó).
 - `01-07: the ping to the second floor does not leave a laptop with no gateway`.
 - `01-07: the printer as a gateway receives the packet and nothing comes back`.
 - `01-07: an IP nobody has as a gateway gives a warning from the laptop`.
@@ -1177,7 +1208,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 ### Tarea 23: Bloque 3, segunda parte · 08, 09 y 10
 
-**Decididas: D-3 (A) y D-5 (A). Bloqueada por la Tarea 0** (V6: qué piezas y qué routers dibuja cada uno de los tres). Presenta 08, 09 y 10.
+**Decididas: D-3 (A), D-5 (A) y V6 (b).** Ninguna decisión la bloquea y no espera a otra tarea más que lo que el orden del plan ya pone antes: va después de la 22 (ambas tocan `shared.ts`) y usa el campo `shown` de la Tarea 16. Cada uno de los tres trae su lista de piezas, la de su ficha. Presenta 08, 09 y 10.
 
 **Archivos:**
 - Create: `leaving-the-office/08-the-network-of-networks.ts`, `09-counting-hops.ts`, `10-seeing-the-path.ts`.
@@ -1187,12 +1218,18 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `chapter-1.test.ts`, `01-08: a ping to the server of the internet comes back`.
 - `01-08: a ping to the private IP of another office dies at the first router outside the office with no warning`.
 - `01-08: no text or box of the trip names NAT`.
+- `01-08: draws the office of 01-06, the internet and the server, and no router of the provider`.
+- `01-08: the lost ping to 10.0.0.10 ends between the office router and the internet, and no text of its box names a router outside the office`.
 - `01-09: a ping with TTL 3 gets Time Exceeded from the router of the office`.
 - `01-09: a ping with TTL 64 gets Time Exceeded too, because the packet loops`.
 - `01-09: with TTL 1 the router of the office warns and with TTL 2 the router of the provider`.
+- `01-09: draws tu-laptop, the two routers of the loop, the internet and the server, and no other device of the office` (_para revisar_: el 09 no se prototipó).
+- `01-09: every router that sends Time Exceeded is drawn`.
 - `01-10: the ping to the server ends in silence`.
 - `01-10: a traceroute lists the two routers and then stars`.
 - `01-10: the last router that answered is the one before the broken stretch`.
+- `01-10: tu-laptop is the only device of the office drawn, and the office router, the two routers of the provider, the internet and the server are drawn`.
+- `01-10: every router a line of the traceroute names is drawn`.
 - `inspection.test.ts`, `with the term IP pública known the box of an instance and of an actor shows its IP` (D-5).
 - `ladder.test.ts`, `the private IP of the other office is not inside any LAN of the office`.
 - `ladder.test.ts`, `the official name of ICMP says Internet before the term internet arrives: the one declared leak` vuelve a exigir que ICMP se presente antes que `internet` (en la Tarea 20 se relajó por el puente).
@@ -1293,11 +1330,12 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `04-01 opens after 01-14 has a star`.
 - Dentro de «Sin animaciones»: `after the pings of 08, no label or stamp overlaps, and the lost ping says why`.
 - `in 06 the open terminal covers neither the router nor the labels of the second floor`.
+- `in 06, 08 and 10 the whole map and its labels fit the area of the map at full size` (V6 b: el mapa no se reduce; el ancho que le queda es el de la ventana menos el panel de 380 px).
 - `in 05 the stamp of the ping to laptop-marta tells a screen reader that it was lost, not blocked`.
 - `in 11 the stamp of the ping to laptop-marta tells a screen reader that the firewall blocked it`.
 - `in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping`.
 - `in 13 the tabs Entrada and Salida of the firewall card are reached and switched with the keyboard`.
-- Cada prueba de geometría corre a 1280×800 y a 1440×900. El nombre y lo que miden las del 06 y el 08 dependen de V6 (abierta).
+- Cada prueba de geometría corre a 1280×800 y a 1440×900, con el mapa a tamaño completo (V6 b). Si al escribir el 11 al 14 el mundo entero no cabe a tamaño completo, ese incidente trae su lista y la prueba de ajuste se amplía a él (punto 20 de «Decididas sin el estudiante»).
 
 **Commit:** `test(e2e): play the fourteen incidents of chapter 1`.
 
@@ -1340,19 +1378,20 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 | Lo que queda fuera del capítulo | Tarea 20 (`names no topic of the chapters that come later, in any text of chapter 1`) |
 | Un solo motor, mecánicas que le faltan | «Inventario de mecánicas»; Tareas 3 a 9 |
 | Cada bloque cierra con una prueba humana | Tareas 20, 21, 23, 25 y 26 |
-| Decisiones que no toma quien escribe | «Decisiones del estudiante (2026-10-10)», D-6, V6 y D-12 en «Decisiones abiertas» y la Tarea 0 |
+| Decisiones que no toma quien escribe | «Decisiones del estudiante (2026-10-10)», D-6 (V6 incluida) y D-12 en «Decisiones abiertas» y la Tarea 0 |
 | El capítulo 4 no cambia lo que calcula | Review Focus 1 y el cierre de las Tareas 3 a 9 |
 | Docs, roadmap, spec viejo, tests e2e como tareas | Tareas 27 y 28 |
-| Las decisiones visuales del 2026-10-10 (V1 a V5 y V7 a V9) | D-6, «Decisiones visuales aprobadas» y las Tareas 11, 11a, 11b, 12 a 18 |
+| Las decisiones visuales del 2026-10-10 (V1 a V9) | D-6, «Decisiones visuales aprobadas» y las Tareas 11, 11a, 11b, 12 a 18, 22, 23 y 27 |
 | El estilo B en todas las tarjetas del juego, también las del capítulo 4 | Tarea 11a y «Cambios visibles del capítulo 4» |
 | Pestañas «Entrada» y «Salida» con Radix, con una dependencia exacta de al menos 14 días | Tareas 1a, 11b y 15; Global Constraints, «Dependencias» |
 | La puerta de enlace como ajuste guardado, en una tarjeta propia | Tarea 13, ficha 01-07 y Tareas 22 y 27 |
 | Rigor siempre (D-11) | Global Constraints, Review Focus 15 y las pruebas de las Tareas 13, 15, 25 y 26 |
-| Un mapa que crece (V6) y la IP del 01 (D-12), abiertos | «Decisiones abiertas» y Tarea 0 |
+| El mapa sigue la historia: cada incidente dibuja solo las piezas que usa, a tamaño completo (V6 b) | D-6, «V6 en detalle», punto 20 de «Decididas sin el estudiante», fichas 06 a 10 y Tareas 16, 18, 22, 23 y 27 |
+| La IP del 01 (D-12), abierta | «Decisiones abiertas» y Tarea 0 |
 
 ## Decisiones visuales aprobadas
 
-Decidido el 2026-10-10: V1 a V5 y V7 a V9. Siguen pendientes V6, D-12 y la aprobación del inventario de tarjetas en estilo B. Hasta que el estudiante elija no empiezan las tareas que cada fila dice bloqueadas: la 12 (D-12), la 16 y, con ella, la 22 y la 23 (V6); la 11a espera el inventario, y tras ella la 11b y la 12 a la 15.
+Decidido el 2026-10-10: V1 a V9 (V6 fue la b). Siguen pendientes D-12, el botón primario como sello (solo afecta a la Tarea 11a) y la aprobación del inventario de tarjetas en estilo B. Hasta que el estudiante elija no empiezan las tareas que cada fila dice bloqueadas: la 12 (D-12); la 11a espera el inventario, y tras ella la 11b y la 12 a la 15.
 
 | # | Elección del estudiante | Fecha |
 |---|--------------------------|-------|
@@ -1361,9 +1400,10 @@ Decidido el 2026-10-10: V1 a V5 y V7 a V9. Siguen pendientes V6, D-12 y la aprob
 | V3 | b. Una tarjeta aparte, «Ajustes de red», de la laptop, separada de la terminal (Tarea 13). Razón: la puerta de enlace predeterminada es un ajuste guardado del dispositivo y no parte de un comando; en macOS, `networksetup -getinfo Wi-Fi` la llama «Router» (verificado por el copiloto en el Mac del estudiante el 2026-10-10) | 2026-10-10 |
 | V4 | a. El aviso es un paquete con forma propia y un sello nuevo (Tarea 17) | 2026-10-10 |
 | V5 | b. El servidor de internet se dibuja como una variante de la pieza de dispositivo, no de la de actor (Tarea 16) | 2026-10-10 |
-| V6 | pendiente. El mapa que crece: dos opciones nuevas en prototipo para el 06, el 08 y el 10 | |
+| V6 | b. El mapa sigue la historia: cada pantalla se dibuja a tamaño completo (100 %) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio entre subcapítulos (en el 10, de los dispositivos de la oficina solo queda `tu-laptop`). Cada incidente trae su lista de piezas (punto 20 de «Decididas sin el estudiante», para revisar) (Tareas 16, 18, 22 y 23) | 2026-10-10 |
 | V7 | a. El paquete cuya causa está oculta se detiene en la puerta del equipo, con «?» (Tarea 11) | 2026-10-10 |
 | V8 | B del prototipo de estilos, como el estilo NUEVO de TODAS las tarjetas del juego, también las del capítulo 4: franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. Una sola primitiva por familia: el estilo cambia la primitiva y no suma hermanas (Tarea 11a) | 2026-10-10 |
 | V8 · inventario | pendiente. El estudiante aprueba el prototipo del inventario de tarjetas en estilo B (en preparación el 2026-10-10); desbloquea la Tarea 11a | |
 | V9 | b, con Radix. Pestañas «Entrada» y «Salida» con `@radix-ui/react-tabs` (versión exacta, publicada al menos dos semanas antes), envuelto como la primitiva `Tabs` de `src/design/` con los tokens del juego; servirá también para la entrada y la salida del Security Group y de la NACL (Tareas 11b y 15) | 2026-10-10 |
+| Botón primario · sello | pendiente. El estudiante decide si el botón primario toma el aspecto de sello del estilo B; solo afecta a la Tarea 11a | |
 | D-12 | pendiente. Cómo da el 01 la IP de la impresora: forma 1 (fichas) o forma 2 (campo de texto con «Comprobar») | |
