@@ -117,6 +117,10 @@ La decisión queda escrita en este documento (sección «Decisiones visuales apr
 13. **Las pestañas solo aparecen cuando la tarjeta tiene las dos direcciones.** _Para revisar._ Un firewall que solo tiene reglas de entrada (el de una laptop hasta el 13 y el Security Group del capítulo 4) muestra su lista como hoy, sin pestañas: una sola pestaña no enseña nada y los tests de la tarjeta del capítulo 4 siguen sin cambiar de contenido. Las pestañas llegan con las reglas de salida (el 13 y, más adelante, el Security Group y la NACL).
 14. **Por dónde se abre «Ajustes de red».** _Para revisar._ El código de hoy abre una sola tarjeta por pieza, así que la laptop que envía y además tiene ajustes necesita una entrada nueva. El plan no la decide (Tarea 13); quien implementa elige la más simple que no sume una entidad al catálogo y la anota aquí.
 15. **`src/design/` se divide en `primitives/`, sin mover los tokens.** _Para revisar._ Mover solo las primitivas (botón, tarjeta, elección, etiqueta, sus tests y su hoja de estilos) no toca nada de lo que lee los tokens: la expresión `css.include` de `vite.config.ts`, el import `?raw` de `tokens.ts` y la ruta de `tokens.css` que citan `.claude/rules/no-magic-strings.md` y `.claude/az-rules.json`. La raíz queda con 4 archivos y `primitives/` con 7; `Tabs` y su test lo llevan a 9. `DESIGN.md` sugiere como ejemplo la división entera en `tokens/` y `primitives/`; sería más movimiento sin ganar espacio.
+16. **Un aviso que genera la propia laptop no tiene RTT.** Decidida al implementar las Tareas 3 a 9 (2026-10-10). `Trace.rttMs` queda ausente para un `host-unreachable` cuyo emisor es quien avisa, igual que para el silencio. Razón: en Linux ese aviso aparece después de esperar a que alguien conteste por esa IP, no al instante, y `ping` no imprime `time=` en una línea de «Destination Host Unreachable». Darle el tiempo del loopback (0,05 ms) enseñaría que es instantáneo. El loopback, `localhost` y la propia IP sí tienen 0,05 ms. Los avisos de un router conservan su tiempo.
+17. **traceroute termina en el primer aviso de inalcanzable.** Esa línea lleva la IP que avisó y `unreachable: 'host' | 'net'`, con su tiempo si avisó un router y sin tiempo si avisó el propio emisor. Fuente: `traceroute(8)` de FreeBSD (ya en la tabla de fuentes del spec): si las sondas reciben un inalcanzable, traceroute se rinde. Antes el plan solo decía «termina al llegar al destino o al máximo».
+18. **Dos motivos más de los que listaba el plan.** `route-leaves-office` (el destino está fuera del rango de la oficina y el paquete va a la puerta de enlace; `route-private` decía «por dentro de la red de la oficina», falso para un paquete que sale) y `forward-no-host` (un router tiene conectada la red del destino pero ningún dispositivo tiene esa IP).
+19. **Simplificación del modelo.** El enlace de un router con un servidor es el /24 de la IP de su interfaz, porque una interfaz no tiene máscara. No se muestra.
 
 ## Inventario de mecánicas
 
@@ -189,8 +193,8 @@ Reglas del esquema: ninguna IP se repite entre dispositivos, interfaces de route
 | `Trace.header` | `{ request: { source, destination, ttl }, reply?: { source, destination } }` | El encabezado de la ida y el de la vuelta, con origen y destino invertidos. El origen es siempre el privado (la salida de la oficina es una caja negra) |
 | `Trace.hops` | lista de `{ routerId, ip, ttlLeft }` | Los routers que cruzó, con la IP de la interfaz del lado de quien envía |
 | `Trace.notice` | `{ kind: 'host-unreachable' \| 'net-unreachable' \| 'time-exceeded', fromId, fromIp }` | El aviso que volvió y quién lo generó |
-| `Trace.rttMs` | número | La suma de las latencias de los tramos recorridos, ida y vuelta. Cifras ilustrativas |
-| Códigos de motivo nuevos | `address-invalid`, `address-localhost`, `route-loopback`, `route-no-gateway`, `route-not-connected`, `route-gateway-not-a-router`, `forward-no-owner`, `forward-hop`, `forward-ttl-exceeded`, `forward-no-route`, `forward-private-dropped`, `forward-router-replies` | Cada uno trae sus datos (ids e IP); `src/copy/` los vuelve texto |
+| `Trace.rttMs` | número | La suma de las latencias de los tramos recorridos, ida y vuelta. Cifras ilustrativas. Ausente para el silencio y para un aviso que genera el propio emisor (punto 16 de «Decididas sin el estudiante»); un aviso de un router conserva su tiempo |
+| Códigos de motivo nuevos | `address-invalid`, `address-localhost`, `route-loopback`, `route-no-gateway`, `route-not-connected`, `route-gateway-not-a-router`, `route-leaves-office`, `forward-no-owner`, `forward-no-host`, `forward-hop`, `forward-ttl-exceeded`, `forward-no-route`, `forward-private-dropped`, `forward-router-replies` | Cada uno trae sus datos (ids e IP); `src/copy/` los vuelve texto |
 
 Los campos nuevos de la traza están ausentes (no `null`) en toda traza que el test dorado registra, y ninguna etapa nueva escribe un paso en ellas.
 
@@ -698,7 +702,7 @@ Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue ab
 - Create: `src/engine/simulation/traceroute.ts` y `traceroute.test.ts`.
 - Modify: `src/engine/index.ts`, `src/engine/simulation/CLAUDE.md`.
 
-**Interfaces:** una función que, dado un dispositivo de origen, un destino y un máximo de saltos (8 en el juego), corre una sonda por cada TTL de 1 hacia arriba y devuelve una lista de líneas: número de salto, la IP que avisó o ninguna, el RTT, y si llegó al destino. Termina al llegar al destino o al máximo.
+**Interfaces:** una función que, dado un dispositivo de origen, un destino y un máximo de saltos (8 en el juego), corre una sonda por cada TTL de 1 hacia arriba y devuelve una lista de líneas: número de salto, la IP que avisó o ninguna, el RTT, y si llegó al destino. Termina al llegar al destino, al máximo o en el primer aviso de inalcanzable (punto 17 de «Decididas sin el estudiante»). Esa línea lleva la IP que avisó y `unreachable: 'host' | 'net'`, con su tiempo si avisó un router y sin tiempo si avisó el propio emisor.
 
 **Tests:**
 - `traceroute lists one line per router, in order, with the IP that warned and its time`.
@@ -721,7 +725,7 @@ Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue ab
 - Modify: `src/engine/network/actions.ts`, `schema.ts` (la acción), `src/engine/network/CLAUDE.md`.
 - Test: `src/engine/network/actions.test.ts`, `src/engine/simulation/simulate.test.ts`.
 
-**Interfaces:** `addRule` y `removeRule` aceptan `direction`; sin él, entrada, como hoy.
+**Interfaces:** `addRule` y `removeRule` aceptan `direction`; sin él, entrada, como hoy. Nota de la implementación: `direction` en `addRule` y `removeRule` y su esquema ya aterrizaron en la Tarea 4, así que esta tarea solo agregó las pruebas con nombre y la guía.
 
 **Tests:**
 - `addRule with direction outbound adds the rule to the outbound list`.
@@ -999,6 +1003,10 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Interfaces:** una columna por LAN; los routers a lo largo del camino a la izquierda, en orden, y el servidor pasado el último; el camino de un paquete pasa por los saltos de su traza y se detiene en el router que lo descarta. La pieza de un dispositivo desconectado se dibuja fuera de la losa. Esta tarea recibe los saltos ya calculados en la traza (`Trace.hops`). Todo esto está sujeto a V6: si el mapa crece, cada incidente dibuja solo las piezas que usa y la forma exacta de la distribución depende de la opción que elija el estudiante (ver «V6 en detalle»). El especimen del servidor de internet se distingue del de `ec2-instance`, que ya dibuja un servidor: el estudiante lo compara en el diff de la captura.
 
+**Notas de la implementación (Tareas 3 a 9, 2026-10-10):**
+- `pathFor` en `src/scene/layout.ts` solo reconoce `route-self`. Una traza de loopback (`route-loopback`, también por `localhost`) y una de `invalid-address` dibujarían un camino que sale por la puerta; el layout debe dejarlas dentro del dispositivo.
+- `layout.ts` ya recibe los actores `server` (la Tarea 4 los sacó de las piezas de actor y de la inspección); aquí se dibujan como la variante de dispositivo (V5 b).
+
 **Tests:**
 - `layout.test.ts`, `lays out one column per LAN in an office`.
 - `layout.test.ts`, `lays out the routers along the road between the office and the internet, in order`.
@@ -1007,6 +1015,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `layout.test.ts`, `the path of a packet goes through the routers it crossed, in order`.
 - `layout.test.ts`, `a packet that dies at a router ends at that router`.
 - `layout.test.ts`, `the labels of two floors do not overlap`.
+- `layout.test.ts`, `a loopback ping and an invalid address never draw a path out of the device`.
 - `entity-icon.test.tsx`, `draws the server of the internet as a device`.
 - `entity-icon.test.tsx`, `every device variant has an icon and a catalog cell`.
 - `pieces.test.ts`, `an actor of kind server is drawn as the internet-server variant of the device piece`.
@@ -1048,11 +1057,11 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 **Archivos:**
 - Modify: `src/game/view/inspection.ts` y su test (el campo del camino de un paquete se llama «Pasó por» mientras `hop` es desconocido y «Saltos» después), `src/game/view/cards/terminal-card.ts`, `src/copy/screens/ui.ts` y `incident-ui.ts`, `src/ui/incident/inspection-box.tsx`, `src/ui/incident/map-cards/terminal-card.tsx` y su test, las guías.
 
-**Interfaces:** la caja de inspección de un paquete suma el campo «Tiempo de ida y vuelta» cuando el término `rtt` se conoce (V1 a); la línea de salida del ping en la terminal no lleva el tiempo. Un traceroute se muestra como una lista numerada en la tarjeta de la terminal (V2 a): una línea por salto, con la IP que avisó (o un asterisco) y su tiempo. Lo que lista el campo «Pasó por» y lo que el mapa dibuja deben coincidir; V6 (abierta) decide cómo.
+**Interfaces:** la caja de inspección de un paquete suma el campo «Tiempo de ida y vuelta» cuando el término `rtt` se conoce (V1 a) y solo si `rttMs` existe: nunca para el silencio ni para un aviso que genera el propio emisor (punto 16 de «Decididas sin el estudiante»); la línea de salida del ping en la terminal no lleva el tiempo. Un traceroute se muestra como una lista numerada en la tarjeta de la terminal (V2 a): una línea por salto, con la IP que avisó (o un asterisco) y su tiempo. Lo que lista el campo «Pasó por» y lo que el mapa dibuja deben coincidir; V6 (abierta) decide cómo.
 
 **Tests:**
 - `inspection.test.ts`, `a packet that came back shows its round trip time once the term is known`.
-- `a packet that never came back shows no time`.
+- `a packet that never came back shows no time` (ni el silencio ni el aviso del propio emisor llevan tiempo).
 - `a traceroute lists its hops with the IP and the time, and a star for a silent hop`.
 - `the header of a packet shows the source and the destination IP once the term header is known`.
 - `the path of a packet is worded without hops until the term hop is known`.
