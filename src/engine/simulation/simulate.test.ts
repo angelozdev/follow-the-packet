@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from './checkpoints';
-import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { applyAction } from '@/engine/network/actions';
@@ -645,5 +645,184 @@ describe('routers, TTL, warnings and the internet', () => {
   it('a VPC trace never carries hops', () => {
     expect(simulate(lab03Net(), ping(device('servidor1'), S2.private))).not.toHaveProperty('hops');
     expect(simulate(withEcho(), ping(device('servidor1'), S2.private))).not.toHaveProperty('hops');
+  });
+});
+
+describe('the header, the reply and the round trip time', () => {
+  const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+  const floors = (): Network => officeTwoFloorsNet();
+  const sendFromYou = (to: string, ttl?: number): Trace => simulate(floors(), { ...ping(device('your-laptop'), to), ...(ttl !== undefined && { ttl }) });
+  const rttOf = (net: Network, to: string): number | undefined => simulate(net, ping(device('your-laptop'), to)).rttMs;
+  const withRouterLatency = (net: Network, routerId: string, latencyMs: number): Network => ({
+    ...net,
+    routers: (net.routers ?? []).map((router) => (router.id === routerId ? { ...router, latencyMs } : router)),
+  });
+  const withLanLatency = (net: Network, lanId: string, latencyMs: number): Network => ({
+    ...net,
+    lans: (net.lans ?? []).map((lan) => (lan.id === lanId ? { ...lan, latencyMs } : lan)),
+  });
+  const withServerLatency = (net: Network, latencyMs: number): Network => ({
+    ...net,
+    actors: net.actors.map((entry) => (entry.kind === 'server' ? { ...entry, latencyMs } : entry)),
+  });
+  const closedOut = (): Network => ({
+    ...withDevice(floors(), 'your-laptop', { firewallIds: ['fw-closed'] }),
+    firewalls: [{ id: 'fw-closed', name: 'fw-closed', kind: 'host-firewall', inbound: [], outbound: [] }],
+  });
+
+  it('the request header carries the IP of the sender, the IP of the destination and the TTL it left with', () => {
+    expect(sendFromYou(floor1.printer).header?.request).toEqual({ source: floor1.you, destination: floor1.printer, ttl: 64 });
+    expect(sendFromYou(server.ip).header?.request).toEqual({ source: floor1.you, destination: server.ip, ttl: 64 });
+    expect(sendFromYou(server.ip, 5).header?.request).toEqual({ source: floor1.you, destination: server.ip, ttl: 5 });
+    expect(sendFromYou('localhost').header?.request).toEqual({ source: floor1.you, destination: '127.0.0.1', ttl: 64 });
+    expect(simulate(officeNet(), ping(device('your-laptop'), OFFICE.lucia)).header?.request).toEqual({ source: OFFICE.you, destination: OFFICE.lucia, ttl: 64 });
+
+    const unanswered = sendFromYou(server.ip, 1);
+    expect(unanswered.outcome).toBe('ttl-exceeded');
+    expect(unanswered.header?.request.ttl).toBe(1);
+  });
+
+  it('the reply header swaps source and destination', () => {
+    const toPrinter = sendFromYou(floor1.printer);
+    expect(toPrinter.header?.reply).toEqual({ source: floor1.printer, destination: floor1.you });
+    expect(toPrinter.header?.reply).toEqual({ source: toPrinter.header?.request.destination, destination: toPrinter.header?.request.source });
+    expect(sendFromYou(server.ip).header?.reply).toEqual({ source: server.ip, destination: floor1.you });
+    expect(sendFromYou(floor1.gateway).header?.reply).toEqual({ source: floor1.gateway, destination: floor1.you });
+    expect(simulate(floors(), ping(device('andres-laptop'), floor1.you)).header?.reply).toEqual({ source: floor1.you, destination: floor2.andres });
+  });
+
+  it('only a packet that was answered has a reply header', () => {
+    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [] } });
+    const traces = [simulate(deaf, ping(device('your-laptop'), floor1.printer)), sendFromYou(floor1.nobody), sendFromYou(server.ip, 2), simulate(floors(), tcp(device('your-laptop'), floor1.printer, 80))];
+    expect(traces.map((trace) => trace.outcome)).toEqual(['arrived-no-reply', 'unreachable', 'ttl-exceeded', 'refused']);
+    for (const trace of traces) {
+      expect(trace.header?.request.source).toBe(floor1.you);
+      expect(trace.header).not.toHaveProperty('reply');
+    }
+  });
+
+  it('a packet that never left its sender has no header and no round trip time', () => {
+    const unplugged = withDevice(floors(), 'your-laptop', { connected: false });
+    const noGateway = withDevice(floors(), 'your-laptop', { gateway: undefined });
+    const traces = [simulate(unplugged, ping(device('your-laptop'), floor1.printer)), simulate(noGateway, ping(device('your-laptop'), floor2.andres)), sendFromYou('192.168.1.300')];
+    expect(traces.map((trace) => trace.outcome)).toEqual(['no-route', 'no-route', 'invalid-address']);
+    for (const trace of traces) {
+      expect(trace).not.toHaveProperty('header');
+      expect(trace).not.toHaveProperty('rttMs');
+    }
+  });
+
+  it('the header keeps the private source across the router', () => {
+    const crossed = [sendFromYou(server.ip), sendFromYou(server.ip, 2), sendFromYou('8.8.8.8'), simulate(floors(), ping(device('andres-laptop'), server.ip))];
+    expect(crossed.map((trace) => trace.hops?.length)).toEqual([3, 2, 2, 3]);
+    expect(crossed.map((trace) => trace.header?.request.source)).toEqual([floor1.you, floor1.you, floor1.you, floor2.andres]);
+    expect(crossed[0].header?.reply?.destination).toBe(floor1.you);
+    expect(crossed[3].header?.reply?.destination).toBe(floor2.andres);
+    for (const trace of crossed) {
+      expect(JSON.stringify(trace.header)).not.toContain(officeRouter.uplink);
+      expect(trace.effectiveSource).toBe(trace.header?.request.source);
+    }
+  });
+
+  it('the round trip time adds the latency of every leg, there and back', () => {
+    expect(rttOf(floors(), floor1.printer)).toBe(2);
+    expect(rttOf(floors(), floor2.andres)).toBe(2 * (1 + 1 + 1));
+    expect(rttOf(floors(), server.ip)).toBe(2 * (1 + 1 + 8 + 12 + 20));
+    expect(rttOf(officeNet(), OFFICE.printer)).toBe(2);
+
+    expect(rttOf(withRouterLatency(floors(), provider.id, 18), server.ip)).toBe(84 + 2 * 10);
+    expect(rttOf(withLanLatency(floors(), floor1.id, 4), server.ip)).toBe(84 + 2 * 3);
+    expect(rttOf(withServerLatency(floors(), 50), server.ip)).toBe(84 + 2 * 30);
+    expect(rttOf(withLanLatency(floors(), floor2.id, 6), floor2.andres)).toBe(2 * (1 + 1 + 6));
+  });
+
+  it('a latency off the road of the packet does not change its round trip time', () => {
+    const elsewhere = withLanLatency(withRouterLatency(floors(), backbone.id, 99), floor2.id, 40);
+    expect(rttOf(elsewhere, floor1.printer)).toBe(2);
+    expect(rttOf(elsewhere, floor1.gateway)).toBe(2 * (1 + 1));
+    expect(rttOf(withServerLatency(floors(), 90), provider.towardInternet)).toBe(rttOf(floors(), provider.towardInternet));
+  });
+
+  it('a router that answers for its own interface adds its latency to the trip as one that warns does', () => {
+    const answers = sendFromYou(provider.towardOffice);
+    const warns = sendFromYou(server.ip, 2);
+    expect([answers.outcome, warns.outcome]).toEqual(['replied', 'ttl-exceeded']);
+    expect([answers.rttMs, warns.rttMs]).toEqual([2 * (1 + 1 + 8), 2 * (1 + 1 + 8)]);
+  });
+
+  it('a loopback round trip is the smallest of all', () => {
+    const loopbacks = [sendFromYou('localhost'), sendFromYou('127.0.0.1'), sendFromYou('127.8.9.10'), sendFromYou(floor1.you)];
+    expect(loopbacks.map((trace) => trace.outcome)).toEqual(['replied', 'replied', 'replied', 'replied']);
+    const loopback = loopbacks[0].rttMs ?? NaN;
+    expect(loopback).toBeGreaterThan(0);
+    expect(loopback).toBeLessThan(1);
+    expect(loopbacks.map((trace) => trace.rttMs)).toEqual([loopback, loopback, loopback, loopback]);
+
+    const others = [
+      sendFromYou(floor1.printer),
+      sendFromYou(floor2.andres),
+      sendFromYou(floor1.gateway),
+      sendFromYou(provider.towardOffice),
+      sendFromYou(server.ip),
+      sendFromYou(server.ip, 1),
+      sendFromYou('8.8.8.8'),
+      simulate(floors(), tcp(device('your-laptop'), floor1.printer, 80)),
+    ];
+    for (const other of others) expect(other.rttMs).toBeGreaterThan(loopback);
+    expect(sendFromYou(floor1.nobody)).not.toHaveProperty('rttMs');
+  });
+
+  it("a warning's time counts only up to the device that warned", () => {
+    const warnings = [1, 2, 3].map((ttl) => sendFromYou(server.ip, ttl));
+    expect(warnings.map((trace) => trace.notice?.fromId)).toEqual([officeRouter.id, provider.id, backbone.id]);
+    expect(warnings.map((trace) => trace.rttMs)).toEqual([2 * (1 + 1), 2 * (1 + 1 + 8), 2 * (1 + 1 + 8 + 12)]);
+
+    const noRoute = sendFromYou('8.8.8.8');
+    expect([noRoute.notice?.kind, noRoute.notice?.fromId, noRoute.rttMs]).toEqual(['net-unreachable', provider.id, 2 * (1 + 1 + 8)]);
+    const noHost = sendFromYou('198.51.100.77');
+    expect([noHost.notice?.kind, noHost.notice?.fromId, noHost.rttMs]).toEqual(['host-unreachable', backbone.id, 2 * (1 + 1 + 8 + 12)]);
+
+    const ownLaptop = sendFromYou(floor1.nobody);
+    expect(ownLaptop.notice).toEqual({ kind: 'host-unreachable', fromId: 'your-laptop', fromIp: floor1.you });
+    expect(ownLaptop).not.toHaveProperty('rttMs');
+  });
+
+  it('a trip that brings nothing back has no round trip time', () => {
+    const quiet: Network = { ...floors(), routers: (floors().routers ?? []).map((router) => ({ ...router, sendsUnreachable: false })) };
+    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [] } });
+    const traces = [
+      simulate(quiet, ping(device('your-laptop'), '8.8.8.8')),
+      simulate(quiet, ping(device('your-laptop'), '10.0.0.10')),
+      simulate(deaf, ping(device('your-laptop'), floor1.printer)),
+      simulate(closedOut(), ping(device('your-laptop'), floor1.printer)),
+    ];
+    expect(traces.map((trace) => trace.outcome)).toEqual(['timeout', 'timeout', 'arrived-no-reply', 'timeout']);
+    for (const trace of traces) expect(trace).not.toHaveProperty('rttMs');
+  });
+
+  it('the new trace fields are absent from every trace of a VPC', () => {
+    const open = withInbound(withEcho(), 'sg-servidor2', allOut('everything'));
+    const packets: [Network, PacketSpec][] = [
+      [lab03Net(), ping(device('servidor1'), S2.private)],
+      [open, ping(device('servidor1'), S2.private)],
+      [open, ping(device('servidor1'), S1.private)],
+      [open, ping(device('servidor1'), VPC_NOBODY)],
+      [open, ping(device('servidor1'), S2.public)],
+      [open, tcp(device('servidor1'), S2.private, 22)],
+      [open, tcp(device('servidor1'), S2.private, 80)],
+      [open, { ...ping(device('servidor1'), S2.private), ttl: 3 }],
+      [open, ping(device('servidor1'), 'unknown-name')],
+      [open, ping(actor('you'), S1.public)],
+      [open, tcp(actor('you'), S1.public, 22)],
+      [open, tcp(actor('attacker'), S1.public, 22)],
+      [open, ping(actor('attacker'), S1.private)],
+    ];
+    const traces = packets.map(([net, packet]) => simulate(net, packet));
+    for (const outcome of ['replied', 'timeout', 'refused', 'lost', 'unresolved']) expect(traces.map((trace) => trace.outcome)).toContain(outcome);
+    for (const trace of traces) {
+      expect(trace).not.toHaveProperty('header');
+      expect(trace).not.toHaveProperty('rttMs');
+      expect(JSON.stringify(trace)).not.toMatch(/"header"|"rttMs"/);
+    }
   });
 });

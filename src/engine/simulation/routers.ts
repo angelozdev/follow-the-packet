@@ -2,7 +2,7 @@ import { bestRoute, interfaceTowards, onwardFrom, ownsIp } from '@/engine/networ
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import { lanOf } from '@/engine/network/topology';
 import type { Device, Router, ServerActor } from '@/engine/network/types';
-import { CONTINUE, stop, type SimContext, type StageResult } from './context';
+import { CONTINUE, addLeg, stop, type SimContext, type StageResult } from './context';
 import type { NoticeKind, Notice, Reason } from './trace';
 
 /** Hands the packet to a device of the network: the firewall of that device, its host and its reply come next. */
@@ -60,6 +60,7 @@ function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: numbe
       return unreachableAt(ctx, router, from, 'host-unreachable', { code: 'forward-no-host', ...failure });
     case 'device':
       crossed(ctx, router, from, ttlLeft);
+      addLeg(ctx, lanOf(ctx.net, onward.device)?.latencyMs ?? 0);
       return arriveAt(ctx, onward.device);
     case 'server':
       crossed(ctx, router, from, ttlLeft);
@@ -71,11 +72,13 @@ function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: numbe
 }
 
 function answerFromServer(ctx: SimContext, server: ServerActor): StageResult {
+  addLeg(ctx, server.latencyMs);
   return answerAs(ctx, server.id, server.ip, { code: 'host-replies', deviceId: server.id });
 }
 
 function pass(ctx: SimContext, router: Router, ttl: number, ingress: string): StageResult {
   const ip = ctx.destIp!;
+  addLeg(ctx, router.latencyMs);
   if (ownsIp(router, ip)) return answerAs(ctx, router.id, ip, { code: 'forward-router-replies', routerId: router.id, ip });
   const ttlLeft = ttl - 1;
   const from = towardsSender(ctx, router, ingress);
@@ -85,7 +88,7 @@ function pass(ctx: SimContext, router: Router, ttl: number, ingress: string): St
   return sendNotice(ctx, { kind: 'time-exceeded', fromId: router.id, fromIp: from });
 }
 
-/** Takes the packet into the first router, by the interface `ingress` that faces the sender's LAN. Each router the packet reaches answers it when the destination is one of its own interfaces; otherwise takes 1 from the TTL (RFC 1812, §5.3.1), discards the packet at 0 and warns the sender, and passes it on. The TTL runs out in at most 255 routers, so a loop between two routers ends. */
+/** Takes the packet into the first router, by the interface `ingress` that faces the sender's LAN. Each router the packet reaches answers it when the destination is one of its own interfaces; otherwise takes 1 from the TTL (RFC 1812, §5.3.1), discards the packet at 0 and warns the sender, and passes it on. The TTL runs out in at most 255 routers, so a loop between two routers ends. Every router the packet reaches adds its latency to the trip, the one that answers or warns included, and a server adds its own. */
 export function enterRouter(ctx: SimContext, router: Router, ingress: string): StageResult {
   return pass(ctx, router, ctx.packet.ttl ?? DEFAULT_TTL, ingress);
 }

@@ -79,6 +79,12 @@ export interface Hop {
   ttlLeft: number;
 }
 
+/** The addresses a packet carries: who sent it, who it is for and the TTL it left with. The reply swaps source and destination (RFC 792). */
+export interface PacketHeader {
+  request: { source: string; destination: string; ttl: number };
+  reply?: { source: string; destination: string };
+}
+
 export interface TcpdumpLine {
   deviceId: string;
   direction: 'In' | 'Out';
@@ -96,4 +102,6 @@ export interface Trace {
   tcpdump: TcpdumpLine[];
   notice?: Notice;
   hops?: Hop[];
+  header?: PacketHeader;
+  rttMs?: number;
 }

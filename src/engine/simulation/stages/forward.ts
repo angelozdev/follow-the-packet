@@ -1,12 +1,11 @@
 import { isConnected, lanOf } from '@/engine/network/topology';
-import { CONTINUE, stop, type Delivery, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
+import { CONTINUE, addLeg, stop, type Delivery, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
 import { arriveAt, enterRouter, sendNotice } from '@/engine/simulation/routers';
 import type { Device, Lan, Network, Router } from '@/engine/network/types';
 
 type Neighbour = { kind: 'device'; device: Device } | { kind: 'router'; router: Router };
 
-function neighbourAt(net: Network, lan: Lan | undefined, ip: string): Neighbour | undefined {
-  if (!lan) return undefined;
+function neighbourAt(net: Network, lan: Lan, ip: string): Neighbour | undefined {
   const device = net.devices.find((d) => d.privateIp === ip && isConnected(d) && lanOf(net, d)?.id === lan.id);
   if (device) return { kind: 'device', device };
   const router = (net.routers ?? []).find((r) => r.interfaces.some((face) => face.ip === ip && face.faces === lan.id));
@@ -33,11 +32,14 @@ function handOver(ctx: SimContext, next: Neighbour, delivery: Delivery): StageRe
   return delivery.viaGateway ? dropAtGateway(ctx, next.device) : arriveAt(ctx, next.device);
 }
 
-/** Delivers what `route` handed over, inside the sender's LAN: it looks for a connected owner of the IP and, when nobody has it, the sender's own device warns that the host is unreachable. A router in that LAN, the gateway or the owner of the IP, takes the packet from there (`routers.ts`), and a gateway that is any other device drops it in silence. A packet whose destination `route` already settled (a VPC, the same device, a public IP) goes through untouched. */
+/** Delivers what `route` handed over, inside the sender's LAN: it looks for a connected owner of the IP and, when nobody has it, the sender's own device warns that the host is unreachable. The sender's LAN is the first leg of the trip, recorded once someone in it takes the packet. A router in that LAN, the gateway or the owner of the IP, takes the packet from there (`routers.ts`), and a gateway that is any other device drops it in silence. A packet whose destination `route` already settled (a VPC, the same device, a public IP) goes through untouched. */
 export const forwardStage: Stage = (ctx) => {
   const { delivery, source, net } = ctx;
   const sender = source.device;
   if (!delivery || !sender) return CONTINUE;
-  const next = neighbourAt(net, lanOf(net, sender), delivery.ip);
-  return next ? handOver(ctx, next, delivery) : warnFromSender(ctx, sender, delivery);
+  const lan = lanOf(net, sender);
+  const next = lan && neighbourAt(net, lan, delivery.ip);
+  if (!lan || !next) return warnFromSender(ctx, sender, delivery);
+  addLeg(ctx, lan.latencyMs);
+  return handOver(ctx, next, delivery);
 };

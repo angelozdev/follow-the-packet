@@ -32,6 +32,7 @@ export interface SimContext {
   responder?: Responder;
   notice?: Notice;
   hops: Hop[];
+  legsMs: number[];
   steps: Step[];
   tcpdump: TcpdumpLine[];
 }
@@ -51,6 +52,11 @@ export function receiverOf(ctx: SimContext): Receiver {
 /** Records a tcpdump line at the receiver when it is a device: the player can read a device's tcpdump, not a router's or a server's. */
 export function logAt(ctx: SimContext, receiver: Receiver, direction: TcpdumpLine['direction'], src: string, dst: string, summary: string): void {
   if (receiver.device) ctx.tcpdump.push({ deviceId: receiver.id, direction, src, dst, summary });
+}
+
+/** Records the latency of one more leg the packet travelled (a LAN, a router or a server). The round trip time adds them up, so nothing past the one who answered or warned is ever recorded. */
+export function addLeg(ctx: SimContext, latencyMs: number): void {
+  ctx.legsMs.push(latencyMs);
 }
 
 export const CONTINUE: StageResult = { done: false };
