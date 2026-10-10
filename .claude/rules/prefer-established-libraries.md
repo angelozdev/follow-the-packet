@@ -17,3 +17,4 @@ Generic infrastructure — timing (intervals, timeouts, debounce), animation, ho
 - 3D rendering: `three` through `@react-three/fiber` and `@react-three/drei`.
 - React hooks over browser APIs: `@mantine/hooks` (9.7.1, published 2026-10-06, checked 2026-10-08). `usehooks-ts` was rejected: its last release was 2025-02-05.
 - Positioning a tooltip beside its anchor and inside the window: `@floating-ui/react-dom` (2.1.9, published 2026-07-11, checked 2026-10-08). Radix Tooltip was not chosen while `prefer-radix` is undecided; it uses this same library inside.
+- Tabs (the `tablist`, `tab` and `tabpanel` roles, the arrow keys, Home and End, one stop in the Tab order): `@radix-ui/react-tabs` (1.1.21, published 2026-07-24, checked 2026-10-10), wrapped as the `Tabs` primitive of `src/design/`. Version 1.1.22 (published 2026-10-05) was too recent for the 14-day rule. `prefer-radix` is still undecided: this adopts only Radix Tabs, not Radix Tooltip.

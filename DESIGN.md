@@ -6,7 +6,7 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 
 - **Paper and ink.** Text and lines are ink on paper. Vermilion is the value of three roles, danger, emphasis and focus; only `--color-danger` means danger.
 - **Never colour alone.** A state also changes a shape or a text: a dashed border, a double ring, a word.
-- **One standard per element.** Every action or link is a `Button`, every chip or option a `Choice`, every tray of chips a `ChipTray`, every panel a `Card`, every own name a `NameTag`, every small heading a caption. A new look is a new variant of its primitive, never a sibling element and never a class added at the call site.
+- **One standard per element.** Every action or link is a `Button`, every chip or option a `Choice`, every tray of chips a `ChipTray`, every panel a `Card`, every set of tabs a `Tabs`, every own name a `NameTag`, every small heading a caption. A new look is a new variant of its primitive, never a sibling element and never a class added at the call site.
 
 ## Colour
 
@@ -113,6 +113,7 @@ All in `src/design/primitives/`, imported through `@/design`. A primitive takes 
 | `Choice` | `chip` (default), `option`; `pressed` makes it a toggle | a short value to pick (`chip`) or a sentence to choose (`option`, which wears a letter A, B, C from a CSS counter when it sits in an `ol.options`); without `pressed`, an action drawn as a chip (giving a chip back). A pressed chip keeps a name inside it readable |
 | `ChipTray` | `default`, `segmented` | a named row of chips where at most one is picked: the trays of the task card and of the terminal, and of any card that picks values with chips; `segmented` for a yes or no, two chips in one pill |
 | `Card` | `default`, `soon`; a `section` or, with `as="li"`, a list item; an optional `header` (the title stripe) | every panel, the cards beside a piece of the map included (the task card and the terminal); `soon` for what is not open yet |
+| `Tabs` | — (`name`, `tabs` as `{ id, label, panel }`, `selected`, `onSelect`) | a list of panels of which one shows at a time, chosen by tabs: «Entrada» and «Salida» on the firewall card, and later the inbound and outbound rules of a Security Group and a NACL. A new primitive and not a variant because no other primitive switches between panels with the keyboard and the roles of a tab (`tablist`, `tab`, `tabpanel`, the arrow keys, Home and End); Radix Tabs gives them and `Tabs` dresses them with the tokens. Radix mounts only the selected panel: keep the state of what a panel holds above the tabs |
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
 | `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, the name of a floor on the map, or the mark of an optional chapter |
 
@@ -136,7 +137,7 @@ A packet on the map is a variant of one piece, drawn flat and facing the camera:
 1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `src/design/primitives/primitives.css`, with tokens only.
 2. Add its specimen to `src/ui/catalog/interface-section.tsx`, with its caption in `INTERFACE_TEXT`.
 3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen. A specimen goes in a free cell of the catalog grid (`src/scene/catalog/catalog-cells.tsx`, 5 columns by 10 rows): a sixth column makes the canvas 1260 px wide, more than the 1232 px section, and a new row, or a longer list of icons, moves the interface section down, which changes its zero-tolerance capture (measured on 2026-10-10: moving the section down by 216 px or by 184 px, a new row of 192 px plus or minus the change in the icon list, changed about 70 % of its pixels, because the page's grain is a 160 px tile anchored to the document; a shift of exactly 160 px still changed 4 pixels, at rounded corners).
-4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 8 of the 12 files the folder rule allows; if it ever fills, split it by family before adding a file.
+4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 10 of the 12 files the folder rule allows; if it ever fills, split it by family before adding a file.
 5. A new token is only for a role no token serves: a colour enters the palette and gets a role; a size, a space or a line joins its scale.
 
 ## What guards the standard

@@ -52,7 +52,7 @@ export const CATALOG_TEXT = {
 
 export const INTERFACE_TEXT = {
   title: 'Elementos de la interfaz',
-  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas' },
+  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas', tabs: 'Pestañas' },
   variant: {
     primary: 'principal',
     secondary: 'secundario',
@@ -83,6 +83,7 @@ export const INTERFACE_TEXT = {
     stars: 'estrellas',
     alert: 'alerta',
     reply: 'respuesta de Lucía',
+    tabs: 'pestañas: elegida y sin elegir',
   },
   sample: {
     chips: ['{{icmp}} · {{echo-request}}', '{{icmp}} · {{echo-reply}}'],
@@ -99,6 +100,7 @@ export const INTERFACE_TEXT = {
     yes: 'Sí',
     no: 'No',
     feedback: 'Por qué la respuesta es así.',
+    tabs: { name: 'Sentido de las reglas', in: 'Entrada', out: 'Salida' },
   },
 } as const;
 

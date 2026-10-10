@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
-import { Button, Card, ChipTray, Choice } from '@/design';
+import { Button, Card, ChipTray, Choice, Tabs } from '@/design';
 import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
@@ -18,6 +18,19 @@ const YES_NO_CHIPS = [
   { id: 'no', label: SAMPLE.no },
 ];
 const noPick = () => {};
+const SAMPLE_TABS = [
+  {
+    id: 'in',
+    label: SAMPLE.tabs.in,
+    panel: <ChipTray name={TASK_CARD_TEXT.what} chips={TRAY_CHIPS} picked={null} onPick={noPick} />,
+  },
+  {
+    id: 'out',
+    label: SAMPLE.tabs.out,
+    panel: <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />,
+  },
+];
+const [FIRST_TAB] = SAMPLE_TABS;
 
 function Specimen({ caption, wide = false, children }: { caption: string; wide?: boolean; children: ReactNode }) {
   return (
@@ -215,6 +228,11 @@ export function InterfaceSection() {
           <div className="lucia__reply">
             <p>{LUCIA_TEXT.intruding}</p>
           </div>
+        </Specimen>
+      </Family>
+      <Family name={INTERFACE_TEXT.family.tabs}>
+        <Specimen caption={VARIANT.tabs} wide>
+          <Tabs name={SAMPLE.tabs.name} tabs={SAMPLE_TABS} selected={FIRST_TAB.id} onSelect={noPick} />
         </Specimen>
       </Family>
     </section>
