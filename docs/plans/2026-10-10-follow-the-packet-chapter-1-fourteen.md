@@ -5,14 +5,14 @@
 **Goal:** Reemplazar los cuatro incidentes del capítulo 1, «Tu primer día», por los catorce subcapítulos que el estudiante aprobó el 2026-10-10, sin cambiar lo que el motor calcula para el capítulo 4 (sí cambia cómo se ven sus tarjetas, por el estilo B). Llegan:
 - lo que le falta al motor: direcciones inválidas y loopback, varias redes locales, puerta de enlace, routers con TTL, saltos y avisos, internet con un servidor que contesta, cabecera y RTT, traceroute y reglas de salida;
 - lo que le falta al contrato del incidente y a la sesión: resultados esperados más ricos, mensajes con TTL y traceroute, la mecánica de identificar (01), la tarjeta «Ajustes de red» con la puerta de enlace (07), los casos (14) y la tarjeta del firewall con las pestañas «Entrada» y «Salida» (13);
-- en el sistema de diseño: un estilo nuevo para todas las tarjetas del juego, también las del capítulo 4 (el estilo B), y la primitiva `Tabs`, hecha con Radix, que es la única dependencia nueva;
+- en el sistema de diseño: un estilo nuevo para todas las tarjetas del juego, también las del capítulo 4 (el estilo B, con el botón primario como sello), y la primitiva `Tabs`, hecha con Radix, que es la única dependencia nueva;
 - una regla que oculta lo que el jugador aún no conoce (el firewall del 05 no se ve hasta el 11);
 - los catorce incidentes, en cinco bloques, cada uno con una prueba humana.
 
 **Architecture:**
 1. **Decisiones, estructura y términos (Tareas 0 a 2).** Los prototipos y las decisiones del estudiante (Tarea 0). `src/levels/` y otras carpetas están en el tope de 12 archivos o cerca de él: una mudanza sin cambio de comportamiento les da espacio y los incidentes se reparten en una carpeta por bloque (Tarea 1); otra mudanza hace sitio en `src/design/` para la primitiva nueva (Tarea 1a). Los términos nuevos se registran antes de que nada los etiquete (Tarea 2).
 2. **Motor (Tareas 3 a 9).** Un solo motor. Dos etapas nuevas, `address` y `forward`, y campos nuevos y opcionales en el modelo y en la traza que solo llenan las redes de oficina; las trazas de la VPC del capítulo 4 no cambian ni en un campo.
-3. **Contrato, sistema de diseño y juego (Tareas 10 a 15).** Se amplía el contrato `send`. El sistema de diseño estrena el estilo B para todas las tarjetas (Tarea 11a) y la primitiva `Tabs` (Tarea 11b). Después se suman dos mecánicas pequeñas (`identify` y `diagnose`), el ajuste de la puerta de enlace como una tarjeta propia, «Ajustes de red», y la tarjeta del firewall gana la dirección con las pestañas «Entrada» y «Salida». No hay predicción: la comprensión se verifica con la pregunta final a Lucía. Todo reutiliza las primitivas de `@/design`, y las tarjetas nuevas nacen en el estilo B.
+3. **Contrato, sistema de diseño y juego (Tareas 10 a 15).** Se amplía el contrato `send`. El sistema de diseño estrena el estilo B para todas las tarjetas, con el botón primario como sello (Tarea 11a), y la primitiva `Tabs` (Tarea 11b). Después se suman dos mecánicas pequeñas (`identify` y `diagnose`), el ajuste de la puerta de enlace como una tarjeta propia, «Ajustes de red», y la tarjeta del firewall gana la dirección con las pestañas «Entrada» y «Salida». No hay predicción: la comprensión se verifica con la pregunta final a Lucía. Todo reutiliza las primitivas de `@/design`, y las tarjetas nuevas nacen en el estilo B.
 4. **Escena (Tareas 16 a 18).** Pisos, routers y servidor; el aviso como paquete y sello; el RTT y la salida de traceroute. Las decisiones visuales de la 16 (V6: el mapa sigue la historia, opción b), la 17 y la 18 ya están tomadas.
 5. **Contenido (Tareas 19 a 26).** Los catorce incidentes por bloques. Un «puente» temporal en el 04-01 mantiene verde el capítulo 4 mientras se construye.
 6. **Cierre (Tareas 27 y 28).** Playwright del capítulo entero y los documentos.
@@ -42,7 +42,7 @@
 - **Rigor siempre.** «Mantengamos la rigurosidad SIEMPRE» (estudiante, 2026-10-10; D-11). Ninguna opción, recomendada o no, enseña algo inexacto aunque sea más simple: ni un texto, ni una opción de pregunta, ni el nombre de una ficha, ni una decisión de diseño. Lo que no se pudo verificar se dice o no se afirma. Las fichas 07, 13 y 14 llevan pruebas concretas (Review Focus 15).
 - **Dependencias.** La única dependencia nueva de todo el plan es `@radix-ui/react-tabs` (Tarea 11b). Sigue las reglas `prefer-established-libraries` y `exact-dependency-versions` (`.claude/rules/`): versión exacta (`pnpm add` con `saveExact: true`, sin `^` ni `~`), publicada al menos 14 días antes del día en que se instala (requisito del estudiante, 2026-10-10) y anotada con su fecha en «Choices so far» de la primera. `package.json` y `pnpm-lock.yaml` no cambian en ninguna otra tarea.
 - **El capítulo 4 no cambia lo que calcula.** `src/levels/04-iaas/golden-traces.json` no se edita nunca: prohibidos `vitest -u`, `--update` y editarlo a mano. Cada tarea de motor lo comprueba con `git diff --exit-code src/levels/04-iaas/golden-traces.json`. Los campos y etapas nuevos son opcionales y solo los llena una oficina; el test dorado serializa la traza entera, así que un campo nuevo en una traza de la VPC lo rompería. Una etapa nueva solo escribe un paso cuando actúa.
-- **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 11a (el estilo B repinta todas las tarjetas, también las del capítulo 4: el diff de la interfaz es ese cambio, que el estudiante aprueba contra el prototipo del inventario, y la captura de piezas cambia solo si ese inventario toca el sello o las etiquetas del mapa), la 11b (solo suma el especimen de `Tabs` a la de la interfaz), la 16 (solo suma el especimen del servidor de internet a la de piezas) y la 17 (solo suma los especímenes del aviso y de su sello a la de piezas). La 1a es una mudanza y no las toca. Las Tareas 12 a 15 tampoco, con una excepción: la 12 regraba la de la interfaz si D-12 elige la forma 2, porque suma el campo de texto. Sus tarjetas se arman con primitivas y contenido que `#/entidades` ya fotografía; si una suma un elemento de contenido sin especimen, lo suma y regraba a propósito, como dice «Adding a variant instead of a new element» de `DESIGN.md`.
+- **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 11a (el estilo B repinta todas las tarjetas, también las del capítulo 4, y el botón primario pasa a ser el sello: el diff de la interfaz es ese cambio, que el estudiante aprobó el 2026-10-10 contra el prototipo del inventario; ese inventario no toca el sello ni las etiquetas del mapa, así que la captura de piezas no cambia en esta tarea), la 11b (solo suma el especimen de `Tabs` a la de la interfaz), la 16 (solo suma el especimen del servidor de internet a la de piezas) y la 17 (solo suma los especímenes del aviso y de su sello a la de piezas). La 1a es una mudanza y no las toca. Las Tareas 12 a 15 tampoco. Sus tarjetas se arman con primitivas y contenido que `#/entidades` ya fotografía; si una suma un elemento de contenido sin especimen, lo suma y regraba a propósito, como dice «Adding a variant instead of a new element» de `DESIGN.md`.
 - **"Listo"** = `pnpm check` pasa entero (tipos, lint, estructura, jscpd, Vitest y Playwright). Cada tarea cierra con eso; lo que su sección llama «Cierre» es lo que se suma. Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
 - **Commits.** Uno por tarea, cuando el estudiante lo aprueba (regla del repo), con `git add` de las rutas que la tarea lista, nunca `git add .`. El mensaje termina con una línea en blanco y `Claude-Session: https://claude.ai/code/session_01Ce4XnAt6WDkNZzoR4QRWgh` (segundo `-m`). Nunca se agrega nada de `labs/03-ping-connectivity/` (tiene cambios sin commit del estudiante). Sin `git push` hasta que el estudiante lo pida.
 - **Servidores y procesos.** No se arranca nada en los puertos 5173 y 5180 (el servidor del estudiante). Playwright levanta el suyo en el 4183. Si una tarea deja un proceso, se mata solo ese PID; nunca `pkill` por patrón. Para las pruebas humanas el estudiante usa su propio servidor.
@@ -65,10 +65,11 @@ Lo que este plan dejaba abierto lo decidió el estudiante el 2026-10-10. Las tar
 | D-9 | **Sin predicción.** «NO quiero predecir. Me gusta explicar a Lucía al final.» | No hay campo `prediction`, ni tarjeta, ni tarea, ni tests. Lo que el 03, el 06 y el 09 iban a predecir pasa a su pregunta final a Lucía |
 | D-10 | **B.** Sintaxis de Linux en la terminal | `ping -t 3 …` y `traceroute -I <ip>` (el traceroute del juego usa ICMP Echo). En el Mac del estudiante `-t` es un tiempo límite y no el TTL, así que esa línea no se copia tal cual allí; las instancias EC2 de los labs sí son Linux |
 | D-11 | **Rigor siempre.** «Mantengamos la rigurosidad SIEMPRE.» | Ninguna opción, recomendada o no, enseña algo inexacto aunque sea más simple (Global Constraints, «Rigor siempre»). Una opción más simple pero inexacta no se ofrece; si la exacta pesa, se divide o se explica mejor |
+| D-12 | **Fichas.** El 01 se resuelve solo eligiendo fichas; nada se escribe. (Detalle abajo, en «Decisiones abiertas», D-12) | La tarjeta de la impresora pregunta «¿Cuál es su dirección IP?» con tres fichas: `192.168.1.21`, `192.168.1.300` y `192.168.1.12`. Lucía le da al jugador una nota con la IP de la impresora anotada mal, `192.168.1.300`, y esa ficha llega ya elegida; al pulsar «Listo» aparece «No es IPv4: cada uno de los cuatro números va de 0 a 255.». La IP real se lee en la caja de inspección de la impresora. La tarjeta de `laptop-visita` conserva «¿Está en la red?» Sí / No (variante `segmented`). Tarea 12 y ficha 01-01 |
 
 ## Decisiones abiertas
 
-Queda una decisión: **D-12** (cómo da el 01 la IP de la impresora). **V6** (el mapa que crece) la decidió el estudiante el 2026-10-10: la opción **b**, «el mapa sigue la historia». El resto de la elección visual también la decidió ese día. Quedan además dos pendientes del estilo B que solo tocan la Tarea 11a: la aprobación del inventario de tarjetas (fila «V8 · inventario») y si el botón primario toma el aspecto de sello (fila «Botón primario · sello»). Ninguna tarea bloqueada por D-12 empieza hasta que el estudiante elija, y la Tarea 0 sigue abierta hasta entonces; las demás avanzan en su orden.
+**No queda ninguna decisión abierta** (2026-10-10). El estudiante decidió **D-12** (cómo da el 01 la IP de la impresora: fichas), aprobó el inventario de tarjetas en estilo B completo (fila «V8 · inventario») y eligió el botón primario como sello (fila «Botón primario · sello»). **V6** (el mapa que crece) la decidió ese mismo día: la opción **b**, «el mapa sigue la historia». Esta sección guarda el detalle de las decisiones que lo necesitaron, D-6 y D-12; la Tarea 0 queda cerrada y ninguna tarea espera al estudiante.
 
 ### D-6. Elecciones visuales (prototipos renderizados, no ASCII)
 
@@ -83,7 +84,7 @@ Toda elección visual nueva se le muestra al estudiante con prototipos renderiza
 | V5 | El servidor de internet | La pieza de dispositivo | **b.** Una variante de la pieza de dispositivo, no de la de actor. El modelo no cambia (ver «Decididas sin el estudiante», punto 2) | 16 |
 | V6 | Un mapa que crece: dos pisos y los routers | La losa de la red y la columna del layout | **b.** El mapa sigue la historia: cada pantalla se dibuja a tamaño completo (100 %) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio de un subcapítulo a otro (en el 10, de los dispositivos de la oficina solo queda `tu-laptop`). Ver «V6 en detalle» | 16, 18, 22, 23, 27 |
 | V7 | Dónde termina un paquete cuya causa está oculta | El sello de perdido | **a.** Se detiene en la puerta del equipo, con «?» | 11 |
-| V8 | El aspecto de las tarjetas, las de identificar (01) y de casos (14) incluidas | `Card`, `Choice`, `ChipTray` y `ChipCard` | **B del prototipo de estilos, como el estilo NUEVO de TODAS las tarjetas del juego, también las del capítulo 4:** franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. No son tarjetas propias de cada mecánica: sigue siendo UNA primitiva por familia y el estilo cambia la primitiva, nunca suma hermanas. Falta que el estudiante apruebe el prototipo del inventario de tarjetas | 11a, y por ella 12 a 15 |
+| V8 | El aspecto de las tarjetas, las de identificar (01) y de casos (14) incluidas | `Card`, `Choice`, `ChipTray` y `ChipCard` | **B del prototipo de estilos, como el estilo NUEVO de TODAS las tarjetas del juego, también las del capítulo 4:** franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. No son tarjetas propias de cada mecánica: sigue siendo UNA primitiva por familia y el estilo cambia la primitiva, nunca suma hermanas. El estudiante aprobó el inventario de tarjetas completo (fila «V8 · inventario» de «Decisiones visuales aprobadas»): la bandeja `ChipTray` gana la variante `segmented` para Sí / No, la letra de las opciones sale de un contador de CSS y el botón primario pasa a ser el sello en todas las tarjetas | 11a, y por ella 12 a 15 |
 | V9 | La tarjeta del firewall con entrada y salida | `TaskCard` y `ChipTray` | **b, con Radix.** Pestañas «Entrada» y «Salida» con `@radix-ui/react-tabs` (versión exacta, publicada al menos dos semanas antes), envuelto como la primitiva `Tabs` de `src/design/` con los tokens del juego. Servirá también para la entrada y la salida del Security Group y de la NACL en capítulos posteriores | 11b, 15 |
 
 **V6 en detalle (decidida: b, 2026-10-10).** Las dos opciones anteriores (una losa por piso lado a lado, o los pisos apilados) se veían saturadas. Idea aprobada: el mapa crece y cada subcapítulo muestra solo las piezas que usa. El copiloto prototipó dos opciones para el 06, el 08 y el 10: la **a**, un solo mapa con la cámara fija que crece hacia el espacio vacío (todo se veía al 77 % desde el 06), y la **b**, el mapa que sigue la historia. El estudiante eligió la **b**: cada pantalla se dibuja a tamaño completo (100 %, es decir, con el mismo zoom `CAMERA_ZOOM` en todos los incidentes) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio de un subcapítulo al siguiente. Lo que se paga, y el estudiante aceptó al elegir: la oficina se mueve, y el router donde muere el ping a `10.0.0.10` en el 08 todavía no se dibuja, así que el sello de ese ping no puede ir en él. Lo que muestra el prototipo (opción b):
@@ -97,13 +98,17 @@ Qué cambia en el plan:
 - **Tareas 22 y 23 y las fichas 06 a 10:** cada incidente trae su lista. El mundo no cambia por eso: el 08 conserva en el modelo los routers del proveedor, porque el ping a `10.0.0.10` necesita uno que lo descarte; cambia lo que se dibuja. El 07 y el 09 no se prototiparon; sus mapas se deducen de la misma regla y se revisan en la prueba humana del bloque 3.
 - **Rigor:** lo que se dibuja y lo que dice la caja deben coincidir. Un router que no se dibuja no lo nombra el campo «Pasó por» (Tarea 18), ni el motivo del paquete que muere afuera de la oficina (08), ni una línea de traceroute: el motivo dice que el ping murió afuera de la oficina, sin nombrar el router. Los routers que avisan (09) o que contestan un traceroute (10) sí se dibujan.
 - **Tarea 27 y Review Focus 11:** las pruebas de geometría del 06 y del 08 conservan su nombre y miden el mapa a tamaño completo; se suma una de ajuste para el 06, el 08 y el 10.
-- **Tarea 0:** ya no espera a V6; queda escrita en «Decisiones visuales aprobadas».
+- **Tarea 0:** no esperó a V6; V6 quedó escrita en «Decisiones visuales aprobadas» y la tarea está cerrada.
 
-**D-12. Cómo da el 01 la IP de la impresora (abierta).** Forma 1 (la de este plan hoy): fichas para elegir. Forma 2: un campo de texto donde el jugador escribe la IP y un botón «Comprobar». La forma 2 cambia la mecánica `identify`:
-- **Tarea 12:** `identify.cards` suma un campo de texto por tarjeta (`fields`) y la tarea espera `{ deviceId, fieldId, value }` en vez de `chipId`; las bandejas quedan para «¿Está en la red?». `Session.answers` guarda el texto escrito y el resultado de «Comprobar», que calcula `game` con las reglas del motor (no la vista): correcta, no es IPv4, es la IP de otro dispositivo o no la tiene ninguno. `@/design` no tiene ningún campo de texto: haría falta una primitiva nueva (con su test, su especimen, su fila en `DESIGN.md` y las capturas regrabadas a propósito), y `src/design/primitives/` tiene sitio para ella gracias a la Tarea 1a. Los tests de la tarjeta hablan de escribir y comprobar, no de fichas.
-- **Ficha 01-01:** no hay fichas de IP. El `feedback` pasa de ser por ficha a ser por resultado, el jugador puede no escribir nunca `192.168.1.300` (y entonces la pregunta final y la pista 2 hablarían de algo que no vio), y el 01 deja de resolverse solo con el mouse. Ver el pendiente de la ficha.
+**D-12. Cómo da el 01 la IP de la impresora (decidida el 2026-10-10: fichas).** Nada se escribe en el 01: todo se resuelve eligiendo fichas, así que `@/design` no necesita ninguna primitiva nueva por esto.
+- **Tarjeta de la impresora:** pregunta «¿Cuál es su dirección IP?» con tres fichas: `192.168.1.21`, `192.168.1.300` y `192.168.1.12`.
+- **La nota de Lucía:** Lucía le da al jugador una nota con la IP de la impresora anotada mal, `192.168.1.300`, y esa ficha llega ya elegida. Al pulsar «Listo» aparece «No es IPv4: cada uno de los cuatro números va de 0 a 255.». La intención del estudiante: que todo jugador vea la regla, aunque él solo no se hubiera equivocado. Lo que esto no garantiza está en el punto 22 de «Decididas sin el estudiante».
+- **La IP verdadera** se lee en la caja de inspección de la impresora, y el jugador elige la ficha que coincide.
+- **La otra ficha válida** es la IP de otro dispositivo (`192.168.1.12` es la de `laptop-marta`) o una IP plausible que no es la de la impresora; nunca una arbitraria.
+- **Tarjeta de `laptop-visita`:** conserva «¿Está en la red?» con Sí / No, ahora con la variante `segmented` de `ChipTray`.
+- **Qué cambia:** la Tarea 12 (una bandeja puede arrancar con una ficha elegida y la línea de la ficha sale al pulsar «Listo»), la ficha 01-01 y los tests `01-01:` de la Tarea 20.
 
-La decisión queda escrita en este documento (sección «Decisiones visuales aprobadas», al final) antes de empezar cualquier tarea bloqueada. Con lo decidido, las capturas de `#/entidades` cambian en las Tareas 11a, 11b, 16 y 17 (ver «Capturas» en Global Constraints).
+Todo lo decidido está escrito en este documento (sección «Decisiones visuales aprobadas», al final). Con ello, las capturas de `#/entidades` cambian en las Tareas 11a, 11b, 16 y 17 (ver «Capturas» en Global Constraints).
 
 ## Decididas sin el estudiante (para revisar)
 
@@ -128,6 +133,8 @@ La decisión queda escrita en este documento (sección «Decisiones visuales apr
 19. **Simplificación del modelo.** El enlace de un router con un servidor es el /24 de la IP de su interfaz, porque una interfaz no tiene máscara. No se muestra.
 20. **Qué piezas dibuja un incidente (V6 b).** _Para revisar._ Una lista explícita y opcional en el incidente, `shown`, con los ids del mundo (dispositivos, routers y actores) que dibuja; sin ella dibuja todo el mundo, como hoy. Se descartó derivarla de lo que nombran las fichas y las tareas de envío o de los saltos de las trazas: en el 08 el prototipo dibuja `laptop-lucia` y `laptop-andres`, que ni las fichas ni las tareas de ese incidente nombran, y en el 10 dibuja los dos routers del proveedor, que tampoco nombran; y los saltos dependen de lo que el jugador envíe, así que el mapa cambiaría a media partida. La lista es un dato más del incidente, junto a su mundo (`base` y `changes`), y un test del registro comprueba que cada id exista en ese mundo. Quedan por decidir al escribir sus bloques: el 07 y el 09, que se dedujeron sin prototipo, y del 11 al 14, que con el mundo entero pueden no caber a tamaño completo (la opción a del prototipo lo mostraba al 77 %); mientras no traigan lista dibujan el mundo entero.
 21. **Un incidente que ofrece traceroute dibuja todos los routers que cruzan sus sondas.** Decidida el 2026-10-10. Razón: el traceroute real imprime la IP de cada router que avisa; una línea que dijera «fuera de la oficina» en vez de la IP no sería fiel a lo que muestra el comando. La regla de la Tarea 18 (no nombrar un router que no se dibuja) queda para los pings, como el de `10.0.0.10` en el 08.
+22. **Cómo arranca una bandeja del 01 y cuándo sale la línea de una ficha (D-12).** _Para revisar._ Una bandeja de `identify.cards` gana dos campos opcionales: `initialPick` (el id de una de sus fichas, que llega elegida) y `segmented` (la dibuja con la variante `segmented` de `ChipTray`, para Sí / No; el contrato la lleva porque la vista no tiene otra forma de saber que una bandeja de dos fichas es un Sí / No). `initialPick` es de la bandeja y no de la ficha, porque la elección es de la bandeja (una ficha por bandeja); el esquema rechaza un `initialPick` que la bandeja no ofrece. La sesión nace con esas fichas elegidas (`Session.answers`) y volver a empezar el incidente las repone. Una ficha elegida de partida no cumple ninguna tarea por sí sola. La línea `feedback` de una ficha sale cuando el jugador pulsa «Listo» con esa ficha elegida, y no al elegirla: la ficha de la nota llega elegida y no hay ninguna elección que la dispare. «Listo» es el botón propio de la tarjeta (`ChipCard`), que hoy solo la cierra; en la tarjeta de identificar, con una ficha elegida que trae `feedback`, «Listo» muestra la línea y deja la tarjeta abierta, y sin esa línea cierra como siempre. Elegir otra ficha esconde la línea. Escape cierra la tarjeta siempre, con o sin línea. Que la línea ya salió es estado local de la tarjeta y no de la sesión. **Lo que esto no garantiza:** un jugador que cambie la ficha de la nota por la que coincide con la caja antes de pulsar «Listo» no ve la línea; la regla de 0 a 255 le llega entonces por la pregunta final de Lucía y por la pista 2, que hablan de una ficha que sí vio, la de la nota.
+23. **Tres pruebas de Playwright miden estilo calculado.** _Para revisar._ `DESIGN.md` guarda la elección del estudiante del 2026-10-09: no hay pruebas sobre las reglas de CSS. Las pruebas del sello del botón primario y de las letras de las opciones (Tarea 11a) no leen el texto del CSS: miden el estilo calculado en un navegador real, porque jsdom no ve el movimiento ni `::before`, y una captura quieta no ve que el botón se mueva al pulsarlo. Lo demás del aspecto lo sigue guardando la captura de `#/entidades`.
 
 ## Inventario de mecánicas
 
@@ -156,7 +163,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 | 19 | Mensajes con TTL y comando | Solo `icmpType` 0 u 8 | 02, 09, 10 | `command` (paquete, ping, traceroute) y `ttl` | 10 |
 | 20 | `officeLeaks` | Prohíbe todo paquete de una oficina hacia afuera | 08, 09, 10, 14 | Permitirlo cuando el mundo tiene routers | 10 |
 | 21 | Piezas, sellos y motivos según lo que el jugador conoce | Un firewall se dibuja siempre, su sello dice «Bloqueado» y su motivo lo nombra; el borde y internet dependen de que haya un actor | 05 a 11 | Piezas por término conocido; sello de perdido y texto de silencio mientras el término no se conozca | 11 |
-| 22 | Identificar (marcar y elegir) | No existe | 01 | Mecánica `identify` con fichas (la forma de la IP de la impresora sigue abierta, D-12) | 12 |
+| 22 | Identificar (marcar y elegir) | No existe | 01 | Mecánica `identify` con fichas; una bandeja puede arrancar con una ficha elegida y la línea de una ficha sale al pulsar «Listo» (D-12) | 12 |
 | 23 | Ajustar la puerta de enlace | Un movimiento de envío nunca cambia el mundo | 07 | `settings` en `send`, que el jugador cambia en la tarjeta «Ajustes de red» de la laptop (no en su terminal), y el movimiento `setSetting`; limpia los envíos viejos | 13 |
 | 24 | Casos | Un incidente es un mundo | 14 | Mecánica `diagnose` con `caseIndex` | 14 |
 | 25 | Regla con dirección | La tarjeta solo tiene reglas de entrada | 13 | Las pestañas «Entrada» y «Salida» (la primitiva `Tabs`) cuando la tarjeta tiene las dos; `configurableParts.outboundRules` por tipo de firewall | 11b, 15 |
@@ -169,7 +176,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 | 32 | La batería de sondas (`extraOpenings`) | Funciona con dispositivos y actores | 12 | Comprobar que sigue distinguiendo «cualquier IP» de «solo soporte» en una oficina con dos pisos | 6 |
 | 33 | `least-privilege` | Lo presenta el 04-02 | 12 | Mudarlo al 01-12 | 25 |
 | 34 | Pestañas | Ninguna primitiva cambia entre paneles con el teclado y los roles de una pestaña | 13 | La primitiva `Tabs`, hecha con Radix | 11b |
-| 35 | Un estilo para todas las tarjetas | Cada tarjeta lleva el aspecto de hoy (`Card` con borde y sombra) | todos | El estilo B del prototipo, en las primitivas que ya existen | 11a |
+| 35 | Un estilo para todas las tarjetas | Cada tarjeta lleva el aspecto de hoy (`Card` con borde y sombra) | todos | El estilo B del prototipo, en las primitivas que ya existen: el botón primario como sello, la variante `segmented` de `ChipTray` y la letra de las opciones | 11a |
 
 ## Contratos nuevos
 
@@ -216,7 +223,7 @@ Los campos nuevos de la traza están ausentes (no `null`) en toda traza que el t
 | Ficha de mensaje | `{ id, label, command, ttl? }` | `command` es `packet`, `ping` o `traceroute`; `ttl` solo para `ping`. `icmpType` sigue siendo 8 o 0 |
 | `send.settings` | lista de `{ id, deviceId, name, chips }` | Un ajuste guardado del dispositivo, que el jugador cambia en la tarjeta «Ajustes de red» de ese dispositivo y no en su terminal: la bandeja de la puerta de enlace predeterminada con fichas `{ id, label, value }` donde `value` es una IP o `null` (ninguna). El contrato no cambia por V3 b; cambia dónde se muestra |
 | `SetSetting` | movimiento `{ deviceId, settingId, chipId }` | Cambia el mundo y borra los envíos anteriores |
-| `identify.cards` | lista de `{ deviceId, trays }` | Una tarjeta por dispositivo con bandejas de fichas `{ id, label, feedback? }`; las tareas son `{ id, text, expect: { deviceId, trayId, chipId } }`. Es el contrato de la forma 1 de D-12 (fichas); con la forma 2 (un campo de texto con «Comprobar») cambia, ver la Tarea 12 |
+| `identify.cards` | lista de `{ deviceId, trays }` | Una tarjeta por dispositivo con bandejas de fichas `{ id, label, feedback? }`; las tareas son `{ id, text, expect: { deviceId, trayId, chipId } }`. Una bandeja puede traer `initialPick` (el id de una de sus fichas, que arranca elegida; en el 01, la `192.168.1.300` que anotó Lucía) y `segmented` (para Sí / No). La `feedback` de una ficha sale al pulsar «Listo» con esa ficha elegida, no al elegirla (D-12; punto 22 de «Decididas sin el estudiante», _para revisar_) |
 | `diagnose.cases` | lista de casos | Cada caso: `changes` sobre el mundo de inicio del incidente (no sobre el caso anterior), `report`, fichas de envío, dos pistas y una pregunta de causa con tres opciones y una correcta |
 | `placeRule` | `{ firewallId, whatId, fromId?, toId?, direction? }` | Con `direction` de salida lleva una ficha de destino (`chips.to`); sin `direction` es de entrada, como hoy |
 | `officeLeaks` | función | Un paquete que sale de una oficina sin routers sigue siendo una fuga |
@@ -226,13 +233,15 @@ Los campos nuevos de la traza están ausentes (no `null`) en toda traza que el t
 | Nombre | Tipo | Significado |
 |--------|------|-------------|
 | `Tabs` | primitiva nueva, envuelve `@radix-ui/react-tabs` | Una lista con nombre de pestañas `{ id, label, panel }`; se ve el panel de la elegida. No acepta `className` ni `style`. Radix monta solo el panel de la pestaña elegida: lo que un llamador guarda dentro de un panel se pierde al cambiar de pestaña, así que guarda su estado por encima. La forma exacta de las props la decide quien implementa |
-| `Card` y `Choice` (estilo B) | primitivas que ya existen | `Card` gana, de forma opcional, una cabecera con título, icono y tipo (la franja oscura); `Choice` gana el interruptor y la opción con letra. El detalle exacto es el del prototipo del inventario que apruebe el estudiante. El título sigue siendo el `h2` que nombra la tarjeta; la letra y el interruptor son marcas visuales y no cambian el nombre accesible ni `aria-pressed`. Si la cabecera necesita un componente, vive en `card.tsx`, como `ChipTray` vive en `choice.tsx` |
+| `Card` y `Choice` (estilo B) | primitivas que ya existen | `Card` gana, de forma opcional, una cabecera con título, icono y tipo (la franja oscura); `Choice` gana el interruptor y la opción con letra. El detalle exacto es el del prototipo del inventario que el estudiante aprobó completo el 2026-10-10. La letra de la opción sale de un contador de CSS, sin props nuevas. El título sigue siendo el `h2` que nombra la tarjeta; la letra y el interruptor son marcas visuales y no cambian el nombre accesible ni `aria-pressed`. Si la cabecera necesita un componente, vive en `card.tsx`, como `ChipTray` vive en `choice.tsx` |
+| `ChipTray` (variante `segmented`) | variante de una primitiva que ya existe | Para Sí / No: dos fichas dentro de una sola pastilla partida en dos. Es una variante de la bandeja de siempre y no una bandeja hermana; el nombre accesible, `aria-pressed` y el teclado de cada ficha no cambian |
+| `Button` (variante `primary`, el sello) | variante de una primitiva que ya existe | Decidido por el estudiante el 2026-10-10 para todas las tarjetas: fondo `surface`, texto y borde discontinuo (`dashed`, como en el prototipo) en `emphasis`, forma de pastilla, mayúsculas con `tracking-caps`, inclinación fija de `rotate(-2deg)` y `translateY(2px)` al pulsar. Con `prefers-reduced-motion` y deshabilitado no se mueve al pulsar (se pierde el `translateY(2px)`), pero la inclinación fija se queda. Sigue siendo `Button`, con sus clases de hoy |
 
 ### Sesión y vista (`src/game/`)
 
 | Nombre | Significado |
 |--------|-------------|
-| `Session.answers` | Lo elegido en cada tarjeta de un incidente `identify` |
+| `Session.answers` | Lo elegido en cada tarjeta de un incidente `identify`. Arranca con el `initialPick` de cada bandeja que lo trae |
 | `Session.caseIndex` y `Session.caseResults` | En qué caso va el `diagnose` y cómo salió cada uno |
 | Acciones nuevas | `answerCard`, `setSetting`, `nameCause`, `nextCase` |
 | `describeReason(reason, net, known)` | El motivo se escribe con los términos que el jugador conoce; si el término de la causa es desconocido, el texto dice solo que no volvió nada |
@@ -251,13 +260,14 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 **01-01 · La oficina** · `identify` · términos: red, dispositivo (host), dirección IP, IPv4 (D-2 y D-8, decididas)
 - **Mundo:** el base. La pieza de `laptop-visita` se dibuja fuera de la losa. No hay router, internet ni actores.
 - **Qué viaja:** nada. Excepción declarada.
-- **Jugador y fichas:** pasa el mouse por las piezas para ver qué son y qué IP tienen. Abre la tarjeta de `laptop-visita` (bandeja «¿Está en la red?» con «Sí» y «No») y la de la impresora (bandeja «Dirección IP» con `192.168.1.21`, `192.168.1.300` y `192.168.1.12`).
-- **Tareas:** (1) que `laptop-visita` quede marcada como fuera de la red; (2) que la impresora tenga su IP.
+- **La nota de Lucía:** Lucía le da al jugador una nota con la IP de la impresora anotada mal: `192.168.1.300`. Esa ficha llega ya elegida en la tarjeta de la impresora (`initialPick`).
+- **Jugador y fichas:** pasa el mouse por las piezas para ver qué son y qué IP tienen; la IP verdadera de la impresora se lee en su caja de inspección. Abre la tarjeta de `laptop-visita` (bandeja «¿Está en la red?» con «Sí» y «No», variante `segmented`) y la de la impresora (pregunta «¿Cuál es su dirección IP?», bandeja «Dirección IP» con `192.168.1.21`, `192.168.1.300` ya elegida y `192.168.1.12`) y elige la ficha que coincide con la caja. La `192.168.1.12` es la IP de `laptop-marta`: otra IP válida de la oficina, nunca una arbitraria.
+- **Tareas:** (1) que `laptop-visita` quede marcada como fuera de la red; (2) que la impresora tenga su IP (la ficha que coincide con su caja).
 - **Éxito:** las dos tareas se cumplen y se envía la solución.
-- **Fallo y causa:** marcar «No» a una laptop conectada → la caja dice que tiene IP y está en la red. `192.168.1.300` → no es IPv4: los cuatro números van de 0 a 255 (`feedback` de la ficha). `192.168.1.12` → es la IP de `laptop-marta`; se ve en su caja.
+- **Fallo y causa:** marcar «No» a una laptop conectada → la caja dice que tiene IP y está en la red. `192.168.1.300` (la de la nota, ya elegida) → al pulsar «Listo» aparece «No es IPv4: cada uno de los cuatro números va de 0 a 255.» (`feedback` de la ficha); la tarjeta sigue abierta y la tarea sigue pendiente. `192.168.1.12` → al pulsar «Listo» dice que es la IP de `laptop-marta`, que se ve en su caja (`feedback` de la ficha).
 - **Pregunta:** «¿Por qué `192.168.1.300` no puede ser la IP de la impresora?» Correcta: en IPv4 cada uno de los cuatro números va de 0 a 255. Incorrectas: «ya la usa otro dispositivo» (confunde una IP inválida con una repetida); «está fuera del rango de la oficina» (confunde validez con pertenecer a la red).
 - **Pistas:** (1) cada dispositivo tiene su IP; pasa el mouse por la impresora. (2) un número de una IP no pasa de 255.
-- **Pendiente (D-12, abierta):** cómo da el jugador la IP de la impresora. Con la forma 1 (la de esta ficha) elige entre tres fichas, y las dos equivocadas traen su `feedback`. Con la forma 2 (un campo de texto y «Comprobar») no hay fichas de IP: el `feedback` depende de lo que escriba (no es IPv4, es la IP de otro dispositivo, no la tiene ninguno); el jugador puede no escribir nunca `192.168.1.300`, y entonces la pregunta de arriba y la pista 2 hablarían de algo que no vio, así que la ficha cambiaría una de las dos; y los tests `01-01: 192.168.1.300 ...` de la Tarea 20 describirían lo que se escribe y no lo que se elige. Además el 01 dejaría de resolverse solo con el mouse.
+- **Decidido (D-12, 2026-10-10):** el 01 se resuelve con fichas. Lo que esto no garantiza: un jugador que cambie la ficha de la nota por la que coincide con la caja antes de pulsar «Listo» no ve la línea de `192.168.1.300`; para él la regla llega por la pregunta final y por la pista 2, que hablan de una ficha que sí vio, la de la nota (punto 22 de «Decididas sin el estudiante», _para revisar_).
 
 **01-02 · El sobre** · `send` · términos: paquete, encabezado, IP de origen, IP de destino
 - **Mundo:** `connectDevice` de `laptop-visita`.
@@ -413,8 +423,9 @@ Lo que ve quien juega el 04-01 y el 04-02 con este plan. Las trazas y el test do
 - **Las piezas dependen de los términos que se conocen, no de que haya un actor.** El borde y internet se dibujan en el 04-01 como hoy (`internet-gateway` y `internet` ya se conocen), y los tests de piezas lo fijan.
 - **Progreso reseteado (D-1).** Todas las estrellas guardadas, también las del 04-01 y el 04-02, desaparecen. El 04-01 se abre cuando el 01-14 tiene una estrella.
 - **El texto del firewall de una laptop** (solo el capítulo 1) deja de decir que «recuerda la conversación» y no da ninguna razón de por qué la respuesta pasa.
-- **Todas las tarjetas cambian de aspecto (Tarea 11a).** Las del 04-01 y el 04-02 también pasan al estilo B: franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. Lo que dicen y lo que calculan no cambia, y sus tests siguen sin cambiar de contenido; las capturas de `#/entidades` sí cambian, a propósito.
+- **Todas las tarjetas cambian de aspecto (Tarea 11a).** Las del 04-01 y el 04-02 también pasan al estilo B: franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y el botón primario como sello. Lo que dicen y lo que calculan no cambia, y sus tests siguen sin cambiar de contenido; las capturas de `#/entidades` sí cambian, a propósito.
 - **Sin pestañas todavía.** La tarjeta del Security Group sigue sin pestañas mientras no tenga reglas de salida abiertas (Tarea 15).
+- **El botón primario pasa a ser el sello.** «Enviar solución», «Enviar», «Ver resultado» y «Siguiente incidente» dejan de ser un botón relleno: son una pastilla sin relleno, con borde discontinuo, en mayúsculas y un poco inclinada; al pulsarla baja 2 px, salvo con movimiento reducido. Su nombre accesible no cambia (decisión del estudiante, 2026-10-10).
 
 ## Review Focus
 
@@ -431,16 +442,17 @@ Cada riesgo, con la prueba que lo guarda.
 9. **Un almacenamiento limpio.** Test: `starts empty and removes the progress saved under the old key`. No hay migración (D-1).
 10. **Un texto de aviso no cita el de ningún sistema.** Test: `the text of a warning quotes no operating system and says only what the player saw`.
 11. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 27): `after the pings of 08, no label or stamp overlaps`, `in 06 the open terminal covers neither the router nor the labels of the second floor` y `in 06, 08 and 10 the whole map and its labels fit the area of the map at full size`, a 1280×800 y a 1440×900. Con V6 b cada incidente dibuja solo lo que usa y a tamaño completo; el ajuste lo prueba la Tarea 27 y el sitio de cada pieza, la 16.
-12. **Las capturas cambian solo lo que se quiso.** Cada vez que se regraban (Tareas 11a, 11b, 16 y 17, y la 12 si D-12 elige la forma 2): en la 11a el diff es el repintado de las tarjetas que el estudiante aprobó en el prototipo del inventario, y nada más se mueve; en la 11b, la 16 y la 17 el diff muestra solo los especímenes nuevos. Playwright `entities` pasa después.
+12. **Las capturas cambian solo lo que se quiso.** Cada vez que se regraban (Tareas 11a, 11b, 16 y 17): en la 11a el diff es el repintado de las tarjetas y del botón primario como sello, que el estudiante aprobó en el prototipo del inventario, y nada más se mueve (la captura de piezas no cambia); en la 11b, la 16 y la 17 el diff muestra solo los especímenes nuevos. Playwright `entities` pasa después.
 13. **Carpetas.** `pnpm structure` pasa en cada tarea; el tope de 12 no se rompe.
 14. **Texto llano.** Los hitos de prueba humana (Tareas 20, 21, 23, 25 y 26) son la comprobación: el estudiante lee cada bloque y dice si algún mensaje lo pierde.
 15. **Rigor, sin simplificar a lo falso (D-11).** Ninguna opción, recomendada o no, enseña algo inexacto. Tests: `01-13: no text of the incident says or suggests that a firewall closes its outbound side by default`, `the empty outbound list of a host firewall never says that a closed outbound side is the default of a firewall`, `calls the setting by its term, the default gateway, and not by the label of any operating system`, `the reply through the firewall of a laptop gives no reason for letting it through`, `the text of a warning quotes no operating system and says only what the player saw` y `01-14: every case report names a ping that does not come back and none uses a verb of the web`. Y la lectura del estudiante en las pruebas humanas.
 16. **La dependencia nueva.** Los tests de `Tabs` (teclado con `user-event`, la pestaña elegida y las clases del sistema de diseño) y el cierre de la Tarea 11b: `package.json` con la versión exacta, sin `^` ni `~`, y `pnpm-lock.yaml` que solo agrega paquetes `@radix-ui/*`. Ninguna otra tarea toca esos dos archivos.
-17. **Un estilo, una primitiva por familia.** En la Tarea 11a los tests de hoy de las primitivas y de las tarjetas del capítulo 4 pasan sin cambiar de contenido, el estudiante revisa el diff de las capturas contra el prototipo aprobado y no nace ninguna primitiva hermana (`DESIGN.md`).
+17. **Un estilo, una primitiva por familia.** En la Tarea 11a los tests de hoy de las primitivas y de las tarjetas del capítulo 4 pasan sin cambiar de contenido, el estudiante revisa el diff de las capturas contra el prototipo aprobado y no nace ninguna primitiva hermana (`DESIGN.md`). El botón primario sigue siendo `Button` `primary`; que sea un sello y que no se mueva con `prefers-reduced-motion` lo guarda la prueba `the primary button looks like a stamp and does not move when pressed under reduced motion` (Playwright, estilo calculado; punto 23 de «Decididas sin el estudiante»).
+18. **La línea de una ficha sale al pulsar «Listo».** Tests de la Tarea 12: `pressing Listo with the wrong IP picked shows its feedback and leaves the task open`, `picking another chip hides the feedback line` y `Escape closes the card even when the chip picked has a feedback line`. Punto 22 de «Decididas sin el estudiante»: el jugador que cambia la ficha antes de pulsar «Listo» no la ve.
 
 ## Árbol al terminar (solo lo cambiado)
 
-- `README.md` · `DESIGN.md` (el estilo B, `Tabs`, la nueva estructura de `src/design/` y las variantes de V4 y V5)
+- `README.md` · `DESIGN.md` (el estilo B con el botón primario como sello, `Tabs`, la nueva estructura de `src/design/`, las variantes de V4 y V5 y las pruebas de estilo calculado)
 - `package.json` y `pnpm-lock.yaml` (solo la Tarea 11b) · `.claude/rules/prefer-established-libraries.md` («Choices so far»)
 - `docs/` (raíz del repo)
   - `specs/2026-10-10-follow-the-packet-chapter-1-fourteen-design.md` · `specs/2026-10-09-follow-the-packet-chapter-1-design.md` (nota al inicio)
@@ -471,31 +483,33 @@ Cada riesgo, con la prueba que lo guarda.
   - `view/cards/` (nueva): `terminal-card.ts` y `firewall-card.ts` (mudados), `identify-card.ts`, `settings-card.ts` y `case-card.ts` (nuevos) y sus tests; `CLAUDE.md`
 - `src/scene/`: `layout.ts`, `layout.test.ts`, `game-scene.tsx`; `entities/` (`device.tsx`, `packet.tsx`, `stamp.tsx`, `entity-icon.test.tsx`); `catalog/catalog-cells.tsx`; `traffic/flow-look.ts`
 - `src/ui/incident/`: `incident-screen.tsx`, `explanation-card.tsx`, `inspection-box.tsx`, `result-card.tsx`, `case-card.tsx` y su test (nuevos); `lucia-card.tsx` (estilo B)
-  - `map-cards/`: `chip-card.tsx` (estilo B), `terminal-card.tsx`, `task-card.tsx`, `identify-card.tsx` y `settings-card.tsx` con sus tests (los dos últimos, nuevos)
+  - `map-cards/`: `chip-card.tsx` (estilo B; «Listo» con su propia salida, aparte de Escape), `terminal-card.tsx`, `task-card.tsx`, `identify-card.tsx` y `settings-card.tsx` con sus tests (los dos últimos, nuevos)
 - `src/ui/`: `roadmap.tsx` (estilo B) y `catalog/interface-section.tsx` (estilo B y el especimen de `Tabs`)
 - `src/storage/`: `progress.ts`, `progress.test.ts`
 - `src/testing/`: `fixtures.ts`, `incidents.ts`, `index.ts`
-- `tests/e2e/`: `chapter-1.spec.ts`, `saved-progress.ts`, `incidents.spec.ts`, `roadmap.spec.ts` (solo si cambia algún nombre), `snapshots/` (dos capturas, regrabadas)
+- `tests/e2e/`: `chapter-1.spec.ts`, `entities.spec.ts` (las pruebas del sello y de las letras, Tarea 11a), `saved-progress.ts`, `incidents.spec.ts`, `roadmap.spec.ts` (solo si cambia algún nombre), `snapshots/` (dos capturas, regrabadas)
 
 ---
 
 ### Tarea 0: Prototipos y decisiones visuales (sin código del juego)
 
-**Bloquea:** 12 (D-12, la forma de la IP del 01). **No bloquea:** 1, 1a, 2 a 11, 11b y 13 a 18, ni la 22 ni la 23: V6, que las bloqueaba, la decidió el estudiante el 2026-10-10 (opción b). La 11a espera otra aprobación, la del inventario de tarjetas en estilo B.
+**Cerrada el 2026-10-10.** **Bloquea:** nada. Todo lo visual está decidido y escrito en «Decisiones visuales aprobadas»: V1 a V9 (en V6 el estudiante eligió la b), el inventario de tarjetas en estilo B (aprobado completo), el botón primario como sello y D-12 (fichas). Ninguna tarea del plan espera ya una elección del estudiante.
 
-Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue abierto y elija. El 2026-10-10 eligió V1 a V9 (están en «Decisiones visuales aprobadas»; en V6 eligió la b); queda **D-12**, y la Tarea 0 sigue abierta hasta que elija. Es la única tarea de este plan sin código del juego. La aprobación del prototipo del inventario de tarjetas en estilo B se anota en la misma tabla, en la fila «V8 · inventario», y la decisión del botón primario como sello, en la fila «Botón primario · sello»; ninguna cierra ni retiene la Tarea 0, y solo tocan la 11a (el inventario la desbloquea).
+Propósito: que el estudiante vea, renderizadas, las opciones de lo que estaba abierto y elija. El 2026-10-10 eligió V1 a V9, aprobó el inventario completo del estilo B, eligió el botón primario como sello y decidió D-12. Es la única tarea de este plan sin código del juego.
 
 **Archivos:**
-- Modify: este documento (la sección «Decisiones visuales aprobadas», al final) y `../../docs/plans/follow-the-packet-roadmap.md` (la fila del capítulo 1 en catorce pasa a `en curso`).
-- Fuera del repo: una página HTML de prototipos, publicada con la herramienta Artifact. Muestra, con las primitivas reales (colores y tokens de `DESIGN.md`) y no con dibujos de texto, las dos opciones nuevas de V6 en el 06, el 08 y el 10, y la forma 1 y la forma 2 de D-12 en la tarjeta del 01.
+- Modify: este documento (la sección «Decisiones visuales aprobadas», al final) y `../../docs/plans/follow-the-packet-roadmap.md` (suma la fila del capítulo 1 en catorce, en `en curso`).
+- Fuera del repo: una página HTML de prototipos, publicada con la herramienta Artifact. Muestra, con las primitivas reales (colores y tokens de `DESIGN.md`) y no con dibujos de texto, las dos opciones nuevas de V6 en el 06, el 08 y el 10, el inventario de tarjetas en estilo B con el botón primario como sello junto al botón de hoy, y la tarjeta del 01.
 
 **Pasos:**
 - [x] Preparar la página de prototipos y mostrársela al estudiante (2026-10-10: V1 a V5 y V7 a V9 elegidas).
 - [x] V6: mostrar las dos opciones del mapa que crece para el 06, el 08 y el 10; recoger una (2026-10-10: b, el mapa sigue la historia).
-- [ ] D-12: mostrar la forma 1 (fichas) y la forma 2 (campo de texto con «Comprobar») en la tarjeta del 01; recoger una.
-- [ ] Escribir la elección de D-12 en «Decisiones visuales aprobadas» y en «Decisiones abiertas» (que pasa a decir que no queda nada abierto). V6 (b) ya está escrita en las dos. Si el estudiante pide un aspecto nuevo para un elemento, la tarea correspondiente suma una variante a su primitiva (`DESIGN.md`, «Adding a variant instead of a new element») y esa tarea cambia la captura de la interfaz a propósito.
+- [x] Inventario de tarjetas en estilo B y botón primario como sello: mostrarlos junto al botón de hoy y recoger la decisión (2026-10-10: inventario aprobado completo; sello elegido).
+- [x] D-12: mostrar cómo da el 01 la IP de la impresora y recoger la elección (2026-10-10: fichas).
+- [x] Escribir las elecciones en «Decisiones visuales aprobadas» y en «Decisiones abiertas» (que dice que no queda nada abierto). Si el estudiante pide un aspecto nuevo para un elemento, la tarea correspondiente suma una variante a su primitiva (`DESIGN.md`, «Adding a variant instead of a new element») y esa tarea cambia la captura de la interfaz a propósito.
+- [x] Sumar la fila del capítulo 1 en catorce al roadmap, en `en curso`.
 
-**Cierre:** `git status --short` solo muestra los dos documentos. Commit: `docs: record the visual decisions for the fourteen subchapters`.
+**Cierre:** de esta tarea solo cambian los dos documentos (el resto de `git status --short` no es suyo). Commit: `docs: record the visual decisions for the fourteen subchapters`.
 
 ---
 
@@ -806,36 +820,42 @@ Propósito: que el estudiante vea, renderizadas, las opciones de lo que sigue ab
 
 ### Tarea 11a: El estilo B en todas las tarjetas del juego
 
-**Bloqueada por la aprobación del estudiante del prototipo del inventario de tarjetas en estilo B** (el copiloto lo prepara el 2026-10-10; se anota en «Decisiones visuales aprobadas», fila «V8 · inventario»). No empieza antes. Necesita la Tarea 1a. **Bloquea:** 11b, 12, 13, 14 y 15, para que las tarjetas nuevas se construyan ya en el estilo B.
+**Desbloqueada.** El 2026-10-10 el estudiante aprobó el inventario de tarjetas en estilo B completo y eligió el botón primario como sello (filas «V8 · inventario» y «Botón primario · sello» de «Decisiones visuales aprobadas»). Necesita la Tarea 1a. **Bloquea:** 11b, 12, 13, 14 y 15, para que las tarjetas nuevas se construyan ya en el estilo B.
 
-Propósito: V8, decidida el 2026-10-10. El estilo B del prototipo es el estilo NUEVO de todas las tarjetas del juego, también las del capítulo 4: franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. Es una tarea del sistema de diseño: sigue habiendo UNA primitiva por familia; el estilo cambia la primitiva y nunca suma hermanas (`DESIGN.md`). Se escribe a nivel de contrato y se afina al aprobar el inventario; esta lista de archivos es lo que se sabe hoy.
+Propósito: V8, decidida el 2026-10-10. El estilo B del prototipo aprobado es el estilo NUEVO de todas las tarjetas del juego, también las del capítulo 4: franja de título oscura con icono y tipo, esquinas de 14 px, borde grueso, sombra hacia abajo, interruptor, opciones con letra y el botón primario como sello. Es una tarea del sistema de diseño: sigue habiendo UNA primitiva por familia; el estilo cambia la primitiva y nunca suma hermanas (`DESIGN.md`). Se escribe a nivel de contrato y en el detalle visual manda el prototipo aprobado (sección V8 de la página de la Tarea 0).
 
 **Archivos:**
-- Modify: las primitivas `Card` y `Choice` (`src/design/primitives/card.tsx` y `choice.tsx`) y `primitives.css`; `src/design/tokens.css` solo si un papel no tiene token (un color nuevo entra a la paleta y recibe un papel, y un par de color nuevo, como el texto sobre la franja oscura, se afirma en `tokens.test.ts` antes de salir).
-- Modify: los consumidores de `Card` que hoy dibujan tarjetas: `src/ui/roadmap.tsx` (las tarjetas de los capítulos), `src/ui/incident/lucia-card.tsx`, `explanation-card.tsx`, `inspection-box.tsx`, `result-card.tsx` y `map-cards/chip-card.tsx` (de la que cuelgan `task-card.tsx` y `terminal-card.tsx`). El inventario aprobado dice cuáles más.
-- Modify: `src/ui/catalog/interface-section.tsx` y su texto en `src/copy/screens/ui.ts` (los especímenes), `src/design/CLAUDE.md`, `DESIGN.md`, `tests/e2e/snapshots/interface-darwin.png` y, si el inventario toca el sello o las etiquetas del mapa, `entities-darwin.png`.
+- Modify: las primitivas `Card`, `Choice` (con `ChipTray`) y `Button` (`src/design/primitives/card.tsx`, `choice.tsx` y, solo si la variante necesita algo más que su clase, `button.tsx`) y `primitives.css`. `src/design/tokens.css`: el radio de 14 px de la tarjeta, el de las fichas y las opciones y la sombra hacia abajo no tienen token hoy; entran con su papel y los valores del prototipo (`--radius-card`, `--radius-tile` y `--shadow-card`). Un par de color nuevo, como el texto sobre la franja oscura, se afirma en `tokens.test.ts` antes de salir; el texto `emphasis` sobre `surface` del sello ya lo afirma ese test (`--color-emphasis as text on surface`), así que no hace falta un par nuevo.
+- Modify: los consumidores de `Card` que hoy dibujan tarjetas: `src/ui/roadmap.tsx` (las tarjetas de los capítulos), `src/ui/incident/lucia-card.tsx`, `explanation-card.tsx`, `inspection-box.tsx`, `result-card.tsx` y `map-cards/chip-card.tsx` (de la que cuelgan `task-card.tsx` y `terminal-card.tsx`). El inventario aprobado trae 11 tipos de tarjeta (12 con la variante «próximamente»): los siete de hoy (Lucía, explicación, resultado, caja de inspección, terminal, tarjeta de tareas de un firewall o Security Group, y capítulo del roadmap) y cuatro que llegan con las Tareas 12 a 15 (identificar, caso, Ajustes de red y firewall con pestañas).
+- Modify: `src/ui/catalog/interface-section.tsx` y su texto en `src/copy/screens/ui.ts` (los especímenes: se suman el de `ChipTray` `segmented` con Sí / No y el de las opciones con letra; los del botón primario, deshabilitado y como enlace ya existen y se repintan), `src/design/CLAUDE.md`, `DESIGN.md` (el estilo B, el sello y, en «What guards the standard», que tres pruebas de Playwright miden estilo calculado: punto 23 de «Decididas sin el estudiante») y `tests/e2e/snapshots/interface-darwin.png`. `entities-darwin.png` no cambia: el inventario aprobado no toca el sello ni las etiquetas del mapa (el «sello» del estilo B es el botón primario).
+- Modify: `tests/e2e/entities.spec.ts` (las tres pruebas de estilo calculado, abajo).
 - Create: `src/design/primitives/card.test.tsx` (`Card` no tiene test hoy y gana estructura).
 - Modify: `src/copy/screens/incident-ui.ts` y `src/ui/incident/incident-screen.test.tsx`: la leyenda de sellos (`SCREEN_TEXT.stampLegend`, que se muestra en la pantalla del incidente y en `#/entidades`) suma el sello del aviso, por ejemplo «! apareció un aviso», con palabras que no necesiten ningún término. La Tarea 17 la dejó sin cambiar porque el plan le prohibía tocar la captura de la interfaz; esta tarea ya la regraba, así que la leyenda entra aquí.
-- Modify: `src/scene/catalog/catalog-cells.tsx` (el especimen de `self-warned`, el aviso que genera el propio emisor y se queda en su puerta, que hoy no tiene especimen): solo si el inventario del estilo B conserva la fila del sello.
+- No entra aquí: el especimen de `self-warned` (el aviso que genera el propio emisor y se queda en su puerta, que hoy no tiene especimen) iría en `src/scene/catalog/catalog-cells.tsx` y cambiaría `entities-darwin.png`; el inventario aprobado no trae fila de sello del mapa, así que esta tarea no lo suma.
 
 **Interfaces:** ver «Sistema de diseño».
 - `Card` gana, de forma opcional, una cabecera con título, icono y tipo. Quien no la pasa no la dibuja (`caller-controls-visibility`). El título sigue siendo el `h2` que nombra la tarjeta para los lectores de pantalla, y los `aria-labelledby` y los `role="dialog"` de hoy no cambian. El icono y el tipo son decorativos: quedan fuera del nombre accesible del `h2` (si el tipo aporta información, se lee aparte y no dentro del título), para que las búsquedas por encabezado de los tests de hoy sigan encontrándolo sin cambiar.
-- `Choice`: la ficha como interruptor y la opción con letra. La letra y el interruptor son marcas visuales: no cambian el nombre accesible ni `aria-pressed`. Las opciones con letra de la pregunta de Lucía y de los casos no delatan la correcta: la correcta cambia de lugar entre incidentes, como ya exige el plan.
+- `Choice`: la ficha como interruptor y la opción con letra. La letra sale de un contador de CSS (`counter-reset` en la lista de opciones, `counter-increment` en cada opción y la letra en `::before`): sin props nuevas y sin la letra en el texto de la página. La letra y el interruptor son marcas visuales: no cambian el nombre accesible ni `aria-pressed`. Las opciones con letra de la pregunta de Lucía y de los casos no delatan la correcta: la correcta cambia de lugar entre incidentes, como ya exige el plan.
+- `ChipTray` gana la variante `segmented`, para Sí / No: dos fichas dentro de una sola pastilla partida en dos. Es una variante de la bandeja de siempre (en su variante y su mapa de clases), no una bandeja hermana, y no cambia el nombre accesible, `aria-pressed` ni el teclado de cada ficha. La pide el llamador; la Tarea 12 la pasa desde la marca `segmented` del contrato.
+- **Botón primario como sello (decidido por el estudiante el 2026-10-10, en todas las tarjetas).** `Button` `primary` toma, como en el prototipo: fondo `surface`; texto y borde discontinuo (`dashed`, del grosor `stroke-bold`) en `emphasis`; forma de pastilla (`radius-pill`); mayúsculas con `tracking-caps`; inclinación fija de `rotate(-2deg)`; y `translateY(2px)` al pulsarlo. Sigue siendo la variante `primary`, con las clases `btn btn--primary`: no nace un botón hermano. Vale también para el primario como enlace (`href`). Estados: con `prefers-reduced-motion: reduce` no se mueve al pulsar, y el primario deshabilitado conserva la forma y la inclinación con los colores deshabilitados de hoy. Cuidado con dos reglas de hoy, `.btn:active { transform: none }` bajo `prefers-reduced-motion` y `.btn:disabled:active { transform: none }`: también quitarían la inclinación fija al pulsar; para el primario esos dos estados quitan solo el `translateY(2px)` y dejan `rotate(-2deg)`. El botón secundario y el pequeño toman las esquinas redondeadas y el borde grueso del inventario.
 - La variante `soon` de `Card` sigue a media opacidad y su bajo contraste sigue siendo deliberado (`DESIGN.md`, «Contrast»).
-- Si el estilo trae un sello en la tarjeta, dice solo lo que el motor calculó (`view-renders-domain-result`); la tarea no inventa estados.
-- **Pendiente (estudiante, 2026-10-10):** si el botón primario toma el aspecto de sello del estilo B. Solo afecta a esta tarea: si lo toma, la 11a modifica también `src/design/primitives/button.tsx` y su test (el botón primario es una variante de `Button`, no un botón hermano) y la captura de la interfaz lo recoge; si no, `Button` queda como hoy. Se anota en la fila «Botón primario · sello» de «Decisiones visuales aprobadas».
 - Lo que dice cada tarjeta y lo que calcula no cambia: solo cómo se ve. El tipo de cada tarjeta (el texto de la franja) sale de `src/copy/screens/` y nombra cada cosa por su nombre oficial (`rigorous-plain-copy`).
 
 **Tests:**
 - `card.test.tsx`, `shows the title, the icon and the type of the card in its header`.
 - `names the card for a screen reader with its title`.
 - `a card without a header draws no stripe`.
-- `choice.test.tsx`, `an option shows its letter and keeps its sentence as its name`.
+- `choice.test.tsx`, `an option keeps its sentence as its name and puts no letter in the page text` (jsdom no ve `::before`; la letra se prueba abajo, en el navegador).
 - `a pressed chip is still announced as pressed, whatever it looks like`.
+- `a segmented tray wears the class of its variant and keeps each chip announced as pressed or not`.
 - `tokens.test.ts`, `keeps 4.5 to 1 for the text on the title stripe`, solo si el estilo suma ese par de colores.
 - `incident-screen.test.tsx`, `the stamp legend names every stamp state, the warning included` (la misma leyenda de `#/entidades` la cubre `entities-page.test.tsx`).
-- Los tests de hoy de `Button`, `Choice`, `tokens`, de `task-card`, `terminal-card`, `lucia-card`, `incident-screen` y `roadmap` pasan sin cambiar su contenido: es lo que dice que las tarjetas del capítulo 4 siguen funcionando.
-- Playwright `entities`: las capturas se regraban **a propósito** con `pnpm exec playwright test entities --update-snapshots=all`. El diff de la interfaz es el repintado de todas las tarjetas, que el estudiante revisa contra el prototipo aprobado; nada más se mueve. `pnpm check` verde; `incidents.spec.ts` y el humo del 01 siguen verdes.
+- Playwright `entities` (`tests/e2e/entities.spec.ts`, con el especimen de la interfaz; miden estilo calculado y no el texto del CSS: punto 23 de «Decididas sin el estudiante»):
+  - dentro de «Sin animaciones»: `the primary button looks like a stamp and does not move when pressed under reduced motion` (mayúsculas, borde discontinuo en `emphasis`, pastilla y la inclinación de `rotate(-2deg)`, igual en reposo y con el mouse pulsado).
+  - en un grupo sin `reducedMotion`: `without reduced motion the pressed primary button moves 2 px down and keeps its tilt` (para que la anterior no pase por medir nada).
+  - `the options of the interface specimen show the letters A, B and C and keep their sentence as their accessible name`.
+- Los tests de hoy de `Button` (el primario sigue siendo `btn btn--primary`), `Choice`, `tokens`, de `task-card`, `terminal-card`, `lucia-card`, `incident-screen` y `roadmap` pasan sin cambiar su contenido: es lo que dice que las tarjetas del capítulo 4 siguen funcionando.
+- Las capturas de `#/entidades`: solo `interface-darwin.png` se regraba **a propósito** con `pnpm exec playwright test entities --update-snapshots=all`. El diff de la interfaz es el repintado de todas las tarjetas y del botón primario como sello, que el estudiante revisa contra el prototipo aprobado; nada más se mueve, y `entities-darwin.png` no cambia. `pnpm check` verde; `incidents.spec.ts` y el humo del 01 siguen verdes.
 
 **Commit:** `feat(design): restyle every card of the game in style B`.
 
@@ -876,34 +896,41 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 ### Tarea 12: La mecánica `identify` (01)
 
-**Bloqueada por la Tarea 0 (D-12, la forma de la IP) y por la Tarea 11a (las tarjetas nuevas nacen en el estilo B).** D-2: A, decidida. Mientras D-12 siga abierta, esta tarea solo está definida para la forma 1 (fichas).
+**Bloqueada por la Tarea 11a** (las tarjetas nuevas nacen en el estilo B, con la variante `segmented`). D-2 (A) y D-12 (fichas) están decididas.
 
 **Archivos:**
 - Create: `src/game/view/cards/identify-card.ts` y `identify-card.test.ts`, `src/ui/incident/map-cards/identify-card.tsx` y `identify-card.test.tsx`.
-- Modify: `src/levels/contract/incident.ts` y su test, `src/game/session.ts`, `tasks.ts`, `stars.ts`, `view/pieces.ts`, `index.ts`, `src/ui/incident/incident-screen.tsx`, `src/copy/screens/incident-ui.ts`, las guías de `game/`, `game/view/cards/` y `ui/incident/map-cards/`, `src/testing/incidents.ts`.
+- Modify: `src/levels/contract/incident.ts` y su test, `src/game/session.ts`, `tasks.ts`, `stars.ts`, `view/pieces.ts`, `index.ts`, `src/ui/incident/incident-screen.tsx`, `src/ui/incident/map-cards/chip-card.tsx` (el botón «Listo» gana una salida propia, separada de Escape; las demás tarjetas siguen cerrando con las dos), `src/copy/screens/incident-ui.ts`, las guías de `game/`, `game/view/cards/` y `ui/incident/map-cards/`, `src/testing/incidents.ts`.
 
-**Interfaces:** ver «Contrato del incidente», `identify.cards`. La tarjeta es un `ChipCard` con una o más `ChipTray`; una ficha puede traer una línea de `feedback` que la tarjeta muestra al elegirla. Las estrellas son las de `send`.
-
-**Si D-12 elige la forma 2** (un campo de texto con «Comprobar»), esta tarea cambia así:
-- El contrato: `identify.cards` suma `fields` (un campo de texto por tarjeta) y la tarea espera `{ deviceId, fieldId, value }` en vez de `chipId`; las bandejas quedan para «¿Está en la red?».
-- La sesión: `Session.answers` guarda el texto escrito y el resultado de «Comprobar», que calcula `game` con las reglas del motor y no la vista: correcta, no es IPv4, es la IP de otro dispositivo o no la tiene ninguno.
-- El diseño: `@/design` no tiene un campo de texto, así que hace falta una primitiva nueva (por ejemplo `TextField`) en `src/design/primitives/`, con su test, su especimen, su fila en `DESIGN.md` y la captura de la interfaz regrabada a propósito. El botón «Comprobar» es el `Button` de siempre.
-- Los tests: los de la tarjeta hablan de escribir y comprobar, no de fichas, y el `feedback` pasa de ser por ficha a ser por resultado.
-- La ficha 01-01: ver su pendiente D-12.
+**Interfaces:** ver «Contrato del incidente», `identify.cards`, y el punto 22 de «Decididas sin el estudiante» (_para revisar_). La tarjeta es un `ChipCard` con una o más `ChipTray`. Las estrellas son las de `send`.
+- **Cómo arranca.** Una bandeja puede traer `initialPick` (una de sus fichas, que llega elegida) y `segmented` (Sí / No). La sesión nace con esas fichas elegidas en `Session.answers`, y volver a empezar el incidente las repone. Una ficha elegida de partida no cumple una tarea por sí sola: la tarea se cumple cuando la ficha elegida es la que espera.
+- **Cuándo sale la línea.** Una ficha puede traer una línea de `feedback`. Al pulsar «Listo» con una ficha elegida que la trae, la tarjeta muestra la línea (la de cada bandeja que la tenga) y sigue abierta; sin esa línea, «Listo» cierra como siempre. Elegir otra ficha esconde la línea. Escape cierra siempre. Que la línea ya salió es estado local de la tarjeta; el texto de la línea y qué ficha está elegida lo calcula `game` (`view-renders-domain-result`).
 
 **Tests:**
 - `incident.test.ts`, `accepts an identify incident`.
 - `rejects an identify task whose chip the card does not offer`.
 - `rejects two cards for the same device`.
-- `session.test.ts`, `answering a card keeps the chip picked for that device and tray`.
+- `accepts a tray that starts with a chip already picked`.
+- `rejects an initial pick that names no chip of its tray`.
+- `session.test.ts`, `a tray can start with a chip already picked`.
+- `a task whose chip is not the one picked from the start stays open`.
+- `starting the incident again puts the initial picks back`.
+- `answering a card keeps the chip picked for that device and tray`.
 - `a task holds when its chip is the one picked`.
 - `picking another chip changes the answer`.
 - `the incident closes only with every card task done, and asking a hint costs the middle star`.
 - `answers are ignored once the incident is closed`.
 - `pieces.test.ts`, `in an identify incident the devices with a card open it and have no lock`.
-- `identify-card.test.ts`, `lists the trays of the device and the feedback of the chip picked`.
+- `identify-card.test.ts`, `lists the trays of the device, the chip picked from the start and the feedback of the chip picked`.
+- `lists a tray marked segmented as segmented`.
 - `identify-card.test.tsx`, `shows the trays of the device and reports a pick`.
-- `shows the feedback line of the picked chip`.
+- `a tray starts with the chip already picked and announces it as pressed`.
+- `shows no feedback line when a chip is picked, only after pressing Listo`.
+- `pressing Listo with the wrong IP picked shows its feedback and leaves the task open`: la tarjeta sigue abierta, la ficha sigue elegida y la tarea no se cumple.
+- `pressing Listo with a chip that has no feedback closes the card`.
+- `picking another chip hides the feedback line`.
+- `Escape closes the card even when the chip picked has a feedback line`.
+- El genérico `starts with a task to fix` (`incidents.test.ts`) cubre que la ficha de partida no cumple ninguna tarea.
 
 **Commit:** `feat(game): add the identify mechanic`.
 
@@ -1157,7 +1184,9 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `defines its new terms without naming a term the player does not know yet` (el de hoy) sigue verde con `packet`, `source-ip` y `destination-ip`.
 - `chapter-1.test.ts`, `01-01: marking laptop-visita and picking 192.168.1.21 for the printer closes the incident`.
 - `01-01: marking a connected laptop as outside leaves the task open and the box says it has an IP`.
-- `01-01: 192.168.1.300 is not picked as the printer's IP and its feedback says the numbers stop at 255`.
+- `01-01: Lucía's note gives 192.168.1.300 and that chip starts picked for the printer, with its task open`.
+- `01-01: pressing Listo with 192.168.1.300 picked shows that the numbers stop at 255 and leaves the task open`.
+- `01-01: pressing Listo with 192.168.1.12 picked says it is the IP of laptop-marta`.
 - `01-02: a packet to 192.168.1.21 reaches the printer and completes the task`.
 - `01-02: a packet to 192.168.1.12 reaches laptop-marta and the task stays open`.
 - `01-02: the box shows the header with the source and the destination IP`.
@@ -1166,7 +1195,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Cierre:** `grep -rn "01-0[1-4]" src tests` solo muestra ids de los incidentes nuevos; `pnpm check` verde; golden sin cambios. **Commit:** `feat(levels): retire the four incidents of chapter 1 and add block 1, the office and the envelope`.
 
-**Prueba humana del bloque 1.** El estudiante juega el 01 y el 02 con su servidor. Comprueba: (a) que el 01 se entiende sin que nada viaje; (b) que la IP inválida y la «sin conexión» se resuelven con el mouse; (c) que ningún mensaje lo pierde; (d) cómo se ve el encabezado. Se anota qué se ajusta; si el 01 sobra, se fusiona con el 02 (cambia D-2 y los ids).
+**Prueba humana del bloque 1.** El estudiante juega el 01 y el 02 con su servidor. Comprueba: (a) que el 01 se entiende sin que nada viaje; (b) que la IP inválida y la «sin conexión» se resuelven con el mouse; (c) que ningún mensaje lo pierde; (d) cómo se ve el encabezado; (e) que la nota de Lucía y la ficha ya elegida se entienden, y que la línea aparece al pulsar «Listo». Se anota qué se ajusta; si el 01 sobra, se fusiona con el 02 (cambia D-2 y los ids).
 
 ---
 
@@ -1199,7 +1228,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 ### Tarea 22: Bloque 3, primera parte · 06 y 07
 
-**Bloqueada por la Tarea 13** (la tarjeta «Ajustes de red» que usa el 07; la 13 espera a la 11a, que espera la aprobación del inventario de tarjetas). V6 (b) está decidida y ya no la bloquea: cada incidente trae su lista `shown`, el campo que suma la Tarea 16, y la de estos dos queda en sus fichas. Presenta 06 y 07.
+**Bloqueada por la Tarea 13** (la tarjeta «Ajustes de red» que usa el 07; la 13 espera a la 11a). V6 (b) está decidida y ya no la bloquea: cada incidente trae su lista `shown`, el campo que suma la Tarea 16, y la de estos dos queda en sus fichas. Presenta 06 y 07.
 
 **Archivos:**
 - Create: `src/levels/01-first-day/leaving-the-office/06-your-network-and-the-router.ts`, `07-who-gets-whats-outside.ts`, `leaving-the-office/CLAUDE.md`.
@@ -1396,20 +1425,21 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 | Lo que queda fuera del capítulo | Tarea 20 (`names no topic of the chapters that come later, in any text of chapter 1`) |
 | Un solo motor, mecánicas que le faltan | «Inventario de mecánicas»; Tareas 3 a 9 |
 | Cada bloque cierra con una prueba humana | Tareas 20, 21, 23, 25 y 26 |
-| Decisiones que no toma quien escribe | «Decisiones del estudiante (2026-10-10)», D-6 (V6 incluida) y D-12 en «Decisiones abiertas» y la Tarea 0 |
+| Decisiones que no toma quien escribe | «Decisiones del estudiante (2026-10-10)» (con D-12), D-6 (V6 incluida) y la Tarea 0 |
 | El capítulo 4 no cambia lo que calcula | Review Focus 1 y el cierre de las Tareas 3 a 9 |
 | Docs, roadmap, spec viejo, tests e2e como tareas | Tareas 27 y 28 |
-| Las decisiones visuales del 2026-10-10 (V1 a V9) | D-6, «Decisiones visuales aprobadas» y las Tareas 11, 11a, 11b, 12 a 18, 22, 23 y 27 |
+| Las decisiones visuales del 2026-10-10 (V1 a V9, el inventario del estilo B, el botón primario como sello y D-12) | D-6, «Decisiones visuales aprobadas» y las Tareas 11, 11a, 11b, 12 a 18, 22, 23 y 27 |
 | El estilo B en todas las tarjetas del juego, también las del capítulo 4 | Tarea 11a y «Cambios visibles del capítulo 4» |
+| El botón primario como sello en todas las tarjetas | Tarea 11a, «Cambios visibles del capítulo 4» y Review Focus 17 |
 | Pestañas «Entrada» y «Salida» con Radix, con una dependencia exacta de al menos 14 días | Tareas 1a, 11b y 15; Global Constraints, «Dependencias» |
 | La puerta de enlace como ajuste guardado, en una tarjeta propia | Tarea 13, ficha 01-07 y Tareas 22 y 27 |
 | Rigor siempre (D-11) | Global Constraints, Review Focus 15 y las pruebas de las Tareas 13, 15, 25 y 26 |
 | El mapa sigue la historia: cada incidente dibuja solo las piezas que usa, a tamaño completo (V6 b) | D-6, «V6 en detalle», punto 20 de «Decididas sin el estudiante», fichas 06 a 10 y Tareas 16, 18, 22, 23 y 27 |
-| La IP del 01 (D-12), abierta | «Decisiones abiertas» y Tarea 0 |
+| La IP del 01 con fichas: la nota de Lucía deja elegida la `192.168.1.300` y la línea sale al pulsar «Listo» (D-12) | «Decisiones del estudiante», ficha 01-01, punto 22 de «Decididas sin el estudiante» y Tareas 12 y 20 |
 
 ## Decisiones visuales aprobadas
 
-Decidido el 2026-10-10: V1 a V9 (V6 fue la b). Siguen pendientes D-12, el botón primario como sello (solo afecta a la Tarea 11a) y la aprobación del inventario de tarjetas en estilo B. Hasta que el estudiante elija no empiezan las tareas que cada fila dice bloqueadas: la 12 (D-12); la 11a espera el inventario, y tras ella la 11b y la 12 a la 15.
+Decidido el 2026-10-10: V1 a V9 (V6 fue la b), la aprobación completa del inventario de tarjetas en estilo B, el botón primario como sello y D-12 (fichas). No queda nada pendiente: ninguna tarea espera una elección del estudiante.
 
 | # | Elección del estudiante | Fecha |
 |---|--------------------------|-------|
@@ -1421,7 +1451,7 @@ Decidido el 2026-10-10: V1 a V9 (V6 fue la b). Siguen pendientes D-12, el botón
 | V6 | b. El mapa sigue la historia: cada pantalla se dibuja a tamaño completo (100 %) y solo con las piezas que ese subcapítulo usa; la oficina puede cambiar de sitio entre subcapítulos (en el 10, de los dispositivos de la oficina solo queda `tu-laptop`). Cada incidente trae su lista de piezas (punto 20 de «Decididas sin el estudiante», para revisar) (Tareas 16, 18, 22 y 23) | 2026-10-10 |
 | V7 | a. El paquete cuya causa está oculta se detiene en la puerta del equipo, con «?» (Tarea 11) | 2026-10-10 |
 | V8 | B del prototipo de estilos, como el estilo NUEVO de TODAS las tarjetas del juego, también las del capítulo 4: franja de título oscura con icono y tipo, esquinas redondeadas, borde grueso, sombra, interruptor, opciones con letra y sello. Una sola primitiva por familia: el estilo cambia la primitiva y no suma hermanas (Tarea 11a) | 2026-10-10 |
-| V8 · inventario | pendiente. El estudiante aprueba el prototipo del inventario de tarjetas en estilo B (en preparación el 2026-10-10); desbloquea la Tarea 11a | |
+| V8 · inventario | Aprobado completo, como en la sección V8 del prototipo: franja de título oscura con icono y tipo, esquinas de 14 px, borde grueso, sombra hacia abajo; `ChipTray` gana la variante `segmented` para Sí / No; las opciones de `Choice` llevan una letra que sale de un contador de CSS; una sola primitiva por familia (Tarea 11a) | 2026-10-10 |
 | V9 | b, con Radix. Pestañas «Entrada» y «Salida» con `@radix-ui/react-tabs` (versión exacta, publicada al menos dos semanas antes), envuelto como la primitiva `Tabs` de `src/design/` con los tokens del juego; servirá también para la entrada y la salida del Security Group y de la NACL (Tareas 11b y 15) | 2026-10-10 |
-| Botón primario · sello | pendiente. El estudiante decide si el botón primario toma el aspecto de sello del estilo B; solo afecta a la Tarea 11a | |
-| D-12 | pendiente. Cómo da el 01 la IP de la impresora: forma 1 (fichas) o forma 2 (campo de texto con «Comprobar») | |
+| Botón primario · sello | Sí, en todas las tarjetas. Es `Button` `primary`, como en el prototipo: fondo `surface`, texto y borde discontinuo (`dashed`) en `emphasis`, pastilla, mayúsculas con `tracking-caps`, `rotate(-2deg)` fijo y `translateY(2px)` al pulsar; con `prefers-reduced-motion` no se mueve al pulsar. El estudiante lo vio junto al botón relleno de hoy y eligió el sello. Es un cambio de la primitiva `Button` (Tarea 11a), no un elemento nuevo | 2026-10-10 |
+| D-12 | Fichas. La tarjeta de la impresora pregunta «¿Cuál es su dirección IP?» con `192.168.1.21`, `192.168.1.300` y `192.168.1.12`; Lucía le da al jugador una nota con la IP de la impresora anotada mal, `192.168.1.300`, y esa ficha llega ya elegida; al pulsar «Listo» aparece «No es IPv4: cada uno de los cuatro números va de 0 a 255.»; la IP real se lee en la caja de la impresora y la otra ficha válida es la IP de otro dispositivo (`192.168.1.12`, la de `laptop-marta`). La tarjeta de `laptop-visita` conserva «¿Está en la red?» Sí / No (variante `segmented`) (Tareas 12 y 20) | 2026-10-10 |
