@@ -1,10 +1,12 @@
-export { isIntruding, sessionReducer, startSession, starsOf } from './session';
+export { canAskHint, hintsOf, isIntruding, sessionReducer, startSession, starsOf } from './session';
 export type { Rejection, Session, SessionAction } from './session';
 export type { SentPacket } from './flow-runs';
 export { countStars } from './stars';
 export type { Stars } from './stars';
 export { taskHolds } from './tasks';
 export { firewallCard, rowText } from './view/cards/firewall-card';
+export { caseCard, caseSummary } from './view/cards/case-card';
+export type { CaseCard, CaseSummary } from './view/cards/case-card';
 export { identifyCard } from './view/cards/identify-card';
 export type { IdentifyCard } from './view/cards/identify-card';
 export { settingsCard } from './view/cards/settings-card';

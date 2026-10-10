@@ -1,6 +1,6 @@
 import { RESULT_TEXT, type TermText } from '@/copy';
 import { Button, Card } from '@/design';
-import { countStars, type Stars as EarnedStars } from '@/game';
+import { countStars, type CaseSummary, type Stars as EarnedStars } from '@/game';
 import type { Mechanic } from '@/levels';
 import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
@@ -9,11 +9,29 @@ import { useFocusOnMount } from './use-focus-on-mount';
 
 const STAR_KEYS = ['closed', 'middle', 'explained'] as const satisfies readonly (keyof EarnedStars)[];
 
+interface ResultCardProps {
+  stars: EarnedStars;
+  mechanic: Mechanic;
+  takeaway: TermText;
+  nextId: string | null;
+  cases: CaseSummary | null;
+}
+
 function starText(key: (typeof STAR_KEYS)[number], mechanic: Mechanic): string {
+  if (mechanic === 'diagnose') return RESULT_TEXT.cases.stars[key];
   return key === 'middle' ? RESULT_TEXT.middle[mechanic] : RESULT_TEXT.stars[key];
 }
 
-export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: EarnedStars; mechanic: Mechanic; takeaway: TermText; nextId: string | null }) {
+function CaseOutcomes({ summary }: { summary: CaseSummary }) {
+  return (
+    <>
+      <h3>{RESULT_TEXT.cases.title}</h3>
+      <p>{summary.missed.length === 0 ? RESULT_TEXT.cases.allFirstTry(summary.total) : RESULT_TEXT.cases.missed(summary.missed)}</p>
+    </>
+  );
+}
+
+export function ResultCard({ stars, mechanic, takeaway, nextId, cases }: ResultCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
     <Card aria-labelledby="result-title" header={{ icon: <CardIcon kind="result" />, type: RESULT_TEXT.type }}>
@@ -30,6 +48,7 @@ export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: Earne
           </li>
         ))}
       </ul>
+      {cases && <CaseOutcomes summary={cases} />}
       <h3>{RESULT_TEXT.takeaway}</h3>
       <p>
         <TaggedText text={takeaway} />

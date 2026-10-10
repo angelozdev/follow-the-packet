@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { termsIn, toPlainText, unofficialNames, type TermId, type TermText } from '@/copy';
 import type { Firewall, Network } from '@/engine';
-import { INCIDENTS, sendCombinations, type Incident, type SendIncident } from '@/levels';
+import { INCIDENTS, isGuided, sendCombinations, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
 import { officeNet, sendIncident, withDevice } from '@/testing';
-import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
+import { currentCase, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
@@ -38,8 +38,12 @@ function shownTexts(session: Session): TermText[] {
   return [...pieces.map((piece) => piece.label), ...packets.map((packet) => packet.label), ...inspected, ...terminalTexts(session, ids)];
 }
 
+function sendMoves(offers: { send: SendIncident['send'] } | null): SessionAction[] {
+  return offers ? sendCombinations(offers).map((combination) => ({ type: 'sendPacket', ...combination })) : [];
+}
+
 function movesToTry(incident: Incident, start: Session): SessionAction[] {
-  if (incident.mechanic === 'send') return sendCombinations(incident).map((combination) => ({ type: 'sendPacket', ...combination }));
+  if (incident.mechanic === 'send' || incident.mechanic === 'diagnose') return sendMoves(incident.mechanic === 'send' ? incident : currentCase(start));
   if (incident.mechanic === 'identify') return [];
   const cards = pieceViews(start)
     .filter((piece) => piece.configurable)
@@ -49,7 +53,19 @@ function movesToTry(incident: Incident, start: Session): SessionAction[] {
   );
 }
 
+function closeCase(spec: CaseSpec): SessionAction[] {
+  return [{ type: 'nameCause', index: spec.cause.options.findIndex((option) => option.correct) }, { type: 'nextCase' }];
+}
+
+function sessionsOfCases(incident: DiagnoseIncident): Session[] {
+  return incident.diagnose.cases.flatMap((_, index) => {
+    const atCase = incident.diagnose.cases.slice(0, index).flatMap(closeCase).reduce(sessionReducer, startSession(INCIDENTS, incident.id));
+    return [atCase, ...movesToTry(incident, atCase).map((move) => sessionReducer(atCase, move))];
+  });
+}
+
 function sessionsToCheck(incident: Incident): Session[] {
+  if (!isGuided(incident)) return sessionsOfCases(incident);
   const start = startSession(INCIDENTS, incident.id);
   const solved = incident.solution.reduce(sessionReducer, start);
   return [start, solved, ...movesToTry(incident, start).map((move) => sessionReducer(start, move))];

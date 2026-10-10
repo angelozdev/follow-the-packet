@@ -3,9 +3,9 @@ import type { TermId } from '@/copy';
 import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
-import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
+import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 import { taskHolds } from './tasks';
 
@@ -256,7 +256,7 @@ describe('answering the cards of an identify incident', () => {
   const PICK_MARTA_IP = answer('printer', { ip: 'marta' });
   const identifying = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([IDENTIFYING], IDENTIFYING.id));
   const holds = (session: Session, taskId: string) => {
-    const task = session.incident.tasks.find((candidate) => candidate.id === taskId);
+    const task = IDENTIFYING.tasks.find((candidate) => candidate.id === taskId);
     if (!task) throw new Error(`missing task ${taskId}`);
     return taskHolds(task, session.runs, session.sent, session.answers);
   };
@@ -412,3 +412,170 @@ describe('a warning that comes back to the sender', () => {
   });
 });
 
+
+describe('the cases of a diagnose incident', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const { cases } = DIAGNOSE.diagnose;
+  const { floor1, floor2 } = OFFICE_FLOORS;
+  const rightIndex = (number: number) => cases[number - 1].cause.options.findIndex((option) => option.correct);
+  const wrongIndex = (number: number) => cases[number - 1].cause.options.findIndex((option) => !option.correct);
+  const nameRight = (number: number): SessionAction => ({ type: 'nameCause', index: rightIndex(number) });
+  const nameWrong = (number: number): SessionAction => ({ type: 'nameCause', index: wrongIndex(number) });
+  const sendTest = (toId: string): SessionAction => ({ type: 'sendPacket', fromId: 'origin', toId, messageId: 'ping' });
+  const NEXT: SessionAction = { type: 'nextCase' };
+  const HINT: SessionAction = { type: 'showHint' };
+  const diagnosing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([DIAGNOSE], DIAGNOSE.id));
+  const closeCases = (count: number): SessionAction[] => Array.from({ length: count }, (_, index) => [nameRight(index + 1), NEXT]).flat();
+  const closeAll: SessionAction[] = [...closeCases(cases.length - 1), nameRight(cases.length)];
+  const gatewayOf = (session: Session, deviceId: string) => session.world.devices.find((candidate) => candidate.id === deviceId)?.gateway;
+
+  it('starts at the first case', () => {
+    const start = diagnosing();
+    expect(start.caseIndex).toBe(0);
+    expect(start.caseResults).toEqual([]);
+    expect(start.named).toEqual([]);
+    expect(start.phase).toBe('playing');
+    expect(currentCase(start)).toBe(cases[0]);
+    expect(hintsOf(start)).toBe(cases[0].hints);
+    expect(gatewayOf(start, 'your-laptop')).toBeUndefined();
+    expect(start.sent).toEqual([]);
+    expect(caseClosed(start)).toBe(false);
+  });
+
+  it('the player can send tests in the case', () => {
+    const sent = diagnosing(sendTest('loopback'), sendTest('server'));
+    expect(sendingOf(sent)).toBe(cases[0]);
+    expect(sent.sent.map((packet) => [packet.toId, packet.trace.outcome])).toEqual([['loopback', 'replied'], ['server', 'no-route']]);
+    expect(sent.sent.map((packet) => packet.send)).toEqual([1, 2]);
+    expect(sessionReducer(sent, sendTest('typo'))).toBe(sent);
+    expect(sessionReducer(sent, { type: 'sendPacket', fromId: 'ghost', toId: 'loopback', messageId: 'ping' })).toBe(sent);
+  });
+
+  it('naming the cause right closes the case and opens the next', () => {
+    const closed = diagnosing(nameRight(1));
+    expect(closed.caseResults).toEqual([{ picks: [rightIndex(1)], hints: 0 }]);
+    expect(closed.caseIndex).toBe(0);
+    expect(closed.phase).toBe('playing');
+    expect(caseClosed(closed)).toBe(true);
+    const next = sessionReducer(closed, NEXT);
+    expect(next.caseIndex).toBe(1);
+    expect(currentCase(next)).toBe(cases[1]);
+    expect(next.named).toEqual([]);
+    expect(caseClosed(next)).toBe(false);
+    expect(next.caseResults).toEqual(closed.caseResults);
+    expect(gatewayOf(next, 'your-laptop')).toBe(floor1.gateway);
+  });
+
+  it('the next case waits for the case in play to close, and each case builds on the world before the incident', () => {
+    const open = diagnosing();
+    expect(sessionReducer(open, NEXT)).toBe(open);
+    const second = diagnosing(...closeCases(2));
+    expect(second.caseIndex).toBe(2);
+    expect(gatewayOf(second, 'andres-laptop')).toBeUndefined();
+    expect(gatewayOf(second, 'your-laptop')).toBe(floor1.gateway);
+    expect(gatewayOf(sessionReducer(sessionReducer(second, nameRight(3)), NEXT), 'andres-laptop')).toBe(floor2.gateway);
+  });
+
+  it('naming it wrong gives the feedback of the option and lets the player try again', () => {
+    const wrong = diagnosing(nameWrong(1));
+    expect(wrong.named).toEqual([wrongIndex(1)]);
+    expect(cases[0].cause.options[wrong.named[0]].feedback).toBe(`Porque 1${String.fromCharCode(65 + wrongIndex(1))}.`);
+    expect(wrong.caseResults).toEqual([]);
+    expect(caseClosed(wrong)).toBe(false);
+    expect(sessionReducer(wrong, nameWrong(1))).toBe(wrong);
+    const again = sessionReducer(wrong, nameRight(1));
+    expect(again.caseResults).toEqual([{ picks: [wrongIndex(1), rightIndex(1)], hints: 0 }]);
+    expect(caseClosed(again)).toBe(true);
+  });
+
+  it('a cause that is out of range, or named after the case closed, changes nothing', () => {
+    const open = diagnosing();
+    for (const index of [-1, 3, 1.5, Number.NaN]) expect(sessionReducer(open, { type: 'nameCause', index })).toBe(open);
+    const closed = diagnosing(nameRight(1));
+    expect(sessionReducer(closed, nameWrong(1))).toBe(closed);
+    expect(sessionReducer(closed, nameRight(1))).toBe(closed);
+    const sending = startSession([sendIncident()], sendIncident().id);
+    expect(sessionReducer(sending, { type: 'nameCause', index: 0 })).toBe(sending);
+    expect(sessionReducer(sending, NEXT)).toBe(sending);
+  });
+
+  it('the last case closed closes the incident', () => {
+    const closed = diagnosing(...closeAll);
+    expect(closed.phase).toBe('explaining');
+    expect(closed.caseIndex).toBe(cases.length - 1);
+    expect(closed.caseResults).toHaveLength(cases.length);
+    expect(starsOf(closed).closed).toBe(true);
+    expect(sessionReducer(closed, NEXT)).toBe(closed);
+    expect(sessionReducer(closed, nameRight(cases.length))).toBe(closed);
+    expect(sessionReducer(closed, { type: 'showResult' }).phase).toBe('result');
+  });
+
+  it('the incident stays open until the last case closes, and the result needs it closed', () => {
+    const almost = diagnosing(...closeCases(cases.length - 1));
+    expect(almost.phase).toBe('playing');
+    expect(starsOf(almost).closed).toBe(false);
+    expect(sessionReducer(almost, { type: 'showResult' })).toBe(almost);
+  });
+
+  it('sends and hints belong to the case they were made in', () => {
+    const first = diagnosing(sendTest('loopback'), HINT, HINT, nameRight(1));
+    expect(first.sent).toHaveLength(1);
+    expect(first.hintsShown).toBe(2);
+    expect(first.caseResults).toEqual([{ picks: [rightIndex(1)], hints: 2 }]);
+    const second = sessionReducer(first, NEXT);
+    expect(second.sent).toEqual([]);
+    expect(second.hintsShown).toBe(0);
+    expect(hintsOf(second)).toBe(cases[1].hints);
+    const hinted = sessionReducer(second, HINT);
+    expect(hinted.hintsShown).toBe(1);
+    expect(sessionReducer(hinted, sendTest('printer')).sent.map((packet) => packet.toId)).toEqual(['printer']);
+    expect(sessionReducer(hinted, nameRight(2)).caseResults).toEqual([first.caseResults[0], { picks: [rightIndex(2)], hints: 1 }]);
+    expect(sessionReducer(second, sendTest('loopback'))).toBe(second);
+  });
+
+  it('a hint comes one by one, up to two, and none once the case is closed', () => {
+    expect(diagnosing(HINT, HINT, HINT).hintsShown).toBe(cases[0].hints.length);
+    const closed = diagnosing(nameRight(1));
+    expect(canAskHint(diagnosing())).toBe(true);
+    expect(canAskHint(diagnosing(HINT, HINT))).toBe(false);
+    expect(canAskHint(closed)).toBe(false);
+    expect(sessionReducer(closed, HINT)).toBe(closed);
+  });
+
+  it('what a send incident does with tasks, rules, cards and explanations does nothing here', () => {
+    const open = diagnosing(sendTest('loopback'));
+    const ignored: SessionAction[] = [
+      { type: 'submit' },
+      { type: 'chooseExplanation', index: 0 },
+      { type: 'placeRule', firewallId: 'fw-your-laptop', whatId: 'a', fromId: 'b' },
+      { type: 'removeRule', firewallId: 'fw-your-laptop', ruleId: 'a' },
+      { type: 'answerCard', deviceId: 'your-laptop', picks: { tray: 'chip' } },
+      { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'router' },
+    ];
+    for (const action of ignored) expect(sessionReducer(open, action)).toBe(open);
+    expect(sessionReducer(diagnosing(...closeAll), { type: 'chooseExplanation', index: 0 }).choice).toBeNull();
+  });
+
+  it('earns the three stars with every cause right at the first try and no hint', () => {
+    const closed = diagnosing(...closeAll);
+    expect(starsOf(closed)).toEqual({ closed: true, middle: true, explained: true });
+    expect(countStars(starsOf(closed))).toBe(FULL_STARS);
+  });
+
+  it('a hint in the first case loses the middle star, though no hint was asked in the last one', () => {
+    const closed = diagnosing(HINT, ...closeAll);
+    expect(closed.hintsShown).toBe(0);
+    expect(starsOf(closed)).toEqual({ closed: true, middle: false, explained: true });
+  });
+
+  it('a wrong cause in an early case loses the explained star, though the case closes', () => {
+    const closed = diagnosing(nameWrong(1), ...closeAll);
+    expect(closed.caseResults[0].picks).toEqual([wrongIndex(1), rightIndex(1)]);
+    expect(starsOf(closed)).toEqual({ closed: true, middle: true, explained: false });
+  });
+
+  it('the explained star waits for the incident to close', () => {
+    const partway = diagnosing(...closeCases(cases.length - 1));
+    expect(starsOf(partway)).toEqual({ closed: false, middle: false, explained: false });
+  });
+});

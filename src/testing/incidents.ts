@@ -1,6 +1,6 @@
-import { applyAction } from '@/engine';
-import { INCIDENTS, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
-import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, device, officeNet, officeTwoFloorsNet } from './fixtures';
+import { ROUTE_DEFAULT, applyAction, type NetworkAction } from '@/engine';
+import { INCIDENTS, type CaseSpec, type DiagnoseIncident, type ExplanationOption, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
+import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
 export function filterIncident(id: string): FilterIncident {
@@ -182,5 +182,69 @@ export function identifyIncident(): IdentifyIncident {
       { type: 'answerCard', deviceId: 'guest-laptop', picks: { 'in-network': 'no' } },
       { type: 'answerCard', deviceId: 'printer', picks: { ip: 'right' } },
     ],
+  };
+}
+
+interface CaseSketch {
+  from: string;
+  to: [id: string, address: string][];
+  right: 0 | 1 | 2;
+  changes?: NetworkAction[];
+}
+
+function causeOption(number: number, index: number, right: number): ExplanationOption {
+  const letter = String.fromCharCode('A'.charCodeAt(0) + index);
+  return { text: `Causa ${number}${letter}`, feedback: `Porque ${number}${letter}.`, correct: index === right };
+}
+
+function diagnoseCase(number: number, { from, to, right, changes }: CaseSketch): CaseSpec {
+  return {
+    id: `case-${number}`,
+    changes,
+    report: `Caso ${number}: tu {{ping}} no vuelve.`,
+    send: {
+      from: [{ id: 'origin', endpoint: device(from) }],
+      to: to.map(([id, address]) => ({ id, address })),
+      message: [{ id: 'ping', label: '{{ping}}', command: 'ping', icmpType: 8 }],
+    },
+    hints: [`Primera pista del caso ${number}.`, `Segunda pista del caso ${number}.`],
+    cause: { question: `¿Por qué falla el caso ${number}?`, options: [causeOption(number, 0, right), causeOption(number, 1, right), causeOption(number, 2, right)] },
+  };
+}
+
+/** Returns a diagnose incident on the office of the map that grows, with every term introduced and seven cases that each start from the office plus their own changes: 1 takes the gateway of your laptop away, 2 changes nothing, 3 takes the gateway of laptop-andres away, 4 changes nothing, 5 sends the routes of the backbone back to the provider, 6 adds a firewall to laptop-lucia and 7 adds one with no outbound rules to your laptop. The right cause sits in a different place in the cases (the third option of the first, the first of the second, and so on) and every case has its own chips. */
+export function diagnoseIncident(): DiagnoseIncident {
+  const { floor1, floor2, server, provider, backbone, range } = OFFICE_FLOORS;
+  const { chapter, title, role, lesson, concept, takeaway } = sendIncident();
+  const firewall = (deviceId: string, name: string, outbound: ReturnType<typeof allOut>[]): NetworkAction => ({
+    type: 'addFirewall',
+    deviceId,
+    firewall: { id: `fw-${deviceId}`, name, kind: 'host-firewall', inbound: [], outbound },
+  });
+  return {
+    chapter,
+    title,
+    role,
+    lesson,
+    concept,
+    takeaway,
+    id: '09-03',
+    order: 3,
+    introduces: [...EVERY_TERM],
+    base: officeTwoFloorsNet(),
+    mechanic: 'diagnose',
+    report: 'Hoy estás de guardia. Te llegan avisos de uno en uno.',
+    flows: [],
+    diagnose: {
+      cases: [
+        diagnoseCase(1, { from: 'your-laptop', right: 2, to: [['loopback', '127.0.0.1'], ['own', floor1.you], ['gateway', floor1.gateway], ['server', server.ip]], changes: [{ type: 'setGateway', deviceId: 'your-laptop' }] }),
+        diagnoseCase(2, { from: 'your-laptop', right: 0, to: [['typo', '192.168.1.22'], ['printer', floor1.printer]] }),
+        diagnoseCase(3, { from: 'andres-laptop', right: 1, to: [['loopback', '127.0.0.1'], ['own', floor2.andres], ['router', floor2.gateway], ['printer', floor1.printer]], changes: [{ type: 'setGateway', deviceId: 'andres-laptop' }] }),
+        diagnoseCase(4, { from: 'marta-laptop', right: 2, to: [['server', server.ip], ['branch', '10.0.0.10']] }),
+        diagnoseCase(5, { from: 'marta-laptop', right: 0, to: [['server', server.ip]], changes: [{ type: 'updateRouter', routerId: backbone.id, routes: [{ to: range, next: provider.id }, { to: ROUTE_DEFAULT, next: provider.id }] }] }),
+        diagnoseCase(6, { from: 'your-laptop', right: 1, to: [['lucia', floor1.lucia], ['marta', floor1.marta], ['printer', floor1.printer]], changes: [firewall('lucia-laptop', 'laptop-lucia', [allOut('out-lucia')])] }),
+        diagnoseCase(7, { from: 'your-laptop', right: 2, to: [['loopback', '127.0.0.1'], ['own', floor1.you], ['gateway', floor1.gateway]], changes: [firewall('your-laptop', 'tu-laptop', [])] }),
+      ],
+    },
   };
 }

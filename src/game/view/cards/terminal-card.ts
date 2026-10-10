@@ -1,7 +1,7 @@
 import { TERMINAL_TEXT, endpointName, packetMessage, type TermText } from '@/copy';
 import type { Endpoint } from '@/engine';
-import type { MessageChip, SendIncident } from '@/levels';
-import type { Session } from '@/game/session';
+import type { MessageChip, SendOwner } from '@/levels';
+import { sendingOf, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 
 export type SendTrayName = 'from' | 'to' | 'message';
@@ -31,30 +31,26 @@ function endpointPieceId(endpoint: Endpoint): string {
   return endpoint.kind === 'device' ? PIECE_ID.device(endpoint.id) : PIECE_ID.actor(endpoint.id);
 }
 
-function sendingIncident(session: Session): SendIncident | null {
-  return session.incident.mechanic === 'send' ? session.incident : null;
-}
-
-/** Returns the piece ids where the incident's origin chips sit, by chip id; empty when the incident does not send. */
+/** Returns the piece ids where the origin chips sit, by chip id: those of the incident, or of the case a diagnose is on; empty when nothing sends. */
 export function originPieces(session: Session): Record<string, string> {
-  const incident = sendingIncident(session);
-  return Object.fromEntries((incident?.send.from ?? []).map((chip) => [chip.id, endpointPieceId(chip.endpoint)]));
+  const offers = sendingOf(session);
+  return Object.fromEntries((offers?.send.from ?? []).map((chip) => [chip.id, endpointPieceId(chip.endpoint)]));
 }
 
-function chipsOf(incident: SendIncident, session: Session): Record<SendTrayName, Chip[]> {
+function chipsOf(offers: SendOwner, session: Session): Record<SendTrayName, Chip[]> {
   return {
-    from: incident.send.from.map((chip) => ({ id: chip.id, label: endpointName(chip.endpoint, session.world) })),
-    to: incident.send.to.map((chip) => ({ id: chip.id, label: chip.address })),
-    message: incident.send.message.map((chip) => ({ id: chip.id, label: chip.label })),
+    from: offers.send.from.map((chip) => ({ id: chip.id, label: endpointName(chip.endpoint, session.world) })),
+    to: offers.send.to.map((chip) => ({ id: chip.id, label: chip.address })),
+    message: offers.send.message.map((chip) => ({ id: chip.id, label: chip.label })),
   };
 }
 
-/** Returns what the terminal card of an origin piece shows: its title, the trays with a choice to make, and the chip of each tray that offers only one (that tray is fixed and not shown); null when the piece is not an origin of a send incident. */
+/** Returns what the terminal card of an origin piece shows: its title, the trays with a choice to make, and the chip of each tray that offers only one (that tray is fixed and not shown); null when the piece is not an origin of a send incident, or of the case a diagnose is on. */
 export function terminalCard(session: Session, pieceId: string): TerminalCard | null {
-  const incident = sendingIncident(session);
-  const origin = incident?.send.from.find((chip) => endpointPieceId(chip.endpoint) === pieceId);
-  if (!incident || !origin) return null;
-  const chips = chipsOf(incident, session);
+  const offers = sendingOf(session);
+  const origin = offers?.send.from.find((chip) => endpointPieceId(chip.endpoint) === pieceId);
+  if (!offers || !origin) return null;
+  const chips = chipsOf(offers, session);
   return {
     fromId: origin.id,
     title: TERMINAL_TEXT.title(endpointName(origin.endpoint, session.world)),
@@ -71,17 +67,17 @@ function lineKindOf(message: MessageChip): NonNullable<MessageChip['command']> |
 
 /** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. Null until the address and the message (and, for a packet, the origin) are picked. */
 export function terminalLine(session: Session, { from, to, message }: Partial<SendPicks>): TermText | null {
-  const incident = sendingIncident(session);
-  const address = incident?.send.to.find((chip) => chip.id === to)?.address;
-  const picked = incident?.send.message.find((chip) => chip.id === message);
-  if (!incident || !address || !picked) return null;
+  const offers = sendingOf(session);
+  const address = offers?.send.to.find((chip) => chip.id === to)?.address;
+  const picked = offers?.send.message.find((chip) => chip.id === message);
+  if (!offers || !address || !picked) return null;
   switch (lineKindOf(picked)) {
     case 'ping':
       return TERMINAL_TEXT.ping(address, picked.ttl);
     case 'traceroute':
       return TERMINAL_TEXT.traceroute(address);
     case 'packet': {
-      const origin = incident.send.from.find((chip) => chip.id === from);
+      const origin = offers.send.from.find((chip) => chip.id === from);
       return origin ? TERMINAL_TEXT.packet(endpointName(origin.endpoint, session.world), address) : null;
     }
     case 'handmade':

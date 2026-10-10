@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, parseTermText, termsIn, unofficialNames, type TermId } from '@/copy';
-import { filterIncident, gatewayIncident } from '@/testing';
+import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
 import { FROM } from './04-iaas/shared';
 import type { Incident, SendIncident } from './contract/incident';
 import { chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
@@ -113,5 +113,26 @@ describe('the settings of a send incident', () => {
     expect(incidentTexts(GATEWAY)).toEqual(expect.arrayContaining([gateway.name, ...gateway.chips.map((chip) => chip.label)]));
     expect(unknownTerms(incidentTexts(GATEWAY), new Set())).toContain('default-gateway');
     expect(unknownTerms(incidentTexts(GATEWAY), knownTerms([GATEWAY], GATEWAY.id))).toEqual([]);
+  });
+});
+
+describe('the cases of a diagnose incident', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const { cases } = DIAGNOSE.diagnose;
+
+  it('the texts of every case are texts the player reads, so the ladder catches them', () => {
+    const texts = incidentTexts(DIAGNOSE);
+    for (const spec of cases) expect(texts).toEqual(expect.arrayContaining([spec.report, ...spec.hints, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback])]));
+    expect(texts).toEqual(expect.arrayContaining([DIAGNOSE.report, DIAGNOSE.takeaway]));
+  });
+
+  it('the message chips of every case are chips the ladder checks', () => {
+    expect(chipLabels(DIAGNOSE)).toEqual(cases.flatMap((spec) => spec.send.message.map((chip) => chip.label)));
+  });
+
+  it('a term used in a case is unknown until an incident introduces it', () => {
+    const early = { ...DIAGNOSE, introduces: [] };
+    expect(unknownTerms(incidentTexts(early), knownTerms([early], early.id))).toContain('ping');
+    expect(unknownTerms(incidentTexts(DIAGNOSE), knownTerms([DIAGNOSE], DIAGNOSE.id))).toEqual([]);
   });
 });

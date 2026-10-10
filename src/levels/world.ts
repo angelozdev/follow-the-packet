@@ -1,6 +1,6 @@
 import { applyAction, type Network } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
-import type { Incident, PlayerMove, SettingMove } from './contract/incident';
+import type { CaseSpec, Incident, PlayerMove, SettingMove } from './contract/incident';
 
 function findIncident(incidents: Incident[], incidentId: string): Incident {
   const found = incidents.find((i) => i.id === incidentId);
@@ -39,8 +39,14 @@ export function startWorld(incidents: Incident[], incidentId: string): Network {
   return (incident.changes ?? []).reduce(applyAction, solvedWorld(incidents, previous.id));
 }
 
-/** Returns the world after the incident's reference solution. */
+/** Returns the world a case of a diagnose incident starts from: the world the incident starts from (`start`) plus the changes of the case itself, never the world of the case before. */
+export function caseWorld(start: Network, { changes = [] }: Pick<CaseSpec, 'changes'>): Network {
+  return changes.reduce(applyAction, start);
+}
+
+/** Returns the world after the incident's reference solution. A diagnose incident changes nothing in the world: the player only names causes, so it ends as it started. */
 export function solvedWorld(incidents: Incident[], incidentId: string): Network {
   const incident = findIncident(incidents, incidentId);
-  return incident.solution.reduce((world, move) => applyMove(world, incident, move), startWorld(incidents, incidentId));
+  const start = startWorld(incidents, incidentId);
+  return incident.mechanic === 'diagnose' ? start : incident.solution.reduce((world, move) => applyMove(world, incident, move), start);
 }

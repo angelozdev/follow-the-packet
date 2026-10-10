@@ -1,8 +1,25 @@
-import type { TermId } from '@/copy';
+import type { TermId, TermText } from '@/copy';
 import type { Network } from '@/engine';
-import { applyMove, configurableParts, knownTerms, startWorld, type AnswerMove, type ConfigurableParts, type IdentifyIncident, type Incident, type PlayerMove, type RuleMove, type SendMove, type SettingMove } from '@/levels';
+import {
+  applyMove,
+  caseWorld,
+  configurableParts,
+  isGuided,
+  knownTerms,
+  startWorld,
+  type AnswerMove,
+  type CaseSpec,
+  type ConfigurableParts,
+  type IdentifyIncident,
+  type Incident,
+  type PlayerMove,
+  type RuleMove,
+  type SendMove,
+  type SendOwner,
+  type SettingMove,
+} from '@/levels';
 import { runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
-import { earnsMiddle, type Stars } from './stars';
+import { earnsMiddle, everyCauseAtFirstTry, noHintInAnyCase, type CaseResult, type Stars } from './stars';
 import { failingTaskIds, type Answers } from './tasks';
 
 export type SessionPhase = 'playing' | 'explaining' | 'result';
@@ -17,6 +34,7 @@ export interface Session {
   incident: Incident;
   known: ReadonlySet<TermId>;
   parts: ConfigurableParts;
+  start: Network;
   world: Network;
   runs: FlowRun[];
   sent: SentPacket[];
@@ -28,6 +46,9 @@ export interface Session {
   phase: SessionPhase;
   middle: boolean;
   choice: number | null;
+  caseIndex: number;
+  caseResults: CaseResult[];
+  named: number[];
 }
 
 export type SessionAction =
@@ -35,6 +56,8 @@ export type SessionAction =
   | { type: 'submit' }
   | { type: 'showHint' }
   | { type: 'chooseExplanation'; index: number }
+  | { type: 'nameCause'; index: number }
+  | { type: 'nextCase' }
   | { type: 'showResult' };
 
 function hasIntrusion(runs: FlowRun[]): boolean {
@@ -48,17 +71,19 @@ function initialAnswers(incident: Incident): Answers {
   return Object.fromEntries(picked.filter(([, picks]) => Object.keys(picks).length > 0));
 }
 
-/** Starts an incident from its canonical world, with Lucía's reply empty and every initial pick of its cards as the answer saved. */
+/** Starts an incident from its canonical world, with Lucía's reply empty and every initial pick of its cards as the answer saved. A diagnose starts at its first case, whose world is the one the incident starts from plus the changes of that case. */
 export function startSession(incidents: Incident[], incidentId: string): Session {
   const incident = incidents.find((i) => i.id === incidentId);
   if (!incident) throw new Error(`unknown incident ${incidentId}`);
   const known = knownTerms(incidents, incidentId);
-  const world = startWorld(incidents, incidentId);
+  const start = startWorld(incidents, incidentId);
+  const world = incident.mechanic === 'diagnose' ? caseWorld(start, incident.diagnose.cases[0]) : start;
   const runs = runFlows(world, incident.flows, known);
   return {
     incident,
     known,
     parts: configurableParts(known),
+    start,
     world,
     runs,
     sent: [],
@@ -70,7 +95,35 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     phase: 'playing',
     middle: false,
     choice: null,
+    caseIndex: 0,
+    caseResults: [],
+    named: [],
   };
+}
+
+/** Returns the case a diagnose incident is on; null for any other incident. */
+export function currentCase({ incident, caseIndex }: Session): CaseSpec | null {
+  return incident.mechanic === 'diagnose' ? incident.diagnose.cases[caseIndex] : null;
+}
+
+/** Returns what offers the send chips now: a send incident, or the case a diagnose is on; null for any other incident. */
+export function sendingOf(session: Session): SendOwner | null {
+  return session.incident.mechanic === 'send' ? session.incident : currentCase(session);
+}
+
+/** Returns the hints of what the player is on: the incident's, or those of the case of a diagnose. */
+export function hintsOf({ incident, caseIndex }: Session): readonly TermText[] {
+  return incident.mechanic === 'diagnose' ? incident.diagnose.cases[caseIndex].hints : incident.hints;
+}
+
+/** True when the player named the right cause of the case a diagnose is on. */
+export function caseClosed(session: Session): boolean {
+  return session.caseResults.length > session.caseIndex;
+}
+
+/** True when there is a hint left to show: not once all are shown, and not in a case already closed, whose hints no longer count. */
+export function canAskHint(session: Session): boolean {
+  return session.hintsShown < hintsOf(session).length && !caseClosed(session);
 }
 
 /** True when a device has this firewall, so it is on the map, and the ladder lets the player change the inbound rules of its kind. */
@@ -101,10 +154,11 @@ function setSetting(state: Session, action: SettingMove): Session {
   return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], rejection: null };
 }
 
-/** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. */
+/** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. In a diagnose only the chips of the case the player is on can be sent. */
 function send(state: Session, action: SendMove): Session {
-  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
-  const packet = sendPacket(state.world, state.incident, action, state.sends + 1, state.known);
+  const offers = sendingOf(state);
+  if (state.phase !== 'playing' || !offers) return state;
+  const packet = sendPacket(state.world, offers, action, state.sends + 1, state.known);
   if (!packet) return state;
   const again = state.sent.some((other) => other.id === packet.id);
   const sent = again ? state.sent.map((other) => (other.id === packet.id ? packet : other)) : [...state.sent, packet];
@@ -127,15 +181,38 @@ function answer(state: Session, action: AnswerMove): Session {
 }
 
 function submit(state: Session): Session {
-  if (state.phase !== 'playing') return state;
-  const failing = failingTaskIds(state.incident.tasks, state.runs, state.sent, state.answers);
+  const { incident } = state;
+  if (state.phase !== 'playing' || !isGuided(incident)) return state;
+  const failing = failingTaskIds(incident.tasks, state.runs, state.sent, state.answers);
   if (failing.length === 0) return { ...state, phase: 'explaining', middle: earnsMiddle(state.incident, state.world, state.hintsShown), rejection: null };
   return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
 
 function choose(state: Session, index: number): Session {
-  const valid = Number.isInteger(index) && index >= 0 && index < state.incident.explanation.length;
+  const { incident } = state;
+  const valid = isGuided(incident) && Number.isInteger(index) && index >= 0 && index < incident.explanation.length;
   return state.phase === 'explaining' && state.choice === null && valid ? { ...state, choice: index } : state;
+}
+
+/** Names an option as the cause of the case a diagnose is on. A wrong one is kept, to show its feedback, and the player tries again. The right one closes the case, with the options named and the hints asked in it; if it was the last case, the incident closes too. An option out of range, one already named, or any naming in a case already closed changes nothing. */
+function nameCause(state: Session, index: number): Session {
+  const spec = currentCase(state);
+  const offered = spec !== null && Number.isInteger(index) && index >= 0 && index < spec.cause.options.length;
+  if (state.phase !== 'playing' || !offered || caseClosed(state) || state.named.includes(index)) return state;
+  const named = [...state.named, index];
+  if (!spec.cause.options[index].correct) return { ...state, named };
+  const caseResults = [...state.caseResults, { picks: named, hints: state.hintsShown }];
+  const last = state.incident.mechanic === 'diagnose' && caseResults.length === state.incident.diagnose.cases.length;
+  return last ? { ...state, named, caseResults, phase: 'explaining', middle: noHintInAnyCase(caseResults) } : { ...state, named, caseResults };
+}
+
+/** Opens the next case of a diagnose once the one before is closed: its world is the one the incident started from plus its own changes, and the packets sent and the hints asked belong to the case before. The send number goes on counting. */
+function nextCase(state: Session): Session {
+  const { incident } = state;
+  if (state.phase !== 'playing' || incident.mechanic !== 'diagnose' || !caseClosed(state)) return state;
+  const caseIndex = state.caseIndex + 1;
+  const world = caseWorld(state.start, incident.diagnose.cases[caseIndex]);
+  return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], hintsShown: 0, named: [] };
 }
 
 export function sessionReducer(state: Session, action: SessionAction): Session {
@@ -152,19 +229,24 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
     case 'submit':
       return submit(state);
     case 'showHint':
-      return { ...state, hintsShown: Math.min(state.hintsShown + 1, state.incident.hints.length) };
+      return canAskHint(state) ? { ...state, hintsShown: state.hintsShown + 1 } : state;
     case 'chooseExplanation':
       return choose(state, action.index);
+    case 'nameCause':
+      return nameCause(state, action.index);
+    case 'nextCase':
+      return nextCase(state);
     case 'showResult':
-      return state.phase === 'explaining' && state.choice !== null ? { ...state, phase: 'result' } : state;
+      return state.phase === 'explaining' && (state.choice !== null || !isGuided(state.incident)) ? { ...state, phase: 'result' } : state;
   }
 }
 
-/** Returns the stars as they stand: closed, the middle star of the mechanic at the close (only what is needed, or no hints), and the first explanation right. */
+/** Returns the stars as they stand: closed, the middle star of the mechanic at the close (only what is needed, or no hints in the incident, or in any case of a diagnose), and the first explanation right (in a diagnose, the cause of every case named right at the first try). */
 export function starsOf(session: Session): Stars {
+  const { incident } = session;
   return {
     closed: session.phase !== 'playing',
     middle: session.middle,
-    explained: session.choice !== null && session.incident.explanation[session.choice].correct,
+    explained: isGuided(incident) ? session.choice !== null && incident.explanation[session.choice].correct : everyCauseAtFirstTry(session.caseResults, incident.diagnose.cases.length),
   };
 }

@@ -40,7 +40,7 @@ function ReopeningPrinter() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([INCIDENT], INCIDENT.id));
   const [open, setOpen] = useState(true);
   const card = identifyCard(session, PIECE_ID.device('printer'));
-  const printerTask = session.incident.tasks[1];
+  const printerTask = INCIDENT.tasks[1];
   return (
     <>
       <span data-testid="saved">{session.answers.printer?.ip}</span>

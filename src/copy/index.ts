@@ -7,4 +7,4 @@ export type { PlaceOf, RouterPlace } from './reasons';
 export { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, messageLabel, packetLabel, packetMessage, roundTripText, stampLabel, warningOf } from './packet-labels';
 export type { StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';
 export { CATALOG_TEXT, INTERFACE_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './screens/ui';
-export { ACTOR_ROLE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, RESULT_TEXT, SCREEN_TEXT, SETTINGS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from './screens/incident-ui';
+export { ACTOR_ROLE_TEXT, CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, RESULT_TEXT, SCREEN_TEXT, SETTINGS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from './screens/incident-ui';

@@ -123,6 +123,16 @@ export const SETTINGS_TEXT = {
   title: (device: TermText): TermText => `Ajustes de red de ${device}`,
 } as const;
 
+export const CASE_TEXT = {
+  title: (number: number, total: number): string => `Caso ${number} de ${total}`,
+  says: (report: TermText): TermText => `Lucía: «${report}»`,
+  tests: (origin: TermText): TermText => `Pruebas que puedes enviar desde ${origin}`,
+  sent: 'enviada',
+  unsent: 'sin enviar',
+  know: 'Ya sé la causa',
+  next: 'Siguiente caso',
+} as const;
+
 export const EXPLANATION_TEXT = {
   type: 'Pregunta',
   whatHappened: '¿Qué pasó?',
@@ -134,11 +144,19 @@ export const EXPLANATION_TEXT = {
 
 const WITHOUT_HINTS = 'Lo resolviste sin pistas';
 
+const CASE_LIST = new Intl.ListFormat('es', { style: 'long', type: 'conjunction' });
+
 export const RESULT_TEXT = {
   type: 'Resultado',
   title: 'Incidente cerrado',
   stars: { closed: 'Cerraste el incidente', explained: 'Explicaste qué pasó a la primera' },
   middle: { filter: 'Abriste solo lo justo', send: WITHOUT_HINTS, identify: WITHOUT_HINTS },
+  cases: {
+    stars: { closed: 'Cerraste todos los casos', middle: 'Resolviste todos los casos sin pedir pistas', explained: 'Nombraste la causa de cada caso a la primera' },
+    title: 'Tus casos',
+    allFirstTry: (total: number): string => `Nombraste la causa de los ${total} casos a la primera.`,
+    missed: (numbers: number[]): string => `No acertaste a la primera ${numbers.length === 1 ? 'el caso' : 'los casos'} ${CASE_LIST.format(numbers.map(String))}.`,
+  },
   earned: 'conseguida',
   missed: 'sin conseguir',
   takeaway: 'Lo que te llevas',

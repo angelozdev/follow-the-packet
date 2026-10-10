@@ -5,6 +5,8 @@ export type {
   AnswerMove,
   CardChip,
   CardSpec,
+  CaseSpec,
+  DiagnoseIncident,
   ExpectedOutcome,
   ExplanationOption,
   FilterIncident,
@@ -12,6 +14,7 @@ export type {
   Flow,
   FlowKind,
   FromChip,
+  GuidedIncident,
   IdentifyIncident,
   IdentifyTask,
   Incident,
@@ -23,6 +26,7 @@ export type {
   OriginChip,
   PlayerMove,
   RuleMove,
+  SendChips,
   SendIncident,
   SendMove,
   SendTask,
@@ -32,8 +36,10 @@ export type {
   TraySpec,
   WhatChip,
 } from './contract/incident';
+export { isGuided } from './contract/incident';
 export { INCIDENTS } from './registry';
 export { chipsOfRule, packetFromChips, probeFromChips, sendCombinations } from './contract/chips';
-export { applyMove, solvedWorld, startWorld } from './world';
+export type { SendOwner } from './contract/chips';
+export { applyMove, caseWorld, solvedWorld, startWorld } from './world';
 export { configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, networkSchema, type Network } from '@/engine';
-import { gatewayIncident } from '@/testing';
+import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident } from '@/testing';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
 import { INCIDENTS } from './registry';
-import { applyMove, solvedWorld, startWorld } from './world';
+import { applyMove, caseWorld, solvedWorld, startWorld } from './world';
 
 function incident(id: string): Incident {
   const found = INCIDENTS.find((i) => i.id === id);
@@ -32,9 +32,10 @@ describe('the world that grows', () => {
     expect(inbound(start, SG.servidor2)).toEqual([DAY_SHIFT_RULE]);
   });
 
-  it.each(IDS)('%s starts and ends with a valid network', (id) => {
-    expect(networkSchema.safeParse(startWorld(INCIDENTS, id)).success).toBe(true);
-    expect(networkSchema.safeParse(solvedWorld(INCIDENTS, id)).success).toBe(true);
+  it.each(IDS)('%s starts and ends with a valid network, and so does every case of a diagnose', (id) => {
+    const found = incident(id);
+    const cases = found.mechanic === 'diagnose' ? found.diagnose.cases.map((spec) => caseWorld(startWorld(INCIDENTS, id), spec)) : [];
+    for (const world of [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id), ...cases]) expect(networkSchema.safeParse(world).success).toBe(true);
   });
 
   it.each(IDS)('%s can name every rule of its Security Groups with its chips', (id) => {
@@ -121,5 +122,43 @@ describe('applyMove of a setting', () => {
 
   it('the reference solution sets the gateway the incident asks for', () => {
     expect(gatewayOf(solvedWorld([GATEWAY], GATEWAY.id))).toBe('192.168.1.1');
+  });
+});
+
+describe('the worlds of a diagnose incident', () => {
+  const { floor1, floor2 } = OFFICE_FLOORS;
+  const GATEWAY = gatewayIncident();
+  const DIAGNOSE = { ...diagnoseIncident(), base: undefined, changes: [] };
+  const CHAIN = [GATEWAY, DIAGNOSE];
+  const before = solvedWorld(CHAIN, GATEWAY.id);
+  const start = startWorld(CHAIN, DIAGNOSE.id);
+  const cases = DIAGNOSE.diagnose.cases;
+  const worlds = cases.map((spec) => caseWorld(start, spec));
+  const gatewayOf = (world: Network, deviceId: string) => world.devices.find((device) => device.id === deviceId)?.gateway;
+
+  it('each case starts from the world before the incident plus its own changes, not from the case before', () => {
+    expect(start).toEqual(before);
+    expect(gatewayOf(start, 'your-laptop')).toBe(floor1.gateway);
+    cases.forEach((spec, index) => expect(worlds[index]).toEqual((spec.changes ?? []).reduce(applyAction, start)));
+    expect(gatewayOf(worlds[0], 'your-laptop')).toBeUndefined();
+    expect(gatewayOf(worlds[1], 'your-laptop')).toBe(floor1.gateway);
+    expect(gatewayOf(worlds[2], 'andres-laptop')).toBeUndefined();
+    expect(gatewayOf(worlds[3], 'andres-laptop')).toBe(floor2.gateway);
+    expect(gatewayOf(worlds[3], 'your-laptop')).toBe(floor1.gateway);
+  });
+
+  it('a case with no changes is the world before the incident itself', () => {
+    expect(cases[1].changes).toBeUndefined();
+    expect(worlds[1]).toBe(start);
+    expect(caseWorld(start, {})).toBe(start);
+  });
+
+  it('every case world is a valid network', () => {
+    worlds.forEach((world) => expect(networkSchema.safeParse(world).success).toBe(true));
+  });
+
+  it('a diagnose incident ends as it started, because the player only names causes', () => {
+    expect(solvedWorld(CHAIN, DIAGNOSE.id)).toEqual(start);
+    expect(applyMove(start, DIAGNOSE, { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'none' })).toBe(start);
   });
 });

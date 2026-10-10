@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Network, Outcome } from '@/engine';
-import { INCIDENTS, applyMove, startWorld, type FilterIncident, type Incident } from '@/levels';
+import { INCIDENTS, applyMove, isGuided, startWorld, type FilterIncident, type GuidedIncident } from '@/levels';
 import { ADDRESS, FROM as OFFICE_FROM, LUCIA_FIREWALL, MESSAGE, ORIGIN, WHAT as OFFICE_WHAT } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { EVERY_TERM, filterIncident } from '@/testing';
@@ -14,7 +14,7 @@ function holdsAll(of: FilterIncident, world: Network): boolean {
   return of.tasks.every((task) => taskHolds(task, runs, []));
 }
 
-describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s', (id, of) => {
+describe.each(INCIDENTS.filter(isGuided).map((i): [string, GuidedIncident] => [i.id, i]))('incident %s', (id, of) => {
   const start = startSession(INCIDENTS, id);
 
   it('starts with a task to fix', () => {
@@ -41,8 +41,13 @@ function outcomesOf(session: Session): Outcome[] {
   return session.sent.map((packet) => packet.trace.outcome);
 }
 
-function taskIsDone(session: Session): boolean {
-  return session.incident.tasks.every((task) => taskHolds(task, session.runs, session.sent, session.answers));
+function sendIncidentTaskIds(incidentId: string): string[] {
+  const incident = INCIDENTS.find((candidate) => candidate.id === incidentId);
+  return incident !== undefined && isGuided(incident) ? incident.tasks.map((task) => task.id) : [];
+}
+
+function taskIsDone({ incident, runs, sent, answers }: Session): boolean {
+  return isGuided(incident) && incident.tasks.every((task) => taskHolds(task, runs, sent, answers));
 }
 
 describe('01-01, the address', () => {
@@ -73,7 +78,7 @@ describe('01-02, there and back', () => {
     const session = sendFromYou(THERE_AND_BACK, ADDRESS.lucia.id, MESSAGE.echoReply.id);
     expect(session.sent).toMatchObject([{ reached: true, replied: false, blocked: false, trace: { outcome: 'arrived-no-reply' } }]);
     expect(taskIsDone(session)).toBe(false);
-    expect(sessionReducer(session, { type: 'submit' }).rejection?.failingTaskIds).toEqual(session.incident.tasks.map((task) => task.id));
+    expect(sessionReducer(session, { type: 'submit' }).rejection?.failingTaskIds).toEqual(sendIncidentTaskIds(THERE_AND_BACK));
   });
 });
 

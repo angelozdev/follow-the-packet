@@ -2,10 +2,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { NOTE_RULE, filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing/incidents';
+import { NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
@@ -331,5 +331,99 @@ describe('incident screen of an identify incident', () => {
     expect(screen.getByText(LUCIA_TEXT.failing(PRINTER_TASK))).toBeInTheDocument();
     expect(screen.getByText(LUCIA_TEXT.failing(GUEST_TASK))).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Lucía: «/ })).toBeNull();
+  });
+});
+
+describe('incident screen of a diagnose incident', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const { cases } = DIAGNOSE.diagnose;
+  const KNOW = CASE_TEXT.know;
+  const NEXT = CASE_TEXT.next;
+  const LOOPBACK_PING = 'ping de tu-laptop a tu-laptop';
+  const optionOf = (number: number, right: boolean) => toPlainText(cases[number - 1].cause.options.find((option) => option.correct === right)?.text ?? '');
+
+  function renderDiagnosing() {
+    const onFinish = vi.fn();
+    render(<IncidentScreen incidents={[DIAGNOSE]} incidentId={DIAGNOSE.id} nextId={null} onFinish={onFinish} />);
+    return onFinish;
+  }
+
+  async function nameRight(user: User, number: number) {
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: optionOf(number, true) }));
+  }
+
+  async function sendLoopback(user: User) {
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    await user.click(within(terminal).getByRole('button', { name: '127.0.0.1' }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  it('shows the case card and Lucía with no tasks and no «Enviar solución», and the report of the incident', () => {
+    renderDiagnosing();
+    expect(screen.getByRole('region', { name: CASE_TEXT.title(1, cases.length) })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: LUCIA_TEXT.name })).toHaveTextContent('Hoy estás de guardia.');
+    expect(screen.queryByRole('button', { name: LUCIA_TEXT.submit })).toBeNull();
+    expect(screen.queryByText(LUCIA_TEXT.tasks)).toBeNull();
+    expect(screen.queryByRole('heading', { name: EXPLANATION_TEXT.type })).toBeNull();
+  });
+
+  it('a test sent from the terminal of the origin ticks its line in the case card', async () => {
+    const user = userEvent.setup();
+    renderDiagnosing();
+    await sendLoopback(user);
+    expect(screen.getByRole('button', { name: LOOPBACK_PING })).toBeInTheDocument();
+    const card = screen.getByRole('region', { name: CASE_TEXT.title(1, cases.length) });
+    expect(within(card).getByText('ping 127.0.0.1').closest('li')).toHaveTextContent(`✓ ping 127.0.0.1 (${CASE_TEXT.sent})`);
+  });
+
+  it('the hints of Lucía are those of the case, and the next case brings its own and takes the tests of the case before away', async () => {
+    const user = userEvent.setup();
+    renderDiagnosing();
+    await sendLoopback(user);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
+    expect(screen.getByText(toPlainText(cases[0].hints[0]))).toBeInTheDocument();
+    await nameRight(user, 1);
+    expect(screen.queryByRole('button', { name: LUCIA_TEXT.askHint })).toBeNull();
+    await user.click(screen.getByRole('button', { name: NEXT }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: LOOPBACK_PING })).toBeNull();
+    expect(screen.queryByText(toPlainText(cases[0].hints[0]))).toBeNull();
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
+    expect(screen.getByText(toPlainText(cases[1].hints[0]))).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: CASE_TEXT.title(2, cases.length) })).toBeInTheDocument();
+  });
+
+  it('naming every cause right with no hint gives 3 stars and the result says every case went right', async () => {
+    const user = userEvent.setup();
+    const onFinish = renderDiagnosing();
+    for (const [index] of cases.entries()) {
+      await nameRight(user, index + 1);
+      await user.click(screen.getByRole('button', { name: index === cases.length - 1 ? EXPLANATION_TEXT.seeResult : NEXT }));
+    }
+    expect(onFinish).toHaveBeenCalledTimes(1);
+    expect(onFinish).toHaveBeenCalledWith(FULL_STARS);
+    expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeInTheDocument();
+    expect(screen.getByText(RESULT_TEXT.cases.allFirstTry(cases.length))).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: CASE_TEXT.title(cases.length, cases.length) })).toBeNull();
+  });
+
+  it('a hint in the first case and a wrong cause in the last cost the middle and the explained stars, and the result names the case', async () => {
+    const user = userEvent.setup();
+    const onFinish = renderDiagnosing();
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.askHint }));
+    for (const [index] of cases.entries()) {
+      const number = index + 1;
+      if (number === cases.length) {
+        await user.click(screen.getByRole('button', { name: KNOW }));
+        await user.click(screen.getByRole('button', { name: optionOf(number, false) }));
+        expect(screen.getByText(EXPLANATION_TEXT.wrong)).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: optionOf(number, true) }));
+      } else await nameRight(user, number);
+      await user.click(screen.getByRole('button', { name: number === cases.length ? EXPLANATION_TEXT.seeResult : NEXT }));
+    }
+    expect(onFinish).toHaveBeenCalledWith(1);
+    expect(screen.getByText(`No acertaste a la primera el caso ${cases.length}.`)).toBeInTheDocument();
   });
 });

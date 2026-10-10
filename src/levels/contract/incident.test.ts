@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_RULE, OFFICE_FLOORS, actor, device, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
-import { officeLeaks, packetFromChips, probeFromChips, unknownCardDeviceIds } from './chips';
-import { incidentSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
+import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
+import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, sendCombinations, unknownCardDeviceIds } from './chips';
+import { incidentSchema, isGuided, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
 const VALID: Record<string, unknown> = {
@@ -350,5 +350,70 @@ describe('send settings contract', () => {
     const [set, send] = GATEWAY.solution;
     expect(incidentSchema.safeParse({ ...GATEWAY, solution: [set, send, { type: 'answerCard', deviceId: 'your-laptop', picks: {} }] }).success).toBe(false);
     expect(incidentSchema.safeParse({ ...GATEWAY, solution: [set, send, { type: 'placeRule', firewallId: 'fw', whatId: 'a', fromId: 'b' }] }).success).toBe(false);
+  });
+});
+
+describe('diagnose incident contract', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const SEVEN = 7;
+  const [first, ...others] = DIAGNOSE.diagnose.cases;
+  const withCases = (...cases: unknown[]) => ({ ...DIAGNOSE, diagnose: { cases } });
+  const withFirst = (patch: Record<string, unknown>) => withCases({ ...first, ...patch }, ...others);
+  const { options } = first.cause;
+  const withOptions = (...list: unknown[]) => withFirst({ cause: { ...first.cause, options: list } });
+
+  it('accepts a diagnose incident with seven cases', () => {
+    expect(DIAGNOSE.diagnose.cases).toHaveLength(SEVEN);
+    expect(incidentSchema.safeParse(DIAGNOSE).success).toBe(true);
+    expect(DIAGNOSE).not.toHaveProperty('tasks');
+    expect(DIAGNOSE).not.toHaveProperty('solution');
+    expect(isGuided(DIAGNOSE)).toBe(false);
+    expect(isGuided(SEND)).toBe(true);
+  });
+
+  it('rejects a case without a cause question', () => {
+    expect(incidentSchema.safeParse(withFirst({ cause: undefined })).success).toBe(false);
+    expect(incidentSchema.safeParse(withFirst({ cause: { options: first.cause.options } })).success).toBe(false);
+  });
+
+  it('rejects a case with two correct causes', () => {
+    expect(incidentSchema.safeParse(withOptions(...options.map((option) => ({ ...option, correct: true })))).success).toBe(false);
+    expect(incidentSchema.safeParse(withOptions(...options.map((option, index) => ({ ...option, correct: index < 2 })))).success).toBe(false);
+  });
+
+  it('rejects a case with no correct cause, and one with two options or four', () => {
+    expect(incidentSchema.safeParse(withOptions(...options.map((option) => ({ ...option, correct: false })))).success).toBe(false);
+    expect(incidentSchema.safeParse(withOptions(options[0], options[1])).success).toBe(false);
+    expect(incidentSchema.safeParse(withOptions(...options, options[0])).success).toBe(false);
+  });
+
+  it('rejects a case with one hint, a diagnose with no case and two cases with the same id', () => {
+    expect(incidentSchema.safeParse(withFirst({ hints: ['Solo una.'] })).success).toBe(false);
+    expect(incidentSchema.safeParse(withCases()).success).toBe(false);
+    expect(incidentSchema.safeParse(withCases(first, { ...others[0], id: first.id })).success).toBe(false);
+  });
+
+  it('rejects a case that repeats a chip id or has an empty tray', () => {
+    expect(incidentSchema.safeParse(withFirst({ send: { ...first.send, to: [first.send.to[0], first.send.to[0]] } })).success).toBe(false);
+    expect(incidentSchema.safeParse(withFirst({ send: { ...first.send, message: [] } })).success).toBe(false);
+  });
+
+  it('rejects an unknown term tag in a case, and a flow that is not ambient', () => {
+    expect(incidentSchema.safeParse(withFirst({ report: 'La {{puerta}} falla.' })).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...DIAGNOSE, flows: [{ id: 'wanted', kind: 'required', packet: ping(device('your-laptop'), '192.168.1.21') }] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...DIAGNOSE, flows: [{ id: 'noise', kind: 'ambient', packet: ping(device('printer'), '192.168.1.11') }] }).success).toBe(true);
+  });
+
+  it('builds the packets of the chips of a case, which are the chips of the case and no other', () => {
+    expect(sendCombinations(first)).toHaveLength(first.send.to.length);
+    expect(packetFromChips(first, { fromId: 'origin', toId: 'gateway', messageId: 'ping' })).toEqual({ from: device('your-laptop'), to: OFFICE_FLOORS.floor1.gateway, protocol: 'icmp', icmpType: 8 });
+    expect(packetFromChips(first, { fromId: 'origin', toId: 'branch', messageId: 'ping' })).toBeNull();
+  });
+
+  it('counts the chips of every case in the office leaks and in the pieces an incident must show', () => {
+    expect(officeLeaks(DIAGNOSE, officeNet())).toEqual(expect.arrayContaining([`your-laptop → ${OFFICE_FLOORS.server.ip}`, 'marta-laptop → 10.0.0.10', 'andres-laptop → 192.168.2.1']));
+    expect(officeLeaks(DIAGNOSE, officeTwoFloorsNet())).toEqual([]);
+    expect(missingShownIds({ ...DIAGNOSE, shown: ['your-laptop'] }, officeTwoFloorsNet())).toEqual(expect.arrayContaining(['andres-laptop', 'marta-laptop', 'printer', 'internet-server']));
+    expect(missingShownIds(DIAGNOSE, officeTwoFloorsNet())).toEqual([]);
   });
 });

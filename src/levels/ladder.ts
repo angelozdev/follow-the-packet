@@ -1,6 +1,6 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
 import type { FirewallKind } from '@/engine';
-import type { Incident } from './contract/incident';
+import { isGuided, type Incident } from './contract/incident';
 
 export interface ConfigurableParts {
   inboundRules: Record<FirewallKind, boolean>;
@@ -24,13 +24,15 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   };
 }
 
-/** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send (an origin is named after the world and an address is only an address), none for an identify (its chips are values, such as an IP, and not terms). */
+/** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send and for every case of a diagnose (an origin is named after the world and an address is only an address), none for an identify (its chips are values, such as an IP, and not terms). */
 export function chipLabels(incident: Incident): TermText[] {
   switch (incident.mechanic) {
     case 'filter':
       return [...incident.chips.what, ...incident.chips.from].map((chip) => chip.label);
     case 'send':
       return incident.send.message.map((chip) => chip.label);
+    case 'diagnose':
+      return incident.diagnose.cases.flatMap((spec) => spec.send.message.map((chip) => chip.label));
     case 'identify':
       return [];
   }
@@ -51,17 +53,27 @@ function settingTexts(incident: Incident): TermText[] {
   return (incident.send.settings ?? []).flatMap((setting) => [setting.name, ...setting.chips.map((chip) => chip.label)]);
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings of a send incident, hints, the question, the explanation and the takeaway. */
+/** Returns the texts of the cases of a diagnose incident: for each case its report, its hints, its question and the text and the feedback of each cause; none for any other incident. */
+function caseTexts(incident: Incident): TermText[] {
+  if (incident.mechanic !== 'diagnose') return [];
+  return incident.diagnose.cases.flatMap((spec) => [spec.report, ...spec.hints, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback])]);
+}
+
+/** Returns the texts of the follow-up of an incident: the hints, the question and the explanation of one that has tasks, and the texts of the cases of a diagnose. */
+function followUpTexts(incident: Incident): TermText[] {
+  if (!isGuided(incident)) return caseTexts(incident);
+  return [...incident.hints, ...(incident.question ? [incident.question] : []), ...incident.explanation.flatMap((option) => [option.text, option.feedback])];
+}
+
+/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings of a send incident, hints, the question, the explanation and the takeaway; for a diagnose, the texts of each case instead of the tasks, the hints, the question and the explanation. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
-    ...incident.tasks.map((task) => task.text),
+    ...(isGuided(incident) ? incident.tasks.map((task) => task.text) : []),
     ...chipLabels(incident),
     ...cardTexts(incident),
     ...settingTexts(incident),
-    ...incident.hints,
-    ...(incident.question ? [incident.question] : []),
-    ...incident.explanation.flatMap((option) => [option.text, option.feedback]),
+    ...followUpTexts(incident),
     incident.takeaway,
   ];
 }

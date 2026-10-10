@@ -73,6 +73,19 @@ const cardTraySchema = z.object({
 });
 const cardSchema = z.object({ deviceId: id, question: termText.optional(), trays: z.array(cardTraySchema).min(1) });
 const optionSchema = z.object({ text: termText, feedback: termText, correct: z.boolean() });
+const sendChipsShape = {
+  from: z.array(originChipSchema).min(1),
+  to: z.array(addressChipSchema).min(1),
+  message: z.array(messageChipSchema).min(1),
+};
+const caseSchema = z.object({
+  id,
+  changes: z.array(networkActionSchema).optional(),
+  report: termText,
+  send: z.object(sendChipsShape),
+  hints: z.tuple([termText, termText]),
+  cause: z.object({ question: termText, options: z.tuple([optionSchema, optionSchema, optionSchema]) }),
+});
 
 const common = {
   id: z.string().regex(/^\d{2}-\d{2}$/),
@@ -87,14 +100,18 @@ const common = {
   changes: z.array(networkActionSchema).optional(),
   shown: z.array(id).min(1).optional(),
   report: termText,
+  takeaway: termText,
+};
+
+const guided = {
   hints: z.tuple([termText, termText]),
   question: termText.optional(),
   explanation: z.tuple([optionSchema, optionSchema, optionSchema]),
-  takeaway: termText,
 };
 
 const filterIncidentSchema = z.object({
   ...common,
+  ...guided,
   mechanic: z.literal('filter'),
   tasks: z.array(filterTaskSchema).min(1),
   flows: z.array(flowSchema).min(1),
@@ -104,20 +121,17 @@ const filterIncidentSchema = z.object({
 
 const sendIncidentSchema = z.object({
   ...common,
+  ...guided,
   mechanic: z.literal('send'),
   tasks: z.array(sendTaskSchema).min(1),
   flows: z.array(flowSchema),
-  send: z.object({
-    from: z.array(originChipSchema).min(1),
-    to: z.array(addressChipSchema).min(1),
-    message: z.array(messageChipSchema).min(1),
-    settings: z.array(settingSchema).min(1).optional(),
-  }),
+  send: z.object({ ...sendChipsShape, settings: z.array(settingSchema).min(1).optional() }),
   solution: z.array(sendMoveSchema).min(1),
 });
 
 const identifyIncidentSchema = z.object({
   ...common,
+  ...guided,
   mechanic: z.literal('identify'),
   tasks: z.array(identifyTaskSchema).min(1),
   flows: z.array(flowSchema),
@@ -125,9 +139,19 @@ const identifyIncidentSchema = z.object({
   solution: z.array(answerCardSchema).min(1),
 });
 
+const diagnoseIncidentSchema = z.object({
+  ...common,
+  mechanic: z.literal('diagnose'),
+  flows: z.array(flowSchema),
+  diagnose: z.object({ cases: z.array(caseSchema).min(1) }),
+});
+
 type FilterShape = z.infer<typeof filterIncidentSchema>;
 type SendShape = z.infer<typeof sendIncidentSchema>;
 type IdentifyShape = z.infer<typeof identifyIncidentSchema>;
+type DiagnoseShape = z.infer<typeof diagnoseIncidentSchema>;
+type SendChipsShape = z.infer<typeof caseSchema>['send'];
+type Flows = FilterShape['flows'];
 type CardTrayShape = z.infer<typeof cardTraySchema>;
 type Fail = (message: string) => void;
 
@@ -180,12 +204,23 @@ function checkSettings({ send }: SendShape, fail: Fail): void {
   }
 }
 
-function checkSend(incident: SendShape, fail: Fail): void {
+function checkSendChips(send: SendChipsShape, where: string, fail: Fail) {
   const unique = uniqueIn(fail);
-  const ids = { from: incident.send.from.map((c) => c.id), to: incident.send.to.map((c) => c.id), message: incident.send.message.map((c) => c.id) };
-  unique('origin chip id', ids.from);
-  unique('address chip id', ids.to);
-  unique('message chip id', ids.message);
+  const ids = { from: send.from.map((c) => c.id), to: send.to.map((c) => c.id), message: send.message.map((c) => c.id) };
+  unique(`${where}origin chip id`, ids.from);
+  unique(`${where}address chip id`, ids.to);
+  unique(`${where}message chip id`, ids.message);
+  return ids;
+}
+
+function checkAmbient(flows: Flows, mechanic: Mechanic, fail: Fail): void {
+  for (const flow of flows) {
+    if (flow.kind !== 'ambient') fail(`${flow.id}: a ${mechanic} incident has only ambient flows`);
+  }
+}
+
+function checkSend(incident: SendShape, fail: Fail): void {
+  const ids = checkSendChips(incident.send, '', fail);
   checkSettings(incident, fail);
   const offers = (combination: { fromId: string; toId: string; messageId: string }) =>
     ids.from.includes(combination.fromId) && ids.to.includes(combination.toId) && ids.message.includes(combination.messageId);
@@ -194,9 +229,7 @@ function checkSend(incident: SendShape, fail: Fail): void {
   for (const task of incident.tasks) {
     if (!offers(task.expect)) fail(`${task.id}: expects chips the incident does not offer`);
   }
-  for (const flow of incident.flows) {
-    if (flow.kind !== 'ambient') fail(`${flow.id}: a send incident has only ambient flows`);
-  }
+  checkAmbient(incident.flows, incident.mechanic, fail);
   for (const move of incident.solution) {
     if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
     if (move.type === 'setSetting' && !offersSetting(move)) fail(`the solution uses a setting the incident does not offer: ${move.deviceId}/${move.settingId}/${move.chipId}`);
@@ -232,16 +265,30 @@ function checkIdentify(incident: IdentifyShape, fail: Fail): void {
   if (incident.flows.length > 0) fail('an identify incident sends nothing');
 }
 
-export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSchema, sendIncidentSchema, identifyIncidentSchema]).superRefine((incident, ctx) => {
+function checkDiagnose(incident: DiagnoseShape, fail: Fail): void {
+  const { cases } = incident.diagnose;
+  uniqueIn(fail)('case id', cases.map((spec) => spec.id));
+  for (const spec of cases) {
+    checkSendChips(spec.send, `${spec.id}: `, fail);
+    if (spec.cause.options.filter((option) => option.correct).length !== 1) fail(`${spec.id}: exactly one cause is correct`);
+  }
+  checkAmbient(incident.flows, incident.mechanic, fail);
+}
+
+function checkGuided(incident: FilterShape | SendShape | IdentifyShape, fail: Fail): void {
+  uniqueIn(fail)('task id', incident.tasks.map((t) => t.id));
+  if (incident.explanation.filter((option) => option.correct).length !== 1) fail('exactly one explanation is correct');
+}
+
+export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSchema, sendIncidentSchema, identifyIncidentSchema, diagnoseIncidentSchema]).superRefine((incident, ctx) => {
   const fail: Fail = (message) => ctx.addIssue({ code: 'custom', message });
   const unique = uniqueIn(fail);
   if ((incident.base === undefined) === (incident.changes === undefined)) fail('an incident has either a base world or changes');
   if (incident.id !== `${twoDigits(incident.chapter)}-${twoDigits(incident.order)}`) fail(`id ${incident.id} must be chapter-order`);
   unique('introduced term', incident.introduces);
   unique('flow id', incident.flows.map((f) => f.id));
-  unique('task id', incident.tasks.map((t) => t.id));
   unique('shown id', incident.shown ?? []);
-  if (incident.explanation.filter((option) => option.correct).length !== 1) fail('exactly one explanation is correct');
+  if (incident.mechanic !== 'diagnose') checkGuided(incident, fail);
   switch (incident.mechanic) {
     case 'filter':
       return checkFilter(incident, fail);
@@ -249,6 +296,8 @@ export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSc
       return checkSend(incident, fail);
     case 'identify':
       return checkIdentify(incident, fail);
+    case 'diagnose':
+      return checkDiagnose(incident, fail);
   }
 });
 
@@ -257,9 +306,11 @@ export type Mechanic = Incident['mechanic'];
 export type FilterIncident = Extract<Incident, { mechanic: 'filter' }>;
 export type SendIncident = Extract<Incident, { mechanic: 'send' }>;
 export type IdentifyIncident = Extract<Incident, { mechanic: 'identify' }>;
+export type DiagnoseIncident = Extract<Incident, { mechanic: 'diagnose' }>;
+export type GuidedIncident = Exclude<Incident, DiagnoseIncident>;
 export type Flow = Incident['flows'][number];
 export type FlowKind = z.infer<typeof flowKindSchema>;
-export type IncidentTask = Incident['tasks'][number];
+export type IncidentTask = FilterTask | SendTask | IdentifyTask;
 export type FilterTask = FilterIncident['tasks'][number];
 export type SendTask = SendIncident['tasks'][number];
 export type IdentifyTask = IdentifyIncident['tasks'][number];
@@ -270,6 +321,8 @@ export type AddressChip = SendIncident['send']['to'][number];
 export type SettingSpec = NonNullable<SendIncident['send']['settings']>[number];
 export type SettingChip = SettingSpec['chips'][number];
 export type MessageChip = SendIncident['send']['message'][number];
+export type CaseSpec = DiagnoseIncident['diagnose']['cases'][number];
+export type SendChips = CaseSpec['send'];
 export type ExpectedOutcome = SendTask['expect']['outcome'];
 export type CardSpec = IdentifyIncident['identify']['cards'][number];
 export type TraySpec = CardSpec['trays'][number];
@@ -279,9 +332,14 @@ export type RuleMove = z.infer<typeof ruleMoveSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
 export type SettingMove = z.infer<typeof setSettingSchema>;
 export type AnswerMove = z.infer<typeof answerCardSchema>;
-export type ExplanationOption = Incident['explanation'][number];
+export type ExplanationOption = GuidedIncident['explanation'][number];
 export type LevelEntry = Pick<Incident, 'id' | 'chapter' | 'order' | 'title' | 'role'>;
 export type LevelRole = Incident['role'];
+
+/** True for an incident the player works through tasks (a filter, a send or an identify), and false for a diagnose, which has cases. */
+export function isGuided(incident: Incident): incident is GuidedIncident {
+  return incident.mechanic !== 'diagnose';
+}
 
 /** Returns the id a rule gets when the player places it from two chips. */
 export function ruleIdFor(whatId: string, fromId: string): string {

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { OFFICE_FLOORS, REPO_ROOT, device, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import { CHAPTERS } from './chapters';
 import { missingShownIds, officeLeaks, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds } from './contract/chips';
-import { incidentSchema, type Incident } from './contract/incident';
+import { incidentSchema, isGuided, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
 
@@ -30,9 +30,12 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(existsSync(resolve(REPO_ROOT, incident.concept))).toBe(true);
   });
 
-  it('has two hints and exactly one correct explanation', () => {
-    expect(incident.hints).toHaveLength(HINT_COUNT);
-    expect(incident.explanation.filter((option) => option.correct)).toHaveLength(1);
+  it('has two hints and exactly one correct explanation, in every case of a diagnose', () => {
+    const questions = isGuided(incident) ? [{ hints: incident.hints, options: incident.explanation }] : incident.diagnose.cases.map((spec) => ({ hints: spec.hints, options: spec.cause.options }));
+    for (const { hints, options } of questions) {
+      expect(hints).toHaveLength(HINT_COUNT);
+      expect(options.filter((option) => option.correct)).toHaveLength(1);
+    }
   });
 
   it('sends nothing from the office to the outside, neither in a flow nor with its chips', () => {

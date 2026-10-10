@@ -1,11 +1,12 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
-import type { Incident } from '@/levels';
+import { caseCard, caseSummary, countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
+import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
+import { CaseCard } from './case-card';
 import { ExplanationCard } from './explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './lucia-card';
@@ -35,6 +36,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const identify = playing && cardPieceId ? identifyCard(session, cardPieceId) : null;
   const settings = playing && cardPieceId ? settingsCard(session, cardPieceId) : null;
   const inspection = inspecting ? inspect(session, inspecting) : null;
+  const caseOnCard = session.phase === 'result' ? null : caseCard(session);
+  const { incident } = session;
 
   const activate = (pieceId: string) => {
     if (playing && pieces.some((piece) => (piece.id === pieceId && piece.configurable) || piece.settings?.id === pieceId)) setCardPieceId(pieceId);
@@ -46,6 +49,10 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const showResult = () => {
     dispatch({ type: 'showResult' });
     onFinish(countStars(starsOf(session)));
+  };
+  const nextCase = () => {
+    setCardPieceId(null);
+    dispatch({ type: 'nextCase' });
   };
 
   return (
@@ -119,16 +126,19 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       </div>
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
-        {session.phase === 'explaining' && (
+        {caseOnCard && (
+          <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
+        )}
+        {session.phase === 'explaining' && isGuided(incident) && (
           <ExplanationCard
-            question={session.incident.question ?? EXPLANATION_TEXT.whatHappened}
-            options={session.incident.explanation}
+            question={incident.question ?? EXPLANATION_TEXT.whatHappened}
+            options={incident.explanation}
             choice={session.choice}
             onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
             onContinue={showResult}
           />
         )}
-        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={session.incident.mechanic} takeaway={session.incident.takeaway} nextId={nextId} />}
+        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
       </aside>
     </main>
   );

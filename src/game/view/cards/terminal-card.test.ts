@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
-import { gatewayIncident, sendIncident } from '@/testing';
-import { startSession, type Session } from '@/game/session';
+import { diagnoseIncident, gatewayIncident, sendIncident } from '@/testing';
+import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { terminalCard, terminalLine } from './terminal-card';
 
@@ -120,3 +120,25 @@ describe('terminalLine of a message with a command', () => {
   });
 });
 
+
+describe('terminalCard of a diagnose incident', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const first = startSession([DIAGNOSE], DIAGNOSE.id);
+  const pieceOfOrigin = PIECE_ID.device('your-laptop');
+  const rightOfFirst = DIAGNOSE.diagnose.cases[0].cause.options.findIndex((option) => option.correct);
+  const second = [{ type: 'nameCause', index: rightOfFirst } as const, { type: 'nextCase' } as const].reduce(sessionReducer, first);
+
+  it('offers the chips of the case the incident is on', () => {
+    const card = terminalCard(first, pieceOfOrigin);
+    expect(card?.fromId).toBe('origin');
+    expect(card?.fixed).toEqual({ from: 'origin', message: 'ping' });
+    expect(card?.trays.map((tray) => [tray.name, tray.chips.map((chip) => chip.id)])).toEqual([['to', ['loopback', 'own', 'gateway', 'server']]]);
+    expect(terminalCard(second, pieceOfOrigin)?.trays[0].chips.map((chip) => chip.id)).toEqual(['typo', 'printer']);
+  });
+
+  it('prints the line of a chip of the case, and none for a chip of another case', () => {
+    expect(terminalLine(first, { from: 'origin', to: 'gateway', message: 'ping' })).toBe('ping 192.168.1.1');
+    expect(terminalLine(first, { from: 'origin', to: 'typo', message: 'ping' })).toBeNull();
+    expect(terminalLine(second, { from: 'origin', to: 'typo', message: 'ping' })).toBe('ping 192.168.1.22');
+  });
+});

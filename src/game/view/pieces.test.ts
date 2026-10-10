@@ -3,8 +3,8 @@ import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText, type TermId } from '@/c
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
-import { sessionReducer, startSession, type Session } from '@/game/session';
+import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { settingsCard } from './cards/settings-card';
 import { terminalCard } from './cards/terminal-card';
@@ -56,6 +56,19 @@ describe('pieceViews', () => {
     expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.actor('attacker'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.device('printer'), locked: true, configurable: false });
+  });
+
+  it('in a diagnose incident, the origin of the case opens its terminal, and each case brings its own origin', () => {
+    const diagnosing = diagnoseIncident();
+    const { cases } = diagnosing.diagnose;
+    const opening = (session: Session) => pieceViews(session).filter((piece) => piece.configurable).map((piece) => piece.id);
+    const closeCase = (index: number): SessionAction[] => [{ type: 'nameCause', index: cases[index].cause.options.findIndex((option) => option.correct) }, { type: 'nextCase' }];
+    const atFirst = startSession([diagnosing], diagnosing.id);
+    const atThird = [...closeCase(0), ...closeCase(1)].reduce(sessionReducer, atFirst);
+    expect(opening(atFirst)).toEqual([PIECE_ID.device('your-laptop')]);
+    expect(opening(atThird)).toEqual([PIECE_ID.device('andres-laptop')]);
+    expect(terminalCard(atThird, PIECE_ID.device('andres-laptop'))?.fromId).toBe('origin');
+    expect(terminalCard(atThird, PIECE_ID.device('your-laptop'))).toBeNull();
   });
 
   it('in an identify incident the devices with a card open it and have no lock', () => {
