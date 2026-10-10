@@ -3,6 +3,8 @@ import { collectErrors } from './console-errors';
 
 const FONT_HOSTS = /fonts\.(googleapis|gstatic)\.com/;
 const PIECES = 'Piezas del mapa';
+const INTERFACE = 'Elementos de la interfaz';
+const FOCUSED_OPTION = 'Una respuesta posible';
 const LAST_CAPTION = 'intruso';
 const WATCH_MS = 7000;
 
@@ -23,7 +25,16 @@ test.describe('Sin animaciones', () => {
     const errors = collectErrors(page);
     const pieces = await openCatalog(page);
     await expect(page.getByLabel('Sin animaciones')).toBeChecked();
-    await expect(pieces).toHaveScreenshot('entities.png', { maxDiffPixelRatio: 0.01 });
+    await expect(pieces).toHaveScreenshot('entities.png', { maxDiffPixels: 0, threshold: 0 });
+    expect(errors).toEqual([]);
+  });
+
+  test('the interface elements are drawn in every variant and state as recorded, with the focus ring on an option', async ({ page }) => {
+    const errors = collectErrors(page);
+    await openCatalog(page);
+    const elements = page.getByRole('region', { name: INTERFACE });
+    await elements.getByRole('button', { name: FOCUSED_OPTION }).focus();
+    await expect(elements).toHaveScreenshot('interface.png', { maxDiffPixels: 0, threshold: 0 });
     expect(errors).toEqual([]);
   });
 });

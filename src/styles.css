@@ -141,3 +141,7 @@ button.stamp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2
 .catalog__caption { margin: 0; font: 400 12px var(--font-body); color: var(--ink-soft); white-space: nowrap; }
 .catalog__icons { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.6rem 1.2rem; }
 .catalog__icons li { display: flex; align-items: center; }
+.catalog__family { margin-bottom: 1.5rem; }
+.catalog__specimens { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.2rem 1.5rem; }
+.catalog__specimen { margin: 0; display: grid; justify-items: start; gap: 0.4rem; }
+.catalog__specimen--wide { width: 20rem; justify-items: stretch; }

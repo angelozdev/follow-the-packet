@@ -3,11 +3,12 @@ import { CatalogScene, EntityIcon, StampIcon } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { TaggedText } from '@/ui/tagged-text';
 import { useStillMode } from '@/ui/use-still-mode';
+import { InterfaceSection } from './interface-section';
 
 const STAMP_STATES = ['arrived', 'blocked', 'lost', 'intruder'] as const;
 const STAMP_NAME = { arrived: CATALOG_TEXT.state.arrived, blocked: CATALOG_TEXT.state.blocked, lost: CATALOG_TEXT.state.lost, intruder: CATALOG_TEXT.intruder } as const;
 
-/** The design review page of the entity catalog: every piece in every variant and state on one canvas, and every icon with its name. */
+/** The design review page of the entity catalog: every piece in every variant and state on one canvas, every icon with its name, and every element of the interface. */
 export function EntitiesPage() {
   const [still, setStill] = useStillMode();
   return (
@@ -41,6 +42,7 @@ export function EntitiesPage() {
           ))}
         </ul>
       </section>
+      <InterfaceSection />
     </main>
   );
 }
