@@ -9,5 +9,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     setupFiles: ['./src/testing/setup.ts'],
     environment: 'node',
+    css: { include: [/\/design\/tokens\.css/] },
   },
 });

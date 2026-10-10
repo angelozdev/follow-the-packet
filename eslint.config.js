@@ -7,12 +7,13 @@ import tseslint from 'typescript-eslint';
 
 const LAYER_IMPORTS = {
   engine: [],
+  design: [],
   copy: ['engine'],
   levels: ['engine', 'copy'],
   game: ['engine', 'copy', 'levels'],
-  scene: ['engine', 'copy', 'levels'],
+  scene: ['engine', 'copy', 'levels', 'design'],
   storage: ['engine', 'copy', 'levels'],
-  ui: ['engine', 'copy', 'levels', 'game', 'scene', 'storage'],
+  ui: ['engine', 'copy', 'levels', 'game', 'scene', 'storage', 'design'],
   testing: ['engine', 'copy', 'levels'],
 };
 const LAYERS = Object.keys(LAYER_IMPORTS);

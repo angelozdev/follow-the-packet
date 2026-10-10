@@ -5,7 +5,7 @@ import type { Group } from 'three';
 import type { PacketMessage } from '@/copy';
 import { cumulativeLengths, pathLength, pointAt, roundTrip, type Vec2, type Vec3 } from '@/scene/layout';
 import { InkIcon } from '@/scene/ink';
-import { ACCENT, INK } from '@/scene/theme';
+import { DANGER, INK, LINE } from '@/scene/theme';
 
 export type PacketEnd = 'replied' | 'arrived' | 'blocked' | 'lost';
 
@@ -26,7 +26,6 @@ const ROUND_SEGMENTS = 24;
 const RHOMBUS_SEGMENTS = 4;
 const BURST_GROWTH = 3;
 const BURST_RING: [number, number, number] = [0.22, 0.3, 24];
-const TRACE_LINE_WIDTH = 2.5;
 const DASH = { dashSize: 0.18, gapSize: 0.14 } as const;
 const REPLY_MARK_DISTANCE = 0.6;
 
@@ -43,7 +42,7 @@ export function PacketGlyph({ message, intruder }: { message: PacketMessage; int
     <Billboard>
       <mesh>
         {message === 'echo-request' ? <circleGeometry args={[radius, segments]} /> : <ringGeometry args={[radius * HOLLOW, radius, segments]} />}
-        <meshBasicMaterial color={intruder ? ACCENT : INK} />
+        <meshBasicMaterial color={intruder ? DANGER : INK} />
       </mesh>
     </Billboard>
   );
@@ -91,7 +90,7 @@ export function PacketRun({ path, message, intruder, end }: PacketLook) {
       <group ref={burst} position={[endX, PACKET_Y, endZ]} visible={false}>
         <mesh rotation-x={-Math.PI / 2}>
           <ringGeometry args={BURST_RING} />
-          <meshBasicMaterial color={ACCENT} />
+          <meshBasicMaterial color={DANGER} />
         </mesh>
       </group>
     </>
@@ -108,7 +107,7 @@ export function PacketTrace({ path, message, intruder, end }: PacketLook) {
   const length = pathLength(path);
   return (
     <>
-      <Line points={path.map(([x, z]): Vec3 => [x, PACKET_Y, z])} color={end === 'blocked' ? ACCENT : INK} lineWidth={TRACE_LINE_WIDTH} dashed={end === 'lost'} {...DASH} />
+      <Line points={path.map(([x, z]): Vec3 => [x, PACKET_Y, z])} color={end === 'blocked' ? DANGER : INK} lineWidth={LINE.heavy} dashed={end === 'lost'} {...DASH} />
       <group position={markAt(path, length / 2)}>
         <PacketGlyph message={message} intruder={intruder} />
       </group>

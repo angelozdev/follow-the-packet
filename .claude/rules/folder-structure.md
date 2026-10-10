@@ -13,9 +13,10 @@ Answer in order; the first "yes" decides:
 3. Is it Spanish text shown to the player? → `src/copy/`
 4. Is it game-session state (phases, actions, reducer)? → `src/game/`
 5. Is it persistence in the browser? → `src/storage/`
-6. Does it draw the 3D map? → `src/scene/`
-7. Is it a panel, screen or control? → `src/ui/`
-8. Is it only for tests (fixtures, repo helpers)? → `src/testing/`
+6. Is it a design token, or an interface element that screens share (a button, a choice, a card, a name tag)? → `src/design/`
+7. Does it draw the 3D map? → `src/scene/`
+8. Is it a panel, screen or control? → `src/ui/`
+9. Is it only for tests (fixtures, repo helpers)? → `src/testing/`
 
 **Promotion ladder.** A piece starts next to its first consumer and moves up only when a second real consumer appears, one level at a time. Nothing is promoted in advance (see [[kiss]]).
 
@@ -31,6 +32,7 @@ Answer in order; the first "yes" decides:
 - Allowed direction, from higher to lower, never back up and never between peers:
   `app → ui → game · scene · storage → levels → copy → engine`.
   `src/scene/` reads only the engine's types and the computed trace (see [[view-renders-domain-result]]).
+  The design system, `src/design/`, sits beside that line: only `ui` and `scene` import it, and it imports no layer.
 - Each layer has a barrel (`index.ts`) with named re-exports only (`export { X } from './x'`, `export type { T } from './t'`), never `export *`, exporting exactly what other layers use.
 - Across a layer boundary, import the barrel through the alias (`@/engine`); inside a layer, import the file directly (`./x`). Never import a barrel from inside its own folder. No `../` imports at all.
 - The alias `@/` points at `src/` and is configured in `tsconfig.json`, `vite.config.ts` and Vitest.

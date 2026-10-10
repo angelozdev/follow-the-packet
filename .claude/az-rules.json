@@ -37,8 +37,8 @@
       "origin": "core/folder-structure",
       "version": 1,
       "notes": [
-        "axis by layer: engine, levels, copy, game, storage, scene, ui, testing",
-        "import direction: app -> ui -> game, scene, storage -> levels -> copy -> engine; no peers",
+        "axis by layer: engine, levels, copy, game, storage, scene, ui, testing, design",
+        "import direction: app -> ui -> game, scene, storage -> levels -> copy -> engine; no peers; ui and scene -> design, which imports no layer",
         "alias @/ -> src/; all ../ imports banned; one index.ts barrel per layer",
         "cap 12 files per folder, tests and barrel included; guide file CLAUDE.md per folder",
         "enforced: no-restricted-imports rules generated from the layer table in eslint.config.js (pnpm lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (pnpm structure).",

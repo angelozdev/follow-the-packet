@@ -6,7 +6,7 @@ import type { Device } from '@/engine';
 import { boxEdgePoints } from '@/scene/edges';
 import { InkBox, InkIcon } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
-import { INK, PAPER_SHADE } from '@/scene/theme';
+import { INK, LINE, PAPER_SHADE } from '@/scene/theme';
 
 const SHAKE_SPEED = 40;
 const SHAKE_AMPLITUDE = 0.05;
@@ -20,7 +20,7 @@ function Server({ x, z }: Spot) {
     <>
       <InkBox size={[1.6, 1.1, 1.2]} position={[x, 0.55, z]} />
       <InkBox size={[1.7, 0.12, 1.3]} position={[x, 1.16, z]} fill={PAPER_SHADE} />
-      <InkBox size={[0.4, 0.55, 0.04]} position={[x, 0.28, z + 0.62]} fill={PAPER_SHADE} lineWidth={1} />
+      <InkBox size={[0.4, 0.55, 0.04]} position={[x, 0.28, z + 0.62]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
     </>
   );
 }
@@ -29,9 +29,9 @@ function Laptop({ x, z }: Spot) {
   return (
     <>
       <InkBox size={[1.4, 0.12, 1]} position={[x, 0.06, z]} />
-      <InkBox size={[1.1, 0.02, 0.45]} position={[x, 0.13, z + 0.12]} fill={PAPER_SHADE} lineWidth={1} />
+      <InkBox size={[1.1, 0.02, 0.45]} position={[x, 0.13, z + 0.12]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
       <InkBox size={[1.4, 0.9, 0.08]} position={[x, 0.57, z - 0.46]} />
-      <InkBox size={[1.2, 0.7, 0.02]} position={[x, 0.57, z - 0.41]} fill={PAPER_SHADE} lineWidth={1} />
+      <InkBox size={[1.2, 0.7, 0.02]} position={[x, 0.57, z - 0.41]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
     </>
   );
 }
@@ -40,9 +40,9 @@ function Printer({ x, z }: Spot) {
   return (
     <>
       <InkBox size={[1.4, 0.6, 1]} position={[x, 0.3, z]} />
-      <InkBox size={[1, 0.04, 0.3]} position={[x, 0.62, z - 0.2]} fill={PAPER_SHADE} lineWidth={1} />
+      <InkBox size={[1, 0.04, 0.3]} position={[x, 0.62, z - 0.2]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
       <InkBox size={[0.8, 0.5, 0.03]} position={[x, 0.86, z - 0.24]} />
-      <InkBox size={[0.9, 0.05, 0.4]} position={[x, 0.3, z + 0.7]} fill={PAPER_SHADE} lineWidth={1} />
+      <InkBox size={[0.9, 0.05, 0.4]} position={[x, 0.3, z + 0.7]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
     </>
   );
 }
@@ -59,7 +59,7 @@ function DoubleBorder({ x, z, variant }: Spot & { variant: Device['kind'] }) {
   const [w, h, d] = size.map((side) => side + DOUBLE_BORDER_GAP);
   return (
     <group position={[x, y, z]}>
-      <Line points={boxEdgePoints(w, h, d)} segments color={INK} lineWidth={1.5} />
+      <Line points={boxEdgePoints(w, h, d)} segments color={INK} lineWidth={LINE.regular} />
     </group>
   );
 }
@@ -74,7 +74,7 @@ export function DevicePiece({ position, variant, selected, intruded, still }: { 
   });
   return (
     <group ref={group}>
-      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={1} />}
+      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={LINE.thin} />}
       <Shape x={x} z={z} />
       {intruded && still && <DoubleBorder x={x} z={z} variant={variant} />}
     </group>

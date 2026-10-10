@@ -1,0 +1,41 @@
+:root {
+  --palette-paper: #f6f1e7;
+  --palette-paper-light: #fbf8f2;
+  --palette-paper-dark: #efe8da;
+  --palette-ink: #2b2b2b;
+  --palette-ink-light: #5f5a52;
+  --palette-vermilion: #e4572e;
+
+  --color-page: var(--palette-paper);
+  --color-surface: var(--palette-paper-light);
+  --color-shade: var(--palette-paper-dark);
+  --color-ink: var(--palette-ink);
+  --color-ink-soft: var(--palette-ink-light);
+  --color-on-fill: var(--palette-paper-light);
+  --color-danger: var(--palette-vermilion);
+  --color-emphasis: var(--palette-vermilion);
+  --color-focus: var(--palette-vermilion);
+
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --stroke-thin: 1px;
+  --stroke-regular: 1.5px;
+  --stroke-bold: 2px;
+  --stroke-heavy: 2.5px;
+  --stroke-double: 4px;
+
+  --radius: 3px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  --shadow-sm: 2px 2px 0 var(--color-ink);
+  --shadow-md: 3px 3px 0 var(--color-ink);
+  --shadow-tip: 2px 2px 0 var(--color-emphasis);
+
+  --focus-ring: var(--stroke-bold) solid var(--color-focus);
+  --focus-offset: 2px;
+
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.17 0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}

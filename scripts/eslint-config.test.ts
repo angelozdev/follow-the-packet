@@ -42,6 +42,8 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
     const cases: [string, string, string][] = [
       ['engine imports react', 'src/engine/network/probe.ts', "import { useState } from 'react';\nexport const hook = useState;\n"],
       ['copy imports a higher layer', 'src/copy/probe.ts', "import { CHAPTERS } from '@/levels';\nexport const chapters = CHAPTERS;\n"],
+      ['the design system imports another layer', 'src/design/probe.ts', "import { TERMS } from '@/copy';\nexport const terms = TERMS;\n"],
+      ['the engine imports the design system', 'src/engine/network/probe.ts', "import { token } from '@/design';\nexport const read = token;\n"],
       ['scene imports a peer', 'src/scene/probe.ts', "import { loadProgress } from '@/storage';\nexport const load = loadProgress;\n"],
       ['ui reaches into another layer', 'src/ui/probe.ts', "import { CHAPTERS } from '@/levels/chapters';\nexport const chapters = CHAPTERS;\n"],
       ['a layer imports its own barrel', 'src/levels/probe.ts', "import { CHAPTERS } from '@/levels';\nexport const chapters = CHAPTERS;\n"],
@@ -94,6 +96,12 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
 
     it('allows a type import from the engine in a view', async () => {
       expect(await ruleIdsFor('src/scene/probe.ts', "import type { Network } from '@/engine';\nexport type Net = Network;\n")).toEqual([]);
+    });
+
+    it('allows the map and the panels to import the design system', async () => {
+      const code = "import { token } from '@/design';\nexport const read = token;\n";
+      expect(await ruleIdsFor('src/scene/probe.ts', code)).toEqual([]);
+      expect(await ruleIdsFor('src/ui/probe.ts', code)).toEqual([]);
     });
 
     it('allows tests to import testing helpers', async () => {

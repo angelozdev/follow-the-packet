@@ -1,7 +1,7 @@
 import type { Actor } from '@/engine';
 import { InkBox, InkIcon } from '@/scene/ink';
 import type { Vec2 } from '@/scene/layout';
-import { INK, PAPER_FILL, PAPER_SHADE } from '@/scene/theme';
+import { INK, LINE, PAPER_FILL, PAPER_SHADE } from '@/scene/theme';
 
 const CUBE = 0.5;
 const ACTOR_FILL: Record<Actor['kind'], string> = { attacker: INK, you: PAPER_FILL, home: PAPER_FILL };
@@ -13,7 +13,7 @@ function Roof({ x, z }: { x: number; z: number }) {
     <>
       {ROOF_SIDES.map((side) => (
         <group key={side} position={[x + side * 0.14, 0.6, z]} rotation-z={-side * ROOF_PITCH}>
-          <InkBox size={[0.36, 0.05, 0.62]} position={[0, 0, 0]} fill={PAPER_SHADE} lineWidth={1} />
+          <InkBox size={[0.36, 0.05, 0.62]} position={[0, 0, 0]} fill={PAPER_SHADE} lineWidth={LINE.thin} />
         </group>
       ))}
     </>

@@ -1,7 +1,7 @@
 import { Billboard, Line } from '@react-three/drei';
 import { InkIcon } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
-import { INK, PAPER_FILL } from '@/scene/theme';
+import { INK, LINE, PAPER_FILL } from '@/scene/theme';
 
 const RADIUS = 0.62;
 const LINE_RADIUS = RADIUS * 1.01;
@@ -29,11 +29,11 @@ export function InternetPiece({ position }: { position: Vec2 }) {
         <sphereGeometry args={[RADIUS, 32, 24]} />
         <meshStandardMaterial color={PAPER_FILL} roughness={1} polygonOffset polygonOffsetFactor={1} polygonOffsetUnits={1} />
       </mesh>
-      <Line points={EQUATOR} color={INK} lineWidth={1} />
-      <Line points={MERIDIAN_X} color={INK} lineWidth={1} />
-      <Line points={MERIDIAN_Z} color={INK} lineWidth={1} />
+      <Line points={EQUATOR} color={INK} lineWidth={LINE.thin} />
+      <Line points={MERIDIAN_X} color={INK} lineWidth={LINE.thin} />
+      <Line points={MERIDIAN_Z} color={INK} lineWidth={LINE.thin} />
       <Billboard>
-        <Line points={OUTLINE} color={INK} lineWidth={1.5} />
+        <Line points={OUTLINE} color={INK} lineWidth={LINE.regular} />
       </Billboard>
     </group>
   );

@@ -2,10 +2,10 @@ import { Line } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import { boxEdgePoints } from './edges';
 import type { Vec3 } from './layout';
-import { INK, PAPER_FILL } from './theme';
+import { INK, LINE, PAPER_FILL } from './theme';
 
 /** A paper box with ink edges: the brick every map piece is built from. */
-export function InkBox({ size, position, fill = PAPER_FILL, lineWidth = 1.5 }: { size: Vec3; position: Vec3; fill?: string; lineWidth?: number }) {
+export function InkBox({ size, position, fill = PAPER_FILL, lineWidth = LINE.regular }: { size: Vec3; position: Vec3; fill?: string; lineWidth?: number }) {
   return (
     <group position={position}>
       <mesh>

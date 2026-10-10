@@ -5,7 +5,7 @@ import type { Group } from 'three';
 import type { FirewallKind } from '@/engine';
 import { InkBox, InkIcon } from '@/scene/ink';
 import type { Vec2, Vec3 } from '@/scene/layout';
-import { ACCENT, INK, PAPER_SHADE } from '@/scene/theme';
+import { DANGER, INK, LINE, PAPER_SHADE } from '@/scene/theme';
 
 const PULSE_SPEED = 4;
 const PULSE_AMPLITUDE = 0.35;
@@ -33,12 +33,12 @@ export function FirewallPiece({ position, variant, selected, blocking, still }: 
   });
   return (
     <group>
-      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={1} />}
+      {selected && <InkBox size={MAT} position={[x, MAT[1] / 2, z]} fill={PAPER_SHADE} lineWidth={LINE.thin} />}
       <InkBox size={[0.1, 0.5, 0.1]} position={[x - 0.6, 0.25, z]} />
       <InkBox size={[0.1, 0.5, 0.1]} position={[x + 0.6, 0.25, z]} />
       <group ref={bar} position={[x, BAR[variant].y, z]}>
-        <InkBox size={BAR[variant].size} position={[0, 0, 0]} fill={blocking ? ACCENT : PAPER_SHADE} lineWidth={1} />
-        {variant === 'host-firewall' && <Line points={BRICK_JOINTS} segments color={INK} lineWidth={1} />}
+        <InkBox size={BAR[variant].size} position={[0, 0, 0]} fill={blocking ? DANGER : PAPER_SHADE} lineWidth={LINE.thin} />
+        {variant === 'host-firewall' && <Line points={BRICK_JOINTS} segments color={INK} lineWidth={LINE.thin} />}
       </group>
     </group>
   );
