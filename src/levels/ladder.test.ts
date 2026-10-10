@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, termsIn, unofficialNames, type TermId } from '@/copy';
-import { filterIncident } from '@/testing';
+import { TERMS, parseTermText, termsIn, unofficialNames, type TermId } from '@/copy';
+import { filterIncident, gatewayIncident } from '@/testing';
 import { FROM } from './04-iaas/shared';
-import type { Incident } from './contract/incident';
+import type { Incident, SendIncident } from './contract/incident';
 import { chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 
@@ -84,5 +84,34 @@ describe('term ladder', () => {
   it('outbound rules and the host setting open with their own terms', () => {
     const later = new Set<TermId>(['inbound-rule', 'outbound-rule', 'icmp-echo-ignore-all']);
     expect(configurableParts(later)).toEqual({ inboundRules: { 'host-firewall': false, 'security-group': true }, outboundRules: true, hostSettings: true });
+  });
+});
+
+describe('the settings of a send incident', () => {
+  const NO_VALUE = 'Ninguna';
+  const GATEWAY = gatewayIncident();
+  const WITH_SETTINGS = [GATEWAY, ...INCIDENTS].filter((incident): incident is SendIncident => incident.mechanic === 'send' && incident.send.settings !== undefined);
+  const settings = WITH_SETTINGS.flatMap((incident) => incident.send.settings ?? []);
+
+  it('a setting chip names its value, and its tray names a term', () => {
+    expect(settings.length).toBeGreaterThan(0);
+    for (const setting of settings) {
+      expect(parseTermText(setting.name).map((segment) => segment.kind)).toEqual(['term']);
+      expect(unofficialNames([setting.name])).toEqual([]);
+      for (const chip of setting.chips) expect(chip.label).toBe(chip.value ?? NO_VALUE);
+    }
+  });
+
+  it('the gateway tray is called by the official name of the default gateway', () => {
+    const [gateway] = GATEWAY.send.settings ?? [];
+    expect(termsIn(gateway.name)).toEqual(['default-gateway']);
+    expect(gateway.name).toBe(`{{default-gateway|${TERMS['default-gateway'].name}}}`);
+  });
+
+  it('the texts of the settings are texts the player reads, so the ladder catches them before their term is known', () => {
+    const [gateway] = GATEWAY.send.settings ?? [];
+    expect(incidentTexts(GATEWAY)).toEqual(expect.arrayContaining([gateway.name, ...gateway.chips.map((chip) => chip.label)]));
+    expect(unknownTerms(incidentTexts(GATEWAY), new Set())).toContain('default-gateway');
+    expect(unknownTerms(incidentTexts(GATEWAY), knownTerms([GATEWAY], GATEWAY.id))).toEqual([]);
   });
 });

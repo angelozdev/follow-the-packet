@@ -26,6 +26,9 @@ export type {
   SendIncident,
   SendMove,
   SendTask,
+  SettingChip,
+  SettingMove,
+  SettingSpec,
   TraySpec,
   WhatChip,
 } from './contract/incident';

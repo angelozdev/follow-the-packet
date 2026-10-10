@@ -1,6 +1,6 @@
 import { applyAction, type Network } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
-import type { Incident, PlayerMove } from './contract/incident';
+import type { Incident, PlayerMove, SettingMove } from './contract/incident';
 
 function findIncident(incidents: Incident[], incidentId: string): Incident {
   const found = incidents.find((i) => i.id === incidentId);
@@ -8,9 +8,18 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, an unknown firewall or chip, a rule that already exists, a rule id that is not there). */
+function applySetting(world: Network, incident: Incident, { deviceId, settingId, chipId }: SettingMove): Network {
+  const setting = incident.mechanic === 'send' ? incident.send.settings?.find((candidate) => candidate.deviceId === deviceId && candidate.id === settingId) : undefined;
+  const chip = setting?.chips.find((candidate) => candidate.id === chipId);
+  const device = world.devices.find((candidate) => candidate.id === deviceId);
+  if (!chip || !device || (device.gateway ?? null) === chip.value) return world;
+  return applyAction(world, { type: 'setGateway', deviceId, gateway: chip.value ?? undefined });
+}
+
+/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, an unknown firewall or chip, a rule that already exists, a rule id that is not there, a setting the incident does not offer or whose chip is already in effect). A setting move sets the default gateway of the device to the value of the chip, or takes it away when the chip has none. */
 export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
   if (move.type === 'sendPacket' || move.type === 'answerCard') return world;
+  if (move.type === 'setSetting') return applySetting(world, incident, move);
   const firewall = world.firewalls.find((f) => f.id === move.firewallId);
   if (!firewall) return world;
   if (move.type === 'removeRule') {

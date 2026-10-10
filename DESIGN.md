@@ -117,7 +117,7 @@ All in `src/design/primitives/`, imported through `@/design`. A primitive takes 
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
 | `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, the name of a floor on the map, or the mark of an optional chapter |
 
-The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `src/design/primitives/primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
+The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `src/design/primitives/primitives.css`: a label that is only a name wears the name tag's frame, written once for both. A piece with a second entry, such as the settings card of a laptop, stacks a second button under its label (`.map-labels`) in the same look.
 
 ### Style B
 
@@ -126,7 +126,7 @@ Every card of the game has the same look, the approved one of the prototype page
 - **The title is the stripe** (Lucía, the terminal, the task card of a firewall): the caller passes its own `h2` as `title`, and the stripe is that heading. Whatever else sits in the stripe (`meta`, the name tag inside a title) is read apart from the heading's name.
 - **The title is under the stripe** (the question, the result, the inspection box, a chapter of the roadmap): the stripe carries the `type` of card («Pregunta», «Resultado», «Inspección», «Capítulo 1») and, at its right edge, a `meta` («3/14», «Próximamente»). The caller's own `h2` is the first thing in the body, drawn as the headline of the card.
 
-The caller owns the `h2`, its `id`, its focus and the `aria-labelledby` of the card. The icon is decorative (`aria-hidden`): an entity's icon for a card about an entity, and `CardIcon` (`src/ui/card-icon.tsx`) for Lucía, the question, the result, the inspection box, the terminal and a chapter. The type and the title of every card come from `src/copy/screens/`.
+The caller owns the `h2`, its `id`, its focus and the `aria-labelledby` of the card. The icon is decorative (`aria-hidden`): an entity's icon for a card about an entity, and `CardIcon` (`src/ui/card-icon.tsx`) for Lucía, the question, the result, the inspection box, the terminal, the network settings of a device and a chapter. The type and the title of every card come from `src/copy/screens/`.
 
 The primary `Button` is the stamp: `--color-surface` fill, `--color-emphasis` text and dashed border, a pill, uppercase with `--tracking-caps`, a fixed `rotate(-2deg)` and, when pressed, `translateY(2px)`. Under `prefers-reduced-motion` it does not move when pressed and keeps its tilt, and disabled it keeps its shape and tilt with the greyed colours. The secondary and small buttons take the rounded corners and thick border.
 

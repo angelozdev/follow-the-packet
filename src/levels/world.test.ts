@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, networkSchema, type Network } from '@/engine';
+import { gatewayIncident } from '@/testing';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
-import { ruleIdFor, type Incident, type PlayerMove } from './contract/incident';
+import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { applyMove, solvedWorld, startWorld } from './world';
 
@@ -79,5 +80,46 @@ describe('applyMove', () => {
     const removed = applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) });
     expect(inbound(removed, SG.servidor2)).toEqual([]);
     expect(applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: 'ghost' })).toBe(once);
+  });
+});
+
+describe('applyMove of a setting', () => {
+  const GATEWAY = gatewayIncident();
+  const start = startWorld([GATEWAY], GATEWAY.id);
+  const set = (chipId: string, patch: Partial<SettingMove> = {}): PlayerMove => ({ type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId, ...patch });
+  const gatewayOf = (world: Network, deviceId = 'your-laptop') => world.devices.find((device) => device.id === deviceId)?.gateway;
+  const withoutLaptop = (world: Network) => ({ ...world, devices: world.devices.filter((device) => device.id !== 'your-laptop') });
+
+  it('a setting move sets the gateway of the device and nothing else', () => {
+    expect(gatewayOf(start)).toBeUndefined();
+    const after = applyMove(start, GATEWAY, set('router'));
+    expect(gatewayOf(after)).toBe('192.168.1.1');
+    expect(after).toEqual(applyAction(start, { type: 'setGateway', deviceId: 'your-laptop', gateway: '192.168.1.1' }));
+    expect(withoutLaptop(after)).toEqual(withoutLaptop(start));
+    expect(after.devices.find((device) => device.id === 'your-laptop')).toEqual({ ...start.devices.find((device) => device.id === 'your-laptop'), gateway: '192.168.1.1' });
+  });
+
+  it('a chip with no value takes the gateway away', () => {
+    const set192 = applyMove(start, GATEWAY, set('router'));
+    const cleared = applyMove(set192, GATEWAY, set('none'));
+    expect(cleared).toEqual(start);
+    expect(cleared.devices.find((device) => device.id === 'your-laptop')).not.toHaveProperty('gateway');
+  });
+
+  it('a chip that is already in effect, an unknown chip, setting or device change nothing', () => {
+    expect(applyMove(start, GATEWAY, set('none'))).toBe(start);
+    const router = applyMove(start, GATEWAY, set('router'));
+    expect(applyMove(router, GATEWAY, set('router'))).toBe(router);
+    for (const patch of [{ chipId: 'ghost' }, { settingId: 'ghost' }, { deviceId: 'ghost' }]) expect(applyMove(start, GATEWAY, set('router', patch))).toBe(start);
+  });
+
+  it('only a send incident has settings', () => {
+    const first = incident('04-01');
+    const world = startWorld(INCIDENTS, first.id);
+    expect(applyMove(world, first, set('router'))).toBe(world);
+  });
+
+  it('the reference solution sets the gateway the incident asks for', () => {
+    expect(gatewayOf(solvedWorld([GATEWAY], GATEWAY.id))).toBe('192.168.1.1');
   });
 });

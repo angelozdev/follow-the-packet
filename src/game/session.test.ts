@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
 import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import { ruleIdFor } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
+import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
+import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -167,6 +167,83 @@ describe('sending packets', () => {
   it('nothing is sent once the incident is closed', () => {
     const closed = sending(PING_PRINTER, FROM_OUTSIDE, SUBMIT);
     expect(sessionReducer(closed, PING_PRINTER)).toBe(closed);
+  });
+});
+
+describe('setting the gateway of a device', () => {
+  const GATEWAY = gatewayIncident();
+  const set = (chipId: string, patch: Partial<SettingMove> = {}): SessionAction => ({ type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId, ...patch });
+  const PING_ANDRES: SessionAction = { type: 'sendPacket', fromId: 'you', toId: 'andres', messageId: 'ping' };
+  const PING_PRINTER: SessionAction = { type: 'sendPacket', fromId: 'you', toId: 'printer', messageId: 'ping' };
+  const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([GATEWAY], GATEWAY.id));
+  const gatewayOf = (session: Session) => session.world.devices.find((candidate) => candidate.id === 'your-laptop')?.gateway;
+
+  it('starts with the laptop reinstalled: no gateway, and the ping to the other floor does not leave', () => {
+    const sent = playing(PING_ANDRES);
+    expect(gatewayOf(sent)).toBeUndefined();
+    expect(sent.sent[0].trace.outcome).toBe('no-route');
+  });
+
+  it('changing the gateway clears the packets sent before, so the stamps never show the old world', () => {
+    const before = playing(PING_ANDRES, PING_PRINTER);
+    expect(before.sent.map((packet) => packet.trace.outcome)).toEqual(['no-route', 'replied']);
+    const after = sessionReducer(before, set('router'));
+    expect(gatewayOf(after)).toBe(OFFICE_FLOORS.floor1.gateway);
+    expect(after.sent).toEqual([]);
+    expect(taskHolds(GATEWAY.tasks[0], after.runs, after.sent)).toBe(false);
+  });
+
+  it('a send after the setting uses the new gateway', () => {
+    const after = playing(PING_ANDRES, set('router'), PING_ANDRES);
+    expect(after.sent.map((packet) => [packet.id, packet.trace.outcome, packet.send])).toEqual([['sent-you-andres-ping', 'replied', 2]]);
+    expect(taskHolds(GATEWAY.tasks[0], after.runs, after.sent)).toBe(true);
+  });
+
+  it('a gateway that is not a router, or that nobody has, does not bring the ping back', () => {
+    expect(playing(set('printer'), PING_ANDRES).sent[0].trace.outcome).toBe('timeout');
+    expect(playing(set('nobody'), PING_ANDRES).sent[0].trace.outcome).toBe('unreachable');
+  });
+
+  it('runs the ambient flows again on the new world', () => {
+    const flowing = { ...GATEWAY, flows: [{ id: 'ambient', kind: 'ambient' as const, packet: ping(device('your-laptop'), OFFICE_FLOORS.floor2.andres) }] };
+    const start = startSession([flowing], flowing.id);
+    expect(start.runs.map((run) => run.replied)).toEqual([false]);
+    const after = sessionReducer(start, set('router'));
+    expect(after.runs.map((run) => run.replied)).toEqual([true]);
+  });
+
+  it('taking the gateway away puts the laptop back as it was, and clears what was sent', () => {
+    const cleared = playing(set('router'), PING_ANDRES, set('none'));
+    expect(gatewayOf(cleared)).toBeUndefined();
+    expect(cleared.sent).toEqual([]);
+  });
+
+  it('a chip already in effect, or one the incident does not offer, changes nothing and keeps the packets', () => {
+    const sent = playing(set('router'), PING_ANDRES);
+    expect(sessionReducer(sent, set('router'))).toBe(sent);
+    for (const patch of [{ chipId: 'ghost' }, { settingId: 'ghost' }, { deviceId: 'printer' }]) expect(sessionReducer(sent, set('none', patch))).toBe(sent);
+  });
+
+  it('takes Lucía’s reply away, and the send number goes on counting', () => {
+    const rejected = playing(PING_ANDRES, SUBMIT);
+    expect(rejected.rejection).not.toBeNull();
+    const after = sessionReducer(rejected, set('router'));
+    expect(after.rejection).toBeNull();
+    expect(after.sends).toBe(1);
+  });
+
+  it('the reference solution closes the incident, and no setting changes anything once it closed', () => {
+    const closed = [...GATEWAY.solution, SUBMIT].reduce(sessionReducer, startSession([GATEWAY], GATEWAY.id));
+    expect(closed.phase).toBe('explaining');
+    expect(sessionReducer(closed, set('none'))).toBe(closed);
+  });
+
+  it('a filter incident and an identify incident have no settings to set', () => {
+    const first = play();
+    expect(sessionReducer(first, set('router'))).toBe(first);
+    const identifying = identifyIncident();
+    const start = startSession([identifying], identifying.id);
+    expect(sessionReducer(start, set('router'))).toBe(start);
   });
 });
 

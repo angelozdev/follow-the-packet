@@ -14,6 +14,17 @@ function renderLabel(piece: MapPiece) {
   return handlers;
 }
 
+const LAPTOP: MapPiece = {
+  id: 'device:your-laptop',
+  kind: 'device',
+  variant: 'laptop',
+  anchorId: 'your-laptop',
+  label: '[[tu-laptop]]',
+  locked: false,
+  state: 'normal',
+  settings: { id: 'settings:your-laptop', label: 'Ajustes de red [[tu-laptop]]' },
+};
+
 describe('piece label', () => {
   it('reads its plain label and says when the piece is locked', () => {
     renderLabel(SERVER);
@@ -77,5 +88,31 @@ describe('piece label', () => {
   it('has a DOM id so the focus can come back to it', () => {
     renderLabel(SG_PIECE);
     expect(screen.getByRole('button', { name: 'Security Group servidor2' })).toHaveAttribute('id', pieceDomId(SG_PIECE.id));
+  });
+
+  it('a piece with a settings entry has a second button beside its label that activates the entry and not the piece', async () => {
+    const user = userEvent.setup();
+    const { onActivate } = renderLabel(LAPTOP);
+    const entry = screen.getByRole('button', { name: 'Ajustes de red tu-laptop' });
+    expect(entry.querySelectorAll('.name-tag')).toHaveLength(1);
+    expect(entry.id).toBe(pieceDomId('settings:your-laptop'));
+    await user.click(entry);
+    expect(onActivate).toHaveBeenLastCalledWith('settings:your-laptop');
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    expect(onActivate).toHaveBeenLastCalledWith('device:your-laptop');
+  });
+
+  it('inspects the piece from its own button and not from the settings entry', async () => {
+    const user = userEvent.setup();
+    const { onInspect } = renderLabel(LAPTOP);
+    await user.hover(screen.getByRole('button', { name: 'Ajustes de red tu-laptop' }));
+    expect(onInspect).not.toHaveBeenCalled();
+    await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
+    expect(onInspect).toHaveBeenLastCalledWith(LAPTOP.id);
+  });
+
+  it('a piece without a settings entry draws one button only', () => {
+    renderLabel(SERVER);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });

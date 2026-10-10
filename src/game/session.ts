@@ -1,6 +1,6 @@
 import type { TermId } from '@/copy';
 import type { Network } from '@/engine';
-import { applyMove, configurableParts, knownTerms, startWorld, type AnswerMove, type ConfigurableParts, type IdentifyIncident, type Incident, type PlayerMove, type RuleMove, type SendMove } from '@/levels';
+import { applyMove, configurableParts, knownTerms, startWorld, type AnswerMove, type ConfigurableParts, type IdentifyIncident, type Incident, type PlayerMove, type RuleMove, type SendMove, type SettingMove } from '@/levels';
 import { runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
 import { earnsMiddle, type Stars } from './stars';
 import { failingTaskIds, type Answers } from './tasks';
@@ -93,6 +93,14 @@ function move(state: Session, action: RuleMove): Session {
   return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
 }
 
+/** Sets a setting of a device on its card. It changes the world, so the flows are run again and the packets sent before are gone: their stamps described the old world. The send number goes on counting. A chip already in effect, or one the incident does not offer, changes nothing. */
+function setSetting(state: Session, action: SettingMove): Session {
+  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
+  const world = applyMove(state.world, state.incident, action);
+  if (world === state.world) return state;
+  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], rejection: null };
+}
+
 /** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. */
 function send(state: Session, action: SendMove): Session {
   if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
@@ -137,6 +145,8 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
       return move(state, action);
     case 'sendPacket':
       return send(state, action);
+    case 'setSetting':
+      return setSetting(state, action);
     case 'answerCard':
       return answer(state, action);
     case 'submit':

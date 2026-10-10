@@ -3,9 +3,11 @@ import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText, type TermId } from '@/c
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
+import { settingsCard } from './cards/settings-card';
+import { terminalCard } from './cards/terminal-card';
 import { PIECE_ID } from './piece-id';
 import { drawsRouter, pieceViews } from './pieces';
 
@@ -64,6 +66,28 @@ describe('pieceViews', () => {
     expect(opening).toContainEqual({ id: PIECE_ID.device('guest-laptop'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: true, configurable: false });
     expect(opening).toContainEqual({ id: PIECE_ID.device('marta-laptop'), locked: true, configurable: false });
+  });
+
+  it('a laptop that sends and has settings opens its terminal and its settings card, each from its own entry', () => {
+    const gateway = gatewayIncident();
+    const session = startSession([gateway], gateway.id);
+    const pieces = pieceViews(session);
+    const laptop = pieces.find((piece) => piece.id === PIECE_ID.device('your-laptop'));
+    const entry = laptop?.settings;
+    expect(laptop).toMatchObject({ locked: false, configurable: true });
+    expect(entry).toEqual({ id: PIECE_ID.settings('your-laptop'), label: 'Ajustes de red [[tu-laptop]]' });
+    if (!laptop || !entry) throw new Error('missing the laptop or its settings entry');
+    expect(terminalCard(session, laptop.id)).not.toBeNull();
+    expect(settingsCard(session, laptop.id)).toBeNull();
+    expect(settingsCard(session, entry.id)).not.toBeNull();
+    expect(terminalCard(session, entry.id)).toBeNull();
+    expect(pieces.filter((piece) => piece.settings).map((piece) => piece.id)).toEqual([laptop.id]);
+    expect(pieces.map((piece) => piece.id)).not.toContain(entry.id);
+  });
+
+  it('a send incident with no settings gives no piece a settings entry', () => {
+    const sending = sendIncident();
+    expect(pieceViews(startSession([sending], sending.id)).filter((piece) => piece.settings)).toEqual([]);
   });
 
   it('an actor of kind server is not drawn as an actor piece', () => {

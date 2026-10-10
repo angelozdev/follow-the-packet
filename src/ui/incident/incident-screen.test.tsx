@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { NOTE_RULE, filterIncident, identifyIncident, sendIncident } from '@/testing/incidents';
+import { NOTE_RULE, filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
@@ -216,6 +216,58 @@ describe('incident screen of a send incident', () => {
     await send(user, '192.168.1.11', 'ping');
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.getByRole('heading', { name: 'Lucía: «¿Por qué volvió el ping?»' })).toHaveFocus();
+  });
+});
+
+describe('incident screen of a send incident with settings', () => {
+  const GATEWAY = gatewayIncident();
+  const SETTINGS = 'Ajustes de red de tu-laptop';
+  const ENTRY = 'Ajustes de red tu-laptop';
+  const ROUTER = '192.168.1.1';
+  const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
+  const PING_ANDRES = 'ping de tu-laptop a laptop-andres';
+
+  function renderGateway() {
+    render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
+  }
+
+  async function sendToAndres(user: User) {
+    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  it('the laptop opens its terminal from its piece and its settings card from its own entry, and the terminal offers no setting', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
+    expect(within(terminal).queryByRole('group', { name: TERMS['default-gateway'].name })).toBeNull();
+    expect(within(terminal).queryByRole('button', { name: ROUTER })).toBeNull();
+    await user.click(screen.getByRole('button', { name: ENTRY }));
+    expect(screen.queryByRole('dialog', { name: 'Terminal de tu-laptop' })).toBeNull();
+    const card = screen.getByRole('dialog', { name: SETTINGS });
+    expect(within(card).getByRole('group', { name: TERMS['default-gateway'].name })).toBeInTheDocument();
+  });
+
+  it('setting the gateway on the card makes the ping come back and clears the stamps of before, and Esc gives the focus back to the entry', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    await sendToAndres(user);
+    expect(screen.getByRole('button', { name: LOST_PING })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: ENTRY }));
+    await user.click(within(screen.getByRole('dialog', { name: SETTINGS })).getByRole('button', { name: ROUTER }));
+    expect(screen.queryByRole('button', { name: LOST_PING })).toBeNull();
+    expect(screen.getByRole('button', { name: ROUTER })).toHaveAttribute('aria-pressed', 'true');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: ENTRY })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    await sendToAndres(user);
+    await user.click(screen.getByRole('button', { name: PING_ANDRES }));
+    expect(screen.getByRole('region', { name: PING_ANDRES })).toHaveTextContent('Llegó y volvió la respuesta.');
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent(LUCIA_TEXT.done);
   });
 });
 

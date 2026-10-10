@@ -7,6 +7,8 @@ export { taskHolds } from './tasks';
 export { firewallCard, rowText } from './view/cards/firewall-card';
 export { identifyCard } from './view/cards/identify-card';
 export type { IdentifyCard } from './view/cards/identify-card';
+export { settingsCard } from './view/cards/settings-card';
+export type { SettingsCard } from './view/cards/settings-card';
 export type { FirewallCard } from './view/cards/firewall-card';
 export { inspect } from './view/inspection';
 export type { Inspection } from './view/inspection';

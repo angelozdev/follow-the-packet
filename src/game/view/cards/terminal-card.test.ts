@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
-import { sendIncident } from '@/testing';
+import { gatewayIncident, sendIncident } from '@/testing';
 import { startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { terminalCard, terminalLine } from './terminal-card';
@@ -42,6 +42,27 @@ describe('terminalCard', () => {
   it('is null for a piece that is not an origin, and in an incident that does not send', () => {
     expect(terminalCard(session, PIECE_ID.device('printer'))).toBeNull();
     expect(terminalCard(startSession(INCIDENTS, '04-01'), PIECE_ID.device('servidor1'))).toBeNull();
+  });
+});
+
+describe('terminalCard of a device that has settings', () => {
+  const GATEWAY = gatewayIncident();
+  const settings = startSession([GATEWAY], GATEWAY.id);
+
+  it('the terminal of a device shows no setting tray, even when the incident offers settings for it', () => {
+    expect(GATEWAY.send.settings?.map((setting) => setting.deviceId)).toEqual(['your-laptop']);
+    expect(terminalCard(settings, YOURS)).toEqual({
+      fromId: 'you',
+      title: 'Terminal de [[tu-laptop]]',
+      trays: [{ name: 'to', chips: [{ id: 'printer', label: '192.168.1.21' }, { id: 'andres', label: '192.168.2.15' }] }],
+      fixed: { from: 'you', message: 'ping' },
+      origins: { you: YOURS },
+    });
+    expect(terminalLine(settings, { to: 'andres', message: 'ping' })).toBe('ping 192.168.2.15');
+  });
+
+  it('opens from the piece of the device and not from its settings entry', () => {
+    expect(terminalCard(settings, PIECE_ID.settings('your-laptop'))).toBeNull();
   });
 });
 

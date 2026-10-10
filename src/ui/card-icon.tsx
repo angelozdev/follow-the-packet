@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { InkIcon } from '@/scene';
 
-export type CardIconKind = 'lucia' | 'question' | 'result' | 'inspection' | 'terminal' | 'chapter';
+export type CardIconKind = 'lucia' | 'question' | 'result' | 'inspection' | 'terminal' | 'settings' | 'chapter';
 
 const SHAPES: Record<CardIconKind, ReactNode> = {
   lucia: (
@@ -29,6 +29,13 @@ const SHAPES: Record<CardIconKind, ReactNode> = {
       <path d="M7 10l3 2-3 2M12 15h5" />
     </>
   ),
+  settings: (
+    <>
+      <path d="M4 8h10M18 8h2M4 16h2M10 16h10" />
+      <circle cx="16" cy="8" r="2" />
+      <circle cx="8" cy="16" r="2" />
+    </>
+  ),
   chapter: (
     <>
       <circle cx="6" cy="18" r="2" />
@@ -38,7 +45,7 @@ const SHAPES: Record<CardIconKind, ReactNode> = {
   ),
 };
 
-/** The icon on the stripe of a card whose kind is not an entity of the map: Lucía, her question, the result, an inspection, a terminal and a chapter of the roadmap. A card about an entity wears that entity's icon (`EntityIcon`). */
+/** The icon on the stripe of a card whose kind is not an entity of the map: Lucía, her question, the result, an inspection, a terminal, the network settings of a device and a chapter of the roadmap. A card about an entity wears that entity's icon (`EntityIcon`). */
 export function CardIcon({ kind }: { kind: CardIconKind }) {
   return <InkIcon>{SHAPES[kind]}</InkIcon>;
 }

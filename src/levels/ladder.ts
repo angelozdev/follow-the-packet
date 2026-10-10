@@ -45,13 +45,20 @@ function cardTexts(incident: Incident): TermText[] {
   ]);
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident, hints, the question, the explanation and the takeaway. */
+/** Returns the texts the cards of settings of a send incident show: the name of each tray and the label of each chip; none for any other incident. */
+function settingTexts(incident: Incident): TermText[] {
+  if (incident.mechanic !== 'send') return [];
+  return (incident.send.settings ?? []).flatMap((setting) => [setting.name, ...setting.chips.map((chip) => chip.label)]);
+}
+
+/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings of a send incident, hints, the question, the explanation and the takeaway. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
     ...incident.tasks.map((task) => task.text),
     ...chipLabels(incident),
     ...cardTexts(incident),
+    ...settingTexts(incident),
     ...incident.hints,
     ...(incident.question ? [incident.question] : []),
     ...incident.explanation.flatMap((option) => [option.text, option.feedback]),

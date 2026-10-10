@@ -12,11 +12,22 @@ export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   label: TermText;
   locked: boolean;
   state: 'normal' | 'intruded' | 'blocking';
+  settings?: { id: string; label: TermText };
 };
 
 /** Returns the DOM id of a piece's label, so the focus can come back to it. */
 export function pieceDomId(pieceId: string): string {
   return `piece-${pieceId.replaceAll(':', '-')}`;
+}
+
+function Segments({ segments }: { segments: TermSegment[] }) {
+  return segments.map((segment, index) =>
+    segment.kind === 'name' ? (
+      <NameTag key={index}>{segment.text}</NameTag>
+    ) : (
+      <Fragment key={index}>{segment.text}</Fragment>
+    ),
+  );
 }
 
 function isOnlyName(segments: TermSegment[]): boolean {
@@ -27,9 +38,10 @@ function buttonClass(segments: TermSegment[], locked: boolean): string {
   return ['map-button', isOnlyName(segments) && 'map-button--name', locked && 'map-button--locked'].filter(Boolean).join(' ');
 }
 
+/** The label of a piece: a button that opens its card, with its name, its lock and its alert. A piece with a second entry, such as the settings card of a device, has a second button under it. */
 export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; onInspect: OnInspect; onActivate: (pieceId: string) => void }) {
   const segments = parseTermText(piece.label);
-  return (
+  const label = (
     <button
       type="button"
       id={pieceDomId(piece.id)}
@@ -44,13 +56,7 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
           </span>{' '}
         </>
       )}
-      {segments.map((segment, index) =>
-        segment.kind === 'name' ? (
-          <NameTag key={index}>{segment.text}</NameTag>
-        ) : (
-          <Fragment key={index}>{segment.text}</Fragment>
-        ),
-      )}
+      <Segments segments={segments} />
       {piece.locked && (
         <>
           {' '}
@@ -71,5 +77,15 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
         </>
       )}
     </button>
+  );
+  const { settings } = piece;
+  if (!settings) return label;
+  return (
+    <div className="map-labels">
+      {label}
+      <button type="button" id={pieceDomId(settings.id)} className="map-button" onClick={() => onActivate(settings.id)}>
+        <Segments segments={parseTermText(settings.label)} />
+      </button>
+    </div>
   );
 }

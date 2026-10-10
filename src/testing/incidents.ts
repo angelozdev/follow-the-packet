@@ -1,3 +1,4 @@
+import { applyAction } from '@/engine';
 import { INCIDENTS, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
 import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, device, officeNet, officeTwoFloorsNet } from './fixtures';
 
@@ -81,6 +82,37 @@ export function routedSendIncident(): SendIncident {
         { id: 'trace', label: '{{traceroute}}', command: 'traceroute', ...echo },
       ],
     },
+  };
+}
+
+/** Returns a send incident on the office of the map that grows, whose laptop was reinstalled and so has no default gateway: its ping to laptop-andres, on the other floor, cannot leave until the player sets the gateway on the card of the laptop, which offers none, the router of the floor, the printer (not a router) and an IP nobody has. The terminal offers only the address and the ping. */
+export function gatewayIncident(): SendIncident {
+  const { floor1, floor2 } = OFFICE_FLOORS;
+  const chip = (id: string, value: string | null) => ({ id, label: value ?? 'Ninguna', value });
+  return {
+    ...routedSendIncident(),
+    base: applyAction(officeTwoFloorsNet(), { type: 'setGateway', deviceId: 'your-laptop' }),
+    tasks: [{ id: 'andres', text: 'Que vuelva el {{ping}} a laptop-andres.', expect: { fromId: 'you', toId: 'andres', messageId: 'ping', outcome: 'replied' } }],
+    send: {
+      from: [{ id: 'you', endpoint: device('your-laptop') }],
+      to: [
+        { id: 'printer', address: floor1.printer },
+        { id: 'andres', address: floor2.andres },
+      ],
+      message: [{ id: 'ping', label: '{{ping}}', command: 'ping', icmpType: 8 }],
+      settings: [
+        {
+          id: 'gateway',
+          deviceId: 'your-laptop',
+          name: '{{default-gateway|puerta de enlace predeterminada}}',
+          chips: [chip('none', null), chip('router', floor1.gateway), chip('printer', floor1.printer), chip('nobody', floor1.nobody)],
+        },
+      ],
+    },
+    solution: [
+      { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'router' },
+      { type: 'sendPacket', fromId: 'you', toId: 'andres', messageId: 'ping' },
+    ],
   };
 }
 

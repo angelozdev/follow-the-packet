@@ -118,6 +118,11 @@ export const TERMINAL_TEXT = {
   },
 } as const;
 
+export const SETTINGS_TEXT = {
+  entry: (device: TermText): TermText => `Ajustes de red ${device}`,
+  title: (device: TermText): TermText => `Ajustes de red de ${device}`,
+} as const;
+
 export const EXPLANATION_TEXT = {
   type: 'Pregunta',
   whatHappened: '¿Qué pasó?',

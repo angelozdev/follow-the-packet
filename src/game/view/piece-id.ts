@@ -8,6 +8,7 @@ export const PIECE_ID = {
   firewall: (firewallId: string) => `firewall${SEPARATOR}${firewallId}`,
   actor: (actorId: string) => `actor${SEPARATOR}${actorId}`,
   router: (routerId: string) => `router${SEPARATOR}${routerId}`,
+  settings: (deviceId: string) => `settings${SEPARATOR}${deviceId}`,
   packet: (flowId: string) => `packet${SEPARATOR}${flowId}`,
   edge: 'edge',
   internet: 'internet',

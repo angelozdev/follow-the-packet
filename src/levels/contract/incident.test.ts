@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_RULE, OFFICE_FLOORS, actor, device, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
+import { NOTE_RULE, OFFICE_FLOORS, actor, device, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
 import { officeLeaks, packetFromChips, probeFromChips, unknownCardDeviceIds } from './chips';
 import { incidentSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
@@ -300,5 +300,55 @@ describe('identify incident contract', () => {
     expect(unknownCardDeviceIds(IDENTIFY, IDENTIFY.base ?? officeTwoFloorsNet())).toEqual([]);
     expect(unknownCardDeviceIds(IDENTIFY, officeNet())).toEqual(['guest-laptop']);
     expect(unknownCardDeviceIds(sendIncident(), officeNet())).toEqual([]);
+  });
+});
+
+describe('send settings contract', () => {
+  const GATEWAY = gatewayIncident();
+  const [gateway] = GATEWAY.send.settings ?? [];
+  const withSettings = (settings: unknown) => ({ ...GATEWAY, send: { ...GATEWAY.send, settings } });
+  const withChips = (chips: unknown) => withSettings([{ ...gateway, chips }]);
+  const [none, router] = gateway.chips;
+
+  it('accepts a gateway setting with its chips', () => {
+    expect(incidentSchema.safeParse(GATEWAY).success).toBe(true);
+    expect(gateway.chips.map((chip) => chip.value)).toEqual([null, OFFICE_FLOORS.floor1.gateway, OFFICE_FLOORS.floor1.printer, OFFICE_FLOORS.floor1.nobody]);
+    expect(incidentSchema.safeParse({ ...GATEWAY, send: { ...GATEWAY.send, settings: undefined }, solution: [GATEWAY.solution[1]] }).success).toBe(true);
+  });
+
+  it('rejects a setting for a device that is not an origin', () => {
+    expect(incidentSchema.safeParse(withSettings([{ ...gateway, deviceId: 'printer' }])).success).toBe(false);
+    expect(incidentSchema.safeParse(withSettings([{ ...gateway, deviceId: 'ghost' }])).success).toBe(false);
+  });
+
+  it('rejects a setting for an actor that is an origin, because only a device has a gateway', () => {
+    const fromActor = { ...GATEWAY.send, from: [...GATEWAY.send.from, { id: 'server', endpoint: actor('internet-server') }] };
+    expect(incidentSchema.safeParse({ ...GATEWAY, send: { ...fromActor, settings: [{ ...gateway, deviceId: 'internet-server' }] } }).success).toBe(false);
+  });
+
+  it('rejects a chip whose value is not an IPv4 address, two chips with the same id and a tray with a single chip', () => {
+    expect(incidentSchema.safeParse(withChips([none, { ...router, value: '192.168.1.300' }])).success).toBe(false);
+    expect(incidentSchema.safeParse(withChips([none, { ...router, id: none.id }])).success).toBe(false);
+    expect(incidentSchema.safeParse(withChips([router])).success).toBe(false);
+    expect(incidentSchema.safeParse(withSettings([])).success).toBe(false);
+  });
+
+  it('rejects the same setting twice for a device, and two chips with the same value', () => {
+    expect(incidentSchema.safeParse(withSettings([gateway, gateway])).success).toBe(false);
+    expect(incidentSchema.safeParse(withChips([none, { ...router, value: null }])).success).toBe(false);
+  });
+
+  it('accepts a solution that sets a setting the incident offers, and rejects one it does not', () => {
+    const [set, send] = GATEWAY.solution;
+    expect(set).toMatchObject({ type: 'setSetting' });
+    for (const patch of [{ chipId: 'ghost' }, { settingId: 'ghost' }, { deviceId: 'printer' }]) {
+      expect(incidentSchema.safeParse({ ...GATEWAY, solution: [{ ...set, ...patch }, send] }).success).toBe(false);
+    }
+  });
+
+  it('keeps a send solution from placing a rule or answering a card', () => {
+    const [set, send] = GATEWAY.solution;
+    expect(incidentSchema.safeParse({ ...GATEWAY, solution: [set, send, { type: 'answerCard', deviceId: 'your-laptop', picks: {} }] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...GATEWAY, solution: [set, send, { type: 'placeRule', firewallId: 'fw', whatId: 'a', fromId: 'b' }] }).success).toBe(false);
   });
 });

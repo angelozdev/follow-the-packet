@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { OUTCOMES, endpointSchema, icmpTypeSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from '@/engine';
+import { OUTCOMES, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from '@/engine';
 
 const id = z.string().min(1);
 const ECHO_REQUEST = 8;
@@ -27,9 +27,11 @@ const placeRuleSchema = z.object({ type: z.literal('placeRule'), firewallId: id,
 const removeRuleSchema = z.object({ type: z.literal('removeRule'), firewallId: id, ruleId: id });
 const sendPacketSchema = z.object({ type: z.literal('sendPacket'), fromId: id, toId: id, messageId: id });
 const answerCardSchema = z.object({ type: z.literal('answerCard'), deviceId: id, picks: z.record(id, id) });
+const setSettingSchema = z.object({ type: z.literal('setSetting'), deviceId: id, settingId: id, chipId: id });
 const ruleMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema]);
+const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema]);
 
-export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema]);
+export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema, setSettingSchema]);
 
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });
 const filterTaskSchema = z.object({ id, text: termText, flowIds: z.array(id).min(1) });
@@ -57,6 +59,8 @@ const messageChipSchema = z
       ctx.addIssue({ code: 'custom', message: `a ${chip.command} sends an Echo Request`, path: ['icmpType'] });
     }
   });
+const settingChipSchema = z.object({ id, label: termText, value: ipSchema.nullable() });
+const settingSchema = z.object({ id, deviceId: id, name: termText, chips: z.array(settingChipSchema).min(2) });
 const identifyTaskSchema = z.object({ id, text: termText, expect: z.object({ deviceId: id, trayId: id, chipId: id }) });
 const cardChipSchema = z.object({ id, label: termText, feedback: termText.optional() });
 const cardTraySchema = z.object({
@@ -103,8 +107,13 @@ const sendIncidentSchema = z.object({
   mechanic: z.literal('send'),
   tasks: z.array(sendTaskSchema).min(1),
   flows: z.array(flowSchema),
-  send: z.object({ from: z.array(originChipSchema).min(1), to: z.array(addressChipSchema).min(1), message: z.array(messageChipSchema).min(1) }),
-  solution: z.array(sendPacketSchema).min(1),
+  send: z.object({
+    from: z.array(originChipSchema).min(1),
+    to: z.array(addressChipSchema).min(1),
+    message: z.array(messageChipSchema).min(1),
+    settings: z.array(settingSchema).min(1).optional(),
+  }),
+  solution: z.array(sendMoveSchema).min(1),
 });
 
 const identifyIncidentSchema = z.object({
@@ -159,14 +168,29 @@ function checkFilter(incident: FilterShape, fail: Fail): void {
   }
 }
 
+function checkSettings({ send }: SendShape, fail: Fail): void {
+  const settings = send.settings ?? [];
+  const origins = new Set(send.from.flatMap(({ endpoint }) => (endpoint.kind === 'device' ? [endpoint.id] : [])));
+  uniqueIn(fail)('setting', settings.map((setting) => `${setting.deviceId}/${setting.id}`));
+  for (const setting of settings) {
+    const where = `${setting.deviceId}/${setting.id}`;
+    if (!origins.has(setting.deviceId)) fail(`${where}: a setting belongs to a device that sends`);
+    uniqueIn(fail)(`${where}: chip id`, setting.chips.map((chip) => chip.id));
+    uniqueIn(fail)(`${where}: chip value`, setting.chips.map((chip) => String(chip.value)));
+  }
+}
+
 function checkSend(incident: SendShape, fail: Fail): void {
   const unique = uniqueIn(fail);
   const ids = { from: incident.send.from.map((c) => c.id), to: incident.send.to.map((c) => c.id), message: incident.send.message.map((c) => c.id) };
   unique('origin chip id', ids.from);
   unique('address chip id', ids.to);
   unique('message chip id', ids.message);
+  checkSettings(incident, fail);
   const offers = (combination: { fromId: string; toId: string; messageId: string }) =>
     ids.from.includes(combination.fromId) && ids.to.includes(combination.toId) && ids.message.includes(combination.messageId);
+  const offersSetting = ({ deviceId, settingId, chipId }: Extract<SendShape['solution'][number], { type: 'setSetting' }>) =>
+    (incident.send.settings ?? []).some((setting) => setting.deviceId === deviceId && setting.id === settingId && setting.chips.some((chip) => chip.id === chipId));
   for (const task of incident.tasks) {
     if (!offers(task.expect)) fail(`${task.id}: expects chips the incident does not offer`);
   }
@@ -174,7 +198,8 @@ function checkSend(incident: SendShape, fail: Fail): void {
     if (flow.kind !== 'ambient') fail(`${flow.id}: a send incident has only ambient flows`);
   }
   for (const move of incident.solution) {
-    if (!offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
+    if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
+    if (move.type === 'setSetting' && !offersSetting(move)) fail(`the solution uses a setting the incident does not offer: ${move.deviceId}/${move.settingId}/${move.chipId}`);
   }
 }
 
@@ -242,6 +267,8 @@ export type WhatChip = FilterIncident['chips']['what'][number];
 export type FromChip = FilterIncident['chips']['from'][number];
 export type OriginChip = SendIncident['send']['from'][number];
 export type AddressChip = SendIncident['send']['to'][number];
+export type SettingSpec = NonNullable<SendIncident['send']['settings']>[number];
+export type SettingChip = SettingSpec['chips'][number];
 export type MessageChip = SendIncident['send']['message'][number];
 export type ExpectedOutcome = SendTask['expect']['outcome'];
 export type CardSpec = IdentifyIncident['identify']['cards'][number];
@@ -250,6 +277,7 @@ export type CardChip = TraySpec['chips'][number];
 export type PlayerMove = z.infer<typeof playerMoveSchema>;
 export type RuleMove = z.infer<typeof ruleMoveSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
+export type SettingMove = z.infer<typeof setSettingSchema>;
 export type AnswerMove = z.infer<typeof answerCardSchema>;
 export type ExplanationOption = Incident['explanation'][number];
 export type LevelEntry = Pick<Incident, 'id' | 'chapter' | 'order' | 'title' | 'role'>;
