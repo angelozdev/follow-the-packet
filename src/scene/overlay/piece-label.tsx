@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { MAP_TEXT, parseTermText, type EntityRef, type TermSegment, type TermText } from '@/copy';
+import { NameTag } from '@/design';
 import { InkIcon } from '@/scene/ink';
 import { inspectHandlers, type OnInspect } from './inspect-handlers';
 
@@ -45,9 +46,7 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
       )}
       {segments.map((segment, index) =>
         segment.kind === 'name' ? (
-          <span key={index} className="name-tag">
-            {segment.text}
-          </span>
+          <NameTag key={index}>{segment.text}</NameTag>
         ) : (
           <Fragment key={index}>{segment.text}</Fragment>
         ),

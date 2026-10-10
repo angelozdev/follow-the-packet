@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
-import { Button, ChipTray, Choice } from '@/design';
+import { Button, Card, ChipTray, Choice } from '@/design';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -115,7 +115,7 @@ export function InterfaceSection() {
           </Choice>
         </Specimen>
         <Specimen caption={VARIANT.right} wide>
-          <p className="feedback feedback--right">
+          <p className="feedback">
             <strong>{EXPLANATION_TEXT.right}</strong> {SAMPLE.feedback}
           </p>
         </Specimen>
@@ -127,32 +127,34 @@ export function InterfaceSection() {
       </Family>
       <Family name={INTERFACE_TEXT.family.cards}>
         <Specimen caption={VARIANT.card} wide>
-          <section className="card">
+          <Card>
             <h2>{LUCIA_TEXT.name}</h2>
             <p>
               <TaggedText text={SAMPLE.text} newTerms={NEW_TERMS} />
             </p>
-          </section>
+          </Card>
         </Specimen>
         <Specimen caption={VARIANT.cardSoon} wide>
-          <div className="chapter chapter--soon">
+          <Card variant="soon">
             <h2>{ROADMAP_TEXT.soon}</h2>
-          </div>
+          </Card>
         </Specimen>
         <Specimen caption={VARIANT.terminal} wide>
-          <section className="card chip-card">
-            <h2>
-              <TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} />
-            </h2>
-            <p className="slot">
-              <code>
-                <TaggedText text={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
-              </code>
-            </p>
-            <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />
-            <Button>{TERMINAL_TEXT.send}</Button>
-            <Button>{TASK_CARD_TEXT.done}</Button>
-          </section>
+          <Card>
+            <div className="chip-card">
+              <h2>
+                <TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} />
+              </h2>
+              <p className="slot">
+                <code>
+                  <TaggedText text={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
+                </code>
+              </p>
+              <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />
+              <Button>{TERMINAL_TEXT.send}</Button>
+              <Button>{TASK_CARD_TEXT.done}</Button>
+            </div>
+          </Card>
         </Specimen>
       </Family>
       <Family name={INTERFACE_TEXT.family.text}>
@@ -161,20 +163,16 @@ export function InterfaceSection() {
         </Specimen>
         <Specimen caption={VARIANT.caption}>
           <details className="lucia__glossary">
-            <summary>{LUCIA_TEXT.glossary}</summary>
+            <summary className="caption">{LUCIA_TEXT.glossary}</summary>
           </details>
         </Specimen>
         <Specimen caption={VARIANT.fieldCaption}>
-          <div className="inspection">
-            <dl>
-              <dt>{INSPECTION_TEXT.whatIs}</dt>
-            </dl>
-          </div>
+          <dl className="inspection__fields">
+            <dt className="caption caption--soft">{INSPECTION_TEXT.whatIs}</dt>
+          </dl>
         </Specimen>
         <Specimen caption={VARIANT.roleCaption}>
-          <div className="level-item">
-            <span className="role">{ROADMAP_TEXT.role.defender}</span>
-          </div>
+          <span className="caption caption--soft">{ROADMAP_TEXT.role.defender}</span>
         </Specimen>
         <Specimen caption={VARIANT.text} wide>
           <p>

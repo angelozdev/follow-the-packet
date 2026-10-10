@@ -1,5 +1,5 @@
 import { EXPLANATION_TEXT, type TermText } from '@/copy';
-import { Button, Choice } from '@/design';
+import { Button, Card, Choice } from '@/design';
 import type { ExplanationOption } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -24,7 +24,7 @@ function ContinueButton({ onContinue }: { onContinue: () => void }) {
 export function ExplanationCard({ question, options, choice, onChoose, onContinue }: ExplanationCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <section className="card explanation" aria-labelledby="explanation-title">
+    <Card aria-labelledby="explanation-title">
       <h2 id="explanation-title" ref={heading} tabIndex={-1}>
         <TaggedText text={EXPLANATION_TEXT.asks(question)} />
       </h2>
@@ -35,7 +35,7 @@ export function ExplanationCard({ question, options, choice, onChoose, onContinu
               <TaggedText text={option.text} />
             </Choice>
             {choice !== null && (index === choice || option.correct) && (
-              <p className={option.correct ? 'feedback feedback--right' : 'feedback feedback--wrong'}>
+              <p className={option.correct ? 'feedback' : 'feedback feedback--wrong'}>
                 <strong>{option.correct ? EXPLANATION_TEXT.right : EXPLANATION_TEXT.wrong}</strong> <TaggedText text={option.feedback} />
               </p>
             )}
@@ -43,6 +43,6 @@ export function ExplanationCard({ question, options, choice, onChoose, onContinu
         ))}
       </ol>
       {choice !== null && <ContinueButton onContinue={onContinue} />}
-    </section>
+    </Card>
   );
 }

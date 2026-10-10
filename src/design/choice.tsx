@@ -22,7 +22,7 @@ export function Choice({ variant = 'chip', pressed, ...props }: ChoiceProps) {
 export function ChipTray({ name, chips, picked, onPick }: { name: string; chips: TrayChip[]; picked: string | null; onPick: (chipId: string) => void }) {
   return (
     <div role="group" aria-label={name} className="tray">
-      <span className="tray__name" aria-hidden="true">
+      <span className="tray__name caption caption--soft" aria-hidden="true">
         {name}
       </span>
       {chips.map((chip) => (

@@ -1,5 +1,5 @@
 import { RESULT_TEXT, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { Button, Card } from '@/design';
 import { countStars, type Stars as EarnedStars } from '@/game';
 import type { Mechanic } from '@/levels';
 import { Stars } from '@/ui/stars';
@@ -15,7 +15,7 @@ function starText(key: (typeof STAR_KEYS)[number], mechanic: Mechanic): string {
 export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: EarnedStars; mechanic: Mechanic; takeaway: TermText; nextId: string | null }) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <section className="card result" aria-labelledby="result-title">
+    <Card aria-labelledby="result-title">
       <h2 id="result-title" ref={heading} tabIndex={-1}>
         {RESULT_TEXT.title}
       </h2>
@@ -41,6 +41,6 @@ export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: Earne
         )}
         <Button href="#/">{RESULT_TEXT.back}</Button>
       </nav>
-    </section>
+    </Card>
   );
 }

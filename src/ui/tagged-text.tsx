@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { LUCIA_TEXT, parseTermText, type TermId, type TermText } from '@/copy';
+import { NameTag } from '@/design';
 import { TermTip } from './term-tip';
 
 interface TaggedTextProps {
@@ -14,13 +15,7 @@ export function TaggedText({ text, newTerms, tips = true }: TaggedTextProps) {
     <>
       {parseTermText(text).map((segment, index) => {
         if (segment.kind === 'text') return <Fragment key={index}>{segment.text}</Fragment>;
-        if (segment.kind === 'name') {
-          return (
-            <span key={index} className="name-tag">
-              {segment.text}
-            </span>
-          );
-        }
+        if (segment.kind === 'name') return <NameTag key={index}>{segment.text}</NameTag>;
         return (
           <Fragment key={index}>
             {tips ? <TermTip id={segment.id}>{segment.text}</TermTip> : <span className="term">{segment.text}</span>}

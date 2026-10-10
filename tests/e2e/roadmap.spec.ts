@@ -7,7 +7,7 @@ test('the roadmap loads every chapter without console errors', async ({ page }) 
   const errors = collectErrors(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
-  await expect(page.locator('li.chapter--soon')).toHaveCount(SOON_CHAPTER_COUNT);
+  await expect(page.locator('li.card--soon')).toHaveCount(SOON_CHAPTER_COUNT);
   expect(errors).toEqual([]);
 });
 

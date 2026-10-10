@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { LUCIA_TEXT, TERMS, TERM_ENTITY, type TermId, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { Button, Card } from '@/design';
 import { isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import type { IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
@@ -80,7 +80,7 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
   const { incident } = session;
   const newTerms = new Set(incident.introduces);
   return (
-    <section className="card lucia" aria-labelledby="lucia-title">
+    <Card aria-labelledby="lucia-title">
       <h2 id="lucia-title">
         {LUCIA_TEXT.name} <span className="muted">· {LUCIA_TEXT.role}</span>
       </h2>
@@ -114,7 +114,7 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
         {session.rejection && <RejectionReply key={session.rejection.attempt} rejection={session.rejection} tasks={incident.tasks} />}
       </div>
       <details className="lucia__glossary">
-        <summary>{LUCIA_TEXT.glossary}</summary>
+        <summary className="caption">{LUCIA_TEXT.glossary}</summary>
         <Glossary terms={glossaryOrder(session.known, newTerms)} newTerms={newTerms} />
       </details>
       <div aria-live="polite">
@@ -128,6 +128,6 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
           {LUCIA_TEXT.askHint}
         </Button>
       )}
-    </section>
+    </Card>
   );
 }

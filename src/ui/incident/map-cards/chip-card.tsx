@@ -1,6 +1,6 @@
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
-import { Button, type TrayChip } from '@/design';
+import { Button, Card, type TrayChip } from '@/design';
 import { TaggedText } from '@/ui/tagged-text';
 
 interface ChipCardProps {
@@ -16,13 +16,15 @@ export function ChipCard({ title, heading, onClose, children }: ChipCardProps) {
     if (event.key === 'Escape') onClose();
   };
   return (
-    <section role="dialog" aria-label={toPlainText(title)} className="card chip-card" onKeyDown={closeOnEscape}>
-      <h2 ref={heading} tabIndex={-1}>
-        <TaggedText text={title} />
-      </h2>
-      {children}
-      <Button onClick={onClose}>{TASK_CARD_TEXT.done}</Button>
-    </section>
+    <Card role="dialog" aria-label={toPlainText(title)} onKeyDown={closeOnEscape}>
+      <div className="chip-card">
+        <h2 ref={heading} tabIndex={-1}>
+          <TaggedText text={title} />
+        </h2>
+        {children}
+        <Button onClick={onClose}>{TASK_CARD_TEXT.done}</Button>
+      </div>
+    </Card>
   );
 }
 

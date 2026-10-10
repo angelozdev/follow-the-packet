@@ -1,5 +1,5 @@
 import { ROADMAP_TEXT } from '@/copy';
-import { Button } from '@/design';
+import { Button, Card } from '@/design';
 import { CHAPTERS, type LevelEntry } from '@/levels';
 import { isUnlocked, type Progress } from '@/storage';
 import { Stars } from './stars';
@@ -16,7 +16,7 @@ export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: 
           const own = levels.filter((l) => l.chapter === chapter.number);
           const done = own.filter((l) => (progress[l.id] ?? 0) > 0).length;
           return (
-            <li key={chapter.number} className={own.length > 0 ? 'chapter' : 'chapter chapter--soon'}>
+            <Card as="li" key={chapter.number} variant={own.length > 0 ? 'default' : 'soon'}>
               <div className="chapter__head">
                 <span className="chapter__num">{chapter.number}</span>
                 <h2>{chapter.title}</h2>
@@ -37,14 +37,14 @@ export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: 
                             {label} {ROADMAP_TEXT.locked}
                           </span>
                         )}
-                        <span className="role">{ROADMAP_TEXT.role[level.role]}</span>
+                        <span className="caption caption--soft">{ROADMAP_TEXT.role[level.role]}</span>
                         <Stars count={progress[level.id] ?? 0} />
                       </li>
                     );
                   })}
                 </ol>
               )}
-            </li>
+            </Card>
           );
         })}
       </ol>
