@@ -1,6 +1,6 @@
 import type { FirewallKind, IcmpType } from '@/engine/network/types';
 
-export type StepStage = 'dns' | 'route' | 'nat' | 'firewall-out' | 'firewall-in' | 'host' | 'reply';
+export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
 export type CheckpointStage = Exclude<StepStage, 'nat'>;
 
@@ -25,6 +25,8 @@ export interface Step {
 }
 
 export type Reason =
+  | { code: 'address-invalid'; address: string }
+  | { code: 'address-localhost'; ip: string }
   | { code: 'dns-unresolved'; name: string; fromInside: boolean }
   | { code: 'dns-resolved'; name: string; ip: string; fromInside: boolean }
   | { code: 'route-private-from-outside'; ip: string }
@@ -35,6 +37,7 @@ export type Reason =
   | { code: 'route-nat'; from: string; to: string }
   | { code: 'route-from-internet' }
   | { code: 'route-self'; deviceId: string }
+  | { code: 'route-loopback'; deviceId: string; ip: string }
   | { code: 'firewall-out-pass'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-out-drop'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-in-pass'; deviceId: string; firewallKind: FirewallKind }
@@ -47,7 +50,7 @@ export type Reason =
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
-export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'lost';
+export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'lost';
 
 export interface TcpdumpLine {
   deviceId: string;

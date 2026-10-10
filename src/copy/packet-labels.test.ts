@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
 import { actor, device, lab03Net, ping } from '@/testing';
-import { deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
+import { OUTCOME_TEXT, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
+import { termsIn, toPlainText } from './term-text';
 
 const NET = lab03Net();
 
@@ -42,5 +43,14 @@ describe('packet labels', () => {
   it('tag Echo Reply and leave TCP plain', () => {
     expect(serviceLabel({ protocol: 'icmp', icmpType: 0 })).toBe('{{echo-reply}}');
     expect(serviceLabel({ protocol: 'tcp', port: 22 })).toBe('TCP 22');
+  });
+
+  it('says that an invalid address never left the device', () => {
+    const packet = ping(device('servidor1'), '172.31.38.300');
+    const trace = simulate(NET, packet);
+    expect(trace.outcome).toBe('invalid-address');
+    expect(OUTCOME_TEXT[trace.outcome]).toBe('No salió del dispositivo: la dirección no es una {{ipv4}} válida.');
+    expect(termsIn(OUTCOME_TEXT['invalid-address'])).toEqual(['ipv4']);
+    expect(toPlainText(OUTCOME_TEXT['invalid-address'])).not.toMatch(/dns|nombre/i);
   });
 });

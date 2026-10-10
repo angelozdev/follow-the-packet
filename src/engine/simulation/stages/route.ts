@@ -1,18 +1,28 @@
-import { ipInCidr, isPrivateIpv4 } from '@/engine/network/cidr';
-import { CONTINUE, stop, type Stage } from '@/engine/simulation/context';
+import { ipInCidr, isLoopbackIpv4, isPrivateIpv4 } from '@/engine/network/cidr';
+import { CONTINUE, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
+import type { Reason } from '@/engine/simulation/trace';
+import type { Device } from '@/engine/network/types';
 
 const INTERNET = 'internet';
+
+function deliverToSelf(ctx: SimContext, device: Device, reason: Reason): StageResult {
+  ctx.dest = device;
+  ctx.path = 'self';
+  ctx.effectiveSource = ctx.source.ip;
+  ctx.steps.push({ stage: 'route', at: device.id, verdict: 'pass', reason });
+  return CONTINUE;
+}
 
 export const routeStage: Stage = (ctx) => {
   const { net, source } = ctx;
   const destIp = ctx.destIp!;
 
+  if (source.device && isLoopbackIpv4(destIp)) {
+    return deliverToSelf(ctx, source.device, { code: 'route-loopback', deviceId: source.device.id, ip: destIp });
+  }
+
   if (source.device && destIp === source.ip) {
-    ctx.dest = source.device;
-    ctx.path = 'self';
-    ctx.effectiveSource = source.ip;
-    ctx.steps.push({ stage: 'route', at: source.device.id, verdict: 'pass', reason: { code: 'route-self', deviceId: source.device.id } });
-    return CONTINUE;
+    return deliverToSelf(ctx, source.device, { code: 'route-self', deviceId: source.device.id });
   }
 
   if (!source.inside && isPrivateIpv4(destIp)) {

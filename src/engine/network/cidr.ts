@@ -1,3 +1,6 @@
+export const LOOPBACK_IP = '127.0.0.1';
+const LOOPBACK_RANGE = '127.0.0.0/8';
+
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
 export function isIpv4(value: string): boolean {
@@ -39,4 +42,9 @@ export function isPrivateCidr(cidr: string): boolean {
   const { prefix } = parseCidr(cidr);
   const [base] = cidr.split('/');
   return PRIVATE_RANGES.some((range) => prefix >= parseCidr(range).prefix && ipInCidr(base, range));
+}
+
+/** True when the IPv4 address is in the loopback range 127.0.0.0/8 (RFC 1122, §3.2.1.3), which belongs to the device itself and never goes out to a network. */
+export function isLoopbackIpv4(ip: string): boolean {
+  return ipInCidr(ip, LOOPBACK_RANGE);
 }

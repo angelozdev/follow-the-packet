@@ -39,6 +39,10 @@ function side(fromInside: boolean): string {
 /** Turns an engine reason into the sentence the player reads, with its terms tagged. */
 export function describeReason(reason: Reason, net: Network): TermText {
   switch (reason.code) {
+    case 'address-invalid':
+      return `${reason.address} no es una dirección {{ipv4}} válida: cada uno de sus cuatro números debe ir de 0 a 255. El {{packet|paquete}} no sale del {{device|dispositivo}}.`;
+    case 'address-localhost':
+      return `El {{device|dispositivo}} ya conoce el nombre {{localhost}}: significa ${reason.ip}, una dirección de {{loopback}}. No pregunta a nadie.`;
     case 'dns-unresolved':
       return `El {{dns}} no conoce ${reason.name} cuando se pregunta desde ${side(reason.fromInside)} de la {{vpc}}.`;
     case 'dns-resolved':
@@ -59,6 +63,8 @@ export function describeReason(reason: Reason, net: Network): TermText {
       return 'Entra desde internet por el {{internet-gateway}}.';
     case 'route-self':
       return 'Va a la propia IP del dispositivo: no sale a la red.';
+    case 'route-loopback':
+      return `${reason.ip} es una dirección de {{loopback}}: el {{packet|paquete}} se entrega al propio {{device|dispositivo}} y no sale a la {{network|red}}.`;
     case 'firewall-out-pass':
       return FIREWALL_TEXT[reason.firewallKind].passOut(deviceName(net, reason.deviceId));
     case 'firewall-out-drop':

@@ -3,6 +3,7 @@ import { deathPoint, stopStep } from './checkpoints';
 import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import type { Network } from '@/engine/network/types';
+import type { Trace } from './trace';
 
 const S1 = { private: '172.31.16.131', public: '54.78.154.66' };
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
@@ -186,5 +187,80 @@ describe('devices and their firewalls', () => {
   it('a Security Group step names its kind too', () => {
     const trace = simulate(lab03Net(), ping(device('servidor1'), S2.private));
     expect(stopStep(trace)?.reason).toEqual({ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' });
+  });
+});
+
+describe('addresses, localhost and loopback', () => {
+  const codes = (trace: Trace): string[] => trace.steps.map((step) => step.reason.code);
+  const closedOffice = (): Network => {
+    const office = guardedOffice();
+    return { ...office, firewalls: office.firewalls.map((f) => ({ ...f, outbound: [] })) };
+  };
+
+  it.each(['192.168.1.300', '256.0.0.1', '10.0.0.1000', '1234.1.1.1'])(
+    'an address with a number above 255 never leaves the device and is not looked up as a name: %s',
+    (address) => {
+      const trace = simulate(officeNet(), ping(device('your-laptop'), address));
+      expect(trace.outcome).toBe('invalid-address');
+      expect(trace.steps).toEqual([{ stage: 'address', at: 'your-laptop', verdict: 'drop', reason: { code: 'address-invalid', address } }]);
+      expect(trace.steps.some((step) => step.stage === 'dns')).toBe(false);
+      expect(deathPoint(trace)).toEqual({ stage: 'address', at: 'your-laptop' });
+      expect([trace.resolvedIp, trace.destinationId, trace.tcpdump]).toEqual([null, null, []]);
+    },
+  );
+
+  it('an invalid address is invalid in a VPC too, from a device and from the internet', () => {
+    expect(simulate(lab03Net(), ping(device('servidor1'), '172.31.38.300')).outcome).toBe('invalid-address');
+    expect(simulate(lab03Net(), ping(actor('attacker'), '54.78.154.300')).outcome).toBe('invalid-address');
+  });
+
+  it('an address with the wrong number of groups is a name, not an invalid address', () => {
+    for (const net of [officeNet(), lab03Net()]) {
+      const trace = simulate(net, ping(device(net.devices[0].id), '192.168.1'));
+      expect(trace.outcome).toBe('unresolved');
+      expect(codes(trace)).toEqual(['dns-unresolved']);
+    }
+  });
+
+  it('a valid address and a name write no step of the address stage', () => {
+    expect(simulate(officeNet(), ping(device('your-laptop'), OFFICE.printer)).steps.some((step) => step.stage === 'address')).toBe(false);
+    expect(simulate(lab03Net(), ping(device('servidor1'), 'no-existe.example')).steps.some((step) => step.stage === 'address')).toBe(false);
+  });
+
+  it('localhost resolves to loopback without asking the DNS', () => {
+    const trace = simulate(officeNet(), ping(device('your-laptop'), 'localhost'));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.resolvedIp).toBe('127.0.0.1');
+    expect(codes(trace).slice(0, 2)).toEqual(['address-localhost', 'route-loopback']);
+    expect(trace.steps.some((step) => step.stage === 'dns')).toBe(false);
+    expect(simulate(lab03Net(), ping(device('servidor1'), 'localhost')).outcome).toBe('replied');
+  });
+
+  it.each(['127.0.0.1', '127.5.5.5', '127.255.255.254'])('127.0.0.1 and any other 127 address answer from the same device: %s', (address) => {
+    const trace = simulate(officeNet(), ping(device('your-laptop'), address));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.destinationId).toBe('your-laptop');
+    expect(trace.steps[0]).toEqual({ stage: 'route', at: 'your-laptop', verdict: 'pass', reason: { code: 'route-loopback', deviceId: 'your-laptop', ip: address } });
+    expect(codes(trace)).toEqual(['route-loopback', 'host-replies', 'reply-stateful']);
+  });
+
+  it('a loopback ping skips both firewalls of the device', () => {
+    const outside = simulate(closedOffice(), ping(device('lucia-laptop'), OFFICE.printer));
+    expect(deathPoint(outside)).toEqual({ stage: 'firewall-out', at: 'lucia-laptop' });
+    for (const address of ['127.0.0.1', 'localhost']) {
+      const trace = simulate(closedOffice(), ping(device('lucia-laptop'), address));
+      expect(trace.outcome).toBe('replied');
+      expect(trace.steps.filter((step) => step.stage === 'firewall-in' || step.stage === 'firewall-out')).toEqual([]);
+    }
+  });
+
+  it('the steps of a ping to your own IP stay as they were', () => {
+    const trace = simulate(lab03Net(), ping(device('servidor2'), S2.private));
+    expect(trace.steps).toEqual([
+      { stage: 'route', at: 'servidor2', verdict: 'pass', reason: { code: 'route-self', deviceId: 'servidor2' } },
+      { stage: 'host', at: 'servidor2', verdict: 'pass', reason: { code: 'host-replies', deviceId: 'servidor2' } },
+      { stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', deviceId: 'servidor2' } },
+    ]);
+    expect([trace.resolvedIp, trace.destinationId, trace.effectiveSource]).toEqual([S2.private, 'servidor2', S2.private]);
   });
 });

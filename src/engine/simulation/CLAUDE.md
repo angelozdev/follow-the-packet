@@ -3,7 +3,8 @@
 `simulate(network, packet)` and its trace: the stage pipeline, rule matching and where a packet stops.
 
 - Each step carries a reason code, never a sentence; `src/copy/` turns codes into Spanish.
-- Outcomes: `replied`, `timeout`, `refused`, `arrived-no-reply`, `unresolved` and `lost`. A packet is lost when no device of the network has its IP, or when it goes from the internet to a private IP (RFC 1918). A device that sends a packet to its own IP answers itself, past no firewall.
+- Outcomes: `replied`, `timeout`, `refused`, `arrived-no-reply`, `unresolved`, `invalid-address` and `lost`. A packet is lost when no device of the network has its IP, or when it goes from the internet to a private IP (RFC 1918). A device that sends a packet to its own IP, or to any `127.x.x.x` loopback address (RFC 1122, §3.2.1.3), answers itself, past no firewall.
+- The `address` stage runs first. Four numbers that are not an IPv4 address (one above 255) end as `invalid-address` before any lookup; `192.168.1`, with the wrong number of groups, is a name and goes on to `dns`. The name `localhost` becomes `127.0.0.1` with no lookup (RFC 6761, §6.3). A valid address or a name writes no step there, so a trace that does not use them is the same as before.
 - A step's `at` names where it happened: a device id, the network (`office` or `vpc`), its edge (`router` or `internet-gateway`) or `internet`.
 - `firewall-check.ts` filters a packet through a device's firewalls for both firewall stages and names their kind in the step. A device without firewalls is not filtered and gets no step.
 - Not here: the stages themselves (`stages/`), the network model (`src/engine/network/`).

@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { ipInCidr, isIpv4, isPrivateCidr, isPrivateIpv4, parseCidr } from './cidr';
+import { ipInCidr, isIpv4, isLoopbackIpv4, isPrivateCidr, isPrivateIpv4, parseCidr } from './cidr';
 
 describe('isIpv4', () => {
   it('accepts valid IPs and rejects names and out-of-range octets', () => {
     expect(isIpv4('172.31.16.131')).toBe(true);
     expect(isIpv4('256.1.1.1')).toBe(false);
     expect(isIpv4('ec2-34-244-254-100.eu-west-1.compute.amazonaws.com')).toBe(false);
+  });
+});
+
+describe('isLoopbackIpv4', () => {
+  it('accepts every 127.x.x.x address and nothing around the range', () => {
+    expect(['127.0.0.1', '127.5.5.5', '127.255.255.255'].every(isLoopbackIpv4)).toBe(true);
+    expect(['126.255.255.255', '128.0.0.1', '192.168.1.10'].some(isLoopbackIpv4)).toBe(false);
   });
 });
 

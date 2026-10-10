@@ -45,6 +45,24 @@ const CASES: [Reason, string][] = [
   [{ code: 'reply-stateful', deviceId: 'servidor2' }, 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.'],
 ];
 
+const ADDRESS_CASES: [Reason, string, string[]][] = [
+  [
+    { code: 'address-invalid', address: '192.168.1.300' },
+    '192.168.1.300 no es una dirección {{ipv4}} válida: cada uno de sus cuatro números debe ir de 0 a 255. El {{packet|paquete}} no sale del {{device|dispositivo}}.',
+    ['ipv4', 'packet', 'device'],
+  ],
+  [
+    { code: 'address-localhost', ip: '127.0.0.1' },
+    'El {{device|dispositivo}} ya conoce el nombre {{localhost}}: significa 127.0.0.1, una dirección de {{loopback}}. No pregunta a nadie.',
+    ['device', 'localhost', 'loopback'],
+  ],
+  [
+    { code: 'route-loopback', deviceId: 'your-laptop', ip: '127.5.5.5' },
+    '127.5.5.5 es una dirección de {{loopback}}: el {{packet|paquete}} se entrega al propio {{device|dispositivo}} y no sale a la {{network|red}}.',
+    ['loopback', 'packet', 'device', 'network'],
+  ],
+];
+
 describe('describeReason', () => {
   it.each(CASES)('describes %o', (reason, text) => {
     expect(describeReason(reason, NET)).toBe(text);
@@ -52,6 +70,16 @@ describe('describeReason', () => {
 
   it.each(CASES)('tags only registered terms: %o', (reason) => {
     expect(() => termsIn(describeReason(reason, NET))).not.toThrow();
+  });
+
+  it('describes address-invalid, address-localhost and route-loopback with registered terms only', () => {
+    for (const [reason, text, terms] of ADDRESS_CASES) {
+      expect(describeReason(reason, NET)).toBe(text);
+      expect(termsIn(text)).toEqual(terms);
+    }
+    const invalid = describeReason(ADDRESS_CASES[0][0], NET);
+    expect(termsIn(invalid)).not.toContain('dns');
+    expect(toPlainText(invalid)).not.toMatch(/dns|nombre/i);
   });
 
   it('an office names its own network and its own firewalls, not the VPC nor a Security Group', () => {
