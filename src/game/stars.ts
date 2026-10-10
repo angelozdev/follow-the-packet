@@ -17,7 +17,7 @@ export function isTight(world: Network, flows: Flow[]): boolean {
   return extraOpenings(world, expected).length === 0;
 }
 
-/** True when the close earns the middle star: for a filter, nothing opened beyond what is needed; for a send, no hint asked. */
+/** True when the close earns the middle star: for a filter, nothing opened beyond what is needed; for a send or an identify, no hint asked. */
 export function earnsMiddle(incident: Incident, world: Network, hintsShown: number): boolean {
   return incident.mechanic === 'filter' ? isTight(world, incident.flows) : hintsShown === 0;
 }

@@ -1,7 +1,7 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
+import { countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -9,6 +9,7 @@ import { useStillMode } from '@/ui/use-still-mode';
 import { ExplanationCard } from './explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './lucia-card';
+import { IdentifyCard } from './map-cards/identify-card';
 import { TaskCard } from './map-cards/task-card';
 import { TerminalCard } from './map-cards/terminal-card';
 import { ResultCard } from './result-card';
@@ -30,6 +31,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const terminal = playing && cardPieceId ? terminalCard(session, cardPieceId) : null;
+  const identify = playing && cardPieceId ? identifyCard(session, cardPieceId) : null;
   const inspection = inspecting ? inspect(session, inspecting) : null;
 
   const activate = (pieceId: string) => {
@@ -60,7 +62,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           flows={session.runs}
           sent={session.sent}
           still={still}
-          activePieceId={card || terminal ? cardPieceId : null}
+          activePieceId={card || terminal || identify ? cardPieceId : null}
           overlay={
             (card && chips && (
               <TaskCard
@@ -79,6 +81,14 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
                 route={(picks) => tracerouteLines(session, picks)}
                 onPickOrigin={(fromId) => setCardPieceId(terminal.origins[fromId])}
                 onSend={({ from, to, message }) => dispatch({ type: 'sendPacket', fromId: from, toId: to, messageId: message })}
+                onClose={closeCard}
+              />
+            )) ||
+            (identify && (
+              <IdentifyCard
+                key={identify.deviceId}
+                card={identify}
+                onAnswer={(picks) => dispatch({ type: 'answerCard', deviceId: identify.deviceId, picks })}
                 onClose={closeCard}
               />
             ))

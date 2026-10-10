@@ -94,8 +94,26 @@ export function unknownShownIds(incident: Incident, world: Network): string[] {
   return (incident.shown ?? []).filter((id) => !placed.has(id));
 }
 
+/** Returns the ids of the devices whose card an identify incident offers, in the order of its cards; none for any other incident. */
+export function cardDeviceIds(incident: Incident): string[] {
+  return incident.mechanic === 'identify' ? incident.identify.cards.map((card) => card.deviceId) : [];
+}
+
+/** Returns the ids of the cards of an identify incident that name no device of the world, in the order of its cards. */
+export function unknownCardDeviceIds(incident: Incident, world: Network): string[] {
+  const devices = new Set(world.devices.map((device) => device.id));
+  return cardDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
+}
+
 function sendersOf(incident: Incident): string[] {
-  return incident.mechanic === 'send' ? incident.send.from.map((chip) => chip.endpoint.id) : incident.flows.map((flow) => flow.packet.from.id);
+  switch (incident.mechanic) {
+    case 'send':
+      return incident.send.from.map((chip) => chip.endpoint.id);
+    case 'identify':
+      return cardDeviceIds(incident);
+    case 'filter':
+      return incident.flows.map((flow) => flow.packet.from.id);
+  }
 }
 
 function addressesOf(incident: Incident): string[] {
@@ -117,7 +135,7 @@ function drawnWith(world: Network, id: string): string {
   return world.devices.find((device) => device.firewallIds.includes(id))?.id ?? id;
 }
 
-/** Returns, in order, what the list of shown pieces of an incident must hold and lacks: the sender, the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
+/** Returns, in order, what the list of shown pieces of an incident must hold and lacks: the sender (or, in an identify incident, the device of every card), the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
 export function missingShownIds(incident: Incident, world: Network): string[] {
   if (!incident.shown) return [];
   const shown = new Set(incident.shown);

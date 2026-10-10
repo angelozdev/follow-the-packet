@@ -40,6 +40,7 @@ function shownTexts(session: Session): TermText[] {
 
 function movesToTry(incident: Incident, start: Session): SessionAction[] {
   if (incident.mechanic === 'send') return sendCombinations(incident).map((combination) => ({ type: 'sendPacket', ...combination }));
+  if (incident.mechanic === 'identify') return [];
   const cards = pieceViews(start)
     .filter((piece) => piece.configurable)
     .flatMap((piece) => firewallCard(start, piece.id) ?? []);

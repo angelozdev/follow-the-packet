@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, REPO_ROOT, device, officeNet, officeTwoFloorsNet, sendIncident, syllabusLessons, withDevice } from '@/testing';
+import { OFFICE_FLOORS, REPO_ROOT, device, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import { CHAPTERS } from './chapters';
-import { missingShownIds, officeLeaks, unknownExpectedIds, unknownShownIds } from './contract/chips';
+import { missingShownIds, officeLeaks, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds } from './contract/chips';
 import { incidentSchema, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
@@ -41,6 +41,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
   it('every expected id names something in the start world of its incident', () => {
     expect(unknownExpectedIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
+  });
+
+  it('every card of an incident names a device in its start world', () => {
+    expect(unknownCardDeviceIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
   });
 
   it('every id in the list of shown pieces of an incident names something in its world', () => {
@@ -123,5 +127,11 @@ describe('shown ids', () => {
   it('asks for the router that owns the interface a destination address names', () => {
     const toGateway = showing({ shown: ['your-laptop'], to: [{ id: 'gateway', address: floor1.gateway }], by: 'your-laptop' });
     expect(missingShownIds(toGateway, world)).toEqual([officeRouter.id]);
+  });
+
+  it('asks for the device of every card of an identify incident', () => {
+    const identifying = identifyIncident();
+    expect(missingShownIds({ ...identifying, shown: ['printer'] }, officeTwoFloorsNet())).toEqual(['guest-laptop']);
+    expect(missingShownIds({ ...identifying, shown: ['printer', 'guest-laptop'] }, officeTwoFloorsNet())).toEqual([]);
   });
 });

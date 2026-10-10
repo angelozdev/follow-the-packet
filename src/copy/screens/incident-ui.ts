@@ -127,11 +127,13 @@ export const EXPLANATION_TEXT = {
   seeResult: 'Ver resultado',
 } as const;
 
+const WITHOUT_HINTS = 'Lo resolviste sin pistas';
+
 export const RESULT_TEXT = {
   type: 'Resultado',
   title: 'Incidente cerrado',
   stars: { closed: 'Cerraste el incidente', explained: 'Explicaste qué pasó a la primera' },
-  middle: { filter: 'Abriste solo lo justo', send: 'Lo resolviste sin pistas' },
+  middle: { filter: 'Abriste solo lo justo', send: WITHOUT_HINTS, identify: WITHOUT_HINTS },
   earned: 'conseguida',
   missed: 'sin conseguir',
   takeaway: 'Lo que te llevas',

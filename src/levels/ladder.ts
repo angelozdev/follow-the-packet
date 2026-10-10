@@ -24,18 +24,34 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   };
 }
 
-/** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send (an origin is named after the world and an address is only an address). */
+/** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send (an origin is named after the world and an address is only an address), none for an identify (its chips are values, such as an IP, and not terms). */
 export function chipLabels(incident: Incident): TermText[] {
-  const chips = incident.mechanic === 'filter' ? [...incident.chips.what, ...incident.chips.from] : incident.send.message;
-  return chips.map((chip) => chip.label);
+  switch (incident.mechanic) {
+    case 'filter':
+      return [...incident.chips.what, ...incident.chips.from].map((chip) => chip.label);
+    case 'send':
+      return incident.send.message.map((chip) => chip.label);
+    case 'identify':
+      return [];
+  }
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, hints, the question, the explanation and the takeaway. */
+/** Returns the texts the cards of an identify incident show: the question of a card, the label and the feedback of each chip, and the rule of an initial pick; none for any other incident. */
+function cardTexts(incident: Incident): TermText[] {
+  if (incident.mechanic !== 'identify') return [];
+  return incident.identify.cards.flatMap((card) => [
+    ...(card.question ? [card.question] : []),
+    ...card.trays.flatMap((tray) => [...(tray.initialPickRule ? [tray.initialPickRule] : []), ...tray.chips.flatMap((chip) => [chip.label, ...(chip.feedback ? [chip.feedback] : [])])]),
+  ]);
+}
+
+/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident, hints, the question, the explanation and the takeaway. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
     ...incident.tasks.map((task) => task.text),
     ...chipLabels(incident),
+    ...cardTexts(incident),
     ...incident.hints,
     ...(incident.question ? [incident.question] : []),
     ...incident.explanation.flatMap((option) => [option.text, option.feedback]),

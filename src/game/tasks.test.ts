@@ -3,7 +3,7 @@ import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import type { Network, Outcome } from '@/engine';
 import type { MessageChip, SendIncident, SendTask } from '@/levels';
-import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { runFlows, sendPacket, type SentPacket } from './flow-runs';
 import { failingTaskIds, taskHolds } from './tasks';
 
@@ -175,5 +175,23 @@ describe('send tasks in an office with routers', () => {
     const packet = sendPacket(unplugged, incident, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'trace' }, 1, EVERY_TERM);
     expect(packet?.route?.lines).toEqual([]);
     expect(holds(packet, task('server', 'trace', 'no-route', 'your-laptop'))).toBe(true);
+  });
+});
+
+describe('identify tasks', () => {
+  const identifying = identifyIncident();
+  const [guest, printer] = identifying.tasks;
+
+  it('holds when the chip confirmed for its device and tray is the one it expects, and no other', () => {
+    expect(taskHolds(printer, [], [], { printer: { ip: 'right' } })).toBe(true);
+    expect(taskHolds(printer, [], [], { printer: { ip: 'note' } })).toBe(false);
+    expect(taskHolds(printer, [], [], { 'guest-laptop': { ip: 'right' } })).toBe(false);
+    expect(taskHolds(printer, [], [], { printer: { other: 'right' } })).toBe(false);
+  });
+
+  it('does not hold with nothing confirmed, and lists the open ones in the order of the incident', () => {
+    expect(taskHolds(guest, [], [])).toBe(false);
+    expect(failingTaskIds(identifying.tasks, [], [], { 'guest-laptop': { 'in-network': 'no' } })).toEqual([printer.id]);
+    expect(failingTaskIds(identifying.tasks, [], [], { 'guest-laptop': { 'in-network': 'no' }, printer: { ip: 'right' } })).toEqual([]);
   });
 });

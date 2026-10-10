@@ -3,10 +3,11 @@ import type { TermId } from '@/copy';
 import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
+import { taskHolds } from './tasks';
 
 const FIRST = filterIncident('04-01');
 const FULL_STARS = 3;
@@ -166,6 +167,92 @@ describe('sending packets', () => {
   it('nothing is sent once the incident is closed', () => {
     const closed = sending(PING_PRINTER, FROM_OUTSIDE, SUBMIT);
     expect(sessionReducer(closed, PING_PRINTER)).toBe(closed);
+  });
+});
+
+describe('answering the cards of an identify incident', () => {
+  const IDENTIFYING = identifyIncident();
+  const [GUEST_TASK, PRINTER_TASK] = IDENTIFYING.tasks;
+  const answer = (deviceId: string, picks: Record<string, string>): SessionAction => ({ type: 'answerCard', deviceId, picks });
+  const MARK_GUEST_OUT = answer('guest-laptop', { 'in-network': 'no' });
+  const PICK_RIGHT_IP = answer('printer', { ip: 'right' });
+  const PICK_MARTA_IP = answer('printer', { ip: 'marta' });
+  const identifying = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([IDENTIFYING], IDENTIFYING.id));
+  const holds = (session: Session, taskId: string) => {
+    const task = session.incident.tasks.find((candidate) => candidate.id === taskId);
+    if (!task) throw new Error(`missing task ${taskId}`);
+    return taskHolds(task, session.runs, session.sent, session.answers);
+  };
+
+  it('a tray can start with a chip already picked', () => {
+    expect(identifying().answers).toEqual({ printer: { ip: 'note' } });
+  });
+
+  it('a task whose chip is not the one picked from the start stays open', () => {
+    const start = identifying();
+    expect(holds(start, GUEST_TASK.id)).toBe(false);
+    expect(holds(start, PRINTER_TASK.id)).toBe(false);
+    expect(sessionReducer(start, SUBMIT).rejection?.failingTaskIds).toEqual([GUEST_TASK.id, PRINTER_TASK.id]);
+  });
+
+  it('starting the incident again puts the initial picks back', () => {
+    const answered = identifying(MARK_GUEST_OUT, PICK_RIGHT_IP);
+    expect(answered.answers).toEqual({ 'guest-laptop': { 'in-network': 'no' }, printer: { ip: 'right' } });
+    expect(startSession([IDENTIFYING], IDENTIFYING.id).answers).toEqual({ printer: { ip: 'note' } });
+  });
+
+  it('answering a card keeps the chip picked for that device and tray', () => {
+    const answered = identifying(MARK_GUEST_OUT);
+    expect(answered.answers).toEqual({ 'guest-laptop': { 'in-network': 'no' }, printer: { ip: 'note' } });
+    expect(answered.world).toBe(identifying().world);
+  });
+
+  it('a task holds when its chip is the one picked', () => {
+    const answered = identifying(MARK_GUEST_OUT);
+    expect(holds(answered, GUEST_TASK.id)).toBe(true);
+    expect(holds(answered, PRINTER_TASK.id)).toBe(false);
+    expect(holds(identifying(MARK_GUEST_OUT, PICK_RIGHT_IP), PRINTER_TASK.id)).toBe(true);
+  });
+
+  it('picking another chip changes the answer', () => {
+    const right = identifying(PICK_RIGHT_IP);
+    const changed = sessionReducer(right, PICK_MARTA_IP);
+    expect(changed.answers.printer).toEqual({ ip: 'marta' });
+    expect(holds(changed, PRINTER_TASK.id)).toBe(false);
+  });
+
+  it('answers that name a card, a tray or a chip the incident does not offer change nothing', () => {
+    const start = identifying();
+    expect(sessionReducer(start, answer('ghost', { ip: 'right' }))).toBe(start);
+    expect(sessionReducer(start, answer('printer', { ghost: 'right' }))).toBe(start);
+    expect(sessionReducer(start, answer('printer', { ip: 'ghost' }))).toBe(start);
+    expect(sessionReducer(start, answer('printer', { ip: 'note' }))).toBe(start);
+  });
+
+  it('answering takes Lucía’s reply away, and a filter incident has no cards to answer', () => {
+    const rejected = identifying(SUBMIT);
+    expect(rejected.rejection).not.toBeNull();
+    expect(sessionReducer(rejected, MARK_GUEST_OUT).rejection).toBeNull();
+    const first = play();
+    expect(sessionReducer(first, MARK_GUEST_OUT)).toBe(first);
+  });
+
+  it('the incident closes only with every card task done, and asking a hint costs the middle star', () => {
+    expect(identifying(MARK_GUEST_OUT, SUBMIT).phase).toBe('playing');
+    expect(identifying(PICK_RIGHT_IP, SUBMIT).phase).toBe('playing');
+    const closed = identifying(MARK_GUEST_OUT, PICK_RIGHT_IP, SUBMIT);
+    expect(closed.phase).toBe('explaining');
+    expect(starsOf(closed)).toMatchObject({ closed: true, middle: true });
+    expect(starsOf(identifying({ type: 'showHint' }, MARK_GUEST_OUT, PICK_RIGHT_IP, SUBMIT))).toMatchObject({ closed: true, middle: false });
+  });
+
+  it('the reference solution closes it', () => {
+    expect([...IDENTIFYING.solution, SUBMIT].reduce(sessionReducer, startSession([IDENTIFYING], IDENTIFYING.id)).phase).toBe('explaining');
+  });
+
+  it('answers are ignored once the incident is closed', () => {
+    const closed = identifying(MARK_GUEST_OUT, PICK_RIGHT_IP, SUBMIT);
+    expect(sessionReducer(closed, PICK_MARTA_IP)).toBe(closed);
   });
 });
 

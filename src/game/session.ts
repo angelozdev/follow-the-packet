@@ -1,11 +1,9 @@
 import type { TermId } from '@/copy';
 import type { Network } from '@/engine';
-import { applyMove, configurableParts, knownTerms, startWorld, type ConfigurableParts, type Incident, type PlayerMove, type SendMove } from '@/levels';
+import { applyMove, configurableParts, knownTerms, startWorld, type AnswerMove, type ConfigurableParts, type IdentifyIncident, type Incident, type PlayerMove, type RuleMove, type SendMove } from '@/levels';
 import { runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
 import { earnsMiddle, type Stars } from './stars';
-import { failingTaskIds } from './tasks';
-
-type RuleMove = Exclude<PlayerMove, SendMove>;
+import { failingTaskIds, type Answers } from './tasks';
 
 export type SessionPhase = 'playing' | 'explaining' | 'result';
 
@@ -23,6 +21,7 @@ export interface Session {
   runs: FlowRun[];
   sent: SentPacket[];
   sends: number;
+  answers: Answers;
   rejection: Rejection | null;
   alerts: number;
   hintsShown: number;
@@ -42,7 +41,14 @@ function hasIntrusion(runs: FlowRun[]): boolean {
   return runs.some((run) => run.kind === 'forbidden' && run.reached);
 }
 
-/** Starts an incident from its canonical world, with Lucía's reply empty. */
+/** Returns the answers an incident starts with: the chip every tray of an identify incident starts picked with, and nothing else. */
+function initialAnswers(incident: Incident): Answers {
+  if (incident.mechanic !== 'identify') return {};
+  const picked = incident.identify.cards.map((card) => [card.deviceId, Object.fromEntries(card.trays.flatMap((tray) => (tray.initialPick === undefined ? [] : [[tray.id, tray.initialPick]])))] as const);
+  return Object.fromEntries(picked.filter(([, picks]) => Object.keys(picks).length > 0));
+}
+
+/** Starts an incident from its canonical world, with Lucía's reply empty and every initial pick of its cards as the answer saved. */
 export function startSession(incidents: Incident[], incidentId: string): Session {
   const incident = incidents.find((i) => i.id === incidentId);
   if (!incident) throw new Error(`unknown incident ${incidentId}`);
@@ -57,6 +63,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     runs,
     sent: [],
     sends: 0,
+    answers: initialAnswers(incident),
     rejection: null,
     alerts: hasIntrusion(runs) ? 1 : 0,
     hintsShown: 0,
@@ -96,9 +103,24 @@ function send(state: Session, action: SendMove): Session {
   return { ...state, sent, sends: packet.send, rejection: null };
 }
 
+function offeredPicks({ identify }: IdentifyIncident, { deviceId, picks }: AnswerMove): Record<string, string> {
+  const card = identify.cards.find((candidate) => candidate.deviceId === deviceId);
+  const offered = Object.entries(picks).filter(([trayId, chipId]) => card?.trays.find((tray) => tray.id === trayId)?.chips.some((chip) => chip.id === chipId));
+  return Object.fromEntries(offered);
+}
+
+/** Saves the chips the player confirmed on a card, tray by tray; a tray, a chip or a card the incident does not offer is left out, and an answer that changes nothing returns the same session. */
+function answer(state: Session, action: AnswerMove): Session {
+  if (state.phase !== 'playing' || state.incident.mechanic !== 'identify') return state;
+  const picks = offeredPicks(state.incident, action);
+  const saved = state.answers[action.deviceId] ?? {};
+  if (Object.entries(picks).every(([trayId, chipId]) => saved[trayId] === chipId)) return state;
+  return { ...state, answers: { ...state.answers, [action.deviceId]: { ...saved, ...picks } }, rejection: null };
+}
+
 function submit(state: Session): Session {
   if (state.phase !== 'playing') return state;
-  const failing = failingTaskIds(state.incident.tasks, state.runs, state.sent);
+  const failing = failingTaskIds(state.incident.tasks, state.runs, state.sent, state.answers);
   if (failing.length === 0) return { ...state, phase: 'explaining', middle: earnsMiddle(state.incident, state.world, state.hintsShown), rejection: null };
   return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
@@ -115,6 +137,8 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
       return move(state, action);
     case 'sendPacket':
       return send(state, action);
+    case 'answerCard':
+      return answer(state, action);
     case 'submit':
       return submit(state);
     case 'showHint':

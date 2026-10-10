@@ -8,9 +8,9 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (sending a packet, an unknown firewall or chip, a rule that already exists, a rule id that is not there). */
+/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, an unknown firewall or chip, a rule that already exists, a rule id that is not there). */
 export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
-  if (move.type === 'sendPacket') return world;
+  if (move.type === 'sendPacket' || move.type === 'answerCard') return world;
   const firewall = world.firewalls.find((f) => f.id === move.firewallId);
   if (!firewall) return world;
   if (move.type === 'removeRule') {

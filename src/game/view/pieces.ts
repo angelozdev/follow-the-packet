@@ -3,6 +3,7 @@ import { isClientActor, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
+import { identifyPieces } from './cards/identify-card';
 import { originPieces } from './cards/terminal-card';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
@@ -85,17 +86,17 @@ function outside(session: Session): PieceView[] {
   ];
 }
 
-/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal. A world with routers draws them in place of the lone edge, each under its own name. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor. */
+/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal; a device with a card in an identify incident opens it. A world with routers draws them in place of the lone edge, each under its own name. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor. */
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   const intruded = intrudedDeviceIds(session.runs);
-  const origins = new Set(Object.values(originPieces(session)));
+  const opening = new Set([...Object.values(originPieces(session)), ...identifyPieces(session)]);
   return [
     ...world.devices
       .filter((device) => isShown(session, device.id))
       .map((device) => {
         const id = PIECE_ID.device(device.id);
-        const sends = origins.has(id);
+        const sends = opening.has(id);
         return piece(
           { kind: 'device', variant: device.kind },
           { id, anchorId: device.id, label: nameTag(device.name), locked: !parts.hostSettings && !sends, configurable: sends, state: intruded.has(device.id) ? 'intruded' : 'normal' },
@@ -106,7 +107,7 @@ export function pieceViews(session: Session): PieceView[] {
       .filter((actor) => isShown(session, actor.id))
       .flatMap((actor): PieceView[] => {
         const id = PIECE_ID.actor(actor.id);
-        const sends = origins.has(id);
+        const sends = opening.has(id);
         if (!isClientActor(actor)) return [piece({ kind: 'device', variant: 'internet-server' }, { id, anchorId: actor.id, label: nameTag(actor.name), locked: !sends, configurable: sends, state: 'normal' })];
         return [piece({ kind: 'actor', variant: actor.kind }, { id, anchorId: actor.id, label: nameTag(actor.name), locked: false, configurable: sends, state: 'normal' })];
       }),

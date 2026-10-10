@@ -3,7 +3,7 @@ import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText, type TermId } from '@/c
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { PIECE_ID } from './piece-id';
@@ -54,6 +54,16 @@ describe('pieceViews', () => {
     expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.actor('attacker'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.device('printer'), locked: true, configurable: false });
+  });
+
+  it('in an identify incident the devices with a card open it and have no lock', () => {
+    const identifying = identifyIncident();
+    const pieces = pieceViews(startSession([identifying], identifying.id));
+    const opening = pieces.filter((piece) => piece.kind === 'device').map(({ id, locked, configurable }) => ({ id, locked, configurable }));
+    expect(opening).toContainEqual({ id: PIECE_ID.device('printer'), locked: false, configurable: true });
+    expect(opening).toContainEqual({ id: PIECE_ID.device('guest-laptop'), locked: false, configurable: true });
+    expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: true, configurable: false });
+    expect(opening).toContainEqual({ id: PIECE_ID.device('marta-laptop'), locked: true, configurable: false });
   });
 
   it('an actor of kind server is not drawn as an actor piece', () => {

@@ -4,6 +4,7 @@ import { OUTCOMES, endpointSchema, icmpTypeSchema, networkActionSchema, networkS
 
 const id = z.string().min(1);
 const ECHO_REQUEST = 8;
+const SEGMENTED_CHIPS = 2;
 
 function termTextProblem(text: string): string | undefined {
   try {
@@ -25,9 +26,10 @@ export const flowKindSchema = z.enum(['required', 'forbidden', 'ambient']);
 const placeRuleSchema = z.object({ type: z.literal('placeRule'), firewallId: id, whatId: id, fromId: id });
 const removeRuleSchema = z.object({ type: z.literal('removeRule'), firewallId: id, ruleId: id });
 const sendPacketSchema = z.object({ type: z.literal('sendPacket'), fromId: id, toId: id, messageId: id });
+const answerCardSchema = z.object({ type: z.literal('answerCard'), deviceId: id, picks: z.record(id, id) });
 const ruleMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema]);
 
-export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema]);
+export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema]);
 
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });
 const filterTaskSchema = z.object({ id, text: termText, flowIds: z.array(id).min(1) });
@@ -55,6 +57,17 @@ const messageChipSchema = z
       ctx.addIssue({ code: 'custom', message: `a ${chip.command} sends an Echo Request`, path: ['icmpType'] });
     }
   });
+const identifyTaskSchema = z.object({ id, text: termText, expect: z.object({ deviceId: id, trayId: id, chipId: id }) });
+const cardChipSchema = z.object({ id, label: termText, feedback: termText.optional() });
+const cardTraySchema = z.object({
+  id,
+  name: z.string().min(1),
+  chips: z.array(cardChipSchema).min(2),
+  initialPick: id.optional(),
+  initialPickRule: termText.optional(),
+  segmented: z.boolean().optional(),
+});
+const cardSchema = z.object({ deviceId: id, question: termText.optional(), trays: z.array(cardTraySchema).min(1) });
 const optionSchema = z.object({ text: termText, feedback: termText, correct: z.boolean() });
 
 const common = {
@@ -94,8 +107,19 @@ const sendIncidentSchema = z.object({
   solution: z.array(sendPacketSchema).min(1),
 });
 
+const identifyIncidentSchema = z.object({
+  ...common,
+  mechanic: z.literal('identify'),
+  tasks: z.array(identifyTaskSchema).min(1),
+  flows: z.array(flowSchema),
+  identify: z.object({ cards: z.array(cardSchema).min(1) }),
+  solution: z.array(answerCardSchema).min(1),
+});
+
 type FilterShape = z.infer<typeof filterIncidentSchema>;
 type SendShape = z.infer<typeof sendIncidentSchema>;
+type IdentifyShape = z.infer<typeof identifyIncidentSchema>;
+type CardTrayShape = z.infer<typeof cardTraySchema>;
 type Fail = (message: string) => void;
 
 function repeated(values: string[]): string | undefined {
@@ -154,7 +178,36 @@ function checkSend(incident: SendShape, fail: Fail): void {
   }
 }
 
-export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSchema, sendIncidentSchema]).superRefine((incident, ctx) => {
+function checkTray(deviceId: string, tray: CardTrayShape, fail: Fail): void {
+  const where = `${deviceId}/${tray.id}`;
+  uniqueIn(fail)(`${where}: chip id`, tray.chips.map((chip) => chip.id));
+  if (tray.initialPick !== undefined && !tray.chips.some((chip) => chip.id === tray.initialPick)) fail(`${where}: the initial pick ${tray.initialPick} is not a chip of the tray`);
+  if (tray.initialPickRule !== undefined && tray.initialPick === undefined) fail(`${where}: the rule of an initial pick needs an initial pick`);
+  if (tray.segmented && tray.chips.length !== SEGMENTED_CHIPS) fail(`${where}: a segmented tray has exactly ${SEGMENTED_CHIPS} chips`);
+}
+
+function checkIdentify(incident: IdentifyShape, fail: Fail): void {
+  const { cards } = incident.identify;
+  const unique = uniqueIn(fail);
+  unique('card device', cards.map((card) => card.deviceId));
+  for (const card of cards) {
+    unique(`${card.deviceId}: tray id`, card.trays.map((tray) => tray.id));
+    for (const tray of card.trays) checkTray(card.deviceId, tray, fail);
+  }
+  const offers = ({ deviceId, trayId, chipId }: IdentifyShape['tasks'][number]['expect']) =>
+    cards.some((card) => card.deviceId === deviceId && card.trays.some((tray) => tray.id === trayId && tray.chips.some((chip) => chip.id === chipId)));
+  for (const task of incident.tasks) {
+    if (!offers(task.expect)) fail(`${task.id}: expects a chip the cards do not offer`);
+  }
+  for (const move of incident.solution) {
+    for (const [trayId, chipId] of Object.entries(move.picks)) {
+      if (!offers({ deviceId: move.deviceId, trayId, chipId })) fail(`the solution uses a chip the cards do not offer: ${move.deviceId}/${trayId}/${chipId}`);
+    }
+  }
+  if (incident.flows.length > 0) fail('an identify incident sends nothing');
+}
+
+export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSchema, sendIncidentSchema, identifyIncidentSchema]).superRefine((incident, ctx) => {
   const fail: Fail = (message) => ctx.addIssue({ code: 'custom', message });
   const unique = uniqueIn(fail);
   if ((incident.base === undefined) === (incident.changes === undefined)) fail('an incident has either a base world or changes');
@@ -164,27 +217,40 @@ export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSc
   unique('task id', incident.tasks.map((t) => t.id));
   unique('shown id', incident.shown ?? []);
   if (incident.explanation.filter((option) => option.correct).length !== 1) fail('exactly one explanation is correct');
-  if (incident.mechanic === 'filter') checkFilter(incident, fail);
-  else checkSend(incident, fail);
+  switch (incident.mechanic) {
+    case 'filter':
+      return checkFilter(incident, fail);
+    case 'send':
+      return checkSend(incident, fail);
+    case 'identify':
+      return checkIdentify(incident, fail);
+  }
 });
 
 export type Incident = z.infer<typeof incidentSchema>;
 export type Mechanic = Incident['mechanic'];
 export type FilterIncident = Extract<Incident, { mechanic: 'filter' }>;
 export type SendIncident = Extract<Incident, { mechanic: 'send' }>;
+export type IdentifyIncident = Extract<Incident, { mechanic: 'identify' }>;
 export type Flow = Incident['flows'][number];
 export type FlowKind = z.infer<typeof flowKindSchema>;
 export type IncidentTask = Incident['tasks'][number];
 export type FilterTask = FilterIncident['tasks'][number];
 export type SendTask = SendIncident['tasks'][number];
+export type IdentifyTask = IdentifyIncident['tasks'][number];
 export type WhatChip = FilterIncident['chips']['what'][number];
 export type FromChip = FilterIncident['chips']['from'][number];
 export type OriginChip = SendIncident['send']['from'][number];
 export type AddressChip = SendIncident['send']['to'][number];
 export type MessageChip = SendIncident['send']['message'][number];
 export type ExpectedOutcome = SendTask['expect']['outcome'];
+export type CardSpec = IdentifyIncident['identify']['cards'][number];
+export type TraySpec = CardSpec['trays'][number];
+export type CardChip = TraySpec['chips'][number];
 export type PlayerMove = z.infer<typeof playerMoveSchema>;
+export type RuleMove = z.infer<typeof ruleMoveSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
+export type AnswerMove = z.infer<typeof answerCardSchema>;
 export type ExplanationOption = Incident['explanation'][number];
 export type LevelEntry = Pick<Incident, 'id' | 'chapter' | 'order' | 'title' | 'role'>;
 export type LevelRole = Incident['role'];

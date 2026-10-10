@@ -18,7 +18,7 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
   const start = startSession(INCIDENTS, id);
 
   it('starts with a task to fix', () => {
-    expect(of.tasks.some((task) => !taskHolds(task, start.runs, start.sent))).toBe(true);
+    expect(of.tasks.some((task) => !taskHolds(task, start.runs, start.sent, start.answers))).toBe(true);
   });
 
   it('its reference solution fixes every task and earns every star but the explanation', () => {
@@ -42,7 +42,7 @@ function outcomesOf(session: Session): Outcome[] {
 }
 
 function taskIsDone(session: Session): boolean {
-  return session.incident.tasks.every((task) => taskHolds(task, session.runs, session.sent));
+  return session.incident.tasks.every((task) => taskHolds(task, session.runs, session.sent, session.answers));
 }
 
 describe('01-01, the address', () => {

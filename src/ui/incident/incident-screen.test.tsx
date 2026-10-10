@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { filterIncident, sendIncident } from '@/testing/incidents';
+import { NOTE_RULE, filterIncident, identifyIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
@@ -216,5 +216,68 @@ describe('incident screen of a send incident', () => {
     await send(user, '192.168.1.11', 'ping');
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     expect(screen.getByRole('heading', { name: 'Lucía: «¿Por qué volvió el ping?»' })).toHaveFocus();
+  });
+});
+
+describe('incident screen of an identify incident', () => {
+  const IDENTIFYING = identifyIncident();
+  const PRINTER_CARD = 'impresora';
+  const GUEST_CARD = 'laptop-visita';
+  const [GUEST_TASK, PRINTER_TASK] = IDENTIFYING.tasks.map((task) => toPlainText(task.text));
+
+  function renderIdentifying() {
+    render(<IncidentScreen incidents={[IDENTIFYING]} incidentId={IDENTIFYING.id} nextId={null} onFinish={vi.fn()} />);
+  }
+
+  const taskItem = (text: string) => screen.getByText(text).closest('li');
+
+  it('opens the card of a device from its piece, and the pieces without a card open nothing', async () => {
+    const user = userEvent.setup();
+    renderIdentifying();
+    await user.click(screen.getByRole('button', { name: 'tu-laptop con candado' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
+    expect(screen.getByRole('dialog', { name: PRINTER_CARD })).toHaveTextContent('¿Cuál es su dirección IP?');
+  });
+
+  it('a pick does not tick the task until Listo, and Escape gives the focus back to the piece', async () => {
+    const user = userEvent.setup();
+    renderIdentifying();
+    await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
+    expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.pending);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: PRINTER_CARD })).toHaveFocus();
+    expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.pending);
+  });
+
+  it('Listo with the right IP ticks the task and shows the line with the rule of the note, and sending the solution then closes the incident', async () => {
+    const user = userEvent.setup();
+    renderIdentifying();
+    await user.click(screen.getByRole('button', { name: GUEST_CARD }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'No' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(taskItem(GUEST_TASK)).toHaveTextContent(LUCIA_TEXT.done);
+
+    await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expect(screen.getByRole('dialog', { name: PRINTER_CARD })).toHaveTextContent(`Correcto. ${NOTE_RULE}`);
+    expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.done);
+
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Lucía: «¿Por qué 192.168.1.300 no puede ser la IP de la impresora?»' })).toHaveFocus();
+  });
+
+  it('sending the solution with the IP of the note still picked leaves the incident open', async () => {
+    const user = userEvent.setup();
+    renderIdentifying();
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByText(LUCIA_TEXT.failing(PRINTER_TASK))).toBeInTheDocument();
+    expect(screen.getByText(LUCIA_TEXT.failing(GUEST_TASK))).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Lucía: «/ })).toBeNull();
   });
 });

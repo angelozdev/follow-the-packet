@@ -8,11 +8,12 @@ interface ChipCardProps {
   icon: ReactNode;
   heading: RefObject<HTMLHeadingElement | null>;
   onClose: () => void;
+  onDone?: () => void;
   children: ReactNode;
 }
 
-/** The card that opens beside a piece of the map: a dialog with its title on the stripe, what the caller puts in it and the "Listo" button; Escape closes it too. */
-export function ChipCard({ title, icon, heading, onClose, children }: ChipCardProps) {
+/** The card that opens beside a piece of the map: a dialog with its title on the stripe, what the caller puts in it and the "Listo" button. Escape always calls `onClose`; "Listo" calls `onDone` when the card has its own way out, and `onClose` when it has not. */
+export function ChipCard({ title, icon, heading, onClose, onDone = onClose, children }: ChipCardProps) {
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose();
   };
@@ -32,7 +33,7 @@ export function ChipCard({ title, icon, heading, onClose, children }: ChipCardPr
     >
       <div className="chip-card">
         {children}
-        <Button onClick={onClose}>{TASK_CARD_TEXT.done}</Button>
+        <Button onClick={onDone}>{TASK_CARD_TEXT.done}</Button>
       </div>
     </Card>
   );

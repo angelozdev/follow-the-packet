@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
-import { officeLeaks, packetFromChips, probeFromChips } from './chips';
+import { NOTE_RULE, OFFICE_FLOORS, actor, device, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
+import { officeLeaks, packetFromChips, probeFromChips, unknownCardDeviceIds } from './chips';
 import { incidentSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
@@ -228,5 +228,77 @@ describe('office leaks', () => {
     const leaking = { ...SEND, flows: [{ id: 'out', kind: 'ambient' as const, packet: ping(device('printer'), '8.8.8.8') }] };
     expect(officeLeaks(leaking, officeNet())).toEqual(['printer → 8.8.8.8']);
     expect(officeLeaks(leaking, lab03Net())).toEqual([]);
+  });
+});
+
+describe('identify incident contract', () => {
+  const IDENTIFY = identifyIncident();
+  const [guest, printer] = IDENTIFY.identify.cards;
+  const [ipTray] = printer.trays;
+  const withPrinterTray = (patch: Record<string, unknown>) => ({ ...IDENTIFY, identify: { cards: [guest, { ...printer, trays: [{ ...ipTray, ...patch }] }] } });
+
+  it('accepts an identify incident', () => {
+    expect(incidentSchema.safeParse(IDENTIFY).success).toBe(true);
+    expect(IDENTIFY).not.toHaveProperty('send');
+  });
+
+  it('rejects an identify task whose chip the card does not offer', () => {
+    const task = IDENTIFY.tasks[1];
+    for (const expectation of [{ chipId: 'ghost' }, { trayId: 'ghost' }, { deviceId: 'lucia-laptop' }]) {
+      const tasks = [IDENTIFY.tasks[0], { ...task, expect: { ...task.expect, ...expectation } }];
+      expect(incidentSchema.safeParse({ ...IDENTIFY, tasks }).success).toBe(false);
+    }
+  });
+
+  it('rejects a solution that answers with a chip the card does not offer', () => {
+    expect(incidentSchema.safeParse({ ...IDENTIFY, solution: [{ type: 'answerCard', deviceId: 'printer', picks: { ip: 'ghost' } }] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...IDENTIFY, solution: [{ type: 'answerCard', deviceId: 'ghost', picks: { ip: 'right' } }] }).success).toBe(false);
+  });
+
+  it('rejects two cards for the same device', () => {
+    expect(incidentSchema.safeParse({ ...IDENTIFY, identify: { cards: [guest, guest] } }).success).toBe(false);
+  });
+
+  it('rejects two trays with the same id on a card, and two chips with the same id in a tray', () => {
+    expect(incidentSchema.safeParse({ ...IDENTIFY, identify: { cards: [guest, { ...printer, trays: [ipTray, ipTray] }] } }).success).toBe(false);
+    expect(incidentSchema.safeParse(withPrinterTray({ chips: [ipTray.chips[0], ipTray.chips[0]] })).success).toBe(false);
+  });
+
+  it('rejects a tray with a single chip, which leaves nothing to choose', () => {
+    expect(incidentSchema.safeParse(withPrinterTray({ chips: [ipTray.chips[0]], initialPick: undefined, initialPickRule: undefined })).success).toBe(false);
+  });
+
+  it('rejects an identify incident that sends something', () => {
+    expect(incidentSchema.safeParse({ ...IDENTIFY, flows: [{ id: 'noise', kind: 'ambient', packet: ping(device('printer'), '192.168.1.12') }] }).success).toBe(false);
+  });
+
+  it('accepts a tray that starts with a chip already picked', () => {
+    expect(ipTray.initialPick).toBe('note');
+    expect(incidentSchema.safeParse(withPrinterTray({ initialPick: 'note', initialPickRule: undefined })).success).toBe(true);
+    expect(incidentSchema.safeParse(withPrinterTray({ initialPick: undefined, initialPickRule: undefined })).success).toBe(true);
+  });
+
+  it('rejects an initial pick that names no chip of its tray', () => {
+    expect(incidentSchema.safeParse(withPrinterTray({ initialPick: 'ghost' })).success).toBe(false);
+  });
+
+  it('accepts a tray with the rule of its initial pick', () => {
+    expect(ipTray.initialPickRule).toBe(NOTE_RULE);
+    expect(incidentSchema.safeParse(withPrinterTray({ initialPick: 'note', initialPickRule: NOTE_RULE })).success).toBe(true);
+  });
+
+  it('rejects an initial pick rule on a tray with no initial pick', () => {
+    expect(incidentSchema.safeParse(withPrinterTray({ initialPick: undefined, initialPickRule: NOTE_RULE })).success).toBe(false);
+  });
+
+  it('accepts a segmented tray of two chips and rejects one of three', () => {
+    expect(guest.trays[0].segmented).toBe(true);
+    expect(incidentSchema.safeParse(withPrinterTray({ segmented: true })).success).toBe(false);
+  });
+
+  it('lists the cards that name no device of the world', () => {
+    expect(unknownCardDeviceIds(IDENTIFY, IDENTIFY.base ?? officeTwoFloorsNet())).toEqual([]);
+    expect(unknownCardDeviceIds(IDENTIFY, officeNet())).toEqual(['guest-laptop']);
+    expect(unknownCardDeviceIds(sendIncident(), officeNet())).toEqual([]);
   });
 });
