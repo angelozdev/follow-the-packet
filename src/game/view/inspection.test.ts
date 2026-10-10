@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
+import { TRACEROUTE_MAX_HOPS } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
@@ -15,6 +16,11 @@ const ECHO_REQUEST = ['Mensaje', 'ICMP · Echo Request'];
 const ATTACKER_BLOCKED = ['Resultado', 'timeout: pasó el tiempo de espera y no volvió nada.'];
 const WAITED_FOR_NOTHING = ['Resultado', 'Pasó el tiempo de espera y no volvió nada.'];
 const REQUEST_HEADER = 'Encabezado del Echo Request';
+const LOCAL_HEADER = 'Encabezado (en tu red local)';
+const LOCAL_REQUEST_HEADER = 'Encabezado del Echo Request (en tu red local)';
+const LOCAL_REPLY_HEADER = 'Encabezado del Echo Reply (en tu red local)';
+const HEADER_CHANGES = 'Fuera de la oficina el encabezado cambia: lo verás en el capítulo 2.';
+const ATTACKER_PUBLIC_IP = '203.0.113.66';
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
 const fixed = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
@@ -41,11 +47,25 @@ describe('inspect', () => {
     expect(ids.map((id) => inspect(first, id)?.fields[0]?.label)).toEqual(ids.map(() => WHAT_IS));
   });
 
-  it('an instance shows what an EC2 instance is, its private IP and its Security Group, and nothing of later terms', () => {
+  it('an instance shows what an EC2 instance is, its private and its public IP and its Security Group, and nothing of later terms', () => {
     expect(plain(inspect(first, PIECE_ID.device(S2.id)))).toEqual({
       title: 'servidor2',
-      fields: [whatIs('ec2-instance'), ['IP privada', S2.private], ['Security Groups', 'Security Group servidor2']],
+      fields: [whatIs('ec2-instance'), ['IP privada', S2.private], ['IP pública', S2.public], ['Security Groups', 'Security Group servidor2']],
     });
+  });
+
+  it('with the term IP pública known the box of an instance and of an actor shows its IP', () => {
+    expect(first.known.has('public-ip')).toBe(true);
+    expect(plain(inspect(knowingOnly(first, 'ec2-instance', 'public-ip'), PIECE_ID.device(S2.id)))?.fields).toEqual([whatIs('ec2-instance'), ['IP pública', S2.public]]);
+    expect(plain(inspect(knowingOnly(first, 'ec2-instance'), PIECE_ID.device(S2.id)))?.fields).toEqual([whatIs('ec2-instance')]);
+    expect(plain(inspect(knowingOnly(first, 'public-ip'), PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)], ['IP pública', ATTACKER_PUBLIC_IP]]);
+    expect(plain(inspect(knowingOnly(first), PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
+  });
+
+  it('a device of an office shows no public IP whatever the player knows, because how a packet leaves the office is a black box', () => {
+    const labels = (session: Session) => plain(inspect(session, PIECE_ID.device('lucia-laptop')))?.fields.map(([label]) => label);
+    expect(labels(knowingOnly(office, 'device', 'private-ip', 'public-ip'))).toEqual([WHAT_IS, 'IP privada']);
+    expect(labels(knowingOnly({ ...office, world: officeTwoFloorsNet() }, 'device', 'private-ip', 'public-ip', 'network'))).toEqual([WHAT_IS, 'IP privada', 'Conexión']);
   });
 
   it('titles a piece with its own name marked as a name, and keeps the entity plain', () => {
@@ -55,7 +75,7 @@ describe('inspect', () => {
   });
 
   it('later terms add their fields', () => {
-    const fields = plain(inspect(knowing(first, 'public-ip', 'dns'), PIECE_ID.device(S2.id)))?.fields.map(([label]) => label);
+    const fields = plain(inspect(knowing(first, 'dns'), PIECE_ID.device(S2.id)))?.fields.map(([label]) => label);
     expect(fields).toEqual([WHAT_IS, 'IP privada', 'IP pública', 'Nombres DNS', 'Security Groups']);
   });
 
@@ -91,17 +111,25 @@ describe('inspect', () => {
     expect(plain(inspect(unaware, PIECE_ID.packet(FLOWS.attackerPing.id)))?.fields[0]).toEqual(WAITED_FOR_NOTHING);
   });
 
-  it('the attacker says who it is, but not its IP yet', () => {
-    expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
+  it('the attacker says who it is and shows its public IP, which chapter 1 teaches before 04-01', () => {
+    expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)], ['IP pública', ATTACKER_PUBLIC_IP]]);
   });
 
   it('the box of the server of the internet says it is a device and shows its IP, with no actor role', () => {
     const floors: Session = { ...office, world: officeTwoFloorsNet() };
-    const box = inspect(floors, PIECE_ID.actor(OFFICE_FLOORS.server.id));
+    const serverBox = (session: Session) => inspect(session, PIECE_ID.actor(OFFICE_FLOORS.server.id));
+    const box = serverBox(knowingOnly(floors, 'device', 'ip-address'));
     expect(box?.entity).toEqual({ kind: 'device', variant: 'internet-server' });
     expect(plain(box)).toEqual({ title: 'servidor-internet', fields: [whatIs('device'), ['dirección IP', OFFICE_FLOORS.server.ip]] });
     expect(plain(box)?.fields.map(([label]) => label)).not.toContain('Quién es');
-    expect(plain(inspect(knowing(floors, 'private-ip', 'public-ip'), PIECE_ID.actor(OFFICE_FLOORS.server.id)))?.fields).toEqual([whatIs('device'), ['dirección IP', OFFICE_FLOORS.server.ip]]);
+    expect(plain(serverBox(knowingOnly(floors, 'device', 'ip-address', 'private-ip')))?.fields).toEqual([whatIs('device'), ['dirección IP', OFFICE_FLOORS.server.ip]]);
+  });
+
+  it('the box of the server of the internet calls its IP IP pública once that term is known', () => {
+    const floors: Session = { ...office, world: officeTwoFloorsNet() };
+    const fields = plain(inspect(knowingOnly(floors, 'device', 'ip-address', 'private-ip', 'public-ip'), PIECE_ID.actor(OFFICE_FLOORS.server.id)))?.fields;
+    expect(fields).toEqual([whatIs('device'), ['IP pública', OFFICE_FLOORS.server.ip]]);
+    expect(plain(inspect(floors, PIECE_ID.actor(OFFICE_FLOORS.server.id)))?.fields.at(-1)).toEqual(['IP pública', OFFICE_FLOORS.server.ip]);
   });
 
   it('a router of the world says what a router is under its own name, and nothing that only holds for the router of the office', () => {
@@ -402,17 +430,17 @@ describe('a packet of an office with routers', () => {
 
   it('the header of a packet shows the source and the destination IP once the term header is known', () => {
     const printer = sentTo(start, 'printer');
-    expect(field(printer, REQUEST_HEADER)).toEqual([REQUEST_HEADER, 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21', 'TTL: 64']);
+    expect(field(printer, REQUEST_HEADER)).toEqual([REQUEST_HEADER, 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21', 'TTL al salir: 64']);
     expect(field(sentTo(without(start, 'ttl'), 'printer'), REQUEST_HEADER)).toEqual([REQUEST_HEADER, 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
     expect(field(sentTo(without(start, 'header'), 'printer'), REQUEST_HEADER)).toBeUndefined();
-    expect(field(sentTo(start, 'server', 'ping-2'), 'Encabezado')?.at(-1)).toBe('TTL: 2');
+    expect(field(sentTo(start, 'server', 'ping-2'), LOCAL_HEADER)?.at(-1)).toBe('TTL al salir: 2');
   });
 
   it('the header of the request is called the header of the Echo Request only while the reply header is shown beside it', () => {
     expect(field(sentTo(start, 'printer'), 'Encabezado')).toBeUndefined();
     expect(field(sentTo(without(start, 'echo-reply'), 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
     expect(field(sentTo(without(start, 'echo-reply'), 'printer'), REQUEST_HEADER)).toBeUndefined();
-    expect(field(sentTo(start, 'private'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 10.0.0.10']);
+    expect(field(sentTo(start, 'private'), LOCAL_HEADER)?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 10.0.0.10']);
     expect(field(sentTo(start, 'private'), REQUEST_HEADER)).toBeUndefined();
   });
 
@@ -424,7 +452,36 @@ describe('a packet of an office with routers', () => {
   });
 
   it('keeps the private source of the header across the routers', () => {
-    expect(field(sentTo(start, 'server'), REQUEST_HEADER)?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
+    expect(field(sentTo(start, 'server'), LOCAL_REQUEST_HEADER)?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
+  });
+
+  it('the header of a trip that leaves the office is labelled as seen in the local network', () => {
+    const notes = (session: Session, label: string) => inspect(session, session.sent[0].pieceId)?.fields.filter((candidate) => toPlainText(candidate.label) === label).flatMap((candidate) => (candidate.notes ?? []).map((note) => toPlainText(note)));
+    const answered = sentTo(start, 'server');
+    expect(field(answered, LOCAL_REQUEST_HEADER)).toEqual([LOCAL_REQUEST_HEADER, 'IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`, 'TTL al salir: 64']);
+    expect(field(answered, LOCAL_REPLY_HEADER)).toEqual([LOCAL_REPLY_HEADER, `IP de origen: ${server.ip}`, 'IP de destino: 192.168.1.10']);
+    expect(field(answered, REQUEST_HEADER)).toBeUndefined();
+    expect(notes(answered, LOCAL_REQUEST_HEADER)).toEqual([]);
+    expect(notes(answered, LOCAL_REPLY_HEADER)).toEqual([HEADER_CHANGES]);
+    const lost = sentTo(start, 'private');
+    expect(notes(lost, LOCAL_HEADER)).toEqual([HEADER_CHANGES]);
+    expect(lastBox(answered)?.fields.flat().join(' ')).not.toMatch(/NAT|pública/);
+    expect(JSON.stringify(inspect(answered, answered.sent[0].pieceId))).not.toMatch(/NAT|pública/);
+  });
+
+  it('the header of a trip inside the office is not relabelled and has no note, and neither is one that stays in the device', () => {
+    for (const to of ['printer', 'loopback', 'nobody'] as const) {
+      const session = sentTo(start, to);
+      const box = inspect(session, session.sent[0].pieceId);
+      expect(box?.fields.flatMap((candidate) => candidate.notes ?? []), to).toEqual([]);
+      expect(box?.fields.map((candidate) => toPlainText(candidate.label)).filter((label) => label.includes('red local')), to).toEqual([]);
+    }
+  });
+
+  it('writes the local network of the header label as a term only once it is known', () => {
+    const early = sentTo(without(start, 'lan'), 'server');
+    expect(unknownTerms(inspect(early, early.sent[0].pieceId)?.fields.flatMap((candidate) => [candidate.label, ...candidate.lines, ...(candidate.notes ?? [])]) ?? [], early.known)).toEqual([]);
+    expect(plain(inspect(early, early.sent[0].pieceId))?.fields.map(([label]) => label)).toContain(LOCAL_REQUEST_HEADER);
   });
 
   it('names the lines of the header by the terms IP de origen and IP de destino only once they are known, and by plain words before', () => {
@@ -434,21 +491,50 @@ describe('a packet of an office with routers', () => {
   });
 
   it('tags only the terms the player knows in the fields of the header, the path and the time, whichever of their terms is missing', () => {
-    const OWN_FIELDS = ['Encabezado', REQUEST_HEADER, 'Encabezado del Echo Reply', 'Saltos', 'Pasó por', ROUND_TRIP];
-    for (const missing of ['header', 'ttl', 'echo-reply', 'hop', 'rtt', 'time-exceeded', 'router'] as const) {
+    const OWN_FIELDS = ['Encabezado', REQUEST_HEADER, 'Encabezado del Echo Reply', LOCAL_HEADER, LOCAL_REQUEST_HEADER, LOCAL_REPLY_HEADER, 'Saltos', 'Pasó por', ROUND_TRIP];
+    for (const missing of ['header', 'ttl', 'echo-reply', 'hop', 'rtt', 'time-exceeded', 'router', 'lan'] as const) {
       const unaware = without(start, missing);
       for (const [to, message] of [['printer', 'ping'], ['server', 'ping'], ['server', 'ping-2'], ['nobody', 'ping']] as const) {
         const session = sentTo(unaware, to, message);
         const fields = session.sent.flatMap((run) => inspect(session, run.pieceId)?.fields ?? []).filter((candidate) => OWN_FIELDS.includes(toPlainText(candidate.label)));
-        expect(unknownTerms(fields.flatMap((candidate) => [candidate.label, ...candidate.lines]), unaware.known), `${missing} / ${to} / ${message}`).toEqual([]);
+        expect(unknownTerms(fields.flatMap((candidate) => [candidate.label, ...candidate.lines, ...(candidate.notes ?? [])]), unaware.known), `${missing} / ${to} / ${message}`).toEqual([]);
       }
     }
   });
 
-  it('a traceroute packet is inspected as the last probe it sent', () => {
+  it('a traceroute packet is inspected as a traceroute: it is defined as one, has no TTL of its own and lists the hops of the last probe it sent', () => {
     const traced = sentTo(start, 'server', 'trace');
-    expect(field(traced, REQUEST_HEADER)?.at(-1)).toBe('TTL: 4');
+    expect(lastBox(traced)?.title).toBe('traceroute de tu-laptop a servidor-internet');
+    expect(lastBox(traced)?.fields[0]).toEqual(['Qué es', TERMS.traceroute.definition]);
+    expect(JSON.stringify(lastBox(traced))).not.toContain(TERMS.ping.definition);
+    expect(field(traced, LOCAL_REQUEST_HEADER)).toEqual([LOCAL_REQUEST_HEADER, 'IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
     expect(field(traced, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
     expect(field(traced, ROUND_TRIP)?.[1]).toBe('84 ms');
+    expect(field(sentTo(start, 'server'), 'Qué es')?.[1]).toBe(TERMS['echo-request'].definition);
+  });
+});
+
+describe('a packet that goes round a loop', () => {
+  const looping = startSession(INCIDENTS, '01-09');
+  const hopsOf = (session: Session, messageId: string): string[] => {
+    const sent = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId: 'ip-server', messageId });
+    return plain(inspect(sent, sent.sent[0].pieceId))?.fields.find(([label]) => label === 'Saltos')?.slice(1) ?? [];
+  };
+
+  it('lists the first hops, as many as a traceroute prints, and counts the rest', () => {
+    const lines = hopsOf(looping, 'ping-ttl-64');
+    expect(lines).toHaveLength(TRACEROUTE_MAX_HOPS + 1);
+    expect(lines.slice(0, 4)).toEqual(['router-oficina (192.168.1.1)', 'router-proveedor (203.0.113.1)', 'router-oficina (192.168.1.1)', 'router-proveedor (203.0.113.1)']);
+    expect(lines.at(-1)).toBe(`y ${64 - TRACEROUTE_MAX_HOPS} saltos más`);
+  });
+
+  it('counts one hop more in the singular', () => {
+    expect(INSPECTION_TEXT.moreHops(1)).toBe('y 1 {{hop|salto}} más');
+    expect(INSPECTION_TEXT.moreHops(2)).toBe('y 2 {{hop|saltos}} más');
+  });
+
+  it('lists every hop of a packet that crossed no more than that, with no line that counts', () => {
+    expect(hopsOf(looping, 'ping-ttl-5')).toHaveLength(5);
+    expect(hopsOf(looping, 'ping-ttl-5').join(' ')).not.toMatch(/más/);
   });
 });

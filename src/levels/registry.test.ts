@@ -1,16 +1,40 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, REPO_ROOT, device, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, syllabusLessons, withDevice } from '@/testing';
+import { OFFICE_FLOORS, REPO_ROOT, device, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
+import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
-import { missingShownIds, officeLeaks, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds } from './contract/chips';
+import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds, type SendOwner } from './contract/chips';
 import { incidentSchema, isGuided, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
-import { startWorld } from './world';
+import { caseWorld, solvedWorld, startWorld } from './world';
 
-const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '04-01', '04-02'];
+const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '04-01', '04-02'];
 const HINT_COUNT = 2;
 const lessons = syllabusLessons();
+
+interface Scene {
+  owner: SendOwner;
+  world: Network;
+}
+
+/** Returns what an incident sends and the worlds it sends in: a send incident in the world it starts from and the one its solution leaves, and each case of a diagnose incident in its own world. */
+function scenesOf(incident: Incident): Scene[] {
+  switch (incident.mechanic) {
+    case 'send':
+      return [startWorld(INCIDENTS, incident.id), solvedWorld(INCIDENTS, incident.id)].map((world) => ({ owner: incident, world }));
+    case 'diagnose':
+      return incident.diagnose.cases.map((spec) => ({ owner: spec, world: caseWorld(startWorld(INCIDENTS, incident.id), spec) }));
+    default:
+      return [];
+  }
+}
+
+/** Returns the routers the traceroutes of an incident cross that the list of its shown pieces lacks; none when it has no list, which draws the whole world. */
+function undrawnTracerouteRouters(incident: Incident, scenes: Scene[]): string[] {
+  const crossed = scenes.flatMap(({ owner, world }) => routersCrossedByTraceroutes(owner, world));
+  return incident.shown ? crossed.filter((id, index) => !incident.shown?.includes(id) && crossed.indexOf(id) === index) : [];
+}
 
 it('registers the prototype incidents in game order', () => {
   expect(INCIDENTS.map((i) => i.id)).toEqual(PROTOTYPE_IDS);
@@ -56,6 +80,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
   it('the list of shown pieces of an incident holds its sender, every destination that has an owner and every expected id', () => {
     expect(missingShownIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
+  });
+
+  it('an incident that offers traceroute draws every router its traceroutes cross', () => {
+    expect(undrawnTracerouteRouters(incident, scenesOf(incident))).toEqual([]);
   });
 
   it('brings the base world only when it opens its chapter', () => {
@@ -136,5 +164,34 @@ describe('shown ids', () => {
     const identifying = identifyIncident();
     expect(missingShownIds({ ...identifying, shown: ['printer'] }, officeTwoFloorsNet())).toEqual(['guest-laptop']);
     expect(missingShownIds({ ...identifying, shown: ['printer', 'guest-laptop'] }, officeTwoFloorsNet())).toEqual([]);
+  });
+});
+
+describe('the routers a traceroute crosses', () => {
+  const { officeRouter, provider, backbone } = OFFICE_FLOORS;
+  const world = officeTwoFloorsNet();
+  const routed = routedSendIncident();
+  const scenes = (incident: Incident): Scene[] => [{ owner: incident as SendOwner, world }];
+
+  it('lists the routers of every probe, in the order they are crossed and once each', () => {
+    expect(routersCrossedByTraceroutes(routed, world)).toEqual([officeRouter.id, provider.id, backbone.id]);
+  });
+
+  it('lists none for a chip that is a ping, a TTL ping or a packet, and none for a traceroute that never leaves the sender', () => {
+    const pings = { ...routed, send: { ...routed.send, message: routed.send.message.filter((chip) => chip.command !== 'traceroute') } };
+    expect(routersCrossedByTraceroutes(pings, world)).toEqual([]);
+    const toLoopback = { ...routed, send: { ...routed.send, to: routed.send.to.filter((chip) => chip.id === 'loopback') } };
+    expect(routersCrossedByTraceroutes(toLoopback, world)).toEqual([]);
+  });
+
+  it('finds the router a traceroute crosses and the list of shown pieces lacks', () => {
+    const everything = [...(world.devices.map((d) => d.id)), officeRouter.id, provider.id, backbone.id, ...world.actors.map((a) => a.id)];
+    expect(undrawnTracerouteRouters({ ...routed, shown: everything }, scenes(routed))).toEqual([]);
+    expect(undrawnTracerouteRouters({ ...routed, shown: everything.filter((id) => id !== provider.id) }, scenes(routed))).toEqual([provider.id]);
+    expect(undrawnTracerouteRouters({ ...routed, shown: ['your-laptop'] }, scenes(routed))).toEqual([officeRouter.id, provider.id, backbone.id]);
+  });
+
+  it('asks for nothing of an incident with no list, which draws the whole world', () => {
+    expect(undrawnTracerouteRouters({ ...routed, shown: undefined }, scenes(routed))).toEqual([]);
   });
 });

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { TASK_CARD_TEXT, TERMS, parseTermText, termsIn, toPlainText, unofficialNames, type TermId } from '@/copy';
+import { ipInCidr, lansOf } from '@/engine';
 import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
+import { IP } from './01-first-day/shared';
 import { FROM } from './04-iaas/shared';
 import type { Incident, SendIncident } from './contract/incident';
 import { RULES_TERM, chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
+import { startWorld } from './world';
 
 const CLOSED = { 'host-firewall': false, 'security-group': false };
 const NOTHING = { inboundRules: CLOSED, outboundRules: CLOSED, hostSettings: false };
@@ -32,7 +35,8 @@ const CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN = [
   'traffic',
   'rule',
 ];
-const BRIDGE_AFTER_06_AND_07 = ['internet', 'private-ip', 'firewall', 'traffic', 'rule'];
+const BRIDGE_AFTER_10 = ['firewall', 'traffic', 'rule'];
+const PRIVATE_RANGE_OF_OTHER_OFFICE = '10.0.0.0/8';
 const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   ['network', 'device', 'ip-address', 'ipv4'],
   ['packet', 'header', 'source-ip', 'destination-ip'],
@@ -50,7 +54,7 @@ const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   [],
 ];
 const LATER_TOPICS = /\b(puertos?|TCP|UDP|CIDR|m[aá]scaras?|NAT|DNS|ARP|MAC|switch(?:es)?|IPv6|HTTPS?|clientes?|stateful|stateless)\b/;
-const FIRST_SEVEN = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07'];
+const FIRST_TEN = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10'];
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
@@ -71,7 +75,15 @@ describe('term ladder', () => {
 
   it('the official name of ICMP says Internet before the term internet arrives: the one declared leak', () => {
     expect(namedTerms(TERMS.icmp.definition, ['internet'])).toEqual(['internet']);
-    expect(INCIDENTS.findIndex((incident) => incident.introduces.includes('icmp'))).toBeLessThanOrEqual(INCIDENTS.findIndex((incident) => incident.introduces.includes('internet')));
+    expect(INCIDENTS.findIndex((incident) => incident.introduces.includes('icmp'))).toBeLessThan(INCIDENTS.findIndex((incident) => incident.introduces.includes('internet')));
+  });
+
+  it('the private IP of the other office is not inside any LAN of the office', () => {
+    const world = startWorld(INCIDENTS, '01-08');
+    expect(ipInCidr(IP.otherOfficePrinter, PRIVATE_RANGE_OF_OTHER_OFFICE)).toBe(true);
+    expect(ipInCidr(IP.otherOfficePrinter, world.cidr)).toBe(false);
+    expect(lansOf(world).filter((lan) => ipInCidr(IP.otherOfficePrinter, lan.cidr))).toEqual([]);
+    expect(world.devices.filter((device) => device.privateIp === IP.otherOfficePrinter)).toEqual([]);
   });
 
   it('finds a term in a definition by whole words, ignoring case', () => {
@@ -96,8 +108,8 @@ describe('term ladder', () => {
   it('04-01 bridges exactly the chapter 1 terms that no chapter 1 incident introduces yet', () => {
     const introduced = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces as string[]);
     const bridge = (INCIDENTS.find((incident) => incident.id === '04-01')?.introduces as string[]).filter((term) => !OWN_TERMS_OF_04_01.includes(term));
-    expect([...BRIDGE_AFTER_06_AND_07].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
-    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_06_AND_07].sort());
+    expect([...BRIDGE_AFTER_10].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
+    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_10].sort());
   });
 
   it('names no topic of the chapters that come later, in any text of chapter 1', () => {
@@ -106,7 +118,7 @@ describe('term ladder', () => {
     for (const text of [...chapter1.flatMap(incidentTexts).map(toPlainText), ...definitions]) expect(text).not.toMatch(LATER_TOPICS);
   });
 
-  it.each(FIRST_SEVEN)('%s names no term of a later incident in plain words either', (id) => {
+  it.each(FIRST_TEN)('%s names no term of a later incident in plain words either', (id) => {
     const incident = INCIDENTS.find((candidate) => candidate.id === id);
     const known = knownTerms(INCIDENTS, id);
     const later = ALL_TERMS.filter((term) => !known.has(term));
@@ -137,7 +149,7 @@ describe('term ladder', () => {
   it('the rules of a host firewall open with the term rule (01-12), and those of a Security Group with inbound rule (chapter 4)', () => {
     const parts = Object.fromEntries(INCIDENTS.map((incident) => [incident.id, configurableParts(knownTerms(INCIDENTS, incident.id))]));
     expect(parts).toEqual({
-      ...Object.fromEntries(FIRST_SEVEN.map((id) => [id, NOTHING])),
+      ...Object.fromEntries(FIRST_TEN.map((id) => [id, NOTHING])),
       '04-01': INBOUND_RULES,
       '04-02': INBOUND_RULES,
     });

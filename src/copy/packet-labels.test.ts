@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, roundTripText, serviceLabel, stampLabel, warningOf } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -121,6 +121,23 @@ describe('packet labels', () => {
   });
 });
 
+describe('tracerouteLabel', () => {
+  const floors = officeTwoFloorsNet();
+  const probe = { ...ping(device('your-laptop'), OFFICE_FLOORS.server.ip), ttl: 3 };
+  const trace = simulate(floors, probe);
+
+  it('names a traceroute as what it is, and not as the ping its last probe is', () => {
+    expect(tracerouteLabel(probe, trace, floors, EVERY_TERM)).toBe('{{traceroute}} de [[tu-laptop]] a 198.51.100.50');
+    expect(packetLabel(probe, trace, floors, EVERY_TERM)).toBe('{{ping}} de [[tu-laptop]] a 198.51.100.50');
+  });
+
+  it('names the device it reached, as a packet is named, and says packet while the term traceroute is unknown', () => {
+    const reached = ping(device('your-laptop'), OFFICE_FLOORS.server.ip);
+    expect(tracerouteLabel(reached, simulate(floors, reached), floors)).toBe('{{traceroute}} de [[tu-laptop]] a [[servidor-internet]]');
+    expect(tracerouteLabel(probe, trace, floors, new Set<TermId>(['packet']))).toBe('{{packet}} de [[tu-laptop]] a 198.51.100.50');
+  });
+});
+
 describe('describeOutcome', () => {
   const without = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
 
@@ -136,6 +153,13 @@ describe('describeOutcome', () => {
     expect(describeOutcome('ttl-exceeded', without('time-exceeded'))).toBe('No llegó a su destino.');
     expect(describeOutcome('unreachable', EVERY_TERM)).toBe(OUTCOME_TEXT.unreachable);
     expect(describeOutcome('ttl-exceeded', EVERY_TERM)).toBe(OUTCOME_TEXT['ttl-exceeded']);
+  });
+
+  it('says that a router discarded the packet at TTL 0 in plain words, with the term drop only once it is known', () => {
+    const early = describeOutcome('ttl-exceeded', without('drop'));
+    expect(early).toBe('No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo descartó y avisó con {{time-exceeded}}.');
+    expect(termsIn(early)).toEqual(['ttl', 'router', 'time-exceeded']);
+    expect(describeOutcome('ttl-exceeded', without('drop', 'time-exceeded'))).toBe('No llegó a su destino.');
   });
 
   it('says that the waiting time passed and nothing came back, with the term timeout only once it is known', () => {

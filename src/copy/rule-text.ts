@@ -1,7 +1,6 @@
 import type { Direction, Network, Rule, RulePeer, RuleWhat } from '@/engine';
-import { word } from './reasons';
 import { INSPECTION_TEXT } from './screens/incident-ui';
-import { nameTag, type TermText } from './term-text';
+import { nameTag, word, type TermText } from './term-text';
 import { TERMS, type TermId } from './terms';
 
 const ANYWHERE = '0.0.0.0/0';

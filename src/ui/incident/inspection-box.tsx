@@ -23,6 +23,11 @@ export function InspectionBox({ inspection }: { inspection: Inspection }) {
                 <TaggedText text={line} tips={false} />
               </dd>
             ))}
+            {field.notes?.map((note) => (
+              <dd key={note} className="muted">
+                <TaggedText text={note} tips={false} />
+              </dd>
+            ))}
           </div>
         ))}
       </dl>

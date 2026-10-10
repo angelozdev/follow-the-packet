@@ -159,6 +159,17 @@ describe('applyAction on an office with floors', () => {
     expect(routerOf(onlyRoutes, provider.id)?.sendsUnreachable).toBe(true);
   });
 
+  it('updateRouter replaces the interfaces of a router, so it can face a router that was added after it', () => {
+    const net = officeTwoFloorsNet();
+    const office = routerOf(net, officeRouter.id);
+    const interfaces = [...(office?.interfaces ?? []), { ip: '203.0.113.20', faces: backbone.id }];
+    const updated = applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, interfaces });
+    expect(routerOf(updated, officeRouter.id)).toEqual({ ...office, interfaces });
+    expect(validate(updated)).toEqual([]);
+    expect(validate(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, interfaces: [{ ip: '203.0.113.20', faces: GHOST }] }))).toHaveLength(1);
+    expect(routerOf(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, routes: [] }), officeRouter.id)?.interfaces).toEqual(office?.interfaces);
+  });
+
   it('actions on unknown ids return the same network', () => {
     for (const [name, action] of UNKNOWN_IDS) {
       const net = OFFICE_ACTIONS.has(action.type) ? officeTwoFloorsNet() : lab03Net();

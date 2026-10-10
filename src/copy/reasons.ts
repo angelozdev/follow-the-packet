@@ -1,6 +1,6 @@
 import type { FirewallKind, Network, Reason } from '@/engine';
 import { NOT_DELIVERED, deviceName } from './packet-labels';
-import type { TermText } from './term-text';
+import { word, type TermText } from './term-text';
 import type { TermId } from './terms';
 
 type FirewallSentence = (device: TermText) => TermText;
@@ -53,18 +53,16 @@ const NOTHING_CAME_BACK: TermText = 'No volvió ninguna respuesta.';
 const KEEPS_GOING: TermText = 'Sigue su camino.';
 const REPLY_ARRIVES: TermText = 'Llega la respuesta.';
 
-/** Writes a word as the tagged term when the player knows it, and as the plain word before. */
-export function word(known: ReadonlySet<TermId>, term: TermId, text: string): TermText {
-  return known.has(term) ? `{{${term}|${text}}}` : text;
-}
-
 const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
   vpc: 'Viaja por dentro de la {{vpc}}.',
   office: 'Viaja por dentro de la {{network|red}} de la oficina.',
 };
 
 const SENDER_WARNS: TermText = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
-const ROUTER_DROPS: TermText = '{{drop|descarta}} el {{packet|paquete}}';
+
+function routerDrops(known: ReadonlySet<TermId>): TermText {
+  return `${word(known, 'drop', 'descarta')} el {{packet|paquete}}`;
+}
 
 function routerOutcome(warns: boolean): TermText {
   return warns ? 'y avisa a quien lo envió que no pudo entregarlo.' : 'y no avisa a nadie.';
@@ -180,13 +178,13 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'forward-hop':
       return `Pasa por ${router(reason.routerId, { ip: reason.ip })}, un {{hop|salto}} más: el {{ttl}} baja a ${reason.ttlLeft}.`;
     case 'forward-ttl-exceeded':
-      return `El {{ttl}} llega a 0 en ${router(reason.routerId, { ip: reason.ip })}: el {{router}} ${ROUTER_DROPS} y avisa a quien lo envió con {{time-exceeded}}.`;
+      return `El {{ttl}} llega a 0 en ${router(reason.routerId, { ip: reason.ip })}: el {{router}} ${routerDrops(known)} y avisa a quien lo envió con {{time-exceeded}}.`;
     case 'forward-no-route':
-      return `${router(reason.routerId, { start: true })} no sabe a qué {{router}} mandar un {{packet|paquete}} para ${reason.ip}: lo {{drop|descarta}} ${routerOutcome(reason.warns)}`;
+      return `${router(reason.routerId, { start: true })} no sabe a qué {{router}} mandar un {{packet|paquete}} para ${reason.ip}: lo ${word(known, 'drop', 'descarta')} ${routerOutcome(reason.warns)}`;
     case 'forward-no-host':
-      return `${router(reason.routerId, { start: true })} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${ROUTER_DROPS} ${routerOutcome(reason.warns)}`;
+      return `${router(reason.routerId, { start: true })} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${routerDrops(known)} ${routerOutcome(reason.warns)}`;
     case 'forward-private-dropped':
-      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${router(reason.routerId, { start: true, bare: true })}, ya fuera de la oficina, ${ROUTER_DROPS} sin avisar.`;
+      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${router(reason.routerId, { start: true, bare: true })}, ya fuera de la oficina, ${routerDrops(known)} sin avisar.`;
     case 'forward-router-replies': {
       const owner = placeOf(reason.routerId) === 'named' ? `${router(reason.routerId)}, un {{router}}` : router(reason.routerId);
       return `La IP ${reason.ip} es de ${owner}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;

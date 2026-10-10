@@ -24,6 +24,11 @@ export function nameTag(name: string): TermText {
   return `[[${name}]]`;
 }
 
+/** Writes a word as the tagged term when the player knows it, and as the plain word before. */
+export function word(known: ReadonlySet<TermId>, term: TermId, text: string): TermText {
+  return known.has(term) ? `{{${term}|${text}}}` : text;
+}
+
 /** Splits a text into plain, term and name segments: `{{term-id}}` shows the term's name, `{{term-id|words}}` shows the given words and `[[name]]` shows a resource's own name; throws on an unregistered term and on any `{{`, `}}`, `[[` or `]]` that is not a well-formed tag. */
 export function parseTermText(text: TermText): TermSegment[] {
   const segments: TermSegment[] = [];

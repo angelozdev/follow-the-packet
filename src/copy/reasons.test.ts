@@ -387,3 +387,20 @@ describe('describeReason for a router the map does not draw', () => {
     expect(asked).toEqual([provider.id]);
   });
 });
+
+describe('describeReason for a router that discards a packet', () => {
+  const FORWARD_DROPS: Reason[] = [
+    { code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice },
+    { code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true },
+    { code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: false },
+    { code: 'forward-private-dropped', routerId: provider.id, ip: '10.0.0.10' },
+  ];
+
+  it.each(FORWARD_DROPS)('says discards in plain words, with no tag, while the term drop is not known: %o', (reason) => {
+    const early = describeReason(reason, FLOORS, without('drop'));
+    expect(termsIn(early)).not.toContain('drop');
+    expect(toPlainText(early)).toBe(toPlainText(describeReason(reason, FLOORS, EVERY_TERM)));
+    expect(toPlainText(early)).toContain('descarta');
+    expect(termsIn(describeReason(reason, FLOORS, EVERY_TERM))).toContain('drop');
+  });
+});

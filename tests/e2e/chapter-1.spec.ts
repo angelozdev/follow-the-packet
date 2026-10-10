@@ -15,7 +15,7 @@ const NOTE_RULE = 'La nota de Lucía estaba mal';
 const ABOUT_THE_OFFICE = /en IPv4 cada uno de los cuatro números va de 0 a 255/;
 const ABOUT_THE_ENVELOPE = /su IP de destino era la de laptop-marta/;
 const FIRST_PING_LINK = '1. El primer ping';
-const LAST_BUILT_OF_CHAPTER_1 = '01-07';
+const LAST_BUILT_OF_CHAPTER_1 = '01-10';
 const ARE_YOU_THERE_LINK = '3. ¿Estás ahí?';
 const ANDRES_IP = '192.168.2.15';
 const ROUTER_IP = '192.168.1.1';
@@ -23,6 +23,12 @@ const ABOUT_THE_ROUTER = /está en otra red local, y lo que sale de tu red local
 const ABOUT_THE_GATEWAY = /no tenía puerta de enlace predeterminada/;
 const SETTINGS_BUTTON = 'Ajustes de red de tu-laptop';
 const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+const SERVER_IP = '198.51.100.50';
+const OTHER_OFFICE_IP = '10.0.0.10';
+const ABOUT_THE_PRIVATE_IP = /10\.0\.0\.10 es una IP privada y internet no la entrega/;
+const ABOUT_THE_LOOP = /daba vueltas entre los mismos dos routers/;
+const ABOUT_THE_BROKEN_STRETCH = /En router-proveedor, el último router que contestó, o justo después/;
+const WARNED_STAMP = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
 const OFFICE_PIECES = ['laptop-lucia con candado', 'impresora con candado', 'laptop-andres con candado', 'router-oficina con candado'];
 
 function card(page: Page, name: string): Locator {
@@ -70,6 +76,20 @@ async function openTerminal(page: Page): Promise<Locator> {
 async function sendTo(terminal: Locator, ip: string) {
   await terminal.getByRole('button', { name: ip, exact: true }).click();
   await terminal.getByRole('button', { name: SEND, exact: true }).click();
+}
+
+async function sendMessage(terminal: Locator, message: string) {
+  await terminal.getByRole('button', { name: message, exact: true }).click();
+  await terminal.getByRole('button', { name: SEND, exact: true }).click();
+}
+
+async function sendThePingsWithTtl(terminal: Locator) {
+  for (const ttl of [1, 2, 3, 64]) await sendMessage(terminal, `ping con TTL ${ttl}`);
+}
+
+async function sendThePingAndTheTraceroute(terminal: Locator) {
+  await sendMessage(terminal, 'ping');
+  await sendMessage(terminal, 'traceroute');
 }
 
 async function sendThePacket(page: Page) {
@@ -144,6 +164,40 @@ test('01-06 and 01-07 are played with the mouse alone and each reaches 3 stars',
   expect(errors).toEqual([]);
 });
 
+test('01-08, 01-09 and 01-10 are played with the mouse alone and each reaches 3 stars', async ({ page }) => {
+  const errors = collectErrors(page);
+  await startWithProgress(page, { '01-07': 1 });
+  await page.goto('/#/level/01-08');
+  const toTheInternet = await openTerminal(page);
+  await sendTo(toTheInternet, SERVER_IP);
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a servidor-internet\. Llegó\.$/ })).toBeVisible();
+  await sendTo(toTheInternet, OTHER_OFFICE_IP);
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/ })).toBeVisible();
+  await submitAndFinish(page, ABOUT_THE_PRIVATE_IP);
+
+  await page.getByRole('link', { name: 'Siguiente incidente' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Contar saltos' })).toBeVisible();
+  const counting = await openTerminal(page);
+  await sendMessage(counting, 'ping con TTL 3');
+  await expect(page.getByRole('button', { name: WARNED_STAMP })).toHaveCount(1);
+  await sendMessage(counting, 'ping con TTL 64');
+  await expect(page.getByRole('button', { name: WARNED_STAMP })).toHaveCount(2);
+  await submitAndFinish(page, ABOUT_THE_LOOP);
+
+  await page.getByRole('link', { name: 'Siguiente incidente' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ver el camino' })).toBeVisible();
+  const seeing = await openTerminal(page);
+  await sendMessage(seeing, 'ping');
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/ })).toBeVisible();
+  await sendMessage(seeing, 'traceroute');
+  const route = seeing.getByRole('list', { name: 'Salida de traceroute' });
+  await expect(route).toContainText('192.168.1.1');
+  await expect(route).toContainText('203.0.113.1');
+  await expect(route.getByRole('listitem')).toHaveCount(8);
+  await submitAndFinish(page, ABOUT_THE_BROKEN_STRETCH);
+  expect(errors).toEqual([]);
+});
+
 test('04-01 stays open with its stored stars although chapter 1 has none, and 04-02 opens after it', async ({ page }) => {
   await startWithProgress(page, { '04-01': 2 });
   await page.goto('/');
@@ -175,6 +229,22 @@ test.describe('Sin animaciones', () => {
     await expectApart(terminal, page.getByRole('button', { name: 'laptop-marta con candado', exact: true }));
     await expect(page.getByRole('button', { name: /^Paquete: paquete de tu-laptop a impresora\. Llegó\.$/ })).toBeVisible();
     await expect.poll(() => overlappingPairs(page)).toEqual([]);
+  });
+
+  test('in 01-09 and 01-10 no label or stamp of the map overlaps once the player has sent its messages', async ({ page }) => {
+    await startWithProgress(page, { '01-08': 1, '01-09': 1 });
+    const sending = [
+      ['01-09', sendThePingsWithTtl],
+      ['01-10', sendThePingAndTheTraceroute],
+    ] as const;
+    for (const [id, send] of sending) {
+      await page.goto(`/#/level/${id}`);
+      const terminal = await openTerminal(page);
+      await send(terminal);
+      await confirm(terminal);
+      await expect(terminal).toBeHidden();
+      await expect.poll(() => overlappingPairs(page), id).toEqual([]);
+    }
   });
 
   test('in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps', async ({ page }) => {

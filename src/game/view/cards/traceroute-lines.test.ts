@@ -15,7 +15,7 @@ const without = (session: Session, ...terms: TermId[]): Session => ({ ...session
 const drawing = (session: Session, ...ids: string[]): Session => ({ ...session, incident: { ...session.incident, shown: ids } });
 const hop = (number: number, address: string, time: string | null = null, mark: string | null = null): RouteLine => ({ hop: number, address, time, mark });
 const STAR = (number: number) => hop(number, '*');
-const NOTE = { silent: '«*» es un salto que no contestó.', times: 'Los tiempos son cifras de ejemplo.' };
+const NOTE = { silent: '«*» es un salto que no contestó a tiempo.', times: 'Los tiempos son cifras de ejemplo.' };
 
 describe('tracerouteLines', () => {
   it('a traceroute lists its hops with the IP and the time, and a star for a silent hop', () => {

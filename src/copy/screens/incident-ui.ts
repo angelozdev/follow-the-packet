@@ -1,6 +1,6 @@
 import type { ClientActor, Direction, FirewallKind, Network, UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
-import { nameTag, type TermText } from '@/copy/term-text';
+import { nameTag, word, type TermText } from '@/copy/term-text';
 import type { TermId } from '@/copy/terms';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
@@ -56,15 +56,18 @@ export const INSPECTION_TEXT = {
   header: '{{header|Encabezado}}',
   requestHeader: '{{header|Encabezado}} del {{echo-request}}',
   replyHeader: '{{header|Encabezado}} del {{echo-reply}}',
+  inLan: (header: TermText, known: ReadonlySet<TermId>): TermText => `${header} (en tu ${word(known, 'lan', 'red local')})`,
+  headerChanges: 'Fuera de la oficina el {{header|encabezado}} cambia: lo verás en el capítulo 2.',
   source: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('source-ip') ? '{{source-ip}}' : 'Origen'}: ${ip}`,
   destination: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('destination-ip') ? '{{destination-ip}}' : 'Destino'}: ${ip}`,
   connection: 'Conexión',
   connected: 'Conectado a la {{network|red}}.',
   disconnected: 'No está conectado: no forma parte de la {{network|red}}.',
-  ttl: (ttl: number): TermText => `{{ttl}}: ${ttl}`,
+  ttl: (ttl: number): TermText => `{{ttl}} al salir: ${ttl}`,
   passedThrough: 'Pasó por',
   hops: '{{hop|Saltos}}',
   router: (name: TermText, ip: string): TermText => `${name} (${ip})`,
+  moreHops: (count: number): TermText => `y ${count} {{hop|${count === 1 ? 'salto' : 'saltos'}}} más`,
   routerIp: (lan: string): TermText => `{{ip-address|IP}} en ${lan}`,
   place: { inside: 'dentro de la oficina', outside: 'fuera de la oficina' } satisfies Record<Exclude<RouterPlace, 'named'>, TermText>,
   roundTrip: '{{rtt|Tiempo de ida y vuelta}}',
@@ -134,7 +137,7 @@ export const TERMINAL_TEXT = {
     silent: '*',
     marks: { host: '!H', net: '!N' } satisfies Record<UnreachableKind, string>,
     notes: {
-      silent: '«*» es un salto que no contestó.',
+      silent: '«*» es un salto que no contestó a tiempo.',
       host: '«!H»: el equipo con esa IP avisó con {{host-unreachable}} que no pudo llegar al dispositivo de destino.',
       net: '«!N»: el equipo con esa IP avisó que no pudo llegar a la red de destino.',
       times: 'Los tiempos son cifras de ejemplo.',

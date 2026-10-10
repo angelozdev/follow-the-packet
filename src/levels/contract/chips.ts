@@ -1,5 +1,5 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, ipInCidr, isIpv4, isLoopbackIpv4, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
+import { DEFAULT_DIRECTION, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
 import { peerIdOf, ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
@@ -100,6 +100,17 @@ export function officeLeaks(incident: Incident, world: Network): string[] {
   return packetsOf(incident)
     .filter((packet) => packet.from.kind === 'device' && isIpv4(packet.to) && !isLoopbackIpv4(packet.to) && !ipInCidr(packet.to, world.cidr))
     .map((packet) => `${packet.from.id} → ${packet.to}`);
+}
+
+/** Returns the ids of the routers the traceroutes a send owner offers cross in this world, in the order they are crossed and once each: for every combination of chips that is a traceroute, the routers of each probe it runs (those in `Trace.hops`, the router that discards a probe at TTL 0 included). None for an owner that offers no traceroute. */
+export function routersCrossedByTraceroutes(owner: SendOwner, world: Network): string[] {
+  const crossed = sendCombinations(owner).flatMap((combination) => {
+    const probe = probeFromChips(owner, combination);
+    if (!probe) return [];
+    const { lines } = traceroute(world, probe.from, probe.to, TRACEROUTE_MAX_HOPS);
+    return lines.flatMap((line) => (simulate(world, { ...probe, ttl: line.hop }).hops ?? []).map((hop) => hop.routerId));
+  });
+  return crossed.filter((id, index) => crossed.indexOf(id) === index);
 }
 
 function placedIds(world: Network): string[] {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { stampLabel, toPlainText, type TermId } from '@/copy';
-import { sessionReducer, startSession, type Session } from '@/game';
+import { pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { INCIDENTS } from '@/levels';
+import { ADDRESS, IP, ROUTER } from '@/levels/01-first-day/shared';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { computeLayout, pathFor } from '@/scene/layout';
 import { flowLook } from '@/scene/traffic/flow-look';
@@ -164,3 +165,21 @@ describe('a warning that comes back to the sender', () => {
   });
 });
 
+describe('the stamp of a ping that dies at a router the map does not draw', () => {
+  const session = startSession(INCIDENTS, '01-08');
+  const sent = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId: ADDRESS.otherOffice.id, messageId: 'ping' });
+  const [run] = sent.sent;
+  const layout = computeLayout(sent.world, pieceViews(sent).map(({ kind, anchorId }) => ({ kind, anchorId })));
+  const path = pathFor(run.trace, run.packet, layout, run.hiddenStop);
+
+  it('01-08: the lost ping to 10.0.0.10 ends on the road between the office router and the internet, with the lost stamp', () => {
+    expect(run.trace.steps.at(-1)).toMatchObject({ at: ROUTER.provider.id, verdict: 'drop', reason: { code: 'forward-private-dropped', ip: IP.otherOfficePrinter } });
+    expect(layout.routers[ROUTER.provider.id]).toBeUndefined();
+    expect(path.at(-1)?.[0]).toBeLessThan(layout.routers[ROUTER.office.id][0]);
+    expect(path.at(-1)?.[0]).toBeGreaterThan(layout.internet[0]);
+    expect(path.at(-1)?.[1]).toBe(layout.roadZ);
+    expect(path.slice(0, -1).map(([x]) => x)).not.toContain(layout.internet[0]);
+    expect(drawn(run).look).toMatchObject({ end: 'lost', stamp: 'lost' });
+    expect(drawn(run).name).toMatch(/Perdido\.$/);
+  });
+});

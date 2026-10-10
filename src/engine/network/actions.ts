@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerSchema, ruleSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema } from './schema';
 import { lansOf } from './topology';
 import type { Device, Direction, Firewall, Lan, Network, Router, Rule } from './types';
 
@@ -17,7 +17,13 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addLan'), lan: lanSchema }),
   z.object({ type: z.literal('addDevice'), device: deviceSchema }),
   z.object({ type: z.literal('addRouter'), router: routerSchema }),
-  z.object({ type: z.literal('updateRouter'), routerId: nonEmpty, routes: z.array(routeSchema).optional(), sendsUnreachable: z.boolean().optional() }),
+  z.object({
+    type: z.literal('updateRouter'),
+    routerId: nonEmpty,
+    routes: z.array(routeSchema).optional(),
+    interfaces: z.array(routerInterfaceSchema).optional(),
+    sendsUnreachable: z.boolean().optional(),
+  }),
 ]);
 
 export type NetworkAction = z.infer<typeof networkActionSchema>;
@@ -88,6 +94,7 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return changeRouter(net, action.routerId, (r) => ({
         ...r,
         routes: action.routes ?? r.routes,
+        interfaces: action.interfaces ?? r.interfaces,
         sendsUnreachable: action.sendsUnreachable ?? r.sendsUnreachable,
       }));
   }

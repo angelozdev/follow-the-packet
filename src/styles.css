@@ -69,8 +69,10 @@ button.stamp { cursor: help; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
 .inspection__fields { margin: 0; }
+.inspection__fields > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-sm); }
+.inspection__fields > div:has(dd + dd) dd { flex-basis: 100%; }
 .inspection__fields dt { margin-top: var(--space-xs); }
-.inspection__fields dd { margin: 0; }
+.inspection__fields dd { min-width: 0; margin: 0; }
 .feedback { margin: var(--space-2xs) 0 0; padding: var(--space-xs) var(--space-sm); border-left: var(--stroke-double) solid var(--color-ink-soft); background: var(--color-shade); font-size: var(--text-md); }
 .feedback--wrong { color: var(--color-danger); border-left-color: var(--color-danger); }
 .result__list { list-style: none; padding: 0; }

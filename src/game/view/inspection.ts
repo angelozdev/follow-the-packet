@@ -1,5 +1,5 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
+import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor, type Trace } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
@@ -11,6 +11,7 @@ import { placesOf, routerPlace } from './router-place';
 export interface InspectionField {
   label: TermText;
   lines: TermText[];
+  notes?: TermText[];
 }
 
 export interface Inspection {
@@ -23,10 +24,11 @@ interface FieldSpec {
   term: TermId | null;
   label: TermText;
   lines: () => TermText[];
+  notes?: TermText[];
 }
 
 function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionField[] {
-  return specs.filter((spec) => spec.term === null || known.has(spec.term)).map((spec) => ({ label: spec.label, lines: spec.lines() }));
+  return specs.filter((spec) => spec.term === null || known.has(spec.term)).map(({ label, lines, notes }) => ({ label, lines: lines(), ...(notes && { notes }) }));
 }
 
 function definition(term: TermId | null): FieldSpec[] {
@@ -55,6 +57,12 @@ function connectionField(own: Device, kind: Network['kind']): FieldSpec[] {
   return [{ term: 'network', label: INSPECTION_TEXT.connection, lines: () => [isConnected(own) ? INSPECTION_TEXT.connected : INSPECTION_TEXT.disconnected] }];
 }
 
+/** The field with the public IP of a device of a VPC, or that it has none. A device of an office shows no such field: how a packet leaves the office is a black box in chapter 1, so the box says nothing about a public address the laptop does not use itself. */
+function publicIpField(own: Device, kind: Network['kind']): FieldSpec[] {
+  if (kind !== 'vpc') return [];
+  return [{ term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] }];
+}
+
 function dnsNames(device: Device, region: string | undefined): string[] {
   if (!region) return [];
   return [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)];
@@ -77,7 +85,7 @@ function device(session: Session, own: Device): Inspection {
         ...whatIs({ kind: 'device', variant: own.kind }),
         addressField(own, session.known),
         ...connectionField(own, session.world.kind),
-        { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] },
+        ...publicIpField(own, session.world.kind),
         { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
         ...guardsField(guards),
@@ -135,12 +143,14 @@ function router(session: Session, own: Router): Inspection {
   return { entity, title: nameTag(own.name), fields: visible([...whatIs(entity), ...interfaceFields(session.world, own)], session.known) };
 }
 
+/** The box of a server of the internet: what a device is and its IP, called dirección IP until the term IP pública is known and IP pública after, because the address of a server of the internet is one. */
 function internetServer(session: Session, own: ServerActor): Inspection {
   const entity = { kind: 'device', variant: 'internet-server' } as const;
+  const term: TermId = session.known.has('public-ip') ? 'public-ip' : 'ip-address';
   return {
     entity,
     title: nameTag(own.name),
-    fields: visible([...whatIs(entity), { term: 'ip-address', label: INSPECTION_TEXT.ipAddress, lines: () => [own.ip] }], session.known),
+    fields: visible([...whatIs(entity), { term, label: term === 'public-ip' ? INSPECTION_TEXT.publicIp : INSPECTION_TEXT.ipAddress, lines: () => [own.ip] }], session.known),
   };
 }
 
@@ -162,27 +172,39 @@ function messageField(packet: PacketSpec): FieldSpec[] {
   return packet.protocol === 'icmp' ? [{ term: 'echo-request', label: INSPECTION_TEXT.message, lines: () => [messageLabel(packetMessage(packet))] }] : [];
 }
 
-/** The fields with the addresses a packet carries: the header it left with and, when the player knows Echo Reply, the header of the answer, which swaps source and destination (then the first one is called the header of the Echo Request, once that term is known). The TTL is listed once its term is known. */
-function headerFields({ request, reply }: PacketHeader, known: ReadonlySet<TermId>): FieldSpec[] {
-  const answered = reply !== undefined && known.has('echo-reply');
-  const outbound: FieldSpec = {
-    term: 'header',
-    label: answered && known.has('echo-request') ? INSPECTION_TEXT.requestHeader : INSPECTION_TEXT.header,
-    lines: () => [INSPECTION_TEXT.source(request.source, known), INSPECTION_TEXT.destination(request.destination, known), ...(known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])],
-  };
-  const answer: FieldSpec[] =
-    reply && answered ? [{ term: 'header', label: INSPECTION_TEXT.replyHeader, lines: () => [INSPECTION_TEXT.source(reply.source, known), INSPECTION_TEXT.destination(reply.destination, known)] }] : [];
-  return [outbound, ...answer];
+interface HeaderOptions {
+  ttl: boolean;
+  local: boolean;
 }
 
-/** Returns the lines of the routers a packet crossed, in order: each router the map draws by its name and the IP of its interface, and each stretch through routers it does not draw as inside or outside the office, so no text names what the player cannot see. */
+/** The fields with the addresses a packet carries: the header it left with and, when the player knows Echo Reply, the header of the answer, which swaps source and destination (then the first one is called the header of the Echo Request, once that term is known). The TTL is listed once its term is known, unless the packet is a traceroute, whose last probe has a TTL of its own that the player never chose. For a trip that leaves the office the headers are those seen in the local network: they are labelled so, and a last line says that outside the office the header changes, without saying how. */
+function headerFields({ request, reply }: PacketHeader, known: ReadonlySet<TermId>, { ttl, local }: HeaderOptions): FieldSpec[] {
+  const answered = reply !== undefined && known.has('echo-reply');
+  const named = (label: TermText): TermText => (local ? INSPECTION_TEXT.inLan(label, known) : label);
+  const outbound: FieldSpec = {
+    term: 'header',
+    label: named(answered && known.has('echo-request') ? INSPECTION_TEXT.requestHeader : INSPECTION_TEXT.header),
+    lines: () => [INSPECTION_TEXT.source(request.source, known), INSPECTION_TEXT.destination(request.destination, known), ...(ttl && known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])],
+  };
+  const answer: FieldSpec[] =
+    reply && answered
+      ? [{ term: 'header', label: named(INSPECTION_TEXT.replyHeader), lines: () => [INSPECTION_TEXT.source(reply.source, known), INSPECTION_TEXT.destination(reply.destination, known)] }]
+      : [];
+  const fields = [outbound, ...answer];
+  return local ? [...fields.slice(0, -1), { ...fields[fields.length - 1], notes: [INSPECTION_TEXT.headerChanges] }] : fields;
+}
+
+/** Returns the lines of the routers a packet crossed, in order: each router the map draws by its name and the IP of its interface, and each stretch through routers it does not draw as inside or outside the office, so no text names what the player cannot see. A packet that goes round a loop crosses the same routers again and again, so only the first hops are listed, as many as a traceroute prints, and a last line counts the rest. */
 function pathLines(session: Session, hops: Hop[]): TermText[] {
-  return hops.reduce<TermText[]>((lines, hop) => {
+  const listed = hops.slice(0, TRACEROUTE_MAX_HOPS);
+  const lines = listed.reduce<TermText[]>((acc, hop) => {
     const place = routerPlace(session, hop.routerId);
-    if (place === 'named') return [...lines, INSPECTION_TEXT.router(deviceName(session.world, hop.routerId), hop.ip)];
+    if (place === 'named') return [...acc, INSPECTION_TEXT.router(deviceName(session.world, hop.routerId), hop.ip)];
     const line = INSPECTION_TEXT.place[place];
-    return lines.at(-1) === line ? lines : [...lines, line];
+    return acc.at(-1) === line ? acc : [...acc, line];
   }, []);
+  const rest = hops.length - listed.length;
+  return rest > 0 ? [...lines, INSPECTION_TEXT.moreHops(rest)] : lines;
 }
 
 /** The field with the routers a packet crossed. It is called "Pasó por" until the term hop is known, and "Saltos" after. A packet that crossed none has no such field. */
@@ -198,14 +220,20 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
   return cameBack && session.known.has('rtt') ? [{ label: INSPECTION_TEXT.roundTrip, lines: [roundTripText(rttMs), INSPECTION_TEXT.exampleTime] }] : [];
 }
 
+function leavesTheOffice(trace: Trace): boolean {
+  return trace.steps.some((step) => step.reason.code === 'route-leaves-office');
+}
+
 function packet(session: Session, run: PacketRun): Inspection {
   const step = stopStep(run.trace);
   const { header, hops } = run.trace;
+  const traced = 'route' in run && run.route !== undefined;
+  const options = { ttl: !traced, local: leavesTheOffice(run.trace) };
   return {
     entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.intruder },
     title: run.label,
     fields: [
-      ...visible([...definition(packetTerm(run.packet, session.known)), ...messageField(run.packet), ...(header ? headerFields(header, session.known) : [])], session.known),
+      ...visible([...definition(traced ? 'traceroute' : packetTerm(run.packet, session.known)), ...messageField(run.packet), ...(header ? headerFields(header, session.known, options) : [])], session.known),
       ...pathField(session, hops),
       { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known, run.trace.destinationId ? deviceName(session.world, run.trace.destinationId) : undefined)] },
       ...roundTripField(session, run),

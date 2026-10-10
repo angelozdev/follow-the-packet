@@ -37,7 +37,7 @@ export const TERMS = {
   localhost: { name: 'localhost', definition: 'Un nombre reservado para el propio dispositivo: apunta a la dirección de loopback, 127.0.0.1 en IPv4.' },
   rtt: {
     name: 'RTT',
-    definition: 'Round-Trip Time, tiempo de ida y vuelta: el tiempo entre enviar un paquete y recibir lo que el destino contesta.',
+    definition: 'Round-Trip Time, tiempo de ida y vuelta: el tiempo entre enviar un paquete y recibir lo que vuelve.',
   },
   timeout: {
     name: 'timeout',
@@ -65,7 +65,7 @@ export const TERMS = {
   },
   'time-exceeded': {
     name: 'Time Exceeded',
-    definition: 'Un aviso ICMP (tipo 11): un router lo manda a quien envió el paquete cuando su TTL llega a 0 y no puede reenviarlo.',
+    definition: 'Un aviso ICMP: un router lo manda a quien envió el paquete cuando su TTL llega a 0 y no puede reenviarlo.',
   },
   traceroute: {
     name: 'traceroute',
@@ -128,7 +128,7 @@ export const TERMS = {
   },
   cidr: { name: 'CIDR', definition: 'Una notación para un rango de IPs, IP/número: /32 es una sola IP; /16, 65 536; 0.0.0.0/0, todas las IPv4.' },
   'vpc-range': { name: 'rango CIDR de la VPC', definition: 'El rango de IPs privadas de la VPC, escrito como un CIDR (por ejemplo 172.31.0.0/16).' },
-  'public-ip': { name: 'IP pública', definition: 'La dirección IPv4 de una instancia que se alcanza desde internet.' },
+  'public-ip': { name: 'IP pública', definition: 'Una dirección IPv4 que se alcanza desde internet, a diferencia de una IP privada.' },
   nat: {
     name: 'NAT',
     definition: 'Network Address Translation: al salir por el Internet gateway, la IP privada del remitente se cambia por su IP pública.',

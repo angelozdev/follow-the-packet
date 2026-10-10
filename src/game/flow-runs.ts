@@ -1,4 +1,4 @@
-import { entityTerm, packetLabel, warningOf, type TermId, type TermText, type Warning } from '@/copy';
+import { entityTerm, packetLabel, tracerouteLabel, warningOf, type TermId, type TermText, type Warning } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
 import { packetFromChips, probeFromChips, type Flow, type FlowKind, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
@@ -92,10 +92,10 @@ export function runFlows(world: Network, flows: Flow[], known: ReadonlySet<TermI
 
 function sentRun(world: Network, known: ReadonlySet<TermId>, { fromId, toId, messageId }: SendMove, send: number, packet: PacketSpec, route?: TracerouteResult): SentPacket {
   const run = runPacket(world, known, `sent-${fromId}-${toId}-${messageId}`, packet, false);
-  return { ...run, fromId, toId, messageId, send, ...(route && { route }) };
+  return { ...run, ...(route && { route, label: tracerouteLabel(packet, run.trace, world, known) }), fromId, toId, messageId, send };
 }
 
-/** Simulates what three send chips stand for, as the send number `send`; null when the incident, or the case of a diagnose, does not offer one of the chips. A message that is a single packet is simulated as it is. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe. Its id names the combination, so a new send of the same chips replaces the old one. */
+/** Simulates what three send chips stand for, as the send number `send`; null when the incident, or the case of a diagnose, does not offer one of the chips. A message that is a single packet is simulated as it is. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe; it is labelled as a traceroute, not as the ping its last probe is. Its id names the combination, so a new send of the same chips replaces the old one. */
 export function sendPacket(world: Network, offers: SendOwner, move: SendMove, send: number, known: ReadonlySet<TermId>): SentPacket | null {
   const packet = packetFromChips(offers, move);
   if (packet) return sentRun(world, known, move, send, packet);

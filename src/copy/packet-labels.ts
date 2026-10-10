@@ -1,5 +1,5 @@
 import type { Endpoint, Network, Notice, Outcome, PacketSpec, Trace } from '@/engine';
-import { nameTag, type TermText } from './term-text';
+import { nameTag, word, type TermText } from './term-text';
 import type { PacketMessage, TermId } from './terms';
 
 const INTERNET_NAME = 'Internet';
@@ -40,11 +40,20 @@ export function messageLabel(message: PacketMessage): TermText {
   return `{{icmp}} · {{${message}}}`;
 }
 
+function destinationName(packet: PacketSpec, trace: Trace, net: Network): TermText {
+  const staysAtSender = packet.from.kind === 'device' && trace.destinationId === packet.from.id;
+  return trace.destinationId && !staysAtSender ? deviceName(net, trace.destinationId) : packet.to;
+}
+
 /** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). A packet that never left its sender (to `127.0.0.1`, `localhost` or its own IP) names the address as it was written, so these packets are told apart. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
-  const staysAtSender = packet.from.kind === 'device' && trace.destinationId === packet.from.id;
-  const to = trace.destinationId && !staysAtSender ? deviceName(net, trace.destinationId) : packet.to;
-  return `${serviceLabel(packet, known)} de ${endpointName(packet.from, net)} a ${to}`;
+  return `${serviceLabel(packet, known)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
+}
+
+/** Describes a traceroute the way `packetLabel` describes a packet, as what, from whom and to whom: it is called traceroute (and packet while that term is unknown), whatever probe it ended with. */
+export function tracerouteLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
+  const service = known === undefined || known.has('traceroute') ? '{{traceroute}}' : '{{packet}}';
+  return `${service} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
 }
 
 export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder' | 'warned';
@@ -73,6 +82,10 @@ export function stampLabel(packet: string, state: StampState): string {
   return `Paquete: ${packet}. ${STAMP_TEXT[state]}`;
 }
 
+function ttlExceededText(dropped: TermText): TermText {
+  return `No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo ${dropped} y avisó con {{time-exceeded}}.`;
+}
+
 export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   replied: 'Llegó y volvió la respuesta.',
   timeout: '{{timeout}}: pasó el tiempo de espera y no volvió nada.',
@@ -82,7 +95,7 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   'invalid-address': 'No salió del dispositivo: la dirección no es una {{ipv4}} válida.',
   'no-route': 'No salió del dispositivo: no tiene por dónde sacar el paquete.',
   unreachable: 'No llegó. Apareció un aviso: no se pudo llegar al destino.',
-  'ttl-exceeded': 'No llegó: el {{ttl}} llegó a 0 en un {{router}}, que lo {{drop|descartó}} y avisó con {{time-exceeded}}.',
+  'ttl-exceeded': ttlExceededText('{{drop|descartó}}'),
   lost: 'Se perdió: no llegó a ningún dispositivo.',
 };
 
@@ -95,8 +108,9 @@ const UNKNOWN_OUTCOME: Partial<Record<Outcome, { term: TermId; text: (destinatio
   'ttl-exceeded': { term: 'time-exceeded', text: () => NOT_DELIVERED },
 };
 
-/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived (and, when `destination` is given, where) or that it did not reach its destination, and never that nothing came back, since a warning did. While the term timeout is unknown, the silence is told without the term. */
+/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived (and, when `destination` is given, where) or that it did not reach its destination, and never that nothing came back, since a warning did. While the term timeout is unknown, the silence is told without the term, and a router that drops the packet at TTL 0 is told as one that discarded it until the term drop is known. */
 export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>, destination?: TermText): TermText {
   const hidden = UNKNOWN_OUTCOME[outcome];
-  return hidden && !known.has(hidden.term) ? hidden.text(destination) : OUTCOME_TEXT[outcome];
+  if (hidden && !known.has(hidden.term)) return hidden.text(destination);
+  return outcome === 'ttl-exceeded' ? ttlExceededText(word(known, 'drop', 'descartó')) : OUTCOME_TEXT[outcome];
 }

@@ -120,8 +120,9 @@ describe('incident screen', () => {
     expect(box.querySelector('dd')).toHaveTextContent(TERMS['ec2-instance'].definition);
     expect(box).toHaveTextContent('IP privada');
     expect(box).toHaveTextContent('172.31.38.97');
-    expect(box).not.toHaveTextContent('IP pública');
-    expect(box).not.toHaveTextContent('34.244.254.100');
+    expect(box).toHaveTextContent('IP pública');
+    expect(box).toHaveTextContent('34.244.254.100');
+    expect(box).not.toHaveTextContent('Nombres DNS');
   });
 
   it('a packet says where and why it stopped, and the box shows no hover definitions', async () => {

@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
-import type { Device, Lan, Network, NetworkAction } from '@/engine';
-import type { AddressChip, ExpectedOutcome, MessageChip, OriginChip, SendTask } from '@/levels/contract/incident';
+import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type Route, type Router } from '@/engine';
+import type { AddressChip, ExpectedOutcome, MessageChip, OriginChip, SendMove, SendTask } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
@@ -8,6 +8,10 @@ export const CONCEPT = 'concepts/security-groups.md';
 const OFFICE_RANGE = '192.168.0.0/16';
 const ANY_IPV4 = '0.0.0.0/0';
 const HOP_MS = 1;
+const PROVIDER_MS = 8;
+const DESTINATION_MS = 12;
+const SERVER_MS = 20;
+const SERVER_RANGE = '198.51.100.0/24';
 const LOCALHOST = 'localhost';
 
 export const IP = {
@@ -22,6 +26,13 @@ export const IP = {
   andres: '192.168.2.15',
   router: '192.168.1.1',
   routerSecondFloor: '192.168.2.1',
+  officeUplink: '203.0.113.10',
+  provider: '203.0.113.1',
+  providerOnward: '203.0.113.3',
+  destination: '203.0.113.2',
+  destinationServer: '198.51.100.1',
+  server: '198.51.100.50',
+  otherOfficePrinter: '10.0.0.10',
 } as const;
 
 export const FLOOR = {
@@ -38,7 +49,13 @@ export const DEVICE = {
   andres: { id: 'andres-laptop', name: 'laptop-andres' },
 } as const;
 
-export const ROUTER = { office: { id: 'office-router', name: 'router-oficina' } } as const;
+export const ROUTER = {
+  office: { id: 'office-router', name: 'router-oficina' },
+  provider: { id: 'provider-router', name: 'router-proveedor' },
+  destination: { id: 'destination-router', name: 'router-destino' },
+} as const;
+
+export const SERVER = { id: 'internet-server', name: 'servidor-internet' } as const;
 
 export const CARD = {
   network: { tray: 'in-network', yes: 'yes', no: 'no' },
@@ -54,6 +71,9 @@ export const NAME = {
   printer: nameTag(DEVICE.printer.name),
   andres: nameTag(DEVICE.andres.name),
   router: nameTag(ROUTER.office.name),
+  provider: nameTag(ROUTER.provider.name),
+  destination: nameTag(ROUTER.destination.name),
+  server: nameTag(SERVER.name),
 } as const;
 
 export const TASK = {
@@ -65,6 +85,12 @@ export const TASK = {
   silence: 'silence-seen',
   warning: 'warning-seen',
   andres: 'ping-to-andres',
+  server: 'ping-to-server',
+  otherOffice: 'ping-to-other-office',
+  ttl3: 'ttl-3-warns',
+  ttl64: 'ttl-64-warns',
+  serverSilence: 'ping-to-server-silent',
+  traceroute: 'traceroute-to-server',
 } as const;
 
 /** Returns a device of the office on floor 1, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
@@ -101,12 +127,22 @@ export const ADDRESS = {
   nobody: { id: 'ip-nobody', address: IP.nobody },
   loopback: { id: 'ip-loopback', address: IP.loopback },
   localhost: { id: 'ip-localhost', address: LOCALHOST },
+  server: { id: 'ip-server', address: IP.server },
+  otherOffice: { id: 'ip-other-office', address: IP.otherOfficePrinter },
 } satisfies Record<string, AddressChip>;
 
 export const MESSAGE = {
   packet: { id: 'packet', label: '{{packet}}', icmpType: 8, command: 'packet' },
   ping: { id: 'ping', label: '{{ping}}', icmpType: 8, command: 'ping' },
+  traceroute: { id: 'traceroute', label: '{{traceroute}}', icmpType: 8, command: 'traceroute' },
 } satisfies Record<string, MessageChip>;
+
+/** Returns the message of a ping that leaves with this TTL, such as the `ping -t 3 <ip>` the terminal writes for it. */
+function pingWithTtl(ttl: number): MessageChip {
+  return { id: `ping-ttl-${ttl}`, label: `{{ping}} con {{ttl}} ${ttl}`, icmpType: 8, command: 'ping', ttl };
+}
+
+export const PING_WITH_TTL = { 1: pingWithTtl(1), 2: pingWithTtl(2), 3: pingWithTtl(3), 5: pingWithTtl(5), 64: pingWithTtl(64) } as const;
 
 /** The firewall laptop-marta gets in 01-05: nothing may come in and everything may go out. The player does not know the term firewall until 01-11, so no piece, stamp or text shows it before. */
 export const HIDDEN_FIREWALL: NetworkAction = {
@@ -124,28 +160,84 @@ export const HIDDEN_FIREWALL: NetworkAction = {
 /** The ids of the pieces 01-06 and 01-07 draw: the three devices of floor 1 they use, the one on floor 2 and the router between them. Laptop-marta and laptop-visita stay in the world and are not drawn, and neither is anything outside the office. */
 export const OFFICE_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.printer.id, DEVICE.andres.id, ROUTER.office.id];
 
+/** The ids of the pieces 01-08 draws: the office of 01-06 and the server of the internet. The routers of the provider stay in the world, because the ping to a private IP of another office dies at one of them, and are not drawn yet. */
+export const INTERNET_PIECES: string[] = [...OFFICE_PIECES, SERVER.id];
+
+/** The ids of the pieces 01-09 draws: your laptop, the two routers the packet goes back and forth between and the server it never reaches. The router in front of the server is crossed by no packet, and the rest of the office is not used. */
+export const LOOP_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.provider.id, SERVER.id];
+
+/** The ids of the pieces 01-10 draws: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The rest of the office is not used. */
+export const PATH_PIECES: string[] = [...LOOP_PIECES, ROUTER.destination.id];
+
+const OFFICE_FACES: Router['interfaces'] = [
+  { ip: IP.router, faces: FLOOR.first.id },
+  { ip: IP.routerSecondFloor, faces: FLOOR.second.id },
+];
+
 /** What 01-06 adds to the world: the second floor with laptop-andres on it, the office router between the two floors, and the default gateway of every device (the router's interface on its own floor). */
 export const TWO_FLOORS: NetworkAction[] = [
   { type: 'addLan', lan: FLOOR.second },
   { type: 'addDevice', device: officeDevice(DEVICE.andres, 'laptop', IP.andres, { lanId: FLOOR.second.id, gateway: IP.routerSecondFloor }) },
-  {
-    type: 'addRouter',
-    router: {
-      id: ROUTER.office.id,
-      name: ROUTER.office.name,
-      interfaces: [
-        { ip: IP.router, faces: FLOOR.first.id },
-        { ip: IP.routerSecondFloor, faces: FLOOR.second.id },
-      ],
-      routes: [],
-      latencyMs: HOP_MS,
-      sendsUnreachable: true,
-    },
-  },
+  { type: 'addRouter', router: { id: ROUTER.office.id, name: ROUTER.office.name, interfaces: OFFICE_FACES, routes: [], latencyMs: HOP_MS, sendsUnreachable: true } },
   ...[DEVICE.you, DEVICE.lucia, DEVICE.marta, DEVICE.printer, DEVICE.visitor].map((device): NetworkAction => ({ type: 'setGateway', deviceId: device.id, gateway: IP.router })),
 ];
 
+/** Returns the route that sends what is for the office, whatever floor it is on, to this router. */
+function backToOffice(next: string): Route {
+  return { to: OFFICE_RANGE, next };
+}
+
+/** What 01-08 adds to the world: the way out of the office and the internet beyond it, a router of the provider after the office router and one in front of the server, and the server that answers a ping. The office router gets an interface towards the provider, and its only route sends everything outside the office there. The way a packet leaves the office is a black box: nothing here says how its source changes. */
+export const INTERNET: NetworkAction[] = [
+  { type: 'addActor', actor: { id: SERVER.id, name: SERVER.name, ip: IP.server, kind: 'server', latencyMs: SERVER_MS } },
+  {
+    type: 'addRouter',
+    router: {
+      id: ROUTER.provider.id,
+      name: ROUTER.provider.name,
+      interfaces: [
+        { ip: IP.provider, faces: ROUTER.office.id },
+        { ip: IP.providerOnward, faces: ROUTER.destination.id },
+      ],
+      routes: [{ to: SERVER_RANGE, next: ROUTER.destination.id }, backToOffice(ROUTER.office.id)],
+      latencyMs: PROVIDER_MS,
+      sendsUnreachable: true,
+    },
+  },
+  {
+    type: 'addRouter',
+    router: {
+      id: ROUTER.destination.id,
+      name: ROUTER.destination.name,
+      interfaces: [
+        { ip: IP.destination, faces: ROUTER.provider.id },
+        { ip: IP.destinationServer, faces: SERVER.id },
+      ],
+      routes: [backToOffice(ROUTER.provider.id)],
+      latencyMs: DESTINATION_MS,
+      sendsUnreachable: true,
+    },
+  },
+  { type: 'updateRouter', routerId: ROUTER.office.id, interfaces: [...OFFICE_FACES, { ip: IP.officeUplink, faces: ROUTER.provider.id }], routes: [{ to: ROUTE_DEFAULT, next: ROUTER.provider.id }] },
+];
+
+/** What 01-09 changes: the router of the provider sends everything it does not know back to the office router, and the office router sends it to the provider again, so a packet to the server goes back and forth between the two. The player does not configure routes: the loop is given. */
+export const LOOP: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [{ to: ROUTE_DEFAULT, next: ROUTER.office.id }] }];
+
+/** What 01-10 changes: no loop, but a broken stretch behind the router of the provider, which no longer has a way to the server and, being set up so, does not warn. */
+export const BROKEN_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [backToOffice(ROUTER.office.id)], sendsUnreachable: false }];
+
+/** Returns the task of a send incident that expects what a message sent from your laptop to an address ends in, and, when `by` is given, who answered, warned or dropped it. */
+export function sendTask(id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {
+  return { id, text, expect: { fromId: ORIGIN.you.id, toId, messageId, outcome, by } };
+}
+
 /** Returns the task of a send incident that expects what a ping from your laptop to an address ends in, and, when `by` is given, who answered, warned or dropped it. */
 export function pingTask(id: string, text: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {
-  return { id, text, expect: { fromId: ORIGIN.you.id, toId, messageId: MESSAGE.ping.id, outcome, by } };
+  return sendTask(id, text, MESSAGE.ping.id, toId, outcome, by);
+}
+
+/** Returns the move that sends a message from your laptop to an address, for the reference solution of a send incident. */
+export function sendMove(toId: string, messageId: string): SendMove {
+  return { type: 'sendPacket', fromId: ORIGIN.you.id, toId, messageId };
 }

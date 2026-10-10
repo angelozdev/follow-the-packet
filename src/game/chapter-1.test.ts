@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { roundTripText, stampLabel, toPlainText, type TermText } from '@/copy';
+import { TERMS, roundTripText, stampLabel, toPlainText, type TermText } from '@/copy';
 import { networkSchema } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, GATEWAY, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, ROUTER, TASK } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, GATEWAY, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, SERVER, TASK } from '@/levels/01-first-day/shared';
 import type { SentPacket } from './flow-runs';
 import { identifyCard } from './view/cards/identify-card';
 import { settingsCard } from './view/cards/settings-card';
 import { terminalCard, terminalLine } from './view/cards/terminal-card';
 import { inspect } from './view/inspection';
 import { PIECE_ID } from './view/piece-id';
-import { pieceViews } from './view/pieces';
+import { drawsRouter, pieceViews } from './view/pieces';
+import { routerPlace } from './view/router-place';
+import { tracerouteLines } from './view/cards/traceroute-lines';
 import { sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
 
@@ -21,6 +23,9 @@ const PING_YOURSELF = '01-04';
 const WHEN_IT_DOES_NOT_COME_BACK = '01-05';
 const YOUR_NETWORK = '01-06';
 const WHO_GETS_WHAT_IS_OUTSIDE = '01-07';
+const THE_NETWORK_OF_NETWORKS = '01-08';
+const COUNTING_HOPS = '01-09';
+const SEEING_THE_PATH = '01-10';
 const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const NOTE_RULE = 'La nota de Lucía estaba mal: 192.168.1.300 no es IPv4, porque cada uno de los cuatro números va de 0 a 255.';
 const RIGHT_FEEDBACK = 'Correcto.';
@@ -28,6 +33,10 @@ const CONNECTED_FEEDBACK = 'Sí está en la red: laptop-lucia está conectada. S
 const NOT_CONNECTED_FEEDBACK = 'No. laptop-visita no está conectada, así que no forma parte de la red. Su caja de inspección lo dice.';
 const MARTA_FEEDBACK = 'Esa IP es de laptop-marta: se ve en su caja. La impresora tiene otra.';
 const HEADER_LABEL = 'Encabezado';
+const LOCAL_HEADER_LABEL = 'Encabezado (en tu red local)';
+const LOCAL_REQUEST_HEADER_LABEL = 'Encabezado del Echo Request (en tu red local)';
+const LOCAL_REPLY_HEADER_LABEL = 'Encabezado del Echo Reply (en tu red local)';
+const HEADER_CHANGES = 'Fuera de la oficina el encabezado cambia: lo verás en el capítulo 2.';
 const CONNECTED_LINE = 'Conectado a la red.';
 const NOT_CONNECTED_LINE = 'No está conectado: no forma parte de la red.';
 const RESULT_LABEL = 'Resultado';
@@ -42,6 +51,7 @@ const NOT_NETWORK_JARGON = /\b(ARP|MAC|Linux|macOS|Windows)\b/;
 const SWITCHED_OFF = /apagad/i;
 const PASSED_THROUGH_LABEL = 'Pasó por';
 const ROUTER_LINE = `${ROUTER.office.name} (${IP.router})`;
+const PROVIDER_LINE = `${ROUTER.provider.name} (${IP.provider})`;
 const HOP_OR_TTL = /salto|TTL/i;
 const NO_GATEWAY_TEXT = '192.168.2.15 no está en la red local de tu-laptop, y tu-laptop no tiene puerta de enlace predeterminada: no sabe por dónde sacar el paquete.';
 const PRINTER_GATEWAY_TEXT = 'La IP 192.168.1.21, la puerta de enlace predeterminada guardada, es de impresora, que no es un router: recibe el paquete, no lo pasa a otra red y no vuelve nada.';
@@ -49,6 +59,14 @@ const NOBODY_GATEWAY_TEXT = 'tu-laptop buscó en su red quién tenía la IP 192.
 const SETTINGS_ENTRY = 'Ajustes de red de tu-laptop';
 const GATEWAY_TRAY = 'puerta de enlace predeterminada';
 const NO_GATEWAY_CHIP = 'Ninguna';
+const OUTSIDE_THE_OFFICE = 'fuera de la oficina';
+const HOPS_LABEL = 'Saltos';
+const NAT_WORDS = /\bNAT\b|traduc/i;
+const ROUTER_OUTSIDE = new RegExp(`${ROUTER.provider.name}|${ROUTER.destination.name}|203\\.0\\.113\\.`);
+const TTL_VALUES = [1, 2, 3, 5, 64] as const;
+const STAR = '*';
+const TRACEROUTE_LINES = 8;
+const ROUTER_OUTSIDE_THE_LOOP = new RegExp(`${ROUTER.destination.name}|${IP.destination.replaceAll('.', '\\.')}`);
 const SENDER_LOOKED = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50 y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
 
 function guidedOf(id: string) {
@@ -91,8 +109,30 @@ function pingTo(session: Session, ...toIds: string[]): Session {
   return toIds.reduce((current, toId) => sessionReducer(current, { type: 'sendPacket', fromId: ORIGIN.you.id, toId, messageId: MESSAGE.ping.id }), session);
 }
 
-function sentTo(session: Session, toId: string): SentPacket {
-  const found = session.sent.find((packet) => packet.toId === toId);
+function sendWith(session: Session, messageId: string, toId: string): Session {
+  return sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.you.id, toId, messageId });
+}
+
+function pingWithTtl(session: Session, ttl: (typeof TTL_VALUES)[number]): Session {
+  return sendWith(session, PING_WITH_TTL[ttl].id, ADDRESS.server.id);
+}
+
+function expectClosed(session: Session): void {
+  expect(openTasks(session)).toEqual([]);
+  expect(starsOf(sessionReducer(session, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+}
+
+function hopIds(run: SentPacket): string[] {
+  return (run.trace.hops ?? []).map((hop) => hop.routerId);
+}
+
+function plainBox(session: Session, pieceId: string): string[] {
+  const box = inspect(session, pieceId);
+  return box ? [box.title, ...box.fields.flatMap((field) => [field.label, ...field.lines])].map((text) => toPlainText(text)) : [];
+}
+
+function sentTo(session: Session, toId: string, messageId?: string): SentPacket {
+  const found = session.sent.find((packet) => packet.toId === toId && (messageId === undefined || packet.messageId === messageId));
   if (!found) throw new Error(`nothing was sent to ${toId}`);
   return found;
 }
@@ -544,21 +584,247 @@ describe('01-07, who gets whats outside', () => {
   });
 });
 
-describe('the seven incidents of blocks 1 to 3', () => {
-  const SEVEN = [THE_OFFICE, THE_ENVELOPE, ARE_YOU_THERE, PING_YOURSELF, WHEN_IT_DOES_NOT_COME_BACK, YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE];
-  const places = SEVEN.map((id) => guidedOf(id).explanation.findIndex((option) => option.correct));
+describe('01-08, the network of networks', () => {
+  const start = startSession(INCIDENTS, THE_NETWORK_OF_NETWORKS);
+  const toServer = pingTo(start, ADDRESS.server.id);
+  const toOtherOffice = pingTo(start, ADDRESS.otherOffice.id);
+  const both = pingTo(start, ADDRESS.server.id, ADDRESS.otherOffice.id);
+  const STOPPED_TEXT = `${IP.otherOfficePrinter} es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descarta el paquete sin avisar.`;
+
+  it('01-08: a ping to the server of the internet comes back', () => {
+    const [run] = toServer.sent;
+    expect(run).toMatchObject({ replied: true, reached: true, warning: null, by: [SERVER.id], trace: { outcome: 'replied', destinationId: SERVER.id } });
+    expect(hopIds(run)).toEqual([ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id]);
+    expect(run.trace.rttMs).toBeGreaterThan(sentTo(pingTo(start, ADDRESS.printer.id), ADDRESS.printer.id).trace.rttMs ?? Number.NaN);
+    expect(fieldLines(toServer, run.pieceId, PASSED_THROUGH_LABEL)).toEqual([ROUTER_LINE, OUTSIDE_THE_OFFICE]);
+    expect(openTasks(toServer)).toEqual([TASK.otherOffice]);
+  });
+
+  it('01-08: the headers of a trip that leaves the office are labelled as seen in the local network and say nothing of how they change', () => {
+    const [run] = toServer.sent;
+    expect(fieldLines(toServer, run.pieceId, LOCAL_REQUEST_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.server}`]);
+    expect(fieldLines(toServer, run.pieceId, LOCAL_REPLY_HEADER_LABEL)).toEqual([`IP de origen: ${IP.server}`, `IP de destino: ${IP.you}`]);
+    const notes = inspect(toServer, run.pieceId)?.fields.flatMap((field) => (field.notes ?? []).map((note) => toPlainText(note)));
+    expect(notes).toEqual([HEADER_CHANGES]);
+    const [lost] = toOtherOffice.sent;
+    expect(fieldLines(toOtherOffice, lost.pieceId, LOCAL_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.otherOfficePrinter}`]);
+    expect(JSON.stringify([inspect(toServer, run.pieceId), inspect(toOtherOffice, lost.pieceId)])).not.toMatch(/NAT|pública/);
+    const inside = pingTo(startSession(INCIDENTS, YOUR_NETWORK), ADDRESS.andres.id);
+    expect(fieldLines(inside, sentTo(inside, ADDRESS.andres.id).pieceId, REQUEST_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.andres}`]);
+    expect(inspect(inside, sentTo(inside, ADDRESS.andres.id).pieceId)?.fields.flatMap((field) => field.notes ?? [])).toEqual([]);
+  });
+
+  it('01-08: a ping to the private IP of another office dies at the first router outside the office with no warning', () => {
+    const [run] = toOtherOffice.sent;
+    expect(run).toMatchObject({ replied: false, reached: false, warning: null, trace: { outcome: 'timeout', destinationId: null } });
+    expect(run.trace.notice).toBeUndefined();
+    expect(run.trace.rttMs).toBeUndefined();
+    expect(hopIds(run)).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(run.trace.steps.at(-1)).toMatchObject({ stage: 'forward', at: ROUTER.provider.id, verdict: 'drop', reason: { code: 'forward-private-dropped', ip: IP.otherOfficePrinter } });
+    expect(run.trace.steps.some((step) => step.at === ROUTER.office.id && step.verdict === 'drop')).toBe(false);
+    expect(openTasks(toOtherOffice)).toEqual([TASK.server]);
+  });
+
+  it('01-08: no text or box of the trip names NAT', () => {
+    expect(everythingShown(both).filter((text) => NAT_WORDS.test(text))).toEqual([]);
+    expect(incidentTexts(guidedOf(THE_NETWORK_OF_NETWORKS)).map((text) => toPlainText(text)).filter((text) => NAT_WORDS.test(text))).toEqual([]);
+    const steps = both.sent.flatMap((run) => run.trace.steps);
+    expect(steps.filter((step) => /nat/i.test(`${step.stage} ${step.reason.code}`))).toEqual([]);
+    expect(steps.some((step) => step.reason.code === 'route-leaves-office')).toBe(true);
+  });
+
+  it('01-08: draws the office of 01-06, the internet and the server, and no router of the provider', () => {
+    const office = drawnLabels(startSession(INCIDENTS, YOUR_NETWORK));
+    expect(drawnLabels(start)).toEqual([...office, 'device:servidor-internet', 'internet:internet'].sort());
+    expect(start.world.routers?.map((router) => router.id)).toEqual([ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id]);
+    expect(pieceViews(start).filter((piece) => piece.kind === 'edge').map((piece) => piece.anchorId)).toEqual([ROUTER.office.id]);
+    expect(guidedOf(THE_NETWORK_OF_NETWORKS).shown).toEqual(expect.arrayContaining([...guidedOf(YOUR_NETWORK).shown ?? [], SERVER.id]));
+  });
+
+  it('01-08: the lost ping to 10.0.0.10 ends between the office router and the internet, and no text of its box names a router outside the office', () => {
+    const [run] = toOtherOffice.sent;
+    const dropper = run.trace.steps.at(-1)?.at ?? '';
+    expect(routerPlace(toOtherOffice, dropper)).toBe('outside');
+    expect((run.trace.hops ?? []).filter((hop) => drawsRouter(toOtherOffice, hop.routerId)).map((hop) => hop.routerId)).toEqual([ROUTER.office.id]);
+    expect(pieceViews(toOtherOffice).filter((piece) => piece.kind === 'internet' || piece.kind === 'edge').map((piece) => piece.kind)).toEqual(['edge', 'internet']);
+    expect(fieldLines(toOtherOffice, run.pieceId, STOPPED_LABEL)).toEqual([STOPPED_TEXT]);
+    expect(plainBox(toOtherOffice, run.pieceId).filter((text) => ROUTER_OUTSIDE.test(text))).toEqual([]);
+    expect(everythingShown(both).filter((text) => ROUTER_OUTSIDE.test(text))).toEqual([]);
+  });
+
+  it('01-08: both the ping to the server and the lost ping to 10.0.0.10 must be seen to close the incident', () => {
+    expect(openTasks(start)).toEqual([TASK.server, TASK.otherOffice]);
+    expect(openTasks(pingTo(start, ADDRESS.printer.id))).toEqual([TASK.server, TASK.otherOffice]);
+    expectClosed(both);
+  });
+
+  it('01-08: starts from the world of 01-07 solved plus the internet, and the world is valid with the routers of the provider kept in it', () => {
+    const solved = solvedWorld(INCIDENTS, WHO_GETS_WHAT_IS_OUTSIDE);
+    expect(networkSchema.safeParse(start.world).success).toBe(true);
+    expect(start.world.devices).toEqual(solved.devices);
+    expect(start.world.actors.map((actor) => actor.id)).toEqual([SERVER.id]);
+    expect(start.world.routers?.map((router) => router.id)).toEqual([ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id]);
+  });
+});
+
+describe('01-09, counting hops', () => {
+  const start = startSession(INCIDENTS, COUNTING_HOPS);
+  const all = TTL_VALUES.reduce(pingWithTtl, start);
+
+  it('01-09: a ping with TTL 3 gets Time Exceeded from the router of the office', () => {
+    const sent = pingWithTtl(start, 3);
+    const [run] = sent.sent;
+    expect(run).toMatchObject({ replied: false, reached: false, by: [ROUTER.office.id], warning: { term: 'time-exceeded', by: 'router' }, trace: { outcome: 'ttl-exceeded' } });
+    expect(run.trace.notice).toMatchObject({ kind: 'time-exceeded', fromId: ROUTER.office.id, fromIp: IP.router });
+    expect(hopIds(run)).toEqual([ROUTER.office.id, ROUTER.provider.id, ROUTER.office.id]);
+    expect(openTasks(sent)).toEqual([TASK.ttl64]);
+    expect(terminalLine(sent, { to: ADDRESS.server.id, message: PING_WITH_TTL[3].id })).toBe(`ping -t 3 ${IP.server}`);
+    expect(fieldLines(sent, run.pieceId, HOPS_LABEL)).toHaveLength(3);
+  });
+
+  it('01-09: a ping with TTL 64 gets Time Exceeded too, because the packet loops', () => {
+    const sent = pingWithTtl(start, 64);
+    const [run] = sent.sent;
+    const routers = hopIds(run);
+    expect(run).toMatchObject({ replied: false, reached: false, warning: { term: 'time-exceeded', by: 'router' }, trace: { outcome: 'ttl-exceeded' } });
+    expect(routers).toHaveLength(64);
+    expect(new Set(routers)).toEqual(new Set([ROUTER.office.id, ROUTER.provider.id]));
+    expect(routers.filter((id, index) => index > 0 && id === routers[index - 1])).toEqual([]);
+    expect(run.trace.hops?.at(-1)).toMatchObject({ ttlLeft: 0 });
+    expect(fieldLines(sent, run.pieceId, HOPS_LABEL)?.at(-1)).toBe('y 56 saltos más');
+    expect(run.trace.steps.some((step) => step.at === SERVER.id || step.at === ROUTER.destination.id)).toBe(false);
+    expect(openTasks(sent)).toEqual([TASK.ttl3]);
+    expectClosed(pingWithTtl(sent, 3));
+  });
+
+  it('01-09: with TTL 1 the router of the office warns and with TTL 2 the router of the provider', () => {
+    const [one, two] = ([1, 2] as const).map((ttl) => pingWithTtl(start, ttl).sent[0]);
+    expect(one.trace.notice).toMatchObject({ fromId: ROUTER.office.id, fromIp: IP.router });
+    expect(two.trace.notice).toMatchObject({ fromId: ROUTER.provider.id, fromIp: IP.provider });
+    expect(hopIds(one)).toEqual([ROUTER.office.id]);
+    expect(hopIds(two)).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(openTasks(pingWithTtl(start, 1))).toEqual([TASK.ttl3, TASK.ttl64]);
+  });
+
+  it('01-09: draws tu-laptop, the two routers of the loop, the internet and the server, and no other device of the office', () => {
+    expect(drawnLabels(start)).toEqual(['device:servidor-internet', 'device:tu-laptop', 'edge:router-oficina', 'edge:router-proveedor', 'internet:internet']);
+    expect(start.world.routers?.map((router) => router.id)).toContain(ROUTER.destination.id);
+    expect(drawnLabels(start)).not.toContain(`edge:${ROUTER.destination.name}`);
+  });
+
+  it('01-09: every router that sends Time Exceeded is drawn', () => {
+    const warners = all.sent.flatMap((run) => (run.trace.outcome === 'ttl-exceeded' && run.trace.notice ? [run.trace.notice.fromId] : []));
+    expect(all.sent).toHaveLength(TTL_VALUES.length);
+    expect(new Set(warners)).toEqual(new Set([ROUTER.office.id, ROUTER.provider.id]));
+    for (const id of warners) expect(drawsRouter(all, id), id).toBe(true);
+    expect(everythingShown(all).filter((text) => ROUTER_OUTSIDE_THE_LOOP.test(text))).toEqual([]);
+  });
+
+  it('01-09: the box calls the routers it passed through hops, shows the TTL the ping left with and the figure of a warning that came back', () => {
+    const sent = pingWithTtl(start, 5);
+    const [run] = sent.sent;
+    expect(fieldLines(sent, run.pieceId, LOCAL_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.server}`, 'TTL al salir: 5']);
+    expect(fieldLines(sent, run.pieceId, HEADER_LABEL)).toBeUndefined();
+    expect(fieldLines(sent, run.pieceId, HOPS_LABEL)).toEqual([ROUTER_LINE, PROVIDER_LINE, ROUTER_LINE, PROVIDER_LINE, ROUTER_LINE]);
+    expect(fieldLines(sent, run.pieceId, PASSED_THROUGH_LABEL)).toBeUndefined();
+    expect(fieldLines(sent, run.pieceId, ROUND_TRIP_LABEL)).toEqual([roundTripText(run.trace.rttMs ?? Number.NaN), EXAMPLE_FIGURE]);
+  });
+});
+
+describe('01-10, seeing the path', () => {
+  const start = startSession(INCIDENTS, SEEING_THE_PATH);
+  const pinged = pingTo(start, ADDRESS.server.id);
+  const traced = sendWith(start, MESSAGE.traceroute.id, ADDRESS.server.id);
+  const both = sendWith(pinged, MESSAGE.traceroute.id, ADDRESS.server.id);
+  const picks = { from: ORIGIN.you.id, to: ADDRESS.server.id, message: MESSAGE.traceroute.id };
+  const lines = () => tracerouteLines(traced, picks)?.lines ?? [];
+  const routerOwning = (ip: string) => start.world.routers?.find((router) => router.interfaces.some((face) => face.ip === ip))?.id;
+
+  it('01-10: the ping to the server ends in silence', () => {
+    const [run] = pinged.sent;
+    expect(run).toMatchObject({ replied: false, reached: false, warning: null, trace: { outcome: 'timeout' } });
+    expect(run.trace.notice).toBeUndefined();
+    expect(run.trace.rttMs).toBeUndefined();
+    expect(fieldLines(pinged, run.pieceId, 'Resultado')?.[0]).toMatch(/^timeout/);
+    expect(openTasks(pinged)).toEqual([TASK.traceroute]);
+  });
+
+  it('01-10: a traceroute lists the two routers and then stars', () => {
+    const view = tracerouteLines(traced, picks);
+    expect(view?.lines.map((line) => line.hop)).toEqual(Array.from({ length: TRACEROUTE_LINES }, (_, index) => index + 1));
+    expect(view?.lines.map((line) => line.address)).toEqual([IP.router, IP.provider, ...Array<string>(TRACEROUTE_LINES - 2).fill(STAR)]);
+    expect(view?.lines.slice(0, 2).map((line) => line.time !== null)).toEqual([true, true]);
+    expect(view?.lines.slice(2).map((line) => line.time)).toEqual(Array(TRACEROUTE_LINES - 2).fill(null));
+    expect(view?.error).toBeNull();
+    expect(terminalLine(traced, { to: ADDRESS.server.id, message: MESSAGE.traceroute.id })).toBe(`traceroute -I ${IP.server}`);
+  });
+
+  it('01-10: a traceroute is labelled, stamped and inspected as a traceroute, with no TTL line and not as the ping its last probe is', () => {
+    const run = sentTo(both, ADDRESS.server.id, MESSAGE.traceroute.id);
+    const ping = sentTo(both, ADDRESS.server.id, MESSAGE.ping.id);
+    expect(toPlainText(run.label)).toBe(`traceroute de ${DEVICE.you.name} a ${IP.server}`);
+    expect(toPlainText(ping.label)).toBe(`ping de ${DEVICE.you.name} a ${IP.server}`);
+    expect(stampLabel(toPlainText(run.label), 'lost')).toBe(`Paquete: traceroute de ${DEVICE.you.name} a ${IP.server}. Perdido.`);
+    expect(fieldLines(both, run.pieceId, 'Qué es')).toEqual([TERMS.traceroute.definition]);
+    expect(fieldLines(both, run.pieceId, LOCAL_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.server}`]);
+    expect(plainBox(both, run.pieceId).join(' ')).not.toContain(TERMS.ping.definition);
+    expect(plainBox(both, run.pieceId).filter((text) => text.startsWith('TTL'))).toEqual([]);
+    expect(fieldLines(both, ping.pieceId, LOCAL_HEADER_LABEL)).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.server}`, 'TTL al salir: 64']);
+  });
+
+  it('01-10: the last router that answered is the one before the broken stretch', () => {
+    const answered = lines().filter((line) => line.address !== STAR);
+    expect(answered.map((line) => routerOwning(line.address))).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    const [run] = pinged.sent;
+    expect(run.trace.steps.at(-1)).toMatchObject({ stage: 'forward', at: ROUTER.provider.id, verdict: 'drop', reason: { code: 'forward-no-route', warns: false } });
+    expect(hopIds(run)).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(lines().map((line) => line.address)).not.toContain(IP.destination);
+    expect(sentTo(traced, ADDRESS.server.id, MESSAGE.traceroute.id).route?.lines.filter((line) => line.ip !== undefined).map((line) => line.ip)).toEqual([IP.router, IP.provider]);
+  });
+
+  it('01-10: tu-laptop is the only device of the office drawn, and the office router, the two routers of the provider, the internet and the server are drawn', () => {
+    expect(drawnLabels(start)).toEqual(['device:servidor-internet', 'device:tu-laptop', 'edge:router-destino', 'edge:router-oficina', 'edge:router-proveedor', 'internet:internet']);
+    expect(pieceViews(start).filter((piece) => piece.kind === 'device').map((piece) => piece.anchorId)).toEqual([DEVICE.you.id, SERVER.id]);
+  });
+
+  it('01-10: every router a line of the traceroute names is drawn', () => {
+    const named = lines().flatMap((line) => (line.address === STAR ? [] : [routerOwning(line.address) ?? line.address]));
+    expect(named.length).toBeGreaterThan(0);
+    for (const id of named) expect(drawsRouter(traced, id), id).toBe(true);
+    expect(everythingShown(both).filter((text) => text.includes(IP.destination))).toEqual([]);
+  });
+
+  it('01-10: the ping and the traceroute must both be sent to close the incident', () => {
+    expect(openTasks(start)).toEqual([TASK.serverSilence, TASK.traceroute]);
+    expect(openTasks(traced)).toEqual([TASK.serverSilence]);
+    expectClosed(both);
+  });
+
+  it('01-10: starts from the world of 01-09 with no loop, and the router of the provider has no way to the server and does not warn', () => {
+    const loop = solvedWorld(INCIDENTS, COUNTING_HOPS).routers?.find((router) => router.id === ROUTER.provider.id);
+    const broken = start.world.routers?.find((router) => router.id === ROUTER.provider.id);
+    expect(loop?.routes).toEqual([{ to: 'default', next: ROUTER.office.id }]);
+    expect(broken).toMatchObject({ sendsUnreachable: false });
+    expect(broken?.routes.map((route) => route.next)).toEqual([ROUTER.office.id]);
+    expect(networkSchema.safeParse(start.world).success).toBe(true);
+  });
+});
+
+describe('the ten incidents of blocks 1 to 3', () => {
+  const TEN = [THE_OFFICE, THE_ENVELOPE, ARE_YOU_THERE, PING_YOURSELF, WHEN_IT_DOES_NOT_COME_BACK, YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE, THE_NETWORK_OF_NETWORKS, COUNTING_HOPS, SEEING_THE_PATH];
+  const places = TEN.map((id) => guidedOf(id).explanation.findIndex((option) => option.correct));
 
   it('never put the right explanation in the same place as the incident before', () => {
     expect(places.filter((place, index) => index > 0 && place === places[index - 1])).toEqual([]);
   });
 
   it('start and end in a world the network schema accepts, so the floors the base world declares break nothing in 01-01 to 01-05', () => {
-    const problems = SEVEN.flatMap((id) => [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => `${id}: ${issue.message}`) ?? []));
+    const problems = TEN.flatMap((id) => [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => `${id}: ${issue.message}`) ?? []));
     expect(problems).toEqual([]);
   });
 
-  it('put the right explanation of 06 and 07 in places of their own', () => {
-    expect(places.slice(-2)).toEqual([2, 0]);
+  it('put the right explanation of 06 to 10 in places of their own', () => {
+    expect(places.slice(-5)).toEqual([2, 0, 1, 0, 2]);
   });
 
   it('start 07 from the world of 06 solved, with the laptop of the player reinstalled and so with no gateway', () => {
