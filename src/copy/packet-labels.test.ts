@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel, warningOf } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, roundTripText, serviceLabel, stampLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -123,3 +123,16 @@ describe('describeOutcome', () => {
   });
 });
 
+
+describe('roundTripText', () => {
+  it('writes the time the engine gives in milliseconds, with the decimal comma', () => {
+    expect(roundTripText(84)).toBe('84 ms');
+    expect(roundTripText(0.05)).toBe('0,05 ms');
+    expect(roundTripText(2.5)).toBe('2,5 ms');
+  });
+
+  it('drops the noise that adding decimals leaves, and never rounds a figure the engine gave', () => {
+    expect(roundTripText(0.1 + 0.2)).toBe('0,3 ms');
+    expect(roundTripText(0.125)).toBe('0,125 ms');
+  });
+});

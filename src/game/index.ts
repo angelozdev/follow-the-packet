@@ -11,3 +11,5 @@ export type { Inspection } from './view/inspection';
 export { pieceViews } from './view/pieces';
 export { terminalCard, terminalLine } from './view/cards/terminal-card';
 export type { SendPicks, SendTrayName, TerminalCard } from './view/cards/terminal-card';
+export { tracerouteLines } from './view/cards/traceroute-lines';
+export type { RouteLine, TracerouteView } from './view/cards/traceroute-lines';

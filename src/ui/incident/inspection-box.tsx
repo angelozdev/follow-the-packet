@@ -16,8 +16,8 @@ export function InspectionBox({ inspection }: { inspection: Inspection }) {
             <dt className="caption caption--soft">
               <TaggedText text={field.label} tips={false} />
             </dt>
-            {field.lines.map((line) => (
-              <dd key={line}>
+            {field.lines.map((line, index) => (
+              <dd key={`${index}-${line}`}>
                 <TaggedText text={line} tips={false} />
               </dd>
             ))}

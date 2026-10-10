@@ -1,5 +1,5 @@
 import { INCIDENTS, type FilterIncident, type SendIncident } from '@/levels';
-import { OFFICE, actor, device, officeNet } from './fixtures';
+import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, device, officeNet, officeTwoFloorsNet } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
 export function filterIncident(id: string): FilterIncident {
@@ -54,5 +54,32 @@ export function sendIncident(): SendIncident {
       { type: 'sendPacket', fromId: 'attacker', toId: 'lucia', messageId: 'ping' },
     ],
     takeaway: 'Una idea.',
+  };
+}
+
+/** Returns a send incident on the office of the map that grows, with every term introduced: from your laptop, a ping, a ping with a TTL of 2 or a traceroute to the printer, the server of the internet, a private IP of another network, an IP of the server's network that nobody has, an IP nobody has and its own loopback. A test about what is hidden sets `known` or `shown` itself. */
+export function routedSendIncident(): SendIncident {
+  const { floor1, server } = OFFICE_FLOORS;
+  const echo = { icmpType: 8 as const };
+  return {
+    ...sendIncident(),
+    introduces: [...EVERY_TERM],
+    base: officeTwoFloorsNet(),
+    send: {
+      from: [{ id: 'you', endpoint: device('your-laptop') }],
+      to: [
+        { id: 'printer', address: floor1.printer },
+        { id: 'server', address: server.ip },
+        { id: 'no-server', address: server.nobody },
+        { id: 'private', address: '10.0.0.10' },
+        { id: 'nobody', address: floor1.nobody },
+        { id: 'loopback', address: '127.0.0.1' },
+      ],
+      message: [
+        { id: 'ping', label: '{{ping}}', command: 'ping', ...echo },
+        { id: 'ping-2', label: 'TTL 2', command: 'ping', ttl: 2, ...echo },
+        { id: 'trace', label: '{{traceroute}}', command: 'traceroute', ...echo },
+      ],
+    },
   };
 }

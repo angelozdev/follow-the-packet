@@ -9,6 +9,7 @@ import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
 import { terminalCard, terminalLine } from './cards/terminal-card';
+import { tracerouteLines } from './cards/traceroute-lines';
 
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
@@ -18,7 +19,11 @@ function terminalTexts(session: Session, pieceIds: string[]): TermText[] {
     const card = terminalCard(session, id);
     if (!card) return [];
     const lines = session.sent.flatMap((packet) => terminalLine(session, { to: packet.toId, message: packet.messageId }) ?? []);
-    return [card.title, ...card.trays.flatMap((tray) => tray.chips.map((chip) => chip.label)), ...lines];
+    const outputs = session.sent.flatMap((packet) => {
+      const output = tracerouteLines(session, { from: packet.fromId, to: packet.toId, message: packet.messageId });
+      return output ? [...output.notes, ...(output.error ? [output.error] : [])] : [];
+    });
+    return [card.title, ...card.trays.flatMap((tray) => tray.chips.map((chip) => chip.label)), ...lines, ...outputs];
   });
 }
 

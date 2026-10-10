@@ -8,6 +8,13 @@ type Way = 'out' | 'in';
 type Verdict = 'pass' | 'drop';
 type FirewallReason = Extract<Reason, { firewallKind: FirewallKind }>;
 
+/** Where a router stands for the player: drawn on the map and so named, or not drawn, and then only said to be inside the office or outside it. */
+export type RouterPlace = 'named' | 'inside' | 'outside';
+export type PlaceOf = (routerId: string) => RouterPlace;
+
+const ALL_NAMED: PlaceOf = () => 'named';
+const UNNAMED_PLACE: Record<Exclude<RouterPlace, 'named'>, string> = { inside: 'de la oficina', outside: 'de afuera de la oficina' };
+
 const FIREWALL_STEP: Record<FirewallReason['code'], { way: Way; verdict: Verdict }> = {
   'firewall-out-pass': { way: 'out', verdict: 'pass' },
   'firewall-out-drop': { way: 'out', verdict: 'drop' },
@@ -63,6 +70,20 @@ function routerOutcome(warns: boolean): TermText {
   return warns ? 'y avisa a quien lo envió que no pudo entregarlo.' : 'y no avisa a nadie.';
 }
 
+interface RouterRef {
+  ip?: string;
+  start?: boolean;
+  bare?: boolean;
+}
+
+/** Returns how a sentence names a router: by its name (and the IP of its interface when given) when the map draws it, and otherwise only as a router of the office or from outside it, never by name nor by IP. At the start of a sentence it takes a capital; `bare` leaves out where it is, for a sentence that already says so. */
+function routerRef(net: Network, known: ReadonlySet<TermId>, placeOf: PlaceOf, routerId: string, { ip, start = false, bare = false }: RouterRef = {}): TermText {
+  const place = placeOf(routerId);
+  if (place === 'named') return ip ? `${deviceName(net, routerId)} (${ip})` : deviceName(net, routerId);
+  const article = start ? 'Un' : 'un';
+  return `${article} ${known.has('router') ? '{{router}}' : 'router'}${bare ? '' : ` ${UNNAMED_PLACE[place]}`}`;
+}
+
 function sought(reason: Extract<Reason, { code: 'forward-no-owner' }>): TermText {
   return reason.viaGateway ? `${reason.ip}, su {{default-gateway}},` : reason.ip;
 }
@@ -114,9 +135,10 @@ function hiddenCause(reason: Reason): HiddenCause | null {
   }
 }
 
-/** Turns an engine reason into the sentence the player reads, with the terms they know tagged; while the term that names a hidden cause is unknown, the sentence says only what the player saw: that nothing came back, or that the packet did not reach its destination. */
-export function describeReason(reason: Reason, net: Network, known: ReadonlySet<TermId>): TermText {
+/** Turns an engine reason into the sentence the player reads, with the terms they know tagged; while the term that names a hidden cause is unknown, the sentence says only what the player saw: that nothing came back, or that the packet did not reach its destination. `placeOf` says where each router stands for the player: one the map does not draw is never named, by name or by IP. */
+export function describeReason(reason: Reason, net: Network, known: ReadonlySet<TermId>, placeOf: PlaceOf = ALL_NAMED): TermText {
   const hidden = hiddenCause(reason);
+  const router = (routerId: string, options?: RouterRef) => routerRef(net, known, placeOf, routerId, options);
   if (hidden && !known.has(hidden.term)) return hidden.text;
   switch (reason.code) {
     case 'address-invalid':
@@ -156,17 +178,19 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'forward-no-owner':
       return `${deviceName(net, reason.deviceId)} buscó en su {{network|red}} quién tenía la IP ${sought(reason)} y nadie contestó. ${SENDER_WARNS}`;
     case 'forward-hop':
-      return `Pasa por ${deviceName(net, reason.routerId)} (${reason.ip}), un {{hop|salto}} más: el {{ttl}} baja a ${reason.ttlLeft}.`;
+      return `Pasa por ${router(reason.routerId, { ip: reason.ip })}, un {{hop|salto}} más: el {{ttl}} baja a ${reason.ttlLeft}.`;
     case 'forward-ttl-exceeded':
-      return `El {{ttl}} llega a 0 en ${deviceName(net, reason.routerId)} (${reason.ip}): el {{router}} ${ROUTER_DROPS} y avisa a quien lo envió con {{time-exceeded}}.`;
+      return `El {{ttl}} llega a 0 en ${router(reason.routerId, { ip: reason.ip })}: el {{router}} ${ROUTER_DROPS} y avisa a quien lo envió con {{time-exceeded}}.`;
     case 'forward-no-route':
-      return `${deviceName(net, reason.routerId)} no sabe a qué {{router}} mandar un {{packet|paquete}} para ${reason.ip}: lo {{drop|descarta}} ${routerOutcome(reason.warns)}`;
+      return `${router(reason.routerId, { start: true })} no sabe a qué {{router}} mandar un {{packet|paquete}} para ${reason.ip}: lo {{drop|descarta}} ${routerOutcome(reason.warns)}`;
     case 'forward-no-host':
-      return `${deviceName(net, reason.routerId)} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${ROUTER_DROPS} ${routerOutcome(reason.warns)}`;
+      return `${router(reason.routerId, { start: true })} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${ROUTER_DROPS} ${routerOutcome(reason.warns)}`;
     case 'forward-private-dropped':
-      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${deviceName(net, reason.routerId)}, ya fuera de la oficina, ${ROUTER_DROPS} sin avisar.`;
-    case 'forward-router-replies':
-      return `La IP ${reason.ip} es de ${deviceName(net, reason.routerId)}, un {{router}}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;
+      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${router(reason.routerId, { start: true, bare: true })}, ya fuera de la oficina, ${ROUTER_DROPS} sin avisar.`;
+    case 'forward-router-replies': {
+      const owner = placeOf(reason.routerId) === 'named' ? `${router(reason.routerId)}, un {{router}}` : router(reason.routerId);
+      return `La IP ${reason.ip} es de ${owner}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;
+    }
     case 'firewall-out-pass':
     case 'firewall-out-drop':
     case 'firewall-in-pass':

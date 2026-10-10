@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
+import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
@@ -239,5 +240,121 @@ describe('inspect', () => {
       expect(result(new Set<TermId>(['ping', 'echo-request']))).toEqual(['Resultado', 'Llegó.']);
       expect(result(new Set<TermId>(['ping', 'echo-request', 'echo-reply']))).toEqual(['Resultado', 'Llegó y volvió la respuesta.']);
     });
+  });
+});
+
+describe('a packet of an office with routers', () => {
+  const { officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+  const ROUTED = routedSendIncident();
+  const start = startSession([ROUTED], ROUTED.id);
+  const sentTo = (session: Session, toId: string, messageId = 'ping') => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId });
+  const lastBox = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId));
+  const field = (session: Session, label: string) => lastBox(session)?.fields.find(([name]) => name === label);
+  const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
+  const drawing = (session: Session, ...ids: string[]): Session => ({ ...session, incident: { ...session.incident, shown: ids } });
+  const ROUND_TRIP = 'Tiempo de ida y vuelta';
+  const EXAMPLE = 'Cifra de ejemplo.';
+
+  it('a packet that came back shows its round trip time once the term is known', () => {
+    expect(field(sentTo(start, 'printer'), ROUND_TRIP)).toEqual([ROUND_TRIP, '2 ms', EXAMPLE]);
+    expect(field(sentTo(start, 'server'), ROUND_TRIP)).toEqual([ROUND_TRIP, '84 ms', EXAMPLE]);
+    expect(field(sentTo(start, 'loopback'), ROUND_TRIP)).toEqual([ROUND_TRIP, '0,05 ms', EXAMPLE]);
+    expect(field(sentTo(without(start, 'rtt'), 'printer'), ROUND_TRIP)).toBeUndefined();
+  });
+
+  it('a packet that came back shows its time after the result, and a warning that came back shows it too', () => {
+    const labels = (session: Session) => lastBox(session)?.fields.map(([name]) => name);
+    expect(labels(sentTo(start, 'printer'))).toEqual(['Qué es', 'Mensaje', 'Encabezado', 'Encabezado del Echo Reply', 'Resultado', ROUND_TRIP]);
+    const expired = sentTo(start, 'server', 'ping-2');
+    expect(expired.sent[0].trace.outcome).toBe('ttl-exceeded');
+    expect(labels(expired)?.slice(-3)).toEqual(['Resultado', ROUND_TRIP, 'Dónde y por qué se detuvo']);
+    expect(field(expired, ROUND_TRIP)?.[1]).toBe('20 ms');
+  });
+
+  it('a packet that never came back shows no time', () => {
+    const silence = sentTo(start, 'private');
+    const own = sentTo(start, 'nobody');
+    expect(silence.sent[0].trace).toMatchObject({ outcome: 'timeout' });
+    expect(own.sent[0].trace).toMatchObject({ outcome: 'unreachable', notice: { fromId: 'your-laptop' } });
+    expect(silence.sent[0].trace.rttMs).toBeUndefined();
+    expect(own.sent[0].trace.rttMs).toBeUndefined();
+    expect(field(silence, ROUND_TRIP)).toBeUndefined();
+    expect(field(own, ROUND_TRIP)).toBeUndefined();
+  });
+
+  it('a warning the player does not know yet leaves no time either, since the packet is seen as one that nobody answered', () => {
+    const expired = sentTo(start, 'server', 'ping-2');
+    expect(field(expired, ROUND_TRIP)).toBeDefined();
+    expect(field(sentTo(without(start, 'time-exceeded'), 'server', 'ping-2'), ROUND_TRIP)).toBeUndefined();
+  });
+
+  it('the path of a packet names only the routers its incident draws, and writes outside the office for the stretch through routers that are not drawn', () => {
+    const drawn = sentTo(start, 'server');
+    expect(field(drawn, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
+    const partly = sentTo(drawing(start, 'your-laptop', officeRouter.id, server.id), 'server');
+    expect(field(partly, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'fuera de la oficina']);
+    const hidden = sentTo(drawing(start, 'your-laptop', server.id), 'server');
+    expect(field(hidden, 'Saltos')).toEqual(['Saltos', 'dentro de la oficina', 'fuera de la oficina']);
+    const text = JSON.stringify(lastBox(partly));
+    for (const id of [provider.id, backbone.id, provider.towardOffice, backbone.towardProvider]) expect(text).not.toContain(id);
+  });
+
+  it('the reason a packet stopped does not name a router that is not drawn either', () => {
+    const lost = sentTo(drawing(start, 'your-laptop', officeRouter.id), 'private');
+    const stop = field(lost, 'Dónde y por qué se detuvo');
+    expect(stop?.[1]).toBe('10.0.0.10 es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descarta el paquete sin avisar.');
+    expect(stop?.[1]).not.toContain(provider.id);
+    expect(field(sentTo(start, 'private'), 'Dónde y por qué se detuvo')?.[1]).toContain(provider.id);
+  });
+
+  it('the path of a packet is worded without hops until the term hop is known', () => {
+    const passed = sentTo(without(start, 'hop'), 'server');
+    expect(field(passed, 'Pasó por')).toEqual(['Pasó por', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
+    expect(field(passed, 'Saltos')).toBeUndefined();
+    expect(field(sentTo(start, 'server'), 'Pasó por')).toBeUndefined();
+  });
+
+  it('a packet that crossed no router has no path', () => {
+    const direct = sentTo(start, 'printer');
+    expect(field(direct, 'Saltos')).toBeUndefined();
+    expect(field(direct, 'Pasó por')).toBeUndefined();
+  });
+
+  it('the header of a packet shows the source and the destination IP once the term header is known', () => {
+    const printer = sentTo(start, 'printer');
+    expect(field(printer, 'Encabezado')).toEqual(['Encabezado', 'Origen: 192.168.1.10', 'Destino: 192.168.1.21', 'TTL: 64']);
+    expect(field(sentTo(without(start, 'ttl'), 'printer'), 'Encabezado')).toEqual(['Encabezado', 'Origen: 192.168.1.10', 'Destino: 192.168.1.21']);
+    expect(field(sentTo(without(start, 'header'), 'printer'), 'Encabezado')).toBeUndefined();
+    expect(field(sentTo(start, 'server', 'ping-2'), 'Encabezado')?.at(-1)).toBe('TTL: 2');
+  });
+
+  it('the header of the reply swaps the source and the destination, and waits for the term Echo Reply', () => {
+    const printer = sentTo(start, 'printer');
+    expect(field(printer, 'Encabezado del Echo Reply')).toEqual(['Encabezado del Echo Reply', 'Origen: 192.168.1.21', 'Destino: 192.168.1.10']);
+    expect(field(sentTo(without(start, 'echo-reply'), 'printer'), 'Encabezado del Echo Reply')).toBeUndefined();
+    expect(field(sentTo(start, 'private'), 'Encabezado del Echo Reply')).toBeUndefined();
+  });
+
+  it('keeps the private source of the header across the routers', () => {
+    expect(field(sentTo(start, 'server'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', `Destino: ${server.ip}`]);
+  });
+
+  it('tags only the terms the player knows in the fields of the header, the path and the time, whichever of their terms is missing', () => {
+    const OWN_FIELDS = ['Encabezado', 'Encabezado del Echo Reply', 'Saltos', 'Pasó por', ROUND_TRIP];
+    for (const missing of ['header', 'ttl', 'echo-reply', 'hop', 'rtt', 'time-exceeded', 'router'] as const) {
+      const unaware = without(start, missing);
+      for (const [to, message] of [['printer', 'ping'], ['server', 'ping'], ['server', 'ping-2'], ['nobody', 'ping']] as const) {
+        const session = sentTo(unaware, to, message);
+        const fields = session.sent.flatMap((run) => inspect(session, run.pieceId)?.fields ?? []).filter((candidate) => OWN_FIELDS.includes(toPlainText(candidate.label)));
+        expect(unknownTerms(fields.flatMap((candidate) => [candidate.label, ...candidate.lines]), unaware.known), `${missing} / ${to} / ${message}`).toEqual([]);
+      }
+    }
+  });
+
+  it('a traceroute packet is inspected as the last probe it sent', () => {
+    const traced = sentTo(start, 'server', 'trace');
+    expect(field(traced, 'Encabezado')?.at(-1)).toBe('TTL: 4');
+    expect(field(traced, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
+    expect(field(traced, ROUND_TRIP)?.[1]).toBe('84 ms');
   });
 });

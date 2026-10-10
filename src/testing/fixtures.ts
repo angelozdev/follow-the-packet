@@ -100,7 +100,7 @@ export const OFFICE_FLOORS = {
   officeRouter: { id: 'router-office', uplink: '203.0.113.10' },
   provider: { id: 'router-provider', towardOffice: '203.0.113.1', towardInternet: '203.0.113.3' },
   backbone: { id: 'router-backbone', towardProvider: '203.0.113.2', towardServer: '198.51.100.1' },
-  server: { id: 'internet-server', ip: '198.51.100.50', range: '198.51.100.0/24' },
+  server: { id: 'internet-server', ip: '198.51.100.50', range: '198.51.100.0/24', nobody: '198.51.100.77' },
 } as const;
 
 type Floor = typeof OFFICE_FLOORS.floor1 | typeof OFFICE_FLOORS.floor2;

@@ -72,7 +72,8 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 | `--text-2xl` | 36 px | `h1` |
 
 - **Caption:** the class `caption` (bold, `--text-xs`, uppercase, `--tracking-caps`) for the heading of a list; `caption caption--soft` for the label of a field, a tray or a role, and for the mark of an optional chapter. Every `h3` is a caption. A level of the roadmap («Nivel 0 · Bases») heads the list of its chapters, so it is a caption too, written as an `h2` with the class: an `h3` right after the `h1` would skip a heading level.
-- **Secondary text:** the class `muted` (`--color-ink-soft`): Lucía's role, a card with no rules, the inspect help and the legend of the stamps and the lock.
+- **Secondary text:** the class `muted` (`--color-ink-soft`): Lucía's role, a card with no rules, the inspect help, the legend of the stamps and the lock, and the notes under what a traceroute printed.
+- **Lines inside a card:** the class `rules` (a list with no bullets, the text at the left and a small value at the right): the rules of a task card and the numbered hops a traceroute prints in the terminal, the hop number written in the line. A time or a mark at the right is `muted`.
 - **Letters:** `--tracking-caps` (0.06 em) spaces every uppercase text; `--underline-offset` (3 px) lowers the line under links and terms.
 - **Line height** stays with the element: 1.5 for body text, 1.2 for headings and captions, 1.4 for options and tooltips, 1.1 for `h1`.
 

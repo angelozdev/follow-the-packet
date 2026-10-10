@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
-import { describeReason } from './reasons';
+import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -334,5 +334,56 @@ describe('describeReason with what the player knows', () => {
     const reply: Reason = { code: 'reply-stateful', deviceId: 'servidor2' };
     expect(describeReason(reply, NET, EVERY_TERM)).toBe('La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.');
     expect(describeReason(reply, NET, without('stateful'))).toBe('Llega la respuesta.');
+  });
+});
+
+describe('describeReason for a router the map does not draw', () => {
+  const placed = (place: RouterPlace): PlaceOf => () => place;
+  const OUTSIDE = 'de afuera de la oficina';
+  const ROUTER_REASONS: [Reason, string][] = [
+    [{ code: 'forward-hop', routerId: provider.id, ip: provider.towardOffice, ttlLeft: 62 }, `Pasa por un {{router}} ${OUTSIDE}, un {{hop|salto}} más: el {{ttl}} baja a 62.`],
+    [
+      { code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice },
+      `El {{ttl}} llega a 0 en un {{router}} ${OUTSIDE}: el {{router}} {{drop|descarta}} el {{packet|paquete}} y avisa a quien lo envió con {{time-exceeded}}.`,
+    ],
+    [
+      { code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true },
+      `Un {{router}} ${OUTSIDE} no sabe a qué {{router}} mandar un {{packet|paquete}} para 8.8.8.8: lo {{drop|descarta}} y avisa a quien lo envió que no pudo entregarlo.`,
+    ],
+    [
+      { code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: false },
+      `Un {{router}} ${OUTSIDE} tiene conectada la {{network|red}} de 198.51.100.77, pero ningún {{device|dispositivo}} tiene esa IP: {{drop|descarta}} el {{packet|paquete}} y no avisa a nadie.`,
+    ],
+    [
+      { code: 'forward-private-dropped', routerId: provider.id, ip: '10.0.0.10' },
+      '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. Un {{router}}, ya fuera de la oficina, {{drop|descarta}} el {{packet|paquete}} sin avisar.',
+    ],
+    [
+      { code: 'forward-router-replies', routerId: provider.id, ip: provider.towardOffice },
+      `La IP 203.0.113.1 es de un {{router}} ${OUTSIDE}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`,
+    ],
+  ];
+
+  it.each(ROUTER_REASONS)('says a router outside the office without its name or its IP: %o', (reason, text) => {
+    expect(describeReason(reason, FLOORS, EVERY_TERM, placed('outside'))).toBe(text);
+    expect(describeReason(reason, FLOORS, EVERY_TERM, placed('outside'))).not.toContain('router-');
+    expect(describeReason(reason, FLOORS, EVERY_TERM, placed('named'))).toBe(describeReason(reason, FLOORS, EVERY_TERM));
+  });
+
+  it('says a router of the office that is not drawn as one of the office, and writes the word router plain while it is unknown', () => {
+    const hop: Reason = { code: 'forward-hop', routerId: officeRouter.id, ip: floor1.gateway, ttlLeft: 63 };
+    expect(describeReason(hop, FLOORS, EVERY_TERM, placed('inside'))).toBe('Pasa por un {{router}} de la oficina, un {{hop|salto}} más: el {{ttl}} baja a 63.');
+    expect(describeReason(hop, FLOORS, without('router'), placed('inside'))).toBe('Pasa por un router de la oficina, un {{hop|salto}} más: el {{ttl}} baja a 63.');
+  });
+
+  it('asks only about the routers the reason names', () => {
+    const asked: string[] = [];
+    const placeOf: PlaceOf = (id) => {
+      asked.push(id);
+      return 'named';
+    };
+    describeReason({ code: 'host-replies', deviceId: server.id }, FLOORS, EVERY_TERM, placeOf);
+    describeReason({ code: 'forward-hop', routerId: provider.id, ip: provider.towardOffice, ttlLeft: 62 }, FLOORS, EVERY_TERM, placeOf);
+    expect(asked).toEqual([provider.id]);
   });
 });

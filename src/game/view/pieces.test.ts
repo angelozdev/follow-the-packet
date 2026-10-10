@@ -7,7 +7,7 @@ import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice 
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { PIECE_ID } from './piece-id';
-import { pieceViews } from './pieces';
+import { drawsRouter, pieceViews } from './pieces';
 
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
@@ -159,6 +159,12 @@ describe('pieceViews of an incident that lists what it draws', () => {
   it('an actor of kind server is drawn as the internet-server variant of the device piece', () => {
     const drawn = pieceViews(floors()).find((piece) => piece.anchorId === server.id);
     expect(drawn).toMatchObject({ kind: 'device', variant: 'internet-server', id: PIECE_ID.actor(server.id), term: 'device', label: nameTag('servidor-internet'), state: 'normal' });
+  });
+
+  it('says a router is drawn exactly when its piece is on the map', () => {
+    const asked = (session: Session) => [officeRouter, provider, backbone].filter((router) => drawsRouter(session, router.id)).map((router) => PIECE_ID.router(router.id));
+    const drawn = (session: Session) => idsOf(session).filter((id) => [officeRouter, provider, backbone].some((router) => id === PIECE_ID.router(router.id)));
+    for (const session of [floors(), floors(SHOWN), floors(['your-laptop']), knowingNot(floors(SHOWN), 'router')]) expect(asked(session)).toEqual(drawn(session));
   });
 
   it('draws every router of a world that has them as a piece of the router variant under its own name, and no lone edge', () => {

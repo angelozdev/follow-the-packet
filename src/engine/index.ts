@@ -21,6 +21,7 @@ export type {
   Subnet,
 } from './network/types';
 export { isClientActor } from './network/topology';
+export { facesALan } from './network/routing';
 export { DEFAULT_TTL, ROUTE_DEFAULT, endpointSchema, icmpTypeSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';

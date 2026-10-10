@@ -3,6 +3,7 @@ import { nameTag, type TermText } from './term-text';
 import type { PacketMessage, TermId } from './terms';
 
 const INTERNET_NAME = 'Internet';
+const SIGNIFICANT_DIGITS = 12;
 
 /** Returns the name of a device, a router or a server of the internet, marked as a name; an id that names none of them stands for its name. */
 export function deviceName(net: Network, deviceId: string): TermText {
@@ -15,6 +16,11 @@ export function endpointName(endpoint: Endpoint, net: Network): TermText {
   if (endpoint.kind === 'device') return deviceName(net, endpoint.id);
   const actor = net.actors.find((a) => a.id === endpoint.id);
   return actor ? nameTag(actor.name) : INTERNET_NAME;
+}
+
+/** Writes a round trip time as the player reads it: the figure the engine gave, in milliseconds, with the decimal comma. Adding decimals leaves the noise of floating point (0.1 + 0.2), which keeping 12 significant digits drops; no figure of the engine is rounded. */
+export function roundTripText(ms: number): string {
+  return `${String(Number(ms.toPrecision(SIGNIFICANT_DIGITS))).replace('.', ',')} ms`;
 }
 
 /** Names what a packet carries, with its term tagged. */

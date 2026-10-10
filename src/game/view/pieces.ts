@@ -21,6 +21,8 @@ interface PieceFacts {
 
 export type PieceView = PieceEntity & PieceFacts & { term: TermId | null };
 
+const ROUTER_ENTITY = { kind: 'edge', variant: 'router' } as const;
+
 export const EDGE_ANCHOR = 'edge';
 export const INTERNET_ANCHOR = 'internet';
 
@@ -40,6 +42,11 @@ export function isShown(session: Session, id: string): boolean {
   return shown === undefined || shown.includes(id);
 }
 
+/** True when the map draws the router with this id: the incident shows it and the term router is known. A text that names a router must agree with this. */
+export function drawsRouter(session: Session, routerId: string): boolean {
+  return isShown(session, routerId) && isDrawn(session.known, ROUTER_ENTITY);
+}
+
 function firewalls(session: Session): PieceView[] {
   const { world } = session;
   const blocking = blockingDeviceIds(session.runs);
@@ -55,11 +62,9 @@ function firewalls(session: Session): PieceView[] {
 }
 
 function routers(session: Session): PieceView[] {
-  const entity = { kind: 'edge', variant: 'router' } as const;
-  if (!isDrawn(session.known, entity)) return [];
   return (session.world.routers ?? [])
-    .filter((router) => isShown(session, router.id))
-    .map((router) => piece(entity, { id: PIECE_ID.router(router.id), anchorId: router.id, label: nameTag(router.name), locked: true, configurable: false, state: 'normal' }));
+    .filter((router) => drawsRouter(session, router.id))
+    .map((router) => piece(ROUTER_ENTITY, { id: PIECE_ID.router(router.id), anchorId: router.id, label: nameTag(router.name), locked: true, configurable: false, state: 'normal' }));
 }
 
 function loneEdge({ world, known }: Pick<Session, 'world' | 'known'>): PieceView[] {

@@ -1,4 +1,5 @@
-import type { ClientActor, FirewallKind, Network } from '@/engine';
+import type { ClientActor, FirewallKind, Network, UnreachableKind } from '@/engine';
+import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, type TermText } from '@/copy/term-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
@@ -44,6 +45,17 @@ export const INSPECTION_TEXT = {
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
   none: 'No tiene',
+  header: '{{header|Encabezado}}',
+  replyHeader: '{{header|Encabezado}} del {{echo-reply}}',
+  source: (ip: string): TermText => `Origen: ${ip}`,
+  destination: (ip: string): TermText => `Destino: ${ip}`,
+  ttl: (ttl: number): TermText => `{{ttl}}: ${ttl}`,
+  passedThrough: 'Pasó por',
+  hops: '{{hop|Saltos}}',
+  router: (name: TermText, ip: string): TermText => `${name} (${ip})`,
+  place: { inside: 'dentro de la oficina', outside: 'fuera de la oficina' } satisfies Record<Exclude<RouterPlace, 'named'>, TermText>,
+  roundTrip: '{{rtt|Tiempo de ida y vuelta}}',
+  exampleTime: 'Cifra de ejemplo.',
 } as const;
 
 export const ACTOR_ROLE_TEXT: Record<ClientActor['kind'], TermText> = {
@@ -90,6 +102,19 @@ export const TERMINAL_TEXT = {
   handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
   incomplete: 'Elige una ficha de cada bandeja.',
   send: 'Enviar',
+  route: {
+    label: 'Salida de traceroute',
+    hop: (hop: number, address: TermText): TermText => `${hop}\u00a0\u00a0${address}`,
+    aside: (time: string | null, mark: string | null): string => [time, mark].filter((part): part is string => part !== null).join(' '),
+    silent: '*',
+    marks: { host: '!H', net: '!N' } satisfies Record<UnreachableKind, string>,
+    notes: {
+      silent: '«*» es un salto que no contestó.',
+      host: '«!H»: el equipo con esa IP avisó con {{host-unreachable}} que no pudo llegar al dispositivo de destino.',
+      net: '«!N»: el equipo con esa IP avisó que no pudo llegar a la red de destino.',
+      times: 'Los tiempos son cifras de ejemplo.',
+    } satisfies Record<'silent' | 'times' | UnreachableKind, TermText>,
+  },
 } as const;
 
 export const EXPLANATION_TEXT = {
