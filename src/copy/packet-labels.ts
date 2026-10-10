@@ -23,10 +23,11 @@ export function roundTripText(ms: number): string {
   return `${String(Number(ms.toPrecision(SIGNIFICANT_DIGITS))).replace('.', ',')} ms`;
 }
 
-/** Names what a packet carries, with its term tagged. */
-export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>): TermText {
-  if (packet.protocol === 'icmp') return packet.icmpType === 8 ? '{{ping}}' : '{{echo-reply}}';
-  return `${packet.protocol.toUpperCase()} ${packet.port}`;
+/** Names what a packet carries, with its term tagged: ping for an Echo Request and Echo Reply for a reply, or just packet while the player does not know the term of its message yet (with no `known` given, every term is known). */
+export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icmpType'>, known?: ReadonlySet<TermId>): TermText {
+  if (packet.protocol !== 'icmp') return `${packet.protocol.toUpperCase()} ${packet.port}`;
+  const message: TermId = packet.icmpType === 8 ? 'ping' : 'echo-reply';
+  return known === undefined || known.has(message) ? `{{${message}}}` : '{{packet}}';
 }
 
 /** Returns the message a packet is drawn as: an Echo Reply answers, and every other packet (an Echo Request, or TCP and UDP, which no flow sends yet) asks. */
@@ -39,10 +40,10 @@ export function messageLabel(message: PacketMessage): TermText {
   return `{{icmp}} · {{${message}}}`;
 }
 
-/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to. */
-export function packetLabel(packet: PacketSpec, trace: Trace, net: Network): TermText {
+/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). */
+export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
   const to = trace.destinationId ? deviceName(net, trace.destinationId) : packet.to;
-  return `${serviceLabel(packet)} de ${endpointName(packet.from, net)} a ${to}`;
+  return `${serviceLabel(packet, known)} de ${endpointName(packet.from, net)} a ${to}`;
 }
 
 export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder' | 'warned';
@@ -86,14 +87,14 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
 
 export const NOT_DELIVERED: TermText = 'No llegó a su destino.';
 
-const UNKNOWN_OUTCOME: Partial<Record<Outcome, { term: TermId; text: TermText }>> = {
-  replied: { term: 'echo-reply', text: 'Llegó.' },
-  unreachable: { term: 'host-unreachable', text: NOT_DELIVERED },
-  'ttl-exceeded': { term: 'time-exceeded', text: NOT_DELIVERED },
+const UNKNOWN_OUTCOME: Partial<Record<Outcome, { term: TermId; text: (destination?: TermText) => TermText }>> = {
+  replied: { term: 'echo-reply', text: (destination) => (destination === undefined ? 'Llegó.' : `Llegó a ${destination}.`) },
+  unreachable: { term: 'host-unreachable', text: () => NOT_DELIVERED },
+  'ttl-exceeded': { term: 'time-exceeded', text: () => NOT_DELIVERED },
 };
 
-/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived or that it did not reach its destination, and never that nothing came back, since a warning did. */
-export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>): TermText {
+/** Returns the text of an outcome with what the player knows: while the message that came back has no known term, it says only that the packet arrived (and, when `destination` is given, where) or that it did not reach its destination, and never that nothing came back, since a warning did. */
+export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>, destination?: TermText): TermText {
   const hidden = UNKNOWN_OUTCOME[outcome];
-  return hidden && !known.has(hidden.term) ? hidden.text : OUTCOME_TEXT[outcome];
+  return hidden && !known.has(hidden.term) ? hidden.text(destination) : OUTCOME_TEXT[outcome];
 }

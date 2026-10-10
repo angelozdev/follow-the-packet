@@ -127,8 +127,22 @@ describe('inspect', () => {
   it('a laptop of the office says what a device is, and shows its IP and its firewall', () => {
     expect(plain(inspect(office, PIECE_ID.device('lucia-laptop')))).toEqual({
       title: 'lucia-laptop',
-      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['firewall', 'firewall lucia-laptop']],
+      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['Conexión', 'Conectado a la red.'], ['firewall', 'firewall lucia-laptop']],
     });
+  });
+
+  it('a laptop with no cable keeps its IP and says it is not part of the network, and the rest of the office says it is connected', () => {
+    const floors: Session = { ...first, world: officeTwoFloorsNet() };
+    const connection = (deviceId: string) => plain(inspect(floors, PIECE_ID.device(deviceId)))?.fields.filter(([label]) => label === 'IP privada' || label === 'Conexión');
+    expect(connection('guest-laptop')).toEqual([['IP privada', OFFICE_FLOORS.floor1.guest], ['Conexión', 'No está conectado: no forma parte de la red.']]);
+    expect(connection('printer')).toEqual([['IP privada', OFFICE_FLOORS.floor1.printer], ['Conexión', 'Conectado a la red.']]);
+  });
+
+  it('shows the connection of a device only in an office and once the term network is known', () => {
+    const floors: Session = { ...first, world: officeTwoFloorsNet() };
+    const labels = (session: Session, deviceId: string) => plain(inspect(session, PIECE_ID.device(deviceId)))?.fields.map(([label]) => label);
+    expect(labels(knowingOnly(floors, 'device', 'ip-address'), 'printer')).toEqual([WHAT_IS, 'dirección IP']);
+    expect(labels(first, 'servidor1')).not.toContain('Conexión');
   });
 
   it('calls the IP of a device dirección IP until the term IP privada is known', () => {
@@ -293,7 +307,7 @@ describe('inspect', () => {
       const { session, pieceId } = sentTo('printer');
       const result = (known: ReadonlySet<TermId>) => plain(inspect({ ...session, known }, pieceId))?.fields.find(([label]) => label === 'Resultado');
       expect(session.sent[0].replied).toBe(true);
-      expect(result(new Set<TermId>(['ping', 'echo-request']))).toEqual(['Resultado', 'Llegó.']);
+      expect(result(new Set<TermId>(['ping', 'echo-request']))).toEqual(['Resultado', 'Llegó a printer.']);
       expect(result(new Set<TermId>(['ping', 'echo-request', 'echo-reply']))).toEqual(['Resultado', 'Llegó y volvió la respuesta.']);
     });
   });
@@ -378,21 +392,27 @@ describe('a packet of an office with routers', () => {
 
   it('the header of a packet shows the source and the destination IP once the term header is known', () => {
     const printer = sentTo(start, 'printer');
-    expect(field(printer, 'Encabezado')).toEqual(['Encabezado', 'Origen: 192.168.1.10', 'Destino: 192.168.1.21', 'TTL: 64']);
-    expect(field(sentTo(without(start, 'ttl'), 'printer'), 'Encabezado')).toEqual(['Encabezado', 'Origen: 192.168.1.10', 'Destino: 192.168.1.21']);
+    expect(field(printer, 'Encabezado')).toEqual(['Encabezado', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21', 'TTL: 64']);
+    expect(field(sentTo(without(start, 'ttl'), 'printer'), 'Encabezado')).toEqual(['Encabezado', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
     expect(field(sentTo(without(start, 'header'), 'printer'), 'Encabezado')).toBeUndefined();
     expect(field(sentTo(start, 'server', 'ping-2'), 'Encabezado')?.at(-1)).toBe('TTL: 2');
   });
 
   it('the header of the reply swaps the source and the destination, and waits for the term Echo Reply', () => {
     const printer = sentTo(start, 'printer');
-    expect(field(printer, 'Encabezado del Echo Reply')).toEqual(['Encabezado del Echo Reply', 'Origen: 192.168.1.21', 'Destino: 192.168.1.10']);
+    expect(field(printer, 'Encabezado del Echo Reply')).toEqual(['Encabezado del Echo Reply', 'IP de origen: 192.168.1.21', 'IP de destino: 192.168.1.10']);
     expect(field(sentTo(without(start, 'echo-reply'), 'printer'), 'Encabezado del Echo Reply')).toBeUndefined();
     expect(field(sentTo(start, 'private'), 'Encabezado del Echo Reply')).toBeUndefined();
   });
 
   it('keeps the private source of the header across the routers', () => {
-    expect(field(sentTo(start, 'server'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', `Destino: ${server.ip}`]);
+    expect(field(sentTo(start, 'server'), 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`]);
+  });
+
+  it('names the lines of the header by the terms IP de origen and IP de destino only once they are known, and by plain words before', () => {
+    const plainWords = without(start, 'source-ip', 'destination-ip');
+    expect(field(sentTo(plainWords, 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'Destino: 192.168.1.21']);
+    expect(field(sentTo(without(start, 'source-ip'), 'printer'), 'Encabezado')?.slice(1, 3)).toEqual(['Origen: 192.168.1.10', 'IP de destino: 192.168.1.21']);
   });
 
   it('tags only the terms the player knows in the fields of the header, the path and the time, whichever of their terms is missing', () => {

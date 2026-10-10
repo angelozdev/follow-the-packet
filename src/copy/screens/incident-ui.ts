@@ -1,6 +1,7 @@
 import type { ClientActor, Direction, FirewallKind, Network, UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, type TermText } from '@/copy/term-text';
+import type { TermId } from '@/copy/terms';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
   'security-group': (name) => `{{security-group}} ${nameTag(name)}`,
@@ -54,8 +55,11 @@ export const INSPECTION_TEXT = {
   none: 'No tiene',
   header: '{{header|Encabezado}}',
   replyHeader: '{{header|Encabezado}} del {{echo-reply}}',
-  source: (ip: string): TermText => `Origen: ${ip}`,
-  destination: (ip: string): TermText => `Destino: ${ip}`,
+  source: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('source-ip') ? '{{source-ip}}' : 'Origen'}: ${ip}`,
+  destination: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('destination-ip') ? '{{destination-ip}}' : 'Destino'}: ${ip}`,
+  connection: 'Conexión',
+  connected: 'Conectado a la {{network|red}}.',
+  disconnected: 'No está conectado: no forma parte de la {{network|red}}.',
   ttl: (ttl: number): TermText => `{{ttl}}: ${ttl}`,
   passedThrough: 'Pasó por',
   hops: '{{hop|Saltos}}',

@@ -81,7 +81,7 @@ function runPacket(world: Network, known: ReadonlySet<TermId>, id: string, packe
     warning: visibleWarning(packet, trace, known),
     by: stoppedBy(world, packet, trace),
     intruder,
-    label: packetLabel(packet, trace, world),
+    label: packetLabel(packet, trace, world, known),
   };
 }
 

@@ -1,9 +1,12 @@
-import { nameTag } from '@/copy';
+import { nameTag, type TermId } from '@/copy';
 import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
 import type { Flow, FromChip, WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
+
+/** The terms of chapter 1 that no incident of chapter 1 introduces yet. 04-01 introduces them for now, so chapter 4 keeps its ladder while the fourteen incidents of chapter 1 are built: each block takes out of this list the terms it presents, and the last one leaves it empty. */
+export const CHAPTER_1_BRIDGE: TermId[] = ['ping', 'protocol', 'request', 'response', 'icmp', 'echo-request', 'echo-reply', 'internet', 'router', 'private-ip', 'firewall', 'traffic', 'rule'];
 
 const REGION = 'eu-west-1';
 const VPC_CIDR = '172.31.0.0/16';

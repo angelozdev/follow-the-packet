@@ -1,5 +1,5 @@
 import { defineIncident } from '@/levels/contract/incident';
-import { BASE_WORLD, CONCEPT, FLOWS, FROM, LESSON, PING_TASK_FLOWS, SG, WHAT } from './shared';
+import { BASE_WORLD, CHAPTER_1_BRIDGE, CONCEPT, FLOWS, FROM, LESSON, PING_TASK_FLOWS, SG, WHAT } from './shared';
 
 export default defineIncident({
   id: '04-01',
@@ -10,7 +10,7 @@ export default defineIncident({
   mechanic: 'filter',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['ec2-instance', 'vpc', 'security-group', 'inbound-rule', 'anywhere-ipv4', 'internet-gateway'],
+  introduces: ['ec2-instance', 'vpc', 'security-group', 'inbound-rule', 'anywhere-ipv4', 'internet-gateway', ...CHAPTER_1_BRIDGE],
   base: BASE_WORLD,
   report: 'servidor1 no logra hacer {{ping}} a servidor2. ¿Lo revisas?',
   tasks: [{ id: 'ping', text: 'Que servidor1 pueda hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],

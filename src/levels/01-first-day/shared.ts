@@ -1,81 +1,65 @@
-import { nameTag } from '@/copy';
-import type { Actor, Device, Firewall, Network, PacketSpec } from '@/engine';
-import type { AddressChip, Flow, FromChip, MessageChip, OriginChip, SendMove, SendTask, WhatChip } from '@/levels/contract/incident';
+import type { Device, Network } from '@/engine';
+import type { AddressChip, MessageChip, OriginChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
 
 const OFFICE_RANGE = '192.168.1.0/24';
-const ANYWHERE = '0.0.0.0/0';
-const ECHO_REQUEST = '{{icmp}} · {{echo-request}}';
-const ECHO_REPLY = '{{icmp}} · {{echo-reply}}';
 
-export const IP = { you: '192.168.1.10', lucia: '192.168.1.11', printer: '192.168.1.20', nobody: '192.168.1.30' } as const;
+export const IP = {
+  you: '192.168.1.10',
+  lucia: '192.168.1.11',
+  marta: '192.168.1.12',
+  printer: '192.168.1.21',
+  visitor: '192.168.1.30',
+  note: '192.168.1.300',
+} as const;
+
 export const DEVICE = {
   you: { id: 'your-laptop', name: 'tu-laptop' },
   lucia: { id: 'lucia-laptop', name: 'laptop-lucia' },
+  marta: { id: 'marta-laptop', name: 'laptop-marta' },
   printer: { id: 'printer', name: 'impresora' },
+  visitor: { id: 'guest-laptop', name: 'laptop-visita' },
 } as const;
 
-function officeDevice({ id, name }: { id: string; name: string }, kind: Device['kind'], privateIp: string): Device {
-  return { id, name, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, listeningTcpPorts: [] } };
+export const CARD = {
+  network: { tray: 'in-network', yes: 'yes', no: 'no' },
+  ip: { tray: 'ip', right: 'right', note: 'note', marta: 'marta' },
+} as const;
+
+export const TASK = { visitor: 'visitor-outside', printer: 'printer-ip', packet: 'packet-to-printer' } as const;
+
+/** Returns a device of the office, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
+function officeDevice({ id, name }: { id: string; name: string }, kind: Device['kind'], privateIp: string, patch: Partial<Device> = {}): Device {
+  return { id, name, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, listeningTcpPorts: [] }, ...patch };
 }
 
+/** The world chapter 1 starts from: floor 1 of the office, with your laptop, Lucía's, Marta's and the printer on its network, and the visitor's laptop with no cable. It has no firewall, router, internet or actor yet: each block adds what it needs. */
 export const BASE_WORLD: Network = {
   kind: 'office',
   cidr: OFFICE_RANGE,
-  devices: [officeDevice(DEVICE.you, 'laptop', IP.you), officeDevice(DEVICE.lucia, 'laptop', IP.lucia), officeDevice(DEVICE.printer, 'printer', IP.printer)],
+  devices: [
+    officeDevice(DEVICE.you, 'laptop', IP.you),
+    officeDevice(DEVICE.lucia, 'laptop', IP.lucia),
+    officeDevice(DEVICE.marta, 'laptop', IP.marta),
+    officeDevice(DEVICE.printer, 'printer', IP.printer),
+    officeDevice(DEVICE.visitor, 'laptop', IP.visitor, { connected: false }),
+  ],
   firewalls: [],
   edge: 'router',
   actors: [],
 };
 
-export const HOME: Actor = { id: 'lucia-home', name: 'Casa de Lucía', ip: '198.51.100.24', kind: 'home' };
-
-export const LUCIA_FIREWALL: Firewall = {
-  id: 'fw-lucia',
-  name: DEVICE.lucia.name,
-  kind: 'host-firewall',
-  inbound: [],
-  outbound: [{ id: 'all-out-lucia', what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANYWHERE } }],
-};
-
 export const ORIGIN = {
   you: { id: 'you', endpoint: { kind: 'device', id: DEVICE.you.id } },
-  home: { id: 'home', endpoint: { kind: 'actor', id: HOME.id } },
 } satisfies Record<string, OriginChip>;
 
 export const ADDRESS = {
-  you: { id: 'ip-you', address: IP.you },
-  lucia: { id: 'ip-lucia', address: IP.lucia },
   printer: { id: 'ip-printer', address: IP.printer },
-  nobody: { id: 'ip-nobody', address: IP.nobody },
+  marta: { id: 'ip-marta', address: IP.marta },
 } satisfies Record<string, AddressChip>;
 
 export const MESSAGE = {
-  ping: { id: 'ping', label: '{{ping}}', icmpType: 8 },
-  echoRequest: { id: 'echo-request', label: ECHO_REQUEST, icmpType: 8 },
-  echoReply: { id: 'echo-reply', label: ECHO_REPLY, icmpType: 0 },
+  packet: { id: 'packet', label: '{{packet}}', icmpType: 8, command: 'packet' },
 } satisfies Record<string, MessageChip>;
-
-const YOUR_PING_TO_LUCIA = { fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId: MESSAGE.echoRequest.id };
-
-export const PING_TO_LUCIA: { send: SendMove; expect: SendTask['expect'] } = {
-  send: { type: 'sendPacket', ...YOUR_PING_TO_LUCIA },
-  expect: { ...YOUR_PING_TO_LUCIA, outcome: 'replied' },
-};
-
-const pingFromYou: PacketSpec = { from: ORIGIN.you.endpoint, to: IP.lucia, protocol: 'icmp', icmpType: 8 };
-
-export const PING_LUCIA = { id: 'ping-you-lucia', kind: 'required', packet: pingFromYou } satisfies Flow;
-
-export const WHAT = {
-  echoRequest: { id: 'echo-request', label: ECHO_REQUEST, what: { kind: 'icmp', icmpType: 8 } },
-  echoReply: { id: 'echo-reply', label: ECHO_REPLY, what: { kind: 'icmp', icmpType: 0 } },
-} satisfies Record<string, WhatChip>;
-
-function fromDevice(device: { name: string }, ip: string): FromChip {
-  return { id: `from-${ip}`, label: `${nameTag(device.name)} ({{ip-address|IP}} ${ip})`, peer: { kind: 'cidr', cidr: `${ip}/32` } };
-}
-
-export const FROM = { you: fromDevice(DEVICE.you, IP.you), printer: fromDevice(DEVICE.printer, IP.printer) };

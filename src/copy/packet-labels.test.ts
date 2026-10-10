@@ -69,6 +69,16 @@ describe('packet labels', () => {
     expect(serviceLabel({ protocol: 'tcp', port: 22 })).toBe('TCP 22');
   });
 
+  it('names a packet by the term packet while ping is not a known term, and by ping once it is', () => {
+    const packet = ping(device('servidor1'), '172.31.38.97');
+    const trace = simulate(NET, packet);
+    expect(packetLabel(packet, trace, NET, new Set<TermId>(['packet']))).toBe('{{packet}} de [[servidor1]] a [[servidor2]]');
+    expect(packetLabel(packet, trace, NET, new Set<TermId>(['packet', 'ping']))).toBe('{{ping}} de [[servidor1]] a [[servidor2]]');
+    expect(serviceLabel({ protocol: 'icmp', icmpType: 0 }, new Set<TermId>(['packet']))).toBe('{{packet}}');
+    expect(serviceLabel({ protocol: 'icmp', icmpType: 0 }, new Set<TermId>(['echo-reply']))).toBe('{{echo-reply}}');
+    expect(serviceLabel({ protocol: 'tcp', port: 22 }, new Set<TermId>())).toBe('TCP 22');
+  });
+
   it('says that an invalid address never left the device', () => {
     const packet = ping(device('servidor1'), '172.31.38.300');
     const trace = simulate(NET, packet);
@@ -106,6 +116,8 @@ describe('describeOutcome', () => {
   it('says only that a packet arrived while Echo Reply is not a known term', () => {
     expect(describeOutcome('replied', without('echo-reply'))).toBe('Llegó.');
     expect(describeOutcome('replied', EVERY_TERM)).toBe(OUTCOME_TEXT.replied);
+    expect(describeOutcome('replied', without('echo-reply'), '[[impresora]]')).toBe('Llegó a [[impresora]].');
+    expect(describeOutcome('replied', EVERY_TERM, '[[impresora]]')).toBe(OUTCOME_TEXT.replied);
   });
 
   it('says only that the packet did not reach its destination while the warning that came back is not a known term, never that nothing came back', () => {

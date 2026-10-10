@@ -1,5 +1,5 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
+import { isClientActor, isConnected, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
@@ -49,6 +49,12 @@ function addressField(own: Device, known: ReadonlySet<TermId>): FieldSpec {
   return { term, label: term === 'private-ip' ? INSPECTION_TEXT.privateIp : INSPECTION_TEXT.ipAddress, lines: () => [own.privateIp] };
 }
 
+/** The field with whether a device of an office is connected to the network: a device with no cable keeps its IP and is not part of the network. A device of a VPC has none. */
+function connectionField(own: Device, kind: Network['kind']): FieldSpec[] {
+  if (kind !== 'office') return [];
+  return [{ term: 'network', label: INSPECTION_TEXT.connection, lines: () => [isConnected(own) ? INSPECTION_TEXT.connected : INSPECTION_TEXT.disconnected] }];
+}
+
 function dnsNames(device: Device, region: string | undefined): string[] {
   if (!region) return [];
   return [...(device.publicIp ? [publicDnsName(device.publicIp, region)] : []), privateDnsName(device.privateIp, region)];
@@ -70,6 +76,7 @@ function device(session: Session, own: Device): Inspection {
       [
         ...whatIs({ kind: 'device', variant: own.kind }),
         addressField(own, session.known),
+        ...connectionField(own, session.world.kind),
         { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] },
         { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
@@ -152,10 +159,10 @@ function headerFields({ request, reply }: PacketHeader, known: ReadonlySet<TermI
   const outbound: FieldSpec = {
     term: 'header',
     label: INSPECTION_TEXT.header,
-    lines: () => [INSPECTION_TEXT.source(request.source), INSPECTION_TEXT.destination(request.destination), ...(known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])],
+    lines: () => [INSPECTION_TEXT.source(request.source, known), INSPECTION_TEXT.destination(request.destination, known), ...(known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])],
   };
   const answer: FieldSpec[] =
-    reply && known.has('echo-reply') ? [{ term: 'header', label: INSPECTION_TEXT.replyHeader, lines: () => [INSPECTION_TEXT.source(reply.source), INSPECTION_TEXT.destination(reply.destination)] }] : [];
+    reply && known.has('echo-reply') ? [{ term: 'header', label: INSPECTION_TEXT.replyHeader, lines: () => [INSPECTION_TEXT.source(reply.source, known), INSPECTION_TEXT.destination(reply.destination, known)] }] : [];
   return [outbound, ...answer];
 }
 
@@ -191,7 +198,7 @@ function packet(session: Session, run: PacketRun): Inspection {
     fields: [
       ...visible([...definition(packetTerm(run.packet, session.known)), ...messageField(run.packet), ...(header ? headerFields(header, session.known) : [])], session.known),
       ...pathField(session, hops),
-      { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known)] },
+      { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known, run.trace.destinationId ? deviceName(session.world, run.trace.destinationId) : undefined)] },
       ...roundTripField(session, run),
       ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
     ],

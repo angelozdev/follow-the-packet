@@ -58,6 +58,20 @@ describe('term registry', () => {
     expect(TERMS_OF_THE_FOURTEEN.filter((id) => !isTermId(id))).toEqual([]);
   });
 
+  it('registers the IP de origen and the IP de destino, which the definitions of the packet and the header name', () => {
+    expect(TERMS['source-ip'].name).toBe('IP de origen');
+    expect(TERMS['destination-ip'].name).toBe('IP de destino');
+    for (const term of ['packet', 'header'] as const) {
+      expect(TERMS[term].definition).toContain(TERMS['source-ip'].name);
+      expect(TERMS[term].definition).toContain(TERMS['destination-ip'].name);
+    }
+  });
+
+  it('a device is also called a host, and the packet is told apart from its header', () => {
+    expect(TERMS.device.definition).toContain('host');
+    expect(TERMS.packet.definition).toContain(TERMS.header.name);
+  });
+
   it('recognizes registered ids only', () => {
     expect(isTermId('security-group')).toBe(true);
     expect(isTermId('puerta')).toBe(false);

@@ -7,19 +7,21 @@ export interface Term {
 }
 
 export const TERMS = {
-  device: { name: 'dispositivo', definition: 'Un equipo que puede enviar y recibir datos: una laptop, una impresora, un servidor.' },
-  network: { name: 'red', definition: 'Un conjunto de dispositivos conectados entre sí que pueden intercambiar datos.' },
+  device: { name: 'dispositivo', definition: 'Un equipo que envía y recibe datos, como una laptop o una impresora. También se le llama host.' },
+  network: { name: 'red', definition: 'Un conjunto de dispositivos conectados entre sí que pueden intercambiar datos. Cada uno tiene su dirección IP.' },
   'ip-address': {
     name: 'dirección IP',
     short: 'IP',
-    definition: 'El número que identifica a un dispositivo dentro de una red, para que los datos lleguen a él.',
+    definition: 'El identificador de un dispositivo en una red: los datos llegan al que tiene esa IP. Debe ser único en su red.',
   },
-  ipv4: { name: 'IPv4', definition: 'La versión 4 de IP: sus direcciones son cuatro números de 0 a 255 separados por puntos, como 192.168.1.20.' },
-  packet: { name: 'paquete', definition: 'Un bloque de datos que viaja por una red con la dirección IP de origen y la de destino.' },
+  ipv4: { name: 'IPv4', definition: 'La versión 4 de las direcciones IP: cuatro números de 0 a 255 separados por puntos, como 192.168.1.20.' },
+  packet: { name: 'paquete', definition: 'Un bloque de datos que viaja por una red. Lleva un encabezado con la IP de origen y la IP de destino.' },
   header: {
     name: 'encabezado',
-    definition: 'La parte del paquete que va antes de los datos. Lleva, entre otras cosas, la IP de origen y la de destino.',
+    definition: 'La parte del paquete que va antes del contenido. Lleva, entre otras cosas, la IP de origen y la IP de destino.',
   },
+  'source-ip': { name: 'IP de origen', definition: 'La dirección IP del dispositivo que envía el paquete.' },
+  'destination-ip': { name: 'IP de destino', definition: 'La dirección IP del dispositivo al que va el paquete: la red lo entrega al que tiene esa IP.' },
   ping: { name: 'ping', definition: 'Un comando que manda un paquete a una dirección IP y espera que vuelva otro: prueba el camino de ida y vuelta.' },
   protocol: {
     name: 'protocolo',
