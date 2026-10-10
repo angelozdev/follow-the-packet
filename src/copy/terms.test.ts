@@ -14,8 +14,32 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['anywhere-ipv4', 'Anywhere-IPv4'],
   ['internet-gateway', 'Internet gateway'],
   ['icmp-echo-ignore-all', 'icmp_echo_ignore_all'],
+  ['rtt', 'RTT'],
+  ['ttl', 'TTL'],
+  ['time-exceeded', 'Time Exceeded'],
+  ['host-unreachable', 'Destination Host Unreachable'],
 ];
 const RETIRED_IDS = ['server', 'linux-ignore-ping'];
+const TERMS_OF_THE_FOURTEEN: TermId[] = [
+  'header',
+  'loopback',
+  'localhost',
+  'rtt',
+  'timeout',
+  'host-unreachable',
+  'lan',
+  'default-gateway',
+  'hop',
+  'ttl',
+  'time-exceeded',
+  'traceroute',
+  'drop',
+  'allow',
+  'deny',
+  'default-deny',
+  'inbound',
+  'outbound',
+];
 
 describe('term registry', () => {
   it.each(Object.entries(TERMS))('%s has a name and a short definition', (_id, term) => {
@@ -26,6 +50,11 @@ describe('term registry', () => {
 
   it('ids are English kebab-case', () => {
     for (const id of Object.keys(TERMS)) expect(id).toMatch(KEBAB_CASE);
+  });
+
+  it('registers the terms the engine and the cards need from the start', () => {
+    expect(TERMS_OF_THE_FOURTEEN).toHaveLength(18);
+    expect(TERMS_OF_THE_FOURTEEN.filter((id) => !isTermId(id))).toEqual([]);
   });
 
   it('recognizes registered ids only', () => {

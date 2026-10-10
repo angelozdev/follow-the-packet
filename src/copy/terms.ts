@@ -16,6 +16,10 @@ export const TERMS = {
   },
   ipv4: { name: 'IPv4', definition: 'La versión 4 de IP: sus direcciones son cuatro números de 0 a 255 separados por puntos, como 192.168.1.20.' },
   packet: { name: 'paquete', definition: 'Un bloque de datos que viaja por una red con la dirección IP de origen y la de destino.' },
+  header: {
+    name: 'encabezado',
+    definition: 'La parte del paquete que va antes de los datos. Lleva, entre otras cosas, la IP de origen y la de destino.',
+  },
   ping: { name: 'ping', definition: 'Un comando que manda un paquete a una dirección IP y espera que vuelva otro: prueba el camino de ida y vuelta.' },
   protocol: {
     name: 'protocolo',
@@ -26,6 +30,47 @@ export const TERMS = {
   icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre dispositivos, como los del ping.' },
   'echo-request': { name: 'Echo Request', definition: 'La solicitud ICMP del ping (tipo 8): le pide al destino que conteste con un Echo Reply.' },
   'echo-reply': { name: 'Echo Reply', definition: 'La respuesta ICMP del ping (tipo 0). Solo se envía al recibir un Echo Request, y nadie la contesta.' },
+  loopback: {
+    name: 'loopback',
+    definition: 'Las direcciones IP 127.x.x.x, como 127.0.0.1: son del propio dispositivo, y un paquete enviado a ellas no sale de él.',
+  },
+  localhost: { name: 'localhost', definition: 'Un nombre reservado para el propio dispositivo: apunta a la dirección de loopback, 127.0.0.1 en IPv4.' },
+  rtt: {
+    name: 'RTT',
+    definition: 'Round-Trip Time, tiempo de ida y vuelta: el tiempo entre enviar un paquete y recibir lo que el destino contesta.',
+  },
+  timeout: {
+    name: 'timeout',
+    definition: 'Lo que ve quien envió un paquete y no recibió nada en el tiempo de espera: no sabe si se perdió o si nadie contestó.',
+  },
+  'host-unreachable': {
+    name: 'Destination Host Unreachable',
+    definition: 'Un aviso ICMP (tipo 3) de que no se llegó al dispositivo de destino. Lo manda quien intentaba entregarle el paquete.',
+  },
+  lan: {
+    name: 'red local',
+    definition: 'Local Area Network (LAN): una red de alcance acotado, como un piso de oficina. Para salir de ella hace falta un router.',
+  },
+  'default-gateway': {
+    name: 'puerta de enlace predeterminada',
+    definition: 'La IP del router al que un dispositivo manda, por defecto, los paquetes cuyo destino no está en su red local.',
+  },
+  hop: {
+    name: 'salto',
+    definition: 'Cada paso de un paquete por un router en su camino al destino: el número de saltos es el de routers que cruza.',
+  },
+  ttl: {
+    name: 'TTL',
+    definition: 'Time to Live: un número del encabezado. Cada router le resta al menos 1; si llega a 0, el paquete no se reenvía.',
+  },
+  'time-exceeded': {
+    name: 'Time Exceeded',
+    definition: 'Un aviso ICMP (tipo 11): un router lo manda a quien envió el paquete cuando su TTL llega a 0 y no puede reenviarlo.',
+  },
+  traceroute: {
+    name: 'traceroute',
+    definition: 'Un comando que descubre los routers de un camino: manda paquetes con TTL 1, 2, 3… y anota quién avisa con Time Exceeded.',
+  },
   internet: { name: 'internet', definition: 'La red mundial formada por muchas redes unidas entre sí.' },
   router: { name: 'router', definition: 'Un dispositivo que conecta redes y reenvía cada paquete según su dirección IP de destino.' },
   'private-ip': {
@@ -34,7 +79,25 @@ export const TERMS = {
   },
   firewall: { name: 'firewall', definition: 'Un sistema que revisa el tráfico de un dispositivo y solo deja pasar lo que permite una de sus reglas.' },
   traffic: { name: 'tráfico', definition: 'Los paquetes que circulan por una red.' },
+  drop: {
+    name: 'descartar',
+    definition: 'Tirar un paquete sin entregarlo ni reenviarlo. Quien lo tira puede avisar a quien lo envió o callar.',
+  },
   rule: { name: 'regla', definition: 'Un permiso del firewall: dice qué tráfico puede pasar (Type) y desde dónde (Source).' },
+  allow: { name: 'permitir', definition: 'Dejar pasar un paquete por el firewall, porque una de sus reglas lo autoriza.' },
+  deny: { name: 'denegar', definition: 'No dejar pasar un paquete por el firewall, ya sea descartándolo sin avisar o contestando con un error.' },
+  'default-deny': {
+    name: 'denegación por defecto',
+    definition: 'Denegar todo lo que ninguna regla permite expresamente: lo único que pasa es lo que una regla permite.',
+  },
+  inbound: {
+    name: 'entrada',
+    definition: 'El sentido del tráfico que llega a un dispositivo. Un firewall puede tener reglas distintas para cada sentido.',
+  },
+  outbound: {
+    name: 'salida',
+    definition: 'El sentido del tráfico que sale de un dispositivo. Un firewall puede tener reglas distintas para cada sentido.',
+  },
   'ec2-instance': {
     name: 'instancia EC2',
     definition: 'Un servidor virtual en la nube de AWS (Amazon EC2), con su sistema operativo, sus IPs y sus Security Groups.',
