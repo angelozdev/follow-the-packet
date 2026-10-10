@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
-import { Button } from '@/design';
+import { Button, ChipTray, Choice } from '@/design';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 
 const VARIANT = INTERFACE_TEXT.variant;
 const SAMPLE = INTERFACE_TEXT.sample;
-const [FIRST_CHIP, SECOND_CHIP] = SAMPLE.chips;
-const [FIRST_ADDRESS, SECOND_ADDRESS] = SAMPLE.addresses;
+const [FIRST_CHIP] = SAMPLE.chips;
+const [FIRST_ADDRESS] = SAMPLE.addresses;
 const SAMPLE_STARS = 2;
 const NEW_TERMS = new Set<TermId>(['security-group']);
+const TRAY_CHIPS = SAMPLE.chips.map((label) => ({ id: label, label: <TaggedText text={label} /> }));
+const ADDRESS_CHIPS = SAMPLE.addresses.map((address) => ({ id: address, label: address }));
+const noPick = () => {};
 
 function Specimen({ caption, wide = false, children }: { caption: string; wide?: boolean; children: ReactNode }) {
   return (
@@ -63,32 +66,22 @@ export function InterfaceSection() {
       </Family>
       <Family name={INTERFACE_TEXT.family.choices}>
         <Specimen caption={VARIANT.chip}>
-          <button type="button" className="chip" aria-pressed={false}>
+          <Choice pressed={false}>
             <TaggedText text={FIRST_CHIP} />
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.chipPressed}>
-          <button type="button" className="chip" aria-pressed>
+          <Choice pressed>
             <TaggedText text={FIRST_CHIP} />
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.chipNamePressed}>
-          <button type="button" className="chip" aria-pressed>
+          <Choice pressed>
             <TaggedText text={SAMPLE.namedChip} />
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.tray}>
-          <div role="group" aria-label={TASK_CARD_TEXT.what} className="tray">
-            <span className="tray__name" aria-hidden="true">
-              {TASK_CARD_TEXT.what}
-            </span>
-            <button type="button" className="chip" aria-pressed={false}>
-              <TaggedText text={FIRST_CHIP} />
-            </button>
-            <button type="button" className="chip" aria-pressed={false}>
-              <TaggedText text={SECOND_CHIP} />
-            </button>
-          </div>
+          <ChipTray name={TASK_CARD_TEXT.what} chips={TRAY_CHIPS} picked={null} onPick={noPick} />
         </Specimen>
         <Specimen caption={VARIANT.slotEmpty}>
           <div className="slot">
@@ -99,27 +92,27 @@ export function InterfaceSection() {
         </Specimen>
         <Specimen caption={VARIANT.slotFull}>
           <div className="slot">
-            <button type="button" className="chip">
+            <Choice>
               <TaggedText text={FIRST_CHIP} />
-            </button>
+            </Choice>
             <span aria-hidden="true">←</span>
             <span className="slot__empty">{TASK_CARD_TEXT.from}</span>
           </div>
         </Specimen>
         <Specimen caption={VARIANT.option} wide>
-          <button type="button" className="option" aria-pressed={false}>
+          <Choice variant="option" pressed={false}>
             {SAMPLE.option}
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.optionChosen} wide>
-          <button type="button" className="option" aria-pressed disabled>
+          <Choice variant="option" pressed disabled>
             {SAMPLE.chosen}
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.optionClosed} wide>
-          <button type="button" className="option" aria-pressed={false} disabled>
+          <Choice variant="option" pressed={false} disabled>
             {SAMPLE.closed}
-          </button>
+          </Choice>
         </Specimen>
         <Specimen caption={VARIANT.right} wide>
           <p className="feedback feedback--right">
@@ -156,17 +149,7 @@ export function InterfaceSection() {
                 <TaggedText text={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
               </code>
             </p>
-            <div role="group" aria-label={TERMINAL_TEXT.trays.to} className="tray">
-              <span className="tray__name" aria-hidden="true">
-                {TERMINAL_TEXT.trays.to}
-              </span>
-              <button type="button" className="chip" aria-pressed>
-                {FIRST_ADDRESS}
-              </button>
-              <button type="button" className="chip" aria-pressed={false}>
-                {SECOND_ADDRESS}
-              </button>
-            </div>
+            <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />
             <Button>{TERMINAL_TEXT.send}</Button>
             <Button>{TASK_CARD_TEXT.done}</Button>
           </section>

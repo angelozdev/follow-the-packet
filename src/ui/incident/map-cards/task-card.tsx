@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { Button, ChipTray, Choice } from '@/design';
 import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, WhatChip } from '@/levels';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { ChipCard, ChipTray } from './chip-card';
+import { ChipCard, trayChips } from './chip-card';
 
 type Tray = 'what' | 'from';
 type Slot = Record<Tray, string | null>;
@@ -23,9 +23,9 @@ interface TaskCardProps {
 
 function SlotChip({ chip, placeholder, onGiveBack }: { chip: Chip | undefined; placeholder: string; onGiveBack: () => void }) {
   return chip ? (
-    <button type="button" className="chip" aria-label={TASK_CARD_TEXT.giveBack(toPlainText(chip.label))} onClick={onGiveBack}>
+    <Choice aria-label={TASK_CARD_TEXT.giveBack(toPlainText(chip.label))} onClick={onGiveBack}>
       <TaggedText text={chip.label} />
-    </button>
+    </Choice>
   ) : (
     <span className="slot__empty">{placeholder}</span>
   );
@@ -78,8 +78,8 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
         <span aria-hidden="true">←</span>
         <SlotChip chip={pickedFrom} placeholder={TASK_CARD_TEXT.from} onGiveBack={() => giveBack('from')} />
       </div>
-      <ChipTray name={TASK_CARD_TEXT.what} chips={chips.what} picked={slot.what} onPick={(chipId) => toggle('what', chipId)} />
-      <ChipTray name={TASK_CARD_TEXT.from} chips={chips.from} picked={slot.from} onPick={(chipId) => toggle('from', chipId)} />
+      <ChipTray name={TASK_CARD_TEXT.what} chips={trayChips(chips.what)} picked={slot.what} onPick={(chipId) => toggle('what', chipId)} />
+      <ChipTray name={TASK_CARD_TEXT.from} chips={trayChips(chips.from)} picked={slot.from} onPick={(chipId) => toggle('from', chipId)} />
     </ChipCard>
   );
 }

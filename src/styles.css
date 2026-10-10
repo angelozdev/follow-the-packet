@@ -66,11 +66,6 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .rules__text { min-width: 0; }
 .slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.2rem; padding: var(--space-2xs) var(--space-xs); border: var(--stroke-regular) dashed var(--color-ink-soft); }
 .slot__empty { color: var(--color-ink-soft); font-size: var(--text-md); }
-.tray { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
-.tray__name { width: 100%; font: var(--weight-bold) var(--text-xs) var(--font-body); text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-ink-soft); }
-.chip { font: var(--weight-bold) var(--text-md) var(--font-body); color: var(--color-ink); background: var(--color-page); border: var(--stroke-regular) solid var(--color-ink); border-radius: var(--radius-pill); padding: var(--space-2xs) var(--space-sm); cursor: pointer; }
-.chip[aria-pressed='true'] { background: var(--color-ink); color: var(--color-on-fill); }
-.chip[aria-pressed='true'] .name-tag { background: transparent; border-color: currentColor; }
 .stamp--intruder { color: var(--color-danger); border-style: double; border-width: var(--stroke-double); }
 .stamp--lost { color: var(--color-ink-soft); border-style: dashed; }
 button.stamp { cursor: help; }
@@ -89,9 +84,6 @@ button.stamp { cursor: help; }
 .inspection dt { margin-top: var(--space-xs); font: var(--weight-bold) var(--text-xs) var(--font-body); text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-ink-soft); }
 .inspection dd { margin: 0; }
 .options { list-style: none; padding: 0; display: grid; gap: var(--space-xs); }
-.option { width: 100%; text-align: left; font: var(--weight-regular) var(--text-base)/1.4 var(--font-body); color: var(--color-ink); background: var(--color-page); border: var(--stroke-regular) solid var(--color-ink); padding: var(--space-xs) var(--space-sm); cursor: pointer; }
-.option[aria-pressed='true'] { background: var(--color-shade); }
-.option:disabled { cursor: default; }
 .feedback { margin: var(--space-2xs) 0 0; font-size: var(--text-md); }
 .feedback--wrong { color: var(--color-danger); }
 .result__list { list-style: none; padding: 0; }

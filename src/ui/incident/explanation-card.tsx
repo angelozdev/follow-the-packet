@@ -1,5 +1,5 @@
 import { EXPLANATION_TEXT, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { Button, Choice } from '@/design';
 import type { ExplanationOption } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -31,9 +31,9 @@ export function ExplanationCard({ question, options, choice, onChoose, onContinu
       <ol className="options">
         {options.map((option, index) => (
           <li key={option.text}>
-            <button type="button" className="option" disabled={choice !== null} aria-pressed={choice === index} onClick={() => onChoose(index)}>
+            <Choice variant="option" disabled={choice !== null} pressed={choice === index} onClick={() => onChoose(index)}>
               <TaggedText text={option.text} />
-            </button>
+            </Choice>
             {choice !== null && (index === choice || option.correct) && (
               <p className={option.correct ? 'feedback feedback--right' : 'feedback feedback--wrong'}>
                 <strong>{option.correct ? EXPLANATION_TEXT.right : EXPLANATION_TEXT.wrong}</strong> <TaggedText text={option.feedback} />

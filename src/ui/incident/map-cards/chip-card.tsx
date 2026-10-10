@@ -1,6 +1,6 @@
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { Button, type TrayChip } from '@/design';
 import { TaggedText } from '@/ui/tagged-text';
 
 interface ChipCardProps {
@@ -8,13 +8,6 @@ interface ChipCardProps {
   heading: RefObject<HTMLHeadingElement | null>;
   onClose: () => void;
   children: ReactNode;
-}
-
-interface ChipTrayProps {
-  name: string;
-  chips: { id: string; label: TermText }[];
-  picked: string | null;
-  onPick: (chipId: string) => void;
 }
 
 /** The card that opens beside a piece of the map: a dialog with its title, what the caller puts in it and the "Listo" button; Escape closes it too. */
@@ -33,18 +26,7 @@ export function ChipCard({ title, heading, onClose, children }: ChipCardProps) {
   );
 }
 
-/** A named tray of chips, the picked one pressed; a click or Enter picks a chip. */
-export function ChipTray({ name, chips, picked, onPick }: ChipTrayProps) {
-  return (
-    <div role="group" aria-label={name} className="tray">
-      <span className="tray__name" aria-hidden="true">
-        {name}
-      </span>
-      {chips.map((chip) => (
-        <button key={chip.id} type="button" className="chip" aria-pressed={picked === chip.id} onClick={() => onPick(chip.id)}>
-          <TaggedText text={chip.label} />
-        </button>
-      ))}
-    </div>
-  );
+/** Returns a card's chips as the chips of a tray, each label with its terms tagged. */
+export function trayChips(chips: { id: string; label: TermText }[]): TrayChip[] {
+  return chips.map(({ id, label }) => ({ id, label: <TaggedText text={label} /> }));
 }
