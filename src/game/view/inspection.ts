@@ -1,5 +1,5 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, OUTCOME_TEXT, TERMS, describeReason, entityTerm, messageLabel, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
-import { privateDnsName, publicDnsName, stopStep, type Actor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
+import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './cards/firewall-card';
@@ -112,7 +112,7 @@ function internet(session: Session): Inspection {
   };
 }
 
-function actor(session: Session, who: Actor): Inspection {
+function actor(session: Session, who: ClientActor): Inspection {
   return {
     entity: { kind: 'actor', variant: who.kind },
     title: nameTag(who.name),
@@ -162,7 +162,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
       return found ? firewall(session, found) : null;
     }
     case 'actor': {
-      const found = world.actors.find((candidate) => candidate.id === ref.id);
+      const found = world.actors.filter(isClientActor).find((candidate) => candidate.id === ref.id);
       return found ? actor(session, found) : null;
     }
     case 'packet': {

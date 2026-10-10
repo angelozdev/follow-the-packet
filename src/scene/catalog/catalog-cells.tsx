@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { CATALOG_TEXT, entityName, type EntityRef, type PacketMessage, type StampState } from '@/copy';
-import type { Actor, Device, FirewallKind, Network } from '@/engine';
+import type { ClientActor, Device, FirewallKind, Network } from '@/engine';
 import {
   ActorPiece,
   DevicePiece,
@@ -109,7 +109,7 @@ const INTERNET_CELL: CatalogCell = {
   ),
 };
 
-function actorCell(variant: Actor['kind']): CatalogCell {
+function actorCell(variant: ClientActor['kind']): CatalogCell {
   const id = `actor-${variant}`;
   return {
     id,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { officeNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
@@ -89,6 +89,11 @@ describe('inspect', () => {
 
   it('the attacker says who it is, but not its IP yet', () => {
     expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
+  });
+
+  it('an actor of kind server is not inspected as an actor', () => {
+    const floors: Session = { ...office, world: officeTwoFloorsNet() };
+    expect(inspect(floors, PIECE_ID.actor(OFFICE_FLOORS.server.id))).toBeNull();
   });
 
   it('the Internet gateway says what it is and what it does', () => {

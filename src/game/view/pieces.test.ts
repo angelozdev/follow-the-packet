@@ -3,7 +3,7 @@ import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { officeNet, sendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { PIECE_ID } from './piece-id';
@@ -53,6 +53,15 @@ describe('pieceViews', () => {
     expect(opening).toContainEqual({ id: PIECE_ID.device('your-laptop'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.actor('attacker'), locked: false, configurable: true });
     expect(opening).toContainEqual({ id: PIECE_ID.device('printer'), locked: true, configurable: false });
+  });
+
+  it('an actor of kind server is not drawn as an actor piece', () => {
+    const attacker = { id: 'attacker', name: 'Atacante', ip: '203.0.113.66', kind: 'attacker' } as const;
+    const world = { ...officeTwoFloorsNet(), actors: [attacker, ...officeTwoFloorsNet().actors] };
+    const pieces = pieceViews({ ...office, world });
+    expect(world.actors.map((actor) => actor.kind)).toEqual(['attacker', 'server']);
+    expect(pieces.filter((piece) => piece.kind === 'actor').map((piece) => piece.id)).toEqual([PIECE_ID.actor('attacker')]);
+    expect(pieces.map((piece) => piece.id)).not.toContain(PIECE_ID.actor(OFFICE_FLOORS.server.id));
   });
 
   it('shows no router and no internet while nobody is outside the office', () => {

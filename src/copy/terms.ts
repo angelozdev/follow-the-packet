@@ -1,4 +1,4 @@
-import type { Actor, Device, FirewallKind, Network } from '@/engine';
+import type { ClientActor, Device, FirewallKind, Network } from '@/engine';
 
 export interface Term {
   name: string;
@@ -171,7 +171,7 @@ export interface EntityVariants {
   firewall: FirewallKind;
   edge: Network['edge'];
   internet: 'internet';
-  actor: Actor['kind'];
+  actor: ClientActor['kind'];
   packet: PacketMessage;
 }
 

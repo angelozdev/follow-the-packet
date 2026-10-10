@@ -1,4 +1,4 @@
-import type { Actor, FirewallKind, Network } from '@/engine';
+import type { ClientActor, FirewallKind, Network } from '@/engine';
 import { nameTag, type TermText } from '@/copy/term-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
@@ -46,7 +46,7 @@ export const INSPECTION_TEXT = {
   none: 'No tiene',
 } as const;
 
-export const ACTOR_ROLE_TEXT: Record<Actor['kind'], TermText> = {
+export const ACTOR_ROLE_TEXT: Record<ClientActor['kind'], TermText> = {
   attacker: 'Alguien de internet que prueba si los {{security-group|Security Groups}} ajenos lo dejan entrar.',
   you: 'Tu computadora.',
   home: 'Una casa fuera de la oficina, conectada a {{internet}}.',

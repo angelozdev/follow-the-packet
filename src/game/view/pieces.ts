@@ -1,5 +1,5 @@
 import { MAP_TEXT, entityTerm, nameTag, type EntityRef, type TermId, type TermText } from '@/copy';
-import type { Network } from '@/engine';
+import { isClientActor, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
@@ -55,7 +55,7 @@ function outside(session: Session): PieceView[] {
   ];
 }
 
-/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal. The edge and the internet show only when someone is outside the network. */
+/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal. The edge and the internet show only when someone is outside the network. A server of the internet is not an actor piece, so it gets none here. */
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   const intruded = intrudedDeviceIds(session.runs);
@@ -70,7 +70,7 @@ export function pieceViews(session: Session): PieceView[] {
       );
     }),
     ...firewalls(session),
-    ...world.actors.map((actor) => {
+    ...world.actors.filter(isClientActor).map((actor) => {
       const id = PIECE_ID.actor(actor.id);
       return piece({ kind: 'actor', variant: actor.kind }, { id, anchorId: actor.id, label: nameTag(actor.name), locked: false, configurable: origins.has(id), state: 'normal' });
     }),

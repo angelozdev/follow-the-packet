@@ -1,4 +1,4 @@
-import type { Device, Endpoint, Network, PacketSpec, Rule } from '@/engine';
+import { ROUTE_DEFAULT, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule } from '@/engine';
 
 export const YOU_IP = '198.51.100.7';
 export const ATTACKER_IP = '203.0.113.66';
@@ -86,6 +86,52 @@ export function officeNet(): Network {
     firewalls: [{ id: 'fw-lucia', name: 'lucia-laptop', kind: 'host-firewall', inbound: [], outbound: [allOut('fw-lucia-out')] }],
     edge: 'router',
     actors: [{ id: 'attacker', name: 'Atacante', ip: ATTACKER_IP, kind: 'attacker' }],
+  };
+}
+
+export const OFFICE_FLOORS = {
+  range: '192.168.0.0/16',
+  floor1: { id: 'floor-1', name: 'Piso 1', cidr: '192.168.1.0/24', gateway: '192.168.1.1', you: '192.168.1.10', lucia: '192.168.1.11', marta: '192.168.1.12', printer: '192.168.1.21', guest: '192.168.1.30' },
+  floor2: { id: 'floor-2', name: 'Piso 2', cidr: '192.168.2.0/24', gateway: '192.168.2.1', andres: '192.168.2.15' },
+  officeRouter: { id: 'router-office', uplink: '203.0.113.10' },
+  provider: { id: 'router-provider', towardOffice: '203.0.113.1', towardInternet: '203.0.113.3' },
+  backbone: { id: 'router-backbone', towardProvider: '203.0.113.2', towardServer: '198.51.100.1' },
+  server: { id: 'internet-server', ip: '198.51.100.50', range: '198.51.100.0/24' },
+} as const;
+
+type Floor = typeof OFFICE_FLOORS.floor1 | typeof OFFICE_FLOORS.floor2;
+
+function floorDevice(floor: Floor, id: string, name: string, kind: Device['kind'], privateIp: string, patch: Partial<Device> = {}): Device {
+  return { ...officeDevice(id, kind, privateIp), name, lanId: floor.id, gateway: floor.gateway, ...patch };
+}
+
+function routerOf(id: string, interfaces: [ip: string, faces: string][], routes: Router['routes'], latencyMs: number): Router {
+  return { id, name: id, interfaces: interfaces.map(([ip, faces]) => ({ ip, faces })), routes, latencyMs, sendsUnreachable: true };
+}
+
+/** Returns the office of the map that grows: two floors, each a LAN, with a router between them that reaches the internet through two routers of a provider and a server that answers Echo Request. laptop-visita starts without a cable. */
+export function officeTwoFloorsNet(): Network {
+  const { range, floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+  return {
+    kind: 'office',
+    cidr: range,
+    lans: [floor1, floor2].map(({ id, name, cidr }) => ({ id, name, cidr, latencyMs: 1 })),
+    devices: [
+      floorDevice(floor1, 'your-laptop', 'tu-laptop', 'laptop', floor1.you),
+      floorDevice(floor1, 'lucia-laptop', 'laptop-lucia', 'laptop', floor1.lucia),
+      floorDevice(floor1, 'marta-laptop', 'laptop-marta', 'laptop', floor1.marta),
+      floorDevice(floor1, 'printer', 'impresora', 'printer', floor1.printer),
+      floorDevice(floor1, 'guest-laptop', 'laptop-visita', 'laptop', floor1.guest, { connected: false }),
+      floorDevice(floor2, 'andres-laptop', 'laptop-andres', 'laptop', floor2.andres),
+    ],
+    firewalls: [],
+    edge: 'router',
+    actors: [{ id: server.id, name: 'servidor-internet', ip: server.ip, kind: 'server', latencyMs: 20 }],
+    routers: [
+      routerOf(officeRouter.id, [[floor1.gateway, floor1.id], [floor2.gateway, floor2.id], [officeRouter.uplink, provider.id]], [{ to: ROUTE_DEFAULT, next: provider.id }], 1),
+      routerOf(provider.id, [[provider.towardOffice, officeRouter.id], [provider.towardInternet, backbone.id]], [{ to: server.range, next: backbone.id }, { to: range, next: officeRouter.id }], 8),
+      routerOf(backbone.id, [[backbone.towardProvider, provider.id], [backbone.towardServer, server.id]], [{ to: range, next: provider.id }], 12),
+    ],
   };
 }
 

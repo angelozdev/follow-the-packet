@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { echoFrom, lab03Net, officeNet, withDevice, withInbound } from '@/testing';
+import { OFFICE_FLOORS, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, withDevice, withInbound } from '@/testing';
 import { networkSchema, packetSchema } from './schema';
-import type { Firewall, Network } from './types';
+import type { Firewall, Network, Router } from './types';
 
 const OS_FIREWALL: Firewall = { id: 'fw-os', name: 'os', kind: 'host-firewall', inbound: [], outbound: [] };
 const SECURITY_GROUP: Firewall = { id: 'sg-x', name: 'x', kind: 'security-group', inbound: [], outbound: [] };
@@ -78,11 +78,135 @@ describe('networkSchema', () => {
   });
 });
 
+const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+
+function withRouter(net: Network, id: string, patch: Partial<Router>): Network {
+  return { ...net, routers: net.routers?.map((r) => (r.id === id ? { ...r, ...patch } : r)) };
+}
+
+function withInterface(net: Network, routerId: string, ip: string, faces: string): Network {
+  const router = net.routers?.find((r) => r.id === routerId);
+  return withRouter(net, routerId, { interfaces: [...(router?.interfaces ?? []), { ip, faces }] });
+}
+
+describe('networkSchema with floors, routers and servers of the internet', () => {
+  it('accepts an office with two LANs, a router between them and a server of the internet', () => {
+    const net = officeTwoFloorsNet();
+    expect(problems(net)).toEqual([]);
+    expect(net.lans?.map((lan) => lan.id)).toEqual([floor1.id, floor2.id]);
+    expect(net.routers?.map((router) => router.id)).toEqual([officeRouter.id, provider.id, backbone.id]);
+    expect(net.actors.map((actor) => actor.kind)).toEqual(['server']);
+  });
+
+  it('rejects a device whose IP is outside its LAN', () => {
+    const net = withDevice(officeTwoFloorsNet(), 'andres-laptop', { privateIp: '192.168.1.15' });
+    expect(problems(net)).toContain(`andres-laptop: 192.168.1.15 is not in ${floor2.cidr}`);
+  });
+
+  it('rejects a gateway that is not an IPv4 address', () => {
+    for (const gateway of ['192.168.1', '192.168.1.256', 'router']) {
+      const result = networkSchema.safeParse(withDevice(officeTwoFloorsNet(), 'your-laptop', { gateway }));
+      expect(result.success, gateway).toBe(false);
+      const issue = result.error?.issues.find((found) => found.path.join('.') === 'devices.0.gateway');
+      expect(issue?.message, gateway).toBe('invalid IPv4');
+    }
+  });
+
+  it('rejects two interfaces or devices with the same IP, even on different routers', () => {
+    const interfaceTwice = withInterface(officeTwoFloorsNet(), backbone.id, officeRouter.uplink, provider.id);
+    expect(problems(interfaceTwice)).toContain(`${backbone.id}: ${officeRouter.uplink} is already the IP of ${officeRouter.id}`);
+    const interfaceAsDevice = withInterface(officeTwoFloorsNet(), provider.id, floor1.lucia, officeRouter.id);
+    expect(problems(interfaceAsDevice)).toContain(`${provider.id}: ${floor1.lucia} is already the IP of lucia-laptop`);
+    const serverAsInterface = withInterface(officeTwoFloorsNet(), provider.id, server.ip, backbone.id);
+    expect(problems(serverAsInterface)).toContain(`${server.id}: ${server.ip} is already the IP of ${provider.id}`);
+    const deviceAsInterface = withDevice(officeTwoFloorsNet(), 'andres-laptop', { privateIp: floor2.gateway });
+    expect(problems(deviceAsInterface)).toContain(`${officeRouter.id}: ${floor2.gateway} is already the IP of andres-laptop`);
+  });
+
+  it('rejects a router interface that faces an unknown LAN, router or server', () => {
+    const facing = (faces: string) => problems(withInterface(officeTwoFloorsNet(), officeRouter.id, '192.168.3.1', faces));
+    const message = (faces: string) => `${officeRouter.id}: 192.168.3.1 faces ${faces}, which is not a LAN, a router or a server`;
+    for (const faces of ['floor-9', 'router-ghost', 'server-ghost', 'your-laptop']) expect(facing(faces)).toContain(message(faces));
+    expect(facing(floor2.id)).not.toContain(message(floor2.id));
+  });
+
+  it('rejects an interface that faces an actor that is not a server', () => {
+    const net = { ...officeTwoFloorsNet(), actors: [...officeTwoFloorsNet().actors, { id: 'attacker', name: 'Atacante', ip: '203.0.113.66', kind: 'attacker' as const }] };
+    expect(problems(withInterface(net, backbone.id, '198.51.100.2', 'attacker'))).toContain(
+      `${backbone.id}: 198.51.100.2 faces attacker, which is not a LAN, a router or a server`,
+    );
+  });
+
+  it('rejects a route through an unknown router', () => {
+    const net = withRouter(officeTwoFloorsNet(), officeRouter.id, { routes: [{ to: 'default', next: 'router-ghost' }] });
+    expect(problems(net)).toContain(`${officeRouter.id}: the route to default goes through router-ghost, which is not a router`);
+    const toDevice = withRouter(officeTwoFloorsNet(), officeRouter.id, { routes: [{ to: '10.0.0.0/8', next: 'printer' }] });
+    expect(problems(toDevice)).toContain(`${officeRouter.id}: the route to 10.0.0.0/8 goes through printer, which is not a router`);
+  });
+
+  it('rejects a route whose range is neither default nor a CIDR', () => {
+    const net = withRouter(officeTwoFloorsNet(), officeRouter.id, { routes: [{ to: 'everywhere', next: provider.id }] });
+    expect(problems(net)).toContain('invalid CIDR');
+  });
+
+  it('keeps accepting the chapter 1 office of today, with one range and no routers', () => {
+    const net = officeNet();
+    expect(net.lans).toBeUndefined();
+    expect(net.routers).toBeUndefined();
+    expect(problems(net)).toEqual([]);
+    expect(problems({ ...net, routers: [] })).toEqual([]);
+  });
+
+  it('rejects a VPC that declares LANs or routers', () => {
+    const lans = [{ id: 'lan-a', name: 'LAN A', cidr: '192.168.1.0/24', latencyMs: 1 }];
+    expect(problems({ ...lab03Net(), lans })).toContain('a VPC has no LANs');
+    expect(problems({ ...lab03Net(), routers: [] })).toContain('a VPC has no routers');
+    expect(problems({ ...lab03Net(), routers: officeTwoFloorsNet().routers })).toContain('a VPC has no routers');
+  });
+
+  it('rejects a device that names a LAN that does not exist', () => {
+    expect(problems(withDevice(officeTwoFloorsNet(), 'printer', { lanId: 'floor-9' }))).toContain('printer: LAN floor-9 does not exist');
+  });
+
+  it('asks each device for its LAN once the office has several', () => {
+    expect(problems(withDevice(officeTwoFloorsNet(), 'printer', { lanId: undefined }))).toContain('printer: an office with several LANs needs the LAN of each device');
+  });
+
+  it('puts a device without a LAN on the only one an office has', () => {
+    const single = { ...officeNet(), lans: [{ id: 'floor-1', name: 'Piso 1', cidr: officeNet().cidr, latencyMs: 1 }] };
+    expect(problems(single)).toEqual([]);
+    expect(problems(withDevice(single, 'printer', { lanId: 'floor-1' }))).toEqual([]);
+  });
+
+  it('rejects a LAN with a public range', () => {
+    const [floorOne, ...others] = officeTwoFloorsNet().lans ?? [];
+    const net = { ...officeTwoFloorsNet(), lans: [{ ...floorOne, cidr: '8.8.8.0/24' }, ...others] };
+    expect(problems(net)).toContain('8.8.8.0/24 is not a private range (RFC 1918)');
+  });
+
+  it('rejects an empty list of LANs and an id shared by a LAN and a router', () => {
+    expect(problems({ ...officeTwoFloorsNet(), lans: [] })).not.toEqual([]);
+    expect(problems(withRouter(officeTwoFloorsNet(), officeRouter.id, { id: floor1.id }))).toContain(`duplicate id: ${floor1.id}`);
+  });
+
+  it('rejects a server without a latency', () => {
+    const noLatency = { id: server.id, name: 'servidor-internet', ip: server.ip, kind: 'server' };
+    expect(problems({ ...officeTwoFloorsNet(), actors: [noLatency] })).not.toEqual([]);
+  });
+});
+
 describe('packetSchema', () => {
   it('requires icmpType for ICMP and port for TCP', () => {
     const from = { kind: 'device', id: 'servidor1' } as const;
     expect(packetSchema.safeParse({ from, to: '172.31.38.97', protocol: 'icmp' }).success).toBe(false);
     expect(packetSchema.safeParse({ from, to: '172.31.38.97', protocol: 'tcp' }).success).toBe(false);
     expect(packetSchema.safeParse({ from, to: '172.31.38.97', protocol: 'icmp', icmpType: 8 }).success).toBe(true);
+  });
+
+  it('takes an optional TTL that is an integer from 1 to 255', () => {
+    const ping = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.21', protocol: 'icmp', icmpType: 8 } as const;
+    expect(packetSchema.safeParse(ping).success).toBe(true);
+    for (const ttl of [1, 64, 255]) expect(packetSchema.safeParse({ ...ping, ttl }).success, String(ttl)).toBe(true);
+    for (const ttl of [0, 256, 1.5, -1]) expect(packetSchema.safeParse({ ...ping, ttl }).success, String(ttl)).toBe(false);
   });
 });

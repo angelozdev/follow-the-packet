@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from './cidr';
+import { lanOf, lansOf } from './topology';
 
-const ip = z.string().refine(isIpv4, 'invalid IPv4');
+export const ROUTE_DEFAULT = 'default';
+export const TTL_MAX = 255;
+
+export const ipSchema = z.string().refine(isIpv4, 'invalid IPv4');
 function isCidr(value: string): boolean {
   try {
     parseCidr(value);
@@ -13,6 +17,10 @@ function isCidr(value: string): boolean {
 
 const cidr = z.string().refine(isCidr, 'invalid CIDR');
 const port = z.number().int().min(0).max(65535);
+const nonEmpty = z.string().min(1);
+const latencyMs = z.number().nonnegative();
+
+export const directionSchema = z.enum(['inbound', 'outbound']);
 
 export const icmpTypeSchema = z.union([z.literal(0), z.literal(8)]);
 
@@ -43,21 +51,39 @@ export const deviceSchema = z.object({
   name: z.string().min(1),
   kind: z.enum(['laptop', 'printer', 'ec2-instance']),
   subnetId: z.string().min(1).optional(),
-  privateIp: ip,
-  publicIp: ip.optional(),
+  privateIp: ipSchema,
+  publicIp: ipSchema.optional(),
   firewallIds: z.array(z.string().min(1)),
   host: z.object({ ignoreIcmpEcho: z.boolean(), listeningTcpPorts: z.array(port) }),
   appTarget: z.string().min(1).optional(),
+  lanId: nonEmpty.optional(),
+  gateway: ipSchema.optional(),
+  connected: z.boolean().optional(),
 });
 
 export const subnetSchema = z.object({ id: z.string().min(1), az: z.string().min(1), cidr });
 
-export const actorSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  ip,
-  kind: z.enum(['you', 'attacker', 'home']),
+export const lanSchema = z.object({ id: nonEmpty, name: nonEmpty, cidr, latencyMs });
+
+export const routerInterfaceSchema = z.object({ ip: ipSchema, faces: nonEmpty });
+
+export const routeSchema = z.object({ to: z.union([z.literal(ROUTE_DEFAULT), cidr]), next: nonEmpty });
+
+export const routerSchema = z.object({
+  id: nonEmpty,
+  name: nonEmpty,
+  interfaces: z.array(routerInterfaceSchema),
+  routes: z.array(routeSchema),
+  latencyMs,
+  sendsUnreachable: z.boolean(),
 });
+
+const actorShape = { id: nonEmpty, name: nonEmpty, ip: ipSchema };
+
+export const actorSchema = z.discriminatedUnion('kind', [
+  z.object({ ...actorShape, kind: z.enum(['you', 'attacker', 'home']) }),
+  z.object({ ...actorShape, kind: z.literal('server'), latencyMs }),
+]);
 
 const networkShape = z.object({
   kind: z.enum(['office', 'vpc']),
@@ -68,6 +94,8 @@ const networkShape = z.object({
   firewalls: z.array(firewallSchema),
   edge: z.enum(['router', 'internet-gateway']),
   actors: z.array(actorSchema),
+  lans: z.array(lanSchema).min(1).optional(),
+  routers: z.array(routerSchema).optional(),
 });
 
 type NetworkShape = z.infer<typeof networkShape>;
@@ -87,16 +115,31 @@ function checkIds(net: NetworkShape, fail: Fail): void {
     ...net.devices.map((d) => d.id),
     ...net.firewalls.map((f) => f.id),
     ...net.actors.map((a) => a.id),
+    ...(net.lans ?? []).map((l) => l.id),
+    ...(net.routers ?? []).map((r) => r.id),
   ];
   const repeated = ids.find((id, index) => ids.indexOf(id) !== index);
   if (repeated) fail(`duplicate id: ${repeated}`);
 }
 
+function checkPrivateRange(range: string, fail: Fail): void {
+  if (isCidr(range) && !isPrivateCidr(range)) fail(`${range} is not a private range (RFC 1918)`);
+}
+
+function addressOwners(net: NetworkShape): { owner: string; ip: string }[] {
+  return [
+    ...net.devices.map((device) => ({ owner: device.id, ip: device.privateIp })),
+    ...(net.routers ?? []).flatMap((router) => router.interfaces.map((face) => ({ owner: router.id, ip: face.ip }))),
+    ...net.actors.flatMap((actor) => (actor.kind === 'server' ? [{ owner: actor.id, ip: actor.ip }] : [])),
+  ];
+}
+
 function checkAddresses(net: NetworkShape, fail: Fail): void {
-  if (isCidr(net.cidr) && !isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
-  net.devices.forEach((device, index) => {
-    const first = net.devices.find((other) => other.privateIp === device.privateIp);
-    if (first && net.devices.indexOf(first) < index) fail(`${device.id}: ${device.privateIp} is already the IP of ${first.id}`);
+  [net.cidr, ...(net.lans ?? []).map((lan) => lan.cidr)].forEach((range) => checkPrivateRange(range, fail));
+  const owners = addressOwners(net);
+  owners.forEach((entry, index) => {
+    const first = owners.find((other) => other.ip === entry.ip);
+    if (first && owners.indexOf(first) < index) fail(`${entry.owner}: ${entry.ip} is already the IP of ${first.owner}`);
   });
 }
 
@@ -105,6 +148,8 @@ function checkVpc(net: NetworkShape, fail: Fail): void {
   if (!net.region) fail('a VPC needs a region');
   if (net.edge !== 'internet-gateway') fail('a VPC reaches the internet through an Internet gateway');
   if (subnets.length === 0) fail('a VPC needs at least one subnet');
+  if (net.lans !== undefined) fail('a VPC has no LANs');
+  if (net.routers !== undefined) fail('a VPC has no routers');
   for (const subnet of subnets) {
     if (!safeInCidr(subnet.cidr.split('/')[0], net.cidr)) fail(`${subnet.id}: ${subnet.cidr} is outside the VPC`);
   }
@@ -127,7 +172,24 @@ function checkOffice(net: NetworkShape, fail: Fail): void {
   for (const device of net.devices) {
     if (device.publicIp !== undefined) fail(`${device.id}: an office device has no public IP`);
     if (device.subnetId !== undefined) fail(`${device.id}: an office device has no subnet`);
-    if (!safeInCidr(device.privateIp, net.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${net.cidr}`);
+    const lan = lanOf(net, device);
+    if (!lan) fail(device.lanId === undefined ? `${device.id}: an office with several LANs needs the LAN of each device` : `${device.id}: LAN ${device.lanId} does not exist`);
+    else if (!safeInCidr(device.privateIp, lan.cidr)) fail(`${device.id}: ${device.privateIp} is not in ${lan.cidr}`);
+  }
+}
+
+function checkRouters(net: NetworkShape, fail: Fail): void {
+  const routers = net.routers ?? [];
+  const routerIds = new Set(routers.map((router) => router.id));
+  const serverIds = net.actors.flatMap((actor) => (actor.kind === 'server' ? [actor.id] : []));
+  const faceable = new Set([...lansOf(net).map((lan) => lan.id), ...routerIds, ...serverIds]);
+  for (const router of routers) {
+    for (const face of router.interfaces) {
+      if (!faceable.has(face.faces)) fail(`${router.id}: ${face.ip} faces ${face.faces}, which is not a LAN, a router or a server`);
+    }
+    for (const route of router.routes) {
+      if (!routerIds.has(route.next)) fail(`${router.id}: the route to ${route.to} goes through ${route.next}, which is not a router`);
+    }
   }
 }
 
@@ -155,6 +217,7 @@ export const networkSchema = networkShape.superRefine((net, ctx) => {
   checkAddresses(net, fail);
   if (net.kind === 'vpc') checkVpc(net, fail);
   else checkOffice(net, fail);
+  checkRouters(net, fail);
   checkFirewalls(net, fail);
 });
 
@@ -170,6 +233,7 @@ export const packetSchema = z
     protocol: z.enum(['tcp', 'udp', 'icmp']),
     port: port.optional(),
     icmpType: icmpTypeSchema.optional(),
+    ttl: z.number().int().min(1).max(TTL_MAX).optional(),
   })
   .refine((p) => (p.protocol === 'icmp' ? p.icmpType !== undefined : p.port !== undefined), {
     message: 'ICMP needs icmpType; TCP and UDP need port',

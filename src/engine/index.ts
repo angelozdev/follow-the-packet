@@ -1,7 +1,27 @@
 export { applyAction, networkActionSchema } from './network/actions';
 export type { NetworkAction } from './network/actions';
-export type { Actor, Device, Endpoint, Firewall, FirewallKind, Network, PacketSpec, Rule, RulePeer, RuleWhat, Subnet } from './network/types';
-export { endpointSchema, icmpTypeSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
+export type {
+  Actor,
+  ClientActor,
+  Device,
+  Direction,
+  Endpoint,
+  Firewall,
+  FirewallKind,
+  Lan,
+  Network,
+  PacketSpec,
+  Route,
+  Router,
+  RouterInterface,
+  Rule,
+  RulePeer,
+  RuleWhat,
+  ServerActor,
+  Subnet,
+} from './network/types';
+export { isClientActor } from './network/topology';
+export { ROUTE_DEFAULT, endpointSchema, icmpTypeSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';
 export type { Checkpoint, Outcome, Reason, Step, Trace } from './simulation/trace';
