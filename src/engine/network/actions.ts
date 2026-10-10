@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ruleSchema } from './schema';
+import { actorSchema, firewallSchema, ruleSchema } from './schema';
 import type { Network } from './types';
 
 export const networkActionSchema = z.discriminatedUnion('type', [
@@ -7,6 +7,8 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('removeRule'), firewallId: z.string().min(1), ruleId: z.string().min(1) }),
   z.object({ type: z.literal('setAppTarget'), deviceId: z.string().min(1), target: z.string().min(1) }),
   z.object({ type: z.literal('setIgnoreIcmpEcho'), deviceId: z.string().min(1), value: z.boolean() }),
+  z.object({ type: z.literal('addActor'), actor: actorSchema }),
+  z.object({ type: z.literal('addFirewall'), deviceId: z.string().min(1), firewall: firewallSchema }),
 ]);
 
 export type NetworkAction = z.infer<typeof networkActionSchema>;
@@ -31,6 +33,14 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return {
         ...net,
         devices: net.devices.map((d) => (d.id === action.deviceId ? { ...d, host: { ...d.host, ignoreIcmpEcho: action.value } } : d)),
+      };
+    case 'addActor':
+      return { ...net, actors: [...net.actors, action.actor] };
+    case 'addFirewall':
+      return {
+        ...net,
+        firewalls: [...net.firewalls, action.firewall],
+        devices: net.devices.map((d) => (d.id === action.deviceId ? { ...d, firewallIds: [...d.firewallIds, action.firewall.id] } : d)),
       };
   }
 }

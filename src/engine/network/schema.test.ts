@@ -30,6 +30,9 @@ const BROKEN: [string, Network, string][] = [
   ['an office device outside the office range', withDevice(officeNet(), 'printer', { privateIp: '192.168.2.20' }), 'printer: 192.168.2.20 is not in 192.168.1.0/24'],
   ['an office with a public range', { ...officeNet(), cidr: '8.8.8.0/24' }, '8.8.8.0/24 is not a private range (RFC 1918)'],
   ['an office range wider than a private range', { ...officeNet(), cidr: '192.168.0.0/15' }, '192.168.0.0/15 is not a private range (RFC 1918)'],
+  ['a VPC with a range that is not private', { ...lab03Net(), cidr: '100.64.0.0/16' }, '100.64.0.0/16 is not a private range (RFC 1918)'],
+  ['two devices with the same IP', withDevice(officeNet(), 'printer', { privateIp: '192.168.1.11' }), 'printer: 192.168.1.11 is already the IP of lucia-laptop'],
+  ['two EC2 instances with the same private IP', withDevice(lab03Net(), 'servidor2', { subnetId: 'subnet-a', privateIp: '172.31.16.131' }), 'servidor2: 172.31.16.131 is already the IP of servidor1'],
   ['a Security Group in an office', withFirewall(officeNet(), SECURITY_GROUP), 'sg-x: an office firewall is a host firewall'],
   [
     'a host firewall with a Security Group as Source',

@@ -92,6 +92,14 @@ function checkIds(net: NetworkShape, fail: Fail): void {
   if (repeated) fail(`duplicate id: ${repeated}`);
 }
 
+function checkAddresses(net: NetworkShape, fail: Fail): void {
+  if (isCidr(net.cidr) && !isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
+  net.devices.forEach((device, index) => {
+    const first = net.devices.find((other) => other.privateIp === device.privateIp);
+    if (first && net.devices.indexOf(first) < index) fail(`${device.id}: ${device.privateIp} is already the IP of ${first.id}`);
+  });
+}
+
 function checkVpc(net: NetworkShape, fail: Fail): void {
   const subnets = net.subnets ?? [];
   if (!net.region) fail('a VPC needs a region');
@@ -113,7 +121,6 @@ function checkOffice(net: NetworkShape, fail: Fail): void {
   if (net.region !== undefined) fail('an office network has no region');
   if (net.edge !== 'router') fail('an office reaches the internet through a router');
   if (net.subnets !== undefined) fail('an office network has no subnets');
-  if (isCidr(net.cidr) && !isPrivateCidr(net.cidr)) fail(`${net.cidr} is not a private range (RFC 1918)`);
   for (const firewall of net.firewalls) {
     if (firewall.kind !== 'host-firewall') fail(`${firewall.id}: an office firewall is a host firewall`);
   }
@@ -145,6 +152,7 @@ function checkFirewalls(net: NetworkShape, fail: Fail): void {
 export const networkSchema = networkShape.superRefine((net, ctx) => {
   const fail: Fail = (message) => ctx.addIssue({ code: 'custom', message });
   checkIds(net, fail);
+  checkAddresses(net, fail);
   if (net.kind === 'vpc') checkVpc(net, fail);
   else checkOffice(net, fail);
   checkFirewalls(net, fail);

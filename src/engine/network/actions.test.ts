@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { echoFrom, lab03Net } from '@/testing';
+import { ATTACKER_IP, echoFrom, lab03Net, officeNet } from '@/testing';
 import { applyAction } from './actions';
+import type { Actor, Firewall } from './types';
 
 const inboundIds = (net: ReturnType<typeof lab03Net>, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.inbound.map((r) => r.id);
 
@@ -17,5 +18,18 @@ describe('applyAction', () => {
     expect(targeted.devices.find((d) => d.id === 'servidor1')?.appTarget).toBe('172.31.38.97');
     const ignoring = applyAction(lab03Net(), { type: 'setIgnoreIcmpEcho', deviceId: 'servidor2', value: true });
     expect(ignoring.devices.find((d) => d.id === 'servidor2')?.host.ignoreIcmpEcho).toBe(true);
+  });
+
+  it('adds an actor on the internet', () => {
+    const visitor: Actor = { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' };
+    expect(applyAction(officeNet(), { type: 'addActor', actor: visitor }).actors.at(-1)).toEqual(visitor);
+  });
+
+  it('adds a firewall and puts it on its device', () => {
+    const firewall: Firewall = { id: 'fw-printer', name: 'printer', kind: 'host-firewall', inbound: [], outbound: [] };
+    const guarded = applyAction(officeNet(), { type: 'addFirewall', deviceId: 'printer', firewall });
+    expect(guarded.firewalls.at(-1)).toEqual(firewall);
+    expect(guarded.devices.find((d) => d.id === 'printer')?.firewallIds).toEqual(['fw-printer']);
+    expect(guarded.devices.find((d) => d.id === 'your-laptop')?.firewallIds).toEqual([]);
   });
 });
