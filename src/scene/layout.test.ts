@@ -1,7 +1,31 @@
+import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withInbound } from '@/testing';
 import { simulate } from '@/engine/simulation/simulate';
-import { cardAnchorPosition, computeLayout, cumulativeLengths, labelPosition, layoutCenter, pathFor, pathLength, pointAt, roundTrip, sideForNdc, spreadStamps, type Vec2 } from './layout';
+import {
+  CAMERA_ZOOM,
+  CARD_WIDTH,
+  LABEL_REACH,
+  cameraPosition,
+  cardAnchorPosition,
+  cardPlacement,
+  cardSpan,
+  computeLayout,
+  cumulativeLengths,
+  labelPosition,
+  layoutCenter,
+  pathFor,
+  pathLength,
+  pointAt,
+  roundTrip,
+  sideForNdc,
+  spreadStamps,
+  terminalSide,
+  type CardSide,
+  type Layout,
+  type Vec2,
+  type Vec3,
+} from './layout';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 
@@ -166,6 +190,111 @@ describe('anchors', () => {
   it('a card opens on the side of the screen with more room', () => {
     expect(sideForNdc(0.4)).toBe('left');
     expect(sideForNdc(-0.4)).toBe('right');
+  });
+});
+
+interface MapSize {
+  window: string;
+  width: number;
+  height: number;
+}
+
+interface Hazard {
+  name: string;
+  from: number;
+  to: number;
+}
+
+const STAMP_RADIUS = 16;
+const STAMP_HEIGHT = 0.9;
+const MAPS: MapSize[] = [
+  { window: '1280×800', width: 900, height: 800 },
+  { window: '1440×900', width: 1060, height: 900 },
+];
+
+function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map: MapSize) {
+  const layout: Layout = computeLayout(net, outside);
+  const camera = new OrthographicCamera(-map.width / 2, map.width / 2, map.height / 2, -map.height / 2, 0.1, 500);
+  const [cx, cz] = layoutCenter(layout);
+  camera.zoom = CAMERA_ZOOM;
+  camera.position.set(...cameraPosition(layout));
+  camera.lookAt(cx, 0, cz);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld();
+  const pixelX = (point: Vec3) => ((new Vector3(...point).project(camera).x + 1) / 2) * map.width;
+  const origin = { kind: 'device', anchorId: 'your-laptop' } as const;
+  const others = [
+    ...net.devices.filter((other) => other.id !== origin.anchorId).map((other) => ({ kind: 'device' as const, anchorId: other.id })),
+    ...(outside ? [{ kind: 'edge' as const, anchorId: 'edge' }, { kind: 'internet' as const, anchorId: 'internet' }, { kind: 'actor' as const, anchorId: 'attacker' }] : []),
+  ];
+  const placement = cardPlacement(origin, others, layout);
+  const anchorX = pixelX(placement.position);
+  const labels: Hazard[] = others.map((other) => {
+    const x = pixelX(labelPosition(other, layout));
+    return { name: `${other.anchorId} label`, from: x - LABEL_REACH, to: x + LABEL_REACH };
+  });
+  const ends = [OFFICE.printer, OFFICE.lucia, OFFICE.nobody].map((address) => {
+    const packet = ping(device('your-laptop'), address);
+    const path = pathFor(simulate(net, packet), packet, layout);
+    return path[path.length - 1];
+  });
+  const stamps: Hazard[] = spreadStamps(ends).map(([x, z], index) => {
+    const stampX = pixelX([x, STAMP_HEIGHT, z]);
+    return { name: `stamp ${index + 1}`, from: stampX - STAMP_RADIUS, to: stampX + STAMP_RADIUS };
+  });
+  const side = terminalSide(anchorX, (placement.avoid ?? []).map(pixelX), map.width, placement.gap);
+  const covered = (cardSide: CardSide) => {
+    const [near, far] = cardSpan(cardSide, anchorX, placement.gap);
+    return [...labels, ...stamps].filter(({ from, to }) => from <= far && to >= near).map(({ name }) => name);
+  };
+  return { side, anchorX, placement, span: cardSpan(side, anchorX, placement.gap), covered };
+}
+
+describe('the terminal card in the office of 01-01 and 01-02', () => {
+  const office = { ...officeNet(), actors: [] };
+
+  it.each(MAPS)('at $window it opens to the left of tu-laptop: inside the map, clear of every label and every possible stamp', (map) => {
+    const { side, anchorX, placement, span, covered } = terminalOnMap(office, false, map);
+    expect(side).toBe('left');
+    expect(span[0]).toBeGreaterThanOrEqual(0);
+    expect(span[1]).toBeLessThanOrEqual(map.width);
+    expect(span[1]).toBeLessThan(anchorX - LABEL_REACH);
+    expect(covered(side)).toEqual([]);
+    expect(placement.gap).toBeLessThan(CARD_WIDTH);
+  });
+
+  it.each(MAPS)('at $window the right side, where a card opens today, would cover the laptop-lucia and the impresora', (map) => {
+    const { covered } = terminalOnMap(office, false, map);
+    expect(covered('right')).toEqual(expect.arrayContaining(['lucia-laptop label', 'printer label']));
+  });
+});
+
+describe('the terminal card with the outside drawn (01-03)', () => {
+  it('falls back to the side with more room when neither side is clear', () => {
+    const [map] = MAPS;
+    const { side, anchorX, covered } = terminalOnMap(officeNet(), true, map);
+    expect(covered('left')).not.toEqual([]);
+    expect(covered('right')).not.toEqual([]);
+    expect(side).toBe(sideForNdc((anchorX / map.width) * 2 - 1));
+  });
+});
+
+describe('where a card opens', () => {
+  const GAP = 68;
+
+  it.each([
+    { name: 'the side with more room when both are clear', anchorX: 600, avoidXs: [], room: 900, expected: 'left' },
+    { name: 'the other side when the one with more room covers a label', anchorX: 450, avoidXs: [700], room: 900, expected: 'left' },
+    { name: 'the side with more room when it covers a label and the other leaves the map', anchorX: 200, avoidXs: [350], room: 900, expected: 'right' },
+    { name: 'the side with more room when the map is too narrow for the card', anchorX: 300, avoidXs: [], room: 600, expected: 'right' },
+  ] satisfies { name: string; anchorX: number; avoidXs: number[]; room: number; expected: CardSide }[])('a terminal takes $name', ({ anchorX, avoidXs, room, expected }) => {
+    expect(terminalSide(anchorX, avoidXs, room, GAP)).toBe(expected);
+  });
+
+  it('the card of a firewall keeps its wide gap and its width, and only the screen decides its side', () => {
+    const placement = cardPlacement({ kind: 'firewall', anchorId: 'servidor2' }, [{ kind: 'device', anchorId: 'servidor1' }], computeLayout(lab03Net(), true));
+    expect(placement).toMatchObject({ gap: 110, avoid: null });
+    expect(CARD_WIDTH).toBe(300);
   });
 });
 

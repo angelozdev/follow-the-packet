@@ -2,7 +2,7 @@ import { ContactShadows, MapControls } from '@react-three/drei';
 import type { ReactNode } from 'react';
 import type { Network } from '@/engine';
 import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, InternetPiece, NetworkPiece } from './entities';
-import { cardAnchorPosition, computeLayout, labelPosition, layoutCenter, piecePosition, type Layout } from './layout';
+import { CAMERA_ZOOM, cameraPosition, cardPlacement, computeLayout, labelPosition, layoutCenter, piecePosition, type Layout } from './layout';
 import { MapCanvas } from './map-canvas';
 import { CardAnchor } from './overlay/card-anchor';
 import type { OnInspect } from './overlay/inspect-handlers';
@@ -10,9 +10,6 @@ import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
 import { Road } from './road';
 import { Traffic, type MapFlow, type MapSent } from './traffic/traffic';
-
-const CAMERA_OFFSET = 14;
-const CAMERA_ZOOM = 38;
 
 export interface GameSceneProps {
   world: Network;
@@ -46,8 +43,9 @@ export function GameScene({ world, pieces, flows, sent, still, activePieceId, ov
   const layout = computeLayout(world, pieces.some((piece) => piece.kind === 'edge'));
   const [cx, cz] = layoutCenter(layout);
   const active = pieces.find((piece) => piece.id === activePieceId);
+  const placement = active && cardPlacement(active, pieces.filter((piece) => piece.id !== active.id), layout);
   return (
-    <MapCanvas camera={[cx + CAMERA_OFFSET, CAMERA_OFFSET, cz + CAMERA_OFFSET]} zoom={CAMERA_ZOOM}>
+    <MapCanvas camera={cameraPosition(layout)} zoom={CAMERA_ZOOM}>
       <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
       <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />
       <Road layout={layout} />
@@ -58,7 +56,7 @@ export function GameScene({ world, pieces, flows, sent, still, activePieceId, ov
         <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
       ))}
       <Traffic flows={flows} sent={sent} layout={layout} still={still} onInspect={onInspect} />
-      {active && overlay && <CardAnchor position={cardAnchorPosition(active, layout)}>{overlay}</CardAnchor>}
+      {placement && overlay && <CardAnchor placement={placement}>{overlay}</CardAnchor>}
       <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
     </MapCanvas>
   );

@@ -109,4 +109,5 @@ export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
   inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
+  stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió. Una pieza con candado no se puede cambiar en este incidente.',
 } as const;

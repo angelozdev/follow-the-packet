@@ -1,9 +1,10 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
 import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, WhatChip } from '@/levels';
+import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { useFocusOnMount } from './use-focus-on-mount';
+import { ChipCard, ChipTray } from './chip-card';
 
 type Tray = 'what' | 'from';
 type Slot = Record<Tray, string | null>;
@@ -17,21 +18,6 @@ interface TaskCardProps {
   onPlace: (whatId: string, fromId: string) => void;
   onRemove: (ruleId: string) => void;
   onClose: () => void;
-}
-
-function ChipTray({ name, chips, picked, onPick }: { name: string; chips: Chip[]; picked: string | null; onPick: (chipId: string) => void }) {
-  return (
-    <div role="group" aria-label={name} className="tray">
-      <span className="tray__name" aria-hidden="true">
-        {name}
-      </span>
-      {chips.map((chip) => (
-        <button key={chip.id} type="button" className="chip" aria-pressed={picked === chip.id} onClick={() => onPick(chip.id)}>
-          <TaggedText text={chip.label} />
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function SlotChip({ chip, placeholder, onGiveBack }: { chip: Chip | undefined; placeholder: string; onGiveBack: () => void }) {
@@ -64,16 +50,10 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
     onRemove(ruleId);
     heading.current?.focus();
   };
-  const closeOnEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') onClose();
-  };
   const pickedWhat = chips.what.find((chip) => chip.id === slot.what);
   const pickedFrom = chips.from.find((chip) => chip.id === slot.from);
   return (
-    <section role="dialog" aria-label={toPlainText(card.title)} className="card task-card" onKeyDown={closeOnEscape}>
-      <h2 ref={heading} tabIndex={-1}>
-        <TaggedText text={card.title} />
-      </h2>
+    <ChipCard title={card.title} heading={heading} onClose={onClose}>
       {card.rules.length > 0 ? (
         <ul className="rules">
           {card.rules.map((row) => (
@@ -99,9 +79,6 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
       </div>
       <ChipTray name={TASK_CARD_TEXT.what} chips={chips.what} picked={slot.what} onPick={(chipId) => toggle('what', chipId)} />
       <ChipTray name={TASK_CARD_TEXT.from} chips={chips.from} picked={slot.from} onPick={(chipId) => toggle('from', chipId)} />
-      <button type="button" className="btn" onClick={onClose}>
-        {TASK_CARD_TEXT.done}
-      </button>
-    </section>
+    </ChipCard>
   );
 }

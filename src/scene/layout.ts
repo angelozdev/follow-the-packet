@@ -5,6 +5,20 @@ export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export type CardSide = 'left' | 'right';
 
+/** Pixels per world unit of the map's orthographic camera. */
+export const CAMERA_ZOOM = 38;
+/** Width in pixels of a card beside a piece. */
+export const CARD_WIDTH = 300;
+/** Half the width in pixels that a card keeps clear around the label of another piece: the widest label, a name with its lock. */
+export const LABEL_REACH = 64;
+
+/** Where a card anchors on the map and how it keeps clear of it: its distance in pixels from the anchor, and the labels it must not cover (null when only the room on screen decides its side). */
+export interface CardPlacement {
+  position: Vec3;
+  gap: number;
+  avoid: Vec3[] | null;
+}
+
 export interface SubnetSpot {
   x: number;
   z: number;
@@ -55,6 +69,10 @@ const ACTOR_SPACING = 2.5;
 const ACTOR_STAGGER_Z = 1.6;
 const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 1.1], edge: [0, 3.1, 0], internet: [0, 2.1, 0] };
 const CARD_Y = 0.5;
+const CAMERA_OFFSET = 14;
+const FIREWALL_CARD_GAP = 110;
+const ORIGIN_CARD_GAP = 68;
+const CARD_MARGIN = 12;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
@@ -130,6 +148,12 @@ export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, l
   return [x + dx, y, z + dz];
 }
 
+/** Returns where the camera stands to look at the middle of everything drawn: the same isometric view from the front right, whatever the size of the map. */
+export function cameraPosition(layout: Layout): Vec3 {
+  const [x, z] = layoutCenter(layout);
+  return [x + CAMERA_OFFSET, CAMERA_OFFSET, z + CAMERA_OFFSET];
+}
+
 /** Returns where the card of a piece is anchored: beside a firewall, a device or an actor. */
 export function cardAnchorPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
   const [x, z] = piecePosition(piece, layout);
@@ -139,6 +163,31 @@ export function cardAnchorPosition(piece: { kind: MapPieceKind; anchorId: string
 /** Picks the side with more room for a card anchored at this normalized screen x (-1 is the left edge, 1 the right edge). */
 export function sideForNdc(ndcX: number): CardSide {
   return ndcX > 0 ? 'left' : 'right';
+}
+
+/** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of the other pieces so it never hides the thing the player has to read. */
+export function cardPlacement(piece: { kind: MapPieceKind; anchorId: string }, others: { kind: MapPieceKind; anchorId: string }[], layout: Layout): CardPlacement {
+  const position = cardAnchorPosition(piece, layout);
+  if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null };
+  return { position, gap: ORIGIN_CARD_GAP, avoid: others.map((other) => labelPosition(other, layout)) };
+}
+
+/** Returns the horizontal span in pixels, from the map's left edge, that a card covers on a side of its anchor. */
+export function cardSpan(side: CardSide, anchorX: number, gap: number): [number, number] {
+  return side === 'right' ? [anchorX + gap, anchorX + gap + CARD_WIDTH] : [anchorX - gap - CARD_WIDTH, anchorX - gap];
+}
+
+function opensClear(side: CardSide, anchorX: number, avoidXs: number[], room: number, gap: number): boolean {
+  const [near, far] = cardSpan(side, anchorX, gap);
+  const insideMap = near >= CARD_MARGIN && far <= room - CARD_MARGIN;
+  return insideMap && avoidXs.every((x) => x + LABEL_REACH < near || x - LABEL_REACH > far);
+}
+
+/** Picks the side a terminal opens on, with every x in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each taken as `LABEL_REACH` wide on both sides), else the other side when that one does, else the side with more room, as a firewall's card does. */
+export function terminalSide(anchorX: number, avoidXs: number[], room: number, gap: number): CardSide {
+  const preferred = sideForNdc((anchorX / room) * 2 - 1);
+  const other: CardSide = preferred === 'left' ? 'right' : 'left';
+  return [preferred, other].find((side) => opensClear(side, anchorX, avoidXs, room, gap)) ?? preferred;
 }
 
 /** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. It crosses the edge only while the map shows the outside. */

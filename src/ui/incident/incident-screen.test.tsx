@@ -2,21 +2,22 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, TASK_CARD_TEXT, TERMS, toPlainText } from '@/copy';
+import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
+import { sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
   return {
-    GameScene: ({ pieces, flows, overlay, onInspect, onActivate }: GameSceneProps) => (
+    GameScene: ({ pieces, flows, sent, overlay, onInspect, onActivate }: GameSceneProps) => (
       <div>
         {pieces.map((piece) => (
           <PieceLabel key={piece.id} piece={piece} onInspect={onInspect} onActivate={onActivate} />
         ))}
-        {flows.map((flow) => (
+        {[...flows, ...sent].map((flow) => (
           <button key={flow.id} type="button" onFocus={() => onInspect(flow.pieceId)}>
             {toPlainText(flow.label)}
           </button>
@@ -56,6 +57,15 @@ async function placeRule(user: User, source: string) {
 }
 
 describe('incident screen', () => {
+  it('explains the stamps and the lock beside the inspect help, and stops while a piece is inspected', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    expect(screen.getByText(SCREEN_TEXT.stampLegend)).toBeInTheDocument();
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.queryByText(SCREEN_TEXT.stampLegend)).toBeNull();
+  });
+
   it('opens the card from its Security Group, and Esc closes it and gives the focus back to it', async () => {
     const user = userEvent.setup();
     renderFirst();
@@ -141,5 +151,63 @@ describe('incident screen', () => {
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
     expect(onFinish).toHaveBeenCalledWith(FULL_STARS);
     expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeInTheDocument();
+  });
+});
+
+describe('incident screen of a send incident', () => {
+  const SENDING = sendIncident();
+  const TERMINAL = 'Terminal de your-laptop';
+
+  function renderSending() {
+    render(<IncidentScreen incidents={[SENDING]} incidentId={SENDING.id} nextId={null} onFinish={vi.fn()} />);
+  }
+
+  function terminal(): HTMLElement {
+    return screen.getByRole('dialog', { name: /^Terminal de/ });
+  }
+
+  async function send(user: User, address: string, message: string) {
+    await user.click(within(terminal()).getByRole('button', { name: address }));
+    await user.click(within(terminal()).getByRole('button', { name: message }));
+    await user.click(within(terminal()).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  it('shows the same legend, which names no term the player has not met', () => {
+    renderSending();
+    expect(screen.getByText(SCREEN_TEXT.stampLegend)).toBeInTheDocument();
+    expect(SCREEN_TEXT.stampLegend).not.toMatch(/firewall|security group|paquete|ping|icmp|red\b|regla/i);
+  });
+
+  it('your laptop opens its terminal, and a packet sent from it shows up and can be inspected', async () => {
+    const user = userEvent.setup();
+    renderSending();
+    await user.click(screen.getByRole('button', { name: 'your-laptop' }));
+    expect(screen.getByRole('dialog', { name: TERMINAL })).toBeInTheDocument();
+    await send(user, '192.168.1.20', 'ping');
+    await user.click(screen.getByRole('button', { name: 'ping de your-laptop a printer' }));
+    expect(screen.getByRole('region', { name: 'ping de your-laptop a printer' })).toHaveTextContent('Llegó y volvió la respuesta.');
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent(LUCIA_TEXT.done);
+  });
+
+  it('picking another origin moves the terminal beside it, and Esc gives the focus back to the piece it stands beside', async () => {
+    const user = userEvent.setup();
+    renderSending();
+    await user.click(screen.getByRole('button', { name: 'your-laptop' }));
+    await user.click(within(terminal()).getByRole('button', { name: 'Atacante' }));
+    expect(terminal()).toHaveAccessibleName('Terminal de Atacante');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Atacante' })).toHaveFocus();
+  });
+
+  it('with every send task done, Lucía asks the incident’s own question', async () => {
+    const user = userEvent.setup();
+    renderSending();
+    await user.click(screen.getByRole('button', { name: 'your-laptop' }));
+    await send(user, '192.168.1.20', 'ping');
+    await user.click(within(terminal()).getByRole('button', { name: 'Atacante' }));
+    await send(user, '192.168.1.11', 'ping');
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('heading', { name: 'Lucía: «¿Por qué volvió el ping?»' })).toHaveFocus();
   });
 });

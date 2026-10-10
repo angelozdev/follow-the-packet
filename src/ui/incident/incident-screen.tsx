@@ -1,6 +1,6 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
-import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf, terminalCard, terminalLine } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -8,8 +8,9 @@ import { useStillMode } from '@/ui/use-still-mode';
 import { ExplanationCard } from './explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './lucia-card';
+import { TaskCard } from './map-cards/task-card';
+import { TerminalCard } from './map-cards/terminal-card';
 import { ResultCard } from './result-card';
-import { TaskCard } from './task-card';
 
 interface IncidentScreenProps {
   incidents: Incident[];
@@ -27,6 +28,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const pieces = pieceViews(session);
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
+  const terminal = playing && cardPieceId ? terminalCard(session, cardPieceId) : null;
   const inspection = inspecting ? inspect(session, inspecting) : null;
 
   const activate = (pieceId: string) => {
@@ -55,10 +57,9 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           flows={session.runs}
           sent={session.sent}
           still={still}
-          activePieceId={card ? cardPieceId : null}
+          activePieceId={card || terminal ? cardPieceId : null}
           overlay={
-            card &&
-            chips && (
+            (card && chips && (
               <TaskCard
                 key={card.firewallId}
                 card={card}
@@ -67,12 +68,30 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
                 onRemove={(ruleId) => dispatch({ type: 'removeRule', firewallId: card.firewallId, ruleId })}
                 onClose={closeCard}
               />
-            )
+            )) ||
+            (terminal && (
+              <TerminalCard
+                card={terminal}
+                describe={(picks) => terminalLine(session, picks)}
+                onPickOrigin={(fromId) => setCardPieceId(terminal.origins[fromId])}
+                onSend={({ from, to, message }) => dispatch({ type: 'sendPacket', fromId: from, toId: to, messageId: message })}
+                onClose={closeCard}
+              />
+            ))
           }
           onInspect={setInspecting}
           onActivate={activate}
         />
-        <div aria-live="polite" className="incident__inspection">{inspection ? <InspectionBox inspection={inspection} /> : <p className="muted">{SCREEN_TEXT.inspectHelp}</p>}</div>
+        <div aria-live="polite" className="incident__inspection">
+          {inspection ? (
+            <InspectionBox inspection={inspection} />
+          ) : (
+            <>
+              <p className="muted">{SCREEN_TEXT.inspectHelp}</p>
+              <p className="muted">{SCREEN_TEXT.stampLegend}</p>
+            </>
+          )}
+        </div>
       </div>
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
