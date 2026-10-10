@@ -1,5 +1,5 @@
 @import './design/tokens.css';
-@import './design/primitives.css';
+@import './design/primitives/primitives.css';
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--color-page) var(--grain); color: var(--color-ink); font: var(--weight-regular) var(--text-base)/1.5 var(--font-body); }

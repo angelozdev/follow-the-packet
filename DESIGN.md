@@ -102,7 +102,7 @@ A 4 px grid. Every margin, padding and gap uses a step, except the one-off measu
 
 ## Primitives
 
-All in `src/design/`, imported through `@/design`. A primitive takes no `className` and no `style`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
+All in `src/design/primitives/`, imported through `@/design`. A primitive takes no `className` and no `style`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
 
 | Primitive | Variants | Use it for |
 |-----------|----------|------------|
@@ -113,14 +113,14 @@ All in `src/design/`, imported through `@/design`. A primitive takes no `classNa
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
 | `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, or the mark of an optional chapter |
 
-The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
+The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `src/design/primitives/primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
 
 ## Adding a variant instead of a new element
 
-1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `primitives.css`, with tokens only.
+1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `src/design/primitives/primitives.css`, with tokens only.
 2. Add its specimen to `src/ui/catalog/interface-section.tsx`, with its caption in `INTERFACE_TEXT`.
 3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen.
-4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/`, its test, its specimen and a row in the table above that says why. `src/design/` holds 11 of the 12 files the folder rule allows, so a new primitive with its test first needs the folder split (for example into `tokens/` and `primitives/`).
+4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 7 of the 12 files the folder rule allows; if it ever fills, split it by family before adding a file.
 5. A new token is only for a role no token serves: a colour enters the palette and gets a role; a size, a space or a line joins its scale.
 
 ## What guards the standard
