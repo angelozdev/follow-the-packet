@@ -3,8 +3,9 @@ import { ACTOR_ROLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, withDevice } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
+import { firewallCard } from './cards/firewall-card';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
 import { pieceViews } from './pieces';
@@ -144,6 +145,61 @@ describe('inspect', () => {
     expect(plain(inspect(office, PIECE_ID.firewall('fw-lucia')))).toEqual({
       title: 'firewall lucia-laptop',
       fields: [whatIs('firewall'), ['Reglas', 'Ninguna: no deja entrar nada.']],
+    });
+  });
+
+  it('a host firewall with its outbound rules open lists the rules of each direction, named by the chips of each', () => {
+    const outbound = outboundFilterIncident();
+    const start = startSession([outbound], outbound.id);
+    const firewall = PIECE_ID.firewall('fw-you');
+    expect(plain(inspect(start, firewall))).toEqual({
+      title: 'firewall tu-laptop',
+      fields: [whatIs('firewall'), ['Entrada', 'Ninguna: no deja entrar nada.'], ['Salida', 'Ninguna.']],
+    });
+    const placed = [
+      { type: 'placeRule', firewallId: 'fw-you', whatId: 'echo-request', fromId: 'from-printer' },
+      { type: 'placeRule', firewallId: 'fw-you', whatId: 'echo-request', toId: 'to-lucia', direction: 'outbound' },
+    ] as const;
+    expect(plain(inspect(placed.reduce(sessionReducer, start), firewall))?.fields.slice(1)).toEqual([
+      ['Entrada', 'ICMP · Echo Request ← printer'],
+      ['Salida', 'ICMP · Echo Request → lucia-laptop'],
+    ]);
+  });
+
+  describe('a firewall with rules that no chip names, in an incident that offers no rule chips', () => {
+    const LUCIA_ECHO = { id: 'in-echo', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.lucia}/32` } } as const;
+    const withRules = (introduced: TermId[], inbound: typeof LUCIA_ECHO[] = []): Session => {
+      const base = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+      const open = { ...base, firewalls: base.firewalls.map((firewall) => ({ ...firewall, inbound })) };
+      return startSession([{ ...sendIncident(), base: open, introduces: introduced }], sendIncident().id);
+    };
+    const FIREWALL = PIECE_ID.firewall('fw-lucia');
+    const KNOWN: TermId[] = ['firewall', 'traffic', 'rule', 'inbound', 'outbound'];
+
+    it('a host firewall whose outbound is open to everything is inspected and carded without a destination chip', () => {
+      const session = withRules(KNOWN);
+      expect(plain(inspect(session, FIREWALL))).toEqual({
+        title: 'firewall lucia-laptop',
+        fields: [whatIs('firewall'), ['Entrada', 'Ninguna: no deja entrar nada.'], ['Salida', 'deja salir todo el tráfico']],
+      });
+      expect(firewallCard(session, FIREWALL)).toMatchObject({ rules: [], kind: 'host-firewall' });
+      expect(firewallCard(session, FIREWALL)).not.toHaveProperty('outbound');
+    });
+
+    it('words the open outbound with only the terms the player knows', () => {
+      const withoutTraffic = withRules(['firewall', 'rule', 'inbound', 'outbound']);
+      expect(plain(inspect(withoutTraffic, FIREWALL))?.fields.at(-1)).toEqual(['Salida', 'deja salir todo']);
+      const withoutOutbound = withRules(['firewall', 'traffic', 'rule']);
+      expect(plain(inspect(withoutOutbound, FIREWALL))?.fields).toEqual([whatIs('firewall'), ['Reglas', 'Ninguna: no deja entrar nada.']]);
+    });
+
+    it('writes an inbound rule that no Source chip names from the rule itself', () => {
+      const session = withRules(['firewall', 'rule', 'inbound', 'outbound', 'icmp', 'echo-request'], [LUCIA_ECHO]);
+      expect(plain(inspect(session, FIREWALL))?.fields.slice(1)).toEqual([
+        ['Entrada', 'ICMP · Echo Request ← lucia-laptop'],
+        ['Salida', 'deja salir todo'],
+      ]);
+      expect(firewallCard(session, FIREWALL)?.rules.map((row) => ({ id: row.id, text: 'text' in row ? toPlainText(row.text) : null }))).toEqual([{ id: LUCIA_ECHO.id, text: 'ICMP · Echo Request ← lucia-laptop' }]);
     });
   });
 

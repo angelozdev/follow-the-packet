@@ -1,12 +1,49 @@
-import { ROUTE_DEFAULT, applyAction, type NetworkAction } from '@/engine';
+import { nameTag } from '@/copy';
+import { ROUTE_DEFAULT, applyAction, type Firewall, type NetworkAction } from '@/engine';
 import { INCIDENTS, type CaseSpec, type DiagnoseIncident, type ExplanationOption, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
-import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet } from './fixtures';
+import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, ping, withDevice } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
 export function filterIncident(id: string): FilterIncident {
   const found = INCIDENTS.find((incident) => incident.id === id);
   if (found?.mechanic !== 'filter') throw new Error(`${id} is not a filter incident`);
   return found;
+}
+
+const PEER_CHIPS = [
+  { id: 'lucia', label: nameTag('lucia-laptop'), peer: { kind: 'cidr', cidr: `${OFFICE.lucia}/32` } },
+  { id: 'printer', label: nameTag('printer'), peer: { kind: 'cidr', cidr: `${OFFICE.printer}/32` } },
+] as const;
+
+/** Returns a filter incident on the chapter 1 office, with every term introduced, where your laptop has a host firewall with no rules in either direction and the ping to lucia-laptop must come back. It offers the Echo Request as Type, lucia-laptop and the printer as Source and as Destination, and its solution is the outbound rule Echo Request to lucia-laptop. */
+export function outboundFilterIncident(): FilterIncident {
+  const { chapter, role, lesson, concept, takeaway, hints, explanation } = sendIncident();
+  const firewall: Firewall = { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] };
+  const flow = { id: 'ping-lucia', kind: 'required', packet: ping(device('your-laptop'), OFFICE.lucia) } as const;
+  return {
+    chapter,
+    role,
+    lesson,
+    concept,
+    takeaway,
+    hints,
+    explanation,
+    id: '09-04',
+    order: 4,
+    title: 'Prueba de salida',
+    introduces: [...EVERY_TERM],
+    base: withDevice({ ...officeNet(), firewalls: [firewall] }, 'your-laptop', { firewallIds: [firewall.id] }),
+    mechanic: 'filter',
+    report: 'Tu {{ping}} a laptop-lucia no sale.',
+    tasks: [{ id: 'leave', text: 'Que vuelva tu {{ping}} a laptop-lucia.', flowIds: [flow.id] }],
+    flows: [flow],
+    chips: {
+      what: [{ id: 'echo-request', label: '{{icmp}} · {{echo-request}}', what: { kind: 'icmp', icmpType: 8 } }],
+      from: PEER_CHIPS.map((chip) => ({ ...chip, id: `from-${chip.id}` })),
+      to: PEER_CHIPS.map((chip) => ({ ...chip, id: `to-${chip.id}` })),
+    },
+    solution: [{ type: 'placeRule', firewallId: firewall.id, whatId: 'echo-request', toId: 'to-lucia', direction: 'outbound' }],
+  };
 }
 
 /** Returns a send incident on the chapter 1 office: ping the printer from your laptop and get its reply, and send anything from the attacker. */

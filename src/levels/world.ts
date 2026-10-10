@@ -1,4 +1,4 @@
-import { applyAction, type Network } from '@/engine';
+import { DEFAULT_DIRECTION, applyAction, type Network } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
 import type { CaseSpec, Incident, PlayerMove, SettingMove } from './contract/incident';
 
@@ -16,18 +16,19 @@ function applySetting(world: Network, incident: Incident, { deviceId, settingId,
   return applyAction(world, { type: 'setGateway', deviceId, gateway: chip.value ?? undefined });
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, an unknown firewall or chip, a rule that already exists, a rule id that is not there, a setting the incident does not offer or whose chip is already in effect). A setting move sets the default gateway of the device to the value of the chip, or takes it away when the chip has none. */
+/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, an unknown firewall or chip, a rule that already exists in the list of its direction, a rule id that is not there, a setting the incident does not offer or whose chip is already in effect). A rule goes in the inbound list unless the move says outbound, and the same rule in the other list is not a duplicate. A setting move sets the default gateway of the device to the value of the chip, or takes it away when the chip has none. */
 export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
   if (move.type === 'sendPacket' || move.type === 'answerCard') return world;
   if (move.type === 'setSetting') return applySetting(world, incident, move);
   const firewall = world.firewalls.find((f) => f.id === move.firewallId);
   if (!firewall) return world;
+  const direction = move.direction ?? DEFAULT_DIRECTION;
   if (move.type === 'removeRule') {
-    return firewall.inbound.some((r) => r.id === move.ruleId) ? applyAction(world, move) : world;
+    return firewall[direction].some((r) => r.id === move.ruleId) ? applyAction(world, move) : world;
   }
-  const rule = ruleFromChips(incident, move.whatId, move.fromId);
-  if (!rule || firewall.inbound.some((r) => sameRule(r, rule))) return world;
-  return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule });
+  const rule = ruleFromChips(incident, move);
+  if (!rule || firewall[direction].some((r) => sameRule(r, rule))) return world;
+  return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule, direction });
 }
 
 /** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in game order. */

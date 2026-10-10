@@ -1,6 +1,6 @@
 import compare from 'just-compare';
-import { ipInCidr, isIpv4, type Network, type PacketSpec, type Rule } from '@/engine';
-import { ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type SendChips, type SendMove, type WhatChip } from './incident';
+import { DEFAULT_DIRECTION, ipInCidr, isIpv4, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
+import { peerIdOf, ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
 type Combination = Omit<SendMove, 'type'>;
@@ -15,20 +15,27 @@ export function sameRule(a: RuleShape, b: RuleShape): boolean {
   return compare(a.what, b.what) && compare(a.peer, b.peer);
 }
 
-/** Builds the rule a pair of the incident's chips stands for, or null when the incident offers no rule chips or not these two. */
-export function ruleFromChips(incident: Incident, whatId: string, fromId: string): Rule | null {
-  if (incident.mechanic !== 'filter') return null;
-  const what = incident.chips.what.find((chip) => chip.id === whatId);
-  const from = incident.chips.from.find((chip) => chip.id === fromId);
-  return what && from ? { id: ruleIdFor(whatId, fromId), what: what.what, peer: from.peer } : null;
+function peerChipsOf(incident: Incident, direction: Direction): FromChip[] | ToChip[] {
+  if (incident.mechanic !== 'filter') return [];
+  return direction === 'outbound' ? (incident.chips.to ?? []) : incident.chips.from;
 }
 
-/** Returns the chips that name a rule, or null when the incident offers no rule chips or none for its what or its from. */
-export function chipsOfRule(incident: Incident, rule: RuleShape): { what: WhatChip; from: FromChip } | null {
+/** Builds the rule a placement of the incident's chips stands for (Type and Source for an inbound rule, Type and Destination for an outbound one), or null when the incident offers no rule chips or not these. */
+export function ruleFromChips(incident: Incident, move: Pick<PlaceMove, 'whatId' | 'direction' | 'fromId' | 'toId'>): Rule | null {
+  if (incident.mechanic !== 'filter') return null;
+  const direction = move.direction ?? DEFAULT_DIRECTION;
+  const peerId = peerIdOf(move);
+  const what = incident.chips.what.find((chip) => chip.id === move.whatId);
+  const peer = peerChipsOf(incident, direction).find((chip) => chip.id === peerId);
+  return what && peer ? { id: ruleIdFor(move.whatId, peer.id, direction), what: what.what, peer: peer.peer } : null;
+}
+
+/** Returns the chips that name a rule of the list of its direction (inbound by default), or null when the incident offers no rule chips or none for its what or its peer. */
+export function chipsOfRule(incident: Incident, rule: RuleShape, direction: Direction = DEFAULT_DIRECTION): { what: WhatChip; peer: FromChip | ToChip } | null {
   if (incident.mechanic !== 'filter') return null;
   const what = incident.chips.what.find((chip) => compare(chip.what, rule.what));
-  const from = incident.chips.from.find((chip) => compare(chip.peer, rule.peer));
-  return what && from ? { what, from } : null;
+  const peer = peerChipsOf(incident, direction).find((chip) => compare(chip.peer, rule.peer));
+  return what && peer ? { what, peer } : null;
 }
 
 interface PickedChips {

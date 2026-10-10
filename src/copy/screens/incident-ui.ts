@@ -1,4 +1,4 @@
-import type { ClientActor, FirewallKind, Network, UnreachableKind } from '@/engine';
+import type { ClientActor, Direction, FirewallKind, Network, UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, type TermText } from '@/copy/term-text';
 
@@ -32,8 +32,14 @@ export const INSPECTION_TEXT = {
   ignoresPing: '1: no contesta el {{ping}}',
   firewalls: { 'security-group': '{{security-group|Security Groups}}', 'host-firewall': '{{firewall}}' } satisfies Record<FirewallKind, TermText>,
   inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': '{{rule|Reglas}}' } satisfies Record<FirewallKind, TermText>,
+  directions: {
+    'security-group': { inbound: '{{inbound-rule|Reglas de entrada}}', outbound: '{{outbound-rule|Reglas de salida}}' },
+    'host-firewall': { inbound: '{{inbound|Entrada}}', outbound: '{{outbound|Salida}}' },
+  } satisfies Record<FirewallKind, Record<Direction, TermText>>,
   noRules: 'Ninguna: no deja entrar nada.',
+  noOutboundRules: 'Ninguna.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
+  outboundRuleRow: (what: TermText, to: TermText): TermText => `${what} → ${to}`,
   who: 'Quién es',
   ip: '{{public-ip}}',
   does: 'Qué hace',
@@ -86,9 +92,21 @@ export const TASK_CARD_TEXT = {
     'security-group': 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
     'host-firewall': 'No tiene {{rule|reglas}}: no deja entrar nada.',
   } satisfies Record<FirewallKind, TermText>,
+  noOutboundRules: {
+    'security-group': 'Este {{security-group}} no tiene {{outbound-rule|reglas de salida}}: su salida está cerrada.',
+    'host-firewall': 'Este {{firewall}} tiene la {{outbound}} cerrada: alguien lo configuró así.',
+  } satisfies Record<FirewallKind, TermText>,
   slot: { 'security-group': 'Regla de entrada nueva', 'host-firewall': 'Regla nueva' } satisfies Record<FirewallKind, string>,
+  outboundSlot: { 'security-group': 'Regla de salida nueva', 'host-firewall': 'Regla nueva' } satisfies Record<FirewallKind, string>,
+  tabsName: 'Sentido del tráfico',
+  tabs: {
+    'security-group': { inbound: '{{inbound-rule}}', outbound: '{{outbound-rule}}' },
+    'host-firewall': { inbound: '{{inbound}}', outbound: '{{outbound}}' },
+  } satisfies Record<FirewallKind, Record<Direction, TermText>>,
+  arrow: { inbound: '←', outbound: '→' } satisfies Record<Direction, string>,
   what: 'Type',
   from: 'Source',
+  to: 'Destination',
   done: 'Listo',
   remove: (rule: string) => `Quitar la regla ${rule}`,
   giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,

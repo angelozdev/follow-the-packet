@@ -33,6 +33,7 @@ export type {
   SettingChip,
   SettingMove,
   SettingSpec,
+  ToChip,
   TraySpec,
   WhatChip,
 } from './contract/incident';
@@ -41,5 +42,5 @@ export { INCIDENTS } from './registry';
 export { chipsOfRule, packetFromChips, probeFromChips, sendCombinations } from './contract/chips';
 export type { SendOwner } from './contract/chips';
 export { applyMove, caseWorld, solvedWorld, startWorld } from './world';
-export { configurableParts, knownTerms } from './ladder';
+export { RULES_TERM, configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';

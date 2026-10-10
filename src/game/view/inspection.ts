@@ -1,8 +1,9 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type FirewallKind, type Hop, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
+import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
-import { rowText, ruleRows } from './cards/firewall-card';
+import { RULES_TERM } from '@/levels';
+import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { drawsRouter, isDrawn, isShown } from './pieces';
 import { placesOf, routerPlace } from './router-place';
@@ -23,8 +24,6 @@ interface FieldSpec {
   label: TermText;
   lines: () => TermText[];
 }
-
-const RULES_TERM: Record<FirewallKind, TermId | null> = { 'security-group': 'inbound-rule', 'host-firewall': 'rule' };
 
 function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionField[] {
   return specs.filter((spec) => spec.term === null || known.has(spec.term)).map((spec) => ({ label: spec.label, lines: spec.lines() }));
@@ -81,18 +80,21 @@ function device(session: Session, own: Device): Inspection {
   };
 }
 
+function rulesFields(session: Session, own: Firewall): FieldSpec[] {
+  const lines = (rows: TermText[], none: TermText) => () => (rows.length > 0 ? rows : [none]);
+  const inbound = lines(ruleRows(session, own).map(rowText), INSPECTION_TEXT.noRules);
+  if (!session.parts.outboundRules[own.kind]) return [{ term: RULES_TERM.inbound[own.kind], label: INSPECTION_TEXT.inbound[own.kind], lines: inbound }];
+  return [
+    { term: RULES_TERM.inbound[own.kind], label: INSPECTION_TEXT.directions[own.kind].inbound, lines: inbound },
+    { term: RULES_TERM.outbound[own.kind], label: INSPECTION_TEXT.directions[own.kind].outbound, lines: lines(outboundRows(session, own).map(rowText), INSPECTION_TEXT.noOutboundRules) },
+  ];
+}
+
 function firewall(session: Session, own: Firewall): Inspection {
-  const rows = ruleRows(own, session.incident);
   return {
     entity: { kind: 'firewall', variant: own.kind },
     title: MAP_TEXT.firewall[own.kind](own.name),
-    fields: visible(
-      [
-        ...whatIs({ kind: 'firewall', variant: own.kind }),
-        { term: RULES_TERM[own.kind], label: INSPECTION_TEXT.inbound[own.kind], lines: () => (rows.length > 0 ? rows.map(rowText) : [INSPECTION_TEXT.noRules]) },
-      ],
-      session.known,
-    ),
+    fields: visible([...whatIs({ kind: 'firewall', variant: own.kind }), ...rulesFields(session, own)], session.known),
   };
 }
 

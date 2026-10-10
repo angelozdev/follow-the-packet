@@ -80,6 +80,10 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
                 chips={chips}
                 onPlace={(whatId, fromId) => dispatch({ type: 'placeRule', firewallId: card.firewallId, whatId, fromId })}
                 onRemove={(ruleId) => dispatch({ type: 'removeRule', firewallId: card.firewallId, ruleId })}
+                outbound={{
+                  onPlace: (whatId, toId) => dispatch({ type: 'placeRule', firewallId: card.firewallId, whatId, toId, direction: 'outbound' }),
+                  onRemove: (ruleId) => dispatch({ type: 'removeRule', firewallId: card.firewallId, ruleId, direction: 'outbound' }),
+                }}
                 onClose={closeCard}
               />
             )) ||

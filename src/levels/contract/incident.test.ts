@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, ping, sendIncident } from '@/testing';
+import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident } from '@/testing';
 import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, sendCombinations, unknownCardDeviceIds } from './chips';
-import { incidentSchema, isGuided, ruleIdFor, type MessageChip, type SendIncident } from './incident';
+import { incidentSchema, isGuided, playerMoveSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
 const VALID: Record<string, unknown> = {
@@ -68,6 +68,52 @@ describe('incident contract', () => {
 
   it('names a placed rule after its chips', () => {
     expect(ruleIdFor('ping', 'servidor1')).toBe('ping-from-servidor1');
+  });
+});
+
+const OUTBOUND = outboundFilterIncident();
+const OUTBOUND_MOVE = { type: 'placeRule', firewallId: 'fw-you', whatId: 'echo-request', toId: 'to-lucia', direction: 'outbound' };
+const INBOUND_MOVE = { type: 'placeRule', firewallId: 'fw-you', whatId: 'echo-request', fromId: 'from-lucia' };
+
+describe('outbound rules in the contract', () => {
+  it('accepts outbound chips and a placeRule with a direction', () => {
+    expect(OUTBOUND.chips.to?.map((chip) => chip.id)).toEqual(['to-lucia', 'to-printer']);
+    expect(incidentSchema.safeParse(OUTBOUND).success).toBe(true);
+    expect(playerMoveSchema.safeParse(OUTBOUND_MOVE).success).toBe(true);
+    expect(playerMoveSchema.safeParse({ ...OUTBOUND_MOVE, direction: 'inbound', toId: undefined, fromId: 'from-lucia' }).success).toBe(true);
+    expect(playerMoveSchema.safeParse(INBOUND_MOVE).success).toBe(true);
+    expect(playerMoveSchema.safeParse({ type: 'removeRule', firewallId: 'fw-you', ruleId: 'rule', direction: 'outbound' }).success).toBe(true);
+    expect(incidentSchema.safeParse({ ...OUTBOUND, solution: [INBOUND_MOVE, OUTBOUND_MOVE] }).success).toBe(true);
+  });
+
+  it('rejects an outbound move without a destination chip', () => {
+    expect(playerMoveSchema.safeParse({ ...OUTBOUND_MOVE, toId: undefined }).success).toBe(false);
+    expect(playerMoveSchema.safeParse({ ...OUTBOUND_MOVE, toId: undefined, fromId: 'from-lucia' }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...OUTBOUND, solution: [{ ...OUTBOUND_MOVE, toId: undefined }] }).success).toBe(false);
+  });
+
+  it('rejects a move that names the chip of the other direction too, or an inbound move without a source chip', () => {
+    expect(playerMoveSchema.safeParse({ ...OUTBOUND_MOVE, fromId: 'from-lucia' }).success).toBe(false);
+    expect(playerMoveSchema.safeParse({ ...INBOUND_MOVE, toId: 'to-lucia' }).success).toBe(false);
+    expect(playerMoveSchema.safeParse({ ...INBOUND_MOVE, fromId: undefined }).success).toBe(false);
+  });
+
+  it('rejects a solution that uses a destination chip the incident does not offer, or one when it offers none', () => {
+    expect(incidentSchema.safeParse({ ...OUTBOUND, solution: [{ ...OUTBOUND_MOVE, toId: 'to-ghost' }] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...OUTBOUND, solution: [{ ...OUTBOUND_MOVE, toId: 'from-lucia' }] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...OUTBOUND, chips: { ...OUTBOUND.chips, to: undefined } }).success).toBe(false);
+  });
+
+  it('rejects two destination chips with the same id and an empty destination tray', () => {
+    const [first] = OUTBOUND.chips.to ?? [];
+    expect(incidentSchema.safeParse({ ...OUTBOUND, chips: { ...OUTBOUND.chips, to: [first, first] } }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...OUTBOUND, chips: { ...OUTBOUND.chips, to: [] } }).success).toBe(false);
+  });
+
+  it('names the id of an outbound rule after its destination, apart from an inbound one with the same chips', () => {
+    expect(ruleIdFor('ping', 'lucia')).toBe('ping-from-lucia');
+    expect(ruleIdFor('ping', 'lucia', 'inbound')).toBe('ping-from-lucia');
+    expect(ruleIdFor('ping', 'lucia', 'outbound')).toBe('ping-to-lucia');
   });
 });
 

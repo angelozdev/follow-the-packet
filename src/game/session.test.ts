@@ -3,7 +3,7 @@ import type { TermId } from '@/copy';
 import { INCIDENTS, startWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, ping, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -76,6 +76,54 @@ describe('incident session', () => {
     const start = startSession(INCIDENTS, FIRST.id);
     const closedGroups: Session = { ...start, parts: { ...start.parts, inboundRules: { ...start.parts.inboundRules, 'security-group': false } } };
     expect(sessionReducer(closedGroups, FIX)).toBe(closedGroups);
+  });
+});
+
+describe('rules in either direction', () => {
+  const OUTBOUND = outboundFilterIncident();
+  const FIREWALL = 'fw-you';
+  const ECHO = 'echo-request';
+  const placeOut: SessionAction = { type: 'placeRule', firewallId: FIREWALL, whatId: ECHO, toId: 'to-lucia', direction: 'outbound' };
+  const placeIn: SessionAction = { type: 'placeRule', firewallId: FIREWALL, whatId: ECHO, fromId: 'from-lucia' };
+  const start = startSession([OUTBOUND], OUTBOUND.id);
+  const listsOf = (session: Session) => session.world.firewalls.find((firewall) => firewall.id === FIREWALL);
+  const stopOf = (session: Session) => session.runs[0].trace.steps.find((step) => step.verdict === 'drop')?.stage;
+
+  it('a rule placed in the wrong direction changes nothing for the flow', () => {
+    expect(start.runs[0].replied).toBe(false);
+    expect(stopOf(start)).toBe('firewall-out');
+    const wrong = sessionReducer(start, placeIn);
+    expect(listsOf(wrong)?.inbound).toHaveLength(1);
+    expect(listsOf(wrong)?.outbound).toEqual([]);
+    expect(wrong.runs).toEqual(start.runs);
+    expect(stopOf(wrong)).toBe('firewall-out');
+    expect(sessionReducer(wrong, SUBMIT).rejection).toEqual({ attempt: 1, failingTaskIds: ['leave'], intruding: false });
+  });
+
+  it('a rule placed in the right direction lets the ping out and back', () => {
+    const right = sessionReducer(start, placeOut);
+    expect(listsOf(right)?.outbound).toHaveLength(1);
+    expect(listsOf(right)?.inbound).toEqual([]);
+    expect(right.runs[0].replied).toBe(true);
+    expect(sessionReducer(right, SUBMIT).phase).toBe('explaining');
+  });
+
+  it('removing an outbound rule closes the way out again, and removing it without its direction does nothing', () => {
+    const right = sessionReducer(start, placeOut);
+    const ruleId = ruleIdFor(ECHO, 'to-lucia', 'outbound');
+    const closed = sessionReducer(right, { type: 'removeRule', firewallId: FIREWALL, ruleId, direction: 'outbound' });
+    expect(listsOf(closed)?.outbound).toEqual([]);
+    expect(closed.runs[0].replied).toBe(false);
+    expect(sessionReducer(right, { type: 'removeRule', firewallId: FIREWALL, ruleId })).toBe(right);
+  });
+
+  it('an outbound rule needs the ladder to have opened the outbound rules of the kind, and an inbound one the inbound rules', () => {
+    const closedOutbound: Session = { ...start, parts: { ...start.parts, outboundRules: { ...start.parts.outboundRules, 'host-firewall': false } } };
+    expect(sessionReducer(closedOutbound, placeOut)).toBe(closedOutbound);
+    expect(sessionReducer(closedOutbound, placeIn)).not.toBe(closedOutbound);
+    const closedInbound: Session = { ...start, parts: { ...start.parts, inboundRules: { ...start.parts.inboundRules, 'host-firewall': false } } };
+    expect(sessionReducer(closedInbound, placeIn)).toBe(closedInbound);
+    expect(sessionReducer(closedInbound, placeOut)).not.toBe(closedInbound);
   });
 });
 

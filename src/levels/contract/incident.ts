@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { OUTCOMES, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from '@/engine';
+import { DEFAULT_DIRECTION, OUTCOMES, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema, type Direction } from '@/engine';
 
 const id = z.string().min(1);
 const ECHO_REQUEST = 8;
@@ -23,8 +23,15 @@ const termIdSchema = z.custom<TermId>((value) => typeof value === 'string' && is
 
 export const flowKindSchema = z.enum(['required', 'forbidden', 'ambient']);
 
-const placeRuleSchema = z.object({ type: z.literal('placeRule'), firewallId: id, whatId: id, fromId: id });
-const removeRuleSchema = z.object({ type: z.literal('removeRule'), firewallId: id, ruleId: id });
+const placeRuleSchema = z
+  .object({ type: z.literal('placeRule'), firewallId: id, whatId: id, fromId: id.optional(), toId: id.optional(), direction: directionSchema.optional() })
+  .superRefine((move, ctx) => {
+    const direction = move.direction ?? DEFAULT_DIRECTION;
+    const [peer, other] = direction === 'outbound' ? (['toId', 'fromId'] as const) : (['fromId', 'toId'] as const);
+    if (move[peer] === undefined) ctx.addIssue({ code: 'custom', message: `${direction}: a rule needs ${peer}`, path: [peer] });
+    if (move[other] !== undefined) ctx.addIssue({ code: 'custom', message: `${direction}: a rule has no ${other}`, path: [other] });
+  });
+const removeRuleSchema = z.object({ type: z.literal('removeRule'), firewallId: id, ruleId: id, direction: directionSchema.optional() });
 const sendPacketSchema = z.object({ type: z.literal('sendPacket'), fromId: id, toId: id, messageId: id });
 const answerCardSchema = z.object({ type: z.literal('answerCard'), deviceId: id, picks: z.record(id, id) });
 const setSettingSchema = z.object({ type: z.literal('setSetting'), deviceId: id, settingId: id, chipId: id });
@@ -42,7 +49,7 @@ const sendTaskSchema = z.object({
   expect: z.object({ fromId: id, toId: id, messageId: id, outcome: expectedOutcomeSchema, by: id.optional() }),
 });
 const whatChipSchema = z.object({ id, label: termText, what: ruleWhatSchema });
-const fromChipSchema = z.object({ id, label: termText, peer: rulePeerSchema });
+const peerChipSchema = z.object({ id, label: termText, peer: rulePeerSchema });
 const originChipSchema = z.object({ id, endpoint: endpointSchema });
 const addressChipSchema = z.object({ id, address: id });
 const messageChipSchema = z
@@ -115,7 +122,7 @@ const filterIncidentSchema = z.object({
   mechanic: z.literal('filter'),
   tasks: z.array(filterTaskSchema).min(1),
   flows: z.array(flowSchema).min(1),
-  chips: z.object({ what: z.array(whatChipSchema).min(1), from: z.array(fromChipSchema).min(1) }),
+  chips: z.object({ what: z.array(whatChipSchema).min(1), from: z.array(peerChipSchema).min(1), to: z.array(peerChipSchema).min(1).optional() }),
   solution: z.array(ruleMoveSchema).min(1),
 });
 
@@ -174,6 +181,7 @@ function checkFilter(incident: FilterShape, fail: Fail): void {
   const unique = uniqueIn(fail);
   unique('what chip id', incident.chips.what.map((c) => c.id));
   unique('from chip id', incident.chips.from.map((c) => c.id));
+  unique('to chip id', (incident.chips.to ?? []).map((c) => c.id));
   const kinds = new Map(incident.flows.map((f) => [f.id, f.kind]));
   for (const task of incident.tasks) {
     for (const flowId of task.flowIds) if (!kinds.has(flowId)) fail(`${task.id}: unknown flow ${flowId}`);
@@ -184,10 +192,13 @@ function checkFilter(incident: FilterShape, fail: Fail): void {
     if (flow.kind !== 'ambient' && !inTasks.has(flow.id)) fail(`${flow.id}: required and forbidden flows belong to a task`);
   }
   const whatIds = new Set(incident.chips.what.map((c) => c.id));
-  const fromIds = new Set(incident.chips.from.map((c) => c.id));
+  const peerIds = { inbound: new Set(incident.chips.from.map((c) => c.id)), outbound: new Set((incident.chips.to ?? []).map((c) => c.id)) };
   for (const move of incident.solution) {
-    if (move.type === 'placeRule' && !(whatIds.has(move.whatId) && fromIds.has(move.fromId))) {
-      fail(`the solution uses chips the incident does not offer: ${move.whatId}, ${move.fromId}`);
+    if (move.type !== 'placeRule') continue;
+    const direction = move.direction ?? DEFAULT_DIRECTION;
+    const peerId = peerIdOf(move);
+    if (!(whatIds.has(move.whatId) && peerId !== undefined && peerIds[direction].has(peerId))) {
+      fail(`the solution uses chips the incident does not offer: ${move.whatId}, ${peerId}`);
     }
   }
 }
@@ -316,6 +327,7 @@ export type SendTask = SendIncident['tasks'][number];
 export type IdentifyTask = IdentifyIncident['tasks'][number];
 export type WhatChip = FilterIncident['chips']['what'][number];
 export type FromChip = FilterIncident['chips']['from'][number];
+export type ToChip = NonNullable<FilterIncident['chips']['to']>[number];
 export type OriginChip = SendIncident['send']['from'][number];
 export type AddressChip = SendIncident['send']['to'][number];
 export type SettingSpec = NonNullable<SendIncident['send']['settings']>[number];
@@ -329,6 +341,7 @@ export type TraySpec = CardSpec['trays'][number];
 export type CardChip = TraySpec['chips'][number];
 export type PlayerMove = z.infer<typeof playerMoveSchema>;
 export type RuleMove = z.infer<typeof ruleMoveSchema>;
+export type PlaceMove = z.infer<typeof placeRuleSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
 export type SettingMove = z.infer<typeof setSettingSchema>;
 export type AnswerMove = z.infer<typeof answerCardSchema>;
@@ -341,9 +354,16 @@ export function isGuided(incident: Incident): incident is GuidedIncident {
   return incident.mechanic !== 'diagnose';
 }
 
-/** Returns the id a rule gets when the player places it from two chips. */
-export function ruleIdFor(whatId: string, fromId: string): string {
-  return `${whatId}-from-${fromId}`;
+/** Returns the id of the peer chip a placement names: the Destination chip of an outbound rule, the Source chip of an inbound one. */
+export function peerIdOf({ direction = DEFAULT_DIRECTION, fromId, toId }: Pick<PlaceMove, 'direction' | 'fromId' | 'toId'>): string | undefined {
+  return direction === 'outbound' ? toId : fromId;
+}
+
+const RULE_ID_JOINER: Record<Direction, string> = { inbound: 'from', outbound: 'to' };
+
+/** Returns the id a rule gets when the player places it from two chips: the Type chip and, for an inbound rule (the default), the Source chip or, for an outbound one, the Destination chip. */
+export function ruleIdFor(whatId: string, peerId: string, direction: Direction = DEFAULT_DIRECTION): string {
+  return `${whatId}-${RULE_ID_JOINER[direction]}-${peerId}`;
 }
 
 /** Validates an incident file and returns it typed; throws with every problem when the file is wrong. */

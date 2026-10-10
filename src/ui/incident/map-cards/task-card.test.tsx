@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TASK_CARD_TEXT, toPlainText } from '@/copy';
-import { firewallCard, startSession } from '@/game';
+import { firewallCard, sessionReducer, startSession, type Session } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { INCIDENTS } from '@/levels';
 import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import { filterIncident } from '@/testing/incidents';
+import { allOut } from '@/testing/fixtures';
+import { filterIncident, outboundFilterIncident } from '@/testing/incidents';
 import { TaskCard } from './task-card';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
@@ -115,5 +116,134 @@ describe('task card', () => {
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: TASK_CARD_TEXT.done }));
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('task card with the tabs of both directions', () => {
+  const OUTBOUND = outboundFilterIncident();
+  const FIREWALL = PIECE_ID.firewall('fw-you');
+  const ECHO_ID = 'echo-request';
+  const START = startSession([OUTBOUND], OUTBOUND.id);
+  const OUTBOUND_RULE_ID = 'echo-request-to-to-lucia';
+  const DESTINATION = TASK_CARD_TEXT.to;
+  const SOURCE = TASK_CARD_TEXT.from;
+  const ENTRADA = 'entrada';
+  const SALIDA = 'salida';
+  const LUCIA = 'lucia-laptop';
+  const CLOSED_SENTENCE = 'Este firewall tiene la salida cerrada: alguien lo configuró así.';
+
+  function renderFirewall(session: Session = START) {
+    const card = firewallCard(session, FIREWALL);
+    if (!card) throw new Error('missing the firewall of your laptop');
+    const handlers = { onPlace: vi.fn(), onRemove: vi.fn(), onClose: vi.fn(), outbound: { onPlace: vi.fn(), onRemove: vi.fn() } };
+    render(<TaskCard card={card} chips={OUTBOUND.chips} {...handlers} />);
+    return handlers;
+  }
+
+  const tab = (name: string) => screen.getByRole('tab', { name });
+  const pick = async (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(within(screen.getByRole('tabpanel')).getByRole('button', { name }));
+
+  it('shows the tabs Entrada and Salida and places a rule in the tab selected', async () => {
+    const user = userEvent.setup();
+    const { onPlace, outbound } = renderFirewall();
+    expect(within(screen.getByRole('tablist', { name: TASK_CARD_TEXT.tabsName })).getAllByRole('tab').map((item) => item.textContent)).toEqual([ENTRADA, SALIDA]);
+    await pick(user, ECHO_REQUEST);
+    await pick(user, LUCIA);
+    expect(onPlace).toHaveBeenCalledTimes(1);
+    expect(onPlace).toHaveBeenCalledWith(ECHO_ID, 'from-lucia');
+    expect(outbound.onPlace).not.toHaveBeenCalled();
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('group', { name: DESTINATION })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: SOURCE })).toBeNull();
+    await pick(user, ECHO_REQUEST);
+    await pick(user, LUCIA);
+    expect(outbound.onPlace).toHaveBeenCalledTimes(1);
+    expect(outbound.onPlace).toHaveBeenCalledWith(ECHO_ID, 'to-lucia');
+    expect(onPlace).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts on the Entrada tab', () => {
+    renderFirewall();
+    expect(tab(ENTRADA)).toHaveAttribute('aria-selected', 'true');
+    expect(tab(SALIDA)).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tabpanel', { name: ENTRADA })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: SOURCE })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: DESTINATION })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Regla nueva' })).toBeInTheDocument();
+  });
+
+  it('shows no tabs while the firewall has no outbound rules open', () => {
+    const closed = startSession([{ ...OUTBOUND, introduces: OUTBOUND.introduces.filter((term) => term !== 'outbound') }], OUTBOUND.id);
+    expect(closed.parts.outboundRules['host-firewall']).toBe(false);
+    renderFirewall(closed);
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByRole('group', { name: SOURCE })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: DESTINATION })).toBeNull();
+  });
+
+  it('switching tabs keeps what was picked in the other tab', async () => {
+    const user = userEvent.setup();
+    const { onPlace, outbound } = renderFirewall();
+    await pick(user, ECHO_REQUEST);
+    expect(screen.getByRole('button', { name: ECHO_REQUEST })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('button', { name: ECHO_REQUEST })).toHaveAttribute('aria-pressed', 'false');
+    await pick(user, LUCIA);
+    expect(screen.getByRole('button', { name: LUCIA })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(tab(ENTRADA));
+    expect(screen.getByRole('button', { name: ECHO_REQUEST })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: LUCIA })).toHaveAttribute('aria-pressed', 'false');
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('button', { name: LUCIA })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: ECHO_REQUEST })).toHaveAttribute('aria-pressed', 'false');
+    expect(onPlace).not.toHaveBeenCalled();
+    expect(outbound.onPlace).not.toHaveBeenCalled();
+  });
+
+  it('says in the Salida tab that the outbound side was closed by whoever configured it', async () => {
+    const user = userEvent.setup();
+    renderFirewall();
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('tabpanel', { name: SALIDA })).toHaveTextContent(CLOSED_SENTENCE);
+    expect(screen.getByRole('group', { name: 'Regla nueva' })).toBeInTheDocument();
+  });
+
+  it('lists the outbound rules in the Salida tab and removes one with its own handler', async () => {
+    const user = userEvent.setup();
+    const placed = sessionReducer(START, { type: 'placeRule', firewallId: 'fw-you', whatId: ECHO_ID, toId: 'to-lucia', direction: 'outbound' });
+    const { onRemove, outbound } = renderFirewall(placed);
+    expect(within(screen.getByRole('tabpanel')).queryByRole('list')).toBeNull();
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('tabpanel', { name: SALIDA })).not.toHaveTextContent(CLOSED_SENTENCE);
+    await user.click(screen.getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} → ${LUCIA}`) }));
+    expect(outbound.onRemove).toHaveBeenCalledWith(OUTBOUND_RULE_ID);
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'firewall tu-laptop' })).toHaveFocus();
+  });
+
+  it('lists in the Salida tab, and lets the player remove, the outbound rule that lets everything out and that no destination chip names', async () => {
+    const user = userEvent.setup();
+    const { base } = OUTBOUND;
+    if (!base) throw new Error('the incident has a base world');
+    const open = { ...OUTBOUND, base: { ...base, firewalls: base.firewalls.map((firewall) => ({ ...firewall, outbound: [allOut('open-out')] })) } };
+    const { outbound } = renderFirewall(startSession([open], open.id));
+    await user.click(tab(SALIDA));
+    expect(screen.getByRole('tabpanel', { name: SALIDA })).toHaveTextContent('deja salir todo el tráfico');
+    expect(screen.getByRole('tabpanel', { name: SALIDA })).not.toHaveTextContent(CLOSED_SENTENCE);
+    await user.click(screen.getByRole('button', { name: TASK_CARD_TEXT.remove('deja salir todo el tráfico') }));
+    expect(outbound.onRemove).toHaveBeenCalledWith('open-out');
+  });
+
+  it('moves between the tabs with the arrow keys and keeps the focus in the card', async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderFirewall();
+    await user.tab();
+    expect(tab(ENTRADA)).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(tab(SALIDA)).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('group', { name: DESTINATION })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

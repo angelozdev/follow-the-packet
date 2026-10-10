@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, parseTermText, termsIn, unofficialNames, type TermId } from '@/copy';
+import { TASK_CARD_TEXT, TERMS, parseTermText, termsIn, toPlainText, unofficialNames, type TermId } from '@/copy';
 import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
 import { FROM } from './04-iaas/shared';
 import type { Incident, SendIncident } from './contract/incident';
-import { chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
+import { RULES_TERM, chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 
-const NOTHING = { inboundRules: { 'host-firewall': false, 'security-group': false }, outboundRules: false, hostSettings: false };
+const CLOSED = { 'host-firewall': false, 'security-group': false };
+const NOTHING = { inboundRules: CLOSED, outboundRules: CLOSED, hostSettings: false };
 const HOST_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': false } };
 const INBOUND_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': true } };
 const DECLARED_LEAKS = ['icmp → internet'];
@@ -83,7 +84,30 @@ describe('term ladder', () => {
 
   it('outbound rules and the host setting open with their own terms', () => {
     const later = new Set<TermId>(['inbound-rule', 'outbound-rule', 'icmp-echo-ignore-all']);
-    expect(configurableParts(later)).toEqual({ inboundRules: { 'host-firewall': false, 'security-group': true }, outboundRules: true, hostSettings: true });
+    expect(configurableParts(later)).toEqual({ inboundRules: { 'host-firewall': false, 'security-group': true }, outboundRules: { 'host-firewall': false, 'security-group': true }, hostSettings: true });
+  });
+
+  it('outbound rules open with the term outbound for a host firewall and with outbound-rule for a Security Group', () => {
+    expect(RULES_TERM.outbound).toEqual({ 'host-firewall': 'outbound', 'security-group': 'outbound-rule' });
+    expect(configurableParts(new Set<TermId>(['outbound'])).outboundRules).toEqual({ 'host-firewall': true, 'security-group': false });
+    expect(configurableParts(new Set<TermId>(['outbound-rule'])).outboundRules).toEqual({ 'host-firewall': false, 'security-group': true });
+    expect(configurableParts(new Set<TermId>(['outbound', 'outbound-rule'])).outboundRules).toEqual({ 'host-firewall': true, 'security-group': true });
+    expect(configurableParts(new Set<TermId>(['rule', 'inbound-rule'])).outboundRules).toEqual(CLOSED);
+  });
+
+  it('a tab is named after a term by its official name: entrada and salida for a host firewall, regla de entrada and regla de salida for a Security Group', () => {
+    const names = { 'host-firewall': { inbound: 'entrada', outbound: 'salida' }, 'security-group': { inbound: 'regla de entrada', outbound: 'regla de salida' } };
+    const terms = { 'host-firewall': { inbound: 'inbound', outbound: 'outbound' }, 'security-group': { inbound: 'inbound-rule', outbound: 'outbound-rule' } } as const;
+    for (const kind of ['host-firewall', 'security-group'] as const) {
+      for (const direction of ['inbound', 'outbound'] as const) {
+        const label = TASK_CARD_TEXT.tabs[kind][direction];
+        expect(termsIn(label), `${kind}/${direction}`).toEqual([terms[kind][direction]]);
+        expect(unofficialNames([label]), `${kind}/${direction}`).toEqual([]);
+        expect(toPlainText(label), `${kind}/${direction}`).toBe(names[kind][direction]);
+        expect(TERMS[terms[kind][direction]].name).toBe(names[kind][direction]);
+      }
+      expect(termsIn(TASK_CARD_TEXT.tabs[kind].outbound)).toEqual([RULES_TERM.outbound[kind]]);
+    }
   });
 });
 

@@ -1,12 +1,18 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
-import type { FirewallKind } from '@/engine';
+import type { Direction, FirewallKind } from '@/engine';
 import { isGuided, type Incident } from './contract/incident';
 
 export interface ConfigurableParts {
   inboundRules: Record<FirewallKind, boolean>;
-  outboundRules: boolean;
+  outboundRules: Record<FirewallKind, boolean>;
   hostSettings: boolean;
 }
+
+/** The term that opens the rules of each direction of each kind of firewall: the rules of a host firewall open with `rule` (inbound) and `outbound`, and those of a Security Group with `inbound-rule` and `outbound-rule`. */
+export const RULES_TERM: Record<Direction, Record<FirewallKind, TermId>> = {
+  inbound: { 'host-firewall': 'rule', 'security-group': 'inbound-rule' },
+  outbound: { 'host-firewall': 'outbound', 'security-group': 'outbound-rule' },
+};
 
 /** Returns every term introduced by the incident and the ones before it; incidents come in course order. */
 export function knownTerms(incidents: Incident[], incidentId: string): ReadonlySet<TermId> {
@@ -15,13 +21,13 @@ export function knownTerms(incidents: Incident[], incidentId: string): ReadonlyS
   return new Set(incidents.slice(0, index + 1).flatMap((i) => i.introduces));
 }
 
-/** Returns which parts of the map the player may change once these terms are known: the inbound rules of a host firewall with `rule`, and of a Security Group with `inbound-rule`. */
+function opened(known: ReadonlySet<TermId>, terms: Record<FirewallKind, TermId>): Record<FirewallKind, boolean> {
+  return { 'host-firewall': known.has(terms['host-firewall']), 'security-group': known.has(terms['security-group']) };
+}
+
+/** Returns which parts of the map the player may change once these terms are known: the inbound rules of a host firewall with `rule`, and of a Security Group with `inbound-rule`; the outbound rules of a host firewall with `outbound`, and of a Security Group with `outbound-rule`. */
 export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts {
-  return {
-    inboundRules: { 'host-firewall': known.has('rule'), 'security-group': known.has('inbound-rule') },
-    outboundRules: known.has('outbound-rule'),
-    hostSettings: known.has('icmp-echo-ignore-all'),
-  };
+  return { inboundRules: opened(known, RULES_TERM.inbound), outboundRules: opened(known, RULES_TERM.outbound), hostSettings: known.has('icmp-echo-ignore-all') };
 }
 
 /** Returns the labels of the chips the incident writes: Type and Source for a filter, the messages for a send and for every case of a diagnose (an origin is named after the world and an address is only an address), none for an identify (its chips are values, such as an IP, and not terms). */

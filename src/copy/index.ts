@@ -3,6 +3,7 @@ export type { EntityKind, EntityRef, EntityVariants, PacketMessage, PacketVarian
 export { nameTag, parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
 export type { TermSegment, TermText } from './term-text';
 export { describeReason } from './reasons';
+export { describeRule } from './rule-text';
 export type { PlaceOf, RouterPlace } from './reasons';
 export { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, messageLabel, packetLabel, packetMessage, roundTripText, stampLabel, warningOf } from './packet-labels';
 export type { StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';

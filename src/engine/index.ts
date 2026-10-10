@@ -22,7 +22,7 @@ export type {
 } from './network/types';
 export { isClientActor } from './network/topology';
 export { facesALan } from './network/routing';
-export { DEFAULT_TTL, ROUTE_DEFAULT, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
+export { DEFAULT_DIRECTION, DEFAULT_TTL, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4 } from './network/cidr';
 export { simulate } from './simulation/simulate';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/traceroute';

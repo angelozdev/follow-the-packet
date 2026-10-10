@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerSchema, ruleSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerSchema, ruleSchema } from './schema';
 import { lansOf } from './topology';
 import type { Device, Direction, Firewall, Lan, Network, Router, Rule } from './types';
 
@@ -21,8 +21,6 @@ export const networkActionSchema = z.discriminatedUnion('type', [
 ]);
 
 export type NetworkAction = z.infer<typeof networkActionSchema>;
-
-const DEFAULT_DIRECTION: Direction = 'inbound';
 
 function changeDevice(net: Network, deviceId: string, change: (device: Device) => Device): Network {
   if (!net.devices.some((d) => d.id === deviceId)) return net;

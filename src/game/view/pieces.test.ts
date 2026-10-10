@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText, type TermId } from '@/copy';
+import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
-import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
+import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
-import { firewallCard } from './cards/firewall-card';
 import { settingsCard } from './cards/settings-card';
 import { terminalCard } from './cards/terminal-card';
 import { PIECE_ID } from './piece-id';
@@ -228,44 +226,5 @@ describe('pieceViews of an incident that lists what it draws', () => {
       })),
     );
     expect(idsOf(floors())).not.toContain(PIECE_ID.edge);
-  });
-});
-
-describe('firewallCard', () => {
-  it('names the rules of a Security Group with the chips of the incident', () => {
-    const second = startSession(INCIDENTS, '04-02');
-    expect(firewallCard(second, PIECE_ID.firewall(SG.servidor2))).toEqual({
-      firewallId: SG.servidor2,
-      kind: 'security-group',
-      title: '{{security-group}} [[servidor2]]',
-      rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.anywhere.label }],
-      empty: TASK_CARD_TEXT.noRules['security-group'],
-      slot: TASK_CARD_TEXT.slot['security-group'],
-    });
-  });
-
-  it('words the card of a Security Group with inbound rules', () => {
-    const card = firewallCard(first, PIECE_ID.firewall(SG.servidor2));
-    expect(card && toPlainText(card.empty)).toBe('No tiene reglas de entrada: no deja entrar nada.');
-    expect(card?.slot).toBe('Regla de entrada nueva');
-  });
-
-  it('words the card of a host firewall with rules, never with the later inbound rules', () => {
-    const card = firewallCard(startSession(INCIDENTS, '01-04'), PIECE_ID.firewall(LUCIA_FIREWALL.id));
-    expect(card).toEqual({
-      firewallId: LUCIA_FIREWALL.id,
-      kind: 'host-firewall',
-      title: '{{firewall}} [[laptop-lucia]]',
-      rules: [],
-      empty: TASK_CARD_TEXT.noRules['host-firewall'],
-      slot: TASK_CARD_TEXT.slot['host-firewall'],
-    });
-    expect(card && toPlainText(card.empty)).toBe('No tiene reglas: no deja entrar nada.');
-    expect(card?.slot).toBe('Regla nueva');
-  });
-
-  it('is null for anything that is not a Security Group', () => {
-    expect(firewallCard(first, PIECE_ID.device(S2.id))).toBeNull();
-    expect(firewallCard(first, PIECE_ID.firewall('sg-ghost'))).toBeNull();
   });
 });

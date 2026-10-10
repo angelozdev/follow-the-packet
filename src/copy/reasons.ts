@@ -54,7 +54,7 @@ const KEEPS_GOING: TermText = 'Sigue su camino.';
 const REPLY_ARRIVES: TermText = 'Llega la respuesta.';
 
 /** Writes a word as the tagged term when the player knows it, and as the plain word before. */
-function word(known: ReadonlySet<TermId>, term: TermId, text: string): TermText {
+export function word(known: ReadonlySet<TermId>, term: TermId, text: string): TermText {
   return known.has(term) ? `{{${term}|${text}}}` : text;
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, networkSchema, type Network } from '@/engine';
-import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident } from '@/testing';
+import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, outboundFilterIncident } from '@/testing';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
@@ -81,6 +81,63 @@ describe('applyMove', () => {
     const removed = applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) });
     expect(inbound(removed, SG.servidor2)).toEqual([]);
     expect(applyMove(once, first, { type: 'removeRule', firewallId: SG.servidor2, ruleId: 'ghost' })).toBe(once);
+  });
+});
+
+describe('applyMove of an outbound rule', () => {
+  const OUTBOUND = outboundFilterIncident();
+  const start = startWorld([OUTBOUND], OUTBOUND.id);
+  const FIREWALL = 'fw-you';
+  const ECHO = 'echo-request';
+  const outboundPlace: PlayerMove = { type: 'placeRule', firewallId: FIREWALL, whatId: ECHO, toId: 'to-lucia', direction: 'outbound' };
+  const inboundPlace: PlayerMove = { type: 'placeRule', firewallId: FIREWALL, whatId: ECHO, fromId: 'from-lucia' };
+  const listsOf = (world: Network) => {
+    const firewall = world.firewalls.find((f) => f.id === FIREWALL);
+    return { inbound: firewall?.inbound ?? [], outbound: firewall?.outbound ?? [] };
+  };
+
+  it('places an outbound rule on the firewall', () => {
+    const placed = applyMove(start, OUTBOUND, outboundPlace);
+    expect(listsOf(placed)).toEqual({
+      inbound: [],
+      outbound: [{ id: ruleIdFor(ECHO, 'to-lucia', 'outbound'), what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE_FLOORS.floor1.lucia}/32` } }],
+    });
+    expect(placed).toEqual(applyAction(start, { type: 'addRule', firewallId: FIREWALL, direction: 'outbound', rule: listsOf(placed).outbound[0] }));
+  });
+
+  it('a rule that already exists in the other direction is not a duplicate', () => {
+    const inbound = applyMove(start, OUTBOUND, inboundPlace);
+    expect(listsOf(inbound).inbound).toHaveLength(1);
+    const both = applyMove(inbound, OUTBOUND, outboundPlace);
+    expect(both).not.toBe(inbound);
+    expect(listsOf(both).inbound).toEqual(listsOf(inbound).inbound);
+    expect(listsOf(both).outbound).toHaveLength(1);
+    expect(listsOf(both).outbound[0].peer).toEqual(listsOf(both).inbound[0].peer);
+  });
+
+  it('placing the same outbound rule twice changes nothing', () => {
+    const once = applyMove(start, OUTBOUND, outboundPlace);
+    expect(applyMove(once, OUTBOUND, outboundPlace)).toBe(once);
+  });
+
+  it('an outbound move with an inbound chip, a destination chip the incident does not offer or an unknown firewall changes nothing', () => {
+    expect(applyMove(start, OUTBOUND, { ...outboundPlace, toId: 'from-lucia' })).toBe(start);
+    expect(applyMove(start, OUTBOUND, { ...outboundPlace, toId: 'to-ghost' })).toBe(start);
+    expect(applyMove(start, OUTBOUND, { ...outboundPlace, firewallId: 'fw-ghost' })).toBe(start);
+  });
+
+  it('removes an outbound rule by its id from the outbound list only', () => {
+    const both = applyMove(applyMove(start, OUTBOUND, inboundPlace), OUTBOUND, outboundPlace);
+    const outboundId = ruleIdFor(ECHO, 'to-lucia', 'outbound');
+    const removed = applyMove(both, OUTBOUND, { type: 'removeRule', firewallId: FIREWALL, ruleId: outboundId, direction: 'outbound' });
+    expect(listsOf(removed)).toEqual({ inbound: listsOf(both).inbound, outbound: [] });
+    expect(applyMove(both, OUTBOUND, { type: 'removeRule', firewallId: FIREWALL, ruleId: outboundId })).toBe(both);
+  });
+
+  it('can name every outbound rule of a firewall with its destination chips', () => {
+    const solved = solvedWorld([OUTBOUND], OUTBOUND.id);
+    for (const rule of listsOf(solved).outbound) expect(chipsOfRule(OUTBOUND, rule, 'outbound'), rule.id).not.toBeNull();
+    expect(listsOf(solved).outbound).toHaveLength(1);
   });
 });
 

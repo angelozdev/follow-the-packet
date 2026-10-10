@@ -1,5 +1,5 @@
 import type { TermId, TermText } from '@/copy';
-import type { Network } from '@/engine';
+import { DEFAULT_DIRECTION, type Direction, type Network } from '@/engine';
 import {
   applyMove,
   caseWorld,
@@ -126,10 +126,13 @@ export function canAskHint(session: Session): boolean {
   return session.hintsShown < hintsOf(session).length && !caseClosed(session);
 }
 
-/** True when a device has this firewall, so it is on the map, and the ladder lets the player change the inbound rules of its kind. */
-export function canConfigure(session: Session, firewallId: string): boolean {
+/** True when a device has this firewall, so it is on the map, and the ladder lets the player change the rules of its kind in this direction, or in either direction when none is given. */
+export function canConfigure(session: Session, firewallId: string, direction?: Direction): boolean {
   const firewall = session.world.firewalls.find((candidate) => candidate.id === firewallId);
-  return firewall !== undefined && session.parts.inboundRules[firewall.kind] && session.world.devices.some((device) => device.firewallIds.includes(firewallId));
+  if (firewall === undefined || !session.world.devices.some((device) => device.firewallIds.includes(firewallId))) return false;
+  const { inboundRules, outboundRules } = session.parts;
+  if (direction === undefined) return inboundRules[firewall.kind] || outboundRules[firewall.kind];
+  return (direction === 'outbound' ? outboundRules : inboundRules)[firewall.kind];
 }
 
 /** True while a forbidden flow reaches its device. */
@@ -138,7 +141,7 @@ export function isIntruding(session: Session): boolean {
 }
 
 function move(state: Session, action: RuleMove): Session {
-  if (state.phase !== 'playing' || !canConfigure(state, action.firewallId)) return state;
+  if (state.phase !== 'playing' || !canConfigure(state, action.firewallId, action.direction ?? DEFAULT_DIRECTION)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
   const runs = runFlows(world, state.incident.flows, state.known);

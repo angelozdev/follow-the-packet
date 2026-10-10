@@ -49,7 +49,10 @@ function movesToTry(incident: Incident, start: Session): SessionAction[] {
     .filter((piece) => piece.configurable)
     .flatMap((piece) => firewallCard(start, piece.id) ?? []);
   return cards.flatMap((card) =>
-    incident.chips.what.flatMap((what) => incident.chips.from.map((from) => ({ type: 'placeRule', firewallId: card.firewallId, whatId: what.id, fromId: from.id }) as const)),
+    incident.chips.what.flatMap((what) => [
+      ...incident.chips.from.map((from) => ({ type: 'placeRule', firewallId: card.firewallId, whatId: what.id, fromId: from.id }) as const),
+      ...(incident.chips.to ?? []).map((to) => ({ type: 'placeRule', firewallId: card.firewallId, whatId: what.id, toId: to.id, direction: 'outbound' }) as const),
+    ]),
   );
 }
 

@@ -23,6 +23,8 @@ const nonEmpty = z.string().min(1);
 const latencyMs = z.number().nonnegative();
 
 export const directionSchema = z.enum(['inbound', 'outbound']);
+/** The direction of a rule that does not say one: inbound. */
+export const DEFAULT_DIRECTION: z.infer<typeof directionSchema> = 'inbound';
 
 export const icmpTypeSchema = z.union([z.literal(0), z.literal(8)]);
 
