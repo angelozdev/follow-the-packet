@@ -164,8 +164,8 @@ El inventario no entra en el prototipo. Su primer uso candidato es el 04-08 (un 
 
 | # | Incidente | Rol | Problema | Términos nuevos |
 |---|-----------|-----|----------|-----------------|
-| 1 | El primer ping | Defensor | servidor1 no logra hacer ping a servidor2 | instancia EC2, VPC, IP privada, ping, Security Group (solo deja pasar), regla de entrada = Type + Source, ICMP, Echo Request, Anywhere-IPv4 (0.0.0.0/0), Internet gateway |
-| 2 | Abre lo justo | Defensor | Alguien cambió el Security Group de servidor2 y el ping volvió a fallar | Echo Reply (la vuelta del ping), mínimo privilegio |
+| 1 | El primer ping | Defensor | servidor1 no logra hacer ping a servidor2 | instancia EC2, VPC, Security Group (solo deja pasar), regla de entrada = Type + Source, Anywhere-IPv4 (0.0.0.0/0), Internet gateway. IP privada, ping, ICMP y Echo Request llegan en el capítulo 1 (spec del capítulo 1, «Escalera de términos») |
+| 2 | Abre lo justo | Defensor | Alguien cambió el Security Group de servidor2 y el ping volvió a fallar | mínimo privilegio. Echo Reply llega en el capítulo 1 |
 | 3 | El camino de vuelta | Defensor | Ahora servidor2 quiere hacer ping a servidor1 | stateful (el Security Group recuerda la conversación), reglas de salida |
 | 4 | Demasiado ancho | Atacante | Te piden probar si una instancia ajena puede entrar | CIDR (/32, /16), el rango CIDR de la VPC; entra servidor3 |
 | 5 | La IP pública | Defensor | Una app llama a servidor2 por su IP pública y falla | IP pública, al salir cambia el remitente (NAT) |

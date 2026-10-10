@@ -74,6 +74,8 @@ Donde el código y los planes viejos difieren, manda el código.
   | 10 | 662 en 46 | 17 |
   | 11 | 662 en 46 | 17 |
 
+  Estos son los números del ensayo. Los reales, con los ajustes de la revisión, son otros: 701 tests en 48 archivos y 20 de Playwright al cerrar. Están en «Ajustes de la revisión (2026-10-09)».
+
 - **Plan ensayado (Tareas 1 a 11).**
   - Las tareas se implementaron en orden sobre una copia limpia de `58c548e` (`git archive` y `pnpm install --frozen-lockfile --offline`), con un commit por tarea.
   - Los bloques de código de este documento salen de esos commits. Se volvieron a aplicar, tal cual y tarea por tarea, sobre una segunda copia limpia.
@@ -90,19 +92,23 @@ Donde el código y los planes viejos difieren, manda el código.
   - `caller-controls-visibility`: la pantalla decide qué tarjeta se abre; ninguna tarjeta decide si se dibuja.
   - Un elemento de interfaz, un estándar: ver «Elementos de interfaz».
 - **El motor no cambia lo que calcula para el capítulo 4.** `src/levels/04-iaas/golden-traces.json` no se edita nunca: están prohibidos `vitest -u`, `--update` y editarlo a mano. Cada tarea lo comprueba con `git diff --exit-code src/levels/04-iaas/golden-traces.json`. Si el test dorado falla, se corrige el código.
-- **Cambios visibles del capítulo 4, todos pedidos por el spec:**
-  - El capítulo 1 va antes: el 04-01 se abre con una estrella en el 01-04, o con las suyas.
-  - El glosario del 04-01 y el 04-02 trae los términos del capítulo 1. Ping, ICMP, Echo Request, Echo Reply e IP privada tienen su definición nueva.
-  - La etiqueta «internet» es un término y su caja empieza por «Qué es».
-  - La caja de un paquete ICMP suma «Mensaje».
-  - El sello dice su estado al lector de pantalla.
-
-  Ningún otro texto del capítulo 4 cambia.
+- **Cambios visibles del capítulo 4.** Es lo que ve quien juega el 04-01 y el 04-02. La lista sale de `git diff 614d6a3 -- projects/follow-the-packet/src/copy`, contra el árbol final.
+  - **Pedidos por el spec:**
+    - El capítulo 1 va antes: el 04-01 se abre con una estrella en el 01-04, o con las suyas.
+    - El glosario del 04-01 y el 04-02 trae los términos del capítulo 1. Ping, ICMP, Echo Request, Echo Reply e IP privada tienen su definición nueva.
+    - La etiqueta «internet» es un término y su caja empieza por «Qué es».
+    - La caja de un paquete ICMP suma «Mensaje».
+    - El sello dice su estado al lector de pantalla.
+  - **Sumados por la revisión** (ver «Ajustes de la revisión (2026-10-09)»):
+    - La caja de internet dice «Lleva cada paquete de una red a otra.», con «paquete» y «red» como términos (`internetDoes`, Tarea 9).
+    - El texto del motivo `route-no-device` lleva sus términos (Tarea 8). Los trazados dorados del 04-01 y el 04-02 no llegan a ese motivo, así que ahí hoy no se ve.
+    - El aviso de un incidente bloqueado dice «termina antes el incidente anterior» (Tarea 2, ajuste 10).
+    - Junto a la ayuda de inspección (cuando no hay nada inspeccionado) hay una leyenda de los sellos y del candado (Tarea 7, ajuste 6).
 - **Scripts de edición.** Los cambios en archivos que ya existen llegan como scripts de Python 3 que se pegan tal cual en la terminal (`python3 - <<'EOF' … EOF`).
   - Cada reemplazo exige encontrar exactamente una vez el texto viejo. Si no, el script se detiene con `expected 1 match`: el árbol no es el que el plan supone. Se para y se avisa, sin arreglar a mano.
   - Un archivo nuevo, o uno que cambia casi entero, llega como «Contenido completo de `ruta`»: se escribe tal cual, creando su carpeta si no existe.
 - **"Listo"** = `pnpm check` pasa entero: tipos, lint, estructura, jscpd, Vitest y Playwright. Cada tarea termina con `pnpm check` en verde. Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
-- **Commits.** Un commit por tarea, con `git add` de las rutas que la tarea lista. Nunca se agregan `labs/03-ping-connectivity/` ni este plan.
+- **Commits.** Un commit por tarea, con `git add` de las rutas que la tarea lista. Nunca se agrega `labs/03-ping-connectivity/`. Los cambios de este plan sobre sí mismo (esta nota y «Ajustes de la revisión») van en el commit de la Tarea 11.
 - **Captura.** Solo la Tarea 3 cambia cómo se ve una entidad (la casa de Lucía). Regraba `tests/e2e/snapshots/entities-darwin.png` con `pnpm exec playwright test entities --update-snapshots=all` y la commitea. Ninguna otra tarea la toca.
 - **Servidores.** No se arranca `pnpm dev` ni nada en los puertos 5173 y 5180: ahí corre el servidor del estudiante. Playwright levanta su propio servidor en el 4183.
 - **Ningún comando `aws`.**
@@ -143,7 +149,7 @@ Regla del estudiante: un estándar por elemento. Antes de crear algo se reutiliz
 | Tarjeta junto a una pieza (reglas y terminal) | `ChipCard` (`src/ui/incident/map-cards/chip-card.tsx`) | `.card`; el diálogo, el título con foco, Esc y «Listo» de la tarjeta de tarea; `useFocusOnMount` | Nada de aspecto: el marco sale de `TaskCard` para que lo usen las dos tarjetas. La clase `.task-card` pasa a llamarse `.chip-card`, con los mismos valores |
 | Bandeja de fichas (Type, Source, Origen, Destino, Mensaje) | `ChipTray` (mismo archivo) | `.tray`, `.tray__name`, `.chip`, `aria-pressed` | Nada: se muda de `task-card.tsx` |
 | Línea de la terminal | `TerminalCard` | `.slot` (la ranura punteada de la regla nueva), `.slot__empty`, `code` (`--font-mono`) | Nada. No hay pantalla negra de terminal: sería un elemento nuevo |
-| Botón «Enviar» | `TerminalCard` | `.btn .btn--primary` | El estado `.btn:disabled` del botón compartido, solo con tokens (`--ink-soft`, `--paper-shade`): hoy ningún botón se desactiva, y «Enviar» espera una ficha de cada bandeja |
+| Botón «Enviar» | `TerminalCard` | `.btn .btn--primary` *(superado por el ajuste 8: queda un `.btn` normal)* | El estado `.btn:disabled` del botón compartido, solo con tokens (`--ink-soft`, `--paper-shade`): hoy ningún botón se desactiva, y «Enviar» espera una ficha de cada bandeja |
 | Botón «Listo» | `ChipCard` | `.btn` | Nada |
 | Etiquetas del mapa (tu-laptop, Casa de Lucía, firewall, router, internet) | `PieceLabel` | `.map-button`, `.map-button--name`, `.name-tag`, candado en tinta | Nada |
 | Alfombra del origen elegido | `DevicePiece` (`selected`) | La alfombra del plan 2 | Nada: es la de la tarjeta abierta |
@@ -172,8 +178,6 @@ Los textos finales, que el spec dejó para este plan, están completos en las Ta
 
 ## Desviaciones del spec y decisiones (para revisar antes de ejecutar)
 
-Las capturas que se citan (`shots/NN-….png`) salen del estado final del ensayo, a 1280×800 y en «Sin animaciones». Están en el scratchpad de la sesión que escribió el plan, `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/f9ca50bc-62fa-4496-8b80-72423b4cf50b/scratchpad/plan3/shots/`, que es temporal.
-
 1. **Nombres, artículo y etiqueta.** Ver la sección «Los nombres de la oficina». Los dispositivos se llaman por su nombre de equipo (`tu-laptop`, `laptop-lucia`, `impresora`): los textos armados dicen «el firewall de [laptop-lucia]», no «el firewall de la laptop de Lucía».
 2. **El aspecto de la tarjeta terminal.** Es la misma tarjeta de papel que la de reglas, con su marco:
    - el título «Terminal de [tu-laptop]»;
@@ -181,8 +185,8 @@ Las capturas que se citan (`shots/NN-….png`) salen del estado final del ensayo
    - las bandejas Origen, Destino y Mensaje, cada una solo si ofrece más de una ficha;
    - «Enviar», desactivado hasta tener una ficha de cada bandeja, y «Listo».
 
-   No hay pantalla negra de terminal (regla de un estándar por elemento). Capturas: `shots/03-0101-sent.png` y `shots/07-0102-reply-sent.png` del ensayo.
-3. **La tarjeta tapa piezas (E4).**
+   No hay pantalla negra de terminal (regla de un estándar por elemento).
+3. **La tarjeta tapa piezas (E4).** *Superada por el ajuste 1 de «Ajustes de la revisión (2026-10-09)»: la terminal ya no tapa la impresora en el 01-01. Lo que sigue es lo que decía el plan.*
    - En el 01-01, la terminal de tu laptop se abre a la derecha y tapa la impresora, cuya IP hay que leer.
    - Es la regla de hoy de `CardAnchor` (el lado con más espacio en la pantalla), que ya tapa servidor1 en el 04-01 (E4).
    - Este plan no la cambia, porque el plan del design system revisará las tarjetas. Mientras: la pista 1 dice que se pase el mouse sobre la impresora, la tarjeta se cierra con «Listo» o Esc, y la Tarea 11 lo anota en E4.
@@ -212,7 +216,7 @@ Las capturas que se citan (`shots/NN-….png`) salen del estado final del ensayo
 13. **Textos por tipo (F4).**
     - `route-private` en una oficina: «Viaja por dentro de la red de la oficina.»
     - La respuesta, según el firewall del destino: con Security Group, el texto de hoy (stateful); con el firewall de la laptop, «el firewall de [x] recuerda la conversación»; sin firewall, «La respuesta vuelve por el mismo camino.»
-    - La tarjeta de reglas sin reglas dice «No tiene reglas de entrada» con el término `rule` en una oficina. El texto llega calculado en `FirewallCard.empty`.
+    - La tarjeta de reglas sin reglas dice «No tiene reglas de entrada» con el término `rule` en una oficina. El texto llega calculado en `FirewallCard.empty`. *El ajuste 12 lo cambió para el firewall de la laptop: dice «No tiene reglas: no deja entrar nada.», sin «de entrada». El Security Group conserva «reglas de entrada».*
 14. **Reglas por tipo de firewall.** `ConfigurableParts.inboundRules` pasa a `Record<FirewallKind, boolean>`. Se abren con un término cada una: las de `host-firewall` con `rule` (01-04) y las de `security-group` con `inbound-rule` (04-01).
 15. **Solo un firewall bloquea (G3).**
     - Cada paquete calculado trae `blocked` (un paso de firewall con `drop`) e `intruder` (un flujo prohibido); `lost` se va.
@@ -231,11 +235,84 @@ Las capturas que se citan (`shots/NN-….png`) salen del estado final del ensayo
 1. **Los nombres dentro de las frases** (Desviación 1). Tests:
    - Tarea 9: `an office names its own network and its own firewalls, not the VPC nor a Security Group`;
    - Tarea 6: `a packet the player sent is inspected like a flow`.
-   - Capturas: `shots/09-0103-lost-inspected.png` y `shots/11-0104-blocked-inspected.png`.
-2. **La terminal que tapa la impresora en el 01-01** (Desviación 3). Captura: `shots/03-0101-sent.png`.
+2. **La terminal que ya no tapa la impresora en el 01-01** (Desviación 3, superada por el ajuste 1). Tests:
+   - Playwright, `chapter-1.spec.ts`: `in 01-01 the open terminal covers neither the printer, nor its stamp, nor the laptop of Lucía`;
+   - `src/scene/layout.test.ts`: los de `terminalSide`. En el 01-03 puede que ningún lado quede libre: entonces vuelve a la regla de antes (`falls back to the side with more room when neither side is clear`, probado con el origen tu-laptop).
 3. **04-01 abierto con estrellas guardadas.** Test: Tarea 10, `04-01 stays open with its stored stars although chapter 1 has none, and 04-02 opens after it`.
 4. **Perdido no es bloqueado** (G3). Test: Tarea 5, `a packet that reaches no device and that no firewall stopped is lost, not blocked`. El atacante del 04-01 sigue bloqueado: lo fija el test dorado.
 5. **La escalera.** Tests: Tarea 8, `finds a term in a definition by whole words, ignoring case`, y la prueba de fugas por incidente. Tarea 9: `the official name of ICMP says Internet before the term internet arrives: the one declared leak`.
+
+## Ajustes de la revisión (2026-10-09)
+
+Mientras se ejecutaba el plan, el estudiante aprobó 13 ajustes. Donde contradicen el texto de este documento, mandan ellos. Los bloques de código de las tareas son los del ensayo y no se reescribieron: manda el árbol final.
+
+Cada ajuste dice qué cambió y en qué commit. «Este commit» es el de la Tarea 11, que también agrega este plan.
+
+1. **La terminal no tapa su destino.**
+   - La regla `terminalSide` de `src/scene/layout.ts` abre la terminal en el lado que queda dentro del mapa y no tapa la etiqueta de otra pieza.
+   - Las tarjetas de un origen se abren a 68 px de su pieza.
+   - En el 01-03 puede que ningún lado quede libre: entonces vuelve a la regla de antes, lo mejor posible.
+   - Cambia la Desviación 3.
+   - La regla: `9acb697`. Se comprobó en el 01-01 real, a 1280×800 y a 1440×900, y no hizo falta cambiar nada: `93f23a9`. La prueba de Playwright: `1b5010f`.
+2. **G3 y G8 con datos reales.**
+   - `src/ui/incident/stamp-states.test.ts` pasa paquetes reales por el juego hasta el sello. Vive en `ui` porque ESLint no deja que `scene` importe `game`: `36423f0`.
+   - Playwright comprueba «Perdido.» y «Bloqueado.»: `1b5010f`.
+3. **El capítulo 1 en `src/game/incidents.test.ts`.** Un bloque con los incidentes reales. El 01-01 y el 01-02: `93f23a9`. El 01-04: `1495dfa`.
+4. **`useSendOnce` tiene su test** (`src/scene/traffic/use-packet-runs.test.ts`): `36423f0`.
+5. **La prueba humana pasa a `siguiente`.** En la hoja de ruta, la fila «Prueba humana del capítulo 1» deja de ser `idea`. Lleva la decisión pendiente del «primer día lento»: si algún incidente se fusiona. Este commit.
+6. **La leyenda de los sellos y del candado.** Está junto a la ayuda de inspección (cuando no hay nada inspeccionado) y desaparece mientras se inspecciona una pieza (`SCREEN_TEXT.stampLegend`): `9acb697`.
+7. **La tarjeta de reglas vacía del firewall de la laptop** tiene su test: `firewallCard(…, 'fw-lucia').empty`. `1495dfa`.
+8. **«Enviar» es un `.btn` normal.** El plan decía `.btn .btn--primary`: `9acb697`.
+9. **Dos textos de Lucía que no eran ciertos.**
+   - La pista 1 del 01-02 hablaba de todo ICMP; ahora habla solo del ping: `93f23a9`.
+   - El reporte del 01-04 dice que el firewall está en «mi laptop», no en todas: `1495dfa`.
+10. **El aviso de un incidente bloqueado nombra el anterior:** «termina antes el incidente anterior» (`d726ba9`). La lista de cambios visibles del capítulo 4 de este plan se corrigió en este commit.
+11. **`namedTerms` entiende plurales** («redes», «reglas»): `93f23a9`. Ninguna definición tuvo que cambiar.
+12. **Sin «de entrada» en el firewall de la laptop.**
+    - Su etiqueta dice «Reglas»; la tarjeta vacía, «No tiene reglas: no deja entrar nada.»; la ranura, «Regla nueva».
+    - Cambia el texto «No tiene reglas de entrada» de la Desviación 13 para ese firewall. El Security Group no cambia.
+    - `1495dfa`.
+13. **Detalles de la revisión.**
+    - La convención de la etiqueta «Casa de Lucía» se comprobó y ya la cumplía: `06cec68`.
+    - `packetMessage` en lugar de `icmpType === 8`, y `Chip` y `SendTray` ya no se exportan: `33b79be`.
+    - `tests/e2e/saved-progress.ts` importa `PROGRESS_KEY` de `src/storage/progress.ts`: `93f23a9`.
+    - Se quitaron de este documento las citas de las capturas temporales del ensayo: este commit.
+
+Quedó como lo decía el plan, por decisión del estudiante:
+- Los dispositivos se llaman por su nombre de equipo: `tu-laptop`, `laptop-lucia` e `impresora`.
+- Los textos que arma el juego los marcan con `nameTag`.
+- Lucía dice «mi laptop», sin marca.
+
+Otras dos decisiones:
+- Un test fija la diferencia entre `replied` y `any`: `21ca3ff`.
+- `src/copy/CLAUDE.md` y `RULES_TERM['host-firewall'] = 'rule'` se corrigieron en `1495dfa`.
+
+### Qué texto de este documento ya no vale
+
+- La Desviación 3 (la terminal tapa la impresora): la supera el ajuste 1.
+- Del «Review Focus», el punto 2 se reescribió por lo mismo.
+- La Desviación 13, en «No tiene reglas de entrada» del firewall de la laptop: la supera el ajuste 12.
+- La fila «Enviar» de «Elementos de interfaz»: la supera el ajuste 8.
+- «Ningún otro texto del capítulo 4 cambia» no era cierto. Se quitó y la lista se completó.
+- Los números de tests del plan son los del ensayo. Los reales están en la tabla de abajo.
+
+### Tests reales al cerrar cada tarea
+
+Vitest (tests en archivos) y Playwright. La tabla de «Global Constraints» queda con los números del ensayo.
+
+| Tarea | Commit | Vitest | Playwright |
+|-------|--------|--------|------------|
+| 1 | `20bc9be` | 529 en 44 | 14 |
+| 2 | `d726ba9` | 531 en 44 | 14 |
+| 3 | `06cec68` | 532 en 44 | 14 |
+| 4 | `21ca3ff` | 556 en 44 | 14 |
+| 5 | `36423f0` | 570 en 46 | 14 |
+| 6 | `33b79be` | 580 en 47 | 14 |
+| 7 | `9acb697` | 603 en 48 | 14 |
+| 8 | `93f23a9` | 653 en 48 | 14 |
+| 9 | `1495dfa` | 701 en 48 | 14 |
+| 10 | `1b5010f` | 701 en 48 | 20 |
+| 11 | este commit | 701 en 48 | 20 |
 
 ## Árbol al terminar (solo lo nuevo o cambiado)
 
@@ -7160,6 +7237,12 @@ git commit -m "test(e2e): play chapter 1 to the end and keep 04-01 open with its
 ---
 
 ### Task 11: Documentos: backlog, hoja de ruta, README y el spec anterior
+
+> **Ajustes de la revisión (ver esa sección):**
+> - La nota de E4 del backlog dice lo que es cierto tras el ajuste 1. El script de abajo decía que en el 01-01 la terminal tapa la impresora; ya no.
+> - La fila «Prueba humana del capítulo 1» de la hoja de ruta pasa de `idea` a `siguiente`, con la decisión pendiente del «primer día lento».
+> - El commit incluye este plan.
+> - Los números de tests de esta tarea son los reales: 701 tests en 48 archivos y 20 de Playwright, no los del ensayo.
 
 El cierre en los documentos:
 - **El backlog:** marca F4 a F6, G3 a G5, G7 y G8 como hechos, con su tarea. Además anota que E4 alcanza a la terminal.
