@@ -12,6 +12,8 @@
 
 > **Estado (design system, `docs/plans/2026-10-09-follow-the-packet-design-system.md`):** hecho G1 (las capturas de `#/entidades` no toleran ningún píxel distinto, salvo los bordes que Playwright cuenta como antialiasing). Del bloque D quedan decididas `design-tokens` y `primitive-semantic-tokens`; sigue sin decidir `prefer-radix`. Siguen pendientes E4, E8, E9, G2, G9, A1, A2 y H1 a H3: la migración no toca el código de ninguno. Con las escalas de letra y espacio, la terminal acoplada de Casa de Lucía en el 01-03 crece 8 px (de 495 a 503 de alto): a 1280×800 tapa 15 px de la parte de abajo del sello perdido en vez de 7, y a 1366×768, 31 en vez de 23; el «?» se sigue viendo y a 1440×900 no tapa nada. Sigue siendo el pendiente que anotó el plan 3.
 
+> **Estado (temario de 33 capítulos, `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`):** `CHAPTERS` y el roadmap pasan a los 33 capítulos del juego. Queda abierto I1 (bloque I); I2 lo decidió el estudiante. Siguen pendientes E4, E8, E9, G2, G9, A1, A2 y H1 a H3.
+
 Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
@@ -149,6 +151,15 @@ Lo encontró la revisión final del plan `docs/plans/2026-10-09-follow-the-packe
 | H1 | Al explorar las 12 combinaciones del 01-03, seis sellos «perdido» se apilan sobre las etiquetas de «Casa de Lucía» y del router | Pendiente |
 | H2 | La terminal no da retroalimentación al lector de pantalla después de «Enviar»: falta una línea `aria-live` que diga cómo terminó el paquete | Pendiente |
 | H3 | El texto de ayuda de la inspección y la leyenda de los sellos y el candado se leen como un solo bloque gris, y la leyenda omite el sello del intruso (doble anillo ✓) que se ve en el 04-01 | Pendiente |
+
+## Bloque I: lo que dejó el temario de 33 capítulos (2026-10-10)
+
+Lo dejó el plan `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`. Ninguno impide jugar los capítulos 1 y 4.
+
+| # | Hallazgo | Destino |
+|---|----------|---------|
+| I1 | Cada incidente cita una lección de `syllabus.md` (`src/levels/registry.test.ts`, «cites a lesson of syllabus.md and a concept note that exists»). Los capítulos 3, 17, 20, 24 y del 25 en adelante no tienen lección en el curso: su primer incidente no podrá cumplirlo. Hoy lo cumplen los seis incidentes que existen, de los capítulos 1 y 4 | Pendiente: decidirlo cuando uno de esos capítulos tenga su primer incidente (por ejemplo, que la lección sea opcional si el capítulo no nombra módulos del curso, o que cite un tema de la hoja de ruta de AWS) |
+| I2 | 31 de los 33 capítulos son «Próximamente» y usan la tarjeta `soon`, que se desvanece entera con `opacity: 0.5`. Medido sobre el papel de la página: el número en bermellón queda en 2.25:1, el título en 2.98:1 y «Próximamente» en 2.21:1, bajo el 4.5:1 de WCAG 1.4.3; sin desvanecer serían 5.26, 13.36 y 6.45 | Decidido por el estudiante (2026-10-10): se queda el desvanecido («me gustan que estén con opacidad»). Es contenido inactivo, un capítulo que aún no se abre. `DESIGN.md` («Contrast») y la guía de `src/design/` lo anotan con sus cifras, para que nadie lo «arregle» |
 
 ## Fuera de este backlog (decide el estudiante)
 

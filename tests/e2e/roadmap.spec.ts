@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
-const SOON_CHAPTER_COUNT = 18;
+const SOON = 'Próximamente';
+const SOON_CHAPTER_COUNT = 31;
 
 test('the roadmap loads every chapter without console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
-  await expect(page.locator('li.card--soon')).toHaveCount(SOON_CHAPTER_COUNT);
+  await expect(page.getByText(SOON, { exact: true })).toHaveCount(SOON_CHAPTER_COUNT);
   expect(errors).toEqual([]);
 });
 

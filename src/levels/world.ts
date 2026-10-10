@@ -21,7 +21,7 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove):
   return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule });
 }
 
-/** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in course order. */
+/** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in game order. */
 export function startWorld(incidents: Incident[], incidentId: string): Network {
   const incident = findIncident(incidents, incidentId);
   if (incident.base) return incident.base;

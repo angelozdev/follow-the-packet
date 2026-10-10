@@ -53,7 +53,7 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 - **The grain.** The page's `--grain` darkens its paper by up to about 4 % toward ink, to `#eee9df`; the test treats that darkest pixel as the page.
 - **Guard.** `src/design/tokens.test.ts` reads `tokens.css` and asserts these pairs from the roles (`--color-danger` and `--color-emphasis` as text on every paper, `--color-on-fill` on both, `--color-focus` on every paper), so a new value that falls under 4.5:1 or 3:1 fails the test. The map floor is a lit render, not a token, so its ratio is measured by hand.
 - **Left out on purpose.** Vermilion beside ink (the outline of a blocking bar, the Atacante cube beside the intruder's rhombus, the tooltip's `--shadow-tip`) is 2.5:1, below 3:1. The ink outline already separates the shape from the paper (the test asserts that), the shadow is decoration, and the state also changes a shape or a word.
-- **Not covered.** A `soon` card fades all its content with `opacity: 0.5`; its chapter numbers, in vermilion, and its ink text land near 2:1.
+- **Faded on purpose.** A `soon` card fades all its content with `opacity: 0.5`, on the student's choice (2026-10-10, «me gustan que estén con opacidad»): it is inactive content, a chapter that does not open yet. Measured on the page's paper, its vermilion number lands at 2.25:1, its ink title at 2.98:1 and «Próximamente» at 2.21:1 (5.26, 13.36 and 6.45 without the fade). Keep the fade: the dashed border, the missing shadow and the word «Próximamente» also mark the state, and raising these ratios is the student's call, not a fix.
 
 ## Type
 

@@ -1,5 +1,5 @@
-export { CHAPTERS } from './chapters';
-export type { Chapter } from './chapters';
+export { CHAPTERS, TIERS } from './chapters';
+export type { Chapter, Tier } from './chapters';
 export type {
   AddressChip,
   ExplanationOption,

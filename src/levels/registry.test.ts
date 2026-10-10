@@ -12,7 +12,7 @@ const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '04-01', '04-02'];
 const HINT_COUNT = 2;
 const lessons = syllabusLessons();
 
-it('registers the prototype incidents in course order', () => {
+it('registers the prototype incidents in game order', () => {
   expect(INCIDENTS.map((i) => i.id)).toEqual(PROTOTYPE_IDS);
 });
 
@@ -21,7 +21,7 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(incidentSchema.safeParse(incident).success).toBe(true);
   });
 
-  it('belongs to a chapter of the syllabus', () => {
+  it('belongs to a game chapter', () => {
     expect(CHAPTERS.map((c) => c.number)).toContain(incident.chapter);
   });
 
