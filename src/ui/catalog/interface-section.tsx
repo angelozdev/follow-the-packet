@@ -32,7 +32,7 @@ function Family({ name, children }: { name: string; children: ReactNode }) {
   );
 }
 
-/** Every element of the interface in every variant and state, drawn with the design-system primitives the screens use (and the hand-drawn inner markup of the map cards), so its capture shows any change to how one looks. */
+/** Every element of the interface in every variant and state, drawn with the design-system primitives the screens use and, where the screens use no primitive, with their own plain classes and markup (the slots, the feedback lines, the text styles and the contents of the cards), so its capture shows any change to how one looks. */
 export function InterfaceSection() {
   return (
     <section aria-labelledby="catalog-interface" className="catalog__section">
