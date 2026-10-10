@@ -47,8 +47,12 @@ export function saveStars(current: Progress, levelId: string, stars: number, sto
   return next;
 }
 
-/** True when every incident before this one, in course order, has at least one star; the first one is always open. */
+function hasStars(progress: Progress, levelId: string): boolean {
+  return (progress[levelId] ?? 0) > 0;
+}
+
+/** True when the incident is the first one in course order, when the one right before it has a star, or when it already has a star itself: an incident the player already won never locks again. */
 export function isUnlocked(level: LevelEntry, progress: Progress, levels: LevelEntry[]): boolean {
   const index = levels.findIndex((l) => l.id === level.id);
-  return levels.slice(0, Math.max(index, 0)).every((l) => (progress[l.id] ?? 0) > 0);
+  return index <= 0 || hasStars(progress, level.id) || hasStars(progress, levels[index - 1].id);
 }

@@ -12,7 +12,7 @@ export const ROADMAP_TEXT = {
 
 export const NOTICE_TEXT = {
   notFound: { title: 'Incidente no encontrado', body: (id: string) => `No existe el incidente ${id}.` },
-  locked: { title: 'Incidente bloqueado', body: (id: string) => `Para abrir el ${id}, termina antes los incidentes anteriores.` },
+  locked: { title: 'Incidente bloqueado', body: (id: string) => `Para abrir el ${id}, termina antes el incidente anterior.` },
   back: 'Volver al roadmap',
 } as const;
 

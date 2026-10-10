@@ -64,9 +64,13 @@ describe('progress', () => {
     expect(isUnlocked(COURSE[1], { '04-01': 1 }, COURSE)).toBe(true);
   });
 
-  it('a chapter opens only when every incident of the chapters before it has a star', () => {
+  it('the first incident of a chapter opens when the last one of the chapter before has a star', () => {
     expect(isUnlocked(COURSE[2], { '04-01': 3 }, COURSE)).toBe(false);
-    expect(isUnlocked(COURSE[2], { '04-02': 3 }, COURSE)).toBe(false);
-    expect(isUnlocked(COURSE[2], { '04-01': 1, '04-02': 1 }, COURSE)).toBe(true);
+    expect(isUnlocked(COURSE[2], { '04-02': 1 }, COURSE)).toBe(true);
+  });
+
+  it('an incident with stars stays open even when the one before it has none', () => {
+    expect(isUnlocked(COURSE[1], { '04-02': 2 }, COURSE)).toBe(true);
+    expect(isUnlocked(COURSE[2], { '05-01': 1 }, COURSE)).toBe(true);
   });
 });

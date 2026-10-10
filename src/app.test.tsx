@@ -34,6 +34,12 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: NOTICE_TEXT.locked.title })).toBeInTheDocument();
   });
 
+  it('the locked notice names the single incident to finish first', () => {
+    window.location.hash = `#/level/${INCIDENTS[1].id}`;
+    render(<App />);
+    expect(screen.getByText(`Para abrir el ${INCIDENTS[1].id}, termina antes el incidente anterior.`)).toBeInTheDocument();
+  });
+
   it('the roadmap does not link to the entity catalog', () => {
     render(<App />);
     expect(document.querySelector('a[href="#/entidades"]')).toBeNull();
