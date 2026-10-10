@@ -47,7 +47,7 @@ function escapeForPattern(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Returns the terms whose name the text says as whole words, ignoring case, alone or in the Spanish plural made with s or es: «red» in «una Red» and in «redes», but not in «Redshift». */
+/** Returns the terms whose name the text says as whole words, ignoring case, alone or in the Spanish plural made with s or es: «red» in «una Red» and in «redes», but not in «Redshift». Only the end of the whole name takes the plural: «IP privadas» is caught, «IPs privadas» and «direcciones IP» are not. */
 export function namedTerms(text: string, terms: TermId[]): TermId[] {
   return terms.filter((term) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeForPattern(TERMS[term].name)}(?:e?s)?(?![\\p{L}\\p{N}])`, 'iu').test(text));
 }

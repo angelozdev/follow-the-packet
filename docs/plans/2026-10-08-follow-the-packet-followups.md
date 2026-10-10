@@ -8,7 +8,7 @@
 
 > **Estado (capítulo 1, plan 2, `docs/plans/2026-10-09-follow-the-packet-entity-catalog.md`):** hechos F1, F2, F3 y E6 (el «!» vive dentro de la etiqueta). E7 queda decidido por la ficha de Actor: un personaje no lleva candado. E5 quedó resuelto con los sellos cercanos (Tarea 10 y arreglo final). Siguen pendientes E4, E8 y E9, F4 a F6 (plan 3), el bloque G, A1, A2 y el bloque D.
 
-> **Estado (capítulo 1, plan 3, `docs/plans/2026-10-09-follow-the-packet-chapter-1-send.md`):** hechos F4 (los textos de la respuesta y de `route-private` según el tipo de red y de firewall), F5, F6, G3, G4, G5, G7 y G8. E4 sigue pendiente para la tarjeta de tarea del 04-01. La tarjeta terminal ya no lo sufre en el 01-01: se abre en el lado libre (`terminalSide` en `src/scene/layout.ts`) y no tapa la impresora. Solo en el 01-03, con el exterior dibujado, puede que ningún lado quede libre: entonces toma el lado con más espacio y puede tapar piezas. Siguen pendientes E4, E8, E9, G1, G2, G9, A1, A2 y el bloque D.
+> **Estado (capítulo 1, plan 3, `docs/plans/2026-10-09-follow-the-packet-chapter-1-send.md`):** hechos F4 (los textos de la respuesta y de `route-private` según el tipo de red y de firewall), F5, F6, G3, G4, G5, G7 y G8. E4 sigue pendiente para la tarjeta de tarea del 04-01. La tarjeta terminal ya no lo sufre en el 01-01: se abre en el lado libre (`terminalSide` en `src/scene/layout.ts`) y no tapa la impresora. En el 01-03, con el exterior dibujado, ningún lado queda libre: la terminal se acopla en la esquina inferior izquierda del mapa (la revisión final del plan 3 lo arregló). A 1440×900 o más no tapa etiquetas ni sellos. A 1280×800 y 1366×768 la de Casa de Lucía, que es más alta porque su título ocupa dos líneas, aún tapa la parte de abajo del sello perdido, y la pista 2 dice que se cierra con «Listo». G6 también está hecho (`6e5630d`, Tarea 11 del plan 2). Siguen pendientes E4, E8, E9, G1, G2, G9, A1, A2, H1 a H3 y el bloque D.
 
 Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
@@ -100,7 +100,7 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 | E1 | El cuadro de inspección salía cortado al final del panel | Hecho en `53c0489`: flota en la esquina inferior derecha del mapa |
 | E2 | «Puerta debe llamarse explícitamente Security Group y al hacerle hover sí se muestre una descripción de lo que es» | Hecho en el plan 3 |
 | E3 | «Prefiero un button que me diga: Enviar solución», para seguir probando si quedó algo abierto | Hecho en el plan 3 |
-| E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente (revisión del plan 2) |
+| E4 | La tarjeta de tarea tapa la otra instancia: en servidor2 tapa servidor1 y el camino; en servidor1 tapa servidor2 y sus sellos | Pendiente para la tarjeta de tarea del 04-01 (revisión del plan 2). La terminal del capítulo 1 ya no lo sufre: se abre en el lado libre y, en el 01-03, se acopla en la esquina inferior izquierda (`terminalSide` y `dockOffset` en `src/scene/layout.ts`) |
 | E5 | Con el ping resuelto, los sellos ✓ y ✕ junto al Security Group de servidor2 se tocan unos 8×18 px; la prueba de superposición solo mira el inicio del 04-01 | Hecho en el capítulo 1, plan 2 (`f1aeecf`, `f2fee1e`): los sellos cercanos se separan según su lugar en la pantalla |
 | E6 | En «Sin animaciones», el «!» de intrusión tapa la etiqueta de servidor2 | Hecho en el capítulo 1, plan 2 (Tarea 6): el «!» va dentro de la etiqueta |
 | E7 | El atacante se dibuja sin candado; el spec dice que una pieza fija lleva candado | Decidido en el capítulo 1, plan 2: la ficha de Actor no lleva candado (es un personaje) |
@@ -117,7 +117,7 @@ Todo es inalcanzable desde el juego de hoy. Lo encontraron las revisiones del pl
 | F1 | Los dispositivos de una red `office` no tienen posición en el mapa (`scene/layout.ts`): etiquetas, tarjetas y `Building` fallarían al dibujar una oficina | Hecho en el plan 2 (Tarea 5) |
 | F2 | `edge` (`router` o `internet-gateway`) no se usa ni se valida contra el `kind` de la red; la etapa `route` escribe `igw` aunque la red sea una oficina | Hecho en el plan 2 (Tareas 1 y 5) |
 | F3 | Faltan tests de escena para el ping a la propia IP y para la IP que nadie tiene | Hecho en el plan 2 (Tarea 5) |
-| F4 | Los textos de la respuesta y de `route-private` todavía nombran el Security Group y la VPC, también en una oficina | Hecho en el capítulo 1, plan 3 (Tarea 9): la red de la oficina y el firewall de la laptop tienen sus textos |
+| F4 | Los textos de la respuesta y de `route-private` todavía nombran el Security Group y la VPC, también en una oficina | Hecho en el capítulo 1, plan 3 (Tarea 9): la red de la oficina y el firewall de la laptop tienen sus textos. Los textos nuevos de `route-private` y de la respuesta aún no se dibujan: la caja de inspección muestra solo el paso en que el paquete se detuvo (`stopStep`) |
 | F5 | El esquema acepta dos dispositivos con la misma IP privada | Hecho en el capítulo 1, plan 3 (Tarea 1) |
 | F6 | Una VPC con rango no privado (por ejemplo `100.64.0.0/16`) deja que un actor de internet llegue a una IP privada; antes del plan 1 se bloqueaba. El spec dice que en el juego toda VPC usa rangos de RFC 1918 | Hecho en el capítulo 1, plan 3 (Tarea 1): el esquema exige un rango de RFC 1918 en toda red |
 
@@ -132,10 +132,20 @@ Lo encontraron las revisiones del plan `docs/plans/2026-10-09-follow-the-packet-
 | G3 | Todo `timeout` que no es «perdido» se dibuja como un bloqueo de firewall, con ✕ y estallido (`src/scene/traffic/flow-look.ts`): un `timeout` de ruta o de DNS parecería un firewall que dice no | Hecho en el capítulo 1, plan 3 (Tarea 5): solo un firewall bloquea; lo demás se dibuja como perdido |
 | G4 | En una oficina sin nadie afuera, un paquete a una IP pública suma el punto del borde, que no se dibuja: el paquete viajaría a un lugar invisible (`src/scene/layout.ts`, `pathFor`) | Hecho en el capítulo 1, plan 3 (Tarea 5) |
 | G5 | `spreadStamps` no tiene test del encadenamiento (A cerca de B, B cerca de C, A lejos de C) y no compara grupos entre sí: `[[0,0],[0,0],[1,0]]` deja dos sellos a 0.72, bajo el mínimo de 0.8 (`src/scene/layout.ts`) | Hecho en el capítulo 1, plan 3 (Tarea 5): dos grupos que se acercan se unen |
-| G6 | La etiqueta del actor tapa la mitad de abajo de su cubo (`LABEL_OFFSET.actor` en `src/scene/layout.ts`) | Plan 2, Tarea 11 |
+| G6 | La etiqueta del actor tapa la mitad de abajo de su cubo (`LABEL_OFFSET.actor` en `src/scene/layout.ts`) | Hecho en el capítulo 1, plan 2 (Tarea 11, `6e5630d`) |
 | G7 | `inspect()` devuelve la inspección del borde y de internet aunque nadie esté afuera y esas piezas no se dibujen (`src/game/view/inspection.ts:131-132`); hoy la interfaz no llega ahí | Hecho en el capítulo 1, plan 3 (Tarea 6) |
 | G8 | El lector de pantalla no dice el estado del sello: ✓, ✕ y ? suenan igual (`src/scene/entities/stamp.tsx`). Viene de antes del plan 2 | Hecho en el capítulo 1, plan 3 (Tarea 5): el sello dice su paquete y cómo terminó |
 | G9 | La prueba animada del catálogo espera 7 s calculados a mano (`WATCH_MS` en `tests/e2e/entities.spec.ts:7`): si el horario crece, deja de cubrir el último paquete sin avisar | Pendiente: calcularlo desde el horario |
+
+## Bloque H: lo que dejó el capítulo 1 jugable (capítulo 1, plan 3, 2026-10-09)
+
+Lo encontró la revisión final del plan `docs/plans/2026-10-09-follow-the-packet-chapter-1-send.md` (revisión final del plan 3, 2026-10-09). Ninguno impide jugar el capítulo 1.
+
+| # | Hallazgo | Destino |
+|---|----------|---------|
+| H1 | Al explorar las 12 combinaciones del 01-03, seis sellos «perdido» se apilan sobre las etiquetas de «Casa de Lucía» y del router | Pendiente |
+| H2 | La terminal no da retroalimentación al lector de pantalla después de «Enviar»: falta una línea `aria-live` que diga cómo terminó el paquete | Pendiente |
+| H3 | El texto de ayuda de la inspección y la leyenda de los sellos y el candado se leen como un solo bloque gris, y la leyenda omite el sello del intruso (doble anillo ✓) que se ve en el 04-01 | Pendiente |
 
 ## Fuera de este backlog (decide el estudiante)
 

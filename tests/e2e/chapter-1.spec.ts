@@ -10,7 +10,9 @@ const PRINTER_LABEL = 'impresora con candado';
 const PRINTER_STAMP = 'Paquete: ping de tu-laptop a impresora. Llegó.';
 const LUCIA_LAPTOP_LABEL = 'laptop-lucia con candado';
 const LOST_PING_STAMP = /^Paquete: ping de Casa de Lucía/;
-const YOUR_PING_STAMP = /^Paquete: ping de tu-laptop a /;
+const YOUR_PING_STAMP = /^Paquete: ping de tu-laptop a laptop-lucia\./;
+const ROUTER_LABEL = 'router con candado';
+const INTERNET_LABEL = 'internet';
 
 function terminal(page: Page): Locator {
   return page.getByRole('dialog', { name: /^Terminal de/ });
@@ -30,11 +32,21 @@ async function next(page: Page, title: string) {
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 }
 
-async function sendFromHomeAndYours(page: Page) {
+async function sendFromHome(page: Page) {
   await openTerminal(page);
   await pick(page, 'Casa de Lucía');
   await expect(terminal(page)).toHaveAccessibleName('Terminal de Casa de Lucía');
-  await pick(page, '192.168.1.10', ECHO_REQUEST, SEND, 'tu-laptop', '192.168.1.11', SEND);
+  await pick(page, '192.168.1.10', ECHO_REQUEST, SEND);
+}
+
+async function sendFromYours(page: Page) {
+  await pick(page, 'tu-laptop', '192.168.1.11', SEND);
+  await expect(terminal(page)).toHaveAccessibleName('Terminal de tu-laptop');
+}
+
+async function sendFromHomeAndYours(page: Page) {
+  await sendFromHome(page);
+  await sendFromYours(page);
 }
 
 async function pingFromOutside(page: Page) {
@@ -45,6 +57,7 @@ async function pingFromOutside(page: Page) {
 }
 
 async function expectApart(card: Locator, target: Locator) {
+  await expect(card).toBeVisible();
   await expect(target).toBeVisible();
   expect(overlaps(await card.boundingBox(), await target.boundingBox())).toBe(false);
 }
@@ -95,6 +108,7 @@ test.describe('Sin animaciones', () => {
 
   test('after the pings of 01-03, no label or stamp overlaps, and the lost ping says why', async ({ page }) => {
     await pingFromOutside(page);
+    await expect(page.getByRole('button', { name: LOST_PING_STAMP })).toBeVisible();
     await expect.poll(() => overlappingPairs(page)).toEqual([]);
     await page.getByRole('button', { name: LOST_PING_STAMP }).hover();
     await expect(page.getByRole('region', { name: 'ping de Casa de Lucía a 192.168.1.10' })).toContainText('Internet no entrega paquetes a una IP privada');
@@ -108,6 +122,17 @@ test.describe('Sin animaciones', () => {
     await expectApart(card, page.getByRole('button', { name: PRINTER_LABEL, exact: true }));
     await expectApart(card, page.getByRole('button', { name: PRINTER_STAMP, exact: true }));
     await expectApart(card, page.getByRole('button', { name: LUCIA_LAPTOP_LABEL, exact: true }));
+  });
+
+  test('in 01-03 the open terminal covers neither the lost ping, nor the router, nor the internet, for any origin', async ({ page }) => {
+    await startWithProgress(page, { '01-02': 3 });
+    await page.goto('/#/level/01-03');
+    for (const send of [sendFromHome, sendFromYours]) {
+      await send(page);
+      for (const target of [page.getByRole('button', { name: LOST_PING_STAMP }), page.getByRole('button', { name: ROUTER_LABEL, exact: true }), page.getByRole('button', { name: INTERNET_LABEL, exact: true })]) {
+        await expectApart(terminal(page), target);
+      }
+    }
   });
 
   test('in 01-03 the stamp of the ping from outside tells a screen reader that it was lost', async ({ page }) => {

@@ -74,7 +74,7 @@ Donde el código y los planes viejos difieren, manda el código.
   | 10 | 662 en 46 | 17 |
   | 11 | 662 en 46 | 17 |
 
-  Estos son los números del ensayo. Los reales, con los ajustes de la revisión, son otros: 701 tests en 48 archivos y 20 de Playwright al cerrar. Están en «Ajustes de la revisión (2026-10-09)».
+  Estos son los números del ensayo. Los reales, con los ajustes de la revisión, son otros: 701 tests en 48 archivos y 20 de Playwright al cerrar la Tarea 11, y 712 en 48 y 21 con el commit de la revisión final. Están en «Ajustes de la revisión (2026-10-09)» y en «Revisión final (2026-10-09)».
 
 - **Plan ensayado (Tareas 1 a 11).**
   - Las tareas se implementaron en orden sobre una copia limpia de `58c548e` (`git archive` y `pnpm install --frozen-lockfile --offline`), con un commit por tarea.
@@ -237,7 +237,8 @@ Los textos finales, que el spec dejó para este plan, están completos en las Ta
    - Tarea 6: `a packet the player sent is inspected like a flow`.
 2. **La terminal que ya no tapa la impresora en el 01-01** (Desviación 3, superada por el ajuste 1). Tests:
    - Playwright, `chapter-1.spec.ts`: `in 01-01 the open terminal covers neither the printer, nor its stamp, nor the laptop of Lucía`;
-   - `src/scene/layout.test.ts`: los de `terminalSide`. En el 01-03 puede que ningún lado quede libre: entonces vuelve a la regla de antes (`falls back to the side with more room when neither side is clear`, probado con el origen tu-laptop).
+   - `src/scene/layout.test.ts`: los de `terminalSide`. En el 01-03 ningún lado queda libre: la terminal se acopla en la esquina inferior izquierda del mapa (`no side is clear, so the terminal docks in the bottom left corner of the map`, con los dos orígenes y las dos ventanas), y no tapa etiquetas ni sellos (`the docked terminal covers no label and no possible stamp`).
+   - Playwright, `chapter-1.spec.ts`: `in 01-03 the open terminal covers neither the lost ping, nor the router, nor the internet, for any origin`. Lo suma la revisión final.
 3. **04-01 abierto con estrellas guardadas.** Test: Tarea 10, `04-01 stays open with its stored stars although chapter 1 has none, and 04-02 opens after it`.
 4. **Perdido no es bloqueado** (G3). Test: Tarea 5, `a packet that reaches no device and that no firewall stopped is lost, not blocked`. El atacante del 04-01 sigue bloqueado: lo fija el test dorado.
 5. **La escalera.** Tests: Tarea 8, `finds a term in a definition by whole words, ignoring case`, y la prueba de fugas por incidente. Tarea 9: `the official name of ICMP says Internet before the term internet arrives: the one declared leak`.
@@ -251,7 +252,7 @@ Cada ajuste dice qué cambió y en qué commit. «Este commit» es el de la Tare
 1. **La terminal no tapa su destino.**
    - La regla `terminalSide` de `src/scene/layout.ts` abre la terminal en el lado que queda dentro del mapa y no tapa la etiqueta de otra pieza.
    - Las tarjetas de un origen se abren a 68 px de su pieza.
-   - En el 01-03 puede que ningún lado quede libre: entonces vuelve a la regla de antes, lo mejor posible.
+   - En el 01-03 ningún lado queda libre. La revisión final acopla ahí la terminal en la esquina inferior izquierda del mapa (`dockOffset` en `src/scene/layout.ts`): a 1440×900 o más (medido hasta 1920×1080) no tapa ninguna etiqueta ni ningún sello. A 1280×800 y a 1366×768 la de Casa de Lucía, más alta porque su título ocupa dos líneas, aún tapa la parte de abajo del sello perdido, y la pista 2 dice que se cierra con «Listo». Antes, la terminal volvía al lado con más espacio y tapaba el sello, las etiquetas `router` e `internet` y la de Casa de Lucía.
    - Cambia la Desviación 3.
    - La regla: `9acb697`. Se comprobó en el 01-01 real, a 1280×800 y a 1440×900, y no hizo falta cambiar nada: `93f23a9`. La prueba de Playwright: `1b5010f`.
 2. **G3 y G8 con datos reales.**
@@ -291,6 +292,8 @@ Otras dos decisiones:
 
 - La Desviación 3 (la terminal tapa la impresora): la supera el ajuste 1.
 - Del «Review Focus», el punto 2 se reescribió por lo mismo.
+- Del ajuste 1, lo que decía del 01-03 («puede que ningún lado quede libre: entonces vuelve a la regla de antes»): lo supera la revisión final.
+- La pista 2 del 01-03 que trae la Tarea 9 no dice que la terminal se cierra con «Listo»: la revisión final lo suma.
 - La Desviación 13, en «No tiene reglas de entrada» del firewall de la laptop: la supera el ajuste 12.
 - La fila «Enviar» de «Elementos de interfaz»: la supera el ajuste 8.
 - «Ningún otro texto del capítulo 4 cambia» no era cierto. Se quitó y la lista se completó.
@@ -313,6 +316,27 @@ Vitest (tests en archivos) y Playwright. La tabla de «Global Constraints» qued
 | 9 | `1495dfa` | 701 en 48 | 14 |
 | 10 | `1b5010f` | 701 en 48 | 20 |
 | 11 | este commit | 701 en 48 | 20 |
+| Revisión final | el commit de la revisión final | 712 en 48 | 21 |
+
+## Revisión final (2026-10-09)
+
+La revisión de toda la rama encontró lo siguiente. Lo arregla un solo commit, el commit de la revisión final, sobre la Tarea 11.
+
+- **I1: la terminal tapaba el resultado del experimento del 01-03.**
+  - Con el exterior dibujado, ningún lado de la terminal queda libre, y el sello del ping perdido quedaba bajo la tarjeta.
+  - Ahora la terminal se acopla en la esquina inferior izquierda del mapa (`terminalSide` y `dockOffset` en `src/scene/layout.ts`). Cuelga de su borde de abajo, así que su altura no importa.
+  - Al cambiar de origen o mover el mapa, la terminal acoplada no se mueve de su sitio: el desplazamiento se escribe en el mismo cuadro en que drei mueve el ancla, y no pasa por el estado de React (un estado la mostraba desplazada durante un cuadro).
+  - El 01-01, el 01-02 y la tarjeta del firewall del 04-01 quedan como antes.
+  - La regla cuenta también la etiqueta de la propia pieza: la de la casa cuelga a su izquierda, y a 1920×1080 la terminal la tapaba.
+  - A 1440×900, a 1512×982 y a 1920×1080 no tapa nada, con cualquiera de los dos orígenes. A 1280×800 y a 1366×768 queda libre con tu-laptop. La de Casa de Lucía, más alta porque su título ocupa dos líneas, aún tapa la parte de abajo del sello perdido, y la pista 2 dice que se cierra con «Listo».
+  - Playwright comprueba que, con la terminal abierta tras cada envío, no tapa el sello perdido ni las etiquetas `router` e `internet`.
+- **I2: una ficha elegida con etiqueta de nombre no se leía.** La etiqueta conservaba su fondo claro bajo el color claro de la ficha. Una regla nueva, solo con tokens, la deja transparente y con borde del color de la ficha.
+- **m2: la hoja de ruta.** El plan 2 está hecho: sus filas pasan a «Hecho». El backlog anota que G6 está hecho (`6e5630d`).
+- **Las pruebas de la Tarea 10.** Se comprueba que la terminal del 01-01 es visible antes de medirla, se espera el sello perdido antes de buscar superposiciones, y el sello del 01-04 nombra `laptop-lucia`.
+- **Guías y backlog.**
+  - Se corrigieron la guía de `src/levels/` (qué hace `chips.ts`) y el comentario de `namedTerms` (solo el final del nombre completo toma el plural).
+  - El backlog dice que los textos nuevos de F4 aún no se dibujan, y que E4 ya no alcanza a la terminal.
+  - El backlog suma el bloque H (H1 a H3).
 
 ## Árbol al terminar (solo lo nuevo o cambiado)
 
@@ -7242,10 +7266,11 @@ git commit -m "test(e2e): play chapter 1 to the end and keep 04-01 open with its
 > - La nota de E4 del backlog dice lo que es cierto tras el ajuste 1. El script de abajo decía que en el 01-01 la terminal tapa la impresora; ya no.
 > - La fila «Prueba humana del capítulo 1» de la hoja de ruta pasa de `idea` a `siguiente`, con la decisión pendiente del «primer día lento».
 > - El commit incluye este plan.
+> - La revisión final reescribió después la nota de E4 (la terminal se acopla en el 01-03) y sumó el bloque H del backlog.
 > - Los números de tests de esta tarea son los reales: 701 tests en 48 archivos y 20 de Playwright, no los del ensayo.
 
 El cierre en los documentos:
-- **El backlog:** marca F4 a F6, G3 a G5, G7 y G8 como hechos, con su tarea. Además anota que E4 alcanza a la terminal.
+- **El backlog:** marca F4 a F6, G3 a G5, G7 y G8 como hechos, con su tarea. Además anota lo de E4 y la terminal: el plan creía que la alcanzaba; tras el ajuste 1 y la revisión final ya no.
 - **La hoja de ruta:** «Capítulo 1 jugable» pasa a «En curso» con el enlace a este plan.
 - **El README del proyecto:** dice que el capítulo 1 se juega y enlaza este plan.
 - **El spec de incidentes en vivo:** su tabla del capítulo 4 pasa a decir qué términos ya no trae el 04-01 ni el 04-02, como pide la sección «Cambios en el capítulo 4» del spec del capítulo 1.

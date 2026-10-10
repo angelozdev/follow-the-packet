@@ -56,6 +56,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .map-card { pointer-events: auto; width: var(--card-width); }
 .map-card--right { transform: translate(var(--card-gap), -50%); }
 .map-card--left { transform: translate(calc(-100% - var(--card-gap)), -50%); }
+.map-card--dock { transform: translate(var(--card-x), calc(var(--card-y) - 100%)); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: 700 18px var(--font-display); background: var(--paper-fill); border: 2.5px solid currentColor; border-radius: 50%; transform: rotate(-8deg); }
 .stamp--arrived { color: var(--ink); }
 .stamp--blocked { color: var(--accent); }
@@ -96,6 +97,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.875rem; }
 .tray__name { width: 100%; font: 600 0.75rem var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
 .chip { font: 600 0.85rem var(--font-body); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 999px; padding: 0.2rem 0.7rem; cursor: pointer; }
 .chip[aria-pressed='true'] { background: var(--ink); color: var(--paper-fill); }
+.chip[aria-pressed='true'] .name-tag { background: transparent; border-color: currentColor; }
 .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .stamp--intruder { color: var(--accent); border-style: double; border-width: 4px; }
 .stamp--lost { color: var(--ink-soft); border-style: dashed; }

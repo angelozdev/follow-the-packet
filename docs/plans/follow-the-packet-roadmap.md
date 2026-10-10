@@ -4,6 +4,7 @@ Las ideas que van saliendo para el juego y hacia dónde va. Los errores y las de
 
 - **Cómo se anota:** una fila por idea, con qué es, por qué importa, de dónde salió (con fecha) y su estado.
 - **Estados:**
+  - `hecho`: entregada; la fila pasa a «Hecho» con sus commits;
   - `en curso`: hay un plan ejecutándose;
   - `siguiente`: aprobada, espera turno;
   - `idea`: anotada, sin decidir;
@@ -14,9 +15,7 @@ Las ideas que van saliendo para el juego y hacia dónde va. Los errores y las de
 
 | Idea | Por qué | Origen | Estado |
 |------|---------|--------|--------|
-| **Catálogo de entidades** (capítulo 1, plan 2): cada pieza del mapa en su archivo, con su ícono 2D; piezas de oficina; Echo Request y Echo Reply por forma; estado «perdido»; página `#/entidades` | Las mismas piezas sirven en todos los capítulos, y la captura de Playwright avisa si una cambia sin querer | [Spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md), 2026-10-09 | `en curso`: [plan 2](2026-10-09-follow-the-packet-entity-catalog.md). Tareas 1 a 10 hechas (`91f30b1..f2fee1e`), falta la 11 |
-| **Capítulo 1 jugable** (plan 3): la jugada «enviar», la tarjeta terminal, los incidentes 01-01 a 01-04, la escalera de términos y la regla de progreso; incluye F4 a F6 del backlog | Es la introducción antes de AWS: dirección IP, ping, ida y vuelta, internet y firewall | [Spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md), 2026-10-09 | `en curso`: [plan 3](2026-10-09-follow-the-packet-chapter-1-send.md). Tareas 1 a 11 hechas (`20bc9be..1b5010f` y el commit de los documentos). Falta la prueba humana (fila «Prueba humana del capítulo 1», en «Siguiente») |
-| **El nombre propio se ve como etiqueta.** En «Security Group servidor2», «servidor2» va en letra de código dentro de una cajita sombreada (estilo B); «Security Group» queda igual. Aplica al mapa, a la tarjeta del Security Group y a la caja de inspección | «Para saber que no son entidades». Además es fiel a AWS: «servidor2» es el valor de la etiqueta `Name` del recurso | Prueba del estudiante, 2026-10-09. [Prototipo con las opciones](https://claude.ai/artifact/MDFXJtYLUqMHtJgxxQHQ71) | `en curso`: Tarea 11 del [plan 2](2026-10-09-follow-the-packet-entity-catalog.md) |
+| **Capítulo 1 jugable** (plan 3): la jugada «enviar», la tarjeta terminal, los incidentes 01-01 a 01-04, la escalera de términos y la regla de progreso; incluye F4 a F6 del backlog | Es la introducción antes de AWS: dirección IP, ping, ida y vuelta, internet y firewall | [Spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md), 2026-10-09 | `en curso`: [plan 3](2026-10-09-follow-the-packet-chapter-1-send.md). Tareas 1 a 11 hechas (`20bc9be..1b5010f`, el commit de los documentos y el commit de la revisión final). Falta la prueba humana (fila «Prueba humana del capítulo 1», en «Siguiente») |
 
 ## Siguiente
 
@@ -24,6 +23,13 @@ Las ideas que van saliendo para el juego y hacia dónde va. Los errores y las de
 |------|---------|--------|--------|
 | **Prueba humana del capítulo 1:** jugar los cuatro incidentes de punta a punta. Decisión pendiente del «primer día lento»: si alguno se fusiona con otro | Cuatro incidentes antes del capítulo 4 pueden sentirse lentos. La decide el estudiante al jugarlos, no el código | Riesgo «Primer día lento» del [spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md), 2026-10-09 | `siguiente`: el [plan 3](2026-10-09-follow-the-packet-chapter-1-send.md) ya está hecho |
 | **Design system del juego.** Un `DESIGN.md` con los colores, las letras, la escala tipográfica y de espacios y las reglas visuales. Una sección nueva en `#/entidades` con cada elemento de la interfaz en vivo (botones, fichas, tarjetas, etiquetas del mapa, nombre propio y sellos), dentro de la captura de Playwright | Hoy los colores viven en `src/styles.css` y se repiten en `src/scene/theme.ts`. Las reglas están repartidas en dos specs y los tamaños se eligieron caso por caso. Con un catálogo, un cambio sin querer rompe la prueba | Pregunta del estudiante, 2026-10-09. Relacionado con el bloque D del backlog (reglas `design-tokens` y `primitive-semantic-tokens` sin decidir) | `siguiente`: después del plan 2 |
+
+## Hecho
+
+| Idea | Por qué | Origen | Estado |
+|------|---------|--------|--------|
+| **Catálogo de entidades** (capítulo 1, plan 2): cada pieza del mapa en su archivo, con su ícono 2D; piezas de oficina; Echo Request y Echo Reply por forma; estado «perdido»; página `#/entidades` | Las mismas piezas sirven en todos los capítulos, y la captura de Playwright avisa si una cambia sin querer | [Spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md), 2026-10-09 | `hecho`: [plan 2](2026-10-09-follow-the-packet-entity-catalog.md). Las 11 tareas están hechas (`91f30b1..c8b2798`) |
+| **El nombre propio se ve como etiqueta.** En «Security Group servidor2», «servidor2» va en letra de código dentro de una cajita sombreada (estilo B); «Security Group» queda igual. Aplica al mapa, a la tarjeta del Security Group y a la caja de inspección | «Para saber que no son entidades». Además es fiel a AWS: «servidor2» es el valor de la etiqueta `Name` del recurso | Prueba del estudiante, 2026-10-09. [Prototipo con las opciones](https://claude.ai/artifact/MDFXJtYLUqMHtJgxxQHQ71) | `hecho`: Tarea 11 del [plan 2](2026-10-09-follow-the-packet-entity-catalog.md) (`6e5630d`, `c8b2798`) |
 
 ## Ideas
 

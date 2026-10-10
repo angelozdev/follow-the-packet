@@ -29,7 +29,7 @@ export default defineIncident({
   send: { from: [ORIGIN.you, ORIGIN.home], to: [ADDRESS.you, ADDRESS.lucia, ADDRESS.printer], message: [MESSAGE.echoRequest, MESSAGE.echoReply] },
   hints: [
     'En la terminal de tu laptop, elige mi casa como origen: la terminal pasa a mi casa. ¿Hasta dónde llega el {{ping}}?',
-    'Pasa el mouse sobre el sello del {{ping}} que salió de mi casa: dice dónde se perdió y por qué.',
+    'Pasa el mouse sobre el sello del {{ping}} que salió de mi casa: dice dónde se perdió y por qué. Si la terminal lo tapa, ciérrala con «Listo».',
   ],
   question: '¿Por qué no llegó el {{ping}} desde mi casa?',
   explanation: [

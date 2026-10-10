@@ -4,6 +4,8 @@ import type { MapPieceKind } from './overlay/piece-label';
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 export type CardSide = 'left' | 'right';
+/** Where a card opens: on a side of its anchor, or docked in the bottom left corner of the map. */
+export type CardPosition = CardSide | 'dock';
 
 /** Pixels per world unit of the map's orthographic camera. */
 export const CAMERA_ZOOM = 38;
@@ -73,6 +75,7 @@ const CAMERA_OFFSET = 14;
 const FIREWALL_CARD_GAP = 110;
 const ORIGIN_CARD_GAP = 68;
 const CARD_MARGIN = 12;
+const DOCK_MARGIN = 6;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
@@ -165,11 +168,11 @@ export function sideForNdc(ndcX: number): CardSide {
   return ndcX > 0 ? 'left' : 'right';
 }
 
-/** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of the other pieces so it never hides the thing the player has to read. */
+/** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of every piece, its own included (the label of an actor hangs to the left of it), so it never hides the thing the player has to read, or docks in the corner of the map when it cannot. */
 export function cardPlacement(piece: { kind: MapPieceKind; anchorId: string }, others: { kind: MapPieceKind; anchorId: string }[], layout: Layout): CardPlacement {
   const position = cardAnchorPosition(piece, layout);
   if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null };
-  return { position, gap: ORIGIN_CARD_GAP, avoid: others.map((other) => labelPosition(other, layout)) };
+  return { position, gap: ORIGIN_CARD_GAP, avoid: [piece, ...others].map((other) => labelPosition(other, layout)) };
 }
 
 /** Returns the horizontal span in pixels, from the map's left edge, that a card covers on a side of its anchor. */
@@ -183,11 +186,18 @@ function opensClear(side: CardSide, anchorX: number, avoidXs: number[], room: nu
   return insideMap && avoidXs.every((x) => x + LABEL_REACH < near || x - LABEL_REACH > far);
 }
 
-/** Picks the side a terminal opens on, with every x in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each taken as `LABEL_REACH` wide on both sides), else the other side when that one does, else the side with more room, as a firewall's card does. */
-export function terminalSide(anchorX: number, avoidXs: number[], room: number, gap: number): CardSide {
+/** Returns how far from its anchor, in pixels, the bottom left corner of a docked card sits, so that corner lands on the map's bottom left corner, `DOCK_MARGIN` in: the card's shadow still fits, and no room that the corner has is lost. The card hangs from that corner, so its height does not matter. */
+export function dockOffset(anchor: Vec2, map: { width: number; height: number }): Vec2 {
+  return [DOCK_MARGIN - anchor[0], map.height - DOCK_MARGIN - anchor[1]];
+}
+
+/** Picks where a terminal opens, with every x in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each taken as `LABEL_REACH` wide on both sides), else the other side when that one does, else the dock: the map is a band from the upper left to the lower right, so its bottom left corner is free. A map too narrow to hold the card keeps the side with more room. */
+export function terminalSide(anchorX: number, avoidXs: number[], room: number, gap: number): CardPosition {
   const preferred = sideForNdc((anchorX / room) * 2 - 1);
   const other: CardSide = preferred === 'left' ? 'right' : 'left';
-  return [preferred, other].find((side) => opensClear(side, anchorX, avoidXs, room, gap)) ?? preferred;
+  const clear = [preferred, other].find((side) => opensClear(side, anchorX, avoidXs, room, gap));
+  if (clear) return clear;
+  return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : preferred;
 }
 
 /** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it. It crosses the edge only while the map shows the outside. */

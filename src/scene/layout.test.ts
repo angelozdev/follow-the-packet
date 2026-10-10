@@ -1,6 +1,7 @@
 import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withInbound } from '@/testing';
+import type { MapPieceKind } from './overlay/piece-label';
 import { simulate } from '@/engine/simulation/simulate';
 import {
   CAMERA_ZOOM,
@@ -12,6 +13,7 @@ import {
   cardSpan,
   computeLayout,
   cumulativeLengths,
+  dockOffset,
   labelPosition,
   layoutCenter,
   pathFor,
@@ -21,7 +23,7 @@ import {
   sideForNdc,
   spreadStamps,
   terminalSide,
-  type CardSide,
+  type CardPosition,
   type Layout,
   type Vec2,
   type Vec3,
@@ -201,18 +203,34 @@ interface MapSize {
 
 interface Hazard {
   name: string;
-  from: number;
-  to: number;
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
 }
+
+type Piece = { kind: MapPieceKind; anchorId: string };
 
 const STAMP_RADIUS = 16;
 const STAMP_HEIGHT = 0.9;
+const LABEL_HALF_HEIGHT = 11;
 const MAPS: MapSize[] = [
   { window: '1280×800', width: 900, height: 800 },
   { window: '1440×900', width: 1060, height: 900 },
 ];
+const YOUR_LAPTOP: Piece = { kind: 'device', anchorId: 'your-laptop' };
+const HOME: Piece = { kind: 'actor', anchorId: 'attacker' };
+const TERMINAL_HEIGHT = { office: 321, yours: 468, home: 495 };
 
-function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map: MapSize) {
+function boxAround(name: string, [x, y]: Vec2, halfWidth: number, halfHeight: number): Hazard {
+  return { name, x0: x - halfWidth, x1: x + halfWidth, y0: y - halfHeight, y1: y + halfHeight };
+}
+
+function hits(a: Hazard, b: Hazard): boolean {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map: MapSize, origin: Piece) {
   const layout: Layout = computeLayout(net, outside);
   const camera = new OrthographicCamera(-map.width / 2, map.width / 2, map.height / 2, -map.height / 2, 0.1, 500);
   const [cx, cz] = layoutCenter(layout);
@@ -221,61 +239,105 @@ function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map:
   camera.lookAt(cx, 0, cz);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
-  const pixelX = (point: Vec3) => ((new Vector3(...point).project(camera).x + 1) / 2) * map.width;
-  const origin = { kind: 'device', anchorId: 'your-laptop' } as const;
-  const others = [
-    ...net.devices.filter((other) => other.id !== origin.anchorId).map((other) => ({ kind: 'device' as const, anchorId: other.id })),
-    ...(outside ? [{ kind: 'edge' as const, anchorId: 'edge' }, { kind: 'internet' as const, anchorId: 'internet' }, { kind: 'actor' as const, anchorId: 'attacker' }] : []),
-  ];
-  const placement = cardPlacement(origin, others, layout);
-  const anchorX = pixelX(placement.position);
-  const labels: Hazard[] = others.map((other) => {
-    const x = pixelX(labelPosition(other, layout));
-    return { name: `${other.anchorId} label`, from: x - LABEL_REACH, to: x + LABEL_REACH };
-  });
-  const ends = [OFFICE.printer, OFFICE.lucia, OFFICE.nobody].map((address) => {
-    const packet = ping(device('your-laptop'), address);
-    const path = pathFor(simulate(net, packet), packet, layout);
-    return path[path.length - 1];
-  });
-  const stamps: Hazard[] = spreadStamps(ends).map(([x, z], index) => {
-    const stampX = pixelX([x, STAMP_HEIGHT, z]);
-    return { name: `stamp ${index + 1}`, from: stampX - STAMP_RADIUS, to: stampX + STAMP_RADIUS };
-  });
-  const side = terminalSide(anchorX, (placement.avoid ?? []).map(pixelX), map.width, placement.gap);
-  const covered = (cardSide: CardSide) => {
-    const [near, far] = cardSpan(cardSide, anchorX, placement.gap);
-    return [...labels, ...stamps].filter(({ from, to }) => from <= far && to >= near).map(({ name }) => name);
+  const pixel = (point: Vec3): Vec2 => {
+    const { x, y } = new Vector3(...point).project(camera);
+    return [((x + 1) / 2) * map.width, ((1 - y) / 2) * map.height];
   };
-  return { side, anchorX, placement, span: cardSpan(side, anchorX, placement.gap), covered };
+  const pieces: Piece[] = [
+    ...net.devices.map((other) => ({ kind: 'device' as const, anchorId: other.id })),
+    ...(outside ? [{ kind: 'edge' as const, anchorId: 'edge' }, { kind: 'internet' as const, anchorId: 'internet' }, ...net.actors.map((other) => ({ kind: 'actor' as const, anchorId: other.id }))] : []),
+  ];
+  const others = pieces.filter((piece) => piece.anchorId !== origin.anchorId);
+  const placement = cardPlacement(origin, others, layout);
+  const anchor = pixel(placement.position);
+  const labels = [...others, origin].map((other) => boxAround(`${other.anchorId} label`, pixel(labelPosition(other, layout)), LABEL_REACH, LABEL_HALF_HEIGHT));
+  const senders = [device('your-laptop'), ...(outside ? [actor('attacker')] : [])];
+  const ends = senders.flatMap((from) =>
+    [OFFICE.printer, OFFICE.lucia, OFFICE.nobody, OFFICE.you].map((address) => {
+      const packet = ping(from, address);
+      const path = pathFor(simulate(net, packet), packet, layout);
+      return path[path.length - 1];
+    }),
+  );
+  const stamps = spreadStamps(ends).map(([x, z], index) => boxAround(`stamp ${index + 1}`, pixel([x, STAMP_HEIGHT, z]), STAMP_RADIUS, STAMP_RADIUS));
+  const side = terminalSide(anchor[0], (placement.avoid ?? []).map((point) => pixel(point)[0]), map.width, placement.gap);
+  const cardAt = (position: CardPosition, height: number): Hazard => {
+    if (position === 'dock') {
+      const [dx, dy] = dockOffset(anchor, map);
+      return { name: 'card', x0: anchor[0] + dx, x1: anchor[0] + dx + CARD_WIDTH, y0: anchor[1] + dy - height, y1: anchor[1] + dy };
+    }
+    const [near, far] = cardSpan(position, anchor[0], placement.gap);
+    return { name: 'card', x0: near, x1: far, y0: anchor[1] - height / 2, y1: anchor[1] + height / 2 };
+  };
+  const covered = (position: CardPosition, height: number) => [...labels, ...stamps].filter((hazard) => hits(cardAt(position, height), hazard)).map(({ name }) => name);
+  const clearOf = (position: CardPosition, height: number) => {
+    const card = cardAt(position, height);
+    return card.x0 >= 0 && card.x1 <= map.width && card.y0 >= 0 && card.y1 <= map.height && covered(position, height).length === 0;
+  };
+  return { side, anchor, placement, cardAt, covered, clearOf };
 }
 
 describe('the terminal card in the office of 01-01 and 01-02', () => {
   const office = { ...officeNet(), actors: [] };
+  const { office: height } = TERMINAL_HEIGHT;
 
   it.each(MAPS)('at $window it opens to the left of tu-laptop: inside the map, clear of every label and every possible stamp', (map) => {
-    const { side, anchorX, placement, span, covered } = terminalOnMap(office, false, map);
+    const { side, anchor, placement, cardAt, covered } = terminalOnMap(office, false, map, YOUR_LAPTOP);
+    const card = cardAt(side, height);
     expect(side).toBe('left');
-    expect(span[0]).toBeGreaterThanOrEqual(0);
-    expect(span[1]).toBeLessThanOrEqual(map.width);
-    expect(span[1]).toBeLessThan(anchorX - LABEL_REACH);
-    expect(covered(side)).toEqual([]);
+    expect(Math.min(card.x0, card.y0)).toBeGreaterThanOrEqual(0);
+    expect(card.x1).toBeLessThanOrEqual(map.width);
+    expect(card.y1).toBeLessThanOrEqual(map.height);
+    expect(card.x1).toBeLessThan(anchor[0] - LABEL_REACH);
+    expect(covered(side, height)).toEqual([]);
     expect(placement.gap).toBeLessThan(CARD_WIDTH);
   });
 
   it.each(MAPS)('at $window the right side, where a card opens today, would cover the laptop-lucia and the impresora', (map) => {
-    const { covered } = terminalOnMap(office, false, map);
-    expect(covered('right')).toEqual(expect.arrayContaining(['lucia-laptop label', 'printer label']));
+    const { covered } = terminalOnMap(office, false, map, YOUR_LAPTOP);
+    expect(covered('right', height)).toEqual(expect.arrayContaining(['lucia-laptop label', 'printer label']));
   });
 });
 
 describe('the terminal card with the outside drawn (01-03)', () => {
-  it('falls back to the side with more room when neither side is clear', () => {
+  const origins = [
+    { name: 'tu-laptop', origin: YOUR_LAPTOP, height: TERMINAL_HEIGHT.yours },
+    { name: 'Casa de Lucía', origin: HOME, height: TERMINAL_HEIGHT.home },
+  ];
+  const cases = MAPS.flatMap((map) => origins.map((origin) => ({ map, ...origin })));
+
+  it.each(cases)('at $map.window, for $name, no side is clear, so the terminal docks in the bottom left corner of the map', ({ map, origin, height }) => {
+    const { side, cardAt, clearOf } = terminalOnMap(officeNet(), true, map, origin);
+    const card = cardAt(side, height);
+    expect((['left', 'right'] as const).filter((position) => clearOf(position, height))).toEqual([]);
+    expect(side).toBe('dock');
+    expect([card.x0, card.x1]).toEqual([6, 6 + CARD_WIDTH]);
+    expect(card.y1).toBe(map.height - 6);
+    expect(card.y0).toBeGreaterThan(0);
+  });
+
+  it.each(cases.filter(({ map, name }) => map.width > 900 || name === 'tu-laptop'))('at $map.window, for $name, the docked terminal covers no label and no possible stamp', ({ map, origin, height }) => {
+    const { side, covered } = terminalOnMap(officeNet(), true, map, origin);
+    expect(covered(side, height)).toEqual([]);
+  });
+
+  it('at 1280×800 the terminal of Casa de Lucía, 495 px tall because its title takes two lines, is 6 px too tall for the free strip: it covers the bottom of the lost stamps and no label', () => {
     const [map] = MAPS;
-    const { side, anchorX, covered } = terminalOnMap(officeNet(), true, map);
-    expect(covered('left')).not.toEqual([]);
-    expect(covered('right')).not.toEqual([]);
-    expect(side).toBe(sideForNdc((anchorX / map.width) * 2 - 1));
+    const { side, covered } = terminalOnMap(officeNet(), true, map, HOME);
+    const names = covered(side, TERMINAL_HEIGHT.home);
+    expect(names.filter((name) => name.endsWith('label'))).toEqual([]);
+    expect(names.filter((name) => name.startsWith('stamp'))).not.toEqual([]);
+  });
+
+  it('at 1920×1080 the terminal of Casa de Lucía does not open to its left, where it would cover the label of the house: it docks', () => {
+    const { side, covered } = terminalOnMap(officeNet(), true, { window: '1920×1080', width: 1540, height: 1080 }, HOME);
+    expect(covered('left', TERMINAL_HEIGHT.home)).toContain('attacker label');
+    expect(side).toBe('dock');
+    expect(covered(side, TERMINAL_HEIGHT.home)).toEqual([]);
+  });
+
+  it('a map too narrow to hold the card keeps the side with more room', () => {
+    expect(terminalSide(100, [], CARD_WIDTH + 10, 68)).toBe('right');
   });
 });
 
@@ -285,10 +347,15 @@ describe('where a card opens', () => {
   it.each([
     { name: 'the side with more room when both are clear', anchorX: 600, avoidXs: [], room: 900, expected: 'left' },
     { name: 'the other side when the one with more room covers a label', anchorX: 450, avoidXs: [700], room: 900, expected: 'left' },
-    { name: 'the side with more room when it covers a label and the other leaves the map', anchorX: 200, avoidXs: [350], room: 900, expected: 'right' },
-    { name: 'the side with more room when the map is too narrow for the card', anchorX: 300, avoidXs: [], room: 600, expected: 'right' },
-  ] satisfies { name: string; anchorX: number; avoidXs: number[]; room: number; expected: CardSide }[])('a terminal takes $name', ({ anchorX, avoidXs, room, expected }) => {
+    { name: 'the dock when both sides cover a label', anchorX: 450, avoidXs: [300, 700], room: 900, expected: 'dock' },
+    { name: 'the dock when the side with more room covers a label and the other leaves the map', anchorX: 200, avoidXs: [350], room: 900, expected: 'dock' },
+    { name: 'the dock when neither side stays inside the map', anchorX: 300, avoidXs: [], room: 600, expected: 'dock' },
+  ] satisfies { name: string; anchorX: number; avoidXs: number[]; room: number; expected: CardPosition }[])('a terminal takes $name', ({ anchorX, avoidXs, room, expected }) => {
     expect(terminalSide(anchorX, avoidXs, room, GAP)).toBe(expected);
+  });
+
+  it('a docked card hangs its bottom left corner from the bottom left corner of the map, whatever the height of the card', () => {
+    expect(dockOffset([400, 250], { width: 900, height: 800 })).toEqual([-394, 544]);
   });
 
   it('the card of a firewall keeps its wide gap and its width, and only the screen decides its side', () => {

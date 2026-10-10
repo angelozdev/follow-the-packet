@@ -1,23 +1,35 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type RefObject } from 'react';
 import { Vector3, type Camera } from 'three';
-import { sideForNdc, terminalSide, type CardPlacement, type CardSide, type Vec3 } from '@/scene/layout';
+import { dockOffset, sideForNdc, terminalSide, type CardPlacement, type CardPosition, type Vec2, type Vec3 } from '@/scene/layout';
 
-function pickSide(projected: Vector3, { position, gap, avoid }: CardPlacement, camera: Camera, width: number): CardSide {
-  const ndcX = (point: Vec3) => projected.set(...point).project(camera).x;
-  const pixelX = (point: Vec3) => ((ndcX(point) + 1) / 2) * width;
-  return avoid ? terminalSide(pixelX(position), avoid.map(pixelX), width, gap) : sideForNdc(ndcX(position));
+/** Where a card sits: its position and how far from its anchor, in pixels, the map's bottom left corner is (what a docked card hangs from). */
+interface CardSlot {
+  position: CardPosition;
+  dock: Vec2;
 }
 
-/** Returns the side of its anchor a card should open on, from its first frame and then following the camera while the player pans and zooms: the side with more room, or, for a card that avoids labels, the side where it is clear of them and inside the map. */
-export function useCardSide(placement: CardPlacement): CardSide {
+function pickSlot(projected: Vector3, { position, gap, avoid }: CardPlacement, camera: Camera, map: { width: number; height: number }): CardSlot {
+  const project = (point: Vec3) => projected.set(...point).project(camera);
+  const pixelX = (point: Vec3) => ((project(point).x + 1) / 2) * map.width;
+  const pixelY = (point: Vec3) => ((1 - project(point).y) / 2) * map.height;
+  const dock = dockOffset([pixelX(position), pixelY(position)], map);
+  if (!avoid) return { position: sideForNdc(project(position).x), dock };
+  return { position: terminalSide(pixelX(position), avoid.map(pixelX), map.width, gap), dock };
+}
+
+/** Returns where a card should open, from its first frame and then following the camera while the player pans and zooms: the side with more room, or, for a card that avoids labels, the side where it is clear of them and inside the map, or the dock at the map's bottom left corner when neither side is. The position is state, because it changes the class of the card. The dock offset is not: it is written on the card's element in the same frame that drei moves the anchor, so a docked card stays on its screen spot while the anchor moves (a pan, or another origin) and never shows a frame between the two. The first value is the one the card renders with. */
+export function useCardSide(placement: CardPlacement, card: RefObject<HTMLElement | null>): CardSlot {
   const camera = useThree((state) => state.camera);
-  const width = useThree((state) => state.size.width);
+  const size = useThree((state) => state.size);
   const projected = useMemo(() => new Vector3(), []);
-  const [side, setSide] = useState<CardSide>(() => pickSide(projected, placement, camera, width));
+  const [first] = useState(() => pickSlot(projected, placement, camera, size));
+  const [position, setPosition] = useState(first.position);
   useFrame((state) => {
-    const next = pickSide(projected, placement, state.camera, state.size.width);
-    if (next !== side) setSide(next);
+    const next = pickSlot(projected, placement, state.camera, state.size);
+    card.current?.style.setProperty('--card-x', `${next.dock[0]}px`);
+    card.current?.style.setProperty('--card-y', `${next.dock[1]}px`);
+    if (next.position !== position) setPosition(next.position);
   });
-  return side;
+  return { position, dock: first.dock };
 }
