@@ -19,7 +19,7 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 | `--palette-paper-dark` | `#efe8da` |
 | `--palette-ink` | `#2b2b2b` |
 | `--palette-ink-light` | `#5f5a52` |
-| `--palette-vermilion` | `#e4572e` |
+| `--palette-vermilion` | `#bf370f` |
 
 | Role | Palette | For |
 |------|---------|-----|
@@ -36,6 +36,24 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 ### The vermilion rule
 
 Vermilion is for danger. Emphasis and focus share its value today, but they are separate roles: either can change in one line of `tokens.css` without touching danger. A new use of vermilion picks the role it means; nothing outside `tokens.css` names `--palette-vermilion`.
+
+### Contrast
+
+Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and every non-text use of vermilion (stamps, stars, the focus ring, dashed borders, the alert mark, map lines) reaches 3:1 against the colour beside it (criterion 1.4.11). One value serves the button fill and the text on paper, because both are the same pair seen from either side: `--palette-vermilion` is `#bf370f`, the old `#e4572e` (3.5:1 under the button label, 3.3:1 as text on the page) darkened with its hue kept (about 14°) and its saturation raised, so it stays a vivid vermilion and does not turn brown.
+
+| Pair | Ratio |
+|------|-------|
+| `--color-on-fill` on vermilion (the primary button, the alert mark) | 5.26 |
+| vermilion text on `--color-surface` | 5.26 |
+| vermilion text on `--color-page` | 4.95 (4.61 on its darkest grain pixels) |
+| vermilion text on `--color-shade` (a name tag inside a vermilion sentence sits on it) | 4.57 |
+| the focus ring on page, surface and shade | the same ratios, all above 3 |
+| vermilion on the lit floor of the map, measured on a capture on 2026-10-10 (floor `#d0cfcd`; the map draws vermilion shapes as `#cd2c0f`) | 3.58 as the interface draws it, 3.40 as the map draws it |
+
+- **The grain.** The page's `--grain` darkens its paper by up to about 4 % toward ink, to `#eee9df`; the test treats that darkest pixel as the page.
+- **Guard.** `src/design/tokens.test.ts` reads `tokens.css` and asserts these pairs from the roles (`--color-danger` and `--color-emphasis` as text on every paper, `--color-on-fill` on both, `--color-focus` on every paper), so a new value that falls under 4.5:1 or 3:1 fails the test. The map floor is a lit render, not a token, so its ratio is measured by hand.
+- **Left out on purpose.** Vermilion beside ink (the outline of a blocking bar, the Atacante cube beside the intruder's rhombus, the tooltip's `--shadow-tip`) is 2.5:1, below 3:1. The ink outline already separates the shape from the paper (the test asserts that), the shadow is decoration, and the state also changes a shape or a word.
+- **Not covered.** A `soon` card fades all its content with `opacity: 0.5`; its chapter numbers, in vermilion, and its ink text land near 2:1.
 
 ## Type
 
@@ -107,4 +125,4 @@ The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) 
 
 ## What guards the standard
 
-The two zero-tolerance captures of `#/entidades` show any pixel that moves (except the edges pixelmatch counts as anti-aliasing), and TypeScript rejects a `className` or a `style` on a primitive. On the student's choice (2026-10-09) there is no test over the CSS, no lint rule against a raw `<button>` or `<a>`, and no rule file for the standard: a review finds a sixth button.
+The two zero-tolerance captures of `#/entidades` show any pixel that moves (except the edges pixelmatch counts as anti-aliasing), and TypeScript rejects a `className` or a `style` on a primitive. A third guard reads the colour tokens: the contrast test of `src/design/tokens.test.ts` (see "Contrast"). On the student's choice (2026-10-09) there is no test over the CSS rules, no lint rule against a raw `<button>` or `<a>`, and no rule file for the standard: a review finds a sixth button.
