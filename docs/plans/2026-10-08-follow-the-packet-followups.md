@@ -10,6 +10,8 @@
 
 > **Estado (capítulo 1, plan 3, `docs/plans/2026-10-09-follow-the-packet-chapter-1-send.md`):** hechos F4 (los textos de la respuesta y de `route-private` según el tipo de red y de firewall), F5, F6, G3, G4, G5, G7 y G8. E4 sigue pendiente para la tarjeta de tarea del 04-01. La tarjeta terminal ya no lo sufre en el 01-01: se abre en el lado libre (`terminalSide` en `src/scene/layout.ts`) y no tapa la impresora. En el 01-03, con el exterior dibujado, ningún lado queda libre: la terminal se acopla en la esquina inferior izquierda del mapa (la revisión final del plan 3 lo arregló). A 1440×900 o más no tapa etiquetas ni sellos. A 1280×800 y 1366×768 la de Casa de Lucía, que es más alta porque su título ocupa dos líneas, aún tapa la parte de abajo del sello perdido, y la pista 2 dice que se cierra con «Listo». G6 también está hecho (`6e5630d`, Tarea 11 del plan 2). Siguen pendientes E4, E8, E9, G1, G2, G9, A1, A2, H1 a H3 y el bloque D.
 
+> **Estado (design system, `docs/plans/2026-10-09-follow-the-packet-design-system.md`):** hecho G1 (las capturas de `#/entidades` no toleran ningún píxel distinto). Del bloque D quedan decididas `design-tokens` y `primitive-semantic-tokens`; sigue sin decidir `prefer-radix`. Siguen pendientes E4, E8, E9, G2, G9, A1, A2 y H1 a H3: la migración no toca el código de ninguno. Con las escalas de letra y espacio, la terminal acoplada de Casa de Lucía en el 01-03 crece 8 px (de 495 a 503 de alto): a 1280×800 tapa 15 px de la parte de abajo del sello perdido en vez de 7, y a 1366×768, 31 en vez de 23; el «?» se sigue viendo y a 1440×900 no tapa nada. Sigue siendo el pendiente que anotó el plan 3.
+
 Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
@@ -91,7 +93,8 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 
 ## Bloque D: decisiones pendientes
 
-- Reglas del almacén aún sin decidir: `prefer-radix`, `design-tokens`, `primitive-semantic-tokens`.
+- `design-tokens` y `primitive-semantic-tokens`: decididas en el plan del design system (2026-10-09). El proyecto sigue su idea (paleta y roles de color; escalas de letra, espacio y línea) y la escribe en `projects/follow-the-packet/DESIGN.md`. No entran como reglas de `.claude/rules/`: el estudiante dejó fuera las guardas (archivo de regla, test sobre el CSS y regla de ESLint).
+- `prefer-radix`: sin decidir.
 
 ## Bloque E: primera prueba humana del prototipo (2026-10-08)
 
@@ -127,7 +130,7 @@ Lo encontraron las revisiones del plan `docs/plans/2026-10-09-follow-the-packet-
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
-| G1 | La captura de `#/entidades` tolera un 1 % de píxeles distintos (unos 24 000): si volviera el candado dorado o faltara la alfombra del firewall seleccionado, la prueba pasaría (`tests/e2e/entities.spec.ts:26`) | Design system (hoja de ruta): bajar la tolerancia o sumar comprobaciones de la página |
+| G1 | La captura de `#/entidades` tolera un 1 % de píxeles distintos (unos 24 000): si volviera el candado dorado o faltara la alfombra del firewall seleccionado, la prueba pasaría (`tests/e2e/entities.spec.ts:26`) | Hecho en el design system (Tarea 1): las dos capturas de `#/entidades` no toleran ningún píxel distinto ni diferencia de color (`maxDiffPixels: 0`, `threshold: 0`) |
 | G2 | La lógica de cada cuadro de `PacketRun` no tiene test unitario (`src/scene/entities/packet.tsx:56`): si el arreglo del paquete perdido se rompiera, solo se vería en el mapa animado | Pendiente |
 | G3 | Todo `timeout` que no es «perdido» se dibuja como un bloqueo de firewall, con ✕ y estallido (`src/scene/traffic/flow-look.ts`): un `timeout` de ruta o de DNS parecería un firewall que dice no | Hecho en el capítulo 1, plan 3 (Tarea 5): solo un firewall bloquea; lo demás se dibuja como perdido |
 | G4 | En una oficina sin nadie afuera, un paquete a una IP pública suma el punto del borde, que no se dibuja: el paquete viajaría a un lugar invisible (`src/scene/layout.ts`, `pathFor`) | Hecho en el capítulo 1, plan 3 (Tarea 5) |

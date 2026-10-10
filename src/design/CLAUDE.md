@@ -11,5 +11,6 @@ The game's design system: every colour, font, size, space, line, radius and shad
 - `NameTag` (`name-tag.tsx`) draws a resource's or an actor's own name. The panels (`TaggedText`) and the map labels (`PieceLabel`) both use it. The map labels' look lives in `primitives.css` too: a label that is only a name wears the name tag's frame, written once for both.
 - A caption is the class `caption` (with `caption--soft` for the label of a field, a tray or a role); every `h3` looks like one.
 - `token(name)` and `tokenPx(name)` read `tokens.css` itself (`?raw`), so the map and the interface share one source; `src/scene/theme.ts` names what the map uses.
+- `DESIGN.md` at the project root is the guide for people: every token and primitive, when to use each, and how to add a variant instead of a new element. A change here updates it.
 - Not here: screens and panels (`src/ui/`), map pieces (`src/scene/`), visible text (`src/copy/`).
 - May import: no layer. `src/ui/` and `src/scene/` import it through `index.ts` (`@/design`); `src/styles.css` imports its stylesheets.

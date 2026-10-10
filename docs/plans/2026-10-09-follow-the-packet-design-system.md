@@ -3482,7 +3482,7 @@ git commit -m "docs: add DESIGN.md and record the design system in the roadmap a
 
 ## Capturas del ensayo
 
-Renders a 1280×800, en modo «Sin animaciones», con las fuentes del juego: antes, en `c17d9cd`, y después, al final de la copia que volvió a aplicar el plan tal cual. Están en el scratchpad de la sesión que rebasó este plan (`/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/f9ca50bc-62fa-4496-8b80-72423b4cf50b/scratchpad/ds2-shots/`), que es temporal: si se borró, se rehacen con el plan ya ejecutado.
+Renders a 1280×800, en modo «Sin animaciones», con las fuentes del juego: antes, en `c17d9cd`, y después, al final de la copia que volvió a aplicar el plan tal cual. Están en el scratchpad de la sesión que rebasó este plan (en el scratchpad temporal de la sesión), que es temporal: si se borró, se rehacen con el plan ya ejecutado.
 
 | Archivo | Qué muestra |
 |---------|-------------|
@@ -3495,4 +3495,4 @@ Renders a 1280×800, en modo «Sin animaciones», con las fuentes del juego: ant
 | `11-entities-before.png` · `12-entities-after.png` | El comienzo de `#/entidades`: cabecera y piezas del mapa |
 | `13-incident-01-03-docked-terminal-before.png` · `14-…-after.png` | El 01-03 con la terminal de Casa de Lucía acoplada después de «Enviar»: crece 8 px y tapa algo más del sello perdido (decisión 24) |
 
-Las capturas de las decisiones del estudiante (`09` a `15`: el bermellón en tinta y Newsreader 600 sin cargar) son del primer ensayo, sobre `58c548e`, en `…/scratchpad/ds-shots/`.
+Las capturas de las decisiones del estudiante (`09` a `15`: el bermellón en tinta y Newsreader 600 sin cargar) son del primer ensayo, sobre `58c548e`, en el scratchpad temporal de la sesión.
