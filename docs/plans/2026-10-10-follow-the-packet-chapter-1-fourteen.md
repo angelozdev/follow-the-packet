@@ -814,6 +814,8 @@ Propósito: V8, decidida el 2026-10-10. El estilo B del prototipo es el estilo N
 - Modify: los consumidores de `Card` que hoy dibujan tarjetas: `src/ui/roadmap.tsx` (las tarjetas de los capítulos), `src/ui/incident/lucia-card.tsx`, `explanation-card.tsx`, `inspection-box.tsx`, `result-card.tsx` y `map-cards/chip-card.tsx` (de la que cuelgan `task-card.tsx` y `terminal-card.tsx`). El inventario aprobado dice cuáles más.
 - Modify: `src/ui/catalog/interface-section.tsx` y su texto en `src/copy/screens/ui.ts` (los especímenes), `src/design/CLAUDE.md`, `DESIGN.md`, `tests/e2e/snapshots/interface-darwin.png` y, si el inventario toca el sello o las etiquetas del mapa, `entities-darwin.png`.
 - Create: `src/design/primitives/card.test.tsx` (`Card` no tiene test hoy y gana estructura).
+- Modify: `src/copy/screens/incident-ui.ts` y `src/ui/incident/incident-screen.test.tsx`: la leyenda de sellos (`SCREEN_TEXT.stampLegend`, que se muestra en la pantalla del incidente y en `#/entidades`) suma el sello del aviso, por ejemplo «! apareció un aviso», con palabras que no necesiten ningún término. La Tarea 17 la dejó sin cambiar porque el plan le prohibía tocar la captura de la interfaz; esta tarea ya la regraba, así que la leyenda entra aquí.
+- Modify: `src/scene/catalog/catalog-cells.tsx` (el especimen de `self-warned`, el aviso que genera el propio emisor y se queda en su puerta, que hoy no tiene especimen): solo si el inventario del estilo B conserva la fila del sello.
 
 **Interfaces:** ver «Sistema de diseño».
 - `Card` gana, de forma opcional, una cabecera con título, icono y tipo. Quien no la pasa no la dibuja (`caller-controls-visibility`). El título sigue siendo el `h2` que nombra la tarjeta para los lectores de pantalla, y los `aria-labelledby` y los `role="dialog"` de hoy no cambian. El icono y el tipo son decorativos: quedan fuera del nombre accesible del `h2` (si el tipo aporta información, se lee aparte y no dentro del título), para que las búsquedas por encabezado de los tests de hoy sigan encontrándolo sin cambiar.
@@ -830,6 +832,7 @@ Propósito: V8, decidida el 2026-10-10. El estilo B del prototipo es el estilo N
 - `choice.test.tsx`, `an option shows its letter and keeps its sentence as its name`.
 - `a pressed chip is still announced as pressed, whatever it looks like`.
 - `tokens.test.ts`, `keeps 4.5 to 1 for the text on the title stripe`, solo si el estilo suma ese par de colores.
+- `incident-screen.test.tsx`, `the stamp legend names every stamp state, the warning included` (la misma leyenda de `#/entidades` la cubre `entities-page.test.tsx`).
 - Los tests de hoy de `Button`, `Choice`, `tokens`, de `task-card`, `terminal-card`, `lucia-card`, `incident-screen` y `roadmap` pasan sin cambiar su contenido: es lo que dice que las tarjetas del capítulo 4 siguen funcionando.
 - Playwright `entities`: las capturas se regraban **a propósito** con `pnpm exec playwright test entities --update-snapshots=all`. El diff de la interfaz es el repintado de todas las tarjetas, que el estudiante revisa contra el prototipo aprobado; nada más se mueve. `pnpm check` verde; `incidents.spec.ts` y el humo del 01 siguen verdes.
 
@@ -1072,6 +1075,13 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `terms.test.ts`, `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded`.
 - `reasons.test.ts`, `the text of a warning quotes no operating system and says only what the player saw`.
 - Playwright `entities`: regrabadas a propósito; el diff muestra solo los especímenes nuevos.
+
+**Notas de la implementación (2026-10-10):**
+- El aviso es UNA sola variante de paquete, `warning` (un triángulo con «!», V4 a). Lo nombra `host-unreachable` o `time-exceeded` a través de `TERM_ENTITY`. Su sello es el estado nuevo `warned` («!», etiqueta para lectores de pantalla «Apareció un aviso.»), y lo gobierna el término conocido, igual que `blocked`.
+- El aviso de un router viaja de vuelta al emisor a lo largo del camino. Un `host-unreachable` que genera el propio emisor no viaja (`self-warned`): se queda en la puerta del emisor.
+- La captura de piezas ganó una celda, «volvió un aviso».
+- `ORIGIN_CARD_GAP` en `src/scene/layout.ts` pasó de 68 a 70 para que siga pasando un test de geometría de la tarjeta de terminal que ya existía.
+- La leyenda de sellos no cambió (ver Tarea 11a).
 
 **Commit:** `feat(scene): draw the warning that comes back and its stamp`.
 
@@ -1332,6 +1342,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `in 06 the open terminal covers neither the router nor the labels of the second floor`.
 - `in 06, 08 and 10 the whole map and its labels fit the area of the map at full size` (V6 b: el mapa no se reduce; el ancho que le queda es el de la ventana menos el panel de 380 px).
 - `in 05 the stamp of the ping to laptop-marta tells a screen reader that it was lost, not blocked`.
+- Dentro de «Sin animaciones»: `in 05 the warning for 192.168.1.50 appears at your own laptop and does not travel` (el aviso que genera el propio emisor muestra el sello «!» en el emisor y no hace viaje de vuelta; Tarea 17, `self-warned`).
 - `in 11 the stamp of the ping to laptop-marta tells a screen reader that the firewall blocked it`.
 - `in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping`.
 - `in 13 the tabs Entrada and Salida of the firewall card are reached and switched with the keyboard`.
