@@ -127,6 +127,7 @@ La decisión queda escrita en este documento (sección «Decisiones visuales apr
 18. **Dos motivos más de los que listaba el plan.** `route-leaves-office` (el destino está fuera del rango de la oficina y el paquete va a la puerta de enlace; `route-private` decía «por dentro de la red de la oficina», falso para un paquete que sale) y `forward-no-host` (un router tiene conectada la red del destino pero ningún dispositivo tiene esa IP).
 19. **Simplificación del modelo.** El enlace de un router con un servidor es el /24 de la IP de su interfaz, porque una interfaz no tiene máscara. No se muestra.
 20. **Qué piezas dibuja un incidente (V6 b).** _Para revisar._ Una lista explícita y opcional en el incidente, `shown`, con los ids del mundo (dispositivos, routers y actores) que dibuja; sin ella dibuja todo el mundo, como hoy. Se descartó derivarla de lo que nombran las fichas y las tareas de envío o de los saltos de las trazas: en el 08 el prototipo dibuja `laptop-lucia` y `laptop-andres`, que ni las fichas ni las tareas de ese incidente nombran, y en el 10 dibuja los dos routers del proveedor, que tampoco nombran; y los saltos dependen de lo que el jugador envíe, así que el mapa cambiaría a media partida. La lista es un dato más del incidente, junto a su mundo (`base` y `changes`), y un test del registro comprueba que cada id exista en ese mundo. Quedan por decidir al escribir sus bloques: el 07 y el 09, que se dedujeron sin prototipo, y del 11 al 14, que con el mundo entero pueden no caber a tamaño completo (la opción a del prototipo lo mostraba al 77 %); mientras no traigan lista dibujan el mundo entero.
+21. **Un incidente que ofrece traceroute dibuja todos los routers que cruzan sus sondas.** Decidida el 2026-10-10. Razón: el traceroute real imprime la IP de cada router que avisa; una línea que dijera «fuera de la oficina» en vez de la IP no sería fiel a lo que muestra el comando. La regla de la Tarea 18 (no nombrar un router que no se dibuja) queda para los pings, como el de `10.0.0.10` en el 08.
 
 ## Inventario de mecánicas
 
@@ -1106,6 +1107,11 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `terminal-card.test.tsx`, `a traceroute shows its lines after it was sent`.
 - `ladder.test.ts` (vista), `shows only terms introduced in it or before` sigue verde.
 
+**Notas de la implementación (2026-10-10):**
+- La caja de un paquete muestra: «Encabezado» (Origen, Destino y, cuando el término `ttl` se conoce, «TTL»); «Encabezado del Echo Reply», cuando los términos `header` y `echo-reply` se conocen y el paquete fue contestado; «Pasó por» o «Saltos» (según se conozca `hop`); y «Tiempo de ida y vuelta», siempre con la línea «Cifra de ejemplo.»
+- El traceroute es una lista numerada llamada «Salida de traceroute». Un salto que no contesta se escribe `*`; la última línea de un inalcanzable lleva `!H` o `!N`. Cada una trae su nota en palabras sencillas.
+- Un router que el mapa no dibuja (V6 b) nunca se nombra, ni por nombre ni por IP, en ningún texto. Los caminos, los motivos y las líneas de traceroute dicen «dentro de la oficina» o «fuera de la oficina»; para decidirlo se usa `facesALan`, que exporta el motor. La excepción es el traceroute: ver el punto 21 de «Decididas sin el estudiante».
+
 **Commit:** `feat(ui): show the round trip time and the traceroute lines`.
 
 ---
@@ -1240,6 +1246,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `01-10: the last router that answered is the one before the broken stretch`.
 - `01-10: tu-laptop is the only device of the office drawn, and the office router, the two routers of the provider, the internet and the server are drawn`.
 - `01-10: every router a line of the traceroute names is drawn`.
+- `registry.test.ts`, `an incident that offers traceroute draws every router its traceroutes cross` (punto 21 de «Decididas sin el estudiante»). Vale también para la Tarea 26: todo incidente que ofrezca traceroute lo cumple.
 - `inspection.test.ts`, `with the term IP pública known the box of an instance and of an actor shows its IP` (D-5).
 - `ladder.test.ts`, `the private IP of the other office is not inside any LAN of the office`.
 - `ladder.test.ts`, `the official name of ICMP says Internet before the term internet arrives: the one declared leak` vuelve a exigir que ICMP se presente antes que `internet` (en la Tarea 20 se relajó por el puente).
