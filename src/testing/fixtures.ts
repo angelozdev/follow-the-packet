@@ -91,7 +91,7 @@ export function officeNet(): Network {
 
 export const OFFICE_FLOORS = {
   range: '192.168.0.0/16',
-  floor1: { id: 'floor-1', name: 'Piso 1', cidr: '192.168.1.0/24', gateway: '192.168.1.1', you: '192.168.1.10', lucia: '192.168.1.11', marta: '192.168.1.12', printer: '192.168.1.21', guest: '192.168.1.30' },
+  floor1: { id: 'floor-1', name: 'Piso 1', cidr: '192.168.1.0/24', gateway: '192.168.1.1', you: '192.168.1.10', lucia: '192.168.1.11', marta: '192.168.1.12', printer: '192.168.1.21', guest: '192.168.1.30', nobody: '192.168.1.99' },
   floor2: { id: 'floor-2', name: 'Piso 2', cidr: '192.168.2.0/24', gateway: '192.168.2.1', andres: '192.168.2.15' },
   officeRouter: { id: 'router-office', uplink: '203.0.113.10' },
   provider: { id: 'router-provider', towardOffice: '203.0.113.1', towardInternet: '203.0.113.3' },

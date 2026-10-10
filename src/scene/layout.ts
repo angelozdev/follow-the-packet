@@ -1,4 +1,4 @@
-import type { Device, Network, PacketSpec, Trace } from '@/engine';
+import type { Device, Network, PacketSpec, Reason, Trace } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 
 export type Vec2 = [number, number];
@@ -79,6 +79,7 @@ const DOCK_MARGIN = 6;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
+const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device', 'forward-no-owner'];
 
 function columnsOf(net: Network): Column[] {
   if (!net.subnets) return [{ subnetId: null, devices: net.devices }];
@@ -208,7 +209,7 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout): Vec2[
   const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [layout.actors[from.id] ?? layout.internet, layout.internet];
 
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return points.slice(0, 2);
-  if (trace.steps.some((s) => s.reason.code === 'route-no-device')) return [...points, [layout.roadToX, layout.roadZ]];
+  if (trace.steps.some((s) => NOBODY_HAS_IT.includes(s.reason.code))) return [...points, [layout.roadToX, layout.roadZ]];
   if (layout.outside && trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 

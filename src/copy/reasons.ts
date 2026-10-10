@@ -24,6 +24,12 @@ const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
   office: 'Viaja por dentro de la {{network|red}} de la oficina.',
 };
 
+const SENDER_WARNS: TermText = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
+
+function sought(reason: Extract<Reason, { code: 'forward-no-owner' }>): TermText {
+  return reason.viaGateway ? `${reason.ip}, su {{default-gateway}},` : reason.ip;
+}
+
 function replyText(net: Network, deviceId: string): TermText {
   const device = net.devices.find((d) => d.id === deviceId);
   const kind = net.firewalls.find((f) => device?.firewallIds.includes(f.id))?.kind;
@@ -65,6 +71,14 @@ export function describeReason(reason: Reason, net: Network): TermText {
       return 'Va a la propia IP del dispositivo: no sale a la red.';
     case 'route-loopback':
       return `${reason.ip} es una dirección de {{loopback}}: el {{packet|paquete}} se entrega al propio {{device|dispositivo}} y no sale a la {{network|red}}.`;
+    case 'route-no-gateway':
+      return `${reason.ip} no está en la {{lan}} de ${deviceName(net, reason.deviceId)}, y ${deviceName(net, reason.deviceId)} no tiene {{default-gateway}}: no sabe por dónde sacar el {{packet|paquete}}.`;
+    case 'route-not-connected':
+      return `${deviceName(net, reason.deviceId)} no tiene conexión a la {{network|red}}: ni envía ni recibe {{packet|paquetes}}.`;
+    case 'route-gateway-not-a-router':
+      return `${deviceName(net, reason.deviceId)} tiene la IP ${reason.ip}, la {{default-gateway}} que se configuró, pero no es un {{router}}: recibe el {{packet|paquete}}, no lo reenvía y no vuelve nada.`;
+    case 'forward-no-owner':
+      return `${deviceName(net, reason.deviceId)} buscó en su {{network|red}} quién tenía la IP ${sought(reason)} y nadie contestó. ${SENDER_WARNS}`;
     case 'firewall-out-pass':
       return FIREWALL_TEXT[reason.firewallKind].passOut(deviceName(net, reason.deviceId));
     case 'firewall-out-drop':

@@ -54,5 +54,7 @@ export const OUTCOME_TEXT: Record<Outcome, TermText> = {
   'arrived-no-reply': 'Llegó, pero nadie contestó.',
   unresolved: 'No salió: el nombre no se pudo convertir en una IP.',
   'invalid-address': 'No salió del dispositivo: la dirección no es una {{ipv4}} válida.',
+  'no-route': 'No salió del dispositivo: no tiene por dónde sacar el paquete.',
+  unreachable: 'No llegó: volvió un aviso de que no se pudo llegar al destino.',
   lost: 'Se perdió: no llegó a ningún dispositivo.',
 };

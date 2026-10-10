@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
-import { device, lab03Net, officeNet, ping, withDevice } from '@/testing';
+import { OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 
@@ -63,6 +63,38 @@ const ADDRESS_CASES: [Reason, string, string[]][] = [
   ],
 ];
 
+const FLOORS = officeTwoFloorsNet();
+const { floor1, floor2 } = OFFICE_FLOORS;
+const SENDER_WARNS = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
+
+const DELIVERY_CASES: [Reason, string, string[]][] = [
+  [
+    { code: 'route-no-gateway', deviceId: 'your-laptop', ip: floor2.andres },
+    '192.168.2.15 no está en la {{lan}} de [[tu-laptop]], y [[tu-laptop]] no tiene {{default-gateway}}: no sabe por dónde sacar el {{packet|paquete}}.',
+    ['lan', 'default-gateway', 'packet'],
+  ],
+  [
+    { code: 'route-not-connected', deviceId: 'guest-laptop' },
+    '[[laptop-visita]] no tiene conexión a la {{network|red}}: ni envía ni recibe {{packet|paquetes}}.',
+    ['network', 'packet'],
+  ],
+  [
+    { code: 'route-gateway-not-a-router', deviceId: 'printer', ip: floor1.printer },
+    '[[impresora]] tiene la IP 192.168.1.21, la {{default-gateway}} que se configuró, pero no es un {{router}}: recibe el {{packet|paquete}}, no lo reenvía y no vuelve nada.',
+    ['default-gateway', 'router', 'packet'],
+  ],
+  [
+    { code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: false },
+    `[[tu-laptop]] buscó en su {{network|red}} quién tenía la IP 192.168.1.99 y nadie contestó. ${SENDER_WARNS}`,
+    ['network', 'device', 'packet'],
+  ],
+  [
+    { code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: true },
+    `[[tu-laptop]] buscó en su {{network|red}} quién tenía la IP 192.168.1.99, su {{default-gateway}}, y nadie contestó. ${SENDER_WARNS}`,
+    ['network', 'default-gateway', 'device', 'packet'],
+  ],
+];
+
 describe('describeReason', () => {
   it.each(CASES)('describes %o', (reason, text) => {
     expect(describeReason(reason, NET)).toBe(text);
@@ -80,6 +112,14 @@ describe('describeReason', () => {
     const invalid = describeReason(ADDRESS_CASES[0][0], NET);
     expect(termsIn(invalid)).not.toContain('dns');
     expect(toPlainText(invalid)).not.toMatch(/dns|nombre/i);
+  });
+
+  it('describes route-no-gateway, route-not-connected, route-gateway-not-a-router and forward-no-owner with registered terms only', () => {
+    for (const [reason, text, terms] of DELIVERY_CASES) {
+      expect(describeReason(reason, FLOORS)).toBe(text);
+      expect(termsIn(text)).toEqual(terms);
+      expect(toPlainText(text)).not.toMatch(/\b(arp|mac)\b/i);
+    }
   });
 
   it('an office names its own network and its own firewalls, not the VPC nor a Security Group', () => {

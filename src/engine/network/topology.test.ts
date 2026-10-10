@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet } from '@/testing';
-import { IMPLICIT_LAN_ID, isClientActor, lanOf, lansOf } from './topology';
+import { IMPLICIT_LAN_ID, isClientActor, isConnected, lanOf, lansOf } from './topology';
 import type { Actor } from './types';
 
 const { floor1, floor2, server } = OFFICE_FLOORS;
@@ -28,6 +28,12 @@ describe('lanOf', () => {
   it('is undefined for a device that names none among several LANs, or one that does not exist', () => {
     expect(lanOf(officeTwoFloorsNet(), {})).toBeUndefined();
     expect(lanOf(officeTwoFloorsNet(), { lanId: 'floor-9' })).toBeUndefined();
+  });
+});
+
+describe('isConnected', () => {
+  it('is false only for a device plugged out', () => {
+    expect([{}, { connected: true }, { connected: false }].map(isConnected)).toEqual([true, true, false]);
   });
 });
 

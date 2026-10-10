@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine';
-import { actor, device, lab03Net, ping } from '@/testing';
+import { OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
 import { OUTCOME_TEXT, deviceName, endpointName, packetLabel, packetMessage, serviceLabel, stampLabel } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 
@@ -52,5 +52,15 @@ describe('packet labels', () => {
     expect(OUTCOME_TEXT[trace.outcome]).toBe('No salió del dispositivo: la dirección no es una {{ipv4}} válida.');
     expect(termsIn(OUTCOME_TEXT['invalid-address'])).toEqual(['ipv4']);
     expect(toPlainText(OUTCOME_TEXT['invalid-address'])).not.toMatch(/dns|nombre/i);
+  });
+
+  it('says that a packet with no way out never left the device, and that a warning came back for an IP nobody has', () => {
+    const floors = officeTwoFloorsNet();
+    const stays = simulate(floors, ping(device('guest-laptop'), OFFICE_FLOORS.floor1.lucia));
+    const warned = simulate(floors, ping(device('your-laptop'), OFFICE_FLOORS.floor1.nobody));
+    expect([stays.outcome, warned.outcome]).toEqual(['no-route', 'unreachable']);
+    expect(OUTCOME_TEXT[stays.outcome]).toBe('No salió del dispositivo: no tiene por dónde sacar el paquete.');
+    expect(OUTCOME_TEXT[warned.outcome]).toBe('No llegó: volvió un aviso de que no se pudo llegar al destino.');
+    expect([...termsIn(OUTCOME_TEXT['no-route']), ...termsIn(OUTCOME_TEXT.unreachable)]).toEqual([]);
   });
 });

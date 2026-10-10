@@ -1,6 +1,6 @@
 import type { FirewallKind, IcmpType } from '@/engine/network/types';
 
-export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'firewall-in' | 'host' | 'reply';
+export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
 export type CheckpointStage = Exclude<StepStage, 'nat'>;
 
@@ -38,6 +38,10 @@ export type Reason =
   | { code: 'route-from-internet' }
   | { code: 'route-self'; deviceId: string }
   | { code: 'route-loopback'; deviceId: string; ip: string }
+  | { code: 'route-no-gateway'; deviceId: string; ip: string }
+  | { code: 'route-not-connected'; deviceId: string }
+  | { code: 'route-gateway-not-a-router'; deviceId: string; ip: string }
+  | { code: 'forward-no-owner'; deviceId: string; ip: string; viaGateway: boolean }
   | { code: 'firewall-out-pass'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-out-drop'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-in-pass'; deviceId: string; firewallKind: FirewallKind }
@@ -50,7 +54,16 @@ export type Reason =
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
-export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'lost';
+export type Outcome = 'replied' | 'timeout' | 'refused' | 'arrived-no-reply' | 'unresolved' | 'invalid-address' | 'no-route' | 'unreachable' | 'lost';
+
+export type NoticeKind = 'host-unreachable' | 'net-unreachable' | 'time-exceeded';
+
+/** The warning that came back to the sender: what it says, who generated it and from which IP. */
+export interface Notice {
+  kind: NoticeKind;
+  fromId: string;
+  fromIp: string;
+}
 
 export interface TcpdumpLine {
   deviceId: string;
@@ -67,4 +80,5 @@ export interface Trace {
   destinationId: string | null;
   effectiveSource: string;
   tcpdump: TcpdumpLine[];
+  notice?: Notice;
 }

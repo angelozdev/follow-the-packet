@@ -54,7 +54,7 @@ describe('01-01, the address', () => {
 
   it.each([
     ['the laptop of Lucía, which also answers', ADDRESS.lucia.id, REPLIED],
-    ['an address no device has', ADDRESS.nobody.id, 'lost'],
+    ['an address no device has', ADDRESS.nobody.id, 'unreachable'],
   ])('a ping to %s does not complete it: only the printer does', (_, toId, outcome) => {
     const session = sendFromYou(THE_ADDRESS, toId, MESSAGE.ping.id);
     expect(outcomesOf(session)).toEqual([outcome]);

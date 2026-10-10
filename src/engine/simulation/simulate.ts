@@ -3,13 +3,14 @@ import { addressStage } from './stages/address';
 import { dnsStage } from './stages/dns';
 import { firewallInStage } from './stages/firewall-in';
 import { firewallOutStage } from './stages/firewall-out';
+import { forwardStage } from './stages/forward';
 import { hostStage } from './stages/host';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, Trace } from './trace';
 
-export const PIPELINE: Stage[] = [addressStage, dnsStage, routeStage, firewallOutStage, firewallInStage, hostStage, replyStage];
+export const PIPELINE: Stage[] = [addressStage, dnsStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
   if (from.kind === 'device') {
@@ -30,6 +31,7 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     destinationId: ctx.dest?.id ?? null,
     effectiveSource: ctx.effectiveSource ?? ctx.source.ip,
     tcpdump: ctx.tcpdump,
+    ...(ctx.notice && { notice: ctx.notice }),
   };
 }
 

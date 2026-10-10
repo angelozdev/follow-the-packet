@@ -1,5 +1,11 @@
 import type { Device, Endpoint, Network, PacketSpec } from '@/engine/network/types';
-import type { Outcome, Step, TcpdumpLine } from './trace';
+import type { Notice, Outcome, Step, TcpdumpLine } from './trace';
+
+/** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
+export interface Delivery {
+  ip: string;
+  viaGateway: boolean;
+}
 
 export interface SimContext {
   net: Network;
@@ -8,7 +14,9 @@ export interface SimContext {
   destIp?: string;
   dest?: Device;
   path?: 'private' | 'public' | 'self';
+  delivery?: Delivery;
   effectiveSource?: string;
+  notice?: Notice;
   steps: Step[];
   tcpdump: TcpdumpLine[];
 }

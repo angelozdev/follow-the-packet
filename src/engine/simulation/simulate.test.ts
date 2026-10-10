@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from './checkpoints';
-import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import type { Network } from '@/engine/network/types';
 import type { Trace } from './trace';
 
 const S1 = { private: '172.31.16.131', public: '54.78.154.66' };
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
+const VPC_NOBODY = '172.31.38.200';
 const withEcho = (): Network => withInbound(lab03Net(), 'sg-servidor2', echoFrom('echo', 'sg-servidor1'));
 const guardedOffice = (): Network => withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+const closedOffice = (): Network => {
+  const office = guardedOffice();
+  return { ...office, firewalls: office.firewalls.map((f) => ({ ...f, outbound: [] })) };
+};
+const codes = (trace: Trace): string[] => trace.steps.map((step) => step.reason.code);
 
 describe('lab 03 in the engine', () => {
   it('step 3: without an ICMP rule the ping dies at the entrance of servidor2 and tcpdump sees nothing', () => {
@@ -122,10 +128,14 @@ describe('lab 03 in the engine', () => {
 });
 
 describe('lost packets and a device that pings itself', () => {
-  it('an IP of the office that no device has: the packet is lost in the network', () => {
+  it('an IP of the office that no device has gives a host-unreachable warning from the sender', () => {
     const trace = simulate(officeNet(), ping(device('your-laptop'), OFFICE.nobody));
-    expect(trace.outcome).toBe('lost');
-    expect(trace.steps).toEqual([{ stage: 'route', at: 'office', verdict: 'drop', reason: { code: 'route-no-device', ip: OFFICE.nobody } }]);
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual({ kind: 'host-unreachable', fromId: 'your-laptop', fromIp: OFFICE.you });
+    expect(trace.steps).toEqual([
+      { stage: 'route', at: 'office', verdict: 'pass', reason: { code: 'route-private' } },
+      { stage: 'forward', at: 'your-laptop', verdict: 'drop', reason: { code: 'forward-no-owner', deviceId: 'your-laptop', ip: OFFICE.nobody, viaGateway: false } },
+    ]);
   });
 
   it('a private IP from the internet: the packet is lost in the internet, before the router', () => {
@@ -191,12 +201,6 @@ describe('devices and their firewalls', () => {
 });
 
 describe('addresses, localhost and loopback', () => {
-  const codes = (trace: Trace): string[] => trace.steps.map((step) => step.reason.code);
-  const closedOffice = (): Network => {
-    const office = guardedOffice();
-    return { ...office, firewalls: office.firewalls.map((f) => ({ ...f, outbound: [] })) };
-  };
-
   it.each(['192.168.1.300', '256.0.0.1', '10.0.0.1000', '1234.1.1.1'])(
     'an address with a number above 255 never leaves the device and is not looked up as a name: %s',
     (address) => {
@@ -262,5 +266,129 @@ describe('addresses, localhost and loopback', () => {
       { stage: 'reply', at: 'servidor2', verdict: 'pass', reason: { code: 'reply-stateful', deviceId: 'servidor2' } },
     ]);
     expect([trace.resolvedIp, trace.destinationId, trace.effectiveSource]).toEqual([S2.private, 'servidor2', S2.private]);
+  });
+});
+
+describe('delivery in the local network and through the default gateway', () => {
+  const { floor1, floor2 } = OFFICE_FLOORS;
+  const floors = (): Network => officeTwoFloorsNet();
+  const withGateway = (deviceId: string, gateway: string | undefined): Network => withDevice(floors(), deviceId, { gateway });
+  const routerIds = (net: Network): string[] => (net.routers ?? []).map((router) => router.id);
+  const noticeKeys = (trace: Trace): string[] => Object.keys(trace).filter((key) => key === 'notice' || key === 'hops');
+
+  it('a device on the same LAN is reached directly, with no router and no hop', () => {
+    for (const net of [floors(), withGateway('your-laptop', undefined)]) {
+      const trace = simulate(net, ping(device('your-laptop'), floor1.lucia));
+      expect(trace.outcome).toBe('replied');
+      expect(trace.destinationId).toBe('lucia-laptop');
+      expect(codes(trace)).toEqual(['route-private', 'host-replies', 'reply-stateful']);
+      expect(trace.steps.filter((step) => routerIds(net).includes(step.at))).toEqual([]);
+      expect(noticeKeys(trace)).toEqual([]);
+    }
+  });
+
+  it('an IP no device of the LAN has gives a host-unreachable warning from the sender itself', () => {
+    const trace = simulate(floors(), ping(device('your-laptop'), floor1.nobody));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual({ kind: 'host-unreachable', fromId: 'your-laptop', fromIp: floor1.you });
+    expect(codes(trace)).toEqual(['route-private', 'forward-no-owner']);
+    expect(stopStep(trace)).toEqual({
+      stage: 'forward',
+      at: 'your-laptop',
+      verdict: 'drop',
+      reason: { code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: false },
+    });
+    expect([trace.destinationId, trace.tcpdump]).toEqual([null, []]);
+  });
+
+  it('an IP of another LAN with no gateway set stops at the sender with no-route and no warning', () => {
+    const trace = simulate(withGateway('your-laptop', undefined), ping(device('your-laptop'), floor2.andres));
+    expect(trace.outcome).toBe('no-route');
+    expect(trace.steps).toEqual([{ stage: 'route', at: 'your-laptop', verdict: 'drop', reason: { code: 'route-no-gateway', deviceId: 'your-laptop', ip: floor2.andres } }]);
+    expect(deathPoint(trace)).toEqual({ stage: 'route', at: 'your-laptop' });
+    expect([trace.destinationId, trace.tcpdump, noticeKeys(trace)]).toEqual([null, [], []]);
+  });
+
+  it('a device that is not connected neither sends nor receives', () => {
+    const sends = simulate(floors(), ping(device('guest-laptop'), floor1.lucia));
+    expect(sends.outcome).toBe('no-route');
+    expect(sends.steps).toEqual([{ stage: 'route', at: 'guest-laptop', verdict: 'drop', reason: { code: 'route-not-connected', deviceId: 'guest-laptop' } }]);
+    expect(noticeKeys(sends)).toEqual([]);
+
+    const receives = simulate(floors(), ping(device('your-laptop'), floor1.guest));
+    expect(receives.outcome).toBe('unreachable');
+    expect(receives.notice).toEqual({ kind: 'host-unreachable', fromId: 'your-laptop', fromIp: floor1.you });
+    expect(receives.destinationId).toBeNull();
+  });
+
+  it('a device that is not connected still answers itself, because that packet never leaves it', () => {
+    const trace = simulate(floors(), ping(device('guest-laptop'), floor1.guest));
+    expect(trace.outcome).toBe('replied');
+    expect(codes(trace)).toEqual(['route-self', 'host-replies', 'reply-stateful']);
+  });
+
+  it('a gateway IP that no device has gives a host-unreachable warning from the sender', () => {
+    const trace = simulate(withGateway('your-laptop', floor1.nobody), ping(device('your-laptop'), floor2.andres));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual({ kind: 'host-unreachable', fromId: 'your-laptop', fromIp: floor1.you });
+    expect(stopStep(trace)?.reason).toEqual({ code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: true });
+    expect(trace.destinationId).toBeNull();
+  });
+
+  it('a gateway that is a printer receives the packet and drops it, so nothing comes back', () => {
+    const trace = simulate(withGateway('your-laptop', floor1.printer), ping(device('your-laptop'), floor2.andres));
+    expect(trace.outcome).toBe('timeout');
+    expect(stopStep(trace)).toEqual({
+      stage: 'forward',
+      at: 'printer',
+      verdict: 'drop',
+      reason: { code: 'route-gateway-not-a-router', deviceId: 'printer', ip: floor1.printer },
+    });
+    expect(deathPoint(trace)).toEqual({ stage: 'forward', at: 'printer' });
+    expect([trace.destinationId, trace.tcpdump, noticeKeys(trace)]).toEqual([null, [], []]);
+    expect(trace.steps.some((step) => step.stage === 'host' || step.stage === 'reply')).toBe(false);
+  });
+
+  it('an outbound firewall silences a packet to an IP nobody has, so the sender never warns', () => {
+    const silenced = simulate(closedOffice(), ping(device('lucia-laptop'), OFFICE.nobody));
+    expect(silenced.outcome).toBe('timeout');
+    expect(deathPoint(silenced)).toEqual({ stage: 'firewall-out', at: 'lucia-laptop' });
+    expect(silenced.steps.some((step) => step.stage === 'forward')).toBe(false);
+    expect(noticeKeys(silenced)).toEqual([]);
+
+    const open = simulate(guardedOffice(), ping(device('lucia-laptop'), OFFICE.nobody));
+    expect(open.outcome).toBe('unreachable');
+    expect(open.notice).toEqual({ kind: 'host-unreachable', fromId: 'lucia-laptop', fromIp: OFFICE.lucia });
+  });
+
+  it('a packet to a device of another LAN goes through the router of its gateway', () => {
+    const trace = simulate(floors(), ping(device('your-laptop'), floor2.andres));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.destinationId).toBe('andres-laptop');
+    expect(trace.effectiveSource).toBe(floor1.you);
+    expect(codes(trace)).toEqual(['route-private', 'host-replies', 'reply-stateful']);
+    expect(noticeKeys(trace)).toEqual([]);
+
+    const throughPrinter = simulate(withGateway('your-laptop', floor1.printer), ping(device('your-laptop'), floor2.andres));
+    expect(throughPrinter.outcome).not.toBe('replied');
+
+    const net = floors();
+    const cut: Network = { ...net, routers: (net.routers ?? []).map((router) => ({ ...router, interfaces: router.interfaces.filter((face) => face.faces !== floor2.id) })) };
+    const unrouted = simulate(cut, ping(device('your-laptop'), floor2.andres));
+    expect(unrouted.outcome).not.toBe('replied');
+    expect(unrouted.destinationId).toBeNull();
+  });
+
+  it('a packet from the other floor crosses the same router the other way', () => {
+    const trace = simulate(floors(), ping(device('andres-laptop'), floor1.you));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.destinationId).toBe('your-laptop');
+  });
+
+  it('the VPC keeps saying lost for an IP no instance has', () => {
+    const trace = simulate(lab03Net(), ping(device('servidor1'), VPC_NOBODY));
+    expect(trace.outcome).toBe('lost');
+    expect(trace.steps).toEqual([{ stage: 'route', at: 'vpc', verdict: 'drop', reason: { code: 'route-no-device', ip: VPC_NOBODY } }]);
+    expect(noticeKeys(trace)).toEqual([]);
   });
 });

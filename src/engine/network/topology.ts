@@ -19,3 +19,8 @@ export function lanOf(net: Pick<Network, 'cidr' | 'lans'>, device: Pick<Device, 
 export function isClientActor(actor: Actor): actor is ClientActor {
   return actor.kind !== 'server';
 }
+
+/** True unless the device is plugged out: a device with no cable neither sends nor receives. */
+export function isConnected(device: Pick<Device, 'connected'>): boolean {
+  return device.connected !== false;
+}
