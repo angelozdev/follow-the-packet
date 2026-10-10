@@ -349,7 +349,7 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Jugador y fichas:** destino: `192.168.1.12`, `192.168.1.11`. Se puede inspeccionar el firewall (su definición; sin candado de reglas todavía).
 - **Tareas:** (1) probar el ping a `laptop-marta` y ver que lo descartó su firewall (`expect.outcome = timeout`, `by` el firewall de `laptop-marta`); (2) que el ping a `laptop-lucia` vuelva.
 - **Fallo y causa:** el firewall de `laptop-marta` descarta sin avisar. El sello es ahora ✕ en su laptop y el motivo lo dice.
-- **Pregunta:** «¿Por qué no recibiste ningún aviso?» Correcta: descartar es tirar el paquete sin contestar. Incorrectas: «el ping nunca salió de tu laptop» (el sello muestra que viajó); «`laptop-marta` estaba apagada» (llegó hasta su firewall).
+- **Pregunta:** «¿Por qué no recibiste ningún aviso?» Correcta: su firewall descartó el paquete y no avisó (descartar es tirar el paquete; quien lo tira puede avisar o callar, y este calla). Incorrectas: «el ping nunca salió de tu laptop» (el sello muestra que viajó); «`laptop-marta` estaba apagada» (llegó hasta su firewall).
 - **Pistas:** (1) mira el sello del ping a `laptop-marta`. (2) inspecciona su firewall.
 
 **01-12 · Tu primera regla** · `filter` · términos: regla, permitir, denegar, denegación por defecto, mínimo privilegio. El segundo más denso.
