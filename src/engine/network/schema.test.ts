@@ -57,6 +57,10 @@ describe('networkSchema', () => {
     expect(problems(officeNet())).toEqual([]);
   });
 
+  it('accepts a home on the internet as an actor', () => {
+    expect(problems({ ...officeNet(), actors: [{ id: 'home', name: 'Casa', ip: '198.51.100.24', kind: 'home' }] })).toEqual([]);
+  });
+
   it('accepts an office whose laptop has its host firewall', () => {
     expect(problems(withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }))).toEqual([]);
   });

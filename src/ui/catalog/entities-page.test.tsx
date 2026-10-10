@@ -20,6 +20,7 @@ describe('entities page', () => {
   it('shows the name of an actor as a name tag, apart from the entity', () => {
     render(<EntitiesPage />);
     expect(screen.getByText('Atacante')).toHaveClass('name-tag');
+    expect(screen.getByText('Casa de Lucía')).toHaveClass('name-tag');
   });
 
   it('draws the pieces moving, and still once "Sin animaciones" is checked', async () => {

@@ -67,6 +67,7 @@ describe('entity terms', () => {
   it('gives a character no term: an actor is a person, not a piece of the network', () => {
     expect(entityTerm({ kind: 'actor', variant: 'attacker' })).toBeNull();
     expect(entityTerm({ kind: 'actor', variant: 'you' })).toBeNull();
+    expect(entityTerm({ kind: 'actor', variant: 'home' })).toBeNull();
   });
 });
 

@@ -22,7 +22,7 @@ const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermTex
   firewall: { 'host-firewall': 'firewall de la laptop', 'security-group': 'Security Group' },
   edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
   internet: { internet: 'internet' },
-  actor: { attacker: nameTag('Atacante'), you: nameTag('Tu Mac') },
+  actor: { attacker: nameTag('Atacante'), you: nameTag('Tu Mac'), home: nameTag('Casa de Lucía') },
   packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply' },
 };
 

@@ -56,7 +56,7 @@ export const actorSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   ip,
-  kind: z.enum(['you', 'attacker']),
+  kind: z.enum(['you', 'attacker', 'home']),
 });
 
 const networkShape = z.object({

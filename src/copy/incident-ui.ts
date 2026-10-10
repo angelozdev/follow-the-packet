@@ -48,6 +48,7 @@ export const INSPECTION_TEXT = {
 export const ACTOR_ROLE_TEXT: Record<Actor['kind'], TermText> = {
   attacker: 'Alguien de internet que prueba si los {{security-group|Security Groups}} ajenos lo dejan entrar.',
   you: 'Tu computadora.',
+  home: 'Una casa fuera de la oficina, conectada a internet.',
 };
 
 export const LUCIA_TEXT = {

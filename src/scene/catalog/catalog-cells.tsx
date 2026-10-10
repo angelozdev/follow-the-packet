@@ -161,7 +161,7 @@ export const CATALOG_ROWS: CatalogCell[][] = [
   firewallRow('host-firewall'),
   firewallRow('security-group'),
   [edgeCell('router'), edgeCell('internet-gateway'), INTERNET_CELL],
-  [actorCell('attacker'), actorCell('you')],
+  [actorCell('attacker'), actorCell('you'), actorCell('home')],
   [packetCell('echo-request', false), packetCell('echo-reply', false), packetCell('echo-request', true), packetCell('echo-reply', true)],
   TRACE_ENDS.map(traceCell),
 ];

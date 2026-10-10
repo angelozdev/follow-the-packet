@@ -103,7 +103,7 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   firewall: { 'host-firewall': null, 'security-group': 'security-group' },
   edge: { router: null, 'internet-gateway': 'internet-gateway' },
   internet: { internet: null },
-  actor: { you: null, attacker: null },
+  actor: { you: null, attacker: null, home: null },
   packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply' },
 };
 
