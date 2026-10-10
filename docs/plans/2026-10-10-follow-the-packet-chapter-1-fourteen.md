@@ -940,6 +940,12 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `Escape closes the card even when the chip picked has a feedback line`.
 - El genérico `starts with a task to fix` (`incidents.test.ts`) cubre que la ficha de partida no cumple ninguna tarea.
 
+**Notas de la implementación (2026-10-10):**
+- La forma del contrato, tal como quedó: la tarjeta es `{ deviceId, question?, trays }`, la bandeja es `{ id, name, chips, initialPick?, initialPickRule?, segmented? }` y la jugada es `answerCard { deviceId, picks }`. `Session.answers[deviceId][trayId]` nace con el `initialPick` de la bandeja.
+- Elegir una ficha es un borrador de la tarjeta hasta pulsar «Listo». Con «Listo», la tarjeta muestra la `feedback` de la ficha elegida y, si esa ficha no es la de partida, la regla de `initialPickRule` a continuación. Un segundo «Listo», o un «Listo» sin ninguna línea, cierra la tarjeta. Escape cierra y no manda nada a la sesión.
+- `ChipCard` ganó la propiedad `onDone`, que es la salida propia del botón «Listo», separada de Escape.
+- Esta tarjeta todavía no se ha visto en un navegador: ningún incidente la usa hasta que la Tarea 20 registre el 01.
+
 **Commit:** `feat(game): add the identify mechanic`.
 
 ---
@@ -969,6 +975,13 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `settings-card.test.tsx`, `calls the setting by its term, the default gateway, and not by the label of any operating system`.
 - `pieces.test.ts`, `a laptop that sends and has settings opens its terminal and its settings card, each from its own entry`.
 - `ladder.test.ts`, `a setting chip names its value, and its tray names a term`.
+
+**Notas de la implementación (2026-10-10):**
+- La tarjeta se abre desde un segundo botón en la etiqueta de la laptop, «Ajustes de red», junto a la etiqueta con el nombre. Tiene su propio id de pieza, `PIECE_ID.settings`, y no tiene forma 3D.
+- Elegir una ficha se aplica de inmediato: `setSetting` vuelve a calcular los flujos y vacía `sent`; el contador de envíos sigue contando.
+- La bandeja se nombra con el término `default-gateway`, y la ficha «Ninguna» significa que no hay puerta de enlace.
+- Para después: el ícono nuevo `settings` de `card-icon.tsx` no tiene especimen en el catálogo. Sumarlo regraba la captura de la interfaz, así que se hace en una tarea que pueda cambiar capturas, o se anota en la Tarea 28.
+- Para después: el segundo botón de la etiqueta se ve por primera vez en una escena real en el e2e de las Tareas 22 y 27 (puede solaparse con las etiquetas del router y de los pisos).
 
 **Commit:** `feat(game): let a send incident set the gateway of a device from its own card`.
 
@@ -1034,6 +1047,12 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `task-card.test.tsx`, `switching tabs keeps what was picked in the other tab`.
 - `session.test.ts`, `a rule placed in the wrong direction changes nothing for the flow`.
 - Los tests de la tarjeta del capítulo 4 siguen sin cambiar de contenido.
+
+**Notas de la implementación (2026-10-10):**
+- La etiqueta de cada pestaña es el nombre oficial del término, en minúsculas: «entrada» y «salida» en el firewall de un equipo; «regla de entrada» y «regla de salida» en un Security Group.
+- `removeRule` también recibe `direction`.
+- Los textos de la lista de salida vacía son «Este firewall tiene la salida cerrada: alguien lo configuró así.» (firewall de un equipo) y «Este Security Group no tiene reglas de salida: su salida está cerrada.» (Security Group).
+- Una regla que ninguna ficha nombra se escribe desde la regla misma, con `describeRule` en `src/copy/rule-text.ts`, que solo usa términos conocidos; una salida abierta se lee «Salida: deja salir todo el tráfico» o «deja salir todo». Así `firewallCard` e `inspect` nunca lanzan. Importa para la salida abierta de `laptop-marta` en el 05, el 11 y el 12.
 
 **Commit:** `feat(game): place rules in either direction on the firewall card with tabs`.
 
@@ -1166,6 +1185,10 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `progress saved by version 1 keeps loading` (el de hoy) se reemplaza por el primero.
 - `pieces.test.ts`, `words the card of a host firewall with rules, never with the later inbound rules` (el de hoy, ahora sobre `hostFirewallIncident`).
 - `task-card.test.tsx`: los de hoy sobre `hostFirewallIncident`, sin cambiar lo que aseguran.
+
+**Notas de la implementación (2026-10-10):**
+- El test `words the card of a host firewall with rules, never with the later inbound rules` vive en `src/game/view/cards/firewall-card.test.ts`, no en `pieces.test.ts`: la Tarea 15 movió allí los tests de la tarjeta del firewall.
+- `hostFirewallIncident` se construye a partir de `outboundFilterIncident`.
 
 **Cierre:** `pnpm check` verde. **Commit:** `refactor: reset the saved progress under a new key and detach the tests from the incidents of chapter 1`.
 
@@ -1402,6 +1425,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Archivos:**
 - Modify: `README.md` (el capítulo 1 es de catorce subcapítulos; enlaza el spec y este plan), `DESIGN.md` (se revisa que refleje el estilo B, `Tabs`, la nueva estructura de `src/design/` y las variantes de V4 y V5; cada tarea ya lo actualizó), `../../docs/plans/follow-the-packet-roadmap.md` (la fila pasa de `en curso` a `hecho` con los commits, y «Prueba humana del capítulo 1» se reemplaza por las de los cinco bloques), `../../docs/plans/2026-10-08-follow-the-packet-followups.md` (lo que quedó: I1, el puente que se cerró, lo que anotaron las pruebas humanas), `../../docs/specs/2026-10-09-follow-the-packet-chapter-1-design.md` (una nota al inicio: los incidentes 01-01 a 01-04 y el riesgo «Primer día lento» los sustituye el spec nuevo), `../../docs/research/2026-10-09-follow-the-packet-chapters.md` (la ficha del capítulo 1: temas y «qué viaja y qué configura»; la tabla de la sección 2 no cambia), este documento (los totales reales y las decisiones tomadas).
+- Decidir dónde va el especimen del ícono `settings` de `card-icon.tsx` (queda de la Tarea 13): el catálogo no lo tiene y sumarlo regraba la captura de la interfaz (`tests/e2e/snapshots/interface-darwin.png`).
 - Antes de cerrar, correr el chequeo de links del `CLAUDE.md` del repo sobre el Markdown cambiado: debe decir `LINKS OK`.
 
 **Tests:** `chapters.test.ts`, `match the chapter map of the chapters doc, in game order` sigue verde (la tabla no cambió).
