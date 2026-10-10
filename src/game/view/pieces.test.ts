@@ -24,11 +24,11 @@ describe('pieceViews', () => {
     ]);
   });
 
-  it('draws an office by the kind of each device and firewall, with a router as its edge, and no term for them before chapter 1', () => {
+  it('draws an office by the kind of each device and firewall, with a router as its edge, and a laptop or a printer named by the term device', () => {
     expect(pieceViews(office).map(({ kind, variant, term, label }) => ({ kind, variant, term, label }))).toEqual([
-      { kind: 'device', variant: 'laptop', term: null, label: '[[your-laptop]]' },
-      { kind: 'device', variant: 'laptop', term: null, label: '[[lucia-laptop]]' },
-      { kind: 'device', variant: 'printer', term: null, label: '[[printer]]' },
+      { kind: 'device', variant: 'laptop', term: 'device', label: '[[your-laptop]]' },
+      { kind: 'device', variant: 'laptop', term: 'device', label: '[[lucia-laptop]]' },
+      { kind: 'device', variant: 'printer', term: 'device', label: '[[printer]]' },
       { kind: 'firewall', variant: 'host-firewall', term: null, label: 'firewall [[lucia-laptop]]' },
       { kind: 'actor', variant: 'attacker', term: null, label: '[[Atacante]]' },
       { kind: 'edge', variant: 'router', term: null, label: 'router' },

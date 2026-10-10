@@ -48,18 +48,20 @@ describe('term registry', () => {
     expect(securityGroup.short).toBe('SG');
   });
 
-  it('only the Security Group has a short form', () => {
-    expect(Object.entries(TERMS).filter(([, term]) => 'short' in term).map(([id]) => id)).toEqual(['security-group']);
+  it('only the IP address and the Security Group have a short form', () => {
+    expect(Object.entries(TERMS).filter(([, term]) => 'short' in term).map(([id]) => id)).toEqual(['ip-address', 'security-group']);
   });
 });
 
 describe('entity terms', () => {
-  it('names a variant by the term the ladder already has, and leaves the office ones without a term until chapter 1', () => {
+  it('names each variant by its term: the office ones by the general terms of chapter 1, the AWS ones by their official names', () => {
     expect(entityTerm({ kind: 'device', variant: 'ec2-instance' })).toBe('ec2-instance');
     expect(entityTerm({ kind: 'firewall', variant: 'security-group' })).toBe('security-group');
     expect(entityTerm({ kind: 'edge', variant: 'internet-gateway' })).toBe('internet-gateway');
     expect(entityTerm({ kind: 'network', variant: 'vpc' })).toBe('vpc');
-    expect(entityTerm({ kind: 'device', variant: 'laptop' })).toBeNull();
+    expect(entityTerm({ kind: 'network', variant: 'office' })).toBe('network');
+    expect(entityTerm({ kind: 'device', variant: 'laptop' })).toBe('device');
+    expect(entityTerm({ kind: 'device', variant: 'printer' })).toBe('device');
     expect(entityTerm({ kind: 'firewall', variant: 'host-firewall' })).toBeNull();
     expect(entityTerm({ kind: 'edge', variant: 'router' })).toBeNull();
   });
@@ -72,15 +74,24 @@ describe('entity terms', () => {
 });
 
 describe('term icons', () => {
-  it('every term that names a variant shows that variant\'s entity as its icon', () => {
+  const GENERAL_TERMS: TermId[] = ['packet'];
+
+  it('every term that names a variant shows the entity of one of the variants it names as its icon', () => {
     const named = Object.entries(ENTITY_TERMS).flatMap(([kind, variants]) =>
-      Object.entries(variants).flatMap(([variant, term]) => (term === null ? [] : [{ term, kind, variant }])),
+      Object.entries(variants).flatMap(([, term]) => (term === null ? [] : [{ term, kind }])),
     );
-    for (const { term, kind, variant } of named) expect(TERM_ENTITY[term as TermId], term).toMatchObject({ kind, variant });
+    for (const { term, kind } of named) {
+      const icon = TERM_ENTITY[term as TermId];
+      expect(icon?.kind, term).toBe(kind);
+      expect(icon && entityTerm(icon), term).toBe(term);
+    }
   });
 
-  it('every icon belongs to the term that names its entity', () => {
-    for (const [term, entity] of Object.entries(TERM_ENTITY)) expect(entityTerm(entity as EntityRef)).toBe(term);
+  it('every icon belongs to the term that names its entity, or to a term that names every variant of it', () => {
+    for (const [term, entity] of Object.entries(TERM_ENTITY)) {
+      if (!GENERAL_TERMS.includes(term as TermId)) expect(entityTerm(entity as EntityRef), term).toBe(term);
+    }
+    expect(TERM_ENTITY.packet).toEqual({ kind: 'packet', variant: 'echo-request' });
   });
 
   it('a term with no entity, like least-privilege, has no icon', () => {

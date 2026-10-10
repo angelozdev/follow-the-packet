@@ -33,7 +33,7 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'route-private-from-outside':
       return 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.';
     case 'route-no-device':
-      return 'Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.';
+      return 'Ningún {{device|dispositivo}} de la {{network|red}} tiene esa IP: el {{packet|paquete}} no llega a nadie.';
     case 'route-private':
       return 'Viaja por dentro de la {{vpc}}.';
     case 'route-no-public-device':

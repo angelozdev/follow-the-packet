@@ -23,6 +23,10 @@ function knowing(session: Session, ...terms: TermId[]): Session {
   return { ...session, known: new Set([...session.known, ...terms]) };
 }
 
+function knowingOnly(session: Session, ...terms: TermId[]): Session {
+  return { ...session, known: new Set(terms) };
+}
+
 function whatIs(term: TermId): string[] {
   return [WHAT_IS, TERMS[term].definition];
 }
@@ -94,11 +98,21 @@ describe('inspect', () => {
     });
   });
 
-  it('a laptop of the office shows its IP and its firewall, with no definition while its term does not exist', () => {
+  it('a laptop of the office says what a device is, and shows its IP and its firewall', () => {
     expect(plain(inspect(office, PIECE_ID.device('lucia-laptop')))).toEqual({
       title: 'lucia-laptop',
-      fields: [['IP privada', '192.168.1.11'], ['Firewall', 'firewall lucia-laptop']],
+      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['Firewall', 'firewall lucia-laptop']],
     });
+  });
+
+  it('calls the IP of a device dirección IP until the term IP privada is known', () => {
+    const early = knowingOnly(office, 'device', 'ip-address');
+    expect(plain(inspect(early, PIECE_ID.device('printer')))?.fields).toEqual([whatIs('device'), ['dirección IP', '192.168.1.20']]);
+  });
+
+  it('defines a packet as a packet until the term of its message is known', () => {
+    const early = knowingOnly(first, 'packet');
+    expect(plain(inspect(early, PIECE_ID.packet(FLOWS.attackerPing.id)))?.fields[0]).toEqual(whatIs('packet'));
   });
 
   it('a host firewall lists its inbound rules like a Security Group, named after its device', () => {

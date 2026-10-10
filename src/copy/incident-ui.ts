@@ -21,6 +21,7 @@ export const MAP_TEXT = {
 
 export const INSPECTION_TEXT = {
   whatIs: 'Qué es',
+  ipAddress: '{{ip-address}}',
   privateIp: '{{private-ip}}',
   publicIp: '{{public-ip}}',
   dnsNames: 'Nombres {{dns}}',

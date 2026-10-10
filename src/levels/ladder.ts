@@ -1,4 +1,4 @@
-import { termsIn, type TermId, type TermText } from '@/copy';
+import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
 import type { Incident } from './incident';
 
 export interface ConfigurableParts {
@@ -40,6 +40,15 @@ export function incidentTexts(incident: Incident): TermText[] {
     ...incident.explanation.flatMap((option) => [option.text, option.feedback]),
     incident.takeaway,
   ];
+}
+
+function escapeForPattern(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Returns the terms whose name the text says as whole words, ignoring case, alone or in the Spanish plural made with s or es: «red» in «una Red» and in «redes», but not in «Redshift». */
+export function namedTerms(text: string, terms: TermId[]): TermId[] {
+  return terms.filter((term) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeForPattern(TERMS[term].name)}(?:e?s)?(?![\\p{L}\\p{N}])`, 'iu').test(text));
 }
 
 /** Returns, once each, the terms the texts use that are not known yet. */

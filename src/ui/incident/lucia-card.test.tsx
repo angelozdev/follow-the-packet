@@ -7,9 +7,10 @@ import { LUCIA_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { sessionReducer, startSession, type SessionAction } from '@/game';
 import { INCIDENTS } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
+import { filterIncident } from '@/testing/incidents';
 import { LuciaCard } from './lucia-card';
 
-const FIRST = INCIDENTS[0];
+const FIRST = filterIncident('04-01');
 const FIX: SessionAction = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id };
 const WIDE: SessionAction = { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.anywhere.id };
 const SUBMIT: SessionAction = { type: 'submit' };
@@ -65,7 +66,7 @@ describe("Lucía's card", () => {
 
   it('lists the new terms first, marked new, and then every earlier term, each group in alphabetical order', () => {
     render(<Harness incidentId="04-02" />);
-    const second = INCIDENTS[1];
+    const second = filterIncident('04-02');
     const earlier = [...startSession(INCIDENTS, second.id).known].filter((id) => !second.introduces.includes(id));
     expect(glossaryNames()).toEqual([...namesOf(second.introduces), ...namesOf(earlier)]);
     const marked = [...glossary().querySelectorAll('dt')].filter((dt) => within(dt).queryByText(LUCIA_TEXT.newBadge));
@@ -79,9 +80,9 @@ describe("Lucía's card", () => {
     expect(termRow(TERMS['least-privilege'].name).querySelector('svg')).toBeNull();
   });
 
-  it('the glossary of 04-01 has no term from a later incident', () => {
+  it('the glossary of 04-01 keeps the terms of chapter 1 and has none from a later incident', () => {
     render(<Harness />);
-    expect(glossary()).not.toHaveTextContent(TERMS['echo-reply'].name);
+    expect(glossaryNames()).toContain(TERMS['ip-address'].name);
     expect(glossary()).not.toHaveTextContent(TERMS['least-privilege'].name);
   });
 

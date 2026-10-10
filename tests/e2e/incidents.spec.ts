@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectErrors } from './console-errors';
+import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
@@ -65,6 +66,10 @@ async function submitAndFinish(page: Page, answer: RegExp) {
   await page.getByRole('button', { name: 'Ver resultado' }).click();
   await expect(page.getByText(FULL_STARS)).toBeVisible();
 }
+
+test.beforeEach(async ({ page }) => {
+  await startWithProgress(page, CHAPTER_1_DONE);
+});
 
 async function playBoth(page: Page) {
   await page.goto('/');
@@ -157,7 +162,7 @@ test('a term shows its definition inside the window, also from a chip of the ope
   const size = await windowSize(page);
   const tooltip = page.locator('body > [role="tooltip"]');
   await page.getByRole('region', { name: /Lucía/ }).getByText('ping', { exact: true }).first().hover();
-  await expect(tooltip).toContainText('Echo Request');
+  await expect(tooltip).toContainText('dirección IP');
   expect(isInside(size, await tooltip.boundingBox())).toBe(true);
   const card = await openDoor(page);
   await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();

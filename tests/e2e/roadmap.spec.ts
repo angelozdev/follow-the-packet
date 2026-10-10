@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
-const SOON_CHAPTER_COUNT = 19;
+const SOON_CHAPTER_COUNT = 18;
 
 test('the roadmap loads every chapter without console errors', async ({ page }) => {
   const errors = collectErrors(page);

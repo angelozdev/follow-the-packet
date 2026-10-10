@@ -37,8 +37,16 @@ function whatIs(entity: EntityRef): FieldSpec[] {
   return definition(entityTerm(entity));
 }
 
-function packetTerm(packet: PacketSpec): TermId | null {
-  return packet.protocol === 'icmp' ? entityTerm({ kind: 'packet', variant: packetMessage(packet) }) : null;
+/** The term a packet is defined by: its ICMP message once that term is known, and the general term `packet` before. */
+function packetTerm(packet: PacketSpec, known: ReadonlySet<TermId>): TermId {
+  const message = packet.protocol === 'icmp' ? entityTerm({ kind: 'packet', variant: packetMessage(packet) }) : null;
+  return message && known.has(message) ? message : 'packet';
+}
+
+/** The field with a device's IP: called IP privada once that term is known, and dirección IP before. */
+function addressField(own: Device, known: ReadonlySet<TermId>): FieldSpec {
+  const term: TermId = known.has('private-ip') ? 'private-ip' : 'ip-address';
+  return { term, label: term === 'private-ip' ? INSPECTION_TEXT.privateIp : INSPECTION_TEXT.ipAddress, lines: () => [own.privateIp] };
 }
 
 function dnsNames(device: Device, region: string | undefined): string[] {
@@ -61,7 +69,7 @@ function device(session: Session, own: Device): Inspection {
     fields: visible(
       [
         ...whatIs({ kind: 'device', variant: own.kind }),
-        { term: 'private-ip', label: INSPECTION_TEXT.privateIp, lines: () => [own.privateIp] },
+        addressField(own, session.known),
         { term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] },
         { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
@@ -128,7 +136,7 @@ function packet(session: Session, run: PacketRun): Inspection {
     entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.intruder },
     title: run.label,
     fields: [
-      ...visible([...definition(packetTerm(run.packet)), ...messageField(run.packet)], session.known),
+      ...visible([...definition(packetTerm(run.packet, session.known)), ...messageField(run.packet)], session.known),
       { label: INSPECTION_TEXT.result, lines: [OUTCOME_TEXT[run.trace.outcome]] },
       ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world)] }] : []),
     ],

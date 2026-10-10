@@ -10,7 +10,7 @@ export default defineIncident({
   mechanic: 'filter',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['echo-reply', 'least-privilege'],
+  introduces: ['least-privilege'],
   changes: [
     { type: 'removeRule', firewallId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) },
     { type: 'addRule', firewallId: SG.servidor2, rule: DAY_SHIFT_RULE },

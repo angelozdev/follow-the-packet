@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Network } from '@/engine';
+import type { Network, Outcome } from '@/engine';
 import { INCIDENTS, applyMove, startWorld, type FilterIncident, type Incident } from '@/levels';
+import { ADDRESS, MESSAGE, ORIGIN } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { filterIncident } from '@/testing';
 import { runFlows } from './flow-runs';
-import { sessionReducer, startSession, starsOf } from './session';
+import { sessionReducer, startSession, starsOf, type Session } from './session';
 import { isTight } from './stars';
 import { taskHolds } from './tasks';
 
@@ -24,6 +25,54 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     const solved = [...of.solution, { type: 'submit' } as const].reduce(sessionReducer, start);
     expect(solved.phase).toBe('explaining');
     expect(starsOf(solved)).toMatchObject({ closed: true, middle: true });
+  });
+});
+
+const THE_ADDRESS = '01-01';
+const THERE_AND_BACK = '01-02';
+const REPLIED: Outcome = 'replied';
+
+function sendFromYou(incidentId: string, toId: string, messageId: string): Session {
+  return sessionReducer(startSession(INCIDENTS, incidentId), { type: 'sendPacket', fromId: ORIGIN.you.id, toId, messageId });
+}
+
+function outcomesOf(session: Session): Outcome[] {
+  return session.sent.map((packet) => packet.trace.outcome);
+}
+
+function taskIsDone(session: Session): boolean {
+  return session.incident.tasks.every((task) => taskHolds(task, session.runs, session.sent));
+}
+
+describe('01-01, the address', () => {
+  it('a ping to the printer comes back and completes the task', () => {
+    const session = sendFromYou(THE_ADDRESS, ADDRESS.printer.id, MESSAGE.ping.id);
+    expect(outcomesOf(session)).toEqual([REPLIED]);
+    expect(taskIsDone(session)).toBe(true);
+  });
+
+  it.each([
+    ['the laptop of Lucía, which also answers', ADDRESS.lucia.id, REPLIED],
+    ['an address no device has', ADDRESS.nobody.id, 'lost'],
+  ])('a ping to %s does not complete it: only the printer does', (_, toId, outcome) => {
+    const session = sendFromYou(THE_ADDRESS, toId, MESSAGE.ping.id);
+    expect(outcomesOf(session)).toEqual([outcome]);
+    expect(taskIsDone(session)).toBe(false);
+  });
+});
+
+describe('01-02, there and back', () => {
+  it('an Echo Request to the laptop of Lucía comes back and completes the task', () => {
+    const session = sendFromYou(THERE_AND_BACK, ADDRESS.lucia.id, MESSAGE.echoRequest.id);
+    expect(outcomesOf(session)).toEqual([REPLIED]);
+    expect(taskIsDone(session)).toBe(true);
+  });
+
+  it('an Echo Reply to the laptop of Lucía arrives with no reply back, so the task stays open', () => {
+    const session = sendFromYou(THERE_AND_BACK, ADDRESS.lucia.id, MESSAGE.echoReply.id);
+    expect(session.sent).toMatchObject([{ reached: true, replied: false, blocked: false, trace: { outcome: 'arrived-no-reply' } }]);
+    expect(taskIsDone(session)).toBe(false);
+    expect(sessionReducer(session, { type: 'submit' }).rejection?.failingTaskIds).toEqual(session.incident.tasks.map((task) => task.id));
   });
 });
 

@@ -7,13 +7,31 @@ export interface Term {
 }
 
 export const TERMS = {
+  device: { name: 'dispositivo', definition: 'Un equipo que puede enviar y recibir datos: una laptop, una impresora, un servidor.' },
+  network: { name: 'red', definition: 'Un conjunto de dispositivos conectados entre sí que pueden intercambiar datos.' },
+  'ip-address': {
+    name: 'dirección IP',
+    short: 'IP',
+    definition: 'El número que identifica a un dispositivo dentro de una red, para que los datos lleguen a él.',
+  },
+  ipv4: { name: 'IPv4', definition: 'La versión 4 de IP: sus direcciones son cuatro números de 0 a 255 separados por puntos, como 192.168.1.20.' },
+  packet: { name: 'paquete', definition: 'Un bloque de datos que viaja por una red con la dirección IP de origen y la de destino.' },
+  ping: { name: 'ping', definition: 'Un comando que manda un paquete a una dirección IP y espera que vuelva otro: prueba el camino de ida y vuelta.' },
+  protocol: {
+    name: 'protocolo',
+    definition: 'Un acuerdo entre dispositivos sobre cómo intercambiar datos: qué mensajes existen y qué significa cada uno.',
+  },
+  request: { name: 'solicitud', definition: 'Un mensaje que le pide algo a otro dispositivo.' },
+  response: { name: 'respuesta', definition: 'El mensaje con que un dispositivo contesta una solicitud.' },
+  icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre dispositivos, como los del ping.' },
+  'echo-request': { name: 'Echo Request', definition: 'La solicitud ICMP del ping (tipo 8): le pide al destino que conteste con un Echo Reply.' },
+  'echo-reply': { name: 'Echo Reply', definition: 'La respuesta ICMP del ping (tipo 0). Solo se envía al recibir un Echo Request, y nadie la contesta.' },
   'ec2-instance': {
     name: 'instancia EC2',
     definition: 'Un servidor virtual en la nube de AWS (Amazon EC2), con su sistema operativo, sus IPs y sus Security Groups.',
   },
   vpc: { name: 'VPC', definition: 'Virtual Private Cloud: una red virtual aislada dentro de AWS, con su propio rango de IPs privadas.' },
   'private-ip': { name: 'IP privada', definition: 'La dirección IPv4 de una instancia dentro de su VPC. Desde internet no se llega a ella.' },
-  ping: { name: 'ping', definition: 'Un comando que manda un ICMP Echo Request a una IP y espera la respuesta: prueba si hay camino de ida y vuelta.' },
   'security-group': {
     name: 'Security Group',
     short: 'SG',
@@ -23,8 +41,6 @@ export const TERMS = {
     name: 'regla de entrada',
     definition: 'Inbound rule en la consola: un permiso del Security Group con Type (qué tráfico) y Source (su origen).',
   },
-  icmp: { name: 'ICMP', definition: 'Internet Control Message Protocol: el protocolo de los mensajes de control entre máquinas, como los del ping.' },
-  'echo-request': { name: 'Echo Request', definition: 'El mensaje ICMP de ida del ping (tipo 8): le pregunta al destino si responde.' },
   'anywhere-ipv4': {
     name: 'Anywhere-IPv4',
     definition: 'Un Source de la consola que equivale a 0.0.0.0/0: cualquier dirección IPv4, también las de internet.',
@@ -33,7 +49,6 @@ export const TERMS = {
     name: 'Internet gateway',
     definition: 'El componente de la VPC que permite la comunicación entre la VPC e internet, en los dos sentidos.',
   },
-  'echo-reply': { name: 'Echo Reply', definition: 'El mensaje ICMP de vuelta del ping (tipo 0): la respuesta del destino.' },
   'least-privilege': { name: 'mínimo privilegio', definition: 'Dar solo los permisos necesarios para una tarea, y solo a quien los necesita.' },
   stateful: { name: 'stateful', definition: 'El Security Group recuerda cada conexión que deja pasar: su respuesta vuelve sin que se evalúen reglas.' },
   'outbound-rule': {
@@ -98,8 +113,8 @@ export type EntityRef = { [Kind in EntityKind]: Kind extends 'packet' ? VariantO
 
 /** The term that names each variant of each entity, or null while the ladder has no term for it. */
 export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
-  network: { office: null, vpc: 'vpc' },
-  device: { laptop: null, printer: null, 'ec2-instance': 'ec2-instance' },
+  network: { office: 'network', vpc: 'vpc' },
+  device: { laptop: 'device', printer: 'device', 'ec2-instance': 'ec2-instance' },
   firewall: { 'host-firewall': null, 'security-group': 'security-group' },
   edge: { router: null, 'internet-gateway': 'internet-gateway' },
   internet: { internet: null },
@@ -107,8 +122,11 @@ export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], 
   packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply' },
 };
 
-/** The entity whose icon goes with each term that names one; a term left out, like least-privilege, has no icon. */
+/** The entity whose icon goes with each term that names one: a term that names several variants (device) shows the first one, and `packet`, which names every packet, shows an Echo Request. A term left out, like least-privilege, has no icon. */
 export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
+  network: { kind: 'network', variant: 'office' },
+  device: { kind: 'device', variant: 'laptop' },
+  packet: { kind: 'packet', variant: 'echo-request' },
   vpc: { kind: 'network', variant: 'vpc' },
   'ec2-instance': { kind: 'device', variant: 'ec2-instance' },
   'security-group': { kind: 'firewall', variant: 'security-group' },

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EXPLANATION_TEXT, LUCIA_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { sendIncident } from '@/testing/incidents';
+import { filterIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
@@ -36,7 +36,7 @@ const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const FULL_STARS = 3;
-const FIRST = INCIDENTS[0];
+const FIRST = filterIncident('04-01');
 const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
 const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened));
 
@@ -44,7 +44,7 @@ type User = ReturnType<typeof userEvent.setup>;
 
 function renderFirst() {
   const onFinish = vi.fn();
-  render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST.id} nextId={INCIDENTS[1].id} onFinish={onFinish} />);
+  render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST.id} nextId="04-02" onFinish={onFinish} />);
   return onFinish;
 }
 

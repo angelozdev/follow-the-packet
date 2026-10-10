@@ -15,7 +15,7 @@ const CASES: [Reason, string][] = [
     `El {{dns}} convierte ${PUBLIC_NAME} en 172.31.38.97 (se preguntó desde dentro de la {{vpc}}).`,
   ],
   [{ code: 'route-private-from-outside', ip: '172.31.38.97' }, 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.'],
-  [{ code: 'route-no-device', ip: '192.168.1.30' }, 'Ningún dispositivo de la red tiene esa IP: el paquete no llega a nadie.'],
+  [{ code: 'route-no-device', ip: '192.168.1.30' }, 'Ningún {{device|dispositivo}} de la {{network|red}} tiene esa IP: el {{packet|paquete}} no llega a nadie.'],
   [{ code: 'route-private' }, 'Viaja por dentro de la {{vpc}}.'],
   [{ code: 'route-no-public-device', ip: '52.0.0.1' }, 'Ninguna {{ec2-instance}} tiene la {{public-ip}} 52.0.0.1.'],
   [{ code: 'route-no-public-ip', deviceId: 'servidor1' }, '[[servidor1]] no tiene {{public-ip}}: no puede salir a internet.'],
