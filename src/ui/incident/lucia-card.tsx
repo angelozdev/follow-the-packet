@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { LUCIA_TEXT, TERMS, TERM_ENTITY, type TermId, type TermText } from '@/copy';
+import { Button } from '@/design';
 import { isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import type { IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
@@ -105,9 +106,9 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
         })}
       </ul>
       {session.phase === 'playing' && (
-        <button type="button" className="btn btn--primary" onClick={onSubmit}>
+        <Button variant="primary" onClick={onSubmit}>
           {LUCIA_TEXT.submit}
-        </button>
+        </Button>
       )}
       <div role="status" className="lucia__reply">
         {session.rejection && <RejectionReply key={session.rejection.attempt} rejection={session.rejection} tasks={incident.tasks} />}
@@ -123,9 +124,9 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
         })}
       </div>
       {session.hintsShown < incident.hints.length && (
-        <button type="button" className="btn btn--small" onClick={onAskHint}>
+        <Button variant="small" onClick={onAskHint}>
           {LUCIA_TEXT.askHint}
-        </button>
+        </Button>
       )}
     </section>
   );

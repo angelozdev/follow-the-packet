@@ -1,5 +1,6 @@
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
+import { Button } from '@/design';
 import { TaggedText } from '@/ui/tagged-text';
 
 interface ChipCardProps {
@@ -27,9 +28,7 @@ export function ChipCard({ title, heading, onClose, children }: ChipCardProps) {
         <TaggedText text={title} />
       </h2>
       {children}
-      <button type="button" className="btn" onClick={onClose}>
-        {TASK_CARD_TEXT.done}
-      </button>
+      <Button onClick={onClose}>{TASK_CARD_TEXT.done}</Button>
     </section>
   );
 }

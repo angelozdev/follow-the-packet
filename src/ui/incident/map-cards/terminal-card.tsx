@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TERMINAL_TEXT, type TermText } from '@/copy';
+import { Button } from '@/design';
 import type { SendPicks, SendTrayName, TerminalCard as Terminal } from '@/game';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
@@ -40,9 +41,9 @@ export function TerminalCard({ card, describe, onPickOrigin, onSend, onClose }: 
       {card.trays.map((tray) => (
         <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={tray.chips} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
       ))}
-      <button type="button" className="btn" disabled={!line} onClick={send}>
+      <Button disabled={!line} onClick={send}>
         {TERMINAL_TEXT.send}
-      </button>
+      </Button>
     </ChipCard>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
+import { Button } from '@/design';
 import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, WhatChip } from '@/levels';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
@@ -61,9 +62,9 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
               <span className="rules__text">
                 <TaggedText text={rowText(row)} />
               </span>
-              <button type="button" className="btn btn--small" aria-label={TASK_CARD_TEXT.remove(toPlainText(rowText(row)))} onClick={() => remove(row.id)}>
+              <Button variant="small" aria-label={TASK_CARD_TEXT.remove(toPlainText(rowText(row)))} onClick={() => remove(row.id)}>
                 ×
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

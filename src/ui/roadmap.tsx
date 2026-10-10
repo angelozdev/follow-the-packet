@@ -1,4 +1,5 @@
 import { ROADMAP_TEXT } from '@/copy';
+import { Button } from '@/design';
 import { CHAPTERS, type LevelEntry } from '@/levels';
 import { isUnlocked, type Progress } from '@/storage';
 import { Stars } from './stars';
@@ -28,7 +29,9 @@ export function Roadmap({ levels, progress }: { levels: LevelEntry[]; progress: 
                     return (
                       <li key={level.id} data-level-id={level.id} className="level-item">
                         {isUnlocked(level, progress, levels) ? (
-                          <a href={`#/level/${level.id}`}>{label}</a>
+                          <Button variant="text" href={`#/level/${level.id}`}>
+                            {label}
+                          </Button>
                         ) : (
                           <span className="locked" aria-disabled="true">
                             {label} {ROADMAP_TEXT.locked}

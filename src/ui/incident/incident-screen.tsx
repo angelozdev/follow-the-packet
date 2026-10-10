@@ -1,5 +1,6 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
+import { Button } from '@/design';
 import { countStars, firewallCard, inspect, pieceViews, sessionReducer, startSession, starsOf, terminalCard, terminalLine } from '@/game';
 import type { Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
@@ -47,7 +48,9 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
     <main className="incident">
       <div className="incident__map">
         <header className="incident__bar">
-          <a href="#/">{SCREEN_TEXT.back}</a>
+          <Button variant="text" href="#/">
+            {SCREEN_TEXT.back}
+          </Button>
           <h1>{session.incident.title}</h1>
           <MotionToggle still={still} className="incident__motion" onChange={setStill} />
         </header>

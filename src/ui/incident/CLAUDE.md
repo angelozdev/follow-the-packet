@@ -8,4 +8,4 @@ The incident screen: Lucía's card (tasks, the "Enviar solución" button and her
 - State lives in the session reducer of `@/game`; there is no game clock.
 - Effects live in `use-*.ts` hooks next to their first consumer.
 - Not here: session state and what the panels show (`src/game/`), the map and its labels (`src/scene/`), visible Spanish text (`src/copy/`).
-- May import: `@/game`, `@/scene`, `@/storage`, `@/levels`, `@/copy`, other files of `src/ui/` (`@/ui/<file>`), and only types from `@/engine`.
+- May import: `@/game`, `@/scene`, `@/storage`, `@/levels`, `@/copy`, `@/design`, other files of `src/ui/` (`@/ui/<file>`), and only types from `@/engine`.

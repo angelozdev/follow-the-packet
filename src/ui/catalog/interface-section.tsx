@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
+import { Button } from '@/design';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -35,37 +36,29 @@ export function InterfaceSection() {
       <h2 id="catalog-interface">{INTERFACE_TEXT.title}</h2>
       <Family name={INTERFACE_TEXT.family.buttons}>
         <Specimen caption={VARIANT.primary}>
-          <button type="button" className="btn btn--primary">
-            {LUCIA_TEXT.submit}
-          </button>
+          <Button variant="primary">{LUCIA_TEXT.submit}</Button>
         </Specimen>
         <Specimen caption={VARIANT.secondary}>
-          <button type="button" className="btn">
-            {TASK_CARD_TEXT.done}
-          </button>
+          <Button>{TASK_CARD_TEXT.done}</Button>
         </Specimen>
         <Specimen caption={VARIANT.small}>
-          <button type="button" className="btn btn--small">
-            {LUCIA_TEXT.askHint}
-          </button>
+          <Button variant="small">{LUCIA_TEXT.askHint}</Button>
         </Specimen>
         <Specimen caption={VARIANT.disabled}>
-          <button type="button" className="btn" disabled>
-            {TERMINAL_TEXT.send}
-          </button>
+          <Button disabled>{TERMINAL_TEXT.send}</Button>
         </Specimen>
         <Specimen caption={VARIANT.primaryLink}>
-          <a className="btn btn--primary" href="#/">
+          <Button variant="primary" href="#/">
             {RESULT_TEXT.next}
-          </a>
+          </Button>
         </Specimen>
         <Specimen caption={VARIANT.link}>
-          <a className="btn" href="#/">
-            {RESULT_TEXT.back}
-          </a>
+          <Button href="#/">{RESULT_TEXT.back}</Button>
         </Specimen>
         <Specimen caption={VARIANT.textLink}>
-          <a href="#/">{SCREEN_TEXT.back}</a>
+          <Button variant="text" href="#/">
+            {SCREEN_TEXT.back}
+          </Button>
         </Specimen>
       </Family>
       <Family name={INTERFACE_TEXT.family.choices}>
@@ -174,12 +167,8 @@ export function InterfaceSection() {
                 {SECOND_ADDRESS}
               </button>
             </div>
-            <button type="button" className="btn">
-              {TERMINAL_TEXT.send}
-            </button>
-            <button type="button" className="btn">
-              {TASK_CARD_TEXT.done}
-            </button>
+            <Button>{TERMINAL_TEXT.send}</Button>
+            <Button>{TASK_CARD_TEXT.done}</Button>
           </section>
         </Specimen>
       </Family>

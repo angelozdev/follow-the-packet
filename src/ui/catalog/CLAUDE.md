@@ -4,4 +4,4 @@ The `#/entidades` page: the entity catalog for design review, with every piece o
 
 - The interface section draws each element the way the screens draw it. When a screen gains an element, a variant or a state, the section gains its specimen, so the capture covers it.
 - Not here: the pieces, the icons and the canvas (`src/scene/`), the names of the variants and the sample texts (`src/copy/ui.ts`).
-- May import: `@/scene`, `@/copy`, other files of `src/ui/` (`@/ui/<file>`), and only types from `@/engine`.
+- May import: `@/scene`, `@/copy`, `@/design`, other files of `src/ui/` (`@/ui/<file>`), and only types from `@/engine`.

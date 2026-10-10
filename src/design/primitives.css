@@ -1,1 +1,13 @@
 :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+.btn { font: var(--weight-bold) var(--text-base) var(--font-body); background: var(--color-surface); color: var(--color-ink); border: var(--stroke-regular) solid var(--color-ink); border-radius: var(--radius); padding: var(--space-xs) var(--space-md); cursor: pointer; text-decoration: none; display: inline-block; box-shadow: var(--shadow-sm); }
+.btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn--primary { background: var(--color-emphasis); color: var(--color-on-fill); }
+.btn--small { padding: var(--space-2xs) var(--space-xs); font-size: var(--text-sm); box-shadow: none; }
+.btn:disabled { color: var(--color-ink-soft); background: var(--color-shade); border-color: var(--color-ink-soft); box-shadow: none; cursor: default; }
+.btn:disabled:active { transform: none; }
+.link { font: inherit; color: var(--color-ink); background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: var(--underline-offset); cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active { transform: none; }
+}

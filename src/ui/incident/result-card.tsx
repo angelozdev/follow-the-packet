@@ -1,4 +1,5 @@
 import { RESULT_TEXT, type TermText } from '@/copy';
+import { Button } from '@/design';
 import { countStars, type Stars as EarnedStars } from '@/game';
 import type { Mechanic } from '@/levels';
 import { Stars } from '@/ui/stars';
@@ -34,13 +35,11 @@ export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: Earne
       </p>
       <nav className="result__nav">
         {nextId !== null && (
-          <a className="btn btn--primary" href={`#/level/${nextId}`}>
+          <Button variant="primary" href={`#/level/${nextId}`}>
             {RESULT_TEXT.next}
-          </a>
+          </Button>
         )}
-        <a className="btn" href="#/">
-          {RESULT_TEXT.back}
-        </a>
+        <Button href="#/">{RESULT_TEXT.back}</Button>
       </nav>
     </section>
   );

@@ -1,4 +1,5 @@
 import { EXPLANATION_TEXT, type TermText } from '@/copy';
+import { Button } from '@/design';
 import type { ExplanationOption } from '@/levels';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -14,9 +15,9 @@ interface ExplanationCardProps {
 function ContinueButton({ onContinue }: { onContinue: () => void }) {
   const button = useFocusOnMount<HTMLButtonElement>();
   return (
-    <button ref={button} type="button" className="btn btn--primary" onClick={onContinue}>
+    <Button ref={button} variant="primary" onClick={onContinue}>
       {EXPLANATION_TEXT.seeResult}
-    </button>
+    </Button>
   );
 }
 
