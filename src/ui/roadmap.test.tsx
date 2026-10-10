@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ROADMAP_TEXT } from '@/copy';
-import type { LevelEntry } from '@/levels';
+import { TIERS, type LevelEntry } from '@/levels';
 import { Roadmap } from './roadmap';
 
 const LEVELS: LevelEntry[] = [
@@ -11,6 +11,7 @@ const LEVELS: LevelEntry[] = [
   { id: '04-03', chapter: 4, order: 3, title: 'El intruso', role: 'attacker' },
 ];
 const EARNED_STARS = 2;
+const FUNDAMENTALS = 'Nivel 1 · Fundamentos';
 
 function levelItem(id: string): HTMLElement {
   const item = document.querySelector<HTMLElement>(`[data-level-id="${id}"]`);
@@ -42,5 +43,21 @@ describe('roadmap with levels', () => {
   it('reads the stars of a level to screen readers', () => {
     render(<Roadmap levels={LEVELS} progress={{ '04-01': EARNED_STARS }} />);
     expect(within(levelItem('04-01')).getByText(ROADMAP_TEXT.starsOf(EARNED_STARS))).toBeTruthy();
+  });
+});
+
+describe('roadmap of the game chapters', () => {
+  it('groups the chapters under a heading per level, in game order', () => {
+    render(<Roadmap levels={LEVELS} progress={{}} />);
+    expect(screen.getAllByRole('region')).toHaveLength(TIERS.length);
+    const headings = within(screen.getByRole('region', { name: FUNDAMENTALS })).getAllByRole('heading');
+    expect(headings.map((heading) => heading.textContent)).toEqual([FUNDAMENTALS, 'La noche de guardia', 'Tu cuenta de AWS']);
+  });
+
+  it('marks the optional chapter inside its title, and only that one', () => {
+    render(<Roadmap levels={LEVELS} progress={{}} />);
+    const marks = screen.getAllByText(ROADMAP_TEXT.optional);
+    expect(marks).toHaveLength(1);
+    expect(marks[0].closest('h2')).toHaveTextContent('Datos en movimiento');
   });
 });

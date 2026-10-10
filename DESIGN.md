@@ -71,7 +71,7 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 | `--text-xl` | 22.4 px | `h2`, chapter numbers, the incident title |
 | `--text-2xl` | 36 px | `h1` |
 
-- **Caption:** the class `caption` (bold, `--text-xs`, uppercase, `--tracking-caps`) for the heading of a list; `caption caption--soft` for the label of a field, a tray or a role. Every `h3` is a caption.
+- **Caption:** the class `caption` (bold, `--text-xs`, uppercase, `--tracking-caps`) for the heading of a list; `caption caption--soft` for the label of a field, a tray or a role, and for the mark of an optional chapter. Every `h3` is a caption. A level of the roadmap («Nivel 0 · Bases») heads the list of its chapters, so it is a caption too, written as an `h2` with the class: an `h3` right after the `h1` would skip a heading level.
 - **Secondary text:** the class `muted` (`--color-ink-soft`): Lucía's role, a card with no rules, the inspect help and the legend of the stamps and the lock.
 - **Letters:** `--tracking-caps` (0.06 em) spaces every uppercase text; `--underline-offset` (3 px) lowers the line under links and terms.
 - **Line height** stays with the element: 1.5 for body text, 1.2 for headings and captions, 1.4 for options and tooltips, 1.1 for `h1`.
@@ -111,7 +111,7 @@ All in `src/design/`, imported through `@/design`. A primitive takes no `classNa
 | `ChipTray` | — | a named row of chips where at most one is picked: the trays of the task card and of the terminal, and of any card that picks values with chips |
 | `Card` | `default`, `soon`; a `section` or, with `as="li"`, a list item | every panel, the cards beside a piece of the map included (the task card and the terminal); `soon` for what is not open yet |
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
-| `caption` (class) | `caption`, `caption--soft` | the heading of a list; the label of a field, a tray or a role |
+| `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, or the mark of an optional chapter |
 
 The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
 

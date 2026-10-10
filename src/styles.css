@@ -13,7 +13,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 
 .page { max-width: 880px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg); }
 .lede { color: var(--color-ink-soft); font-size: var(--text-lg); }
-.chapters { list-style: none; padding: 0; display: grid; gap: var(--space-md); }
+.chapters { list-style: none; padding: 0; margin: var(--space-xs) 0 var(--space-2xl); display: grid; gap: var(--space-md); }
 .chapter__head { display: flex; align-items: baseline; gap: var(--space-sm); }
 .chapter__num { font: var(--weight-display) var(--text-xl) var(--font-display); color: var(--color-emphasis); min-width: 1.6rem; }
 .chapter__meta { margin-left: auto; font-size: var(--text-md); color: var(--color-ink-soft); }

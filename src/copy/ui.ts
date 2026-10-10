@@ -3,7 +3,9 @@ import type { EntityKind, EntityRef, EntityVariants } from './terms';
 
 export const ROADMAP_TEXT = {
   title: 'Sigue el paquete',
-  lede: 'Un capítulo por módulo del curso. Cada incidente repasa una lección jugando.',
+  lede: 'Los capítulos van de cero a especialista en AWS, nivel por nivel. Termina cada incidente para abrir el siguiente.',
+  tier: ({ number, name }: { number: number; name: string }) => `Nivel ${number} · ${name}`,
+  optional: 'Opcional',
   soon: 'Próximamente',
   locked: '(bloqueado)',
   starsOf: (count: number) => `${count} de 3 estrellas`,
