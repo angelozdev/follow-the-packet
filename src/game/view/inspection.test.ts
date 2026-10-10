@@ -110,6 +110,14 @@ describe('inspect', () => {
     expect(inspect(floors, PIECE_ID.router('ghost'))).toBeNull();
   });
 
+  it('the box of the router of the office shows its IP on each floor it faces, and the one of a router that faces no floor shows none', () => {
+    const floors: Session = { ...office, world: officeTwoFloorsNet() };
+    const box = plain(inspect(floors, PIECE_ID.router(OFFICE_FLOORS.officeRouter.id)));
+    expect(box?.fields).toEqual([whatIs('router'), ['IP en Piso 1', OFFICE_FLOORS.floor1.gateway], ['IP en Piso 2', OFFICE_FLOORS.floor2.gateway]]);
+    expect(JSON.stringify(box)).not.toContain(OFFICE_FLOORS.officeRouter.uplink);
+    expect(plain(inspect(floors, PIECE_ID.router(OFFICE_FLOORS.provider.id)))?.fields).toEqual([whatIs('router')]);
+  });
+
   it('the inspection of a piece that the incident does not show is null', () => {
     const only = { ...office, world: officeTwoFloorsNet(), incident: { ...office.incident, shown: ['your-laptop', OFFICE_FLOORS.officeRouter.id] } };
     expect(inspect(only, PIECE_ID.device('your-laptop'))).not.toBeNull();

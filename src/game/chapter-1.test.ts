@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { roundTripText, stampLabel, toPlainText, type TermText } from '@/copy';
-import { INCIDENTS, isGuided, type Incident } from '@/levels';
+import { networkSchema } from '@/engine';
+import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, TASK } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, GATEWAY, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, ROUTER, TASK } from '@/levels/01-first-day/shared';
 import type { SentPacket } from './flow-runs';
 import { identifyCard } from './view/cards/identify-card';
+import { settingsCard } from './view/cards/settings-card';
 import { terminalCard, terminalLine } from './view/cards/terminal-card';
 import { inspect } from './view/inspection';
 import { PIECE_ID } from './view/piece-id';
@@ -17,6 +19,8 @@ const THE_ENVELOPE = '01-02';
 const ARE_YOU_THERE = '01-03';
 const PING_YOURSELF = '01-04';
 const WHEN_IT_DOES_NOT_COME_BACK = '01-05';
+const YOUR_NETWORK = '01-06';
+const WHO_GETS_WHAT_IS_OUTSIDE = '01-07';
 const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const NOTE_RULE = 'La nota de Lucía estaba mal: 192.168.1.300 no es IPv4, porque cada uno de los cuatro números va de 0 a 255.';
 const RIGHT_FEEDBACK = 'Correcto.';
@@ -36,6 +40,15 @@ const NOTHING_CAME_BACK = 'No volvió ninguna respuesta.';
 const FIREWALL_WORDS = /firewall|regla|bloquead|permitid|descart/i;
 const NOT_NETWORK_JARGON = /\b(ARP|MAC|Linux|macOS|Windows)\b/;
 const SWITCHED_OFF = /apagad/i;
+const PASSED_THROUGH_LABEL = 'Pasó por';
+const ROUTER_LINE = `${ROUTER.office.name} (${IP.router})`;
+const HOP_OR_TTL = /salto|TTL/i;
+const NO_GATEWAY_TEXT = '192.168.2.15 no está en la red local de tu-laptop, y tu-laptop no tiene puerta de enlace predeterminada: no sabe por dónde sacar el paquete.';
+const PRINTER_GATEWAY_TEXT = 'La IP 192.168.1.21, la puerta de enlace predeterminada guardada, es de impresora, que no es un router: recibe el paquete, no lo pasa a otra red y no vuelve nada.';
+const NOBODY_GATEWAY_TEXT = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50, su puerta de enlace predeterminada, y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
+const SETTINGS_ENTRY = 'Ajustes de red de tu-laptop';
+const GATEWAY_TRAY = 'puerta de enlace predeterminada';
+const NO_GATEWAY_CHIP = 'Ninguna';
 const SENDER_LOOKED = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50 y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
 
 function guidedOf(id: string) {
@@ -385,5 +398,174 @@ describe('the five incidents of blocks 1 and 2', () => {
     expect(envelope.firewalls).toEqual([]);
     expect(silence.firewalls).toHaveLength(1);
     expect({ ...silence, firewalls: [], devices: silence.devices.map((device) => ({ ...device, firewallIds: [] })) }).toEqual(envelope);
+  });
+});
+
+function drawnLabels(session: Session): string[] {
+  return pieceViews(session)
+    .map((piece) => `${piece.kind}:${toPlainText(piece.label)}`)
+    .sort();
+}
+
+function gatewayOf(session: Session): string | undefined {
+  return session.world.devices.find((device) => device.id === DEVICE.you.id)?.gateway;
+}
+
+function pickGateway(session: Session, chipId: string): Session {
+  return sessionReducer(session, { type: 'setSetting', deviceId: DEVICE.you.id, settingId: GATEWAY.setting, chipId });
+}
+
+describe('01-06, your network and the router', () => {
+  const start = startSession(INCIDENTS, YOUR_NETWORK);
+  const pinged = pingTo(start, ADDRESS.printer.id, ADDRESS.andres.id);
+
+  it('01-06: a ping to the printer goes straight and a ping to laptop-andres goes through the router', () => {
+    const [printer, andres] = [ADDRESS.printer.id, ADDRESS.andres.id].map((toId) => sentTo(pinged, toId));
+    expect(printer).toMatchObject({ replied: true, trace: { destinationId: DEVICE.printer.id } });
+    expect(printer.trace.hops).toBeUndefined();
+    expect(andres).toMatchObject({ replied: true, trace: { destinationId: DEVICE.andres.id, hops: [{ routerId: ROUTER.office.id, ip: IP.router }] } });
+    expect(sentTo(pingTo(start, ADDRESS.lucia.id), ADDRESS.lucia.id).trace.hops).toBeUndefined();
+  });
+
+  it('01-06: the box says the ping to the second floor went through the router and shows its IP, without the word hop', () => {
+    expect(fieldLines(pinged, sentTo(pinged, ADDRESS.andres.id).pieceId, PASSED_THROUGH_LABEL)).toEqual([ROUTER_LINE]);
+    expect(fieldLines(pinged, sentTo(pinged, ADDRESS.printer.id).pieceId, PASSED_THROUGH_LABEL)).toBeUndefined();
+    expect(everythingShown(pinged).filter((text) => HOP_OR_TTL.test(text))).toEqual([]);
+    expect(incidentTexts(guidedOf(YOUR_NETWORK)).map((text) => toPlainText(text)).filter((text) => HOP_OR_TTL.test(text))).toEqual([]);
+  });
+
+  it('01-06: the ping through the router takes longer than the straight one, and floor 1 keeps the time a hop had before it was declared', () => {
+    const [printer, andres] = [ADDRESS.printer.id, ADDRESS.andres.id].map((toId) => sentTo(pinged, toId).trace.rttMs ?? Number.NaN);
+    expect(printer).toBeLessThan(andres);
+    expect(sentTo(pingTo(startSession(INCIDENTS, PING_YOURSELF), ADDRESS.printer.id), ADDRESS.printer.id).trace.rttMs).toBe(printer);
+  });
+
+  it('01-06: the box of the office router shows its IP on each floor, in 01-06 and in 01-07', () => {
+    const routerId = PIECE_ID.router(ROUTER.office.id);
+    expect(fieldLines(start, routerId, 'IP en Piso 1')).toEqual([IP.router]);
+    expect(fieldLines(start, routerId, 'IP en Piso 2')).toEqual([IP.routerSecondFloor]);
+    expect(fieldLines(startSession(INCIDENTS, WHO_GETS_WHAT_IS_OUTSIDE), routerId, 'IP en Piso 1')).toEqual([IP.router]);
+  });
+
+  it('01-06: draws tu-laptop, laptop-lucia, the printer, laptop-andres and the office router, and no other device', () => {
+    expect(drawnLabels(start)).toEqual(['device:impresora', 'device:laptop-andres', 'device:laptop-lucia', 'device:tu-laptop', 'edge:router-oficina']);
+    expect(start.world.devices.map((device) => device.name)).toEqual(expect.arrayContaining([DEVICE.marta.name, DEVICE.visitor.name]));
+    expect(drawnLabels(start)).not.toContain(`device:${DEVICE.marta.name}`);
+  });
+
+  it('01-06: draws no internet and no router of the provider', () => {
+    expect(pieceViews(start).filter((piece) => piece.kind === 'internet' || piece.kind === 'actor')).toEqual([]);
+    expect(start.world.routers?.map((router) => router.id)).toEqual([ROUTER.office.id]);
+    expect(start.world.actors).toEqual([]);
+  });
+
+  it('01-06: both the ping to the printer and the ping to laptop-andres must come back to close the incident', () => {
+    expect(openTasks(start)).toEqual([TASK.ping, TASK.andres]);
+    expect(openTasks(pingTo(start, ADDRESS.printer.id))).toEqual([TASK.andres]);
+    expect(openTasks(pingTo(start, ADDRESS.andres.id, ADDRESS.lucia.id))).toEqual([TASK.ping]);
+    expect(openTasks(pinged)).toEqual([]);
+    expect(starsOf(sessionReducer(pinged, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('01-06: the second floor, the router and the gateways make a valid world that starts from the world of 01-05', () => {
+    expect(networkSchema.safeParse(start.world).success).toBe(true);
+    expect(start.world.devices.filter((device) => device.id !== DEVICE.andres.id).map((device) => device.gateway)).toEqual(Array(5).fill(IP.router));
+    expect(start.world.devices.find((device) => device.id === DEVICE.andres.id)).toMatchObject({ lanId: 'floor-2', gateway: IP.routerSecondFloor });
+    const before = solvedWorld(INCIDENTS, WHEN_IT_DOES_NOT_COME_BACK);
+    expect(start.world.devices.slice(0, before.devices.length).map((device) => ({ ...device, gateway: undefined }))).toEqual(before.devices.map((device) => ({ ...device, gateway: undefined })));
+    expect(start.world.firewalls).toEqual(before.firewalls);
+  });
+});
+
+describe('01-07, who gets whats outside', () => {
+  const start = startSession(INCIDENTS, WHO_GETS_WHAT_IS_OUTSIDE);
+  const stuck = pingTo(start, ADDRESS.andres.id);
+  const gatewayAt = (chipId: string) => pingTo(pickGateway(start, chipId), ADDRESS.andres.id);
+
+  it('01-07: draws the same pieces as 01-06', () => {
+    const before = startSession(INCIDENTS, YOUR_NETWORK);
+    expect(drawnLabels(start)).toEqual(drawnLabels(before));
+    expect(guidedOf(WHO_GETS_WHAT_IS_OUTSIDE).shown).toEqual(guidedOf(YOUR_NETWORK).shown);
+  });
+
+  it('01-07: the ping to the second floor does not leave a laptop with no gateway', () => {
+    expect(gatewayOf(start)).toBeUndefined();
+    const [run] = stuck.sent;
+    expect(run).toMatchObject({ replied: false, reached: false, warning: null, by: [DEVICE.you.id], trace: { outcome: 'no-route' } });
+    expect(run.trace).not.toHaveProperty('hops');
+    expect(run.trace.rttMs).toBeUndefined();
+    expect(fieldLines(stuck, run.pieceId, STOPPED_LABEL)).toEqual([NO_GATEWAY_TEXT]);
+    expect(openTasks(stuck)).toEqual([TASK.andres]);
+  });
+
+  it('01-07: the printer as a gateway receives the packet and nothing comes back', () => {
+    const [run] = gatewayAt(GATEWAY.printer).sent;
+    expect(run).toMatchObject({ replied: false, warning: null, trace: { outcome: 'timeout' } });
+    expect(run.trace).not.toHaveProperty('hops');
+    expect(run.trace.steps.at(-1)).toMatchObject({ at: DEVICE.printer.id, verdict: 'drop', reason: { code: 'route-gateway-not-a-router', ip: IP.printer } });
+    expect(fieldLines(gatewayAt(GATEWAY.printer), run.pieceId, STOPPED_LABEL)).toEqual([PRINTER_GATEWAY_TEXT]);
+    expect(openTasks(gatewayAt(GATEWAY.printer))).toEqual([TASK.andres]);
+  });
+
+  it('01-07: an IP nobody has as a gateway gives a warning from the laptop', () => {
+    const [run] = gatewayAt(GATEWAY.nobody).sent;
+    expect(run).toMatchObject({ replied: false, by: [DEVICE.you.id], warning: { term: 'host-unreachable', by: 'sender' }, trace: { outcome: 'unreachable' } });
+    expect(run.trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: DEVICE.you.id });
+    expect(fieldLines(gatewayAt(GATEWAY.nobody), run.pieceId, STOPPED_LABEL)).toEqual([NOBODY_GATEWAY_TEXT]);
+  });
+
+  it('01-07: setting 192.168.1.1 as gateway makes the ping come back and clears the stamps of before', () => {
+    expect(stuck.sent).toHaveLength(1);
+    const set = pickGateway(stuck, GATEWAY.router);
+    expect(gatewayOf(set)).toBe(IP.router);
+    expect(set.sent).toEqual([]);
+    expect(set.sends).toBe(stuck.sends);
+    const done = pingTo(set, ADDRESS.andres.id);
+    expect(done.sent).toMatchObject([{ replied: true, trace: { destinationId: DEVICE.andres.id, hops: [{ routerId: ROUTER.office.id }] } }]);
+    expect(openTasks(done)).toEqual([]);
+    expect(starsOf(sessionReducer(done, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('01-07: the gateway is set from the Ajustes de red card of the laptop, and its terminal offers no setting', () => {
+    const entries = pieceViews(start).flatMap((piece) => (piece.settings ? [{ owner: piece.anchorId, id: piece.settings.id, label: toPlainText(piece.settings.label) }] : []));
+    expect(entries).toEqual([{ owner: DEVICE.you.id, id: PIECE_ID.settings(DEVICE.you.id), label: SETTINGS_ENTRY }]);
+    const card = settingsCard(start, entries[0].id);
+    expect(card?.settings.map((setting) => ({ id: setting.id, name: toPlainText(setting.name), picked: setting.picked, chips: setting.chips.map((chip) => toPlainText(chip.label)) }))).toEqual([
+      { id: GATEWAY.setting, name: GATEWAY_TRAY, picked: GATEWAY.none, chips: [NO_GATEWAY_CHIP, IP.router, IP.printer, IP.nobody] },
+    ]);
+    const terminal = terminalCard(start, PIECE_ID.device(DEVICE.you.id));
+    expect(terminal?.trays.map((tray) => tray.name)).toEqual(['to']);
+    expect(terminal?.trays.flatMap((tray) => tray.chips.map((chip) => toPlainText(chip.label)))).toEqual([IP.andres, IP.printer]);
+    expect(settingsCard(pickGateway(start, GATEWAY.router), entries[0].id)?.settings[0].picked).toBe(GATEWAY.router);
+  });
+
+  it('01-07: the world is valid with every gateway the card offers', () => {
+    expect([GATEWAY.none, GATEWAY.router, GATEWAY.printer, GATEWAY.nobody].map((chipId) => networkSchema.safeParse(pickGateway(start, chipId).world).success)).toEqual([true, true, true, true]);
+  });
+});
+
+describe('the seven incidents of blocks 1 to 3', () => {
+  const SEVEN = [THE_OFFICE, THE_ENVELOPE, ARE_YOU_THERE, PING_YOURSELF, WHEN_IT_DOES_NOT_COME_BACK, YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE];
+  const places = SEVEN.map((id) => guidedOf(id).explanation.findIndex((option) => option.correct));
+
+  it('never put the right explanation in the same place as the incident before', () => {
+    expect(places.filter((place, index) => index > 0 && place === places[index - 1])).toEqual([]);
+  });
+
+  it('start and end in a world the network schema accepts, so the floors the base world declares break nothing in 01-01 to 01-05', () => {
+    const problems = SEVEN.flatMap((id) => [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => `${id}: ${issue.message}`) ?? []));
+    expect(problems).toEqual([]);
+  });
+
+  it('put the right explanation of 06 and 07 in places of their own', () => {
+    expect(places.slice(-2)).toEqual([2, 0]);
+  });
+
+  it('start 07 from the world of 06 solved, with the laptop of the player reinstalled and so with no gateway', () => {
+    const { world } = startSession(INCIDENTS, WHO_GETS_WHAT_IS_OUTSIDE);
+    const solved = solvedWorld(INCIDENTS, YOUR_NETWORK);
+    expect(solved.devices.find((device) => device.id === DEVICE.you.id)?.gateway).toBe(IP.router);
+    expect({ ...world, devices: world.devices.map((device) => ({ ...device, gateway: undefined })) }).toEqual({ ...solved, devices: solved.devices.map((device) => ({ ...device, gateway: undefined })) });
+    expect(world.devices.filter((device) => device.gateway === undefined).map((device) => device.id)).toEqual([DEVICE.you.id]);
   });
 });

@@ -49,11 +49,11 @@ export const TERMS = {
   },
   lan: {
     name: 'red local',
-    definition: 'Local Area Network (LAN): una red de alcance acotado, como un piso de oficina. Para salir de ella hace falta un router.',
+    definition: 'Local Area Network (LAN): la red de un mismo lugar, como un piso. Dentro de ella, los paquetes se entregan directo.',
   },
   'default-gateway': {
     name: 'puerta de enlace predeterminada',
-    definition: 'La IP del router al que un dispositivo manda, por defecto, los paquetes cuyo destino no está en su red local.',
+    definition: 'Un ajuste guardado: la IP a la que un dispositivo manda los paquetes que van a otra red local. Debe ser la de un router.',
   },
   hop: {
     name: 'salto',
@@ -72,7 +72,7 @@ export const TERMS = {
     definition: 'Un comando que descubre los routers de un camino: manda paquetes con TTL 1, 2, 3… y anota quién avisa con Time Exceeded.',
   },
   internet: { name: 'internet', definition: 'La red mundial formada por muchas redes unidas entre sí.' },
-  router: { name: 'router', definition: 'Un dispositivo que conecta redes y reenvía cada paquete según su dirección IP de destino.' },
+  router: { name: 'router', definition: 'Un dispositivo que conecta redes: recibe paquetes que no son para él y los reenvía hacia la red de su IP de destino.' },
   'private-ip': {
     name: 'IP privada',
     definition: 'Una dirección IPv4 de uso interno (10.x, 172.16–31.x, 192.168.x): se repite en muchas redes e internet no la entrega.',

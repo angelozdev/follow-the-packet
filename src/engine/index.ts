@@ -20,7 +20,7 @@ export type {
   ServerActor,
   Subnet,
 } from './network/types';
-export { isClientActor, isConnected } from './network/topology';
+export { isClientActor, isConnected, lansOf } from './network/topology';
 export { facesALan } from './network/routing';
 export { DEFAULT_DIRECTION, DEFAULT_TTL, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4, isLoopbackIpv4 } from './network/cidr';

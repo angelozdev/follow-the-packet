@@ -32,7 +32,7 @@ const CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN = [
   'traffic',
   'rule',
 ];
-const BRIDGE_AFTER_BLOCK_2 = ['internet', 'router', 'private-ip', 'firewall', 'traffic', 'rule'];
+const BRIDGE_AFTER_06_AND_07 = ['internet', 'private-ip', 'firewall', 'traffic', 'rule'];
 const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   ['network', 'device', 'ip-address', 'ipv4'],
   ['packet', 'header', 'source-ip', 'destination-ip'],
@@ -50,7 +50,7 @@ const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   [],
 ];
 const LATER_TOPICS = /\b(puertos?|TCP|UDP|CIDR|m[aá]scaras?|NAT|DNS|ARP|MAC|switch(?:es)?|IPv6|HTTPS?|clientes?|stateful|stateless)\b/;
-const BLOCKS_1_AND_2 = ['01-01', '01-02', '01-03', '01-04', '01-05'];
+const FIRST_SEVEN = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07'];
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
@@ -96,8 +96,8 @@ describe('term ladder', () => {
   it('04-01 bridges exactly the chapter 1 terms that no chapter 1 incident introduces yet', () => {
     const introduced = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces as string[]);
     const bridge = (INCIDENTS.find((incident) => incident.id === '04-01')?.introduces as string[]).filter((term) => !OWN_TERMS_OF_04_01.includes(term));
-    expect([...BRIDGE_AFTER_BLOCK_2].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
-    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_BLOCK_2].sort());
+    expect([...BRIDGE_AFTER_06_AND_07].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
+    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_06_AND_07].sort());
   });
 
   it('names no topic of the chapters that come later, in any text of chapter 1', () => {
@@ -106,7 +106,7 @@ describe('term ladder', () => {
     for (const text of [...chapter1.flatMap(incidentTexts).map(toPlainText), ...definitions]) expect(text).not.toMatch(LATER_TOPICS);
   });
 
-  it.each(BLOCKS_1_AND_2)('%s names no term of a later incident in plain words either', (id) => {
+  it.each(FIRST_SEVEN)('%s names no term of a later incident in plain words either', (id) => {
     const incident = INCIDENTS.find((candidate) => candidate.id === id);
     const known = knownTerms(INCIDENTS, id);
     const later = ALL_TERMS.filter((term) => !known.has(term));
@@ -136,7 +136,11 @@ describe('term ladder', () => {
 
   it('the rules of a host firewall open with the term rule (01-12), and those of a Security Group with inbound rule (chapter 4)', () => {
     const parts = Object.fromEntries(INCIDENTS.map((incident) => [incident.id, configurableParts(knownTerms(INCIDENTS, incident.id))]));
-    expect(parts).toEqual({ '01-01': NOTHING, '01-02': NOTHING, '01-03': NOTHING, '01-04': NOTHING, '01-05': NOTHING, '04-01': INBOUND_RULES, '04-02': INBOUND_RULES });
+    expect(parts).toEqual({
+      ...Object.fromEntries(FIRST_SEVEN.map((id) => [id, NOTHING])),
+      '04-01': INBOUND_RULES,
+      '04-02': INBOUND_RULES,
+    });
     expect(configurableParts(new Set<TermId>(['rule']))).toEqual(HOST_RULES);
   });
 

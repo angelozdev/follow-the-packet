@@ -22,7 +22,7 @@ const LAPTOP: MapPiece = {
   label: '[[tu-laptop]]',
   locked: false,
   state: 'normal',
-  settings: { id: 'settings:your-laptop', label: 'Ajustes de red [[tu-laptop]]' },
+  settings: { id: 'settings:your-laptop', label: 'Ajustes de red de [[tu-laptop]]' },
 };
 
 describe('piece label', () => {
@@ -93,7 +93,7 @@ describe('piece label', () => {
   it('a piece with a settings entry has a second button beside its label that activates the entry and not the piece', async () => {
     const user = userEvent.setup();
     const { onActivate } = renderLabel(LAPTOP);
-    const entry = screen.getByRole('button', { name: 'Ajustes de red tu-laptop' });
+    const entry = screen.getByRole('button', { name: 'Ajustes de red de tu-laptop' });
     expect(entry.querySelectorAll('.name-tag')).toHaveLength(1);
     expect(entry.id).toBe(pieceDomId('settings:your-laptop'));
     await user.click(entry);
@@ -105,7 +105,7 @@ describe('piece label', () => {
   it('inspects the piece from its own button and not from the settings entry', async () => {
     const user = userEvent.setup();
     const { onInspect } = renderLabel(LAPTOP);
-    await user.hover(screen.getByRole('button', { name: 'Ajustes de red tu-laptop' }));
+    await user.hover(screen.getByRole('button', { name: 'Ajustes de red de tu-laptop' }));
     expect(onInspect).not.toHaveBeenCalled();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
     expect(onInspect).toHaveBeenLastCalledWith(LAPTOP.id);

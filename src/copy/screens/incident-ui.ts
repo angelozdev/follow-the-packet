@@ -65,6 +65,7 @@ export const INSPECTION_TEXT = {
   passedThrough: 'Pasó por',
   hops: '{{hop|Saltos}}',
   router: (name: TermText, ip: string): TermText => `${name} (${ip})`,
+  routerIp: (lan: string): TermText => `{{ip-address|IP}} en ${lan}`,
   place: { inside: 'dentro de la oficina', outside: 'fuera de la oficina' } satisfies Record<Exclude<RouterPlace, 'named'>, TermText>,
   roundTrip: '{{rtt|Tiempo de ida y vuelta}}',
   exampleTime: 'Cifra de ejemplo.',
@@ -142,7 +143,7 @@ export const TERMINAL_TEXT = {
 } as const;
 
 export const SETTINGS_TEXT = {
-  entry: (device: TermText): TermText => `Ajustes de red ${device}`,
+  entry: (device: TermText): TermText => `Ajustes de red de ${device}`,
   title: (device: TermText): TermText => `Ajustes de red de ${device}`,
 } as const;
 

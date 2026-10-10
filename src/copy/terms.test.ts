@@ -74,6 +74,14 @@ describe('term registry', () => {
     expect(TERMS.packet.definition).toContain(TERMS.header.name);
   });
 
+  it('the default gateway is a saved setting that should be a router, the LAN says packets inside it are delivered directly, the router forwards towards the network of the destination IP, and no one of them quotes an operating system', () => {
+    const [lan, router, gateway] = [TERMS.lan, TERMS.router, TERMS['default-gateway']];
+    expect(gateway.definition).toMatch(/^Un ajuste guardado: la IP a la que un dispositivo manda.*Debe ser la de un router\.$/);
+    expect(lan.definition).toContain('se entregan directo');
+    expect(router.definition).toContain('los reenvía hacia la red de su IP de destino');
+    for (const { definition } of [lan, router, gateway]) expect(definition).not.toMatch(/macOS|Windows|Linux/);
+  });
+
   it('recognizes registered ids only', () => {
     expect(isTermId('security-group')).toBe(true);
     expect(isTermId('puerta')).toBe(false);

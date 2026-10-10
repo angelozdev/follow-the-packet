@@ -86,7 +86,7 @@ describe('pieceViews', () => {
     const laptop = pieces.find((piece) => piece.id === PIECE_ID.device('your-laptop'));
     const entry = laptop?.settings;
     expect(laptop).toMatchObject({ locked: false, configurable: true });
-    expect(entry).toEqual({ id: PIECE_ID.settings('your-laptop'), label: 'Ajustes de red [[tu-laptop]]' });
+    expect(entry).toEqual({ id: PIECE_ID.settings('your-laptop'), label: 'Ajustes de red de [[tu-laptop]]' });
     if (!laptop || !entry) throw new Error('missing the laptop or its settings entry');
     expect(terminalCard(session, laptop.id)).not.toBeNull();
     expect(settingsCard(session, laptop.id)).toBeNull();

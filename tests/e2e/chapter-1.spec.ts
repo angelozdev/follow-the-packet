@@ -15,8 +15,15 @@ const NOTE_RULE = 'La nota de Lucía estaba mal';
 const ABOUT_THE_OFFICE = /en IPv4 cada uno de los cuatro números va de 0 a 255/;
 const ABOUT_THE_ENVELOPE = /su IP de destino era la de laptop-marta/;
 const FIRST_PING_LINK = '1. El primer ping';
-const LAST_BUILT_OF_CHAPTER_1 = '01-05';
+const LAST_BUILT_OF_CHAPTER_1 = '01-07';
 const ARE_YOU_THERE_LINK = '3. ¿Estás ahí?';
+const ANDRES_IP = '192.168.2.15';
+const ROUTER_IP = '192.168.1.1';
+const ABOUT_THE_ROUTER = /está en otra red local, y lo que sale de tu red local pasa por el router/;
+const ABOUT_THE_GATEWAY = /no tenía puerta de enlace predeterminada/;
+const SETTINGS_BUTTON = 'Ajustes de red de tu-laptop';
+const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+const OFFICE_PIECES = ['laptop-lucia con candado', 'impresora con candado', 'laptop-andres con candado', 'router-oficina con candado'];
 
 function card(page: Page, name: string): Locator {
   return page.getByRole('dialog', { name });
@@ -53,9 +60,20 @@ async function chooseThePrinterIp(page: Page) {
   await expect(printer).toBeHidden();
 }
 
-async function sendThePacket(page: Page) {
+async function openTerminal(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'tu-laptop', exact: true }).click();
   const terminal = page.getByRole('dialog', { name: 'Terminal de tu-laptop' });
+  await expect(terminal).toBeVisible();
+  return terminal;
+}
+
+async function sendTo(terminal: Locator, ip: string) {
+  await terminal.getByRole('button', { name: ip, exact: true }).click();
+  await terminal.getByRole('button', { name: SEND, exact: true }).click();
+}
+
+async function sendThePacket(page: Page) {
+  const terminal = await openTerminal(page);
   await terminal.getByRole('button', { name: PRINTER_IP, exact: true }).click();
   await expect(terminal).toContainText('paquete de tu-laptop a 192.168.1.21');
   await terminal.getByRole('button', { name: SEND, exact: true }).click();
@@ -100,6 +118,32 @@ test('01-01 and 01-02 are played with the mouse alone and each reaches 3 stars',
   expect(errors).toEqual([]);
 });
 
+test('01-06 and 01-07 are played with the mouse alone and each reaches 3 stars', async ({ page }) => {
+  const errors = collectErrors(page);
+  await startWithProgress(page, { '01-05': 1 });
+  await page.goto('/#/level/01-06');
+  const terminal = await openTerminal(page);
+  await sendTo(terminal, PRINTER_IP);
+  await sendTo(terminal, ANDRES_IP);
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/ })).toBeVisible();
+  await submitAndFinish(page, ABOUT_THE_ROUTER);
+
+  await page.getByRole('link', { name: 'Siguiente incidente' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'A quién mandas lo de afuera' })).toBeVisible();
+  await sendTo(await openTerminal(page), ANDRES_IP);
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a 192\.168\.2\.15\. Perdido\.$/ })).toBeVisible();
+  await page.getByRole('button', { name: SETTINGS_BUTTON, exact: true }).click();
+  const settings = card(page, SETTINGS_CARD);
+  await settings.getByRole('button', { name: ROUTER_IP, exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(0);
+  await confirm(settings);
+  await expect(settings).toBeHidden();
+  await sendTo(await openTerminal(page), ANDRES_IP);
+  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/ })).toBeVisible();
+  await submitAndFinish(page, ABOUT_THE_GATEWAY);
+  expect(errors).toEqual([]);
+});
+
 test('04-01 stays open with its stored stars although chapter 1 has none, and 04-02 opens after it', async ({ page }) => {
   await startWithProgress(page, { '04-01': 2 });
   await page.goto('/');
@@ -130,6 +174,20 @@ test.describe('Sin animaciones', () => {
     await expectApart(terminal, page.getByRole('button', { name: 'impresora con candado', exact: true }));
     await expectApart(terminal, page.getByRole('button', { name: 'laptop-marta con candado', exact: true }));
     await expect(page.getByRole('button', { name: /^Paquete: paquete de tu-laptop a impresora\. Llegó\.$/ })).toBeVisible();
+    await expect.poll(() => overlappingPairs(page)).toEqual([]);
+  });
+
+  test('in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps', async ({ page }) => {
+    await startWithProgress(page, { '01-06': 1 });
+    await page.goto('/#/level/01-07');
+    await page.getByRole('button', { name: SETTINGS_BUTTON, exact: true }).click();
+    const settings = card(page, SETTINGS_CARD);
+    for (const piece of OFFICE_PIECES) await expectApart(settings, page.getByRole('button', { name: piece, exact: true }));
+    await expect.poll(() => overlappingPairs(page)).toEqual([]);
+    await confirm(settings);
+    const terminal = await openTerminal(page);
+    await sendTo(terminal, ANDRES_IP);
+    for (const piece of OFFICE_PIECES) await expectApart(terminal, page.getByRole('button', { name: piece, exact: true }));
     await expect.poll(() => overlappingPairs(page)).toEqual([]);
   });
 });

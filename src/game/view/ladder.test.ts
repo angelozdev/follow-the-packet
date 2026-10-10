@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { termsIn, toPlainText, unofficialNames, type TermId, type TermText } from '@/copy';
+import { TERMS, parseTermText, termsIn, toPlainText, unofficialNames, type TermId, type TermText } from '@/copy';
 import type { Firewall, Network } from '@/engine';
 import { INCIDENTS, isGuided, sendCombinations, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
@@ -7,12 +7,14 @@ import { officeNet, sendIncident, withDevice } from '@/testing';
 import { currentCase, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
+import { parsePieceId } from './piece-id';
 import { pieceViews, type PieceKind } from './pieces';
 import { terminalCard, terminalLine } from './cards/terminal-card';
 import { tracerouteLines } from './cards/traceroute-lines';
 
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
+const GATEWAY_NAME = TERMS['default-gateway'].name;
 
 function terminalTexts(session: Session, pieceIds: string[]): TermText[] {
   return pieceIds.flatMap((id) => {
@@ -83,12 +85,15 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s 
     for (const session of sessionsToCheck(incident)) {
       const pieces = pieceViews(session);
       expect(unofficialNames(pieces.map((piece) => piece.label))).toEqual([]);
-      for (const piece of pieces.filter((candidate) => NAMED_BY_KIND.includes(candidate.kind))) expect(termsIn(piece.label), piece.id).toContain(piece.term);
+      for (const piece of pieces.filter((candidate) => NAMED_BY_KIND.includes(candidate.kind))) {
+        if (parsePieceId(piece.id)?.kind === 'router') expect(parseTermText(piece.label).map((segment) => segment.kind), piece.id).toEqual(['name']);
+        else expect(termsIn(piece.label), piece.id).toContain(piece.term);
+      }
     }
   });
 
   it('uses none of the names the first playtest retired', () => {
-    const texts = [...incidentTexts(incident), ...sessionsToCheck(incident).flatMap(shownTexts)].map((text) => toPlainText(text).toLowerCase());
+    const texts = [...incidentTexts(incident), ...sessionsToCheck(incident).flatMap(shownTexts)].map((text) => toPlainText(text).toLowerCase().replaceAll(GATEWAY_NAME, ''));
     expect(RETIRED_NAMES.filter((name) => texts.some((text) => text.includes(name)))).toEqual([]);
   });
 });

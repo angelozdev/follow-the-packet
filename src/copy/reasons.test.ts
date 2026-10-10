@@ -82,7 +82,7 @@ const DELIVERY_CASES: [Reason, string, string[]][] = [
   ],
   [
     { code: 'route-gateway-not-a-router', deviceId: 'printer', ip: floor1.printer },
-    '[[impresora]] tiene la IP 192.168.1.21, la {{default-gateway}} que se configuró, pero no es un {{router}}: recibe el {{packet|paquete}}, no lo reenvía y no vuelve nada.',
+    'La IP 192.168.1.21, la {{default-gateway}} guardada, es de [[impresora]], que no es un {{router}}: recibe el {{packet|paquete}}, no lo pasa a otra red y no vuelve nada.',
     ['default-gateway', 'router', 'packet'],
   ],
   [

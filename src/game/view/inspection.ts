@@ -1,5 +1,5 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, isConnected, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
+import { isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
@@ -122,9 +122,17 @@ function internet(session: Session): Inspection {
   };
 }
 
+/** The fields with the IP a router has on each local network it faces, named after that network. An interface that faces another router or a server is left out, so the box never names or numbers anything the map may not draw. */
+function interfaceFields(world: Network, own: Router): FieldSpec[] {
+  return lansOf(world).flatMap((lan) => {
+    const face = own.interfaces.find((candidate) => candidate.faces === lan.id);
+    return face ? [{ term: 'ip-address' as const, label: INSPECTION_TEXT.routerIp(lan.name), lines: () => [face.ip] }] : [];
+  });
+}
+
 function router(session: Session, own: Router): Inspection {
   const entity = { kind: 'edge', variant: 'router' } as const;
-  return { entity, title: nameTag(own.name), fields: visible(whatIs(entity), session.known) };
+  return { entity, title: nameTag(own.name), fields: visible([...whatIs(entity), ...interfaceFields(session.world, own)], session.known) };
 }
 
 function internetServer(session: Session, own: ServerActor): Inspection {

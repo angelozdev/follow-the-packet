@@ -172,7 +172,7 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'route-not-connected':
       return `${deviceName(net, reason.deviceId)} no tiene conexión a la {{network|red}}: ni envía ni recibe {{packet|paquetes}}.`;
     case 'route-gateway-not-a-router':
-      return `${deviceName(net, reason.deviceId)} tiene la IP ${reason.ip}, la {{default-gateway}} que se configuró, pero no es un {{router}}: recibe el {{packet|paquete}}, no lo reenvía y no vuelve nada.`;
+      return `La IP ${reason.ip}, la {{default-gateway}} guardada, es de ${deviceName(net, reason.deviceId)}, que no es un {{router}}: recibe el {{packet|paquete}}, no lo pasa a otra red y no vuelve nada.`;
     case 'route-leaves-office':
       return `${reason.ip} está fuera de la {{network|red}} de la oficina: el {{packet|paquete}} va a la {{default-gateway}}, que lo saca de ella.`;
     case 'forward-no-owner':
