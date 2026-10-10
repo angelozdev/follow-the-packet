@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { CATALOG_TEXT, entityName, type EntityRef, type PacketMessage, type StampState } from '@/copy';
-import type { ClientActor, Device, FirewallKind, Network } from '@/engine';
+import type { ClientActor, FirewallKind, Network } from '@/engine';
 import {
   ActorPiece,
   DevicePiece,
@@ -12,6 +12,7 @@ import {
   PacketGlyph,
   PacketTrace,
   StampPiece,
+  type DeviceVariant,
   type PacketEnd,
 } from '@/scene/entities';
 import { labelOffset, type Vec2 } from '@/scene/layout';
@@ -48,20 +49,22 @@ function Label({ id, entity, locked, state }: { id: string; entity: PieceEntity;
   return <PieceAnchor piece={piece} position={labelOffset(entity.kind)} onInspect={ignore} onActivate={ignore} />;
 }
 
-function deviceRow(variant: Device['kind']): CatalogCell[] {
-  return DEVICE_STATES.map((state) => {
-    const id = `device-${variant}-${state}`;
-    return {
-      id,
-      caption: CATALOG_TEXT.state[state],
-      draw: (still) => (
-        <>
-          <DevicePiece position={ORIGIN} variant={variant} selected={state === 'selected'} intruded={state === 'alert'} still={still} />
-          <Label id={id} entity={{ kind: 'device', variant }} locked={state === 'locked'} state={state === 'alert' ? 'intruded' : 'normal'} />
-        </>
-      ),
-    };
-  });
+function deviceCell(variant: DeviceVariant, state: (typeof DEVICE_STATES)[number]): CatalogCell {
+  const id = `device-${variant}-${state}`;
+  return {
+    id,
+    caption: CATALOG_TEXT.state[state],
+    draw: (still) => (
+      <>
+        <DevicePiece position={ORIGIN} variant={variant} selected={state === 'selected'} intruded={state === 'alert'} still={still} />
+        <Label id={id} entity={{ kind: 'device', variant }} locked={state === 'locked'} state={state === 'alert' ? 'intruded' : 'normal'} />
+      </>
+    ),
+  };
+}
+
+function deviceRow(variant: DeviceVariant): CatalogCell[] {
+  return DEVICE_STATES.map((state) => deviceCell(variant, state));
 }
 
 function firewallRow(variant: FirewallKind): CatalogCell[] {
@@ -156,7 +159,7 @@ export const CATALOG_ROWS: CatalogCell[][] = [
   [networkCell('office'), networkCell('vpc')],
   deviceRow('laptop'),
   deviceRow('printer'),
-  deviceRow('ec2-instance'),
+  [...deviceRow('ec2-instance'), deviceCell('internet-server', 'normal')],
   firewallRow('host-firewall'),
   firewallRow('security-group'),
   [edgeCell('router'), edgeCell('internet-gateway'), INTERNET_CELL],

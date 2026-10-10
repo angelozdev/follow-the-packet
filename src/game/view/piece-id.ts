@@ -1,12 +1,13 @@
-export type PieceRef = { kind: 'device' | 'firewall' | 'actor' | 'packet'; id: string } | { kind: 'edge' } | { kind: 'internet' };
+export type PieceRef = { kind: 'device' | 'firewall' | 'actor' | 'router' | 'packet'; id: string } | { kind: 'edge' } | { kind: 'internet' };
 
-const ID_KINDS = ['device', 'firewall', 'actor', 'packet'] as const;
+const ID_KINDS = ['device', 'firewall', 'actor', 'router', 'packet'] as const;
 const SEPARATOR = ':';
 
 export const PIECE_ID = {
   device: (deviceId: string) => `device${SEPARATOR}${deviceId}`,
   firewall: (firewallId: string) => `firewall${SEPARATOR}${firewallId}`,
   actor: (actorId: string) => `actor${SEPARATOR}${actorId}`,
+  router: (routerId: string) => `router${SEPARATOR}${routerId}`,
   packet: (flowId: string) => `packet${SEPARATOR}${flowId}`,
   edge: 'edge',
   internet: 'internet',

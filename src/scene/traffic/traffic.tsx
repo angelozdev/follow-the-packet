@@ -1,7 +1,7 @@
 import { toPlainText, type TermText } from '@/copy';
 import type { Trace } from '@/engine';
 import { PacketTrace, StampPiece } from '@/scene/entities';
-import { pathFor, spreadStamps, type Layout } from '@/scene/layout';
+import { pathFor, spreadStamps, startsOnMap, type Layout } from '@/scene/layout';
 import type { OnInspect } from '@/scene/overlay/inspect-handlers';
 import { flowLook, type FlowResult } from './flow-look';
 import { FlowTraffic, SentTraffic } from './flow-traffic';
@@ -18,9 +18,9 @@ export interface MapSent extends MapFlow {
   send: number;
 }
 
-/** Draws every live flow and every packet the player sent along its path, each with its stamp at the end; without animations, each path is drawn still. */
+/** Draws every live flow and every packet the player sent along its path, each with its stamp at the end; without animations, each path is drawn still. A packet that starts at a piece the map does not draw is not drawn. */
 export function Traffic({ flows, sent, layout, still, onInspect }: { flows: MapFlow[]; sent: MapSent[]; layout: Layout; still: boolean; onInspect: OnInspect }) {
-  const packets: (MapFlow & { send?: number })[] = [...flows, ...sent];
+  const packets: (MapFlow & { send?: number })[] = [...flows, ...sent].filter((packet) => startsOnMap(packet.packet, layout));
   const paths = packets.map((packet) => pathFor(packet.trace, packet.packet, layout, packet.hiddenStop));
   const stamps = spreadStamps(paths.map((path) => path[path.length - 1]));
   return (

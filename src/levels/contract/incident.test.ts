@@ -181,6 +181,27 @@ describe('message chips', () => {
   });
 });
 
+describe('shown pieces', () => {
+  const SHOWN = ['your-laptop', OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.server.id];
+
+  it('accepts an incident with a list of shown ids and one without it', () => {
+    expect(incidentSchema.safeParse({ ...SEND, shown: SHOWN }).success).toBe(true);
+    expect(incidentSchema.safeParse({ ...VALID, shown: ['servidor1'] }).success).toBe(true);
+    expect(incidentSchema.safeParse(SEND).success).toBe(true);
+    expect(SEND).not.toHaveProperty('shown');
+  });
+
+  it('rejects a list of shown ids with a repeated id', () => {
+    expect(incidentSchema.safeParse({ ...SEND, shown: [...SHOWN, SHOWN[0]] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...VALID, shown: ['servidor1', 'servidor1'] }).success).toBe(false);
+  });
+
+  it('rejects a list that is empty or holds an empty id', () => {
+    expect(incidentSchema.safeParse({ ...SEND, shown: [] }).success).toBe(false);
+    expect(incidentSchema.safeParse({ ...SEND, shown: [''] }).success).toBe(false);
+  });
+});
+
 describe('office leaks', () => {
   it('a packet that leaves an office with no router is a leak; with a router it is allowed', () => {
     const toDns = { ...SEND, send: { ...SEND.send, to: [...SEND.send.to, { id: 'dns', address: '8.8.8.8' }] } };

@@ -91,9 +91,28 @@ describe('inspect', () => {
     expect(plain(inspect(first, PIECE_ID.actor('attacker')))?.fields).toEqual([['Quién es', toPlainText(ACTOR_ROLE_TEXT.attacker)]]);
   });
 
-  it('an actor of kind server is not inspected as an actor', () => {
+  it('the box of the server of the internet says it is a device and shows its IP, with no actor role', () => {
     const floors: Session = { ...office, world: officeTwoFloorsNet() };
-    expect(inspect(floors, PIECE_ID.actor(OFFICE_FLOORS.server.id))).toBeNull();
+    const box = inspect(floors, PIECE_ID.actor(OFFICE_FLOORS.server.id));
+    expect(box?.entity).toEqual({ kind: 'device', variant: 'internet-server' });
+    expect(plain(box)).toEqual({ title: 'servidor-internet', fields: [whatIs('device'), ['dirección IP', OFFICE_FLOORS.server.ip]] });
+    expect(plain(box)?.fields.map(([label]) => label)).not.toContain('Quién es');
+    expect(plain(inspect(knowing(floors, 'private-ip', 'public-ip'), PIECE_ID.actor(OFFICE_FLOORS.server.id)))?.fields).toEqual([whatIs('device'), ['dirección IP', OFFICE_FLOORS.server.ip]]);
+  });
+
+  it('a router of the world says what a router is under its own name, and nothing that only holds for the router of the office', () => {
+    const floors: Session = { ...office, world: officeTwoFloorsNet() };
+    expect(plain(inspect(floors, PIECE_ID.router(OFFICE_FLOORS.provider.id)))).toEqual({ title: OFFICE_FLOORS.provider.id, fields: [whatIs('router')] });
+    expect(inspect(floors, PIECE_ID.router('ghost'))).toBeNull();
+  });
+
+  it('the inspection of a piece that the incident does not show is null', () => {
+    const only = { ...office, world: officeTwoFloorsNet(), incident: { ...office.incident, shown: ['your-laptop', OFFICE_FLOORS.officeRouter.id] } };
+    expect(inspect(only, PIECE_ID.device('your-laptop'))).not.toBeNull();
+    expect(inspect(only, PIECE_ID.router(OFFICE_FLOORS.officeRouter.id))).not.toBeNull();
+    expect(inspect(only, PIECE_ID.device('printer'))).toBeNull();
+    expect(inspect(only, PIECE_ID.router(OFFICE_FLOORS.provider.id))).toBeNull();
+    expect(inspect(only, PIECE_ID.actor(OFFICE_FLOORS.server.id))).toBeNull();
   });
 
   it('the Internet gateway says what it is and what it does', () => {

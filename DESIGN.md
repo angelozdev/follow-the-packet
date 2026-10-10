@@ -111,7 +111,7 @@ All in `src/design/primitives/`, imported through `@/design`. A primitive takes 
 | `ChipTray` | — | a named row of chips where at most one is picked: the trays of the task card and of the terminal, and of any card that picks values with chips |
 | `Card` | `default`, `soon`; a `section` or, with `as="li"`, a list item | every panel, the cards beside a piece of the map included (the task card and the terminal); `soon` for what is not open yet |
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
-| `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, or the mark of an optional chapter |
+| `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, the name of a floor on the map, or the mark of an optional chapter |
 
 The map has its own pieces, drawn by the entity catalog (`src/scene/entities/`) with the same tokens. Their labels (`PieceLabel`, `src/scene/overlay/`) take their look from `src/design/primitives/primitives.css`: a label that is only a name wears the name tag's frame, written once for both.
 

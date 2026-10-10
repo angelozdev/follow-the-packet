@@ -20,7 +20,7 @@ export const NOTICE_TEXT = {
 
 const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermText> } = {
   network: { office: 'red de la oficina', vpc: 'VPC' },
-  device: { laptop: 'laptop', printer: 'impresora', 'ec2-instance': 'instancia EC2' },
+  device: { laptop: 'laptop', printer: 'impresora', 'ec2-instance': 'instancia EC2', 'internet-server': 'servidor de internet' },
   firewall: { 'host-firewall': 'firewall de la laptop', 'security-group': 'Security Group' },
   edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
   internet: { internet: 'internet' },

@@ -1,10 +1,10 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, entityTerm, messageLabel, nameTag, packetMessage, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type FirewallKind, type PacketSpec } from '@/engine';
+import { isClientActor, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type FirewallKind, type PacketSpec, type Router, type ServerActor } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
-import { isDrawn } from './pieces';
+import { isDrawn, isShown } from './pieces';
 
 export interface InspectionField {
   label: TermText;
@@ -112,6 +112,20 @@ function internet(session: Session): Inspection {
   };
 }
 
+function router(session: Session, own: Router): Inspection {
+  const entity = { kind: 'edge', variant: 'router' } as const;
+  return { entity, title: nameTag(own.name), fields: visible(whatIs(entity), session.known) };
+}
+
+function internetServer(session: Session, own: ServerActor): Inspection {
+  const entity = { kind: 'device', variant: 'internet-server' } as const;
+  return {
+    entity,
+    title: nameTag(own.name),
+    fields: visible([...whatIs(entity), { term: 'ip-address', label: INSPECTION_TEXT.ipAddress, lines: () => [own.ip] }], session.known),
+  };
+}
+
 function actor(session: Session, who: ClientActor): Inspection {
   return {
     entity: { kind: 'actor', variant: who.kind },
@@ -143,7 +157,7 @@ function packet(session: Session, run: PacketRun): Inspection {
   };
 }
 
-/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (a firewall, the edge and the internet are not on it while their terms are unknown). */
+/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (a firewall, a router, the edge and the internet are not on it while their terms are unknown, and nothing is on it that the incident does not show). */
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
@@ -155,15 +169,21 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
       return isDrawn(known, { kind: 'internet', variant: 'internet' }) ? internet(session) : null;
     case 'device': {
       const found = world.devices.find((candidate) => candidate.id === ref.id);
-      return found ? device(session, found) : null;
+      return found && isShown(session, found.id) ? device(session, found) : null;
     }
     case 'firewall': {
       const found = world.firewalls.find((candidate) => candidate.id === ref.id);
-      return found && isDrawn(known, { kind: 'firewall', variant: found.kind }) ? firewall(session, found) : null;
+      const owner = found && world.devices.find((candidate) => candidate.firewallIds.includes(found.id));
+      return found && owner && isShown(session, owner.id) && isDrawn(known, { kind: 'firewall', variant: found.kind }) ? firewall(session, found) : null;
     }
     case 'actor': {
-      const found = world.actors.filter(isClientActor).find((candidate) => candidate.id === ref.id);
-      return found ? actor(session, found) : null;
+      const found = world.actors.find((candidate) => candidate.id === ref.id);
+      if (!found || !isShown(session, found.id)) return null;
+      return isClientActor(found) ? actor(session, found) : internetServer(session, found);
+    }
+    case 'router': {
+      const found = (world.routers ?? []).find((candidate) => candidate.id === ref.id);
+      return found && isShown(session, found.id) && isDrawn(known, { kind: 'edge', variant: 'router' }) ? router(session, found) : null;
     }
     case 'packet': {
       const found = [...runs, ...sent].find((run) => run.id === ref.id);

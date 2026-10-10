@@ -2,7 +2,8 @@
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
-import { ENTITY_TERMS, type EntityKind, type EntityRef, type StampState } from '@/copy';
+import { ENTITY_TERMS, type EntityKind, type EntityRef, type EntityVariants, type StampState } from '@/copy';
+import { CATALOG_ROWS } from '@/scene/catalog/catalog-cells';
 import { EntityIcon } from './entity-icon';
 import { StampIcon } from './stamp';
 
@@ -34,6 +35,28 @@ describe.each(Object.keys(ENTITY_TERMS) as EntityKind[])('the %s icon', (kind) =
   it('tells every variant apart by its shape', () => {
     const shapes = new Set(variants.map((entity) => drawn(<EntityIcon entity={entity} />).innerHTML));
     expect(shapes.size).toBe(variants.length);
+  });
+});
+
+describe('the device icon', () => {
+  const variants = Object.keys(ENTITY_TERMS.device) as EntityVariants['device'][];
+  const iconOf = (variant: EntityVariants['device']) => drawn(<EntityIcon entity={{ kind: 'device', variant }} />);
+
+  it('draws the server of the internet as a device', () => {
+    const server = iconOf('internet-server');
+    expect(server).toHaveClass('entity-icon');
+    expect(server).toHaveAttribute('stroke', 'currentColor');
+    expect(server).toHaveAttribute('aria-hidden', 'true');
+    expect(variants.filter((variant) => variant !== 'internet-server').map((variant) => iconOf(variant).innerHTML)).not.toContain(server.innerHTML);
+  });
+
+  it('every device variant has an icon and a catalog cell', () => {
+    const cells = CATALOG_ROWS.flat().map((cell) => cell.id);
+    expect(variants).toContain('internet-server');
+    for (const variant of variants) {
+      expect(iconOf(variant).innerHTML, variant).not.toBe('');
+      expect(cells.some((id) => id.startsWith(`device-${variant}-`)), variant).toBe(true);
+    }
   });
 });
 

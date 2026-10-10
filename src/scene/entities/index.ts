@@ -1,5 +1,6 @@
 export { ActorIcon, ActorPiece } from './actor';
 export { DeviceIcon, DevicePiece } from './device';
+export type { DeviceVariant } from './device';
 export { EdgeIcon, EdgePiece } from './edge';
 export { EntityIcon } from './entity-icon';
 export { FirewallIcon, FirewallPiece } from './firewall';

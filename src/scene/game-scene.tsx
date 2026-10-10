@@ -5,6 +5,7 @@ import { ActorPiece, DevicePiece, EdgePiece, FirewallPiece, InternetPiece, Netwo
 import { CAMERA_ZOOM, cameraPosition, cardPlacement, computeLayout, labelPosition, layoutCenter, piecePosition, type Layout } from './layout';
 import { MapCanvas } from './map-canvas';
 import { CardAnchor } from './overlay/card-anchor';
+import { FloorLabel } from './overlay/floor-label';
 import type { OnInspect } from './overlay/inspect-handlers';
 import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
@@ -40,14 +41,21 @@ function PieceShape({ piece, layout, selected, still }: { piece: MapPiece; layou
 }
 
 export function GameScene({ world, pieces, flows, sent, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
-  const layout = computeLayout(world, pieces.some((piece) => piece.kind === 'edge'));
+  const layout = computeLayout(world, pieces);
+  const floors = Object.entries(layout.floors);
   const [cx, cz] = layoutCenter(layout);
   const active = pieces.find((piece) => piece.id === activePieceId);
   const placement = active && cardPlacement(active, pieces.filter((piece) => piece.id !== active.id), layout);
   return (
     <MapCanvas camera={cameraPosition(layout)} zoom={CAMERA_ZOOM}>
       <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
-      <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />
+      {floors.length === 0 && layout.sheet.width > 0 && <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />}
+      {floors.map(([id, floor]) => (
+        <NetworkPiece key={id} variant={world.kind} x={floor.x} width={floor.width} depth={floor.depth} />
+      ))}
+      {floors.map(([id, floor]) => (
+        <FloorLabel key={id} position={floor.label} name={world.lans?.find((lan) => lan.id === id)?.name ?? id} />
+      ))}
       <Road layout={layout} />
       {pieces.map((piece) => (
         <PieceShape key={piece.id} piece={piece} layout={layout} selected={piece.id === activePieceId} still={still} />

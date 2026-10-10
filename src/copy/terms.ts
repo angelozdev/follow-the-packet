@@ -167,7 +167,7 @@ export type PacketMessage = 'echo-request' | 'echo-reply';
 
 export interface EntityVariants {
   network: Network['kind'];
-  device: Device['kind'];
+  device: Device['kind'] | 'internet-server';
   firewall: FirewallKind;
   edge: Network['edge'];
   internet: 'internet';
@@ -185,7 +185,7 @@ export type EntityRef = { [Kind in EntityKind]: Kind extends 'packet' ? VariantO
 /** The term that names each variant of each entity, or null while the ladder has no term for it. */
 export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
   network: { office: 'network', vpc: 'vpc' },
-  device: { laptop: 'device', printer: 'device', 'ec2-instance': 'ec2-instance' },
+  device: { laptop: 'device', printer: 'device', 'ec2-instance': 'ec2-instance', 'internet-server': 'device' },
   firewall: { 'host-firewall': 'firewall', 'security-group': 'security-group' },
   edge: { router: 'router', 'internet-gateway': 'internet-gateway' },
   internet: { internet: 'internet' },

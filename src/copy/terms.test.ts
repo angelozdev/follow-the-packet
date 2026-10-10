@@ -96,6 +96,11 @@ describe('entity terms', () => {
     expect(entityTerm({ kind: 'internet', variant: 'internet' })).toBe('internet');
   });
 
+  it('the internet-server variant is named by the term device', () => {
+    expect(entityTerm({ kind: 'device', variant: 'internet-server' })).toBe('device');
+    expect(TERM_ENTITY.device).toEqual({ kind: 'device', variant: 'laptop' });
+  });
+
   it('gives a character no term: an actor is a person, not a piece of the network', () => {
     expect(entityTerm({ kind: 'actor', variant: 'attacker' })).toBeNull();
     expect(entityTerm({ kind: 'actor', variant: 'you' })).toBeNull();

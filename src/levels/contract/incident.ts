@@ -68,6 +68,7 @@ const common = {
   introduces: z.array(termIdSchema),
   base: networkSchema.optional(),
   changes: z.array(networkActionSchema).optional(),
+  shown: z.array(id).min(1).optional(),
   report: termText,
   hints: z.tuple([termText, termText]),
   question: termText.optional(),
@@ -161,6 +162,7 @@ export const incidentSchema = z.discriminatedUnion('mechanic', [filterIncidentSc
   unique('introduced term', incident.introduces);
   unique('flow id', incident.flows.map((f) => f.id));
   unique('task id', incident.tasks.map((t) => t.id));
+  unique('shown id', incident.shown ?? []);
   if (incident.explanation.filter((option) => option.correct).length !== 1) fail('exactly one explanation is correct');
   if (incident.mechanic === 'filter') checkFilter(incident, fail);
   else checkSend(incident, fail);

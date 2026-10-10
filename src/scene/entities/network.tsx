@@ -5,12 +5,12 @@ import { LINE, PAPER_SHADE } from '@/scene/theme';
 const WALL_HEIGHT = 0.5;
 const WALL_DEPTH = 0.12;
 
-/** The network's slab, the floor its devices stand on: an office adds a low wall along its back edge. */
-export function NetworkPiece({ variant, width, depth }: { variant: Network['kind']; width: number; depth: number }) {
+/** The network's slab, the floor its devices stand on, centered on the origin or, for one floor of an office, on `x`: an office adds a low wall along its back edge. */
+export function NetworkPiece({ variant, width, depth, x = 0 }: { variant: Network['kind']; width: number; depth: number; x?: number }) {
   return (
     <group>
-      <InkBox size={[width, 0.2, depth]} position={[0, -0.1, 0]} lineWidth={LINE.bold} />
-      {variant === 'office' && <InkBox size={[width, WALL_HEIGHT, WALL_DEPTH]} position={[0, WALL_HEIGHT / 2, (WALL_DEPTH - depth) / 2]} fill={PAPER_SHADE} />}
+      <InkBox size={[width, 0.2, depth]} position={[x, -0.1, 0]} lineWidth={LINE.bold} />
+      {variant === 'office' && <InkBox size={[width, WALL_HEIGHT, WALL_DEPTH]} position={[x, WALL_HEIGHT / 2, (WALL_DEPTH - depth) / 2]} fill={PAPER_SHADE} />}
     </group>
   );
 }

@@ -1,4 +1,4 @@
-import type { Device, Network, PacketSpec, Reason, Trace } from '@/engine';
+import type { Actor, ClientActor, Device, Network, PacketSpec, Reason, Router, ServerActor, Trace } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 
 export type Vec2 = [number, number];
@@ -35,11 +35,22 @@ export interface DeviceSpot {
   door: Vec2;
   doorstep: Vec2;
   road: Vec2;
+  plugged: boolean;
+}
+
+/** The slab of a floor, the local network of an office that declares them, with the point where its label floats. */
+export interface FloorSpot {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  label: Vec3;
 }
 
 export interface Layout {
   sheet: { width: number; depth: number };
   subnets: Record<string, SubnetSpot>;
+  floors: Record<string, FloorSpot>;
   devices: Record<string, DeviceSpot>;
   roadZ: number;
   roadFromX: number;
@@ -48,11 +59,31 @@ export interface Layout {
   edge: Vec2;
   internet: Vec2;
   actors: Record<string, Vec2>;
+  routers: Record<string, Vec2>;
+  servers: Record<string, Vec2>;
+  stops: Vec2[];
+  bounds: { left: number; right: number };
+}
+
+/** A piece the map draws, as the layout sees it: its kind and what it stands for. A device piece whose anchor is a server of the internet stands for that server, and an edge piece whose anchor is a router of the world stands for that router. */
+export interface LayoutPiece {
+  kind: MapPieceKind;
+  anchorId: string;
 }
 
 interface Column {
-  subnetId: string | null;
+  id: string | null;
   devices: Device[];
+  unplugged: Device[];
+}
+
+interface Drawn {
+  devices: Device[];
+  servers: ServerActor[];
+  clients: ClientActor[];
+  routers: Router[];
+  edge: boolean;
+  internet: boolean;
 }
 
 const GAP = 3.2;
@@ -68,6 +99,11 @@ const EDGE_MARGIN = 1.5;
 const INTERNET_GAP = 3.6;
 const ACTOR_GAP = 3;
 const ACTOR_SPACING = 2.5;
+const ROUTER_GAP = 2.4;
+const SLAB_GAP = 0.4;
+const UNPLUGGED_GAP = 2;
+const FLOOR_LABEL_Z = DEPTH / 2 - 0.35;
+const SERVER_KIND: Actor['kind'] = 'server';
 const ACTOR_STAGGER_Z = 1.6;
 const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 1.1], edge: [0, 3.1, 0], internet: [0, 2.1, 0] };
 const CARD_Y = 0.5;
@@ -81,60 +117,172 @@ const STAMP_NEAR = 1;
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
 const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device', 'forward-no-owner'];
 
-function columnsOf(net: Network): Column[] {
-  if (!net.subnets) return [{ subnetId: null, devices: net.devices }];
-  return net.subnets.map((subnet) => ({ subnetId: subnet.id, devices: net.devices.filter((d) => d.subnetId === subnet.id) }));
+function isServer(actor: Actor): actor is ServerActor {
+  return actor.kind === SERVER_KIND;
 }
 
-/** Lays out one column per subnet (a single one for an office), the devices of each column in a row and, when the map shows the outside, the edge, the internet and its actors on the left. */
-export function computeLayout(net: Network, outside: boolean): Layout {
-  const columns = columnsOf(net);
+/** The pieces of the whole world, as the map drew it before an incident could pick: every device, and, when the map shows the outside, the routers (or the lone edge), the internet, the servers and the actors. */
+function wholeMap(net: Network, outside: boolean): LayoutPiece[] {
+  const devices: LayoutPiece[] = net.devices.map((d) => ({ kind: 'device', anchorId: d.id }));
+  if (!outside) return devices;
+  const routers: LayoutPiece[] = (net.routers ?? []).map((r) => ({ kind: 'edge', anchorId: r.id }));
+  return [
+    ...devices,
+    ...net.actors.map((a): LayoutPiece => ({ kind: isServer(a) ? 'device' : 'actor', anchorId: a.id })),
+    ...(routers.length > 0 ? routers : [{ kind: 'edge', anchorId: 'edge' } satisfies LayoutPiece]),
+    { kind: 'internet', anchorId: 'internet' },
+  ];
+}
+
+function facesALan(net: Network, router: Router): boolean {
+  const others = new Set([...(net.routers ?? []), ...net.actors].map((thing) => thing.id));
+  return router.interfaces.some((face) => !others.has(face.faces));
+}
+
+/** Orders the routers from the office outward: first the ones that face a local network, then the ones they face, and so on; a router nothing reaches comes last. */
+function roadOrder(net: Network): Router[] {
+  const routers = net.routers ?? [];
+  const order = routers.filter((router) => facesALan(net, router));
+  for (const router of order) {
+    for (const face of router.interfaces) {
+      const next = routers.find((candidate) => candidate.id === face.faces);
+      if (next && !order.includes(next)) order.push(next);
+    }
+  }
+  return [...order, ...routers.filter((router) => !order.includes(router))];
+}
+
+function drawnOf(net: Network, pieces: readonly LayoutPiece[]): Drawn {
+  const anchors = (kind: MapPieceKind) => new Set(pieces.filter((piece) => piece.kind === kind).map((piece) => piece.anchorId));
+  const [deviceIds, actorIds, edgeIds] = [anchors('device'), anchors('actor'), anchors('edge')];
+  const routers = roadOrder(net);
+  return {
+    devices: net.devices.filter((d) => deviceIds.has(d.id)),
+    servers: net.actors.filter(isServer).filter((a) => deviceIds.has(a.id)),
+    clients: net.actors.filter((a): a is ClientActor => !isServer(a) && actorIds.has(a.id)),
+    routers: routers.filter((r) => edgeIds.has(r.id)),
+    edge: [...edgeIds].some((id) => !routers.some((r) => r.id === id)),
+    internet: pieces.some((piece) => piece.kind === 'internet'),
+  };
+}
+
+function lanIdOf(net: Network, device: Device): string | undefined {
+  return device.lanId ?? (net.lans?.length === 1 ? net.lans[0].id : undefined);
+}
+
+function columnsOf(net: Network, drawn: Device[]): Column[] {
+  const unplugged = (d: Device) => d.connected === false;
+  const split = (id: string | null, members: Device[]): Column => ({ id, devices: members.filter((d) => !unplugged(d)), unplugged: members.filter(unplugged) });
+  const groups: [string | null, Device[]][] = net.subnets
+    ? net.subnets.map((subnet) => [subnet.id, drawn.filter((d) => d.subnetId === subnet.id)])
+    : net.lans
+      ? net.lans.map((lan) => [lan.id, drawn.filter((d) => lanIdOf(net, d) === lan.id)])
+      : [[null, drawn]];
+  return groups.filter(([, members]) => members.length > 0).map(([id, members]) => split(id, members));
+}
+
+interface Office {
+  subnets: Record<string, SubnetSpot>;
+  floors: Record<string, FloorSpot>;
+  devices: Record<string, DeviceSpot>;
+  sheetWidth: number;
+  right: number;
+}
+
+function deviceSpot(x: number, plugged: boolean): DeviceSpot {
+  return { x, z: DEVICE_Z, firewall: [x, FIREWALL_Z], door: [x, DOOR_Z], doorstep: [x, DOORSTEP_Z], road: [x, ROAD_Z], plugged };
+}
+
+/** Lays out the drawn devices in one column per subnet or floor, side by side and centered on the origin: a VPC and an office with one local network keep a single sheet, and an office with floors gets a slab and a label for each floor that has a piece drawn. A device with no cable stands past the last slab. */
+function layOutOffice(net: Network, columns: Column[]): Office {
+  const slabbed = net.lans !== undefined;
   const widths = columns.map((column) => Math.max(MIN_COLUMN, column.devices.length * GAP + 1));
-  const total = widths.reduce((a, b) => a + b, 0);
-  const sheetWidth = total + 2;
-  const subnets: Record<string, SubnetSpot> = {};
-  const devices: Record<string, DeviceSpot> = {};
+  const gap = slabbed ? SLAB_GAP : 0;
+  const total = widths.reduce((a, b) => a + b, 0) + gap * Math.max(columns.length - 1, 0);
+  const sheetWidth = columns.length === 0 ? 0 : slabbed ? total : total + 2;
+  const office: Office = { subnets: {}, floors: {}, devices: {}, sheetWidth, right: sheetWidth / 2 };
   let cursor = -total / 2;
   columns.forEach((column, index) => {
     const width = widths[index];
     const cx = cursor + width / 2;
-    cursor += width;
-    if (column.subnetId) subnets[column.subnetId] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
+    cursor += width + gap;
+    if (net.subnets && column.id) office.subnets[column.id] = { x: cx, z: 0, width: width - 0.4, depth: DEPTH - 1 };
+    if (slabbed && column.id) office.floors[column.id] = { x: cx, z: 0, width, depth: DEPTH, label: [cx, 0, FLOOR_LABEL_Z] };
     column.devices.forEach((device, k) => {
-      const x = cx + (k - (column.devices.length - 1) / 2) * GAP;
-      devices[device.id] = { x, z: DEVICE_Z, firewall: [x, FIREWALL_Z], door: [x, DOOR_Z], doorstep: [x, DOORSTEP_Z], road: [x, ROAD_Z] };
+      office.devices[device.id] = deviceSpot(cx + (k - (column.devices.length - 1) / 2) * GAP, true);
     });
   });
+  columns
+    .flatMap((column) => column.unplugged)
+    .forEach((device, k) => {
+      office.devices[device.id] = deviceSpot(sheetWidth / 2 + UNPLUGGED_GAP + k * GAP, false);
+    });
+  return office;
+}
+
+/** Lays out the way out to the left of the office, along the road: the drawn routers (or the lone edge) one after another, then the internet, then the servers and the actors. A router, a server or an actor that is not drawn takes no place. */
+function layOutOutside(drawn: Drawn, sheetWidth: number): Pick<Layout, 'edge' | 'internet' | 'actors' | 'routers' | 'servers' | 'stops'> {
   const edge: Vec2 = [-sheetWidth / 2 - EDGE_MARGIN, ROAD_Z];
-  const internet: Vec2 = [edge[0] - INTERNET_GAP, ROAD_Z];
-  const actors: Record<string, Vec2> = {};
-  net.actors.forEach((a, k) => {
-    actors[a.id] = [internet[0] - ACTOR_GAP - k * ACTOR_SPACING, ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
+  const routers: Record<string, Vec2> = {};
+  drawn.routers.forEach((router, k) => {
+    routers[router.id] = [edge[0] - k * ROUTER_GAP, ROAD_Z];
   });
-  const roadFromX = outside ? edge[0] : -sheetWidth / 2 + ROAD_INSET;
-  return { sheet: { width: sheetWidth, depth: DEPTH }, subnets, devices, roadZ: ROAD_Z, roadFromX, roadToX: sheetWidth / 2 - ROAD_INSET, outside, edge, internet, actors };
+  const lastX = edge[0] - Math.max(drawn.routers.length - 1, 0) * ROUTER_GAP;
+  const internet: Vec2 = [lastX - INTERNET_GAP, ROAD_Z];
+  const beyond = (k: number) => internet[0] - ACTOR_GAP - k * ACTOR_SPACING;
+  const servers: Record<string, Vec2> = {};
+  drawn.servers.forEach((server, k) => {
+    servers[server.id] = [beyond(k), ROAD_Z];
+  });
+  const actors: Record<string, Vec2> = {};
+  drawn.clients.forEach((client, k) => {
+    actors[client.id] = [beyond(drawn.servers.length + k), ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
+  });
+  const stops = [...(drawn.edge ? [edge] : []), ...Object.values(routers), ...(drawn.internet ? [internet] : []), ...Object.values(servers)];
+  return { edge, internet, actors, routers, servers, stops };
+}
+
+/** Lays out the pieces it is given and no others: one column per subnet or floor that has a drawn device, the devices of each column in a row and, when the map shows anything outside the office, the way out to the left. Pass `true` or `false` instead of pieces for the whole world with or without the outside. The size of the office never depends on what is drawn: only where it stands on the map. */
+export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boolean): Layout {
+  const drawn = drawnOf(net, typeof pieces === 'boolean' ? wholeMap(net, pieces) : pieces);
+  const office = layOutOffice(net, columnsOf(net, drawn.devices));
+  const way = layOutOutside(drawn, office.sheetWidth);
+  const outside = drawn.edge || drawn.internet || drawn.routers.length > 0 || drawn.servers.length > 0 || drawn.clients.length > 0;
+  const waystations = [...(drawn.edge ? [way.edge[0]] : []), ...Object.values(way.routers).map(([x]) => x)];
+  const reached = [...waystations, ...(drawn.internet ? [way.internet[0]] : []), ...[...Object.values(way.servers), ...Object.values(way.actors)].map(([x]) => x)];
+  const roadStart = waystations.length > 0 ? Math.min(...waystations) : way.edge[0];
+  return {
+    sheet: { width: office.sheetWidth, depth: DEPTH },
+    subnets: office.subnets,
+    floors: office.floors,
+    devices: office.devices,
+    roadZ: ROAD_Z,
+    roadFromX: outside ? roadStart : -office.sheetWidth / 2 + ROAD_INSET,
+    roadToX: office.sheetWidth / 2 - ROAD_INSET,
+    outside,
+    bounds: { left: Math.min(-office.sheetWidth / 2, ...reached), right: Math.max(office.right, ...Object.values(office.devices).map((spot) => spot.x + 1)) },
+    ...way,
+  };
 }
 
 /** Returns the middle of everything drawn, so the camera can look at it. */
 export function layoutCenter(layout: Layout): Vec2 {
-  const outsideXs = layout.outside ? [layout.internet[0], ...Object.values(layout.actors).map(([x]) => x)] : [];
-  const left = Math.min(-layout.sheet.width / 2, ...outsideXs);
-  return [(left + layout.sheet.width / 2) / 2, 0];
+  return [(layout.bounds.left + layout.bounds.right) / 2, 0];
 }
 
-/** Returns where a piece of this kind stands on the ground: a device, the firewall in front of its device, an actor, the edge or the internet. */
+/** Returns where a piece of this kind stands on the ground: a device (or a server of the internet), the firewall in front of its device, an actor, a router (or the lone edge) or the internet. */
 export function piecePosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec2 {
   switch (piece.kind) {
     case 'device': {
       const spot = layout.devices[piece.anchorId];
-      return [spot.x, spot.z];
+      return spot ? [spot.x, spot.z] : layout.servers[piece.anchorId];
     }
     case 'firewall':
       return layout.devices[piece.anchorId].firewall;
     case 'actor':
       return layout.actors[piece.anchorId];
     case 'edge':
-      return layout.edge;
+      return layout.routers[piece.anchorId] ?? layout.edge;
     case 'internet':
       return layout.internet;
   }
@@ -201,24 +349,66 @@ export function terminalSide(anchorX: number, avoidXs: number[], room: number, g
   return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : preferred;
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
+const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid'];
+const DROPPED_BY_A_ROUTER: Reason['code'][] = ['forward-ttl-exceeded', 'forward-no-route', 'forward-no-host', 'forward-private-dropped'];
+
+function spotOfActor(layout: Layout, id: string): Vec2 | undefined {
+  return layout.actors[id] ?? layout.servers[id];
+}
+
+/** True when the packet starts at a piece the map draws: a device with a spot, or an actor or a server with one. A packet that starts at a piece that is not drawn has nowhere to start from. */
+export function startsOnMap(packet: PacketSpec, layout: Layout): boolean {
+  return packet.from.kind === 'device' ? layout.devices[packet.from.id] !== undefined : spotOfActor(layout, packet.from.id) !== undefined;
+}
+
+/** Returns the point of the road between this one and the next drawn stop beyond it, half way: where a packet ends when a router the map does not draw drops it. With nothing drawn beyond, it is the far end of the road. */
+function betweenStops(from: Vec2, layout: Layout): Vec2 {
+  const next = layout.stops.find(([x]) => x < from[0]);
+  const toX = next ? next[0] : layout.bounds.left;
+  return [(from[0] + toX) / 2, layout.roadZ];
+}
+
+function routerThatDrops(trace: Trace): string | undefined {
+  const step = trace.steps.find((s) => s.stage === 'forward' && s.verdict === 'drop' && DROPPED_BY_A_ROUTER.includes(s.reason.code));
+  return step && 'routerId' in step.reason ? step.reason.routerId : undefined;
+}
+
+/** Appends the drawn routers the packet crossed, in order, and, when a router drops it, the place where it ends: that router if it is drawn, or half way to the next drawn stop of the road if it is not. */
+function throughRouters(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
+  const crossed = (trace.hops ?? []).flatMap((hop): Vec2[] => (layout.routers[hop.routerId] ? [layout.routers[hop.routerId]] : []));
+  const through = [...points, ...crossed];
+  const dropper = routerThatDrops(trace);
+  if (dropper === undefined || layout.routers[dropper]) return through;
+  return [...through, betweenStops(through[through.length - 1], layout)];
+}
+
+/** Appends the end of the road when the packet was answered by a router or a server instead of a device: its spot if the map draws it, or half way to the next drawn stop if not. */
+function toResponder(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
+  const id = trace.destinationId;
+  const spot = id === null ? undefined : (layout.routers[id] ?? layout.servers[id]);
+  return spot ? [...points, spot] : points;
+}
+
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address or to an address that is not valid, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hiddenStop = false): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
-  if (source && trace.steps.some((s) => s.reason.code === 'route-self')) return [source.door, source.doorstep];
-  const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [layout.actors[from.id] ?? layout.internet, layout.internet];
+  if (source && trace.steps.some((s) => STAYS_IN_DEVICE.includes(s.reason.code))) return [source.door, source.doorstep];
+  if (from.kind === 'device' && !source) return [[layout.roadToX, layout.roadZ]];
+  const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [spotOfActor(layout, from.id) ?? layout.internet, layout.internet];
 
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return source && hiddenStop ? [source.door, source.doorstep] : points.slice(0, 2);
   if (trace.steps.some((s) => NOBODY_HAS_IT.includes(s.reason.code))) return [...points, [layout.roadToX, layout.roadZ]];
   if (layout.outside && trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 
+  const crossed = throughRouters(points, trace, layout);
   const dest = trace.destinationId ? layout.devices[trace.destinationId] : undefined;
-  if (!dest) return points;
-  points.push(dest.road, dest.firewall);
-  if (!hiddenStop && trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return points;
-  points.push(dest.door);
-  return points;
+  if (!dest) return toResponder(crossed, trace, layout);
+  crossed.push(dest.road, dest.firewall);
+  if (!hiddenStop && trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return crossed;
+  crossed.push(dest.door);
+  return crossed;
 }
 
 export function cumulativeLengths(path: Vec2[]): number[] {

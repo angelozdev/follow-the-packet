@@ -1,6 +1,6 @@
 import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { OFFICE, actor, device, echoFrom, lab03Net, officeNet, ping, withDevice, withInbound } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice, withInbound } from '@/testing';
 import type { Firewall } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 import { simulate } from '@/engine/simulation/simulate';
@@ -23,9 +23,11 @@ import {
   roundTrip,
   sideForNdc,
   spreadStamps,
+  startsOnMap,
   terminalSide,
   type CardPosition,
   type Layout,
+  type LayoutPiece,
   type Vec2,
   type Vec3,
 } from './layout';
@@ -181,6 +183,248 @@ describe('pathFor when a firewall the player does not know stops the packet', ()
   });
 });
 
+const FLOORS = officeTwoFloorsNet();
+const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+const placedDevice = (anchorId: string): LayoutPiece => ({ kind: 'device', anchorId });
+const placedRouter = (anchorId: string): LayoutPiece => ({ kind: 'edge', anchorId });
+const GLOBE: LayoutPiece = { kind: 'internet', anchorId: 'internet' };
+const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer'].map(placedDevice);
+const ALL_ROUTERS = [officeRouter, provider, backbone].map((router) => placedRouter(router.id));
+const SERVER_PIECE = placedDevice(server.id);
+const OFFICE_AND_ROAD = [...FLOOR_1_DEVICES, placedDevice('andres-laptop'), ...ALL_ROUTERS, GLOBE, SERVER_PIECE];
+const layoutOf = (...pieces: LayoutPiece[]) => computeLayout(FLOORS, pieces);
+const xs = (spots: Record<string, Vec2>) => Object.values(spots).map(([x]) => x);
+
+describe('computeLayout of an office with floors', () => {
+  it('lays out one column per LAN that has a drawn piece', () => {
+    const both = layoutOf(...OFFICE_AND_ROAD);
+    expect(Object.keys(both.floors)).toEqual([floor1.id, floor2.id]);
+    expect(both.floors[floor1.id].x).toBeLessThan(both.floors[floor2.id].x);
+    for (const id of ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer']) expect(Math.abs(both.devices[id].x - both.floors[floor1.id].x)).toBeLessThan(both.floors[floor1.id].width / 2);
+    expect(Math.abs(both.devices['andres-laptop'].x - both.floors[floor2.id].x)).toBeLessThan(both.floors[floor2.id].width / 2);
+    const second = layoutOf(placedDevice('andres-laptop'));
+    expect(Object.keys(second.floors)).toEqual([floor2.id]);
+    expect(Object.keys(layoutOf(placedDevice('your-laptop')).floors)).toEqual([floor1.id]);
+  });
+
+  it('puts a slab under each floor, with a gap between slabs, and the sheet spans them', () => {
+    const { floors, sheet } = layoutOf(...OFFICE_AND_ROAD);
+    const [first, second] = [floors[floor1.id], floors[floor2.id]];
+    expect(first.x + first.width / 2).toBeLessThan(second.x - second.width / 2);
+    expect(sheet.width).toBeCloseTo(second.x + second.width / 2 - (first.x - first.width / 2));
+    expect(first.x - first.width / 2).toBeCloseTo(-sheet.width / 2);
+    expect(first.depth).toBe(sheet.depth);
+  });
+
+  it('lays out the drawn routers along the road between the office and the internet, in order', () => {
+    const layout = layoutOf(...OFFICE_AND_ROAD);
+    const [office, inProvider, inBackbone] = [officeRouter, provider, backbone].map((router) => layout.routers[router.id]);
+    expect(office[0]).toBeLessThan(-layout.sheet.width / 2);
+    expect(inProvider[0]).toBeLessThan(office[0]);
+    expect(inBackbone[0]).toBeLessThan(inProvider[0]);
+    expect(layout.internet[0]).toBeLessThan(inBackbone[0]);
+    expect([office[1], inProvider[1], inBackbone[1], layout.internet[1]]).toEqual([layout.roadZ, layout.roadZ, layout.roadZ, layout.roadZ]);
+    const skipping = layoutOf(...FLOOR_1_DEVICES, placedRouter(officeRouter.id), placedRouter(backbone.id), GLOBE);
+    expect(skipping.routers[officeRouter.id]).toEqual(skipping.edge);
+    expect(skipping.edge[0] - skipping.routers[backbone.id][0]).toBeCloseTo(office[0] - inProvider[0]);
+    expect(Object.keys(skipping.routers)).toEqual([officeRouter.id, backbone.id]);
+  });
+
+  it('a server of the internet stands past the last drawn router', () => {
+    const layout = layoutOf(...OFFICE_AND_ROAD);
+    expect(layout.servers[server.id][0]).toBeLessThan(Math.min(...xs(layout.routers)));
+    expect(layout.servers[server.id][1]).toBe(layout.roadZ);
+    const fewer = layoutOf(...FLOOR_1_DEVICES, placedRouter(officeRouter.id), SERVER_PIECE);
+    expect(fewer.servers[server.id][0]).toBeLessThan(fewer.routers[officeRouter.id][0]);
+    expect(Object.keys(fewer.devices)).not.toContain(server.id);
+  });
+
+  it('a device that is not connected stands outside the slab', () => {
+    const layout = layoutOf(...FLOOR_1_DEVICES, placedDevice('guest-laptop'), placedDevice('andres-laptop'));
+    const guest = layout.devices['guest-laptop'];
+    expect(guest.plugged).toBe(false);
+    expect(layout.devices['your-laptop'].plugged).toBe(true);
+    for (const floor of Object.values(layout.floors)) expect(guest.x).toBeGreaterThan(floor.x + floor.width / 2);
+    expect(guest.x).toBeGreaterThan(layout.sheet.width / 2);
+    expect(layoutCenter(layout)[0]).toBeGreaterThan(0);
+    expect(layout.roadToX).toBeLessThan(guest.x);
+  });
+
+  it('gives a spot only to the pieces it is given', () => {
+    const layout = layoutOf(placedDevice('your-laptop'), placedRouter(officeRouter.id), placedDevice(server.id));
+    expect(Object.keys(layout.devices)).toEqual(['your-laptop']);
+    expect(Object.keys(layout.routers)).toEqual([officeRouter.id]);
+    expect(Object.keys(layout.servers)).toEqual([server.id]);
+    expect(layout.actors).toEqual({});
+    const attacker = { id: 'attacker', name: 'Atacante', ip: '203.0.113.66', kind: 'attacker' } as const;
+    const visited = computeLayout({ ...FLOORS, actors: [attacker, ...FLOORS.actors] }, [placedDevice('your-laptop'), { kind: 'actor', anchorId: attacker.id }]);
+    expect(Object.keys(visited.actors)).toEqual([attacker.id]);
+    expect(Object.keys(visited.servers)).toEqual([]);
+  });
+
+  it('a floor with no drawn piece has no slab and no label', () => {
+    const layout = layoutOf(placedDevice('andres-laptop'), placedRouter(officeRouter.id));
+    expect(layout.floors[floor1.id]).toBeUndefined();
+    expect(Object.keys(layout.floors)).toEqual([floor2.id]);
+    expect(layout.floors[floor2.id].label).toHaveLength(3);
+    expect(Object.keys(layoutOf(placedRouter(officeRouter.id)).floors)).toEqual([]);
+  });
+
+  it('the labels of two floors do not overlap', () => {
+    const roomy = [...FLOOR_1_DEVICES, placedDevice('andres-laptop')];
+    const tight = [placedDevice('your-laptop'), placedDevice('andres-laptop')];
+    for (const pieces of [roomy, tight]) {
+      const layout = layoutOf(...pieces);
+      const { pixel } = projection(layout, MAPS[0]);
+      const [one, two] = [floor1.id, floor2.id].map((id) => boxAround(id, pixel(layout.floors[id].label), LABEL_REACH, LABEL_HALF_HEIGHT));
+      expect(hits(one, two)).toBe(false);
+    }
+  });
+
+  it('the office keeps full size in every incident, whichever pieces it draws', () => {
+    const whole = layoutOf(...OFFICE_AND_ROAD);
+    const pair = layoutOf(placedDevice('your-laptop'), placedDevice('lucia-laptop'));
+    const single = layoutOf(placedDevice('your-laptop'));
+    const pixelsBetween = (layout: Layout, a: Vec3, b: Vec3) => {
+      const { pixel } = projection(layout, MAPS[0]);
+      return Math.hypot(pixel(b)[0] - pixel(a)[0], pixel(b)[1] - pixel(a)[1]);
+    };
+    const unit = (layout: Layout) => {
+      const { x, z } = layout.devices['your-laptop'];
+      return pixelsBetween(layout, [x, 0, z], [x + 1, 0, z]);
+    };
+    const pitch = (layout: Layout) => {
+      const [you, lucia] = ['your-laptop', 'lucia-laptop'].map((id) => layout.devices[id]);
+      return pixelsBetween(layout, [you.x, 0, you.z], [lucia.x, 0, lucia.z]);
+    };
+    const lookFrom = (layout: Layout) => {
+      const [cx, cz] = layoutCenter(layout);
+      return cameraPosition(layout).map((value, index) => value - [cx, 0, cz][index]);
+    };
+    expect(CAMERA_ZOOM).toBe(38);
+    expect(unit(single)).toBeCloseTo(unit(whole));
+    expect(pitch(pair)).toBeCloseTo(pitch(whole));
+    expect(lookFrom(single)).toEqual(lookFrom(whole));
+  });
+
+  it('the place of the office depends only on the pieces its incident draws', () => {
+    const pieces = [...FLOOR_1_DEVICES, placedRouter(officeRouter.id), GLOBE];
+    const grown: typeof FLOORS = { ...FLOORS, devices: [...FLOORS.devices, { ...FLOORS.devices[0], id: 'extra', name: 'extra', privateIp: '192.168.1.200' }] };
+    expect(computeLayout(grown, pieces)).toEqual(layoutOf(...pieces));
+    expect(layoutCenter(layoutOf(...FLOOR_1_DEVICES))).toEqual([0, 0]);
+    expect(layoutCenter(layoutOf(...pieces))[0]).toBeLessThan(0);
+    expect(layoutCenter(layoutOf(...pieces, ...ALL_ROUTERS, SERVER_PIECE))[0]).toBeLessThan(layoutCenter(layoutOf(...pieces))[0]);
+  });
+
+  it('when only the sender of the office is drawn, no other device of the office gets a spot and the office router keeps its own, as in 10', () => {
+    const tracing = layoutOf(placedDevice('your-laptop'), ...ALL_ROUTERS, GLOBE, SERVER_PIECE);
+    expect(Object.keys(tracing.devices)).toEqual(['your-laptop']);
+    expect(Object.keys(tracing.routers)).toEqual([officeRouter.id, provider.id, backbone.id]);
+    expect(tracing.routers[officeRouter.id]).toEqual(tracing.edge);
+    expect(Object.keys(tracing.floors)).toEqual([floor1.id]);
+    expect(tracing.stops).toHaveLength(5);
+  });
+
+  it('a lone edge, the internet and a client actor still lay out as in a network with no routers', () => {
+    const home = { id: 'home', name: 'Casa', ip: '203.0.113.7', kind: 'home' } as const;
+    const layout = computeLayout({ ...officeNet(), actors: [home] }, true);
+    expect(layout.outside).toBe(true);
+    expect(layout.actors.home[0]).toBeLessThan(layout.internet[0]);
+    expect(layout.internet[0]).toBeLessThan(layout.edge[0]);
+    expect(layout.routers).toEqual({});
+    expect(layout.floors).toEqual({});
+  });
+
+  it('draws the outside as soon as any piece of it is drawn, with or without the edge', () => {
+    expect(layoutOf(...FLOOR_1_DEVICES, GLOBE).outside).toBe(true);
+    expect(layoutOf(...FLOOR_1_DEVICES, SERVER_PIECE).outside).toBe(true);
+    expect(layoutOf(...FLOOR_1_DEVICES).outside).toBe(false);
+  });
+});
+
+describe('pathFor in an office with routers', () => {
+  const layout = layoutOf(...OFFICE_AND_ROAD);
+  const you = layout.devices['your-laptop'];
+  const andres = layout.devices['andres-laptop'];
+  const at = (id: string) => layout.routers[id];
+  const trace = (from: string, to: string, ttl?: number) => {
+    const packet = { ...ping(device(from), to), ...(ttl && { ttl }) };
+    return { packet, trace: simulate(FLOORS, packet) };
+  };
+
+  it('the path of a packet goes through the drawn routers it crossed, in order', () => {
+    const toServer = trace('your-laptop', server.ip);
+    expect(toServer.trace.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id, provider.id, backbone.id]);
+    expect(pathFor(toServer.trace, toServer.packet, layout)).toEqual([you.door, you.firewall, you.road, at(officeRouter.id), at(provider.id), at(backbone.id), layout.servers[server.id]]);
+    const toAndres = trace('your-laptop', OFFICE_FLOORS.floor2.andres);
+    expect(pathFor(toAndres.trace, toAndres.packet, layout)).toEqual([you.door, you.firewall, you.road, at(officeRouter.id), andres.road, andres.firewall, andres.door]);
+  });
+
+  it('skips the routers that are not drawn and goes through the ones that are', () => {
+    const fewer = layoutOf(...FLOOR_1_DEVICES, placedRouter(officeRouter.id), placedRouter(backbone.id), GLOBE, SERVER_PIECE);
+    const toServer = trace('your-laptop', server.ip);
+    const path = pathFor(toServer.trace, toServer.packet, fewer);
+    expect(path.slice(3)).toEqual([fewer.routers[officeRouter.id], fewer.routers[backbone.id], fewer.servers[server.id]]);
+  });
+
+  it('a packet to the same floor stays on the road and crosses no router', () => {
+    const toLucia = trace('your-laptop', OFFICE_FLOORS.floor1.lucia);
+    const lucia = layout.devices['lucia-laptop'];
+    expect(pathFor(toLucia.trace, toLucia.packet, layout)).toEqual([you.door, you.firewall, you.road, lucia.road, lucia.firewall, lucia.door]);
+  });
+
+  it('a packet to the interface of a router ends at that router', () => {
+    const toGateway = trace('your-laptop', floor1.gateway);
+    expect(pathFor(toGateway.trace, toGateway.packet, layout).at(-1)).toEqual(at(officeRouter.id));
+  });
+
+  it('a packet that dies at a drawn router ends at that router', () => {
+    const expiring = trace('your-laptop', server.ip, 2);
+    expect(expiring.trace.outcome).toBe('ttl-exceeded');
+    expect(pathFor(expiring.trace, expiring.packet, layout)).toEqual([you.door, you.firewall, you.road, at(officeRouter.id), at(provider.id)]);
+    const first = trace('your-laptop', server.ip, 1);
+    expect(pathFor(first.trace, first.packet, layout).at(-1)).toEqual(at(officeRouter.id));
+  });
+
+  it('a packet that dies at a router that is not drawn ends between the last drawn piece it crossed and the next one', () => {
+    const outside = layoutOf(...FLOOR_1_DEVICES, placedRouter(officeRouter.id), GLOBE, SERVER_PIECE);
+    const lost = trace('your-laptop', '10.0.0.10');
+    expect(lost.trace.outcome).toBe('timeout');
+    expect(lost.trace.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id, provider.id]);
+    const path = pathFor(lost.trace, lost.packet, outside);
+    const [x, z] = path[path.length - 1];
+    expect(x).toBeLessThan(outside.routers[officeRouter.id][0]);
+    expect(x).toBeGreaterThan(outside.internet[0]);
+    expect(z).toBe(outside.roadZ);
+    expect(path.slice(0, -1).at(-1)).toEqual(outside.routers[officeRouter.id]);
+  });
+
+  it('a packet that dies at a router that is not drawn before any drawn router ends between the sender and the next piece', () => {
+    const beyond = layoutOf(...FLOOR_1_DEVICES, GLOBE, SERVER_PIECE);
+    const lost = trace('your-laptop', '10.0.0.10');
+    const [x] = pathFor(lost.trace, lost.packet, beyond).at(-1) ?? [Number.NaN];
+    expect(x).toBeLessThan(beyond.devices['your-laptop'].x);
+    expect(x).toBeGreaterThan(beyond.internet[0]);
+  });
+
+  it('a loopback ping and an invalid address never draw a path out of the device', () => {
+    for (const to of ['127.0.0.1', '127.8.8.8', 'localhost', '256.1.1.1']) {
+      const sent = trace('your-laptop', to);
+      expect(pathFor(sent.trace, sent.packet, layout), to).toEqual([you.door, you.doorstep]);
+    }
+    const loopback = trace('your-laptop', '127.0.0.1');
+    expect(loopback.trace.steps.map((step) => step.reason.code)).toContain('route-loopback');
+  });
+
+  it('a packet whose sender is not drawn starts nowhere on the map', () => {
+    const lone = layoutOf(placedDevice('lucia-laptop'), ...ALL_ROUTERS);
+    const sent = trace('your-laptop', OFFICE_FLOORS.floor1.lucia);
+    expect(startsOnMap(sent.packet, lone)).toBe(false);
+    expect(startsOnMap(trace('lucia-laptop', server.ip).packet, lone)).toBe(true);
+    expect(pathFor(sent.trace, sent.packet, lone).length).toBeGreaterThan(0);
+  });
+});
+
 describe('path interpolation', () => {
   it('pointAt walks the segments in order', () => {
     const path: [number, number][] = [[0, 0], [2, 0], [2, 2]];
@@ -261,8 +505,7 @@ function hits(a: Hazard, b: Hazard): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 }
 
-function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map: MapSize, origin: Piece) {
-  const layout: Layout = computeLayout(net, outside);
+function projection(layout: Layout, map: MapSize) {
   const camera = new OrthographicCamera(-map.width / 2, map.width / 2, map.height / 2, -map.height / 2, 0.1, 500);
   const [cx, cz] = layoutCenter(layout);
   camera.zoom = CAMERA_ZOOM;
@@ -274,6 +517,12 @@ function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map:
     const { x, y } = new Vector3(...point).project(camera);
     return [((x + 1) / 2) * map.width, ((1 - y) / 2) * map.height];
   };
+  return { pixel };
+}
+
+function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map: MapSize, origin: Piece) {
+  const layout: Layout = computeLayout(net, outside);
+  const { pixel } = projection(layout, map);
   const pieces: Piece[] = [
     ...net.devices.map((other) => ({ kind: 'device' as const, anchorId: other.id })),
     ...(outside ? [{ kind: 'edge' as const, anchorId: 'edge' }, { kind: 'internet' as const, anchorId: 'internet' }, ...net.actors.map((other) => ({ kind: 'actor' as const, anchorId: other.id }))] : []),

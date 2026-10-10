@@ -62,7 +62,6 @@ describe('pieceViews', () => {
     const pieces = pieceViews({ ...office, world });
     expect(world.actors.map((actor) => actor.kind)).toEqual(['attacker', 'server']);
     expect(pieces.filter((piece) => piece.kind === 'actor').map((piece) => piece.id)).toEqual([PIECE_ID.actor('attacker')]);
-    expect(pieces.map((piece) => piece.id)).not.toContain(PIECE_ID.actor(OFFICE_FLOORS.server.id));
   });
 
   it('shows no router and no internet until their terms are known, even with someone outside', () => {
@@ -104,6 +103,78 @@ describe('pieceViews', () => {
   it('always draws the devices and the actors, which are the base of the map', () => {
     const bare = knowingNot(office, 'router', 'internet', 'firewall');
     expect(pieceViews(bare).map((piece) => piece.kind)).toEqual(['device', 'device', 'device', 'actor']);
+  });
+});
+
+const ATTACKER = { id: 'attacker', name: 'Atacante', ip: '203.0.113.66', kind: 'attacker' } as const;
+const { officeRouter, provider, backbone, server } = OFFICE_FLOORS;
+const floorsWorld = withDevice({ ...officeTwoFloorsNet(), firewalls: officeNet().firewalls, actors: [ATTACKER, ...officeTwoFloorsNet().actors] }, 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+const floors = (shown?: string[]): Session => ({ ...office, world: floorsWorld, incident: { ...office.incident, shown } });
+const idsOf = (session: Session) => pieceViews(session).map((piece) => piece.id);
+const EVERY_ID = [
+  ...floorsWorld.devices.map((d) => PIECE_ID.device(d.id)),
+  PIECE_ID.firewall('fw-lucia'),
+  PIECE_ID.actor('attacker'),
+  PIECE_ID.actor(server.id),
+  ...[officeRouter, provider, backbone].map((router) => PIECE_ID.router(router.id)),
+  PIECE_ID.internet,
+];
+
+describe('pieceViews of an incident that lists what it draws', () => {
+  const SHOWN = ['your-laptop', 'lucia-laptop', 'andres-laptop', officeRouter.id, server.id];
+
+  it('each incident draws only the pieces it uses', () => {
+    expect(idsOf(floors(SHOWN))).toEqual([
+      PIECE_ID.device('your-laptop'),
+      PIECE_ID.device('lucia-laptop'),
+      PIECE_ID.device('andres-laptop'),
+      PIECE_ID.firewall('fw-lucia'),
+      PIECE_ID.actor(server.id),
+      PIECE_ID.router(officeRouter.id),
+      PIECE_ID.internet,
+    ]);
+    expect(idsOf(floors(['your-laptop']))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.internet]);
+  });
+
+  it('draws a piece of the list only once its term is known', () => {
+    expect(idsOf(knowingNot(floors(SHOWN), 'router'))).not.toContain(PIECE_ID.router(officeRouter.id));
+    expect(idsOf(knowingNot(floors(SHOWN), 'internet'))).not.toContain(PIECE_ID.internet);
+    expect(idsOf(knowingNot(floors(SHOWN), 'router', 'internet', 'firewall'))).toEqual([
+      PIECE_ID.device('your-laptop'),
+      PIECE_ID.device('lucia-laptop'),
+      PIECE_ID.device('andres-laptop'),
+      PIECE_ID.actor(server.id),
+    ]);
+  });
+
+  it('an incident with no list draws every piece of its world, as before', () => {
+    expect(idsOf(floors())).toEqual(EVERY_ID);
+  });
+
+  it('the firewall of a device that is not drawn is not drawn', () => {
+    expect(idsOf(floors(['lucia-laptop']))).toContain(PIECE_ID.firewall('fw-lucia'));
+    expect(idsOf(floors(['your-laptop', 'andres-laptop']))).not.toContain(PIECE_ID.firewall('fw-lucia'));
+  });
+
+  it('an actor of kind server is drawn as the internet-server variant of the device piece', () => {
+    const drawn = pieceViews(floors()).find((piece) => piece.anchorId === server.id);
+    expect(drawn).toMatchObject({ kind: 'device', variant: 'internet-server', id: PIECE_ID.actor(server.id), term: 'device', label: nameTag('servidor-internet'), state: 'normal' });
+  });
+
+  it('draws every router of a world that has them as a piece of the router variant under its own name, and no lone edge', () => {
+    const routers = pieceViews(floors()).filter((piece) => piece.kind === 'edge');
+    expect(routers.map(({ id, variant, anchorId, term, label, locked, configurable }) => ({ id, variant, anchorId, term, label, locked, configurable }))).toEqual(
+      [officeRouter, provider, backbone].map((router) => ({
+        id: PIECE_ID.router(router.id),
+        variant: 'router',
+        anchorId: router.id,
+        term: 'router',
+        label: nameTag(router.id),
+        locked: true,
+        configurable: false,
+      })),
+    );
+    expect(idsOf(floors())).not.toContain(PIECE_ID.edge);
   });
 });
 

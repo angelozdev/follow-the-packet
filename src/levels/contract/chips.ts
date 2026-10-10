@@ -77,9 +77,50 @@ export function officeLeaks(incident: Incident, world: Network): string[] {
     .map((packet) => `${packet.from.id} → ${packet.to}`);
 }
 
+function placedIds(world: Network): string[] {
+  return [...world.devices, ...(world.routers ?? []), ...world.actors].map((thing) => thing.id);
+}
+
 /** Returns, in the order of the tasks, the ids that a send incident expects to answer, warn or drop (`expect.by`) and that name no device, router, actor or firewall of the world. */
 export function unknownExpectedIds(incident: Incident, world: Network): string[] {
   if (incident.mechanic !== 'send') return [];
-  const known = new Set([...world.devices, ...(world.routers ?? []), ...world.actors, ...world.firewalls].map((thing) => thing.id));
+  const known = new Set([...placedIds(world), ...world.firewalls.map((firewall) => firewall.id)]);
   return incident.tasks.flatMap(({ expect }) => (expect.by !== undefined && !known.has(expect.by) ? [expect.by] : []));
+}
+
+/** Returns the ids in the list of shown pieces of an incident that name no device, router or actor of the world: a firewall is drawn with its device and is not listed by itself. An incident with no list draws the whole world, so it has none. */
+export function unknownShownIds(incident: Incident, world: Network): string[] {
+  const placed = new Set(placedIds(world));
+  return (incident.shown ?? []).filter((id) => !placed.has(id));
+}
+
+function sendersOf(incident: Incident): string[] {
+  return incident.mechanic === 'send' ? incident.send.from.map((chip) => chip.endpoint.id) : incident.flows.map((flow) => flow.packet.from.id);
+}
+
+function addressesOf(incident: Incident): string[] {
+  return incident.mechanic === 'send' ? incident.send.to.map((chip) => chip.address) : incident.flows.map((flow) => flow.packet.to);
+}
+
+function expectedBy(incident: Incident): string[] {
+  return incident.mechanic === 'send' ? incident.tasks.flatMap(({ expect }) => expect.by ?? []) : [];
+}
+
+function ownerOf(world: Network, address: string): string[] {
+  const devices = world.devices.filter((device) => device.privateIp === address || device.publicIp === address);
+  const routers = (world.routers ?? []).filter((router) => router.interfaces.some((face) => face.ip === address));
+  const actors = world.actors.filter((actor) => actor.ip === address);
+  return [...devices, ...routers, ...actors].map((owner) => owner.id);
+}
+
+function drawnWith(world: Network, id: string): string {
+  return world.devices.find((device) => device.firewallIds.includes(id))?.id ?? id;
+}
+
+/** Returns, in order, what the list of shown pieces of an incident must hold and lacks: the sender, the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
+export function missingShownIds(incident: Incident, world: Network): string[] {
+  if (!incident.shown) return [];
+  const shown = new Set(incident.shown);
+  const needed = [...sendersOf(incident), ...addressesOf(incident).flatMap((address) => ownerOf(world, address)), ...expectedBy(incident).map((id) => drawnWith(world, id))];
+  return needed.filter((id, index) => !shown.has(id) && needed.indexOf(id) === index);
 }
