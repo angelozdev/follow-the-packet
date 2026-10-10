@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { FULL_STARS, submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
+import { mapBoxes, overlappingPairs, overlaps, type Box } from './map-boxes';
 import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
@@ -11,22 +13,9 @@ const INTRUDING = 'algo prohibido está entrando';
 const INSPECTED_SERVER = 'servidor2 con candado';
 const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo prohibido';
 const INSPECTION_TITLE = 'servidor2';
-const FULL_STARS = '3 de 3 estrellas';
 const QUESTION = /¿Qué pasó\?/;
 
-interface Box {
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 type Size = Pick<Box, 'width' | 'height'>;
-
-function overlaps(a: Omit<Box, 'name'> | null, b: Omit<Box, 'name'> | null): boolean {
-  return a !== null && b !== null && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-}
 
 function isInside(outer: Size, inner: Omit<Box, 'name'> | null): boolean {
   return inner !== null && inner.x >= 0 && inner.y >= 0 && inner.x + inner.width <= outer.width && inner.y + inner.height <= outer.height;
@@ -34,20 +23,6 @@ function isInside(outer: Size, inner: Omit<Box, 'name'> | null): boolean {
 
 async function windowSize(page: Page): Promise<Size> {
   return page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
-}
-
-async function mapBoxes(page: Page): Promise<Box[]> {
-  return page.locator('.map-button, button.stamp').evaluateAll((elements) =>
-    elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return { name: element.getAttribute('aria-label') ?? element.textContent ?? '', x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-    }),
-  );
-}
-
-async function overlappingPairs(page: Page): Promise<string[]> {
-  const boxes = await mapBoxes(page);
-  return boxes.flatMap((a, index) => boxes.slice(index + 1).filter((b) => overlaps(a, b)).map((b) => `${a.name} / ${b.name}`));
 }
 
 async function openDoor(page: Page): Promise<Locator> {
@@ -58,13 +33,6 @@ async function openDoor(page: Page): Promise<Locator> {
 async function placeRule(card: Locator, source: string) {
   await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
   await card.getByRole('button', { name: source, exact: true }).click();
-}
-
-async function submitAndFinish(page: Page, answer: RegExp) {
-  await page.getByRole('button', { name: SUBMIT }).click();
-  await page.getByRole('button', { name: answer }).click();
-  await page.getByRole('button', { name: 'Ver resultado' }).click();
-  await expect(page.getByText(FULL_STARS)).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
