@@ -106,7 +106,7 @@ All in `src/design/`, imported through `@/design`. A primitive takes no `classNa
 
 | Primitive | Variants | Use it for |
 |-----------|----------|------------|
-| `Button` | `primary`, `secondary` (default), `small`, `text`; with `href` it is a link; `disabled` greys it out and drops its shadow | every action and every link. One `primary` per screen, its main action («Enviar solución»); the actions of a card on the map («Listo», «Enviar») are `secondary` |
+| `Button` | `primary`, `secondary` (default), `small`, `text`; with `href` it is a link; `disabled` greys it out and drops its shadow | every action and every link. One `primary` per panel or card, the action that panel exists for («Enviar solución» in Lucía's card, «Enviar» in the terminal); the rest («Listo») are `secondary` |
 | `Choice` | `chip` (default), `option`; `pressed` makes it a toggle | a short value to pick (`chip`) or a sentence to choose (`option`); without `pressed`, an action drawn as a chip (giving a chip back). A pressed chip keeps a name inside it readable |
 | `ChipTray` | — | a named row of chips where at most one is picked: the trays of the task card and of the terminal, and of any card that picks values with chips |
 | `Card` | `default`, `soon`; a `section` or, with `as="li"`, a list item | every panel, the cards beside a piece of the map included (the task card and the terminal); `soon` for what is not open yet |

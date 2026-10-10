@@ -263,7 +263,7 @@ Cada ajuste dice qué cambió y en qué commit. «Este commit» es el de la Tare
 5. **La prueba humana pasa a `siguiente`.** En la hoja de ruta, la fila «Prueba humana del capítulo 1» deja de ser `idea`. Lleva la decisión pendiente del «primer día lento»: si algún incidente se fusiona. Este commit.
 6. **La leyenda de los sellos y del candado.** Está junto a la ayuda de inspección (cuando no hay nada inspeccionado) y desaparece mientras se inspecciona una pieza (`SCREEN_TEXT.stampLegend`): `9acb697`.
 7. **La tarjeta de reglas vacía del firewall de la laptop** tiene su test: `firewallCard(…, 'fw-lucia').empty`. `1495dfa`.
-8. **«Enviar» es un `.btn` normal.** El plan decía `.btn .btn--primary`: `9acb697`.
+8. **«Enviar» es un `.btn` normal.** El plan decía `.btn .btn--primary`: `9acb697`. Cambiado por el estudiante (2026-10-10): «Enviar» es `primary`, como «Enviar solución».
 9. **Dos textos de Lucía que no eran ciertos.**
    - La pista 1 del 01-02 hablaba de todo ICMP; ahora habla solo del ping: `93f23a9`.
    - El reporte del 01-04 dice que el firewall está en «mi laptop», no en todas: `1495dfa`.

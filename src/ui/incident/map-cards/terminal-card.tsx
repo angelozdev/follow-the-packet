@@ -41,7 +41,7 @@ export function TerminalCard({ card, describe, onPickOrigin, onSend, onClose }: 
       {card.trays.map((tray) => (
         <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
       ))}
-      <Button disabled={!line} onClick={send}>
+      <Button variant="primary" disabled={!line} onClick={send}>
         {TERMINAL_TEXT.send}
       </Button>
     </ChipCard>

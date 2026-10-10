@@ -34,7 +34,9 @@ describe('entities page', () => {
     expect(elements.getByRole('button', { name: INTERFACE_TEXT.sample.option })).toBeEnabled();
     const [disabledSend, terminalSend] = elements.getAllByRole('button', { name: TERMINAL_TEXT.send });
     expect(disabledSend).toBeDisabled();
+    expect(disabledSend).toHaveClass('btn btn--primary', { exact: true });
     expect(terminalSend).toBeEnabled();
+    expect(terminalSend).toHaveClass('btn btn--primary', { exact: true });
     expect(elements.getByText(SCREEN_TEXT.stampLegend)).toHaveClass('muted');
   });
 

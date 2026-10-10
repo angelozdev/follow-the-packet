@@ -14,7 +14,7 @@ type LinkProps = Omit<ComponentProps<'a'>, 'className' | 'style'> & { href: stri
 
 export type ButtonProps = (ActionProps | LinkProps) & { variant?: ButtonVariant; children: ReactNode };
 
-/** The one button of the game: a button that does not submit, or a link when it has an href. Its look comes only from its variant: primary for the main action of a screen, secondary, small, or text for navigation that reads as a link. */
+/** The one button of the game: a button that does not submit, or a link when it has an href. Its look comes only from its variant: primary for the action a panel or card exists for, secondary, small, or text for navigation that reads as a link. */
 export function Button({ variant = 'secondary', ...props }: ButtonProps) {
   const className = BUTTON_CLASS[variant];
   if (props.href === undefined) return <button type="button" className={className} {...(props as ActionProps)} />;

@@ -28,9 +28,10 @@ describe('terminal card', () => {
     expect(screen.getByRole('button', { name: TERMINAL_TEXT.send })).toBeDisabled();
   });
 
-  it('"Enviar" is a normal button, not a second primary one next to "Enviar solución"', () => {
+  it('"Enviar" is the primary button of the card, like "Enviar solución", and "Listo" stays secondary', () => {
     renderTerminal();
-    expect(screen.getByRole('button', { name: TERMINAL_TEXT.send })).toHaveClass('btn', { exact: true });
+    expect(screen.getByRole('button', { name: TERMINAL_TEXT.send })).toHaveClass('btn btn--primary', { exact: true });
+    expect(screen.getByRole('button', { name: TASK_CARD_TEXT.done })).toHaveClass('btn', { exact: true });
   });
 
   it('names its trays Origen, Destino and Mensaje, with the origin of the card picked', () => {

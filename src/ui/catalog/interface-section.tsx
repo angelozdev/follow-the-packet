@@ -48,7 +48,7 @@ export function InterfaceSection() {
           <Button variant="small">{LUCIA_TEXT.askHint}</Button>
         </Specimen>
         <Specimen caption={VARIANT.disabled}>
-          <Button disabled>{TERMINAL_TEXT.send}</Button>
+          <Button variant="primary" disabled>{TERMINAL_TEXT.send}</Button>
         </Specimen>
         <Specimen caption={VARIANT.primaryLink}>
           <Button variant="primary" href="#/">
@@ -151,7 +151,7 @@ export function InterfaceSection() {
                 </code>
               </p>
               <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />
-              <Button>{TERMINAL_TEXT.send}</Button>
+              <Button variant="primary">{TERMINAL_TEXT.send}</Button>
               <Button>{TASK_CARD_TEXT.done}</Button>
             </div>
           </Card>
