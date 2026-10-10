@@ -50,14 +50,17 @@
   --stroke-double: 4px;
 
   --radius: 3px;
+  --radius-tile: 10px;
+  --radius-card: 14px;
   --radius-pill: 999px;
   --radius-round: 50%;
 
-  --shadow-sm: 2px 2px 0 var(--color-ink);
-  --shadow-md: 3px 3px 0 var(--color-ink);
+  --shadow-sm: 0 3px 0 var(--color-ink-soft);
+  --shadow-card: 0 5px 0 var(--color-ink-soft);
   --shadow-tip: 2px 2px 0 var(--color-emphasis);
 
   --focus-ring: var(--stroke-bold) solid var(--color-focus);
+  --focus-ring-on-ink: var(--stroke-bold) solid var(--color-on-fill);
   --focus-offset: 2px;
 
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.17 0 0 0 0 0.15 0 0 0 0 0.12 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

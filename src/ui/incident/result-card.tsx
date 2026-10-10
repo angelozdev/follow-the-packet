@@ -2,6 +2,7 @@ import { RESULT_TEXT, type TermText } from '@/copy';
 import { Button, Card } from '@/design';
 import { countStars, type Stars as EarnedStars } from '@/game';
 import type { Mechanic } from '@/levels';
+import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
@@ -15,7 +16,7 @@ function starText(key: (typeof STAR_KEYS)[number], mechanic: Mechanic): string {
 export function ResultCard({ stars, mechanic, takeaway, nextId }: { stars: EarnedStars; mechanic: Mechanic; takeaway: TermText; nextId: string | null }) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <Card aria-labelledby="result-title">
+    <Card aria-labelledby="result-title" header={{ icon: <CardIcon kind="result" />, type: RESULT_TEXT.type }}>
       <h2 id="result-title" ref={heading} tabIndex={-1}>
         {RESULT_TEXT.title}
       </h2>

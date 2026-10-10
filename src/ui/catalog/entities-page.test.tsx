@@ -29,7 +29,9 @@ describe('entities page', () => {
     expect(elements.getByRole('button', { name: LUCIA_TEXT.submit })).toBeInTheDocument();
     expect(elements.getByRole('link', { name: RESULT_TEXT.next })).toHaveAttribute('href', '#/');
     expect(elements.getByRole('link', { name: SCREEN_TEXT.back })).toHaveAttribute('href', '#/');
-    expect(elements.getAllByRole('button', { pressed: true })).toHaveLength(4);
+    expect(elements.getAllByRole('button', { pressed: true })).toHaveLength(5);
+    expect(elements.getByRole('group', { name: INTERFACE_TEXT.sample.yesNo })).toHaveClass('tray--segmented');
+    expect(elements.getByRole('button', { name: INTERFACE_TEXT.sample.no, pressed: true })).toBeInTheDocument();
     expect(elements.getByRole('button', { name: INTERFACE_TEXT.sample.chosen })).toBeDisabled();
     expect(elements.getByRole('button', { name: INTERFACE_TEXT.sample.option })).toBeEnabled();
     const [disabledSend, terminalSend] = elements.getAllByRole('button', { name: TERMINAL_TEXT.send });

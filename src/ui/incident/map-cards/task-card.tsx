@@ -3,6 +3,7 @@ import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
 import { Button, ChipTray, Choice } from '@/design';
 import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, WhatChip } from '@/levels';
+import { EntityIcon } from '@/scene';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
 import { ChipCard, trayChips } from './chip-card';
@@ -54,7 +55,7 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
   const pickedWhat = chips.what.find((chip) => chip.id === slot.what);
   const pickedFrom = chips.from.find((chip) => chip.id === slot.from);
   return (
-    <ChipCard title={card.title} heading={heading} onClose={onClose}>
+    <ChipCard title={card.title} icon={<EntityIcon entity={{ kind: 'firewall', variant: card.kind }} />} heading={heading} onClose={onClose}>
       {card.rules.length > 0 ? (
         <ul className="rules">
           {card.rules.map((row) => (

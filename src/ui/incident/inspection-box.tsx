@@ -1,11 +1,13 @@
+import { INSPECTION_TEXT } from '@/copy';
 import { Card } from '@/design';
 import type { Inspection } from '@/game';
 import { EntityIcon } from '@/scene';
+import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 
 export function InspectionBox({ inspection }: { inspection: Inspection }) {
   return (
-    <Card aria-labelledby="inspection-title">
+    <Card aria-labelledby="inspection-title" header={{ icon: <CardIcon kind="inspection" />, type: INSPECTION_TEXT.type }}>
       <h2 id="inspection-title">
         <EntityIcon entity={inspection.entity} />
         <TaggedText text={inspection.title} tips={false} />

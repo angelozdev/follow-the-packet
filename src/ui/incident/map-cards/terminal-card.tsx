@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TERMINAL_TEXT, type TermText } from '@/copy';
 import { Button, ChipTray } from '@/design';
 import type { SendPicks, SendTrayName, TerminalCard as Terminal, TracerouteView } from '@/game';
+import { CardIcon } from '@/ui/card-icon';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
 import { ChipCard, trayChips } from './chip-card';
@@ -67,7 +68,7 @@ export function TerminalCard({ card, describe, route, onPickOrigin, onSend, onCl
     if (chosen.to && chosen.message) onSend({ from: card.fromId, to: chosen.to, message: chosen.message });
   };
   return (
-    <ChipCard title={card.title} heading={heading} onClose={onClose}>
+    <ChipCard title={card.title} icon={<CardIcon kind="terminal" />} heading={heading} onClose={onClose}>
       <p className="slot" aria-live="polite">
         {line ? (
           <code>

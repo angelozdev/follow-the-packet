@@ -5,22 +5,32 @@ import { TaggedText } from '@/ui/tagged-text';
 
 interface ChipCardProps {
   title: TermText;
+  icon: ReactNode;
   heading: RefObject<HTMLHeadingElement | null>;
   onClose: () => void;
   children: ReactNode;
 }
 
-/** The card that opens beside a piece of the map: a dialog with its title, what the caller puts in it and the "Listo" button; Escape closes it too. */
-export function ChipCard({ title, heading, onClose, children }: ChipCardProps) {
+/** The card that opens beside a piece of the map: a dialog with its title on the stripe, what the caller puts in it and the "Listo" button; Escape closes it too. */
+export function ChipCard({ title, icon, heading, onClose, children }: ChipCardProps) {
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose();
   };
   return (
-    <Card role="dialog" aria-label={toPlainText(title)} onKeyDown={closeOnEscape}>
+    <Card
+      role="dialog"
+      aria-label={toPlainText(title)}
+      onKeyDown={closeOnEscape}
+      header={{
+        icon,
+        title: (
+          <h2 ref={heading} tabIndex={-1}>
+            <TaggedText text={title} />
+          </h2>
+        ),
+      }}
+    >
       <div className="chip-card">
-        <h2 ref={heading} tabIndex={-1}>
-          <TaggedText text={title} />
-        </h2>
         {children}
         <Button onClick={onClose}>{TASK_CARD_TEXT.done}</Button>
       </div>

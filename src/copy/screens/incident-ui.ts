@@ -21,6 +21,7 @@ export const MAP_TEXT = {
 } as const;
 
 export const INSPECTION_TEXT = {
+  type: 'Inspección',
   whatIs: 'Qué es',
   ipAddress: '{{ip-address}}',
   privateIp: '{{private-ip}}',
@@ -118,6 +119,7 @@ export const TERMINAL_TEXT = {
 } as const;
 
 export const EXPLANATION_TEXT = {
+  type: 'Pregunta',
   whatHappened: '¿Qué pasó?',
   asks: (question: TermText): TermText => `Lucía: «${question}»`,
   right: 'Correcto.',
@@ -126,6 +128,7 @@ export const EXPLANATION_TEXT = {
 } as const;
 
 export const RESULT_TEXT = {
+  type: 'Resultado',
   title: 'Incidente cerrado',
   stars: { closed: 'Cerraste el incidente', explained: 'Explicaste qué pasó a la primera' },
   middle: { filter: 'Abriste solo lo justo', send: 'Lo resolviste sin pistas' },
@@ -140,5 +143,5 @@ export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
   inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
-  stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió. Una pieza con candado no se puede cambiar en este incidente.',
+  stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso. Una pieza con candado no se puede cambiar en este incidente.',
 } as const;

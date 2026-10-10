@@ -66,6 +66,12 @@ describe('incident screen', () => {
     expect(screen.queryByText(SCREEN_TEXT.stampLegend)).toBeNull();
   });
 
+  it('the stamp legend names every stamp state, the warning included', () => {
+    renderFirst();
+    const legend = screen.getByText(SCREEN_TEXT.stampLegend);
+    for (const entry of ['✓ llegó', '✕ lo frenaron', '? se perdió', '! apareció un aviso']) expect(legend).toHaveTextContent(entry);
+  });
+
   it('opens the card from its Security Group, and Esc closes it and gives the focus back to it', async () => {
     const user = userEvent.setup();
     renderFirst();

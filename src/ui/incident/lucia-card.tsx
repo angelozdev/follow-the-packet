@@ -4,6 +4,7 @@ import { Button, Card } from '@/design';
 import { isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import type { IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
+import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
 
@@ -80,10 +81,7 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
   const { incident } = session;
   const newTerms = new Set(incident.introduces);
   return (
-    <Card aria-labelledby="lucia-title">
-      <h2 id="lucia-title">
-        {LUCIA_TEXT.name} <span className="muted">· {LUCIA_TEXT.role}</span>
-      </h2>
+    <Card aria-labelledby="lucia-title" header={{ icon: <CardIcon kind="lucia" />, title: <h2 id="lucia-title">{LUCIA_TEXT.name}</h2>, meta: LUCIA_TEXT.role }}>
       <p>
         <TaggedText text={incident.report} newTerms={newTerms} />
       </p>

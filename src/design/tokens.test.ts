@@ -63,6 +63,11 @@ describe('design tokens', () => {
     expect(tokenPx('--stroke-regular')).toBe(1.5);
   });
 
+  it('reads the radii of the card style as the measures of the approved prototype', () => {
+    expect(tokenPx('--radius-card')).toBe(14);
+    expect(tokenPx('--radius-tile')).toBe(10);
+  });
+
   it('throws for an unknown token, and for a token that is not in pixels', () => {
     expect(() => token('--color-nowhere')).toThrow('Unknown design token: --color-nowhere');
     expect(() => tokenPx('--color-ink')).toThrow('is not in pixels');
@@ -71,6 +76,10 @@ describe('design tokens', () => {
   describe('contrast, WCAG 2.2 AA', () => {
     it.each(CONTRAST_CASES)('$name reaches $minimum:1', ({ foreground, background, minimum }) => {
       expect(contrast(foreground, background)).toBeGreaterThanOrEqual(minimum);
+    });
+
+    it('keeps 4.5 to 1 for the text on the title stripe', () => {
+      expect(contrast(token('--color-on-fill'), token('--color-ink'))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
     });
 
     it('leaves the ink beside a vermilion shape out of the 3:1 check, because that outline already separates it from every paper', () => {

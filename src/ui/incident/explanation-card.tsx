@@ -1,6 +1,7 @@
 import { EXPLANATION_TEXT, type TermText } from '@/copy';
 import { Button, Card, Choice } from '@/design';
 import type { ExplanationOption } from '@/levels';
+import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from './use-focus-on-mount';
 
@@ -24,7 +25,7 @@ function ContinueButton({ onContinue }: { onContinue: () => void }) {
 export function ExplanationCard({ question, options, choice, onChoose, onContinue }: ExplanationCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <Card aria-labelledby="explanation-title">
+    <Card aria-labelledby="explanation-title" header={{ icon: <CardIcon kind="question" />, type: EXPLANATION_TEXT.type }}>
       <h2 id="explanation-title" ref={heading} tabIndex={-1}>
         <TaggedText text={EXPLANATION_TEXT.asks(question)} />
       </h2>

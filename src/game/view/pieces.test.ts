@@ -189,6 +189,7 @@ describe('firewallCard', () => {
     const second = startSession(INCIDENTS, '04-02');
     expect(firewallCard(second, PIECE_ID.firewall(SG.servidor2))).toEqual({
       firewallId: SG.servidor2,
+      kind: 'security-group',
       title: '{{security-group}} [[servidor2]]',
       rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.anywhere.label }],
       empty: TASK_CARD_TEXT.noRules['security-group'],
@@ -206,6 +207,7 @@ describe('firewallCard', () => {
     const card = firewallCard(startSession(INCIDENTS, '01-04'), PIECE_ID.firewall(LUCIA_FIREWALL.id));
     expect(card).toEqual({
       firewallId: LUCIA_FIREWALL.id,
+      kind: 'host-firewall',
       title: '{{firewall}} [[laptop-lucia]]',
       rules: [],
       empty: TASK_CARD_TEXT.noRules['host-firewall'],

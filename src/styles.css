@@ -14,10 +14,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .page { max-width: 880px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg); }
 .lede { color: var(--color-ink-soft); font-size: var(--text-lg); }
 .chapters { list-style: none; padding: 0; margin: var(--space-xs) 0 var(--space-2xl); display: grid; gap: var(--space-md); }
-.chapter__head { display: flex; align-items: baseline; gap: var(--space-sm); }
-.chapter__num { font: var(--weight-display) var(--text-xl) var(--font-display); color: var(--color-emphasis); min-width: 1.6rem; }
-.chapter__meta { margin-left: auto; font-size: var(--text-md); color: var(--color-ink-soft); }
-.levels { list-style: none; padding: var(--space-xs) 0 0 var(--space-2xl); margin: 0; display: grid; gap: var(--space-2xs); }
+.levels { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2xs); }
 .level-item { display: flex; gap: var(--space-sm); align-items: baseline; }
 .stars-inline { margin-left: auto; color: var(--color-emphasis); }
 .locked { color: var(--color-ink-soft); }
@@ -49,11 +46,12 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .lucia__glossary[open] summary { margin-bottom: var(--space-xs); }
 .hint { margin: var(--space-xs) 0; }
 
-.chip-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); }
+.chip-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
+.chip-card p { margin: 0; }
 .rules { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2xs); }
 .rules li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); }
 .rules__text { min-width: 0; }
-.slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.2rem; padding: var(--space-2xs) var(--space-xs); border: var(--stroke-regular) dashed var(--color-ink-soft); }
+.slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.2rem; margin: 0; padding: var(--space-2xs) var(--space-xs); border: var(--stroke-regular) dashed var(--color-ink-soft); border-radius: var(--radius-tile); }
 .slot__empty { color: var(--color-ink-soft); font-size: var(--text-md); }
 .stamp--intruder { color: var(--color-danger); border-style: double; border-width: var(--stroke-double); }
 .stamp--lost { color: var(--color-ink-soft); border-style: dashed; }
@@ -65,16 +63,16 @@ button.stamp { cursor: help; }
 .incident__bar > * { pointer-events: auto; }
 .incident__bar h1 { font-size: var(--text-xl); margin: 0; }
 .incident__motion { margin-left: auto; font-size: var(--text-md); }
-.incident__side { display: grid; align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
+.incident__side { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
 .incident__inspection { position: absolute; right: var(--space-md); bottom: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: 45%; pointer-events: none; }
-.incident__inspection > .card { min-height: 0; overflow-y: auto; }
+.incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
+.incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
 .inspection__fields { margin: 0; }
 .inspection__fields dt { margin-top: var(--space-xs); }
 .inspection__fields dd { margin: 0; }
-.options { list-style: none; padding: 0; display: grid; gap: var(--space-xs); }
-.feedback { margin: var(--space-2xs) 0 0; font-size: var(--text-md); }
-.feedback--wrong { color: var(--color-danger); }
+.feedback { margin: var(--space-2xs) 0 0; padding: var(--space-xs) var(--space-sm); border-left: var(--stroke-double) solid var(--color-ink-soft); background: var(--color-shade); font-size: var(--text-md); }
+.feedback--wrong { color: var(--color-danger); border-left-color: var(--color-danger); }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-xs); flex-wrap: wrap; }
 @media (max-width: 900px) {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
 import { Button, Card, ChipTray, Choice } from '@/design';
+import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -12,6 +13,10 @@ const SAMPLE_STARS = 2;
 const NEW_TERMS = new Set<TermId>(['security-group']);
 const TRAY_CHIPS = SAMPLE.chips.map((label) => ({ id: label, label: <TaggedText text={label} /> }));
 const ADDRESS_CHIPS = SAMPLE.addresses.map((address) => ({ id: address, label: address }));
+const YES_NO_CHIPS = [
+  { id: 'yes', label: SAMPLE.yes },
+  { id: 'no', label: SAMPLE.no },
+];
 const noPick = () => {};
 
 function Specimen({ caption, wide = false, children }: { caption: string; wide?: boolean; children: ReactNode }) {
@@ -83,6 +88,9 @@ export function InterfaceSection() {
         <Specimen caption={VARIANT.tray}>
           <ChipTray name={TASK_CARD_TEXT.what} chips={TRAY_CHIPS} picked={null} onPick={noPick} />
         </Specimen>
+        <Specimen caption={VARIANT.segmented} wide>
+          <ChipTray name={SAMPLE.yesNo} variant="segmented" chips={YES_NO_CHIPS} picked="no" onPick={noPick} />
+        </Specimen>
         <Specimen caption={VARIANT.slotEmpty}>
           <div className="slot">
             <span className="slot__empty">{TASK_CARD_TEXT.what}</span>
@@ -99,20 +107,24 @@ export function InterfaceSection() {
             <span className="slot__empty">{TASK_CARD_TEXT.from}</span>
           </div>
         </Specimen>
-        <Specimen caption={VARIANT.option} wide>
-          <Choice variant="option" pressed={false}>
-            {SAMPLE.option}
-          </Choice>
-        </Specimen>
-        <Specimen caption={VARIANT.optionChosen} wide>
-          <Choice variant="option" pressed disabled>
-            {SAMPLE.chosen}
-          </Choice>
-        </Specimen>
-        <Specimen caption={VARIANT.optionClosed} wide>
-          <Choice variant="option" pressed={false} disabled>
-            {SAMPLE.closed}
-          </Choice>
+        <Specimen caption={VARIANT.options} wide>
+          <ol className="options">
+            <li>
+              <Choice variant="option" pressed={false}>
+                {SAMPLE.option}
+              </Choice>
+            </li>
+            <li>
+              <Choice variant="option" pressed disabled>
+                {SAMPLE.chosen}
+              </Choice>
+            </li>
+            <li>
+              <Choice variant="option" pressed={false} disabled>
+                {SAMPLE.closed}
+              </Choice>
+            </li>
+          </ol>
         </Specimen>
         <Specimen caption={VARIANT.right} wide>
           <p className="feedback">
@@ -127,24 +139,35 @@ export function InterfaceSection() {
       </Family>
       <Family name={INTERFACE_TEXT.family.cards}>
         <Specimen caption={VARIANT.card} wide>
-          <Card>
-            <h2>{LUCIA_TEXT.name}</h2>
+          <Card header={{ icon: <CardIcon kind="lucia" />, title: <h2>{LUCIA_TEXT.name}</h2>, meta: LUCIA_TEXT.role }}>
             <p>
               <TaggedText text={SAMPLE.text} newTerms={NEW_TERMS} />
             </p>
           </Card>
         </Specimen>
+        <Specimen caption={VARIANT.cardTitled} wide>
+          <Card header={{ icon: <CardIcon kind="result" />, type: RESULT_TEXT.type }}>
+            <h2>{RESULT_TEXT.title}</h2>
+            <Stars count={SAMPLE_STARS} />
+          </Card>
+        </Specimen>
         <Specimen caption={VARIANT.cardSoon} wide>
-          <Card variant="soon">
-            <h2>{ROADMAP_TEXT.soon}</h2>
+          <Card variant="soon" header={{ icon: <CardIcon kind="chapter" />, type: ROADMAP_TEXT.chapter(SAMPLE.chapterNumber), meta: ROADMAP_TEXT.soon }}>
+            <h2>{SAMPLE.chapterTitle}</h2>
           </Card>
         </Specimen>
         <Specimen caption={VARIANT.terminal} wide>
-          <Card>
+          <Card
+            header={{
+              icon: <CardIcon kind="terminal" />,
+              title: (
+                <h2>
+                  <TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} />
+                </h2>
+              ),
+            }}
+          >
             <div className="chip-card">
-              <h2>
-                <TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} />
-              </h2>
               <p className="slot">
                 <code>
                   <TaggedText text={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
