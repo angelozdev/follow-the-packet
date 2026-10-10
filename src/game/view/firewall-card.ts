@@ -1,4 +1,4 @@
-import { INSPECTION_TEXT, MAP_TEXT, type TermText } from '@/copy';
+import { INSPECTION_TEXT, MAP_TEXT, TASK_CARD_TEXT, type TermText } from '@/copy';
 import type { Firewall } from '@/engine';
 import { chipsOfRule, type Incident } from '@/levels';
 import type { Session } from '@/game/session';
@@ -14,6 +14,8 @@ export interface FirewallCard {
   firewallId: string;
   title: TermText;
   rules: RuleRow[];
+  empty: TermText;
+  slot: string;
 }
 
 /** Names each inbound rule of the firewall with the incident's chips; throws for a rule without chips, which the incident tests rule out. */
@@ -29,9 +31,16 @@ export function rowText(row: RuleRow): TermText {
   return INSPECTION_TEXT.ruleRow(row.what, row.from);
 }
 
-/** Returns what the task card of a firewall shows, or null when the piece is not a firewall on the map. */
+/** Returns what the task card of a firewall shows (its title, its rules named by chips, and, in the words of its kind, what it says without rules and the label of its new-rule slot), or null when the piece is not a firewall on the map. */
 export function firewallCard(session: Session, pieceId: string): FirewallCard | null {
   const ref = parsePieceId(pieceId);
   const firewall = ref?.kind === 'firewall' ? session.world.firewalls.find((f) => f.id === ref.id) : undefined;
-  return firewall ? { firewallId: firewall.id, title: MAP_TEXT.firewall[firewall.kind](firewall.name), rules: ruleRows(firewall, session.incident) } : null;
+  if (!firewall) return null;
+  return {
+    firewallId: firewall.id,
+    title: MAP_TEXT.firewall[firewall.kind](firewall.name),
+    rules: ruleRows(firewall, session.incident),
+    empty: TASK_CARD_TEXT.noRules[firewall.kind],
+    slot: TASK_CARD_TEXT.slot[firewall.kind],
+  };
 }

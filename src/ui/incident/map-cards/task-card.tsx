@@ -69,10 +69,10 @@ export function TaskCard({ card, chips, onPlace, onRemove, onClose }: TaskCardPr
         </ul>
       ) : (
         <p className="muted">
-          <TaggedText text={TASK_CARD_TEXT.noRules} />
+          <TaggedText text={card.empty} />
         </p>
       )}
-      <div role="group" aria-label={TASK_CARD_TEXT.slot} className="slot">
+      <div role="group" aria-label={card.slot} className="slot">
         <SlotChip chip={pickedWhat} placeholder={TASK_CARD_TEXT.what} onGiveBack={() => giveBack('what')} />
         <span aria-hidden="true">←</span>
         <SlotChip chip={pickedFrom} placeholder={TASK_CARD_TEXT.from} onGiveBack={() => giveBack('from')} />

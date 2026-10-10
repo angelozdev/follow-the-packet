@@ -3,18 +3,18 @@ import { nameTag, type TermText } from './term-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
   'security-group': (name) => `{{security-group}} ${nameTag(name)}`,
-  'host-firewall': (name) => `firewall ${nameTag(name)}`,
+  'host-firewall': (name) => `{{firewall}} ${nameTag(name)}`,
 };
 
 const EDGE_LABEL: Record<Network['edge'], TermText> = {
   'internet-gateway': '{{internet-gateway}}',
-  router: 'router',
+  router: '{{router}}',
 };
 
 export const MAP_TEXT = {
   firewall: FIREWALL_LABEL,
   edge: EDGE_LABEL,
-  internet: 'internet',
+  internet: '{{internet}}',
   locked: 'con candado',
   alert: 'con alerta: entra algo prohibido',
 } as const;
@@ -28,8 +28,8 @@ export const INSPECTION_TEXT = {
   echoIgnore: '{{icmp-echo-ignore-all}}',
   answersPing: '0: contesta el {{ping}}',
   ignoresPing: '1: no contesta el {{ping}}',
-  firewalls: { 'security-group': '{{security-group|Security Groups}}', 'host-firewall': 'Firewall' } satisfies Record<FirewallKind, TermText>,
-  inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': 'Reglas de entrada' } satisfies Record<FirewallKind, TermText>,
+  firewalls: { 'security-group': '{{security-group|Security Groups}}', 'host-firewall': '{{firewall}}' } satisfies Record<FirewallKind, TermText>,
+  inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': '{{rule|Reglas}}' } satisfies Record<FirewallKind, TermText>,
   noRules: 'Ninguna: no deja entrar nada.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
   who: 'Quién es',
@@ -37,9 +37,9 @@ export const INSPECTION_TEXT = {
   does: 'Qué hace',
   edgeDoes: {
     'internet-gateway': 'Por aquí entra y sale el tráfico entre la {{vpc}} e internet.',
-    router: 'Por aquí entra y sale el tráfico entre la oficina e internet.',
+    router: 'Conecta la {{network|red}} de la oficina con {{internet}}.',
   } satisfies Record<Network['edge'], TermText>,
-  internetDoes: 'Lleva los paquetes de una red a otra.',
+  internetDoes: 'Lleva cada {{packet|paquete}} de una {{network|red}} a otra.',
   message: 'Mensaje',
   result: 'Resultado',
   stoppedAt: 'Dónde y por qué se detuvo',
@@ -49,7 +49,7 @@ export const INSPECTION_TEXT = {
 export const ACTOR_ROLE_TEXT: Record<Actor['kind'], TermText> = {
   attacker: 'Alguien de internet que prueba si los {{security-group|Security Groups}} ajenos lo dejan entrar.',
   you: 'Tu computadora.',
-  home: 'Una casa fuera de la oficina, conectada a internet.',
+  home: 'Una casa fuera de la oficina, conectada a {{internet}}.',
 };
 
 export const LUCIA_TEXT = {
@@ -69,8 +69,11 @@ export const LUCIA_TEXT = {
 } as const;
 
 export const TASK_CARD_TEXT = {
-  noRules: 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
-  slot: 'Regla de entrada nueva',
+  noRules: {
+    'security-group': 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
+    'host-firewall': 'No tiene {{rule|reglas}}: no deja entrar nada.',
+  } satisfies Record<FirewallKind, TermText>,
+  slot: { 'security-group': 'Regla de entrada nueva', 'host-firewall': 'Regla nueva' } satisfies Record<FirewallKind, string>,
   what: 'Type',
   from: 'Source',
   done: 'Listo',

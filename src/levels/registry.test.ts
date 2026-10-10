@@ -8,7 +8,7 @@ import { incidentSchema, type Incident } from './incident';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
 
-const PROTOTYPE_IDS = ['01-01', '01-02', '04-01', '04-02'];
+const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '04-01', '04-02'];
 const HINT_COUNT = 2;
 const lessons = syllabusLessons();
 

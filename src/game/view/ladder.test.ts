@@ -8,7 +8,7 @@ import { inspect } from './inspection';
 import { pieceViews, type PieceKind } from './pieces';
 import { terminalCard, terminalLine } from './terminal-card';
 
-const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge'];
+const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
 
 function terminalTexts(session: Session, pieceIds: string[]): TermText[] {

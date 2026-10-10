@@ -33,7 +33,7 @@ describe('parseTermText', () => {
   });
 
   it('rejects a tag whose term is not registered', () => {
-    expect(() => parseTermText('El {{firewall}} bloquea.')).toThrow('unknown term: firewall');
+    expect(() => parseTermText('La {{puerta}} bloquea.')).toThrow('unknown term: puerta');
   });
 
   it.each([

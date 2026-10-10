@@ -6,6 +6,7 @@ import { TASK_CARD_TEXT, toPlainText } from '@/copy';
 import { firewallCard, startSession } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { INCIDENTS } from '@/levels';
+import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { filterIncident } from '@/testing/incidents';
 import { TaskCard } from './task-card';
@@ -15,10 +16,10 @@ const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const DAY_SHIFT_ROW = 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)';
 
-function renderCard(incidentId: string) {
+function renderCard(incidentId: string, firewallId: string = SG.servidor2) {
   const session = startSession(INCIDENTS, incidentId);
-  const card = firewallCard(session, PIECE_ID.firewall(SG.servidor2));
-  if (!card) throw new Error('missing Security Group');
+  const card = firewallCard(session, PIECE_ID.firewall(firewallId));
+  if (!card) throw new Error(`missing firewall ${firewallId}`);
   const handlers = { onPlace: vi.fn(), onRemove: vi.fn(), onClose: vi.fn() };
   render(<TaskCard card={card} chips={filterIncident(incidentId).chips} {...handlers} />);
   return handlers;
@@ -28,7 +29,21 @@ describe('task card', () => {
   it('opens with the focus on its title and says when the Security Group has no inbound rules', () => {
     renderCard('04-01');
     expect(screen.getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
-    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toHaveTextContent(toPlainText(TASK_CARD_TEXT.noRules));
+    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toHaveTextContent(toPlainText(TASK_CARD_TEXT.noRules['security-group']));
+  });
+
+  it('names the slot of a Security Group after its inbound rules', () => {
+    renderCard('04-01');
+    expect(screen.getByRole('group', { name: TASK_CARD_TEXT.slot['security-group'] })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Regla de entrada nueva' })).toBeInTheDocument();
+  });
+
+  it('a host firewall says it has no rules and names its slot without the later inbound rules', () => {
+    renderCard('01-04', LUCIA_FIREWALL.id);
+    expect(screen.getByRole('heading', { name: 'firewall laptop-lucia' })).toHaveFocus();
+    expect(screen.getByRole('dialog', { name: 'firewall laptop-lucia' })).toHaveTextContent('No tiene reglas: no deja entrar nada.');
+    expect(screen.getByRole('group', { name: 'Regla nueva' })).toBeInTheDocument();
+    expect(screen.queryByText(/de entrada/)).toBeNull();
   });
 
   it('names its trays Type and Source, like the inbound rules of the console', () => {

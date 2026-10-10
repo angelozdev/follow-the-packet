@@ -15,7 +15,7 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['internet-gateway', 'Internet gateway'],
   ['icmp-echo-ignore-all', 'icmp_echo_ignore_all'],
 ];
-const RETIRED_IDS = ['server', 'rule', 'linux-ignore-ping'];
+const RETIRED_IDS = ['server', 'linux-ignore-ping'];
 
 describe('term registry', () => {
   it.each(Object.entries(TERMS))('%s has a name and a short definition', (_id, term) => {
@@ -30,7 +30,7 @@ describe('term registry', () => {
 
   it('recognizes registered ids only', () => {
     expect(isTermId('security-group')).toBe(true);
-    expect(isTermId('firewall')).toBe(false);
+    expect(isTermId('puerta')).toBe(false);
     expect(isTermId('toString')).toBe(false);
   });
 
@@ -62,8 +62,9 @@ describe('entity terms', () => {
     expect(entityTerm({ kind: 'network', variant: 'office' })).toBe('network');
     expect(entityTerm({ kind: 'device', variant: 'laptop' })).toBe('device');
     expect(entityTerm({ kind: 'device', variant: 'printer' })).toBe('device');
-    expect(entityTerm({ kind: 'firewall', variant: 'host-firewall' })).toBeNull();
-    expect(entityTerm({ kind: 'edge', variant: 'router' })).toBeNull();
+    expect(entityTerm({ kind: 'firewall', variant: 'host-firewall' })).toBe('firewall');
+    expect(entityTerm({ kind: 'edge', variant: 'router' })).toBe('router');
+    expect(entityTerm({ kind: 'internet', variant: 'internet' })).toBe('internet');
   });
 
   it('gives a character no term: an actor is a person, not a piece of the network', () => {

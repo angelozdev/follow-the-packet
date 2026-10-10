@@ -23,7 +23,7 @@ interface FieldSpec {
   lines: () => TermText[];
 }
 
-const RULES_TERM: Record<FirewallKind, TermId | null> = { 'security-group': 'inbound-rule', 'host-firewall': null };
+const RULES_TERM: Record<FirewallKind, TermId | null> = { 'security-group': 'inbound-rule', 'host-firewall': 'rule' };
 
 function visible(specs: FieldSpec[], known: ReadonlySet<TermId>): InspectionField[] {
   return specs.filter((spec) => spec.term === null || known.has(spec.term)).map((spec) => ({ label: spec.label, lines: spec.lines() }));

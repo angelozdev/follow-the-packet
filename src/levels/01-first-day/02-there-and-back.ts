@@ -1,5 +1,5 @@
 import { defineIncident } from '@/levels/incident';
-import { ADDRESS, CONCEPT, LESSON, MESSAGE, ORIGIN } from './shared';
+import { ADDRESS, CONCEPT, LESSON, MESSAGE, ORIGIN, PING_TO_LUCIA } from './shared';
 
 export default defineIncident({
   id: '01-02',
@@ -17,7 +17,7 @@ export default defineIncident({
     {
       id: 'echo-lucia',
       text: 'Que la laptop de Lucía conteste tu {{echo-request}}.',
-      expect: { fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId: MESSAGE.echoRequest.id, outcome: 'replied' },
+      expect: PING_TO_LUCIA.expect,
     },
   ],
   flows: [],
@@ -44,6 +44,6 @@ export default defineIncident({
       correct: true,
     },
   ],
-  solution: [{ type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId: MESSAGE.echoRequest.id }],
+  solution: [PING_TO_LUCIA.send],
   takeaway: 'Un {{protocol|protocolo}} dice qué mensajes existen. En {{icmp}}, el {{echo-request}} pide una {{response|respuesta}} y el {{echo-reply}} es esa respuesta: el {{ping}} usa los dos.',
 });

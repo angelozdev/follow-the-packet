@@ -71,7 +71,7 @@ describe('incident session', () => {
 
   it('a Security Group the ladder keeps closed cannot be changed', () => {
     const start = startSession(INCIDENTS, FIRST.id);
-    const closedGroups: Session = { ...start, parts: { ...start.parts, inboundRules: false } };
+    const closedGroups: Session = { ...start, parts: { ...start.parts, inboundRules: { ...start.parts.inboundRules, 'security-group': false } } };
     expect(sessionReducer(closedGroups, FIX)).toBe(closedGroups);
   });
 });

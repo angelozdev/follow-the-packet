@@ -1,8 +1,9 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
+import type { FirewallKind } from '@/engine';
 import type { Incident } from './incident';
 
 export interface ConfigurableParts {
-  inboundRules: boolean;
+  inboundRules: Record<FirewallKind, boolean>;
   outboundRules: boolean;
   hostSettings: boolean;
 }
@@ -14,10 +15,10 @@ export function knownTerms(incidents: Incident[], incidentId: string): ReadonlyS
   return new Set(incidents.slice(0, index + 1).flatMap((i) => i.introduces));
 }
 
-/** Returns which parts of the map the player may change once these terms are known. */
+/** Returns which parts of the map the player may change once these terms are known: the inbound rules of a host firewall with `rule`, and of a Security Group with `inbound-rule`. */
 export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts {
   return {
-    inboundRules: known.has('inbound-rule'),
+    inboundRules: { 'host-firewall': known.has('rule'), 'security-group': known.has('inbound-rule') },
     outboundRules: known.has('outbound-rule'),
     hostSettings: known.has('icmp-echo-ignore-all'),
   };

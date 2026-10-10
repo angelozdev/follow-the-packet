@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Network, Outcome } from '@/engine';
 import { INCIDENTS, applyMove, startWorld, type FilterIncident, type Incident } from '@/levels';
-import { ADDRESS, MESSAGE, ORIGIN } from '@/levels/01-first-day/shared';
+import { ADDRESS, FROM as OFFICE_FROM, LUCIA_FIREWALL, MESSAGE, ORIGIN, WHAT as OFFICE_WHAT } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { filterIncident } from '@/testing';
 import { runFlows } from './flow-runs';
@@ -30,6 +30,7 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
 const THE_ADDRESS = '01-01';
 const THERE_AND_BACK = '01-02';
+const THE_FIREWALL = '01-04';
 const REPLIED: Outcome = 'replied';
 
 function sendFromYou(incidentId: string, toId: string, messageId: string): Session {
@@ -73,6 +74,37 @@ describe('01-02, there and back', () => {
     expect(session.sent).toMatchObject([{ reached: true, replied: false, blocked: false, trace: { outcome: 'arrived-no-reply' } }]);
     expect(taskIsDone(session)).toBe(false);
     expect(sessionReducer(session, { type: 'submit' }).rejection?.failingTaskIds).toEqual(session.incident.tasks.map((task) => task.id));
+  });
+});
+
+describe('01-04, the firewall', () => {
+  const closeWith = (...rules: { whatId: string; fromId: string }[]): Session => {
+    const placed = rules.reduce<Session>(
+      (session, rule) => sessionReducer(session, { type: 'placeRule', firewallId: LUCIA_FIREWALL.id, ...rule }),
+      startSession(INCIDENTS, THE_FIREWALL),
+    );
+    return sessionReducer(placed, { type: 'submit' });
+  };
+  const rightRule = { whatId: OFFICE_WHAT.echoRequest.id, fromId: OFFICE_FROM.you.id };
+
+  it('has the report of a firewall turned on in the laptop of Lucía only', () => {
+    expect(filterIncident(THE_FIREWALL).report).toBe('Esta tarde, soporte activó un {{firewall}} en mi laptop. Hazme {{ping}} otra vez: ya no me llega.');
+  });
+
+  it('the right rule alone closes it and earns the middle star', () => {
+    const closed = closeWith(rightRule);
+    expect(closed.phase).toBe('explaining');
+    expect(starsOf(closed)).toMatchObject({ closed: true, middle: true });
+  });
+
+  it.each([
+    ['an Echo Request from the printer', { whatId: OFFICE_WHAT.echoRequest.id, fromId: OFFICE_FROM.printer.id }],
+    ['an Echo Reply from your laptop', { whatId: OFFICE_WHAT.echoReply.id, fromId: OFFICE_FROM.you.id }],
+    ['an Echo Reply from the printer', { whatId: OFFICE_WHAT.echoReply.id, fromId: OFFICE_FROM.printer.id }],
+  ])('the right rule plus %s closes it but loses the middle star', (_, extraRule) => {
+    const closed = closeWith(rightRule, extraRule);
+    expect(closed.phase).toBe('explaining');
+    expect(starsOf(closed)).toMatchObject({ closed: true, middle: false });
   });
 });
 

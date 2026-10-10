@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Reason } from '@/engine';
-import { device, lab03Net, ping } from '@/testing';
+import { device, lab03Net, officeNet, ping, withDevice } from '@/testing';
 import { describeReason } from './reasons';
 import { termsIn, toPlainText } from './term-text';
 
@@ -32,10 +32,10 @@ const CASES: [Reason, string][] = [
   ],
   [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'security-group' }, 'El {{security-group}} de [[servidor2]] lo deja entrar.'],
   [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'security-group' }, SG_IN_DROP],
-  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'El firewall de [[servidor1]] lo deja salir.'],
-  [{ code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'Se queda en el firewall de [[servidor1]]: ninguna regla lo deja salir.'],
-  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'El firewall de [[servidor2]] lo deja entrar.'],
-  [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'Se queda en el firewall de [[servidor2]]: ninguna regla lo deja entrar.'],
+  [{ code: 'firewall-out-pass', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'El {{firewall}} de [[servidor1]] lo deja salir.'],
+  [{ code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'host-firewall' }, 'Se queda en el {{firewall}} de [[servidor1]]: ninguna {{rule|regla}} lo deja salir.'],
+  [{ code: 'firewall-in-pass', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'El {{firewall}} de [[servidor2]] lo deja entrar.'],
+  [{ code: 'firewall-in-drop', deviceId: 'servidor2', firewallKind: 'host-firewall' }, 'Se queda en el {{firewall}} de [[servidor2]]: ninguna {{rule|regla}} lo deja entrar.'],
   [{ code: 'host-unsolicited-icmp', deviceId: 'servidor2', icmpType: 0 }, 'Un {{echo-reply}} es una respuesta: llegó, y nadie lo contesta.'],
   [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'Llega, pero [[servidor2]] tiene {{icmp-echo-ignore-all}} en 1 y no contesta.'],
   [{ code: 'host-replies', deviceId: 'servidor2' }, '[[servidor2]] contesta.'],
@@ -52,6 +52,15 @@ describe('describeReason', () => {
 
   it.each(CASES)('tags only registered terms: %o', (reason) => {
     expect(() => termsIn(describeReason(reason, NET))).not.toThrow();
+  });
+
+  it('an office names its own network and its own firewalls, not the VPC nor a Security Group', () => {
+    const office = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    expect(describeReason({ code: 'route-private' }, office)).toBe('Viaja por dentro de la {{network|red}} de la oficina.');
+    expect(describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office)).toBe(
+      'La respuesta vuelve sola: el {{firewall}} de [[lucia-laptop]] recuerda la conversación.',
+    );
+    expect(describeReason({ code: 'reply-stateful', deviceId: 'printer' }, office)).toBe('La respuesta vuelve por el mismo camino.');
   });
 
   it('a ping without an ICMP rule stops at the Security Group, named by its official name', () => {

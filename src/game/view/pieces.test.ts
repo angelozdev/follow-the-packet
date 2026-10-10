@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_TEXT, nameTag } from '@/copy';
+import { MAP_TEXT, TASK_CARD_TEXT, nameTag, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
+import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { officeNet, sendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
@@ -20,19 +21,19 @@ describe('pieceViews', () => {
       { id: PIECE_ID.firewall(SG.servidor2), variant: 'security-group', term: 'security-group', label: '{{security-group}} [[servidor2]]', locked: false, configurable: true },
       { id: PIECE_ID.actor('attacker'), variant: 'attacker', term: null, label: '[[Atacante]]', locked: false, configurable: false },
       { id: PIECE_ID.edge, variant: 'internet-gateway', term: 'internet-gateway', label: MAP_TEXT.edge['internet-gateway'], locked: true, configurable: false },
-      { id: PIECE_ID.internet, variant: 'internet', term: null, label: MAP_TEXT.internet, locked: false, configurable: false },
+      { id: PIECE_ID.internet, variant: 'internet', term: 'internet', label: MAP_TEXT.internet, locked: false, configurable: false },
     ]);
   });
 
-  it('draws an office by the kind of each device and firewall, with a router as its edge, and a laptop or a printer named by the term device', () => {
+  it('draws an office by the kind of each device and firewall, with a router as its edge, each named by its term of chapter 1', () => {
     expect(pieceViews(office).map(({ kind, variant, term, label }) => ({ kind, variant, term, label }))).toEqual([
       { kind: 'device', variant: 'laptop', term: 'device', label: '[[your-laptop]]' },
       { kind: 'device', variant: 'laptop', term: 'device', label: '[[lucia-laptop]]' },
       { kind: 'device', variant: 'printer', term: 'device', label: '[[printer]]' },
-      { kind: 'firewall', variant: 'host-firewall', term: null, label: 'firewall [[lucia-laptop]]' },
+      { kind: 'firewall', variant: 'host-firewall', term: 'firewall', label: '{{firewall}} [[lucia-laptop]]' },
       { kind: 'actor', variant: 'attacker', term: null, label: '[[Atacante]]' },
-      { kind: 'edge', variant: 'router', term: null, label: 'router' },
-      { kind: 'internet', variant: 'internet', term: null, label: 'internet' },
+      { kind: 'edge', variant: 'router', term: 'router', label: '{{router}}' },
+      { kind: 'internet', variant: 'internet', term: 'internet', label: '{{internet}}' },
     ]);
   });
 
@@ -67,7 +68,28 @@ describe('firewallCard', () => {
       firewallId: SG.servidor2,
       title: '{{security-group}} [[servidor2]]',
       rules: [{ id: DAY_SHIFT_RULE.id, what: WHAT.echoReply.label, from: FROM.anywhere.label }],
+      empty: TASK_CARD_TEXT.noRules['security-group'],
+      slot: TASK_CARD_TEXT.slot['security-group'],
     });
+  });
+
+  it('words the card of a Security Group with inbound rules', () => {
+    const card = firewallCard(first, PIECE_ID.firewall(SG.servidor2));
+    expect(card && toPlainText(card.empty)).toBe('No tiene reglas de entrada: no deja entrar nada.');
+    expect(card?.slot).toBe('Regla de entrada nueva');
+  });
+
+  it('words the card of a host firewall with rules, never with the later inbound rules', () => {
+    const card = firewallCard(startSession(INCIDENTS, '01-04'), PIECE_ID.firewall(LUCIA_FIREWALL.id));
+    expect(card).toEqual({
+      firewallId: LUCIA_FIREWALL.id,
+      title: '{{firewall}} [[laptop-lucia]]',
+      rules: [],
+      empty: TASK_CARD_TEXT.noRules['host-firewall'],
+      slot: TASK_CARD_TEXT.slot['host-firewall'],
+    });
+    expect(card && toPlainText(card.empty)).toBe('No tiene reglas: no deja entrar nada.');
+    expect(card?.slot).toBe('Regla nueva');
   });
 
   it('is null for anything that is not a Security Group', () => {

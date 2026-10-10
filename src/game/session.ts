@@ -66,9 +66,10 @@ export function startSession(incidents: Incident[], incidentId: string): Session
   };
 }
 
-/** True when a device has this firewall, so it is on the map, and the ladder lets the player change its inbound rules. */
+/** True when a device has this firewall, so it is on the map, and the ladder lets the player change the inbound rules of its kind. */
 export function canConfigure(session: Session, firewallId: string): boolean {
-  return session.parts.inboundRules && session.world.devices.some((device) => device.firewallIds.includes(firewallId));
+  const firewall = session.world.firewalls.find((candidate) => candidate.id === firewallId);
+  return firewall !== undefined && session.parts.inboundRules[firewall.kind] && session.world.devices.some((device) => device.firewallIds.includes(firewallId));
 }
 
 /** True while a forbidden flow reaches its device. */

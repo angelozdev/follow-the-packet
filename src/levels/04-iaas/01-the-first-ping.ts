@@ -10,7 +10,7 @@ export default defineIncident({
   mechanic: 'filter',
   lesson: LESSON,
   concept: CONCEPT,
-  introduces: ['ec2-instance', 'vpc', 'private-ip', 'security-group', 'inbound-rule', 'anywhere-ipv4', 'internet-gateway'],
+  introduces: ['ec2-instance', 'vpc', 'security-group', 'inbound-rule', 'anywhere-ipv4', 'internet-gateway'],
   base: BASE_WORLD,
   report: 'servidor1 no logra hacer {{ping}} a servidor2. ¿Lo revisas?',
   tasks: [{ id: 'ping', text: 'Que servidor1 pueda hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],

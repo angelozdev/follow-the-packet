@@ -101,7 +101,7 @@ describe('inspect', () => {
   it('a laptop of the office says what a device is, and shows its IP and its firewall', () => {
     expect(plain(inspect(office, PIECE_ID.device('lucia-laptop')))).toEqual({
       title: 'lucia-laptop',
-      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['Firewall', 'firewall lucia-laptop']],
+      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['firewall', 'firewall lucia-laptop']],
     });
   });
 
@@ -115,17 +115,17 @@ describe('inspect', () => {
     expect(plain(inspect(early, PIECE_ID.packet(FLOWS.attackerPing.id)))?.fields[0]).toEqual(whatIs('packet'));
   });
 
-  it('a host firewall lists its inbound rules like a Security Group, named after its device', () => {
+  it('a host firewall says what a firewall is and lists its rules, named after its device and without the name of the later inbound rule', () => {
     expect(plain(inspect(office, PIECE_ID.firewall('fw-lucia')))).toEqual({
       title: 'firewall lucia-laptop',
-      fields: [['Reglas de entrada', 'Ninguna: no deja entrar nada.']],
+      fields: [whatIs('firewall'), ['Reglas', 'Ninguna: no deja entrar nada.']],
     });
   });
 
-  it('the router of an office says what it does', () => {
+  it('the router of an office says what a router is and what it does', () => {
     expect(plain(inspect(office, PIECE_ID.edge))).toEqual({
       title: 'router',
-      fields: [['Qué hace', 'Por aquí entra y sale el tráfico entre la oficina e internet.']],
+      fields: [whatIs('router'), ['Qué hace', 'Conecta la red de la oficina con internet.']],
     });
   });
 
@@ -152,8 +152,8 @@ describe('inspect', () => {
     expect(inspect(sent, packet.pieceId)?.entity).toEqual({ kind: 'packet', variant: 'echo-reply', intruder: false });
   });
 
-  it('the internet says what it does, with no definition while its term does not exist', () => {
-    expect(plain(inspect(first, PIECE_ID.internet))).toEqual({ title: 'internet', fields: [['Qué hace', 'Lleva los paquetes de una red a otra.']] });
+  it('the internet says what it is and what it does', () => {
+    expect(plain(inspect(first, PIECE_ID.internet))).toEqual({ title: 'internet', fields: [whatIs('internet'), ['Qué hace', 'Lleva cada paquete de una red a otra.']] });
   });
 
   it('says which entity it shows, so the box can draw its icon: an intruder packet is told apart from a legitimate one', () => {

@@ -12,12 +12,25 @@ const FIREWALL_TEXT: Record<FirewallKind, { passOut: FirewallSentence; dropOut: 
     dropIn: (device) => `Se queda en el {{security-group}} de ${device}: ninguna {{inbound-rule}} lo deja entrar.`,
   },
   'host-firewall': {
-    passOut: (device) => `El firewall de ${device} lo deja salir.`,
-    dropOut: (device) => `Se queda en el firewall de ${device}: ninguna regla lo deja salir.`,
-    passIn: (device) => `El firewall de ${device} lo deja entrar.`,
-    dropIn: (device) => `Se queda en el firewall de ${device}: ninguna regla lo deja entrar.`,
+    passOut: (device) => `El {{firewall}} de ${device} lo deja salir.`,
+    dropOut: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja salir.`,
+    passIn: (device) => `El {{firewall}} de ${device} lo deja entrar.`,
+    dropIn: (device) => `Se queda en el {{firewall}} de ${device}: ninguna {{rule|regla}} lo deja entrar.`,
   },
 };
+
+const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
+  vpc: 'Viaja por dentro de la {{vpc}}.',
+  office: 'Viaja por dentro de la {{network|red}} de la oficina.',
+};
+
+function replyText(net: Network, deviceId: string): TermText {
+  const device = net.devices.find((d) => d.id === deviceId);
+  const kind = net.firewalls.find((f) => device?.firewallIds.includes(f.id))?.kind;
+  if (kind === 'security-group') return 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.';
+  if (kind === 'host-firewall') return `La respuesta vuelve sola: el {{firewall}} de ${deviceName(net, deviceId)} recuerda la conversación.`;
+  return 'La respuesta vuelve por el mismo camino.';
+}
 
 function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
@@ -35,7 +48,7 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'route-no-device':
       return 'Ningún {{device|dispositivo}} de la {{network|red}} tiene esa IP: el {{packet|paquete}} no llega a nadie.';
     case 'route-private':
-      return 'Viaja por dentro de la {{vpc}}.';
+      return ROUTE_INSIDE[net.kind];
     case 'route-no-public-device':
       return `Ninguna {{ec2-instance}} tiene la {{public-ip}} ${reason.ip}.`;
     case 'route-no-public-ip':
@@ -67,6 +80,6 @@ export function describeReason(reason: Reason, net: Network): TermText {
     case 'host-udp-no-service':
       return `Llega por UDP al puerto ${reason.port}, pero en este juego ningún programa UDP contesta.`;
     case 'reply-stateful':
-      return 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.';
+      return replyText(net, reason.deviceId);
   }
 }

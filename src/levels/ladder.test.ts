@@ -6,8 +6,10 @@ import type { Incident } from './incident';
 import { chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 
-const ONLY_INBOUND = { inboundRules: true, outboundRules: false, hostSettings: false };
-const NOTHING = { inboundRules: false, outboundRules: false, hostSettings: false };
+const NOTHING = { inboundRules: { 'host-firewall': false, 'security-group': false }, outboundRules: false, hostSettings: false };
+const HOST_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': false } };
+const INBOUND_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': true } };
+const DECLARED_LEAKS = ['icmp → internet'];
 const ALL_TERMS = Object.keys(TERMS) as TermId[];
 const BY_INCIDENT = INCIDENTS.map((i): [string, Incident] => [i.id, i]);
 
@@ -25,7 +27,12 @@ describe('term ladder', () => {
     const known = knownTerms(INCIDENTS, id);
     const unknown = ALL_TERMS.filter((term) => !known.has(term));
     const leaks = incident.introduces.flatMap((term) => namedTerms(TERMS[term].definition, unknown).map((other) => `${term} → ${other}`));
-    expect(leaks).toEqual([]);
+    expect(leaks.filter((leak) => !DECLARED_LEAKS.includes(leak))).toEqual([]);
+  });
+
+  it('the official name of ICMP says Internet before the term internet arrives: the one declared leak', () => {
+    expect(namedTerms(TERMS.icmp.definition, ['internet'])).toEqual(['internet']);
+    expect(INCIDENTS.findIndex((incident) => incident.introduces.includes('icmp'))).toBeLessThan(INCIDENTS.findIndex((incident) => incident.introduces.includes('internet')));
   });
 
   it('finds a term in a definition by whole words, ignoring case', () => {
@@ -69,14 +76,13 @@ describe('term ladder', () => {
     expect([...knownTerms(INCIDENTS, INCIDENTS[1].id)]).toEqual([...INCIDENTS[0].introduces, ...INCIDENTS[1].introduces]);
   });
 
-  it('chapter 1 opens no rules yet, and chapter 4 opens only inbound rules, so its solutions touch only those', () => {
-    for (const incident of INCIDENTS) {
-      expect(configurableParts(knownTerms(INCIDENTS, incident.id)), incident.id).toEqual(incident.chapter === 4 ? ONLY_INBOUND : NOTHING);
-    }
+  it('the rules of a host firewall open with the term rule (01-04), and those of a Security Group with inbound rule (chapter 4)', () => {
+    const parts = Object.fromEntries(INCIDENTS.map((incident) => [incident.id, configurableParts(knownTerms(INCIDENTS, incident.id))]));
+    expect(parts).toEqual({ '01-01': NOTHING, '01-02': NOTHING, '01-03': NOTHING, '01-04': HOST_RULES, '04-01': INBOUND_RULES, '04-02': INBOUND_RULES });
   });
 
   it('outbound rules and the host setting open with their own terms', () => {
     const later = new Set<TermId>(['inbound-rule', 'outbound-rule', 'icmp-echo-ignore-all']);
-    expect(configurableParts(later)).toEqual({ inboundRules: true, outboundRules: true, hostSettings: true });
+    expect(configurableParts(later)).toEqual({ inboundRules: { 'host-firewall': false, 'security-group': true }, outboundRules: true, hostSettings: true });
   });
 });
