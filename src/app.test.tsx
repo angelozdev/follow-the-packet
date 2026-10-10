@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CATALOG_TEXT, NOTICE_TEXT } from '@/copy';
 import { CHAPTERS, INCIDENTS } from '@/levels';
+import { PROGRESS_KEY } from '@/storage';
 import { App } from './app';
 
 vi.mock('@/scene/catalog/catalog-scene', () => ({ CatalogScene: () => null }));
@@ -52,7 +53,7 @@ describe('App', () => {
   });
 
   it('corrupt saved progress does not break the roadmap', () => {
-    localStorage.setItem('follow-the-packet:progress:v1', '{broken');
+    localStorage.setItem(PROGRESS_KEY, '{broken');
     render(<App />);
     expect(screen.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeInTheDocument();
   });

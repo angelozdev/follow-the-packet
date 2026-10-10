@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
-import { INCIDENTS, startWorld } from '@/levels';
+import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -410,11 +410,11 @@ describe('a firewall the player does not know yet', () => {
   });
 
   it('hides the stop of a flow of the incident in the same way', () => {
-    const fourth = filterIncident('01-04');
-    const unaware = { ...fourth, changes: undefined, base: startWorld(INCIDENTS, fourth.id), introduces: ['traffic' as const, 'rule' as const] };
+    const host = hostFirewallIncident();
+    const unaware = { ...host, introduces: ['traffic' as const, 'rule' as const] };
     const [run] = startSession([unaware], unaware.id).runs;
     expect(run).toMatchObject({ blocked: false, hiddenStop: true, reached: false });
-    expect(startSession(INCIDENTS, fourth.id).runs[0]).toMatchObject({ blocked: true, hiddenStop: false });
+    expect(startSession([host], host.id).runs[0]).toMatchObject({ blocked: true, hiddenStop: false });
   });
 
   it('is not hidden when no firewall stops the packet', () => {

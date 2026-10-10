@@ -46,6 +46,26 @@ export function outboundFilterIncident(): FilterIncident {
   };
 }
 
+/** Returns a filter incident on the chapter 1 office where only the inbound rules of a host firewall are open (no term of outbound rules is introduced): laptop-lucia has a firewall with no inbound rules that lets everything out, and the ping from your laptop must come back. It offers the Echo Request as Type, your laptop and the printer as Source, and its solution is the inbound rule Echo Request from your laptop. */
+export function hostFirewallIncident(): FilterIncident {
+  const outbound = outboundFilterIncident();
+  const office = officeNet();
+  const firewalls = office.firewalls.map((firewall) => ({ ...firewall, name: 'laptop-lucia' }));
+  const [, printer] = outbound.chips.from;
+  const you = { id: 'from-you', label: nameTag('your-laptop'), peer: { kind: 'cidr', cidr: `${OFFICE.you}/32` } } as const;
+  return {
+    ...outbound,
+    id: '09-05',
+    order: 5,
+    title: 'Prueba de entrada',
+    introduces: ['ping', 'icmp', 'echo-request', 'echo-reply', 'firewall', 'traffic', 'rule'],
+    base: withDevice({ ...office, firewalls }, 'lucia-laptop', { firewallIds: firewalls.map(({ id }) => id) }),
+    report: 'Tu {{ping}} a laptop-lucia no vuelve.',
+    chips: { what: outbound.chips.what, from: [you, printer] },
+    solution: [{ type: 'placeRule', firewallId: 'fw-lucia', whatId: 'echo-request', fromId: you.id }],
+  };
+}
+
 /** Returns a send incident on the chapter 1 office: ping the printer from your laptop and get its reply, and send anything from the attacker. */
 export function sendIncident(): SendIncident {
   return {

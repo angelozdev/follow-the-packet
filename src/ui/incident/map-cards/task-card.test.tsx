@@ -5,11 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { TASK_CARD_TEXT, toPlainText } from '@/copy';
 import { firewallCard, sessionReducer, startSession, type Session } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
-import { INCIDENTS } from '@/levels';
-import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
+import { INCIDENTS, type FilterIncident } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { allOut } from '@/testing/fixtures';
-import { filterIncident, outboundFilterIncident } from '@/testing/incidents';
+import { filterIncident, hostFirewallIncident, outboundFilterIncident } from '@/testing/incidents';
 import { TaskCard } from './task-card';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
@@ -17,13 +16,16 @@ const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const DAY_SHIFT_ROW = 'ICMP · Echo Reply ← Anywhere-IPv4 (0.0.0.0/0)';
 
-function renderCard(incidentId: string, firewallId: string = SG.servidor2) {
-  const session = startSession(INCIDENTS, incidentId);
+function renderIncidentCard(incident: FilterIncident, session: Session, firewallId: string) {
   const card = firewallCard(session, PIECE_ID.firewall(firewallId));
   if (!card) throw new Error(`missing firewall ${firewallId}`);
   const handlers = { onPlace: vi.fn(), onRemove: vi.fn(), onClose: vi.fn() };
-  render(<TaskCard card={card} chips={filterIncident(incidentId).chips} {...handlers} />);
+  render(<TaskCard card={card} chips={incident.chips} {...handlers} />);
   return handlers;
+}
+
+function renderCard(incidentId: string, firewallId: string = SG.servidor2) {
+  return renderIncidentCard(filterIncident(incidentId), startSession(INCIDENTS, incidentId), firewallId);
 }
 
 describe('task card', () => {
@@ -40,7 +42,8 @@ describe('task card', () => {
   });
 
   it('a host firewall says it has no rules and names its slot without the later inbound rules', () => {
-    renderCard('01-04', LUCIA_FIREWALL.id);
+    const host = hostFirewallIncident();
+    renderIncidentCard(host, startSession([host], host.id), 'fw-lucia');
     expect(screen.getByRole('heading', { name: 'firewall laptop-lucia' })).toHaveFocus();
     expect(screen.getByRole('dialog', { name: 'firewall laptop-lucia' })).toHaveTextContent('No tiene reglas: no deja entrar nada.');
     expect(screen.getByRole('group', { name: 'Regla nueva' })).toBeInTheDocument();

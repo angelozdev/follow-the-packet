@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { TASK_CARD_TEXT, termsIn, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { LUCIA_FIREWALL } from '@/levels/01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { ruleIdFor } from '@/levels/contract/incident';
-import { allOut, outboundFilterIncident } from '@/testing';
+import { incidentSchema, ruleIdFor } from '@/levels/contract/incident';
+import { allOut, hostFirewallIncident, outboundFilterIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { firewallCard, rowText } from './firewall-card';
 
 const first = startSession(INCIDENTS, '04-01');
+const HOST = hostFirewallIncident();
+const HOST_FIREWALL = PIECE_ID.firewall('fw-lucia');
+const host = startSession([HOST], HOST.id);
 
 describe('firewallCard', () => {
   it('names the rules of a Security Group with the chips of the incident', () => {
@@ -31,9 +33,9 @@ describe('firewallCard', () => {
   });
 
   it('words the card of a host firewall with rules, never with the later inbound rules', () => {
-    const card = firewallCard(startSession(INCIDENTS, '01-04'), PIECE_ID.firewall(LUCIA_FIREWALL.id));
+    const card = firewallCard(host, HOST_FIREWALL);
     expect(card).toEqual({
-      firewallId: LUCIA_FIREWALL.id,
+      firewallId: 'fw-lucia',
       kind: 'host-firewall',
       title: '{{firewall}} [[laptop-lucia]]',
       rules: [],
@@ -42,6 +44,15 @@ describe('firewallCard', () => {
     });
     expect(card && toPlainText(card.empty)).toBe('No tiene reglas: no deja entrar nada.');
     expect(card?.slot).toBe('Regla nueva');
+  });
+
+  it('the host firewall incident opens only the inbound rules of a host firewall, blocks the ping and lets it back with its solution', () => {
+    expect(host.parts).toEqual({ inboundRules: { 'host-firewall': true, 'security-group': false }, outboundRules: { 'host-firewall': false, 'security-group': false }, hostSettings: false });
+    expect(host.runs[0]).toMatchObject({ blocked: true, replied: false });
+    expect(incidentSchema.safeParse(HOST).success).toBe(true);
+    const [move] = HOST.solution;
+    const solved = sessionReducer(host, move);
+    expect(solved.runs[0]).toMatchObject({ blocked: false, replied: true });
   });
 
   it('is null for anything that is not a Security Group', () => {
@@ -123,6 +134,6 @@ describe('the outbound list of the card of a firewall', () => {
     const session = startSession([noDestinations], noDestinations.id);
     expect(session.parts.outboundRules['host-firewall']).toBe(true);
     expect(firewallCard(session, FIREWALL)).not.toHaveProperty('outbound');
-    expect(firewallCard(startSession(INCIDENTS, '01-04'), PIECE_ID.firewall(LUCIA_FIREWALL.id))).not.toHaveProperty('outbound');
+    expect(firewallCard(host, HOST_FIREWALL)).not.toHaveProperty('outbound');
   });
 });

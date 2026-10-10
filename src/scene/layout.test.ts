@@ -586,7 +586,7 @@ function terminalOnMap(net: ReturnType<typeof officeNet>, outside: boolean, map:
   return { side, anchor, placement, cardAt, covered, clearOf };
 }
 
-describe('the terminal card in the office of 01-01 and 01-02', () => {
+describe('the terminal card in the office with no outside drawn', () => {
   const office = { ...officeNet(), actors: [] };
   const { office: height } = TERMINAL_HEIGHT;
 
@@ -608,7 +608,7 @@ describe('the terminal card in the office of 01-01 and 01-02', () => {
   });
 });
 
-describe('the terminal card with the outside drawn (01-03)', () => {
+describe('the terminal card in the office with the outside drawn', () => {
   const origins = [
     { name: 'tu-laptop', origin: YOUR_LAPTOP, height: TERMINAL_HEIGHT.yours },
     { name: 'Casa de Lucía', origin: HOME, height: TERMINAL_HEIGHT.home },

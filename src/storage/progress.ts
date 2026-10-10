@@ -1,11 +1,12 @@
 import type { LevelEntry } from '@/levels';
 
-export const PROGRESS_KEY = 'follow-the-packet:progress:v1';
+export const PROGRESS_KEY = 'follow-the-packet:progress:v2';
+const OLD_PROGRESS_KEY = 'follow-the-packet:progress:v1';
 export const MAX_STARS = 3;
 
 export type Progress = Record<string, number>;
 
-type ReadableStorage = Pick<Storage, 'getItem'>;
+type ReadableStorage = Pick<Storage, 'getItem' | 'removeItem'>;
 type WritableStorage = Pick<Storage, 'setItem'>;
 
 function browserStorage(): Storage | undefined {
@@ -29,8 +30,17 @@ function persist(storage: WritableStorage | undefined, progress: Progress): bool
   }
 }
 
-/** Reads the saved progress, keeping every valid entry and dropping the rest; returns {} when nothing usable is saved. */
+function forgetOldProgress(storage: ReadableStorage | undefined): void {
+  try {
+    storage?.removeItem(OLD_PROGRESS_KEY);
+  } catch {
+    return;
+  }
+}
+
+/** Reads the saved progress, keeping every valid entry and dropping the rest; returns {} when nothing usable is saved. The progress saved under the old key is deleted and never copied: it counts for nothing. */
 export function loadProgress(storage: ReadableStorage | undefined = browserStorage()): Progress {
+  forgetOldProgress(storage);
   try {
     const parsed: unknown = JSON.parse(storage?.getItem(PROGRESS_KEY) ?? '{}');
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};

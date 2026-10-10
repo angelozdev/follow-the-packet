@@ -2,22 +2,22 @@ import { describe, expect, it } from 'vitest';
 import type { LevelEntry } from '@/levels';
 import { PROGRESS_KEY, isUnlocked, loadProgress, saveStars } from './progress';
 
+const OLD_KEY = 'follow-the-packet:progress:v1';
+
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
   return {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => void data.set(key, value),
+    removeItem: (key: string) => void data.delete(key),
   };
 }
 
-const blocked = {
-  getItem: (): string | null => {
-    throw new Error('blocked');
-  },
-  setItem: (): void => {
-    throw new Error('blocked');
-  },
-};
+function refuse(): never {
+  throw new Error('blocked');
+}
+
+const blocked = { getItem: refuse, setItem: refuse, removeItem: refuse };
 
 describe('progress', () => {
   it('keeps the best stars per level and saves them', () => {
@@ -40,9 +40,23 @@ describe('progress', () => {
     expect(loadProgress(storage)).toEqual({ '04-03': 2, '04-05': 0 });
   });
 
-  it('progress saved by version 1 keeps loading', () => {
-    const storage = memoryStorage({ [PROGRESS_KEY]: '{"04-01":3,"04-07":2}' });
-    expect(loadProgress(storage)).toEqual({ '04-01': 3, '04-07': 2 });
+  it('starts empty and removes the progress saved under the old key', () => {
+    const storage = memoryStorage({ [OLD_KEY]: '{"04-01":3,"01-02":2}' });
+    expect(PROGRESS_KEY).not.toBe(OLD_KEY);
+    expect(loadProgress(storage)).toEqual({});
+    expect(storage.getItem(OLD_KEY)).toBeNull();
+    expect(storage.getItem(PROGRESS_KEY)).toBeNull();
+  });
+
+  it('removes the old key and keeps the progress saved under the current one', () => {
+    const storage = memoryStorage({ [OLD_KEY]: '{"04-01":3}', [PROGRESS_KEY]: '{"04-02":1}' });
+    expect(loadProgress(storage)).toEqual({ '04-02': 1 });
+    expect(storage.getItem(OLD_KEY)).toBeNull();
+  });
+
+  it('keeps loading the current progress when storage cannot remove the old key', () => {
+    const stuck = { ...memoryStorage({ [PROGRESS_KEY]: '{"04-02":2}' }), removeItem: refuse };
+    expect(loadProgress(stuck)).toEqual({ '04-02': 2 });
   });
 
   it('broken JSON, a non-object or blocked storage start empty', () => {
