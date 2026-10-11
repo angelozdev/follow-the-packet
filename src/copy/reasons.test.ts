@@ -211,7 +211,7 @@ describe('describeReason', () => {
     const office = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
     expect(describeReason({ code: 'route-private' }, office, EVERY_TERM)).toBe('Viaja por dentro de la {{network|red}} de la oficina.');
     expect(describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office, EVERY_TERM)).toBe('Llega la respuesta.');
-    expect(describeReason({ code: 'reply-stateful', deviceId: 'printer' }, office, EVERY_TERM)).toBe('La respuesta vuelve por el mismo camino.');
+    expect(describeReason({ code: 'reply-stateful', deviceId: 'printer' }, office, EVERY_TERM)).toBe('Llega la respuesta.');
   });
 
   it('a ping without an ICMP rule stops at the Security Group, named by its official name', () => {
@@ -327,6 +327,17 @@ describe('describeReason with what the player knows', () => {
       const text = describeReason({ code: 'reply-stateful', deviceId: 'lucia-laptop' }, office, known);
       expect(text).toBe('Llega la respuesta.');
       expect(toPlainText(text)).not.toMatch(/conversación|recuerda|mismo camino|porque|stateful/i);
+    }
+  });
+
+  it('the reply to a device with no firewall gives no reason either, and no reply text of an office says the same road', () => {
+    const office = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
+    for (const deviceId of ['lucia-laptop', 'printer', 'your-laptop']) {
+      for (const known of [EVERY_TERM, without('firewall'), without('stateful', 'firewall', 'rule')]) {
+        const text = describeReason({ code: 'reply-stateful', deviceId }, office, known);
+        expect(text, deviceId).toBe('Llega la respuesta.');
+        expect(toPlainText(text), deviceId).not.toMatch(/conversación|recuerda|mismo camino|porque|stateful/i);
+      }
     }
   });
 

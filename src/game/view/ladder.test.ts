@@ -15,6 +15,8 @@ import { tracerouteLines } from './cards/traceroute-lines';
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
 const GATEWAY_NAME = TERMS['default-gateway'].name;
+const FIREWALL_INCIDENT_ORDER = 11;
+const FIRST_HIDDEN_FIREWALL = 4;
 
 function terminalTexts(session: Session, pieceIds: string[]): TermText[] {
   return pieceIds.flatMap((id) => {
@@ -114,6 +116,9 @@ describe('the firewall before the incident that introduces it', () => {
   const runsOf = (sessions: Session[]) => sessions.flatMap((session) => [...session.runs, ...session.sent]);
   const mentionsFirewall = (sessions: Session[]) => sessions.flatMap(shownTexts).filter((text) => /firewall|regla/i.test(toPlainText(text)) || termsIn(text).some((term) => term === 'firewall' || term === 'rule'));
 
+  const BEFORE_THE_GUARD = INCIDENTS.filter((incident) => incident.chapter === 1 && incident.order < FIREWALL_INCIDENT_ORDER);
+  const namesFirewall = (text: TermText) => /firewall/i.test(toPlainText(text)) || termsIn(text).some((term) => term === 'firewall' || term === 'rule');
+
   it('shows no firewall, in any text or piece, before the incident that introduces it', () => {
     for (const base of WORLDS) {
       const hidden = sessionsOf(incidentOn(base));
@@ -122,6 +127,19 @@ describe('the firewall before the incident that introduces it', () => {
       expect(hidden.flatMap(pieceViews).filter((piece) => piece.kind === 'firewall')).toEqual([]);
       expect(mentionsFirewall(hidden)).toEqual([]);
     }
+    expect(BEFORE_THE_GUARD).toHaveLength(FIREWALL_INCIDENT_ORDER - 1);
+    for (const incident of BEFORE_THE_GUARD) {
+      const sessions = sessionsToCheck(incident);
+      expect(runsOf(sessions).filter((run) => run.blocked), incident.id).toEqual([]);
+      expect(sessions.flatMap(pieceViews).filter((piece) => piece.kind === 'firewall'), incident.id).toEqual([]);
+      expect([...incidentTexts(incident), ...sessions.flatMap(shownTexts)].filter(namesFirewall), incident.id).toEqual([]);
+    }
+  });
+
+  it('keeps the firewall of laptop-marta in the world from 01-05 on while no incident before the one that introduces it shows it', () => {
+    const withFirewall = BEFORE_THE_GUARD.filter((incident) => startSession(INCIDENTS, incident.id).world.firewalls.length > 0).map((incident) => incident.id);
+    expect(withFirewall).toEqual(['01-05', '01-06', '01-07', '01-08', '01-09', '01-10']);
+    expect(runsOf(sessionsToCheck(BEFORE_THE_GUARD[FIRST_HIDDEN_FIREWALL])).filter((run) => run.hiddenStop).length).toBeGreaterThan(0);
   });
 
   it('shows it once the incident introduces it, so the check above can fail', () => {

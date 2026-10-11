@@ -178,7 +178,7 @@ describe('pieceViews of an incident that lists what it draws', () => {
       PIECE_ID.router(officeRouter.id),
       PIECE_ID.internet,
     ]);
-    expect(idsOf(floors(['your-laptop']))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.internet]);
+    expect(idsOf(floors(['your-laptop']))).toEqual([PIECE_ID.device('your-laptop')]);
   });
 
   it('draws a piece of the list only once its term is known', () => {
@@ -190,6 +190,26 @@ describe('pieceViews of an incident that lists what it draws', () => {
       PIECE_ID.device('andres-laptop'),
       PIECE_ID.actor(server.id),
     ]);
+  });
+
+  it('with a list of shown pieces, the internet is drawn only when a listed piece is outside the office', () => {
+    const drawsInternet = (...shown: string[]) => idsOf(floors(shown)).includes(PIECE_ID.internet);
+    expect(drawsInternet('your-laptop', 'lucia-laptop', 'andres-laptop', officeRouter.id)).toBe(false);
+    expect(drawsInternet('your-laptop', server.id)).toBe(true);
+    expect(drawsInternet('your-laptop', 'attacker')).toBe(true);
+    expect(drawsInternet('your-laptop', officeRouter.id, provider.id)).toBe(true);
+    expect(drawsInternet('your-laptop', provider.id)).toBe(true);
+    expect(idsOf(floors())).toContain(PIECE_ID.internet);
+  });
+
+  it('with a list of shown pieces, the lone edge is drawn only when a listed piece is outside the office', () => {
+    const [outsider] = office.world.actors;
+    const lone = (...shown: string[]): Session => ({ ...office, incident: { ...office.incident, shown } });
+    const edgeAndInternet = (session: Session) => pieceViews(session).filter((piece) => piece.kind === 'edge' || piece.kind === 'internet').map((piece) => piece.id);
+    expect(office.world.routers).toBeUndefined();
+    expect(edgeAndInternet(lone('your-laptop', 'lucia-laptop'))).toEqual([]);
+    expect(edgeAndInternet(lone('your-laptop', outsider.id))).toEqual([PIECE_ID.edge, PIECE_ID.internet]);
+    expect(edgeAndInternet(office)).toEqual([PIECE_ID.edge, PIECE_ID.internet]);
   });
 
   it('an incident with no list draws every piece of its world, as before', () => {

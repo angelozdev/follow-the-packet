@@ -9,7 +9,7 @@ import { incidentSchema, isGuided, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
 
-const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '04-01', '04-02'];
+const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '04-01', '04-02'];
 const HINT_COUNT = 2;
 const lessons = syllabusLessons();
 

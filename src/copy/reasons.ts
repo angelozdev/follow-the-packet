@@ -91,7 +91,7 @@ function replyText(net: Network, deviceId: string, known: ReadonlySet<TermId>): 
   const kind = net.firewalls.find((f) => device?.firewallIds.includes(f.id))?.kind;
   if (kind === 'security-group') return known.has('stateful') ? 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.' : REPLY_ARRIVES;
   if (kind === 'host-firewall') return REPLY_ARRIVES;
-  return 'La respuesta vuelve por el mismo camino.';
+  return REPLY_ARRIVES;
 }
 
 function side(fromInside: boolean): string {

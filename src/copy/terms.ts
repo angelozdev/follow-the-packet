@@ -77,7 +77,7 @@ export const TERMS = {
     name: 'IP privada',
     definition: 'Una dirección IPv4 de uso interno (10.x, 172.16–31.x, 192.168.x): se repite en muchas redes e internet no la entrega.',
   },
-  firewall: { name: 'firewall', definition: 'Un sistema que revisa el tráfico de un dispositivo y solo deja pasar lo que permite una de sus reglas.' },
+  firewall: { name: 'firewall', definition: 'Un sistema que revisa el tráfico de un dispositivo y decide qué paquetes deja pasar y cuáles no.' },
   traffic: { name: 'tráfico', definition: 'Los paquetes que circulan por una red.' },
   drop: {
     name: 'descartar',

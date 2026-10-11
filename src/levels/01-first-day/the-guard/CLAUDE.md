@@ -1,0 +1,10 @@
+# levels/01-first-day/the-guard
+
+Block 4 of chapter 1, «El guardia»: the incidents that show what a firewall does to the packets of a device and how the player tells it what to let through. So far only the first one is built; 01-12 and 01-13 arrive with the next task.
+
+- `11-the-guard.ts`: a `send` incident with a ping message sent from your laptop (`ORIGIN.you`) to `laptop-marta` and to `laptop-lucia`. `REPAIRED_STRETCH` (in `../shared.ts`) gives the provider router its way to the server back, as in 01-08, so the world continues from 01-10 solved; no packet of 01-11 crosses a router. The firewall `HIDDEN_FIREWALL` gave `laptop-marta` in 01-05 is the same one: the ping to `laptop-marta` has the same trace as in 01-05 and only its words change, because the player now knows the term (the stamp is the blocked one, in front of the firewall, and the reason says the firewall dropped the packet without warning). It introduces `firewall`, `traffic` and `drop`.
+- It draws your laptop, `laptop-lucia` and `laptop-marta` with its firewall (`GUARD_PIECES`); the printer and the routers stay in the world and are not drawn, because no packet of this incident uses them. The globe of the internet is not drawn either: with a list it needs a listed piece outside the office, and none of these is.
+- The firewall is defined with no word about rules and no direction (`rule` arrives in 01-12, `inbound` and `outbound` in 01-13): its box says only what a firewall is, and the reason says the firewall dropped the packet without warning. The texts state the mechanism and cite no reason for it: none says why a firewall drops instead of answering with an error, why the reply of a ping passes through one, or that the laptop is switched off (the last appears only as the wrong option the feedback refutes).
+- The right explanation is the second option, not the one of 01-10 (third) and not the third.
+- Not here: the chapter's world, chips and the repair (`../shared.ts`), the contract (`src/levels/contract/`), visible UI text and the reasons the box shows (`src/copy/`).
+- May import: `@/engine`, `@/copy`, `@/levels/contract/incident` and `@/levels/01-first-day/shared`.

@@ -57,6 +57,8 @@ export const ROUTER = {
 
 export const SERVER = { id: 'internet-server', name: 'servidor-internet' } as const;
 
+export const FIREWALL = { marta: 'marta-firewall' } as const;
+
 export const CARD = {
   network: { tray: 'in-network', yes: 'yes', no: 'no' },
   ip: { tray: 'ip', right: 'right', note: 'note', marta: 'marta' },
@@ -91,6 +93,8 @@ export const TASK = {
   ttl64: 'ttl-64-warns',
   serverSilence: 'ping-to-server-silent',
   traceroute: 'traceroute-to-server',
+  guard: 'firewall-drops-ping',
+  lucia: 'ping-to-lucia',
 } as const;
 
 /** Returns a device of the office on floor 1, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
@@ -149,11 +153,11 @@ export const HIDDEN_FIREWALL: NetworkAction = {
   type: 'addFirewall',
   deviceId: DEVICE.marta.id,
   firewall: {
-    id: 'marta-firewall',
+    id: FIREWALL.marta,
     name: DEVICE.marta.name,
     kind: 'host-firewall',
     inbound: [],
-    outbound: [{ id: 'marta-firewall-out', what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANY_IPV4 } }],
+    outbound: [{ id: `${FIREWALL.marta}-out`, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANY_IPV4 } }],
   },
 };
 
@@ -168,6 +172,9 @@ export const LOOP_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.pr
 
 /** The ids of the pieces 01-10 draws: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The rest of the office is not used. */
 export const PATH_PIECES: string[] = [...LOOP_PIECES, ROUTER.destination.id];
+
+/** The ids of the pieces 01-11 draws: the sender, the laptop that answers and laptop-marta, whose firewall is drawn with it. The printer and the routers stay in the world and are not used, so they are not drawn. */
+export const GUARD_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.marta.id];
 
 const OFFICE_FACES: Router['interfaces'] = [
   { ip: IP.router, faces: FLOOR.first.id },
@@ -187,6 +194,9 @@ function backToOffice(next: string): Route {
   return { to: OFFICE_RANGE, next };
 }
 
+/** The routes of the router of the provider while its stretch works: the server range goes on to the router in front of the server, and what is for the office goes back to the office router. */
+const PROVIDER_ROUTES: Route[] = [{ to: SERVER_RANGE, next: ROUTER.destination.id }, backToOffice(ROUTER.office.id)];
+
 /** What 01-08 adds to the world: the way out of the office and the internet beyond it, a router of the provider after the office router and one in front of the server, and the server that answers a ping. The office router gets an interface towards the provider, and its only route sends everything outside the office there. The way a packet leaves the office is a black box: nothing here says how its source changes. */
 export const INTERNET: NetworkAction[] = [
   { type: 'addActor', actor: { id: SERVER.id, name: SERVER.name, ip: IP.server, kind: 'server', latencyMs: SERVER_MS } },
@@ -199,7 +209,7 @@ export const INTERNET: NetworkAction[] = [
         { ip: IP.provider, faces: ROUTER.office.id },
         { ip: IP.providerOnward, faces: ROUTER.destination.id },
       ],
-      routes: [{ to: SERVER_RANGE, next: ROUTER.destination.id }, backToOffice(ROUTER.office.id)],
+      routes: PROVIDER_ROUTES,
       latencyMs: PROVIDER_MS,
       sendsUnreachable: true,
     },
@@ -226,6 +236,9 @@ export const LOOP: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.p
 
 /** What 01-10 changes: no loop, but a broken stretch behind the router of the provider, which no longer has a way to the server and, being set up so, does not warn. */
 export const BROKEN_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [backToOffice(ROUTER.office.id)], sendsUnreachable: false }];
+
+/** What 01-11 changes: the provider fixed the broken stretch, so its router has its way to the server again and warns when it has none, as it did in 01-08. */
+export const REPAIRED_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: PROVIDER_ROUTES, sendsUnreachable: true }];
 
 /** Returns the task of a send incident that expects what a message sent from your laptop to an address ends in, and, when `by` is given, who answered, warned or dropped it. */
 export function sendTask(id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {

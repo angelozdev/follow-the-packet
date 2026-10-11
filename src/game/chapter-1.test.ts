@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, roundTripText, stampLabel, toPlainText, type TermText } from '@/copy';
+import { TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
 import { networkSchema } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, GATEWAY, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, SERVER, TASK } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, FIREWALL, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, SERVER, TASK } from '@/levels/01-first-day/shared';
 import type { SentPacket } from './flow-runs';
 import { identifyCard } from './view/cards/identify-card';
 import { settingsCard } from './view/cards/settings-card';
@@ -26,6 +26,7 @@ const WHO_GETS_WHAT_IS_OUTSIDE = '01-07';
 const THE_NETWORK_OF_NETWORKS = '01-08';
 const COUNTING_HOPS = '01-09';
 const SEEING_THE_PATH = '01-10';
+const THE_GUARD = '01-11';
 const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const NOTE_RULE = 'La nota de Lucía estaba mal: 192.168.1.300 no es IPv4, porque cada uno de los cuatro números va de 0 a 255.';
 const RIGHT_FEEDBACK = 'Correcto.';
@@ -67,6 +68,10 @@ const TTL_VALUES = [1, 2, 3, 5, 64] as const;
 const STAR = '*';
 const TRACEROUTE_LINES = 8;
 const ROUTER_OUTSIDE_THE_LOOP = new RegExp(`${ROUTER.destination.name}|${IP.destination.replaceAll('.', '\\.')}`);
+const DROPPED_TEXT = 'El firewall de laptop-marta descartó el paquete sin avisar.';
+const GUARD_PLACE = 1;
+const NO_REASON_GIVEN = /revel|stateful|stateless|recuerda|mismo camino|esconde|oculta/i;
+const ABOUT_RULES = /regla|entrada|salida|permit|deneg|privilegio/i;
 const SENDER_LOOKED = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50 y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
 
 function guidedOf(id: string) {
@@ -833,5 +838,148 @@ describe('the ten incidents of blocks 1 to 3', () => {
     expect(solved.devices.find((device) => device.id === DEVICE.you.id)?.gateway).toBe(IP.router);
     expect({ ...world, devices: world.devices.map((device) => ({ ...device, gateway: undefined })) }).toEqual({ ...solved, devices: solved.devices.map((device) => ({ ...device, gateway: undefined })) });
     expect(world.devices.filter((device) => device.gateway === undefined).map((device) => device.id)).toEqual([DEVICE.you.id]);
+  });
+});
+
+describe('01-11, the guard', () => {
+  const start = startSession(INCIDENTS, THE_GUARD);
+  const dropped = pingTo(start, ADDRESS.marta.id);
+  const answered = pingTo(start, ADDRESS.lucia.id);
+  const both = pingTo(start, ADDRESS.marta.id, ADDRESS.lucia.id);
+  const firewallBox = () => inspect(start, PIECE_ID.firewall(FIREWALL.marta));
+
+  it('01-11: the ping to laptop-marta now leaves a blocked stamp on its firewall and the reason says it was dropped without a warning', () => {
+    const [run] = dropped.sent;
+    expect(run).toMatchObject({ replied: false, reached: false, blocked: true, hiddenStop: false, warning: null, by: [FIREWALL.marta], trace: { outcome: 'timeout' } });
+    expect(fieldLines(dropped, run.pieceId, STOPPED_LABEL)).toEqual([DROPPED_TEXT]);
+    expect(pieceViews(dropped).filter((piece) => piece.kind === 'firewall').map((piece) => ({ anchorId: piece.anchorId, label: toPlainText(piece.label) }))).toEqual([{ anchorId: DEVICE.marta.id, label: `firewall ${DEVICE.marta.name}` }]);
+    expect(taskHolds(guidedOf(THE_GUARD).tasks[0], dropped.runs, dropped.sent)).toBe(true);
+  });
+
+  it('01-11: the ping to laptop-lucia comes back', () => {
+    const [run] = answered.sent;
+    expect(run).toMatchObject({ replied: true, blocked: false, hiddenStop: false, by: [DEVICE.lucia.id], trace: { outcome: 'replied' } });
+    expect(pieceViews(answered).filter((piece) => piece.kind === 'firewall').map((piece) => piece.anchorId)).toEqual([DEVICE.marta.id]);
+    expect(openTasks(answered)).toEqual([TASK.guard]);
+    expect(openTasks(dropped)).toEqual([TASK.lucia]);
+  });
+
+  it('01-11: inspecting the firewall of laptop-marta says what a firewall is', () => {
+    expect(firewallBox()?.fields.map((field) => toPlainText(field.label))).toEqual(['Qué es']);
+    expect(firewallBox()?.fields.flatMap((field) => field.lines.map((line) => toPlainText(line)))).toEqual([TERMS.firewall.definition]);
+    expect(TERMS.firewall.definition).not.toMatch(ABOUT_RULES);
+    expect(TERMS.firewall.definition.length).toBeLessThanOrEqual(120);
+  });
+
+  it('01-11: draws tu-laptop, laptop-lucia and laptop-marta with its firewall, and no router, no printer and no globe of the internet, which no ping uses', () => {
+    expect(drawnLabels(start)).toEqual(['device:laptop-lucia', 'device:laptop-marta', 'device:tu-laptop', `firewall:firewall ${DEVICE.marta.name}`].sort());
+    expect(guidedOf(THE_GUARD).shown).toEqual(GUARD_PIECES);
+    expect(pieceViews(start).filter((piece) => piece.kind === 'edge')).toEqual([]);
+  });
+
+  it('01-11: both pings must be sent to close the incident', () => {
+    expect(openTasks(start)).toEqual([TASK.guard, TASK.lucia]);
+    expect(openTasks(pingTo(start, ADDRESS.printer.id))).toEqual([TASK.guard, TASK.lucia]);
+    expectClosed(both);
+  });
+
+  it('01-11: the inspection box of the dropped ping tells the firewall dropped it, and the device box of laptop-marta lists its firewall', () => {
+    const [run] = dropped.sent;
+    expect(fieldLines(dropped, run.pieceId, 'Resultado')?.[0]).toMatch(/^timeout/);
+    expect(boxLines(start, DEVICE.marta.id)).toContain(`firewall ${DEVICE.marta.name}`);
+    expect(boxLines(start, DEVICE.lucia.id).filter((text) => /firewall/i.test(text))).toEqual([]);
+  });
+
+  it('01-11: no text says what a firewall does with rules, in what direction, or why it drops or why a reply passes', () => {
+    const guarded = incidentTexts(guidedOf(THE_GUARD)).map((text) => toPlainText(text));
+    expect(guarded.filter((text) => ABOUT_RULES.test(text) || NO_REASON_GIVEN.test(text))).toEqual([]);
+    expect(everythingShown(both).filter((text) => ABOUT_RULES.test(text) || NO_REASON_GIVEN.test(text))).toEqual([]);
+    expect(everythingShown(start).filter((text) => ABOUT_RULES.test(text) || NO_REASON_GIVEN.test(text))).toEqual([]);
+  });
+
+  it('01-11: nothing says the silence is a switched-off device except the wrong option that the feedback refutes', () => {
+    const { explanation } = guidedOf(THE_GUARD);
+    const [offered] = explanation.filter((option) => SWITCHED_OFF.test(toPlainText(option.text)));
+    expect(offered).toBeDefined();
+    expect(offered.correct).toBe(false);
+    const rest = incidentTexts(guidedOf(THE_GUARD)).filter((text) => text !== offered.text && text !== offered.feedback);
+    expect(rest.filter((text) => SWITCHED_OFF.test(toPlainText(text)))).toEqual([]);
+    expect(everythingShown(both).filter((text) => SWITCHED_OFF.test(text))).toEqual([]);
+  });
+
+  it('01-11: the question has three options, the right one says the firewall dropped the packet and did not warn, and each wrong one is a mistake the map refutes', () => {
+    const { explanation } = guidedOf(THE_GUARD);
+    expect(explanation).toHaveLength(3);
+    expect(explanation.findIndex((option) => option.correct)).toBe(GUARD_PLACE);
+    const [right] = explanation.filter((option) => option.correct);
+    expect(termsIn(right.text)).toEqual(expect.arrayContaining(['firewall', 'drop']));
+    expect(toPlainText(right.text)).toMatch(/sin avisar|no avisó/);
+    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toMatch(/^No\./);
+  });
+
+  it('01-11: the first task does not give the answer away, and the second hint names the field of the box that holds it', () => {
+    const incident = guidedOf(THE_GUARD);
+    expect(toPlainText(incident.tasks[0].text)).not.toMatch(/firewall|descart/i);
+    expect(toPlainText(incident.hints[1])).toContain(`«${STOPPED_LABEL}»`);
+    expect(fieldLines(dropped, dropped.sent[0].pieceId, STOPPED_LABEL)).toBeDefined();
+    expect(firewallBox()?.fields.map((field) => toPlainText(field.label))).not.toContain(STOPPED_LABEL);
+  });
+
+  it('01-11: starts from the world of 01-10 solved with the broken stretch repaired, so the provider router is the one of 01-08 again', () => {
+    const before = solvedWorld(INCIDENTS, SEEING_THE_PATH);
+    const providerOf = (world: typeof before) => world.routers?.find((router) => router.id === ROUTER.provider.id);
+    expect(providerOf(before)?.sendsUnreachable).toBe(false);
+    expect(providerOf(start.world)).toEqual(providerOf(startWorld(INCIDENTS, THE_NETWORK_OF_NETWORKS)));
+    expect({ ...start.world, routers: undefined }).toEqual({ ...before, routers: undefined });
+    expect(networkSchema.safeParse(start.world).success).toBe(true);
+  });
+});
+
+describe('the same ping of 01-05 and 01-11', () => {
+  const hidden = pingTo(startSession(INCIDENTS, WHEN_IT_DOES_NOT_COME_BACK), ADDRESS.marta.id).sent[0];
+  const shown = pingTo(startSession(INCIDENTS, THE_GUARD), ADDRESS.marta.id).sent[0];
+  const stoppedLabel = (session: Session) => fieldLines(session, session.sent[0].pieceId, STOPPED_LABEL);
+
+  it('the same ping of 01-05 and 01-11 has the same trace and only the words change', () => {
+    expect(shown.packet).toEqual(hidden.packet);
+    expect(shown.trace).toEqual(hidden.trace);
+    expect([shown.by, shown.reached, shown.replied, shown.warning]).toEqual([hidden.by, hidden.reached, hidden.replied, hidden.warning]);
+    expect(hidden).toMatchObject({ hiddenStop: true, blocked: false });
+    expect(shown).toMatchObject({ hiddenStop: false, blocked: true });
+    expect(stoppedLabel(pingTo(startSession(INCIDENTS, WHEN_IT_DOES_NOT_COME_BACK), ADDRESS.marta.id))).toEqual([NOTHING_CAME_BACK]);
+    expect(stoppedLabel(pingTo(startSession(INCIDENTS, THE_GUARD), ADDRESS.marta.id))).toEqual([DROPPED_TEXT]);
+  });
+});
+
+describe('the eleven incidents of blocks 1 to 4', () => {
+  const places = [THE_OFFICE, THE_ENVELOPE, ARE_YOU_THERE, PING_YOURSELF, WHEN_IT_DOES_NOT_COME_BACK, YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE, THE_NETWORK_OF_NETWORKS, COUNTING_HOPS, SEEING_THE_PATH, THE_GUARD].map((id) =>
+    guidedOf(id).explanation.findIndex((option) => option.correct),
+  );
+
+  it('01-11: puts the right explanation in a place of its own, not the one of 01-10 and not the third', () => {
+    expect(places.at(-1)).toBe(GUARD_PLACE);
+    expect(places.at(-1)).not.toBe(places.at(-2));
+    expect(places.at(-1)).not.toBe(2);
+  });
+
+  it('01-11: starts and ends in a world the network schema accepts', () => {
+    expect([startWorld(INCIDENTS, THE_GUARD), solvedWorld(INCIDENTS, THE_GUARD)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
+  });
+});
+
+describe('the globe of the internet in blocks 3 and 4', () => {
+  const globeIn = (session: Session) => pieceViews(session).some((piece) => piece.kind === 'internet');
+  const knowingTheInternet = (id: string): Session => {
+    const session = startSession(INCIDENTS, id);
+    return { ...session, known: new Set([...session.known, 'internet']) };
+  };
+
+  it('is drawn in 01-08, 01-09 and 01-10, which list the server or a router of the provider, and in none of 01-06, 01-07 and 01-11', () => {
+    expect([COUNTING_HOPS, SEEING_THE_PATH, THE_NETWORK_OF_NETWORKS].map((id) => globeIn(startSession(INCIDENTS, id)))).toEqual([true, true, true]);
+    expect([YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE, THE_GUARD].map((id) => globeIn(startSession(INCIDENTS, id)))).toEqual([false, false, false]);
+  });
+
+  it('is not drawn in 01-06, 01-07 or 01-11 even when the term internet is known, because no piece they list is outside the office', () => {
+    expect([YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE, THE_GUARD].map((id) => globeIn(knowingTheInternet(id)))).toEqual([false, false, false]);
   });
 });

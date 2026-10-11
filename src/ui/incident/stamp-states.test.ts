@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { stampLabel, toPlainText, type TermId } from '@/copy';
 import { pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { INCIDENTS } from '@/levels';
-import { ADDRESS, IP, ROUTER } from '@/levels/01-first-day/shared';
+import { ADDRESS, DEVICE, IP, ROUTER } from '@/levels/01-first-day/shared';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { computeLayout, pathFor } from '@/scene/layout';
 import { flowLook } from '@/scene/traffic/flow-look';
@@ -110,6 +110,26 @@ describe('a packet that a firewall the player does not know yet stops', () => {
     const known = lostAt(officeSession(guardedLucia(), 'firewall'), 'lucia');
     expect(known.path.at(-1)).toEqual(known.layout.devices['lucia-laptop'].firewall);
     expect(known.look).toMatchObject({ end: 'blocked', stamp: 'blocked' });
+  });
+});
+
+describe('the ping to laptop-marta, before and after the incident that shows its firewall', () => {
+  const stampedAt = (incidentId: string) => {
+    const session = startSession(INCIDENTS, incidentId);
+    const run = sendFrom(session, ADDRESS.marta.id);
+    const layout = computeLayout(session.world, pieceViews(session));
+    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop), ...drawn(run) };
+  };
+
+  it('01-05 leaves a lost stamp at the door of laptop-marta and 01-11 a blocked stamp in front of its firewall', () => {
+    const before = stampedAt('01-05');
+    expect(before.path.at(-1)).toEqual(before.layout.devices[DEVICE.marta.id].door);
+    expect(before.look).toMatchObject({ end: 'lost', stamp: 'lost' });
+    expect(before.name).not.toMatch(/firewall|Bloqueado/i);
+    const after = stampedAt('01-11');
+    expect(after.path.at(-1)).toEqual(after.layout.devices[DEVICE.marta.id].firewall);
+    expect(after.look).toMatchObject({ end: 'blocked', stamp: 'blocked' });
+    expect(after.name).toBe(`Paquete: ping de ${DEVICE.you.name} a ${DEVICE.marta.name}. Bloqueado.`);
   });
 });
 

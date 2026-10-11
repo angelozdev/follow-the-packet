@@ -1,5 +1,5 @@
 import { MAP_TEXT, SETTINGS_TEXT, entityTerm, nameTag, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, type Network } from '@/engine';
+import { isClientActor, lansOf, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
@@ -84,16 +84,25 @@ function hasRouters(world: Network): boolean {
   return (world.routers ?? []).length > 0;
 }
 
+/** True when the map has something to show outside the office: the incident lists nothing, and then draws the whole world, or it lists an actor or a router outside the office, one with no interface facing a local network. The lone edge and the internet, which have no id to list, are drawn only then. */
+function drawsOutside({ world, incident }: Pick<Session, 'world' | 'incident'>): boolean {
+  const { shown } = incident;
+  if (shown === undefined) return true;
+  const lanIds = lansOf(world).map((lan) => lan.id);
+  const outsideRouters = (world.routers ?? []).filter((router) => !router.interfaces.some((face) => lanIds.includes(face.faces)));
+  const outsideIds = [...world.actors, ...outsideRouters].map((outsider) => outsider.id);
+  return shown.some((id) => outsideIds.includes(id));
+}
+
 function outside(session: Session): PieceView[] {
   const { world, known } = session;
   const internet = { kind: 'internet', variant: 'internet' } as const;
-  return [
-    ...(hasRouters(world) ? routers(session) : loneEdge(session)),
-    ...(isDrawn(known, internet) ? [piece(internet, { id: PIECE_ID.internet, anchorId: INTERNET_ANCHOR, label: MAP_TEXT.internet, locked: false, configurable: false, state: 'normal' })] : []),
-  ];
+  const outsideDrawn = drawsOutside(session);
+  const way = hasRouters(world) ? routers(session) : outsideDrawn ? loneEdge(session) : [];
+  return [...way, ...(outsideDrawn && isDrawn(known, internet) ? [piece(internet, { id: PIECE_ID.internet, anchorId: INTERNET_ANCHOR, label: MAP_TEXT.internet, locked: false, configurable: false, state: 'normal' })] : [])];
 }
 
-/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal; a device with a card in an identify incident opens it. A world with routers draws them in place of the lone edge, each under its own name. A device the incident offers settings for has a second entry, `settings`, that opens its settings card (`PIECE_ID.settings`): it is a button beside the label of the device, not a piece of the map, so it has no shape and no place of its own. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor. */
+/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; a device or an actor that is an origin of a send incident opens its terminal; a device with a card in an identify incident opens it. A world with routers draws them in place of the lone edge, each under its own name. With a list, the lone edge and the internet are drawn only when the list holds something outside the office (an actor, or a router with no interface facing a local network). A device the incident offers settings for has a second entry, `settings`, that opens its settings card (`PIECE_ID.settings`): it is a button beside the label of the device, not a piece of the map, so it has no shape and no place of its own. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor. */
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   const intruded = intrudedDeviceIds(session.runs);
