@@ -74,6 +74,7 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     ...(ctx.hops.length > 0 && { hops: ctx.hops }),
     ...(header && { header }),
     ...(exchange && { exchange }),
+    ...(ctx.routes && { routes: ctx.routes }),
     ...(rttMs !== undefined && { rttMs }),
   };
 }

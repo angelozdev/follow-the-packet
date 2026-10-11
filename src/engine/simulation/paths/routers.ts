@@ -1,8 +1,9 @@
 import { bestRoute, interfaceTowards, onwardFrom, ownsIp } from '@/engine/network/addressing/routing';
+import { chooseRoute } from '@/engine/network/addressing/routing-table';
 import { lanOf } from '@/engine/network/addressing/topology';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Device, Router, ServerActor, Service } from '@/engine/network/types';
-import { CONTINUE, addLeg, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
+import { CONTINUE, addLeg, recordRoute, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
 import type { NoticeKind, Notice, Reason } from '@/engine/simulation/trace';
 
 /** Hands the packet to a device of the network: the firewall of that device, its host and its reply come next. */
@@ -46,9 +47,16 @@ function crossed(ctx: SimContext, router: Router, from: string, ttlLeft: number)
   ctx.steps.push({ stage: 'forward', at: router.id, verdict: 'pass', reason: { code: 'forward-hop', routerId: router.id, ip: from, ttlLeft } });
 }
 
+/** Records the route the router picked from its table for the destination, unless it picked none because it dropped the packet as private or had no route that could carry it. */
+function recordChoice(ctx: SimContext, router: Router): void {
+  const decision = chooseRoute(ctx.net, router, ctx.destIp!);
+  if (decision) recordRoute(ctx, decision);
+}
+
 function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: number): StageResult {
   const ip = ctx.destIp!;
   const onward = onwardFrom(ctx.net, router, ip);
+  if (onward.kind !== 'private' && onward.kind !== 'no-route') recordChoice(ctx, router);
   const failure = { routerId: router.id, ip, warns: router.sendsUnreachable };
   switch (onward.kind) {
     case 'private':

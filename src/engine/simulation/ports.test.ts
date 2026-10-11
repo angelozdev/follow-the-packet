@@ -163,7 +163,7 @@ describe('the source port and the exchange of a trace', () => {
     const ignored = simulate(withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: true, services: [] } }), ping(you, OFFICE.lucia));
     const unsolicited = simulate(officeNet(), { ...ping(you, OFFICE.lucia), icmpType: 0 });
     expect([replied, ignored, unsolicited].map((trace) => trace.outcome)).toEqual(['replied', 'arrived-no-reply', 'arrived-no-reply']);
-    const alwaysThere = ['destinationId', 'effectiveSource', 'header', 'outcome', 'resolvedIp', 'steps', 'tcpdump'];
+    const alwaysThere = ['destinationId', 'effectiveSource', 'header', 'outcome', 'resolvedIp', 'routes', 'steps', 'tcpdump'];
     expect(Object.keys(replied).sort()).toEqual([...alwaysThere, 'rttMs'].sort());
     expect(Object.keys(ignored).sort()).toEqual(alwaysThere);
     expect(Object.keys(unsolicited).sort()).toEqual(alwaysThere);

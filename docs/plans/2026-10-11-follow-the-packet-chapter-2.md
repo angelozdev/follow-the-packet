@@ -948,7 +948,8 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `the longest prefix wins and the trace lists the routes that also covered the destination`.
 - `simulation/routing-table.test.ts`, `the choice of route in the office of chapter 1 gives the same outcome as before`.
 - `a destination in the LAN of the device uses the connected route and a destination outside it uses the default route`.
-- Cierre: golden sin cambios; el capítulo 1 sin editar.
+- Cambia a propósito (decisión del estudiante del 2026-10-11, opción A, porque `Trace.routes` es un campo nuevo de la traza): `src/game/chapter-1.test.ts`, `the same ping of 01-05 and 01-11 has the same trace and only the words change`, compara las dos trazas sin el campo `routes` (el camino y los pasos se siguen comparando; las rutas difieren por diseño, porque en el 01-11 la laptop ya tiene puerta de enlace y su tabla suma la ruta por defecto), y `src/engine/simulation/ports.test.ts`, `the ICMP branch of the host stage keeps every field it had`, suma `routes` a su lista de campos (las tres trazas de esa prueba entregan el paquete a la red, así que las tres llevan el campo).
+- Cierre: golden sin cambios; el capítulo 1 sin editar, salvo esas dos pruebas.
 
 **Review Focus:** 2 y 9.
 

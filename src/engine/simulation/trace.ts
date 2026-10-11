@@ -1,3 +1,4 @@
+import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import type { FirewallKind, IcmpType } from '@/engine/network/types';
 
 export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
@@ -121,5 +122,6 @@ export interface Trace {
   hops?: Hop[];
   header?: PacketHeader;
   exchange?: ExchangeMessage[];
+  routes?: RouteDecision[];
   rttMs?: number;
 }

@@ -1,6 +1,22 @@
 import { nameTag } from '@/copy';
 import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction, type PacketSpec } from '@/engine';
-import { INCIDENTS, applyMove, solvedWorld, startWorld, type CaseSpec, type DiagnoseIncident, type ExplanationOption, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
+import {
+  INCIDENTS,
+  applyMove,
+  caseWorld,
+  packetFromChips,
+  probeFromChips,
+  sendCombinations,
+  solvedWorld,
+  startWorld,
+  type CaseSpec,
+  type DiagnoseIncident,
+  type ExplanationOption,
+  type FilterIncident,
+  type IdentifyIncident,
+  type SendIncident,
+  type SendOwner,
+} from '@/levels';
 import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, ping, withDevice } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
@@ -22,6 +38,22 @@ export function chapter4Worlds(): { world: Network; flows: PacketSpec[] }[] {
     );
     const flows = incident.flows.map(({ packet }) => packet);
     return [start, solvedWorld(INCIDENTS, id), ...oneRule].map((world) => ({ world, flows }));
+  });
+}
+
+function sendPackets(owner: SendOwner): PacketSpec[] {
+  return sendCombinations(owner).flatMap((combination) => packetFromChips(owner, combination) ?? probeFromChips(owner, combination) ?? []);
+}
+
+/** Returns the office worlds chapter 1 plays on, with the packets that can be sent in each: every incident at its start, once solved and with each choice of each of its settings, and every case of the diagnose in its own world. The packets are those of the flows and of the send chips (a traceroute through its probe). */
+export function chapter1Worlds(): { world: Network; packets: PacketSpec[] }[] {
+  return INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => {
+    const start = startWorld(INCIDENTS, incident.id);
+    const flows = incident.flows.map(({ packet }) => packet);
+    if (incident.mechanic === 'diagnose') return incident.diagnose.cases.map((spec) => ({ world: caseWorld(start, spec), packets: [...flows, ...sendPackets(spec)] }));
+    if (incident.mechanic !== 'send') return [start, solvedWorld(INCIDENTS, incident.id)].map((world) => ({ world, packets: flows }));
+    const choices = (incident.send.settings ?? []).flatMap(({ id: settingId, deviceId, chips }) => chips.map(({ id: chipId }) => applyMove(start, incident, { type: 'setSetting', deviceId, settingId, chipId })));
+    return [start, solvedWorld(INCIDENTS, incident.id), ...choices].map((world) => ({ world, packets: [...flows, ...sendPackets(incident)] }));
   });
 }
 

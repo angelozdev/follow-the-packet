@@ -3,7 +3,8 @@ import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { isConnected, lanOf, lansOf } from './topology';
 import type { Device, Network, Route, Router, ServerActor } from '@/engine/network/types';
 
-const SERVER_LINK_PREFIX = 24;
+/** The prefix of the link between a router and a server: an interface has no mask, so the link is the /24 of the router's interface. */
+export const SERVER_LINK_PREFIX = 24;
 
 /** Where a router sends a packet next, or why it cannot: a device of a LAN it faces, a server behind one of its interfaces, another router, or nothing. */
 export type Onward =
@@ -34,17 +35,22 @@ export function facesALan(net: Network, router: Router): boolean {
   return router.interfaces.some((face) => lans.some((lan) => lan.id === face.faces));
 }
 
-function covers(route: Route, ip: string): boolean {
+function covers(route: Pick<Route, 'to'>, ip: string): boolean {
   return route.to === ROUTE_DEFAULT || ipInCidr(ip, route.to);
 }
 
-function specificity(route: Route): number {
+function specificity(route: Pick<Route, 'to'>): number {
   return route.to === ROUTE_DEFAULT ? 0 : parseCidr(route.to).prefix;
+}
+
+/** Returns the routes that cover the IP, the most specific first: the longest prefix wins (RFC 4632, §5.1), `default` covers every IP and comes last, and routes of the same range keep the order they had. */
+export function coveringRoutes<R extends Pick<Route, 'to'>>(routes: R[], ip: string): R[] {
+  return routes.filter((route) => covers(route, ip)).sort((a, b) => specificity(b) - specificity(a));
 }
 
 /** Returns the most specific route of the router that covers the IP; `default` covers every IP and loses to any range. */
 export function bestRoute(router: Router, ip: string): Route | undefined {
-  return router.routes.filter((route) => covers(route, ip)).reduce<Route | undefined>((best, route) => (best && specificity(best) >= specificity(route) ? best : route), undefined);
+  return coveringRoutes(router.routes, ip).at(0);
 }
 
 function connectedDevice(net: Network, lanId: string, ip: string): Device | undefined {

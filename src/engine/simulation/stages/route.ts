@@ -1,6 +1,7 @@
 import { ipInCidr, isLoopbackIpv4, isPrivateIpv4 } from '@/engine/network/addressing/cidr';
-import { isConnected, lanOf } from '@/engine/network/addressing/topology';
-import { CONTINUE, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
+import { chooseRoute, type RouteDecision } from '@/engine/network/addressing/routing-table';
+import { isConnected } from '@/engine/network/addressing/topology';
+import { CONTINUE, recordRoute, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
 import type { Reason } from '@/engine/simulation/trace';
 import type { Device } from '@/engine/network/types';
 
@@ -14,8 +15,9 @@ function deliverToSelf(ctx: SimContext, device: Device, reason: Reason): StageRe
   return CONTINUE;
 }
 
-function handToNetwork(ctx: SimContext, ip: string, viaGateway: boolean, reason: Reason = { code: 'route-private' }): StageResult {
-  ctx.delivery = { ip, viaGateway };
+function handToNetwork(ctx: SimContext, decision: RouteDecision, ip: string, reason: Reason = { code: 'route-private' }): StageResult {
+  recordRoute(ctx, decision);
+  ctx.delivery = { ip, viaGateway: decision.route.via !== undefined };
   ctx.effectiveSource = ctx.source.ip;
   ctx.steps.push({ stage: 'route', at: ctx.net.kind, verdict: 'pass', reason });
   return CONTINUE;
@@ -26,14 +28,16 @@ function stayAtSender(ctx: SimContext, device: Device, reason: Reason): StageRes
   return stop('no-route');
 }
 
-/** Decides how a device of an office sends the packet (RFC 1122, §3.3.1.1): a destination in its own LAN goes straight to it, one in another LAN of the office goes to its default gateway, and a device that has no cable, or has no gateway for a destination outside its LAN, sends nothing. A destination outside the office goes to the gateway too when the office has routers to carry it, and otherwise it returns undefined, which the rest of the stage handles. */
+/** Decides how a device of an office sends the packet with its routing table (RFC 1122, §3.3.1.1): the most specific row that covers the destination carries it. The connected route of its LAN delivers straight to the destination, and the default route hands it to the gateway, which is where a destination in another LAN of the office goes. A device that has no cable, or has no gateway for a destination outside its LAN, sends nothing. A destination outside the office goes to the gateway too when the office has routers to carry it, and otherwise it returns undefined, which the rest of the stage handles. The decision is recorded only when the packet is handed to the network. */
 function routeFromOffice(ctx: SimContext, device: Device): StageResult | undefined {
   const destIp = ctx.destIp!;
   if (!isConnected(device)) return stayAtSender(ctx, device, { code: 'route-not-connected', deviceId: device.id });
-  if (ipInCidr(destIp, lanOf(ctx.net, device)?.cidr ?? ctx.net.cidr)) return handToNetwork(ctx, destIp, false);
-  if (!device.gateway) return stayAtSender(ctx, device, { code: 'route-no-gateway', deviceId: device.id, ip: destIp });
-  if (ipInCidr(destIp, ctx.net.cidr)) return handToNetwork(ctx, device.gateway, true);
-  return (ctx.net.routers ?? []).length > 0 ? handToNetwork(ctx, device.gateway, true, { code: 'route-leaves-office', ip: destIp }) : undefined;
+  const decision = chooseRoute(ctx.net, device, destIp);
+  if (!decision) return stayAtSender(ctx, device, { code: 'route-no-gateway', deviceId: device.id, ip: destIp });
+  const { via } = decision.route;
+  if (via === undefined) return handToNetwork(ctx, decision, destIp);
+  if (ipInCidr(destIp, ctx.net.cidr)) return handToNetwork(ctx, decision, via);
+  return (ctx.net.routers ?? []).length > 0 ? handToNetwork(ctx, decision, via, { code: 'route-leaves-office', ip: destIp }) : undefined;
 }
 
 function routeInsideNetwork(ctx: SimContext): StageResult | undefined {

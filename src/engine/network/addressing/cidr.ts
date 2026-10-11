@@ -30,6 +30,13 @@ export function ipInCidr(ip: string, cidr: string): boolean {
   return value >= start && value < start + size;
 }
 
+/** Returns the range of the given prefix that holds the IP, written with its first address: 198.51.100.1 with 24 gives 198.51.100.0/24. */
+export function networkOf(ip: string, prefix: number): string {
+  const size = 2 ** (32 - prefix);
+  const start = Math.floor(ipToInt(ip) / size) * size;
+  return `${[24, 16, 8, 0].map((shift) => Math.floor(start / 2 ** shift) % 256).join('.')}/${prefix}`;
+}
+
 const PRIVATE_RANGES = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 
 /** True when the IPv4 address is in a private range of RFC 1918, which the internet does not deliver. */

@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { ipInCidr, isIpv4, isLoopbackIpv4, isPrivateCidr, isPrivateIpv4, parseCidr } from './cidr';
+import { ipInCidr, isIpv4, isLoopbackIpv4, isPrivateCidr, isPrivateIpv4, networkOf, parseCidr } from './cidr';
 
 describe('isIpv4', () => {
   it('accepts valid IPs and rejects names and out-of-range octets', () => {
     expect(isIpv4('172.31.16.131')).toBe(true);
     expect(isIpv4('256.1.1.1')).toBe(false);
     expect(isIpv4('ec2-34-244-254-100.eu-west-1.compute.amazonaws.com')).toBe(false);
+  });
+});
+
+describe('networkOf', () => {
+  it('writes the range of the prefix that holds an IP with its first address', () => {
+    expect(networkOf('198.51.100.1', 24)).toBe('198.51.100.0/24');
+    expect(networkOf('203.0.113.130', 25)).toBe('203.0.113.128/25');
+    expect(networkOf('192.168.7.9', 16)).toBe('192.168.0.0/16');
+    expect(networkOf('198.51.100.7', 32)).toBe('198.51.100.7/32');
+    expect(networkOf('198.51.100.7', 0)).toBe('0.0.0.0/0');
   });
 });
 

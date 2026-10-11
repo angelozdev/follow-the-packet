@@ -1,3 +1,4 @@
+import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import type { Device, Endpoint, Network, PacketSpec, Service } from '@/engine/network/types';
 import type { ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
 
@@ -32,6 +33,7 @@ export interface SimContext {
   effectiveSource?: string;
   responder?: Responder;
   notice?: Notice;
+  routes?: RouteDecision[];
   hops: Hop[];
   legsMs: number[];
   steps: Step[];
@@ -52,6 +54,11 @@ export function receiverOf(ctx: SimContext): Receiver {
 /** Records a tcpdump line at the receiver when it is a device: the player can read a device's tcpdump, not a router's or a server's. */
 export function logAt(ctx: SimContext, receiver: Receiver, direction: TcpdumpLine['direction'], src: string, dst: string, summary: string): void {
   if (receiver.device) ctx.tcpdump.push({ deviceId: receiver.id, direction, src, dst, summary });
+}
+
+/** Records the route a holder picked to carry the packet on. */
+export function recordRoute(ctx: SimContext, decision: RouteDecision): void {
+  ctx.routes = [...(ctx.routes ?? []), decision];
 }
 
 /** Records the latency of one more leg the packet travelled (a LAN, a router or a server). The round trip time adds them up, so nothing past the one who answered or warned is ever recorded. */
