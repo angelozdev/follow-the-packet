@@ -5,6 +5,7 @@
   --palette-ink: #2b2b2b;
   --palette-ink-light: #5f5a52;
   --palette-vermilion: #bf370f;
+  --palette-green: #3a6b4f;
 
   --color-page: var(--palette-paper);
   --color-surface: var(--palette-paper-light);
@@ -15,6 +16,7 @@
   --color-danger: var(--palette-vermilion);
   --color-emphasis: var(--palette-vermilion);
   --color-focus: var(--palette-vermilion);
+  --color-success: var(--palette-green);
 
   --font-display: 'Newsreader', Georgia, serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;

@@ -6,7 +6,7 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 
 - **Paper and ink.** Text and lines are ink on paper. Vermilion is the value of three roles, danger, emphasis and focus; only `--color-danger` means danger.
 - **Never colour alone.** A state also changes a shape or a text: a dashed border, a double ring, a word.
-- **One standard per element.** Every action or link is a `Button`, every chip or option a `Choice`, every tray of chips a `ChipTray`, every panel a `Card`, every set of tabs a `Tabs`, every table a `Table`, every own name a `NameTag`, every small heading a caption. A new look is a new variant of its primitive, never a sibling element and never a class added at the call site.
+- **One standard per element.** Every action or link is a `Button`, every chip or option a `Choice`, every tray of chips a `ChipTray`, every panel a `Card`, every set of tabs a `Tabs`, every table a `Table`, every warning or error a `Message`, every own name a `NameTag`, every small heading a caption. A new look is a new variant of its primitive, never a sibling element and never a class added at the call site.
 
 ## Colour
 
@@ -20,6 +20,7 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 | `--palette-ink` | `#2b2b2b` |
 | `--palette-ink-light` | `#5f5a52` |
 | `--palette-vermilion` | `#bf370f` |
+| `--palette-green` | `#3a6b4f` |
 
 | Role | Palette | For |
 |------|---------|-----|
@@ -28,10 +29,11 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 | `--color-shade` | paper dark | name tags, a chosen option, a disabled button, the shaded parts of map pieces (`PAPER_SHADE`) |
 | `--color-ink` | ink | text, borders, the title stripe of a card, a pressed chip, map lines (`INK`) |
 | `--color-ink-soft` | ink light | secondary text, captions of fields, a disabled button, dashed and soft borders |
-| `--color-on-fill` | paper light | text on a filled background: a pressed chip, the title stripe of a card, the letter of an option, a tooltip, the alert mark |
+| `--color-on-fill` | paper light | text on a filled background: a pressed chip, the title stripe of a card, the letter of an option, a tooltip, the alert mark, the tab of a `success` or an `error` `Message` |
 | `--color-danger` | vermilion | blocked, intruder, alert, a rejected solution, a wrong answer (`DANGER` on the map) |
 | `--color-emphasis` | vermilion | the primary button (its text and its dashed border), stars, the "nuevo" mark, the tooltip shadow |
 | `--color-focus` | vermilion | the focus ring |
+| `--color-success` | green | a right answer: the frame and the tab of a `success` `Message` |
 
 ### The vermilion rule
 
@@ -48,12 +50,17 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 | vermilion text on `--color-surface` (the primary button, whose dashed border takes the same 5.26 as a non-text mark) | 5.26 |
 | vermilion text on `--color-page` | 4.95 (4.61 on its darkest grain pixels) |
 | vermilion text on `--color-shade` (a name tag inside a vermilion sentence sits on it) | 4.57 |
+| `--color-success` green on `--color-surface` (the frame, and the fill of the tab, of a `success` `Message`) | 5.83 |
+| `--color-on-fill` on green (the word of the tab of a `success` `Message`) | 5.83 |
+| `--color-ink-soft` on `--color-surface` (the tab and the frame of a `note` `Message`) | 6.45 |
+| `--color-ink` on `--color-surface` (the text of every `Message`, the tab and the dashed frame of a `warning`) | 13.36 |
 | the focus ring on page, surface and shade | the same ratios, all above 3 |
 | the focus ring on the title stripe, drawn in `--color-on-fill` because vermilion beside ink is 2.5:1 | 13.36 |
 | vermilion on the lit floor of the map, measured on a capture on 2026-10-10 (floor `#d0cfcd`; the map draws vermilion shapes as `#cd2c0f`) | 3.58 as the interface draws it, 3.40 as the map draws it |
 
 - **The grain.** The page's `--grain` darkens its paper by up to about 4 % toward ink, to `#eee9df`; the test treats that darkest pixel as the page.
-- **Guard.** `src/design/tokens.test.ts` reads `tokens.css` and asserts these pairs from the roles (`--color-danger` and `--color-emphasis` as text on every paper, `--color-on-fill` on both and on ink, `--color-focus` on every paper), so a new value that falls under 4.5:1 or 3:1 fails the test. The map floor is a lit render, not a token, so its ratio is measured by hand.
+- **The green of `success`** (decided with `Message`, 2026-10-11): `--palette-green` is `#3a6b4f`, a muted green like the ink of a stamp, and its only role is `--color-success`, the colour of a right answer. It sits on the paper at 5.83 on the surface, 5.49 on the page, 5.11 on the page with its grain and 5.07 on the shade, and the `--color-on-fill` text of its tab sits on it at 5.83. The game has one theme: the prototype page of the decision also had a dark theme, and there the same role was `#86b896`, which measured 6.67 on its dark surface and 7.54 under its dark fill text; those two numbers are in the test, and `tokens.css` has no dark block. Green and vermilion are hard to tell apart with deuteranopia, so a `success` and an `error` message never differ by colour alone: see `Message`.
+- **Guard.** `src/design/tokens.test.ts` reads `tokens.css` and asserts these pairs from the roles (`--color-danger` and `--color-emphasis` as text on every paper, `--color-on-fill` on both and on ink, `--color-focus` on every paper, and the pairs of every variant of `Message`: its tab text on its fill at 4.5:1 and its frame on every paper at 3:1; and the success green on the surface and under its fill text), so a new value that falls under 4.5:1 or 3:1 fails the test. The map floor is a lit render, not a token, so its ratio is measured by hand.
 - **Left out on purpose.** Vermilion beside ink (the outline of a blocking bar, the Atacante cube beside the intruder's rhombus, the tooltip's `--shadow-tip`) is 2.5:1, below 3:1. The ink outline already separates the shape from the paper (the test asserts that), the shadow is decoration, and the state also changes a shape or a word.
 - **Faded on purpose.** A `soon` card fades all its content with `opacity: 0.5`, on the student's choice (2026-10-10, «me gustan que estén con opacidad»): it is inactive content, a chapter that does not open yet. Measured on the page's paper, its vermilion number lands at 2.25:1, its ink title at 2.98:1 and «Próximamente» at 2.21:1 (5.26, 13.36 and 6.45 without the fade). Keep the fade: the dashed border, the missing shadow and the word «Próximamente» also mark the state, and raising these ratios is the student's call, not a fix.
 
@@ -65,9 +72,9 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 | Size | Value | For |
 |------|-------|-----|
 | `--text-2xs` | 11 px | the "nuevo" mark, the alert mark on the map |
-| `--text-xs` | 12 px | captions, a name on the map, catalog captions |
+| `--text-xs` | 12 px | captions, the tab of a `Message`, a name on the map, catalog captions |
 | `--text-sm` | 13 px | map labels, small buttons, the title stripe of a card |
-| `--text-md` | 14 px | chips, tooltips, feedback, secondary lines, the terminal line |
+| `--text-md` | 14 px | chips, tooltips, the text of a `Message`, secondary lines, the terminal line |
 | `--text-base` | 16 px | body text, buttons, options |
 | `--text-lg` | 18 px | the lede, stamps, the heading of a card under its stripe |
 | `--text-xl` | 22.4 px | `h2`, the incident title |
@@ -78,7 +85,7 @@ Every text on a background reaches 4.5:1 (WCAG 2.2 AA, criterion 1.4.3) and ever
 - **Lines inside a card:** the class `rules` (a list with no bullets, the text at the left and a small value at the right): the rules of a task card and the numbered hops a traceroute prints in the terminal, the hop number written in the line. A time or a mark at the right is `muted`.
 - **Output of a tool:** the lines an `nc` or a `dig` printed, in the class `output` (the «Salida» of the terminal card): one `code` line each (`output__line`, `--text-sm`, `white-space: pre-wrap` so a long line wraps and its tabs stay, `tab-size: 4`), the key lines of a `dig` (its status and its answer) on `--color-shade` with a `--stroke-bold` ink border at the left, and, where a folded output hides lines, a mark in `--color-ink-soft` between dotted rules («⋯ 4 líneas plegadas»). The control that unfolds them is the `small` `Button` («Ver las 17 líneas restantes») with `aria-expanded`, left-aligned in the body of the card. The output has no scroll of its own: it is part of the body of the card on the map, which scrolls it under the cap of the map.
 - **Letters:** `--tracking-caps` (0.06 em) spaces every uppercase text; `--underline-offset` (3 px) lowers the line under links and terms.
-- **Line height** stays with the element: 1.5 for body text, 1.2 for headings and captions, 1.4 for options and tooltips, 1.1 for `h1`.
+- **Line height** stays with the element: 1.5 for body text, 1.2 for headings and captions, 1.4 for options and tooltips, 1.45 for the text of a `Message` and 1 for its tab, 1.1 for `h1`.
 
 ## Space
 
@@ -106,7 +113,7 @@ A 4 px grid. Every margin, padding and gap uses a step, except the one-off measu
 
 ## Primitives
 
-All in `src/design/primitives/` (`Card`, `Tabs` and `Table`, which hold content, in its `panels/` folder), imported through `@/design`. A primitive takes no `className` and no `style`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
+All in `src/design/primitives/` (`Card`, `Tabs` and `Table`, which hold content, in its `panels/` folder), imported through `@/design`. The words a primitive shows (the tab of a `Message`) come in as props from `src/copy/`, because `src/design/` imports no layer. A primitive takes no `className` and no `style`: its look comes from its variant, and where it sits is its parent's business (a gap, a grid, a wrapper inside a card).
 
 | Primitive | Variants | Use it for |
 |-----------|----------|------------|
@@ -116,6 +123,7 @@ All in `src/design/primitives/` (`Card`, `Tabs` and `Table`, which hold content,
 | `Card` | `default`, `soon`; a `section` or, with `as="li"`, a list item; an optional `header` (the title stripe) | every panel, the cards beside a piece of the map included (the task card and the terminal); `soon` for what is not open yet |
 | `Tabs` | — (`name`, `tabs` as `{ id, label, panel }`, `selected`, `onSelect`) | a list of panels of which one shows at a time, chosen by tabs: «Entrada» and «Salida» on the firewall card, and later the inbound and outbound rules of a Security Group and a NACL. A new primitive and not a variant because no other primitive switches between panels with the keyboard and the roles of a tab (`tablist`, `tab`, `tabpanel`, the arrow keys, Home and End); Radix Tabs gives them and `Tabs` dresses them with the tokens. Radix mounts only the selected panel: keep the state of what a panel holds above the tabs |
 | `Table` | — (`caption`, `columns` as `{ id, label }`, `rows` as `{ id, cells, inUse?, onRemove? }`, and the words `emptyText`, `inUseText` and `removeText`) | rows under named columns: the routes of a router, the translations of a NAT, the records of a zone, the cache of a resolver. A row in use wears a pill with its word, not only a colour; a row with `onRemove` ends in a small `Button` named from its row («Quitar 10.0.0.0/16 172.16.0.2»), so no two share a name; an empty table shows `emptyText` under the header. It sits inside a `Card` and its wrapper scrolls, sideways when the columns do not fit and up and down inside a card with a height cap, like a card on the map. A new primitive and not a variant because no other primitive draws columns (`Card` holds it, `Button` removes a row, `ChipTray` picks the entry); the caption is visually hidden because the card already shows the title |
+| `Message` | `note` (default), `success`, `warning`, `error`; `words` (the word of each kind, as props because the design system imports no text) | every warning or error the game tells the player, and any note or right answer that is said in a sentence: Lucía's alert and her reply to a rejected solution, the feedback of a chip or of an option, the reason a traceroute could not leave the sender, the notice page, and the rejection of an entry of a table. A paragraph in the «Pestaña» style (V18, 2026-10-11): text in a frame with a tab of a folder that sticks out above it and names its kind, «NOTA», «✓ CORRECTO», «! AVISO» or «✕ ERROR» (upper case by style), and a frame with a shape of its own: `note` a thin frame in `--color-ink-soft`, `success` a bold frame and a tab filled with `--color-success`, `warning` a dashed frame and tab, `error` a double frame in `--color-danger` and a tab filled with it. The tab is decorative (`aria-hidden`) and a visually hidden word, «Error: », comes before the text, so the kind never depends on colour. It has no role of its own: its owner gives it `role="status"` when it is announced politely or `role="alert"` when it is a danger that happens now, and the same owner keeps the region that holds it mounted. Its tab sticks out above the frame, so it asks for room above (`--space-xl`) and a parent that sets its own margins must leave that room. A new primitive and not a variant because no other primitive can do the job: `Button`, `Choice`, `ChipTray`, `Tabs`, `NameTag` and `Table` are controls or labels, and a `Card` is a panel with a stripe, a title and a shadow, so a one-line message in a card would be a card in a card; before it, four loose classes and two plain paragraphs did this with five looks |
 | `NameTag` | — | a resource's or an actor's own name (`servidor2`, `Atacante`), in text and in map labels |
 | `caption` (class) | `caption`, `caption--soft` | the heading of a list, a level of the roadmap included; the label of a field, a tray or a role, the name of a floor on the map, or the mark of an optional chapter |
 
@@ -141,13 +149,15 @@ A packet on the map is a variant of one piece, drawn flat and facing the camera:
 1. Find the primitive that does the job in the table above. If one does, the new look is a variant: add it to the variant type and the class map of its file, and its rule to `src/design/primitives/primitives.css`, with tokens only.
 2. Add its specimen to `src/ui/catalog/interface-section.tsx`, with its caption in `INTERFACE_TEXT`.
 3. Record the captures on purpose, `pnpm exec playwright test entities --update-snapshots=all`, and check that the difference is only the new specimen. A specimen goes in a free cell of the catalog grid (`src/scene/catalog/catalog-cells.tsx`, 5 columns by 10 rows): a sixth column makes the canvas 1260 px wide, more than the 1232 px section, and a new row, or a longer list of icons, moves the interface section down, which changes its zero-tolerance capture (measured on 2026-10-10: moving the section down by 216 px or by 184 px, a new row of 192 px plus or minus the change in the icon list, changed about 70 % of its pixels, because the page's grain is a 160 px tile anchored to the document; a shift of exactly 160 px still changed 4 pixels, at rounded corners).
-4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, or in `src/design/primitives/panels/` if it holds content like `Card`, `Tabs` and `Table`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 6 of the 12 files the folder rule allows, and `panels/` holds 6 (`CLAUDE.md` guides are not counted); when one of them fills, split it by family before adding a file.
+4. A new primitive is only for a role no primitive can take with a variant. It gets its file in `src/design/primitives/`, or in `src/design/primitives/panels/` if it holds content like `Card`, `Tabs` and `Table`, its test, its specimen and a row in the table above that says why. The tokens stay in `src/design/` and the primitives live in `src/design/primitives/`, which holds 8 of the 12 files the folder rule allows (`Message` and its test made it 8), and `panels/` holds 6 (`CLAUDE.md` guides are not counted); when one of them fills, split it by family before adding a file.
 5. A new token is only for a role no token serves: a colour enters the palette and gets a role; a size, a space or a line joins its scale.
 
 ## What guards the standard
 
 The two zero-tolerance captures of `#/entidades` show any pixel that moves (except the edges pixelmatch counts as anti-aliasing), and TypeScript rejects a `className` or a `style` on a primitive. A third guard reads the colour tokens: the contrast test of `src/design/tokens.test.ts` (see "Contrast"). On the student's choice (2026-10-09) there is no test over the CSS rules, no lint rule against a raw `<button>` or `<a>`, and no rule file for the standard: a review finds a sixth button.
 
-The one exception, decided with style B (2026-10-10), is what a capture cannot see: four Playwright tests of `tests/e2e/entities.spec.ts` measure the computed style in a real browser, not the text of the CSS. Three are the stamp (uppercase, dashed border and text in emphasis, pill, `rotate(-2deg)` at rest and pressed; it moves 2 px down when pressed and does not under reduced motion; the disabled one keeps the tilt) and the fourth reads what the browser draws for the options (the letters A, B and C, from a DOM snapshot, and their accessible names, from the accessibility tree, which do not carry the letter). jsdom sees neither the movement nor `::before`.
+The one exception, decided with style B (2026-10-10), is what a capture cannot see: six Playwright tests of `tests/e2e/entities.spec.ts` measure the computed style or the boxes in a real browser, not the text of the CSS. Three are the stamp (uppercase, dashed border and text in emphasis, pill, `rotate(-2deg)` at rest and pressed; it moves 2 px down when pressed and does not under reduced motion; the disabled one keeps the tilt). The fourth reads what the browser draws for the options (the letters A, B and C, from a DOM snapshot, and their accessible names, from the accessibility tree, which do not carry the letter). The fifth reads the look of every `Message` (`each variant of Message is told apart by a mark or a border shape and not only by colour`: the border style and width of its frame, the word of its tab and that the tab is upper case, so `success` and `error` differ by more than their colour). The sixth, `the tab of a Message sticks out above its frame without covering the message above it`, measures the boxes of a stack of messages: the tab sits on the top edge of its frame and starts at its corner, and it starts below the frame of the message above. jsdom sees neither the movement nor `::before`. A seventh, in `tests/e2e/card-layout.spec.ts`, measures the same in the cards of the game, where a rule of the parent (`.chip-card p` once set every margin to 0) can take away the room the tab asks for.
 
-Two more tests, in `tests/e2e/card-layout.spec.ts`, measure the boxes of the cards of the game in a real browser: nothing is clipped or spilled, no two cards overlap, a stamp keeps a gap above it and the buttons keep a gap between them and from the card's bottom edge, and the last element of each card comes into view with the mouse wheel on a low window.
+The guard for «no warning or error outside the standard» is a rendered-DOM test, not a rule over the CSS or the code: `every warning and error an incident can trigger is drawn by Message and no alert is drawn outside it` (`src/ui/incident/incident-screen.test.tsx`) mounts an incident with a firewall, an identify incident, a case of a diagnose and a send incident with a traceroute the sender cannot send, and checks that each text is inside a `Message` of the variant it should have and that no `role="alert"` is outside one. A message that is new in a view the test does not walk is found by the review, as with a sixth button.
+
+Two more tests of `tests/e2e/card-layout.spec.ts` measure the boxes of the cards of the game in a real browser: nothing is clipped or spilled, no two cards overlap, a stamp keeps a gap above it and the buttons keep a gap between them and from the card's bottom edge, and the last element of each card comes into view with the mouse wheel on a low window.

@@ -39,9 +39,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .term--tip { text-decoration: underline dotted; text-underline-offset: var(--underline-offset); cursor: help; }
 .term-tip { z-index: 100; width: max-content; max-width: min(18rem, calc(100vw - 16px)); padding: var(--space-xs); font: var(--weight-regular) var(--text-md)/1.4 var(--font-body); color: var(--color-on-fill); background: var(--color-ink); border-radius: var(--radius); box-shadow: var(--shadow-tip); pointer-events: none; text-align: left; text-transform: none; letter-spacing: normal; }
 .term__new { margin-left: var(--space-2xs); font: var(--weight-bold) var(--text-2xs) var(--font-body); color: var(--color-emphasis); text-transform: uppercase; letter-spacing: var(--tracking-caps); vertical-align: super; }
-.lucia__alert { margin: var(--space-xs) 0; color: var(--color-danger); font-weight: var(--weight-bold); }
 .lucia__reply { margin: var(--space-xs) 0 var(--space-sm); }
-.lucia__reply p { margin: var(--space-xs) 0; padding: var(--space-xs); border: var(--stroke-regular) dashed var(--color-danger); }
 .tasks { list-style: none; padding: 0; margin: 0 0 var(--space-sm); display: grid; gap: var(--space-xs); }
 .glossary { margin: 0 0 var(--space-sm); }
 .glossary dt { font-weight: var(--weight-bold); }
@@ -53,7 +51,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .hint { margin: var(--space-xs) 0; }
 
 .chip-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
-.chip-card p { margin: 0; }
+.chip-card p:not(.message) { margin: 0; }
 .chip-card__body, .chip-card__actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
 .rules { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2xs); }
 .rules li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); }
@@ -86,8 +84,6 @@ button.stamp { cursor: help; }
 .inspection__fields > div:has(dd + dd) dd { flex-basis: 100%; }
 .inspection__fields dt { margin-top: var(--space-xs); }
 .inspection__fields dd { min-width: 0; margin: 0; }
-.feedback { margin: var(--space-2xs) 0 0; padding: var(--space-xs) var(--space-sm); border-left: var(--stroke-double) solid var(--color-ink-soft); background: var(--color-shade); font-size: var(--text-md); }
-.feedback--wrong { color: var(--color-danger); border-left-color: var(--color-danger); }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
 @media (max-width: 900px) {

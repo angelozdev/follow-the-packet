@@ -175,4 +175,31 @@ describe("Lucía's card", () => {
     render(<Harness actions={[WIDE]} />);
     expect(screen.getByRole('alert')).toHaveTextContent(LUCIA_TEXT.intrusion);
   });
+
+  it('the intrusion alert is an error message and is still announced as an alert', () => {
+    render(<Harness actions={[WIDE]} />);
+    const alert = screen.getByRole('alert');
+    expect(alert.tagName).toBe('P');
+    expect(alert).toHaveClass('message message--error', { exact: true });
+    expect(alert.querySelector('.message__tab')).toHaveTextContent('✕ Error');
+    expect(alert).toHaveTextContent(LUCIA_TEXT.intrusion);
+  });
+
+  it('the rejection of a solution shows an error message per failing task and one for an intruder, inside the status region that was already there', async () => {
+    const user = userEvent.setup();
+    render(<Harness actions={[FIX, WIDE]} />);
+    const status = screen.getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('status')).toBe(status);
+    const replies = Array.from(status.children);
+    expect(replies).toHaveLength(FIRST.tasks.length + 1);
+    for (const reply of replies) {
+      expect(reply.tagName).toBe('P');
+      expect(reply).toHaveClass('message message--error', { exact: true });
+      expect(reply).not.toHaveAttribute('role');
+    }
+    expect(replies[0]).toHaveTextContent(NOT_YET);
+    expect(replies[1]).toHaveTextContent(LUCIA_TEXT.intruding);
+  });
 });

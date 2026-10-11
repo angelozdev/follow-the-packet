@@ -54,6 +54,17 @@ h3, .caption { font: var(--weight-bold) var(--text-xs)/1.2 var(--font-body); tex
 .table__grid code { font-size: var(--text-sm); white-space: normal; overflow-wrap: normal; }
 .table__use { display: inline-block; margin-left: var(--space-2xs); padding: 0 var(--space-xs); font: var(--weight-bold) var(--text-2xs)/1.2 var(--font-body); text-transform: uppercase; letter-spacing: var(--tracking-caps); white-space: nowrap; border: var(--stroke-thin) solid var(--color-ink); border-radius: var(--radius-pill); }
 
+.message { --message-line: var(--color-ink); --message-weight: var(--stroke-regular); position: relative; margin: var(--space-xl) 0 var(--space-xs); padding: var(--space-sm) var(--space-sm) var(--space-xs); font-size: var(--text-md); line-height: 1.45; color: var(--color-ink); background: var(--color-surface); border: var(--message-weight) solid var(--message-line); border-radius: 0 var(--radius) var(--radius) var(--radius); }
+.message__tab { position: absolute; left: calc(var(--space-sm) - var(--message-weight)); bottom: calc(100% + var(--message-weight) - var(--stroke-regular)); display: flex; align-items: center; gap: var(--space-2xs); padding: var(--space-2xs) var(--space-sm); font: var(--weight-bold) var(--text-xs)/1 var(--font-body); text-transform: uppercase; letter-spacing: var(--tracking-caps); white-space: nowrap; color: var(--color-ink); background: var(--color-surface); border: var(--stroke-regular) solid var(--message-line); border-bottom: 0; border-radius: var(--radius-tile) var(--radius-tile) 0 0; }
+.message--note { --message-line: var(--color-ink-soft); }
+.message--note .message__tab { color: var(--color-ink-soft); }
+.message--success { --message-line: var(--color-success); --message-weight: var(--stroke-bold); }
+.message--success .message__tab { color: var(--color-on-fill); background: var(--color-success); }
+.message--warning, .message--warning .message__tab { border-style: dashed; }
+.message--warning .message__tab { border-bottom: 0; }
+.message--error { --message-line: var(--color-danger); --message-weight: var(--stroke-double); border-style: double; }
+.message--error .message__tab { color: var(--color-on-fill); background: var(--color-danger); }
+
 .map-button { pointer-events: auto; font: var(--weight-regular) var(--text-sm) var(--font-body); color: var(--color-ink); background: var(--color-surface); border: var(--stroke-thin) solid var(--color-ink); padding: 1px 6px; white-space: nowrap; cursor: pointer; }
 .name-tag, .map-button--name { border: var(--stroke-thin) solid var(--color-ink-soft); border-radius: var(--radius); background: var(--color-shade); }
 .name-tag { font-family: var(--font-mono); font-weight: var(--weight-regular); font-size: 0.82em; line-height: 1.35; padding: 0 0.35em; white-space: nowrap; }

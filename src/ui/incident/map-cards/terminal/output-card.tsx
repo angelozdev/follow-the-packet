@@ -1,5 +1,5 @@
-import { TERMINAL_TEXT, type TermText } from '@/copy';
-import { Button } from '@/design';
+import { MESSAGE_TEXT, TERMINAL_TEXT, type TermText } from '@/copy';
+import { Button, Message } from '@/design';
 import type { OutputSegment, ToolOutput, TracerouteView } from '@/game';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -25,9 +25,9 @@ function RouteOutput({ route }: { route: TracerouteView }) {
   return (
     <>
       {route.error && (
-        <p className="muted">
+        <Message variant="warning" words={MESSAGE_TEXT}>
           <TaggedText text={route.error} />
-        </p>
+        </Message>
       )}
       {route.lines.length > 0 && (
         <ol className="rules" aria-label={TERMINAL_TEXT.route.label}>

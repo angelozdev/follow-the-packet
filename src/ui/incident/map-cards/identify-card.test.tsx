@@ -122,15 +122,32 @@ describe('identify card', () => {
     }
   });
 
-  it('writes the line of a right chip as a note and the line of a wrong chip as an error', async () => {
+  it('writes the line of a right chip as a success message and the line of a wrong chip as an error', async () => {
     const user = userEvent.setup();
     renderCard();
     await user.click(chip(LISTO));
-    expect(screen.getByRole('status')).toHaveClass('feedback', 'feedback--wrong');
+    expect(screen.getByRole('status')).toHaveClass('message', 'message--error');
     await user.click(chip(RIGHT));
     await user.click(chip(LISTO));
-    expect(screen.getByRole('status')).toHaveClass('feedback');
-    expect(screen.getByRole('status')).not.toHaveClass('feedback--wrong');
+    expect(screen.getByRole('status')).toHaveClass('message', 'message--success');
+    expect(screen.getByRole('status')).not.toHaveClass('message--error');
+  });
+
+  it('a wrong chip shows its lines as an error message and a right one as a success message', async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(chip(LISTO));
+    const wrong = screen.getByRole('status');
+    expect(wrong.tagName).toBe('P');
+    expect(wrong).toHaveClass('message message--error', { exact: true });
+    expect(wrong.querySelector('.message__tab')).toHaveTextContent('✕ Error');
+    expect(wrong).toHaveTextContent(NOTE_FEEDBACK);
+    await user.click(chip(RIGHT));
+    await user.click(chip(LISTO));
+    const right = screen.getByRole('status');
+    expect(right).toHaveClass('message message--success', { exact: true });
+    expect(right.querySelector('.message__tab')).toHaveTextContent('✓ Correcto');
+    expect(right).toHaveTextContent(SUCCESS);
   });
 
   it('a pick counts only after Listo, and Escape keeps the answer saved before', async () => {

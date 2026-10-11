@@ -13,6 +13,9 @@ export const ROADMAP_TEXT = {
   role: { defender: 'Defensor', attacker: 'Atacante' },
 } as const;
 
+/** The word each kind of message wears on its tab, and the word a screen reader hears before its text. */
+export const MESSAGE_TEXT = { note: 'Nota', success: 'Correcto', warning: 'Aviso', error: 'Error' } as const;
+
 export const NOTICE_TEXT = {
   notFound: { title: 'Incidente no encontrado', body: (id: string) => `No existe el incidente ${id}.` },
   locked: { title: 'Incidente bloqueado', body: (id: string) => `Para abrir el ${id}, termina antes el incidente anterior.` },
@@ -52,7 +55,7 @@ export const CATALOG_TEXT = {
 
 export const INTERFACE_TEXT = {
   title: 'Elementos de la interfaz',
-  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas', tabs: 'Pestañas', tables: 'Tablas', output: 'Salida de las herramientas' },
+  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas', tabs: 'Pestañas', tables: 'Tablas', output: 'Salida de las herramientas', messages: 'Avisos y errores' },
   variant: {
     primary: 'principal',
     secondary: 'secundario',
@@ -87,6 +90,10 @@ export const INTERFACE_TEXT = {
     table: 'tabla: una fila fija, una que se quita y una en uso',
     tableEmpty: 'tabla vacía',
     output: 'tarjeta terminal con la salida de dig plegada',
+    note: 'nota',
+    success: 'acierto',
+    warning: 'aviso',
+    error: 'error',
   },
   sample: {
     chips: ['{{icmp}} · {{echo-request}}', '{{icmp}} · {{echo-reply}}'],
@@ -119,6 +126,12 @@ export const INTERFACE_TEXT = {
       remove: 'Quitar',
     },
     dig: { name: 'www.lucia.example', address: '198.51.100.50', server: '198.51.100.8', ttl: 300, queryMs: 2 },
+    messages: {
+      note: 'La zona también tiene sus registros propios. Aquí no se editan.',
+      success: 'Sus tres primeros números son los del bloque: cabe.',
+      warning: 'El propio dispositivo avisa que no pudo entregar el paquete.',
+      error: 'Sus tres primeros números no son los del bloque: no cabe.',
+    },
   },
 } as const;
 

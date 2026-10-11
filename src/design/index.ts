@@ -1,6 +1,8 @@
 export { Button } from './primitives/button';
 export { ChipTray, Choice } from './primitives/choice';
 export type { TrayChip } from './primitives/choice';
+export { Message } from './primitives/message';
+export type { MessageVariant } from './primitives/message';
 export { NameTag } from './primitives/name-tag';
 export { Card } from './primitives/panels/card';
 export { Table } from './primitives/panels/table';

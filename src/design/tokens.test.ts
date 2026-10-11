@@ -43,6 +43,17 @@ function mix(from: string, to: string, share: number): string {
   return `#${blended.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 }
 
+const MESSAGE_TABS = [
+  { text: '--color-ink-soft', fill: '--color-surface', frame: '--color-ink-soft' },
+  { text: '--color-on-fill', fill: '--color-success', frame: '--color-success' },
+  { text: '--color-ink', fill: '--color-surface', frame: '--color-ink' },
+  { text: '--color-on-fill', fill: '--color-danger', frame: '--color-danger' },
+];
+const SUCCESS_GREEN_ON_SURFACE = { light: 5.83, dark: 6.67 };
+const SUCCESS_FILL_TEXT_ON_GREEN = { light: 5.83, dark: 7.54 };
+const PROTOTYPE_DARK = { surface: '#292623', onFill: '#1e1c19', success: '#86b896' };
+const RATIO_DIGITS = 2;
+
 const CONTRAST_CASES = [
   ...ACCENT_ROLES.flatMap((role) =>
     Object.entries(PAPERS).map(([paper, background]) => ({ name: `${role} as text on ${paper}`, foreground: token(role), background, minimum: TEXT_MIN_CONTRAST })),
@@ -80,6 +91,27 @@ describe('design tokens', () => {
 
     it('keeps 4.5 to 1 for the text on the title stripe', () => {
       expect(contrast(token('--color-on-fill'), token('--color-ink'))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+    });
+
+    it('the text of every variant of Message keeps 4.5:1 on its background and its mark keeps 3:1', () => {
+      expect(contrast(token('--color-ink'), token('--color-surface'))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      for (const { text, fill, frame } of MESSAGE_TABS) {
+        expect(contrast(token(text), token(fill))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+        for (const background of Object.values(PAPERS)) expect(contrast(token(frame), background)).toBeGreaterThanOrEqual(NON_TEXT_MIN_CONTRAST);
+      }
+    });
+
+    it('the success green keeps 4.5:1 on the surface and under its fill text, in light and in dark', () => {
+      const green = token('--color-success');
+      expect(green).toBe(token('--palette-green'));
+      expect(contrast(green, token('--color-surface'))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      expect(contrast(token('--color-on-fill'), green)).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      expect(contrast(green, token('--color-surface'))).toBeCloseTo(SUCCESS_GREEN_ON_SURFACE.light, RATIO_DIGITS);
+      expect(contrast(token('--color-on-fill'), green)).toBeCloseTo(SUCCESS_FILL_TEXT_ON_GREEN.light, RATIO_DIGITS);
+      expect(contrast(PROTOTYPE_DARK.success, PROTOTYPE_DARK.surface)).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      expect(contrast(PROTOTYPE_DARK.onFill, PROTOTYPE_DARK.success)).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      expect(contrast(PROTOTYPE_DARK.success, PROTOTYPE_DARK.surface)).toBeCloseTo(SUCCESS_GREEN_ON_SURFACE.dark, RATIO_DIGITS);
+      expect(contrast(PROTOTYPE_DARK.onFill, PROTOTYPE_DARK.success)).toBeCloseTo(SUCCESS_FILL_TEXT_ON_GREEN.dark, RATIO_DIGITS);
     });
 
     it('leaves the ink beside a vermilion shape out of the 3:1 check, because that outline already separates it from every paper', () => {

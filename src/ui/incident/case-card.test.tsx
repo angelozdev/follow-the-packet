@@ -89,6 +89,22 @@ describe('the case card', () => {
     expect(screen.queryByText(EXPLANATION_TEXT.right)).toBeNull();
   });
 
+  it('a wrong cause shows its feedback as an error message that starts with No es eso and the right one as a success message that starts with Correcto', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: optionText(1, wrongIndex(1)) }));
+    const wrong = screen.getByText(EXPLANATION_TEXT.wrong).closest('p');
+    expect(wrong).toHaveClass('message message--error', { exact: true });
+    expect(wrong?.querySelector('.message__tab')).toHaveTextContent('✕ Error');
+    expect(wrong?.querySelector('strong')?.textContent).toBe(EXPLANATION_TEXT.wrong);
+    await user.click(screen.getByRole('button', { name: optionText(1, rightIndex(1)) }));
+    const right = screen.getByText(EXPLANATION_TEXT.right).closest('p');
+    expect(right).toHaveClass('message message--success', { exact: true });
+    expect(right?.querySelector('.message__tab')).toHaveTextContent('✓ Correcto');
+    expect(right?.querySelector('strong')?.textContent).toBe(EXPLANATION_TEXT.right);
+  });
+
   it('after the last case it offers the result and no next case', async () => {
     const user = userEvent.setup();
     const beforeLast = cases.slice(0, -1).flatMap((_, index) => [named(rightIndex(index + 1)), NEXT]);

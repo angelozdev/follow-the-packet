@@ -33,8 +33,15 @@ const OUTPUT_KEY_LINES = [/status: NOERROR/, ';; ANSWER SECTION:', /^www\.lucia\
 const OUTPUT_FIRST_FOLDED = '; <<>> DiG 9.18.50 <<>> www.lucia.example';
 const OUTPUT_LAST_FOLDED = /MSG SIZE/;
 const OUTPUT_LINES_ON_VIEW = 3;
+const MESSAGE_VARIANTS = ['note', 'success', 'warning', 'error'] as const;
+const MESSAGES_DRAWN = { note: 1, success: 2, warning: 1, error: 4 };
+const MESSAGE_TABS = { note: 'Nota', success: '✓ Correcto', warning: '! Aviso', error: '✕ Error' };
+const REGULAR_STROKE_PX = 1;
+const MESSAGE_FRAMES = { note: ['solid', REGULAR_STROKE_PX], success: ['solid', 2], warning: ['dashed', REGULAR_STROKE_PX], error: ['double', 4] };
+const MESSAGE_TAB_LEFT_PX = { min: 11, max: 12 };
+const MESSAGE_TAB_OVERLAP_PX = { min: 1, max: 2 };
 
-test.use({ viewport: { width: 1280, height: 2600 }, deviceScaleFactor: 1 });
+test.use({ viewport: { width: 1280, height: 3000 }, deviceScaleFactor: 1 });
 
 interface Look {
   textTransform: string;
@@ -289,6 +296,97 @@ test.describe('Sin animaciones', () => {
     expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
     expect(shown.y + shown.height, 'the output ends above the foot').toBeLessThanOrEqual(finalFoot.y);
     expect(finalFoot.y + finalFoot.height, 'the foot is still inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
+  });
+
+  test('the interface specimens of Message are part of the capture', async ({ page }) => {
+    await openCatalog(page);
+    const elements = page.getByRole('region', { name: INTERFACE });
+    const region = await elements.boundingBox();
+    if (region === null) throw new Error('the interface section is not on the page');
+    for (const variant of MESSAGE_VARIANTS) {
+      const drawn = elements.locator(`.message--${variant}`);
+      await expect(drawn).toHaveCount(MESSAGES_DRAWN[variant]);
+      await expect(drawn.locator('.message__tab').first()).toHaveText(MESSAGE_TABS[variant]);
+      for (const message of await drawn.all()) {
+        const [frame, tab] = await Promise.all([message.boundingBox(), message.locator('.message__tab').boundingBox()]);
+        if (frame === null || tab === null) throw new Error(`a ${variant} message is not drawn`);
+        expect(isInside(frame, region), `the ${variant} frame is inside the captured region`).toBe(true);
+        expect(isInside(tab, region), `the ${variant} tab is inside the captured region`).toBe(true);
+      }
+    }
+  });
+
+  test('each variant of Message is told apart by a mark or a border shape and not only by colour', async ({ page }) => {
+    await openCatalog(page);
+    const looks = await page.getByRole('region', { name: INTERFACE }).locator('.message').evaluateAll((messages) =>
+      messages.map((message) => {
+        const frame = getComputedStyle(message);
+        const tab = message.querySelector('.message__tab');
+        if (tab === null) throw new Error('a message has no tab');
+        const tabStyle = getComputedStyle(tab);
+        return {
+          variant: [...message.classList].find((name) => name.startsWith('message--'))?.replace('message--', ''),
+          frame: [frame.borderTopStyle, Number.parseFloat(frame.borderTopWidth)],
+          tab: tab.textContent,
+          tabBorder: tabStyle.borderTopStyle,
+          transform: tabStyle.textTransform,
+        };
+      }),
+    );
+    expect(looks).toHaveLength(Object.values(MESSAGES_DRAWN).reduce((sum, count) => sum + count, 0));
+    for (const look of looks) {
+      expect(look.frame, `the frame of a ${look.variant} message`).toEqual(MESSAGE_FRAMES[look.variant as keyof typeof MESSAGE_FRAMES]);
+      expect(look.tab, `the tab of a ${look.variant} message`).toBe(MESSAGE_TABS[look.variant as keyof typeof MESSAGE_TABS]);
+      expect(look.transform).toBe('uppercase');
+    }
+    const shapes = MESSAGE_VARIANTS.map((variant) => JSON.stringify([MESSAGE_FRAMES[variant], MESSAGE_TABS[variant]]));
+    expect(new Set(shapes).size, 'no two variants share a frame and a word').toBe(MESSAGE_VARIANTS.length);
+    expect(new Set(MESSAGE_VARIANTS.map((variant) => JSON.stringify(MESSAGE_FRAMES[variant]))).size, 'no two variants share a frame').toBe(MESSAGE_VARIANTS.length);
+    expect(looks.find((look) => look.variant === 'warning')?.tabBorder, 'the tab of a warning is dashed like its frame').toBe('dashed');
+  });
+
+  test('the tab of a Message sticks out above its frame without covering the message above it', async ({ page }) => {
+    await openCatalog(page);
+    await page.evaluate((variants) => {
+      const stack = document.createElement('div');
+      stack.dataset.testid = 'message-stack';
+      stack.style.cssText = 'position: relative; width: 20rem; padding: 0 1rem 1rem';
+      for (const variant of [...variants, 'error']) {
+        const source = document.querySelector(`.catalog__specimen .message--${variant}`);
+        if (source === null) throw new Error(`the specimen of ${variant} is not on the page`);
+        stack.append(source.cloneNode(true));
+      }
+      document.body.append(stack);
+      stack.scrollIntoView();
+    }, MESSAGE_VARIANTS);
+    const messages = page.getByTestId('message-stack').locator('.message');
+    await expect(messages).toHaveCount(MESSAGE_VARIANTS.length + 1);
+    const boxes = await messages.evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const [frame, tab] = [node.getBoundingClientRect(), node.querySelector('.message__tab')?.getBoundingClientRect()];
+        if (tab === undefined) throw new Error('a message has no tab');
+        const above = document.elementFromPoint(frame.x + frame.width / 2, frame.y + frame.height / 2);
+        const onTab = document.elementFromPoint(tab.x + tab.width / 2, tab.y + tab.height / 2);
+        return {
+          frame: { top: frame.top, bottom: frame.bottom, left: frame.left, right: frame.right },
+          tab: { top: tab.top, bottom: tab.bottom, left: tab.left, right: tab.right },
+          frameOnTop: above?.closest('.message') === node,
+          tabOnTop: onTab?.closest('.message__tab') === node.querySelector('.message__tab'),
+        };
+      }),
+    );
+    boxes.forEach((box, index) => {
+      expect(box.tab.top, `the tab ${index} sticks out above its frame`).toBeLessThan(box.frame.top);
+      expect(box.tab.bottom - box.frame.top, `the tab ${index} sits on the top edge of its frame`).toBeGreaterThanOrEqual(MESSAGE_TAB_OVERLAP_PX.min);
+      expect(box.tab.bottom - box.frame.top, `the tab ${index} does not sink into its frame`).toBeLessThanOrEqual(MESSAGE_TAB_OVERLAP_PX.max);
+      expect(box.tab.left - box.frame.left, `the tab ${index} starts at the left of its frame`).toBeGreaterThanOrEqual(MESSAGE_TAB_LEFT_PX.min);
+      expect(box.tab.left - box.frame.left, `the tab ${index} starts near the corner of its frame`).toBeLessThanOrEqual(MESSAGE_TAB_LEFT_PX.max);
+      expect(box.tab.right, `the tab ${index} ends before the right edge of its frame`).toBeLessThanOrEqual(box.frame.right);
+      expect(box.frameOnTop, `nothing covers the middle of the message ${index}`).toBe(true);
+      expect(box.tabOnTop, `the tab ${index} is not covered by anything`).toBe(true);
+      if (index === 0) return;
+      expect(box.tab.top, `the tab ${index} stays below the message above it`).toBeGreaterThan(boxes[index - 1].frame.bottom);
+    });
   });
 });
 

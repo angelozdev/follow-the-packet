@@ -27,6 +27,9 @@ const WARNED_PING = 'Paquete: ping de tu-laptop a 192.168.1.50. Apareció un avi
 const WARNED_PING_BOX = 'ping de tu-laptop a 192.168.1.50';
 const LONGER_THAN_THE_GRACE_MS = 800;
 const GENTLE_WHEEL_PX = 60;
+const SECURITY_GROUP = 'Security Group servidor2';
+const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
+const ANYWHERE_CHIP = /Anywhere-IPv4/;
 
 const TALL_WINDOWS = [
   { name: '390 px wide', size: { width: 390, height: 844 } },
@@ -148,8 +151,46 @@ async function play(page: Page, scene: Scene) {
   await scene.reach(page);
 }
 
+async function wrongIpOfThePrinter(page: Page) {
+  const printer = await openCard(page, PRINTER);
+  await printer.getByRole('button', { name: DONE, exact: true }).click();
+}
+
+async function intruderAndRejection(page: Page) {
+  const group = await openCard(page, SECURITY_GROUP);
+  await group.getByRole('button', { name: ECHO_REQUEST_CHIP }).click();
+  await group.getByRole('button', { name: ANYWHERE_CHIP }).click();
+  await submit(page);
+}
+
+async function messagesCoveringWhatIsAbove(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('.message')).flatMap((message) => {
+      const tab = message.querySelector('.message__tab')?.getBoundingClientRect();
+      const above = message.previousElementSibling?.getBoundingClientRect();
+      if (tab === undefined || above === undefined || above.height === 0) return [];
+      return tab.top < above.bottom ? [`${message.textContent?.slice(0, 40)}: its tab starts at ${tab.top} and the element above ends at ${above.bottom}`] : [];
+    }),
+  );
+}
+
+const MESSAGE_SCENES: Scene[] = [
+  { name: 'the wrong IP of the printer', level: '01-01', reach: wrongIpOfThePrinter, last: doneOf(PRINTER) },
+  { name: 'the question after Lucía, answered', level: '01-07', reach: answerTheGatewayQuestion, last: button(SEE_RESULT) },
+  { name: 'the case, answered', level: '01-14', reach: answerTheCaseQuestion, last: button(NEXT_CASE) },
+  { name: 'the intruder and the rejection of Lucía', level: '04-01', reach: intruderAndRejection, last: button(SUBMIT) },
+];
+
 test.beforeEach(async ({ page }) => {
   await startWithProgress(page, CHAPTER_1_DONE);
+});
+
+test('the tab of a Message in the cards of the game covers nothing of the element above it', async ({ page }) => {
+  for (const scene of MESSAGE_SCENES) {
+    await play(page, scene);
+    await expect(page.locator('.message').first(), scene.name).toBeVisible();
+    expect(await messagesCoveringWhatIsAbove(page), scene.name).toEqual([]);
+  }
 });
 
 test('no card is clipped and cards never overlap, at 390 px and at desktop width', async ({ page }) => {

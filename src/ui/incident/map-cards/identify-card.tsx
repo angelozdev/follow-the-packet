@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react';
-import { ChipTray } from '@/design';
+import { MESSAGE_TEXT } from '@/copy';
+import { ChipTray, Message } from '@/design';
 import type { IdentifyCard as Identify } from '@/game';
 import { EntityIcon } from '@/scene';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
@@ -52,9 +53,9 @@ export function IdentifyCard({ card, onAnswer, onClose }: IdentifyCardProps) {
           <Fragment key={tray.id}>
             <ChipTray name={tray.name} chips={trayChips(tray.chips)} picked={picks[tray.id] ?? null} onPick={(chipId) => pick(tray.id, chipId)} variant={tray.segmented ? 'segmented' : 'default'} />
             {shown && chosen && chosen.lines.length > 0 && (
-              <p role="status" className={chosen.correct ? 'feedback' : 'feedback feedback--wrong'}>
+              <Message role="status" variant={chosen.correct ? 'success' : 'error'} words={MESSAGE_TEXT}>
                 <TaggedText text={chosen.lines.join(' ')} />
-              </p>
+              </Message>
             )}
           </Fragment>
         );

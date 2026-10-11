@@ -1,5 +1,5 @@
-import { EXPLANATION_TEXT, type TermText } from '@/copy';
-import { Button, Card, Choice } from '@/design';
+import { EXPLANATION_TEXT, MESSAGE_TEXT, type TermText } from '@/copy';
+import { Button, Card, Choice, Message } from '@/design';
 import type { ExplanationOption } from '@/levels';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
@@ -37,9 +37,9 @@ export function OptionList({ options, onPick }: OptionListProps) {
             <TaggedText text={option.text} />
           </Choice>
           {option.feedback !== null && (
-            <p className={option.correct ? 'feedback' : 'feedback feedback--wrong'}>
+            <Message variant={option.correct ? 'success' : 'error'} words={MESSAGE_TEXT}>
               <strong>{option.correct ? EXPLANATION_TEXT.right : EXPLANATION_TEXT.wrong}</strong> <TaggedText text={option.feedback} />
-            </p>
+            </Message>
           )}
         </li>
       ))}

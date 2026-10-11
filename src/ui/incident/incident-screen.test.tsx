@@ -2,8 +2,8 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
-import { INCIDENTS } from '@/levels';
+import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { INCIDENTS, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
@@ -28,6 +28,7 @@ vi.mock('@/scene/game-scene', async () => {
   };
 });
 
+const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const OTHER_DOOR = 'Security Group servidor1';
 const LOCKED_SERVER = 'servidor2 con candado';
@@ -56,6 +57,19 @@ async function placeRule(user: User, source: string) {
   await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
   await user.click(within(card).getByRole('button', { name: source }));
   return card;
+}
+
+function tracingIncident(): SendIncident {
+  const gateway = gatewayIncident();
+  return { ...gateway, send: { ...gateway.send, message: [...gateway.send.message, { id: 'trace', label: '{{traceroute}}', command: 'traceroute', icmpType: 8 }] } };
+}
+
+async function sendTraceToAndres(user: User) {
+  await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+  const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
+  await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
+  await user.click(within(terminal).getByRole('button', { name: 'traceroute' }));
+  await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
 }
 
 describe('incident screen', () => {
@@ -161,6 +175,20 @@ describe('incident screen', () => {
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
     expect(onFinish).toHaveBeenCalledWith(FULL_STARS);
     expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeInTheDocument();
+  });
+
+  it('the feedback of a wrong option of the question of Lucía is an error message', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await placeRule(user, SG_SERVIDOR1);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    const wrong = FIRST.explanation.find((option) => !option.correct);
+    if (!wrong) throw new Error('the question has no wrong option');
+    await user.click(screen.getByRole('button', { name: toPlainText(wrong.text) }));
+    const feedback = screen.getByText(EXPLANATION_TEXT.wrong).closest('p');
+    expect(feedback).toHaveClass('message message--error', { exact: true });
+    expect(feedback?.querySelector('.message__tab')).toHaveTextContent('✕ Error');
+    expect(feedback).toHaveTextContent(toPlainText(wrong.feedback));
   });
 });
 
@@ -284,6 +312,8 @@ describe('incident screen of a send incident with settings', () => {
   const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
   const PING_ANDRES = 'ping de tu-laptop a laptop-andres';
 
+  const TRACING = tracingIncident();
+
   function renderGateway() {
     render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
   }
@@ -325,6 +355,17 @@ describe('incident screen of a send incident with settings', () => {
     await user.click(screen.getByRole('button', { name: PING_ANDRES }));
     expect(screen.getByRole('region', { name: PING_ANDRES })).toHaveTextContent('Llegó y volvió la respuesta.');
     expect(screen.getAllByRole('listitem')[0]).toHaveTextContent(LUCIA_TEXT.done);
+  });
+
+  it('a traceroute the sender cannot send shows its reason as a warning message', async () => {
+    const user = userEvent.setup();
+    render(<IncidentScreen incidents={[TRACING]} incidentId={TRACING.id} nextId={null} onFinish={vi.fn()} />);
+    await sendTraceToAndres(user);
+    const reason = within(screen.getByRole('dialog', { name: 'Terminal de tu-laptop' })).getByText(OUTCOME_TEXT['no-route']);
+    expect(reason.tagName).toBe('P');
+    expect(reason).toHaveClass('message message--warning', { exact: true });
+    expect(reason.querySelector('.message__tab')).toHaveTextContent('! Aviso');
+    expect(reason).not.toHaveAttribute('role');
   });
 });
 
@@ -482,5 +523,65 @@ describe('incident screen of a diagnose incident', () => {
     }
     expect(onFinish).toHaveBeenCalledWith(1);
     expect(screen.getByText(`No acertaste a la primera el caso ${cases.length}.`)).toBeInTheDocument();
+  });
+});
+
+describe('the standard of warnings and errors', () => {
+  const IDENTIFYING = identifyIncident();
+  const DIAGNOSE = diagnoseIncident();
+  const wrongCause = DIAGNOSE.diagnose.cases[0].cause.options.find((option) => !option.correct);
+  const NOT_YET = toPlainText(LUCIA_TEXT.failing(FIRST.tasks[0].text));
+
+  function paragraphsWith(text: string): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>('p')).filter((paragraph) => paragraph.textContent?.includes(text));
+  }
+
+  function expectDrawnBy(text: string, variant: 'success' | 'warning' | 'error') {
+    const paragraphs = paragraphsWith(text);
+    expect(paragraphs, text).toHaveLength(1);
+    expect(paragraphs[0], text).toHaveClass(`message message--${variant}`, { exact: true });
+  }
+
+  function expectNoAlertOutsideAMessage() {
+    expect(screen.queryAllByRole('alert').filter((alert) => !alert.classList.contains('message'))).toEqual([]);
+  }
+
+  it('every warning and error an incident can trigger is drawn by Message and no alert is drawn outside it', async () => {
+    const user = userEvent.setup();
+
+    const firewall = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST.id} nextId={null} onFinish={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expectDrawnBy(NOT_YET, 'error');
+    await placeRule(user, ANYWHERE);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expectDrawnBy(LUCIA_TEXT.intrusion, 'error');
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expectDrawnBy(LUCIA_TEXT.intruding, 'error');
+    expectNoAlertOutsideAMessage();
+    firewall.unmount();
+
+    const identify = render(<IncidentScreen incidents={[IDENTIFYING]} incidentId={IDENTIFYING.id} nextId={null} onFinish={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'impresora' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expectDrawnBy(NOTE_FEEDBACK, 'error');
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expectDrawnBy(NOTE_RULE, 'success');
+    expectNoAlertOutsideAMessage();
+    identify.unmount();
+
+    const diagnose = render(<IncidentScreen incidents={[DIAGNOSE]} incidentId={DIAGNOSE.id} nextId={null} onFinish={vi.fn()} />);
+    if (!wrongCause) throw new Error('the case has no wrong cause');
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.know }));
+    await user.click(screen.getByRole('button', { name: toPlainText(wrongCause.text) }));
+    expectDrawnBy(EXPLANATION_TEXT.wrong, 'error');
+    expectNoAlertOutsideAMessage();
+    diagnose.unmount();
+
+    const tracing = tracingIncident();
+    render(<IncidentScreen incidents={[tracing]} incidentId={tracing.id} nextId={null} onFinish={vi.fn()} />);
+    await sendTraceToAndres(user);
+    expectDrawnBy(OUTCOME_TEXT['no-route'], 'warning');
+    expectNoAlertOutsideAMessage();
   });
 });

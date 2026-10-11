@@ -1,6 +1,6 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, digOutput, type TermId } from '@/copy';
-import { Button, Card, ChipTray, Choice, Table, Tabs } from '@/design';
+import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, MESSAGE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, digOutput, type TermId } from '@/copy';
+import { Button, Card, ChipTray, Choice, Message, Table, Tabs, type MessageVariant } from '@/design';
 import { toolOutputOf } from '@/game';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
@@ -44,6 +44,7 @@ const [FIXED_ROUTE, REMOVABLE_ROUTE, ROUTE_IN_USE] = TABLE.routes.map(({ to, via
   cells: [<code key={to}>{to}</code>, <TaggedText key={via} text={via} />],
 }));
 const TABLE_ROWS = [FIXED_ROUTE, { ...REMOVABLE_ROUTE, onRemove: noPick }, { ...ROUTE_IN_USE, inUse: true, onRemove: noPick }];
+const MESSAGE_VARIANTS: MessageVariant[] = ['note', 'success', 'warning', 'error'];
 const DIG = SAMPLE.dig;
 const DIG_OUTPUT = toolOutputOf(
   'dig',
@@ -97,7 +98,7 @@ function Family({ name, children }: { name: string; children: ReactNode }) {
   );
 }
 
-/** Every element of the interface in every variant and state, drawn with the design-system primitives the screens use and, where the screens use no primitive, with their own plain classes and markup (the slots, the feedback lines, the text styles and the contents of the cards), so its capture shows any change to how one looks. */
+/** Every element of the interface in every variant and state, drawn with the design-system primitives the screens use and, where the screens use no primitive, with their own plain classes and markup (the slots, the text styles and the contents of the cards), so its capture shows any change to how one looks. */
 export function InterfaceSection() {
   return (
     <section aria-labelledby="catalog-interface" className="catalog__section">
@@ -187,14 +188,14 @@ export function InterfaceSection() {
           </ol>
         </Specimen>
         <Specimen caption={VARIANT.right} wide>
-          <p className="feedback">
+          <Message variant="success" words={MESSAGE_TEXT}>
             <strong>{EXPLANATION_TEXT.right}</strong> {SAMPLE.feedback}
-          </p>
+          </Message>
         </Specimen>
         <Specimen caption={VARIANT.wrong} wide>
-          <p className="feedback feedback--wrong">
+          <Message variant="error" words={MESSAGE_TEXT}>
             <strong>{EXPLANATION_TEXT.wrong}</strong> {SAMPLE.feedback}
-          </p>
+          </Message>
         </Specimen>
       </Family>
       <Family name={INTERFACE_TEXT.family.cards}>
@@ -269,11 +270,15 @@ export function InterfaceSection() {
           <Stars count={SAMPLE_STARS} />
         </Specimen>
         <Specimen caption={VARIANT.alert}>
-          <p className="lucia__alert">{LUCIA_TEXT.intrusion}</p>
+          <Message variant="error" words={MESSAGE_TEXT}>
+            {LUCIA_TEXT.intrusion}
+          </Message>
         </Specimen>
         <Specimen caption={VARIANT.reply} wide>
           <div className="lucia__reply">
-            <p>{LUCIA_TEXT.intruding}</p>
+            <Message variant="error" words={MESSAGE_TEXT}>
+              {LUCIA_TEXT.intruding}
+            </Message>
           </div>
         </Specimen>
       </Family>
@@ -294,6 +299,15 @@ export function InterfaceSection() {
         <Specimen caption={VARIANT.output} wide>
           <OutputSpecimen />
         </Specimen>
+      </Family>
+      <Family name={INTERFACE_TEXT.family.messages}>
+        {MESSAGE_VARIANTS.map((variant) => (
+          <Specimen key={variant} caption={VARIANT[variant]} wide>
+            <Message variant={variant} words={MESSAGE_TEXT}>
+              {SAMPLE.messages[variant]}
+            </Message>
+          </Specimen>
+        ))}
       </Family>
     </section>
   );

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
-import { LUCIA_TEXT, TERMS, TERM_ENTITY, termsIn, type TermId, type TermText } from '@/copy';
-import { Button, Card } from '@/design';
+import { LUCIA_TEXT, MESSAGE_TEXT, TERMS, TERM_ENTITY, termsIn, type TermId, type TermText } from '@/copy';
+import { Button, Card, Message } from '@/design';
 import { canAskHint, hintsOf, isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import { isGuided, type IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
@@ -78,11 +78,15 @@ function RejectionReply({ rejection, tasks }: { rejection: Rejection; tasks: Inc
       {tasks
         .filter((task) => rejection.failingTaskIds.includes(task.id))
         .map((task) => (
-          <p key={task.id}>
+          <Message key={task.id} variant="error" words={MESSAGE_TEXT}>
             <TaggedText text={LUCIA_TEXT.failing(task.text)} />
-          </p>
+          </Message>
         ))}
-      {rejection.intruding && <p>{LUCIA_TEXT.intruding}</p>}
+      {rejection.intruding && (
+        <Message variant="error" words={MESSAGE_TEXT}>
+          {LUCIA_TEXT.intruding}
+        </Message>
+      )}
     </>
   );
 }
@@ -99,9 +103,9 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
         <TaggedText text={incident.report} newTerms={reportTerms} />
       </p>
       {isIntruding(session) && (
-        <p key={session.alerts} role="alert" className="lucia__alert">
+        <Message key={session.alerts} variant="error" words={MESSAGE_TEXT} role="alert">
           {LUCIA_TEXT.intrusion}
-        </p>
+        </Message>
       )}
       {withTasks && (
         <>

@@ -41,6 +41,20 @@ describe('App', () => {
     expect(screen.getByText(`Para abrir el ${INCIDENTS[1].id}, termina antes el incidente anterior.`)).toBeInTheDocument();
   });
 
+  it('an unknown incident shows its notice as an error message and a locked one as a warning message', () => {
+    window.location.hash = '#/level/09-99';
+    const unknown = render(<App />);
+    const missing = screen.getByText(NOTICE_TEXT.notFound.body('09-99'));
+    expect(missing).toHaveClass('message message--error', { exact: true });
+    expect(missing.querySelector('.message__tab')).toHaveTextContent('✕ Error');
+    unknown.unmount();
+    window.location.hash = `#/level/${INCIDENTS[1].id}`;
+    render(<App />);
+    const locked = screen.getByText(NOTICE_TEXT.locked.body(INCIDENTS[1].id));
+    expect(locked).toHaveClass('message message--warning', { exact: true });
+    expect(locked.querySelector('.message__tab')).toHaveTextContent('! Aviso');
+  });
+
   it('the roadmap does not link to the entity catalog', () => {
     render(<App />);
     expect(document.querySelector('a[href="#/entidades"]')).toBeNull();
