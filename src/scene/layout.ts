@@ -14,11 +14,12 @@ export const CARD_WIDTH = 300;
 /** Half the width in pixels that a card keeps clear around the label of another piece: the widest label, a name with its lock. */
 export const LABEL_REACH = 64;
 
-/** Where a card anchors on the map and how it keeps clear of it: its distance in pixels from the anchor, the labels it must not cover (null when only the room on screen decides its side) and the point on the ground where each of those pieces stands, in the same order. */
+/** Where a card anchors on the map and how it keeps clear of it: its distance in pixels from the anchor, the labels its side must keep clear (null when only the room on screen decides its side), the label of every piece the card may cover when it docks, and the point on the ground where each of those pieces stands, in the same order as the labels. */
 export interface CardPlacement {
   position: Vec3;
   gap: number;
   avoid: Vec3[] | null;
+  labels: Vec3[];
   rooted: Vec3[];
 }
 
@@ -326,7 +327,7 @@ export function sideForNdc(ndcX: number): CardSide {
   return ndcX > 0 ? 'left' : 'right';
 }
 
-/** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of every piece, its own included (the label of an actor hangs to the left of it), so it never hides the thing the player has to read, or docks in the corner of the map when it cannot. */
+/** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room that keeps it inside the map, or docks in the corner of the map when neither does. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of every piece, its own included (the label of an actor hangs to the left of it), so it never hides the thing the player has to read, or docks in the corner of the map when it cannot. */
 export function cardPlacement(piece: { kind: MapPieceKind; anchorId: string }, others: { kind: MapPieceKind; anchorId: string }[], layout: Layout): CardPlacement {
   const position = cardAnchorPosition(piece, layout);
   const pieces = [piece, ...others];
@@ -334,8 +335,9 @@ export function cardPlacement(piece: { kind: MapPieceKind; anchorId: string }, o
     const [x, z] = piecePosition(other, layout);
     return [x, 0, z];
   });
-  if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null, rooted };
-  return { position, gap: ORIGIN_CARD_GAP, avoid: pieces.map((other) => labelPosition(other, layout)), rooted };
+  const labels = pieces.map((other) => labelPosition(other, layout));
+  if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null, labels, rooted };
+  return { position, gap: ORIGIN_CARD_GAP, avoid: labels, labels, rooted };
 }
 
 /** Returns the horizontal span in pixels, from the map's left edge, that a card covers on a side of its anchor. */
@@ -352,6 +354,11 @@ function opensClear(side: CardSide, anchorX: number, avoidXs: number[], room: nu
 /** Returns how far from its anchor, in pixels, the bottom left corner of a docked card sits, so that corner lands on the map's bottom left corner, `DOCK_MARGIN` in: the card's shadow still fits, and no room that the corner has is lost. The card hangs from that corner, so its height does not matter. */
 export function dockOffset(anchor: Vec2, map: { width: number; height: number }): Vec2 {
   return [DOCK_MARGIN - anchor[0], map.height - DOCK_MARGIN - anchor[1]];
+}
+
+/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it stays inside the map: the height of the map less the margin the dock keeps at its bottom and at its top, and never less than `MIN_DOCK_ROOM`. */
+export function dockHeight(map: { height: number }): number {
+  return Math.max(MIN_DOCK_ROOM, map.height - 2 * DOCK_MARGIN);
 }
 
 /** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it covers no piece: the height from the corner up to the lowest piece the card spans, a piece being its label and all that hangs under it down to its feet (`x` is where its label centers, `bottom` the pixel row of its ground point). A card that grows with what it shows takes this height and scrolls, so the dock does not cover what the player has to read. It is null when no piece stands above the card, and never less than `MIN_DOCK_ROOM`, so a window too short for the map keeps a card that can be used. */

@@ -15,6 +15,7 @@ import {
   computeLayout,
   cumulativeLengths,
   dockOffset,
+  dockHeight,
   dockRoom,
   labelPosition,
   layoutCenter,
@@ -697,6 +698,11 @@ describe('the room of a card docked in the corner', () => {
     expect(dockRoom([{ x: 100, bottom: 700 }], { height: 800 })).toBe(200);
   });
 
+  it('is, with no piece above the card, the height of the map less the margin at its top and at its bottom, and never less than a card that can be used', () => {
+    expect(dockHeight({ height: 800 })).toBe(800 - 2 * 6);
+    expect(dockHeight({ height: 120 })).toBe(200);
+  });
+
   it.each(MAPS)('at $window a terminal docked in the map where 01-10 draws the road takes a height that covers no label', (map) => {
     const road = [...ALL_ROUTERS, GLOBE, SERVER_PIECE];
     const layout = layoutOf(placedDevice('your-laptop'), ...road);
@@ -735,6 +741,21 @@ describe('where a card opens', () => {
     const placement = cardPlacement({ kind: 'firewall', anchorId: 'servidor2' }, [{ kind: 'device', anchorId: 'servidor1' }], computeLayout(lab03Net(), true));
     expect(placement).toMatchObject({ gap: 110, avoid: null });
     expect(CARD_WIDTH).toBe(300);
+  });
+
+  it('the card of a firewall docks, like a terminal, when neither side stays inside a map as narrow as a phone', () => {
+    expect(terminalSide(195, [], 390, 110)).toBe('dock');
+    expect(terminalSide(600, [], 900, 110)).toBe('left');
+  });
+
+  it('every card knows the label and the foot of every piece it may cover when it docks, a firewall card included', () => {
+    const layout = computeLayout(lab03Net(), true);
+    const others = [{ kind: 'device' as const, anchorId: 'servidor1' }];
+    const firewall = cardPlacement({ kind: 'firewall', anchorId: 'servidor2' }, others, layout);
+    const terminal = cardPlacement({ kind: 'device', anchorId: 'servidor2' }, others, layout);
+    expect(firewall.labels).toHaveLength(2);
+    expect(firewall.rooted).toHaveLength(firewall.labels.length);
+    expect(terminal.avoid).toEqual(terminal.labels);
   });
 });
 
