@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Firewall, type Reason } from '@/engine';
-import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
-import type { TermId } from './terms';
+import { isTermId, type TermId } from './terms';
 
 const NET = lab03Net();
 const SG_IN_DROP = 'Se queda en el {{security-group}} de [[servidor2]]: ninguna {{inbound-rule}} lo deja entrar.';
@@ -41,7 +41,7 @@ const CASES: [Reason, string][] = [
   [{ code: 'host-unsolicited-icmp', deviceId: 'servidor2', icmpType: 0 }, 'Un {{echo-reply}} es una respuesta: llegó, y nadie lo contesta.'],
   [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'Llega, pero [[servidor2]] tiene {{icmp-echo-ignore-all}} en 1 y no contesta.'],
   [{ code: 'host-replies', deviceId: 'servidor2' }, '[[servidor2]] contesta.'],
-  [{ code: 'host-refused', deviceId: 'servidor2', port: 80 }, 'Llega, pero ningún programa escucha en el puerto 80: [[servidor2]] lo rechaza.'],
+  [{ code: 'host-refused', deviceId: 'servidor2', port: 80 }, 'Llega, pero ningún {{service|programa}} {{listen|escucha}} en el {{port|puerto}} 80: [[servidor2]] lo rechaza.'],
   [{ code: 'host-accepts', deviceId: 'servidor2', port: 22 }, 'Un programa escucha en el puerto 22 y acepta.'],
   [{ code: 'host-udp-closed', deviceId: 'servidor2', port: 53 }, 'Llega por {{udp|UDP}} al {{port|puerto}} 53, pero ningún programa escucha ahí: [[servidor2]] avisa con {{port-unreachable}}.'],
   [{ code: 'reply-stateful', deviceId: 'servidor2' }, 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.'],
@@ -686,5 +686,84 @@ describe('what a device is told when it asks its resolver for a name', () => {
     const forbidden = /stateful|conversación|recuerda|porque|linux|windows|macos|ubuntu|bloque|filtr/i;
     for (const known of [EVERY_TERM, NONE]) for (const reason of every) expect(toPlainText(describeReason(reason, NAMED, known)), reason.code).not.toMatch(forbidden);
     for (const reason of [answered, alias, missing, failed, noAddress, cached]) expect(toPlainText(describeReason(reason, NAMED, EVERY_TERM))).toContain(resolver.id);
+  });
+});
+
+describe('the reasons chapter 2 adds', () => {
+  const NONE = without(...EVERY_TERM);
+  const NAMED = officeWithNames();
+  const { resolver, zone } = NAME_SERVERS;
+  const asked = { deviceId: 'your-laptop', resolverId: resolver.id, name: `www.${zone}` };
+  const refused: Reason = { code: 'host-refused', deviceId: 'servidor2', port: 80 };
+  const wrongAddress: Reason = { code: 'host-wrong-address', deviceId: 'servidor2', port: 3000, ip: '172.31.38.97' };
+  const udpClosed: Reason = { code: 'host-udp-closed', deviceId: 'servidor2', port: 53 };
+  const unsolicited: Reason = { code: 'nat-no-translation', routerId: officeRouter.id, protocol: 'tcp', ip: officeRouter.uplink, port: 40009 };
+  const byForward: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'andres-laptop', protocol: 'tcp', ip: officeRouter.uplink, port: 8080, toPort: 3000, fixed: true };
+  const byRow: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'your-laptop', protocol: 'udp', ip: officeRouter.uplink, port: 40001, toPort: 51514, fixed: false };
+  const answered: Reason = { code: 'dns-answered', ...asked, ip: NAME_SERVERS.site };
+  const cached: Reason = { code: 'dns-cached', ...asked, ip: NAME_SERVERS.site, ttlLeft: 240 };
+  const hosts: Reason = { code: 'dns-hosts-file', deviceId: 'your-laptop', name: `tienda.${zone}`, ip: NAME_SERVERS.site };
+  const nxdomain: Reason = { code: 'dns-nxdomain', ...asked };
+  const servfail: Reason = { code: 'dns-servfail', ...asked };
+  const noResolver: Reason = { code: 'dns-no-resolver', deviceId: 'your-laptop', name: `www.${zone}`, ip: OFFICE_FLOORS.floor1.printer, hostId: 'printer' };
+  const silent: Reason = { code: 'dns-resolver-silent', deviceId: 'your-laptop', name: `www.${zone}`, ip: OFFICE_FLOORS.server.nobody };
+  const NEW: Reason[] = [wrongAddress, udpClosed, unsolicited, byForward, byRow, answered, cached, hosts, nxdomain, servfail, noResolver, silent];
+  const NET_OF = (reason: Reason) => (reason.code === 'host-refused' || reason.code === 'host-wrong-address' || reason.code === 'host-udp-closed' ? NET : NAMED);
+
+  it('describes host-wrong-address, host-udp-closed, nat-no-translation, nat-forwarded, dns-answered, dns-cached, dns-hosts-file, dns-nxdomain, dns-servfail, dns-no-resolver and dns-resolver-silent with registered terms only', () => {
+    for (const reason of [...NEW, refused]) {
+      const world = NET_OF(reason);
+      const sets = [EVERY_TERM, NONE, ...[...EVERY_TERM].map((missing) => without(missing))];
+      for (const known of sets) {
+        const text = describeReason(reason, world, known);
+        const tagged = termsIn(text);
+        expect(tagged.every(isTermId), reason.code).toBe(true);
+        expect(tagged.filter((id) => !known.has(id)), `${reason.code} tags a term the player does not know`).toEqual([]);
+      }
+    }
+  });
+
+  it('a reason whose term is unknown says only what the player saw', () => {
+    const NO_IP = `www.${zone} no se convirtió en una IP.`;
+    const saw: [Reason, TermId, string, RegExp][] = [
+      [wrongAddress, 'listen-address', 'Llega, pero [[servidor2]] lo rechaza.', /escucha|dirección|servicio/i],
+      [udpClosed, 'port-unreachable', 'Llega, pero [[servidor2]] lo rechaza.', /port unreachable|udp|programa/i],
+      [unsolicited, 'translation-table', NOTHING_CAME_BACK, /tabla|traducci|fila/i],
+      [byRow, 'translation-table', 'Llega a [[tu-laptop]].', /tabla|traducci|fila/i],
+      [byForward, 'port-forwarding', 'Llega a [[laptop-andres]].', /reenv|fila/i],
+      [nxdomain, 'nxdomain', NO_IP, /nxdomain|no existe/i],
+      [servfail, 'servfail', NO_IP, /servfail|no pudo/i],
+      [cached, 'dns-cache', describeReason(answered, NAMED, without('dns-cache')), /caché|cache|TTL/i],
+    ];
+    for (const [reason, term, text, mustNotSay] of saw) {
+      const said = describeReason(reason, NET_OF(reason), without(term));
+      expect(toPlainText(said), reason.code).toBe(toPlainText(text));
+      expect(toPlainText(said), reason.code).not.toMatch(mustNotSay);
+    }
+    expect(toPlainText(describeReason(hosts, NAMED, without('hosts-file')))).toBe(`tu-laptop ya sabía que tienda.${zone} es ${NAME_SERVERS.site}: no preguntó a nadie.`);
+    expect(toPlainText(describeReason(hosts, NAMED, without('hosts-file')))).not.toMatch(/hosts|dns|archivo/i);
+    expect(toPlainText(describeReason(silent, NAMED, without('resolver')))).toContain('servidor de nombres');
+    expect(toPlainText(describeReason(silent, NAMED, without('resolver')))).not.toMatch(/resolver/i);
+    expect(toPlainText(describeReason(refused, NET, without('service', 'listen', 'port')))).toBe('Llega, pero ningún programa escucha en el puerto 80: servidor2 lo rechaza.');
+  });
+
+  it('no text says stateful or gives a reason for a reply to come back', () => {
+    const noReason = /stateful|recuerda|conversación|mismo camino|porque|por eso|ya que|debido/i;
+    const you = device('your-laptop');
+    const floors = withDevice(officeTwoFloorsNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [tcpService(3000), { protocol: 'udp', port: 53, listen: 'all' }] } });
+    const traces = [
+      simulate(floors, tcp(you, OFFICE_FLOORS.floor1.lucia, 3000)),
+      simulate(floors, { ...tcp(you, OFFICE_FLOORS.floor1.lucia, 53), protocol: 'udp' }),
+      simulate(floors, tcp(you, OFFICE_FLOORS.server.ip, 80)),
+      simulate(NAMED, dig(you, `www.${zone}`)),
+      simulate(NAMED, ping(you, `www.${zone}`)),
+    ];
+    const reasons = [...NEW, refused, ...traces.flatMap((trace) => trace.steps.map((step) => step.reason))];
+    for (const known of [EVERY_TERM, NONE]) {
+      for (const reason of reasons) expect(toPlainText(describeReason(reason, NAMED, known)), reason.code).not.toMatch(noReason);
+    }
+    const reply = traces.flatMap((trace) => trace.steps.map((step) => step.reason)).filter((reason) => reason.code === 'reply-stateful');
+    expect(reply.length).toBeGreaterThan(0);
+    for (const reason of reply) expect(describeReason(reason, floors, EVERY_TERM)).toBe('Llega la respuesta.');
   });
 });

@@ -299,7 +299,7 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'host-replies':
       return `${deviceName(net, reason.deviceId)} contesta.`;
     case 'host-refused':
-      return `Llega, pero ningún programa escucha en el puerto ${reason.port}: ${deviceName(net, reason.deviceId)} lo rechaza.`;
+      return `Llega, pero ningún ${word(known, 'service', 'programa')} ${word(known, 'listen', 'escucha')} en el ${word(known, 'port', 'puerto')} ${reason.port}: ${deviceName(net, reason.deviceId)} lo rechaza.`;
     case 'host-wrong-address':
       return `${refusedAtArrival(net, reason.deviceId)} El ${word(known, 'service', 'servicio')} del ${word(known, 'port', 'puerto')} ${reason.port} tiene como {{listen-address}} ${LOOPBACK_IP}, y el ${word(known, 'packet', 'paquete')} va a ${reason.ip}.`;
     case 'host-accepts':

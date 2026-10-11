@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
-import { TRACEROUTE_MAX_HOPS } from '@/engine';
+import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE, OFFICE_FLOORS, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice } from '@/testing';
+import { NAME_SERVERS, OFFICE, actor, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect, type Inspection } from './inspection';
@@ -65,7 +65,7 @@ describe('inspect', () => {
   it('a device of an office shows no public IP whatever the player knows, because how a packet leaves the office is a black box', () => {
     const labels = (session: Session) => plain(inspect(session, PIECE_ID.device('lucia-laptop')))?.fields.map(([label]) => label);
     expect(labels(knowingOnly(office, 'device', 'private-ip', 'public-ip'))).toEqual([WHAT_IS, 'IP privada']);
-    expect(labels(knowingOnly({ ...office, world: officeTwoFloorsNet() }, 'device', 'private-ip', 'public-ip', 'network'))).toEqual([WHAT_IS, 'IP privada', 'Conexión']);
+    expect(labels(knowingOnly({ ...office, world: officeTwoFloorsNet() }, 'device', 'private-ip', 'public-ip', 'network'))).toEqual([WHAT_IS, 'IP privada', 'En la red']);
   });
 
   it('titles a piece with its own name marked as a name, and keeps the entity plain', () => {
@@ -165,22 +165,22 @@ describe('inspect', () => {
   it('a laptop of the office says what a device is, and shows its IP and its firewall', () => {
     expect(plain(inspect(office, PIECE_ID.device('lucia-laptop')))).toEqual({
       title: 'lucia-laptop',
-      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['Conexión', 'Conectado a la red.'], ['firewall', 'firewall lucia-laptop']],
+      fields: [whatIs('device'), ['IP privada', '192.168.1.11'], ['En la red', 'Conectado a la red.'], ['firewall', 'firewall lucia-laptop']],
     });
   });
 
   it('a laptop with no cable keeps its IP and says it is not part of the network, and the rest of the office says it is connected', () => {
     const floors: Session = { ...first, world: officeTwoFloorsNet() };
-    const connection = (deviceId: string) => plain(inspect(floors, PIECE_ID.device(deviceId)))?.fields.filter(([label]) => label === 'IP privada' || label === 'Conexión');
-    expect(connection('guest-laptop')).toEqual([['IP privada', OFFICE_FLOORS.floor1.guest], ['Conexión', 'No está conectado: no forma parte de la red.']]);
-    expect(connection('printer')).toEqual([['IP privada', OFFICE_FLOORS.floor1.printer], ['Conexión', 'Conectado a la red.']]);
+    const connection = (deviceId: string) => plain(inspect(floors, PIECE_ID.device(deviceId)))?.fields.filter(([label]) => label === 'IP privada' || label === 'En la red');
+    expect(connection('guest-laptop')).toEqual([['IP privada', OFFICE_FLOORS.floor1.guest], ['En la red', 'No está conectado: no forma parte de la red.']]);
+    expect(connection('printer')).toEqual([['IP privada', OFFICE_FLOORS.floor1.printer], ['En la red', 'Conectado a la red.']]);
   });
 
   it('shows the connection of a device only in an office and once the term network is known', () => {
     const floors: Session = { ...first, world: officeTwoFloorsNet() };
     const labels = (session: Session, deviceId: string) => plain(inspect(session, PIECE_ID.device(deviceId)))?.fields.map(([label]) => label);
     expect(labels(knowingOnly(floors, 'device', 'ip-address'), 'printer')).toEqual([WHAT_IS, 'dirección IP']);
-    expect(labels(first, 'servidor1')).not.toContain('Conexión');
+    expect(labels(first, 'servidor1')).not.toContain('En la red');
   });
 
   it('calls the IP of a device dirección IP until the term IP privada is known', () => {
@@ -569,5 +569,193 @@ describe('a packet that goes round a loop', () => {
   it('lists every hop of a packet that crossed no more than that, with no line that counts', () => {
     expect(hopsOf(looping, 'ping-ttl-5')).toHaveLength(5);
     expect(hopsOf(looping, 'ping-ttl-5').join(' ')).not.toMatch(/más/);
+  });
+});
+
+describe('the box of a device', () => {
+  const NAMES = namesSendIncident();
+  const base = startSession([NAMES], NAMES.id);
+  const { server } = OFFICE_FLOORS;
+  const tcpApp = { protocol: 'tcp', port: 3000, listen: 'all' } as const;
+  const udpDns = { protocol: 'udp', port: 53, listen: 'loopback' } as const;
+  const served: Session = {
+    ...base,
+    world: [
+      { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpApp, udpDns] },
+      { type: 'setServices', ownerId: server.id, services: [{ protocol: 'tcp', port: 80, listen: 'all' }] },
+    ].reduce((net, action) => applyAction(net, action as NetworkAction), base.world),
+  };
+  const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
+  const services = (session: Session, pieceId = PIECE_ID.device('lucia-laptop')) => plain(inspect(session, pieceId))?.fields.find(([label]) => label === 'Servicios');
+
+  it('a device lists its services behind the term service', () => {
+    expect(services(served)).toEqual(['Servicios', 'TCP 3000 · escucha en todas las IPs', 'UDP 53 · escucha solo en 127.0.0.1']);
+    expect(services(served, PIECE_ID.device('printer'))).toEqual(['Servicios', 'Ninguno.']);
+    expect(services(served, PIECE_ID.actor(server.id))).toEqual(['Servicios', 'TCP 80 · escucha en todas las IPs']);
+    expect(services(without(served, 'service'))).toBeUndefined();
+    expect(services(without(served, 'service'), PIECE_ID.actor(server.id))).toBeUndefined();
+    const vpc = startSession(INCIDENTS, '04-01');
+    expect(plain(inspect(vpc, PIECE_ID.device(S2.id)))?.fields.map(([label]) => label)).not.toContain('Servicios');
+  });
+
+  it('a service says its port and not tcp before tcp is known', () => {
+    expect(services(without(served, 'tcp'))).toEqual(['Servicios', 'puerto 3000 · escucha en todas las IPs', 'UDP 53 · escucha solo en 127.0.0.1']);
+    expect(services(without(served, 'tcp', 'udp'))).toEqual(['Servicios', 'puerto 3000 · escucha en todas las IPs', 'puerto 53 · escucha solo en 127.0.0.1']);
+    expect(services(without(served, 'tcp', 'udp', 'listen-address'))).toEqual(['Servicios', 'puerto 3000', 'puerto 53']);
+    const twice = applyAction(base.world, { type: 'setServices', ownerId: 'lucia-laptop', services: [{ ...tcpApp, port: 53 }, { ...udpDns, listen: 'all' }] });
+    expect(services(without({ ...served, world: twice }, 'tcp', 'udp', 'listen-address'))).toEqual(['Servicios', 'puerto 53']);
+    expect(unknownTerms(inspect(without(served, 'tcp', 'port'), PIECE_ID.device('lucia-laptop'))?.fields.flatMap((field) => [field.label, ...field.lines]) ?? [], without(served, 'tcp', 'port').known)).toEqual([]);
+  });
+
+  it('the field Conexión is called En la red', () => {
+    const labels = plain(inspect(base, PIECE_ID.device('lucia-laptop')))?.fields.map(([label]) => label);
+    expect(labels).toContain('En la red');
+    expect(labels).not.toContain('Conexión');
+    expect(INSPECTION_TEXT.connection).toBe('En la red');
+  });
+});
+
+describe('the box of a packet with ports and names', () => {
+  const NAMES = namesSendIncident();
+  const base = startSession([NAMES], NAMES.id);
+  const { server } = OFFICE_FLOORS;
+  const { zone, resolver } = NAME_SERVERS;
+  const tcpApp = { protocol: 'tcp', port: 3000, listen: 'all' } as const;
+  const inWorld = (session: Session, ...actions: NetworkAction[]): Session => ({ ...session, world: actions.reduce((net, action) => applyAction(net, action), session.world) });
+  const served = inWorld(base, { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpApp] });
+  const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
+  const sentTo = (session: Session, toId: string, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId });
+  const fields = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId))?.fields ?? [];
+  const field = (session: Session, label: string) => fields(session).find(([name]) => name === label);
+  const yourFirewall = (outbound: Rule[]): NetworkAction => ({ type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound } });
+
+  it('a tcp packet shows its ports in the header behind the term port', () => {
+    const nc = sentTo(served, 'lucia', 'nc');
+    expect(nc.sent[0].replied).toBe(true);
+    expect(field(nc, 'Encabezado de ida')).toEqual(['Encabezado de ida', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'Puerto de origen: 51514', 'Puerto de destino: 3000', 'TTL al salir: 64']);
+    expect(field(nc, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', 'IP de origen: 192.168.1.11', 'IP de destino: 192.168.1.10', 'Puerto de origen: 3000', 'Puerto de destino: 51514']);
+    const noPorts = sentTo(without(served, 'port'), 'lucia', 'nc');
+    expect(field(noPorts, 'Encabezado de ida')).toEqual(['Encabezado de ida', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'TTL al salir: 64']);
+    expect(field(sentTo(without(served, 'source-port'), 'lucia', 'nc'), 'Encabezado de ida')?.slice(3)).toEqual(['Puerto de destino: 3000', 'TTL al salir: 64']);
+    expect(field(sentTo(without(served, 'destination-port'), 'lucia', 'nc'), 'Encabezado de ida')?.slice(3)).toEqual(['Puerto de origen: 51514', 'Puerto: 3000', 'TTL al salir: 64']);
+    const refused = sentTo(base, 'lucia', 'nc');
+    expect(field(refused, 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11']);
+    expect(fields(sentTo(served, 'lucia', 'ping')).flat().join(' ')).not.toMatch(/Puerto/);
+    for (const missing of ['port', 'source-port', 'destination-port', 'handshake', 'tcp'] as const) {
+      const unaware = sentTo(without(served, missing), 'lucia', 'nc');
+      const shown = inspect(unaware, unaware.sent[0].pieceId)?.fields ?? [];
+      expect(unknownTerms(shown.flatMap((field) => [field.label, ...field.lines, ...(field.notes ?? [])]), unaware.known), missing).toEqual([]);
+    }
+  });
+
+  it('the box lists the three steps of the greeting once handshake is known', () => {
+    const nc = sentTo(served, 'lucia', 'nc');
+    expect(field(nc, 'Saludo de tres pasos')).toEqual(['Saludo de tres pasos', '1. SYN, de tu-laptop a laptop-lucia', '2. SYN-ACK, de laptop-lucia a tu-laptop', '3. ACK, de tu-laptop a laptop-lucia']);
+    expect(field(sentTo(without(served, 'handshake'), 'lucia', 'nc'), 'Saludo de tres pasos')).toBeUndefined();
+    const refused = sentTo(base, 'lucia', 'nc');
+    expect(field(refused, 'Saludo de tres pasos')).toEqual(['Saludo de tres pasos', '1. SYN, de tu-laptop a laptop-lucia', '2. RST, de laptop-lucia a tu-laptop']);
+    expect(field(sentTo(without(base, 'rst'), 'lucia', 'nc'), 'Saludo de tres pasos')?.at(-1)).toBe('2. rechazo, de laptop-lucia a tu-laptop');
+    expect(field(sentTo(base, 'lucia', 'ping'), 'Saludo de tres pasos')).toBeUndefined();
+  });
+
+  it('a packet that the outbound firewall of its sender drops never left, and the box lists no greeting and no query', () => {
+    const closed = inWorld(served, yourFirewall([]));
+    for (const [toId, messageId] of [['lucia', 'nc'], ['www', 'dig']] as const) {
+      const sent = sentTo(closed, toId, messageId);
+      expect(sent.sent[0].trace.outcome).toBe('timeout');
+      expect(sent.sent[0].trace.steps.at(-1)).toMatchObject({ stage: 'firewall-out', verdict: 'drop' });
+      const labels = fields(sent).map(([label]) => label);
+      expect(labels).not.toContain('Saludo de tres pasos');
+      expect(labels).not.toContain('Consulta y respuesta');
+      expect(labels).toContain('Resultado');
+    }
+    const open = inWorld(served, yourFirewall([{ id: 'all', what: { kind: 'all' }, peer: { kind: 'cidr', cidr: '0.0.0.0/0' } }]));
+    expect(field(sentTo(open, 'lucia', 'nc'), 'Saludo de tres pasos')).toBeDefined();
+  });
+
+  it('the box of a dig shows one query and one answer once udp is known', () => {
+    const dug = sentTo(base, 'www', 'dig');
+    expect(dug.sent[0].replied).toBe(true);
+    expect(field(dug, 'Consulta y respuesta')).toEqual(['Consulta y respuesta', '1. consulta, de tu-laptop a servidor-dns', '2. respuesta, de servidor-dns a tu-laptop']);
+    expect(field(sentTo(without(base, 'udp'), 'www', 'dig'), 'Consulta y respuesta')).toBeUndefined();
+    const nobody = inWorld(base, { type: 'setDnsServer', deviceId: 'your-laptop', server: server.nobody });
+    expect(field(sentTo(nobody, 'www', 'dig'), 'Consulta y respuesta')).toEqual(['Consulta y respuesta', `1. consulta, de tu-laptop a ${server.nobody}`]);
+  });
+
+  it('the box of a dig says whether the answer came from the cache once dns-cache is known', () => {
+    const cached: Session = { ...base, world: withResolverCache(base.world, [{ name: `www.${zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 }]) };
+    const fromCache = sentTo(cached, 'www', 'dig');
+    expect(field(fromCache, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, `La respuesta salió de la caché de ${resolver.id}.`, 'TTL: quedan 240 s.']);
+    const fresh = sentTo(base, 'www', 'dig');
+    expect(field(fresh, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, `${resolver.id} no la tenía en su caché y la buscó.`, 'TTL: 300 s.']);
+    const early = sentTo(without(cached, 'dns-cache'), 'www', 'dig');
+    expect(field(early, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, 'TTL: 240 s.']);
+    expect(field(sentTo(without(cached, 'dns-cache', 'dns-ttl'), 'www', 'dig'), 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`]);
+    expect(field(sentTo(without(cached, 'dns'), 'www', 'dig'), 'DNS')).toBeUndefined();
+    const missing = sentTo(base, 'missing', 'dig');
+    expect(field(missing, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `NXDOMAIN: nadie.${zone} no existe.`]);
+    expect(field(sentTo(without(base, 'nxdomain'), 'missing', 'dig'), 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `nadie.${zone} no se convirtió en una IP.`]);
+  });
+
+  it('the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered', () => {
+    const LEAD = `Antes de mandar el paquete, tu-laptop averigua la IP de www.${zone}.`;
+    const asked = sentTo(base, 'www', 'ping');
+    expect(asked.sent[0].trace.steps[0]).toMatchObject({ stage: 'dns', reason: { code: 'dns-answered' } });
+    expect(field(asked, 'DNS')).toEqual(['DNS', LEAD, `tu-laptop hizo una consulta DNS por www.${zone} a ${resolver.id}, su resolver: la respuesta es ${NAME_SERVERS.site}.`]);
+    expect(field(sentTo(without(base, 'dns-query', 'resolver'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop preguntó por www.${zone} a ${resolver.id}: la respuesta es ${NAME_SERVERS.site}.`]);
+    const hosted = inWorld(base, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: NAME_SERVERS.site }] });
+    expect(field(sentTo(hosted, 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop encontró www.${zone} en su archivo hosts: es ${NAME_SERVERS.site}. No preguntó a nadie.`]);
+    expect(field(sentTo(without(hosted, 'hosts-file'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop ya sabía que www.${zone} es ${NAME_SERVERS.site}: no preguntó a nadie.`]);
+    expect(field(sentTo(without(base, 'dns'), 'www', 'ping'), 'DNS')).toBeUndefined();
+    expect(field(sentTo(base, 'lucia', 'ping'), 'DNS')).toBeUndefined();
+    const failed = sentTo(base, 'missing', 'ping');
+    expect(failed.sent[0].trace.outcome).toBe('unresolved');
+    expect(field(failed, 'DNS')).toEqual(['DNS', `Antes de mandar el paquete, tu-laptop averigua la IP de nadie.${zone}.`]);
+    expect(field(failed, 'Dónde y por qué se detuvo')?.[1]).toContain('NXDOMAIN');
+    const nc = sentTo(inWorld(base, { type: 'setServices', ownerId: server.id, services: [tcpApp] }), 'www', 'nc');
+    expect(field(nc, 'DNS')?.[1]).toBe(LEAD);
+    expect(field(nc, 'Saludo de tres pasos')?.[1]).toBe('1. SYN, de tu-laptop a servidor-internet');
+  });
+});
+
+describe('the fields of a packet with ports and names that leaves the office or comes in', () => {
+  const NAMES = namesSendIncident();
+  const { officeRouter, server } = OFFICE_FLOORS;
+  const OUTSIDE = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
+  const app = { protocol: 'tcp', port: 3000, listen: 'all' } as const;
+  const incident = {
+    ...NAMES,
+    send: {
+      ...NAMES.send,
+      from: [...NAMES.send.from, { id: 'home', endpoint: actor(OUTSIDE.id) }],
+      to: [...NAMES.send.to, { id: 'uplink', address: officeRouter.uplink }],
+      message: [...NAMES.send.message, { id: 'nc-3000', label: '{{nc}} · puerto 3000', command: 'nc', protocol: 'tcp', port: 3000 } as const],
+    },
+  };
+  const base = startSession([incident], incident.id);
+  const actions: NetworkAction[] = [
+    { type: 'setServices', ownerId: server.id, services: [app] },
+    { type: 'addActor', actor: OUTSIDE },
+    { type: 'setForwards', routerId: officeRouter.id, forwards: [{ protocol: 'tcp', publicPort: 3000, toDeviceId: 'andres-laptop', toPort: 3000 }] },
+    { type: 'setServices', ownerId: 'andres-laptop', services: [app] },
+  ];
+  const start: Session = { ...base, world: actions.reduce((net, action) => applyAction(net, action), base.world) };
+  const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
+  const sent = (session: Session, fromId: string, toId: string, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
+
+  it('tags only the terms the player knows in the fields of a packet with ports, names and a translation, whichever term is missing', () => {
+    const cached = [{ name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 }] as const;
+    const world: Session = { ...start, world: withResolverCache(start.world, [...cached]) };
+    const OWN_FIELDS = /^(DNS|Encabezado|Saludo de tres pasos|Consulta y respuesta)/;
+    const sends = [['you', 'server', 'nc-3000'], ['you', 'server', 'ping'], ['you', 'lucia', 'nc'], ['you', 'www', 'dig'], ['you', 'www', 'ping'], ['you', 'missing', 'ping'], ['you', 'missing', 'dig'], ['home', 'uplink', 'nc-3000']] as const;
+    for (const missing of start.known) {
+      const unaware = without(world, missing);
+      const taken = sends.reduce((session, [fromId, toId, messageId]) => sent(session, fromId, toId, messageId), unaware);
+      for (const run of taken.sent) {
+        const shown = (inspect(taken, run.pieceId)?.fields ?? []).filter((candidate) => OWN_FIELDS.test(toPlainText(candidate.label)));
+        const texts = shown.flatMap((candidate) => [candidate.label, ...candidate.lines, ...(candidate.notes ?? [])]);
+        expect(shown.length === 0 || unknownTerms(texts, taken.known).length === 0, `${missing} / ${toPlainText(run.label)}: ${unknownTerms(texts, taken.known)}`).toBe(true);
+      }
+    }
   });
 });

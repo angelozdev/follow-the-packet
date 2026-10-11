@@ -1,4 +1,4 @@
-import type { ClientActor, Direction, FirewallKind, Network, UnreachableKind } from '@/engine';
+import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type Service, type UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, word, type TermText } from '@/copy/term-text';
 import type { TermId } from '@/copy/terms';
@@ -60,7 +60,7 @@ export const INSPECTION_TEXT = {
   headerChanges: 'Fuera de la oficina el {{header|encabezado}} cambia: lo verás en el capítulo 2.',
   source: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('source-ip') ? '{{source-ip}}' : 'Origen'}: ${ip}`,
   destination: (ip: string, known: ReadonlySet<TermId>): TermText => `${known.has('destination-ip') ? '{{destination-ip}}' : 'Destino'}: ${ip}`,
-  connection: 'Conexión',
+  connection: 'En la red',
   connected: 'Conectado a la {{network|red}}.',
   disconnected: 'No está conectado: no forma parte de la {{network|red}}.',
   ttl: (ttl: number): TermText => `{{ttl}} al salir: ${ttl}`,
@@ -72,6 +72,38 @@ export const INSPECTION_TEXT = {
   place: { inside: 'dentro de la oficina', outside: 'fuera de la oficina' } satisfies Record<Exclude<RouterPlace, 'named'>, TermText>,
   roundTrip: '{{rtt|Tiempo de ida y vuelta}}',
   exampleTime: 'Cifra de ejemplo.',
+  services: '{{service|Servicios}}',
+  noServices: 'Ninguno.',
+  service: (service: Service, known: ReadonlySet<TermId>): TermText => {
+    const what = known.has(service.protocol) ? `{{${service.protocol}}} ${service.port}` : `${word(known, 'port', 'puerto')} ${service.port}`;
+    if (!known.has('listen-address')) return what;
+    return `${what} · {{listen-address|${service.listen === 'all' ? 'escucha en todas las IPs' : `escucha solo en ${LOOPBACK_IP}`}}}`;
+  },
+  sourcePort: (port: number): TermText => `{{source-port|Puerto de origen}}: ${port}`,
+  destinationPort: (port: number, known: ReadonlySet<TermId>): TermText => `${known.has('destination-port') ? '{{destination-port|Puerto de destino}}' : word(known, 'port', 'Puerto')}: ${port}`,
+  outHeader: '{{header|Encabezado}} de ida',
+  backHeader: '{{header|Encabezado}} de vuelta',
+  handshake: '{{handshake|Saludo de tres pasos}}',
+  datagrams: '{{udp|Consulta y respuesta}}',
+  exchange: {
+    kinds: { SYN: 'SYN', 'SYN-ACK': 'SYN-ACK', ACK: 'ACK', RST: '{{rst}}', query: 'consulta', response: 'respuesta' } satisfies Record<ExchangeKind, TermText>,
+    unknownRst: 'rechazo',
+    line: (number: number, said: TermText, from: TermText, to: TermText): TermText => `${number}. ${said}, de ${from} a ${to}`,
+  },
+  dns: '{{dns}}',
+  dnsLead: (device: TermText, name: string): TermText => `Antes de mandar el paquete, ${device} averigua la IP de ${name}.`,
+  dnsAnswer: {
+    record: (name: string, type: 'A' | 'CNAME', value: string, known: ReadonlySet<TermId>): TermText => `${name} ${word(known, type === 'A' ? 'a-record' : 'cname-record', type)} ${value}`,
+    from: (resolver: TermText): TermText => `Contestó ${resolver}.`,
+    nxdomain: (name: string): TermText => `{{nxdomain}}: ${name} no existe.`,
+    servfail: (name: string): TermText => `{{servfail}}: no se pudo averiguar ${name}. No dice si el nombre existe.`,
+    noIp: (name: string): TermText => `${name} no se convirtió en una IP.`,
+    noAddress: (name: string, known: ReadonlySet<TermId>): TermText => `${name} existe, pero ${known.has('a-record') ? 'no tiene un {{a-record}}' : 'no tiene ninguna IP asociada'}.`,
+    nobody: (resolver: TermText, known: ReadonlySet<TermId>): TermText => `${resolver} no contestó como ${known.has('resolver') ? 'un {{resolver}}' : 'un servidor de nombres'}.`,
+    fromCache: (resolver: TermText): TermText => `La respuesta salió de la {{dns-cache|caché}} de ${resolver}.`,
+    asked: (resolver: TermText): TermText => `${resolver} no la tenía en su {{dns-cache|caché}} y la buscó.`,
+    ttl: (seconds: number, left: boolean): TermText => `{{dns-ttl|TTL}}: ${left ? 'quedan ' : ''}${seconds} s.`,
+  },
 } as const;
 
 export const ACTOR_ROLE_TEXT: Record<ClientActor['kind'], TermText> = {

@@ -1,4 +1,4 @@
-import type { Endpoint, Network, Notice, Outcome, PacketSpec, Trace } from '@/engine';
+import { stopStep, type Endpoint, type Network, type Notice, type Outcome, type PacketSpec, type Trace } from '@/engine';
 import { nameTag, word, type TermText } from './term-text';
 import type { PacketMessage, TermId } from './terms';
 
@@ -45,9 +45,29 @@ function destinationName(packet: PacketSpec, trace: Trace, net: Network): TermTe
   return trace.destinationId && !staysAtSender ? deviceName(net, trace.destinationId) : packet.to;
 }
 
-/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). A packet that never left its sender (to `127.0.0.1`, `localhost` or its own IP) names the address as it was written, so these packets are told apart. */
+/** The label of a packet that carries ports: its protocol and its ports as the trace shows them, each part once its term is known. The protocol is TCP or UDP once that term is known, and `packet` before, with the port it goes to when `port` is known; the source port comes with `source-port`: «TCP 51514 → 80». With no `known`, every term is known. */
+function transportLabel(protocol: 'tcp' | 'udp', ports: { source: number; destination: number }, known?: ReadonlySet<TermId>): TermText {
+  const knows = (term: TermId): boolean => known === undefined || known.has(term);
+  const destination = knows('port') ? ports.destination : null;
+  if (!knows(protocol)) return destination === null ? '{{packet}}' : `{{packet}} al {{port|puerto}} ${destination}`;
+  if (destination === null) return `{{${protocol}}}`;
+  return `{{${protocol}}} ${knows('source-port') ? `${ports.source} → ` : ''}${destination}`;
+}
+
+function packetService(packet: PacketSpec, trace: Trace, known: ReadonlySet<TermId> | undefined, sourcePort: number | undefined): TermText {
+  const request = trace.header?.request;
+  if (packet.protocol === 'icmp' || request?.sourcePort === undefined || request.destinationPort === undefined) return serviceLabel(packet, known);
+  return transportLabel(packet.protocol, { source: sourcePort ?? request.sourcePort, destination: request.destinationPort }, known);
+}
+
+/** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). A TCP or UDP packet of an office also names its ports, as it leaves its sender (`transportLabel`); one of a VPC has no ports in its trace and keeps `TCP 22`. A packet that never left its sender (to `127.0.0.1`, `localhost` or its own IP) names the address as it was written, so these packets are told apart. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
-  return `${serviceLabel(packet, known)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
+  return `${packetService(packet, trace, known, undefined)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
+}
+
+/** The label of a packet once the NAT of the office has changed its source: the same as `packetLabel`, with the public source port of `Trace.translation` («TCP 40001 → 80»). A packet that was not translated, or whose translation has no port (an ICMP message has none), keeps its one label. */
+export function packetLabelOutside(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
+  return `${packetService(packet, trace, known, trace.translation?.outside.port)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
 }
 
 /** Describes a traceroute the way `packetLabel` describes a packet, as what, from whom and to whom: it is called traceroute (and packet while that term is unknown), whatever probe it ended with. */
@@ -60,10 +80,10 @@ export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder' | 'warned';
 
 const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró y no debía.', warned: 'Apareció un aviso.' };
 
-export type WarnedBy = 'router' | 'sender';
-export type WarningTerm = Extract<TermId, 'host-unreachable' | 'time-exceeded' | 'port-unreachable'>;
+export type WarnedBy = 'router' | 'host' | 'sender';
+export type WarningTerm = Extract<TermId, 'host-unreachable' | 'net-unreachable' | 'time-exceeded' | 'port-unreachable'>;
 
-/** A warning that reached the sender of a packet: the term that names it and who generated it. */
+/** A warning that reached the sender of a packet: the term that names it and who generated it. `host` is the equipment the datagram was addressed to (a device, a server of the internet or a router answering for itself), which returns Port Unreachable and is no router of the road; `sender` is the sender's own device. */
 export interface Warning {
   term: WarningTerm;
   by: WarnedBy;
@@ -76,10 +96,15 @@ const WARNING_TERM: Record<Notice['kind'], WarningTerm> = {
   'port-unreachable': 'port-unreachable',
 };
 
-/** Returns the warning that a notice of the trace stands for: named by Destination Host Unreachable (a net unreachable shares the ICMP type 3, and the game has one term for both), by Time Exceeded or by Port Unreachable, and generated by a router or by the sender's own device. The sender's own device warns without the packet leaving it, so nothing comes back from anywhere. A Port Unreachable comes from the host the packet reached, and `by` has no value for a host yet: it says `router` unless the host is the sender itself. */
-export function warningOf(notice: Notice, packet: Pick<PacketSpec, 'from'>): Warning {
-  const own = packet.from.kind === 'device' && notice.fromId === packet.from.id;
-  return { term: WARNING_TERM[notice.kind], by: own ? 'sender' : 'router' };
+function warnedBy(notice: Notice, packet: Pick<PacketSpec, 'from'>): WarnedBy {
+  if (packet.from.kind === 'device' && notice.fromId === packet.from.id) return 'sender';
+  return notice.kind === 'port-unreachable' ? 'host' : 'router';
+}
+
+/** Returns the warning that a notice of the trace stands for: Destination Host Unreachable, Time Exceeded or Port Unreachable, and generated by a router, by the host the packet was for or by the sender's own device. A net unreachable shares the ICMP type 3 with a host unreachable, and the game names it Destination Net Unreachable only once `known` has that term; with no `known` (unlike the other texts, where no `known` means every term is known) and before the term, the game has one term for both. The sender's own device warns without the packet leaving it, so nothing comes back from anywhere. */
+export function warningOf(notice: Notice, packet: Pick<PacketSpec, 'from'>, known?: ReadonlySet<TermId>): Warning {
+  const term = notice.kind === 'net-unreachable' && known?.has('net-unreachable') ? 'net-unreachable' : WARNING_TERM[notice.kind];
+  return { term, by: warnedBy(notice, packet) };
 }
 
 /** Names a stamp for a screen reader: the packet it stands for and how it ended, since its mark is only drawn. */
@@ -118,4 +143,23 @@ export function describeOutcome(outcome: Outcome, known: ReadonlySet<TermId>, de
   const hidden = UNKNOWN_OUTCOME[outcome];
   if (hidden && !known.has(hidden.term)) return hidden.text(destination);
   return outcome === 'ttl-exceeded' ? ttlExceededText(word(known, 'drop', 'descartó')) : OUTCOME_TEXT[outcome];
+}
+
+const REJECTED = 'Llegó, pero lo rechazaron.';
+
+function portUnreachableResult(known: ReadonlySet<TermId>, destination?: TermText): TermText {
+  if (!known.has('port-unreachable')) return REJECTED;
+  return destination === undefined ? 'Llegó, pero ningún programa lo recibió: el equipo devolvió el aviso {{port-unreachable}}.' : `Llegó a ${destination}, pero ningún programa lo recibió: devolvió el aviso {{port-unreachable}}.`;
+}
+
+function wrongAddressResult(known: ReadonlySet<TermId>): TermText {
+  if (!known.has('listen-address')) return REJECTED;
+  return `Llegó, pero el ${word(known, 'service', 'servicio')} de ese ${word(known, 'port', 'puerto')} no escucha en la {{ip-address|IP}} a la que fue el paquete.`;
+}
+
+/** Returns the text of the result of a trace with what the player knows. It is `describeOutcome` except for the two results whose outcome alone cannot say what happened: a refusal says whether nobody listens on the port (`OUTCOME_TEXT.refused`) or the service listens on another address, and a Port Unreachable says that the datagram arrived at the equipment, that no program received it and that the equipment returned the warning, which is not what a Destination Host Unreachable means. Each is a hidden cause: while its term (`listen-address`, `port-unreachable`) is unknown, the text says only that the packet arrived and was rejected. None names an operating system or gives a reason. */
+export function describeResult(trace: Trace, known: ReadonlySet<TermId>, destination?: TermText): TermText {
+  if (trace.outcome === 'unreachable' && trace.notice?.kind === 'port-unreachable') return portUnreachableResult(known, destination);
+  if (trace.outcome === 'refused' && stopStep(trace)?.reason.code === 'host-wrong-address') return wrongAddressResult(known);
+  return describeOutcome(trace.outcome, known, destination);
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { simulate } from '@/engine';
-import { EVERY_TERM, OFFICE_FLOORS, actor, device, lab03Net, officeTwoFloorsNet, ping } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, deviceName, endpointName, packetLabel, packetMessage, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
+import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Network } from '@/engine';
+import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
+import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetLabelOutside, packetMessage, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -188,5 +188,138 @@ describe('roundTripText', () => {
   it('drops the noise that adding decimals leaves, and never rounds a figure the engine gave', () => {
     expect(roundTripText(0.1 + 0.2)).toBe('0,3 ms');
     expect(roundTripText(0.125)).toBe('0,125 ms');
+  });
+});
+
+const APP_PORT = 3000;
+const WEB_PORT = 80;
+const serving = (listen: 'all' | 'loopback' = 'all'): Network => withDevice(officeTwoFloorsNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [tcpService(APP_PORT, listen)] } });
+const withoutTerms = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
+
+describe('the label of a packet with ports', () => {
+  const floors = officeTwoFloorsNet();
+  const { server } = OFFICE_FLOORS;
+  const toLucia = tcp(device('your-laptop'), OFFICE_FLOORS.floor1.lucia, APP_PORT);
+  const toServer = tcp(device('your-laptop'), server.ip, WEB_PORT);
+
+  it('a tcp packet is labelled with its protocol and ports', () => {
+    expect(packetLabel(toLucia, simulate(serving(), toLucia), serving())).toBe('{{tcp}} 51514 → 3000 de [[tu-laptop]] a [[laptop-lucia]]');
+    expect(packetLabel(toServer, simulate(floors, toServer), floors, EVERY_TERM)).toBe('{{tcp}} 51514 → 80 de [[tu-laptop]] a [[servidor-internet]]');
+    const named = officeWithNames();
+    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    expect(packetLabel(question, simulate(named, question), named, EVERY_TERM)).toBe('{{udp}} 51514 → 53 de [[tu-laptop]] a [[servidor-dns]]');
+    const given = { ...toLucia, sourcePort: 40000 };
+    expect(packetLabel(given, simulate(serving(), given), serving())).toBe('{{tcp}} 40000 → 3000 de [[tu-laptop]] a [[laptop-lucia]]');
+  });
+
+  it('the label of a packet names its protocol only once the term of the protocol is known', () => {
+    const trace = simulate(serving(), toLucia);
+    const label = (known: ReadonlySet<TermId>) => packetLabel(toLucia, trace, serving(), known);
+    expect(label(withoutTerms('tcp'))).toBe('{{packet}} al {{port|puerto}} 3000 de [[tu-laptop]] a [[laptop-lucia]]');
+    expect(label(withoutTerms('tcp', 'port'))).toBe('{{packet}} de [[tu-laptop]] a [[laptop-lucia]]');
+    expect(label(withoutTerms('source-port'))).toBe('{{tcp}} 3000 de [[tu-laptop]] a [[laptop-lucia]]');
+    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    const named = officeWithNames();
+    expect(packetLabel(question, simulate(named, question), named, withoutTerms('udp'))).toBe('{{packet}} al {{port|puerto}} 53 de [[tu-laptop]] a [[servidor-dns]]');
+  });
+
+  it('a translated packet is labelled with its private source port before the router and its public source port after it', () => {
+    const [first, second] = simulateSequence(floors, [{ packet: toServer, at: 0 }, { packet: { ...toServer, from: device('lucia-laptop') }, at: 0 }]);
+    expect(packetLabel(toServer, first, floors)).toBe('{{tcp}} 51514 → 80 de [[tu-laptop]] a [[servidor-internet]]');
+    expect(packetLabelOutside(toServer, first, floors)).toBe('{{tcp}} 40001 → 80 de [[tu-laptop]] a [[servidor-internet]]');
+    expect(packetLabelOutside({ ...toServer, from: device('lucia-laptop') }, second, floors)).toBe('{{tcp}} 40002 → 80 de [[laptop-lucia]] a [[servidor-internet]]');
+    expect(packetLabelOutside(toServer, first, floors, withoutTerms('tcp'))).toBe('{{packet}} al {{port|puerto}} 80 de [[tu-laptop]] a [[servidor-internet]]');
+  });
+
+  it('a packet that is not translated keeps one label along its whole path', () => {
+    const inside = simulate(serving(), toLucia);
+    expect(inside).not.toHaveProperty('translation');
+    expect(packetLabelOutside(toLucia, inside, serving())).toBe(packetLabel(toLucia, inside, serving()));
+    const pinged = ping(device('your-laptop'), server.ip);
+    const trace = simulate(floors, pinged);
+    expect(trace.translation?.protocol).toBe('icmp');
+    expect(trace.translation?.outside).toEqual({ ip: OFFICE_FLOORS.officeRouter.uplink });
+    expect(packetLabelOutside(pinged, trace, floors)).toBe(packetLabel(pinged, trace, floors));
+    expect(packetLabel(pinged, trace, floors)).toBe('{{ping}} de [[tu-laptop]] a [[servidor-internet]]');
+    const vpc = lab03Net();
+    const ssh = tcp(device('servidor1'), '172.31.38.97', 22);
+    expect(packetLabel(ssh, simulate(vpc, ssh), vpc)).toBe('TCP 22 de [[servidor1]] a [[servidor2]]');
+    expect(packetLabelOutside(ssh, simulate(vpc, ssh), vpc)).toBe('TCP 22 de [[servidor1]] a [[servidor2]]');
+  });
+});
+
+describe('describeResult', () => {
+  const lucia = OFFICE_FLOORS.floor1.lucia;
+  const you = device('your-laptop');
+  const udpToLucia = { ...tcp(you, lucia, 53), protocol: 'udp' } as const;
+
+  it('the result of a refusal says whether nobody listens on the port or the service listens on another address', () => {
+    const closed = simulate(withDevice(officeTwoFloorsNet(), 'lucia-laptop', {}), tcp(you, lucia, WEB_PORT));
+    const wrong = simulate(serving('loopback'), tcp(you, lucia, APP_PORT));
+    expect([closed.outcome, wrong.outcome]).toEqual(['refused', 'refused']);
+    expect(describeResult(closed, EVERY_TERM)).toBe(OUTCOME_TEXT.refused);
+    expect(describeResult(closed, EVERY_TERM)).toBe('Llegó, pero ningún programa lo estaba esperando.');
+    expect(describeResult(wrong, EVERY_TERM)).toBe('Llegó, pero el {{service|servicio}} de ese {{port|puerto}} no escucha en la {{ip-address|IP}} a la que fue el paquete.');
+    expect(describeResult(wrong, withoutTerms('listen-address'))).toBe('Llegó, pero lo rechazaron.');
+    expect(describeResult(wrong, withoutTerms('service', 'port'))).toBe('Llegó, pero el servicio de ese puerto no escucha en la {{ip-address|IP}} a la que fue el paquete.');
+    for (const text of [describeResult(closed, EVERY_TERM), describeResult(wrong, EVERY_TERM), describeResult(wrong, withoutTerms('listen-address'))]) {
+      expect(toPlainText(text)).not.toMatch(/linux|windows|macos|firewall|sistema operativo|porque/i);
+    }
+  });
+
+  it('the result of a Port Unreachable says the datagram arrived and no program received it, and never that a service did', () => {
+    const closed = simulate(withDevice(officeTwoFloorsNet(), 'lucia-laptop', {}), udpToLucia);
+    const wrong = simulate(withDevice(officeTwoFloorsNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [{ protocol: 'udp', port: 53, listen: 'loopback' }] } }), udpToLucia);
+    for (const trace of [closed, wrong]) {
+      expect([trace.outcome, trace.notice?.kind]).toEqual(['unreachable', 'port-unreachable']);
+      expect(describeResult(trace, EVERY_TERM, '[[laptop-lucia]]')).toBe('Llegó a [[laptop-lucia]], pero ningún programa lo recibió: devolvió el aviso {{port-unreachable}}.');
+      expect(describeResult(trace, EVERY_TERM)).toBe('Llegó, pero ningún programa lo recibió: el equipo devolvió el aviso {{port-unreachable}}.');
+      expect(describeResult(trace, withoutTerms('port-unreachable'), '[[laptop-lucia]]')).toBe('Llegó, pero lo rechazaron.');
+      expect(describeResult(trace, EVERY_TERM)).not.toBe(OUTCOME_TEXT.unreachable);
+      expect(toPlainText(describeResult(trace, EVERY_TERM))).not.toMatch(/No llegó|servicio|recibió un/);
+    }
+  });
+
+  it('keeps the text of every other result as describeOutcome gives it', () => {
+    const floors = officeTwoFloorsNet();
+    const nobody = simulate(floors, ping(you, OFFICE_FLOORS.floor1.nobody));
+    const expired = simulate(floors, { ...ping(you, OFFICE_FLOORS.server.ip), ttl: 1 });
+    const answered = simulate(floors, ping(you, OFFICE_FLOORS.floor1.printer));
+    for (const trace of [nobody, expired, answered]) {
+      for (const known of [EVERY_TERM, withoutTerms('host-unreachable', 'time-exceeded', 'echo-reply'), new Set<TermId>()]) {
+        expect(describeResult(trace, known, '[[impresora]]')).toBe(describeOutcome(trace.outcome, known, '[[impresora]]'));
+      }
+    }
+  });
+});
+
+describe('the warning of a trace', () => {
+  const you = device('your-laptop');
+  const from = you;
+  const noRoutes = (): Network => applyAction(officeTwoFloorsNet(), { type: 'removeRoute', routerId: OFFICE_FLOORS.officeRouter.id, to: ROUTE_DEFAULT });
+
+  it('a warning that a host sends is labelled as the host that returned it and not as a router', () => {
+    const lucia = simulate(withDevice(officeTwoFloorsNet(), 'lucia-laptop', {}), { ...tcp(you, OFFICE_FLOORS.floor1.lucia, 53), protocol: 'udp' });
+    const server = simulate(officeTwoFloorsNet(), { ...tcp(you, OFFICE_FLOORS.server.ip, 53), protocol: 'udp' });
+    expect(lucia.notice).toMatchObject({ kind: 'port-unreachable', fromId: 'lucia-laptop' });
+    expect(server.notice).toMatchObject({ kind: 'port-unreachable', fromId: OFFICE_FLOORS.server.id });
+    expect(warningOf(lucia.notice!, { from })).toEqual({ term: 'port-unreachable', by: 'host' });
+    expect(warningOf(server.notice!, { from })).toEqual({ term: 'port-unreachable', by: 'host' });
+    const own = simulate(withDevice(officeTwoFloorsNet(), 'your-laptop', {}), { ...tcp(you, '127.0.0.1', 53), protocol: 'udp' });
+    expect(own.notice).toMatchObject({ kind: 'port-unreachable', fromId: 'your-laptop' });
+    expect(warningOf(own.notice!, { from })).toEqual({ term: 'port-unreachable', by: 'sender' });
+    const routed = simulate(officeTwoFloorsNet(), { ...ping(you, OFFICE_FLOORS.server.ip), ttl: 1 });
+    expect(warningOf(routed.notice!, { from }).by).toBe('router');
+  });
+
+  it('names the warning of a router with no route Destination Net Unreachable once that term is known, and Destination Host Unreachable before', () => {
+    const trace = simulate(noRoutes(), ping(you, OFFICE_FLOORS.server.ip));
+    expect(trace.notice).toMatchObject({ kind: 'net-unreachable', fromId: OFFICE_FLOORS.officeRouter.id });
+    expect(warningOf(trace.notice!, { from }, EVERY_TERM)).toEqual({ term: 'net-unreachable', by: 'router' });
+    expect(warningOf(trace.notice!, { from }, withoutTerms('net-unreachable'))).toEqual({ term: 'host-unreachable', by: 'router' });
+    expect(warningOf(trace.notice!, { from })).toEqual({ term: 'host-unreachable', by: 'router' });
+    const noHost = simulate(officeTwoFloorsNet(), ping(you, OFFICE_FLOORS.server.nobody));
+    expect(noHost.notice?.kind).toBe('host-unreachable');
+    expect(warningOf(noHost.notice!, { from }, EVERY_TERM).term).toBe('host-unreachable');
   });
 });

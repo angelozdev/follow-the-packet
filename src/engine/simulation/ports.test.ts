@@ -79,6 +79,19 @@ describe('the source port and the exchange of a trace', () => {
     for (const trace of traces) expect(trace.exchange).toEqual([syn]);
   });
 
+  it('a packet that the outbound firewall of its sender drops never left and lists no exchange, tcp or udp', () => {
+    const closedOut = (): Network => ({ ...withDevice(listening(), 'your-laptop', { firewallIds: ['fw-you'] }), firewalls: [hostFirewall('you', [], [])] });
+    const traces = [simulate(closedOut(), tcp(you, OFFICE.lucia, LISTENING_PORT)), simulate(closedOut(), udp(you, OFFICE.lucia, DNS_PORT))];
+    for (const trace of traces) {
+      expect(trace.outcome).toBe('timeout');
+      expect(stagesOf(trace).at(-1)).toBe('firewall-out');
+      expect(trace.header?.request).toMatchObject({ destinationPort: expect.any(Number) });
+      expect(trace).not.toHaveProperty('exchange');
+    }
+    const letOut = { ...closedOut(), firewalls: [hostFirewall('you', [], [tcpRule('you-out', OFFICE.lucia)])] };
+    expect(simulate(letOut, tcp(you, OFFICE.lucia, LISTENING_PORT)).exchange).toEqual([syn, synAck, ack]);
+  });
+
   it('a udp datagram that gets a warning or no answer lists only its query', () => {
     const traces = [simulate(officeNet(), udp(you, OFFICE.lucia, DNS_PORT)), simulate(officeTwoFloorsNet(), udp(you, OFFICE_FLOORS.server.ip, DNS_PORT)), simulate(guarded(), udp(you, OFFICE.lucia, DNS_PORT))];
     expect(traces.map((trace) => trace.outcome)).toEqual(['unreachable', 'unreachable', 'timeout']);
@@ -375,9 +388,10 @@ describe('udp services and Port Unreachable in a trip', () => {
     for (const trace of [inbound, closedAndInbound, outbound]) {
       expect(trace).not.toHaveProperty('notice');
       expect(trace).not.toHaveProperty('rttMs');
-      expect(trace.exchange).toEqual([query]);
       expect(trace.tcpdump).toEqual([]);
     }
+    expect([inbound.exchange, closedAndInbound.exchange]).toEqual([[query], [query]]);
+    expect(outbound).not.toHaveProperty('exchange');
   });
 
   it('the reply of a udp datagram is never stopped by a firewall, outbound or inbound', () => {
