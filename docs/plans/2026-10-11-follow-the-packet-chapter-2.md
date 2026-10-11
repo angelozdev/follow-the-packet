@@ -95,14 +95,15 @@ El estudiante aprobó el 2026-10-11 la recomendación del plan en estas decision
 | D-14 | A en las dos partes: el paquete sin fila no se entrega (timeout) y la fila fija la da el mundo del 09 | — |
 | D-16 | A, `traceroute -I` se queda | B queda como seguimiento en el backlog. |
 | D-17 | A, construir los catorce como están y separar solo si la prueba humana lo pide | Decidida antes del 2026-10-11. |
+| Mudanza de e2e (Tarea 1) | A, un alias `@e2e/*` → `tests/e2e/*` en `tsconfig.json` y una línea en la regla `folder-structure` | El lint prohíbe `../` en `tests/**` y los tests no tenían alias: sin él, un spec en `tests/e2e/chapter-1/` no podía importar los ayudantes. Contestada el 2026-10-11 por la sesión principal. Ninguna dependencia nueva. |
 
-Siguen abiertas: D-3 (V10), D-5, D-6, D-8, D-9 (V12), D-13 y D-15, y las visuales V11 y V13 a V17.
+Siguen abiertas: D-3 (V10), D-5, D-6, D-8, D-9 (V12), D-13, D-15 y D-18, y las visuales V11 y V13 a V17.
 
 ## Decisiones abiertas
 
 Contestadas el 2026-10-11: D-1, D-2, D-4, D-7, D-10, D-11, D-12, D-14, D-16 y D-17 (ver «Decisiones abiertas ya contestadas»). Las opciones siguen abajo como registro.
 
-Diecisiete decisiones esperan al estudiante. Cada una trae sus opciones, una recomendación que sigue la regla de rigor («entre una opción más simple y otra que modela la realidad, la segunda») y el porqué; una opción inexacta se marca como tal. Las que son visuales (D-3, D-4, D-9 y D-10) se las lleva la Tarea 0 con prototipos renderizados. Ninguna tarea de motor espera una decisión visual; las tareas que dependen de una decisión lo dicen en su encabezado.
+Dieciocho decisiones esperan al estudiante (D-18 se abrió el 2026-10-11, después de la Tarea 0). Cada una trae sus opciones, una recomendación que sigue la regla de rigor («entre una opción más simple y otra que modela la realidad, la segunda») y el porqué; una opción inexacta se marca como tal. Las que son visuales (D-3, D-4, D-9 y D-10) se las lleva la Tarea 0 con prototipos renderizados. Ninguna tarea de motor espera una decisión visual; las tareas que dependen de una decisión lo dicen en su encabezado.
 
 ### D-1. El test dorado del capítulo 4: regenerar o no
 
@@ -227,6 +228,17 @@ El encargo dice que el caso del bucle «el jugador lo encuentra con traceroute y
 - **A. Construir los catorce como están,** cada denso en su tarea, y separar solo si la prueba humana de su bloque lo pide.
 - **B. Separar ya** el 01, el 02, el 03 y el 10.
 - **Recomendación: A.** El estudiante aprobó los catorce y separar un incidente corre los ids siguientes sin costo (no hay progreso que conservar). **Cómo se separarían:** el 01 en «servicio y puerto» y «`nc` e IP:puerto»; el 02 en «el saludo» y «los puertos de ida y de vuelta»; el 03 en «rechazo» (cerrado y dirección de escucha) y «silencio» (filtrado); el 10 en «DNS, consulta y resolver» y «UDP, `dig` y DHCP». Cada separación es un cambio de ids y de `introduces`, sin motor nuevo.
+
+### D-18. El término «puertos conocidos» y el 3306 y el 5432
+
+- **Problema de rigor (2026-10-11).** «Puertos conocidos» es el nombre formal que IANA da al rango de 0 a 1023: «System Ports, also known as the Well Known Ports» (RFC 6335 §6). El 3306 y el 5432 caen en los «User Ports», de 1024 a 49151. Llamarlos «puertos conocidos» es **inexacto**. La investigación ya lo anota (`docs/research/2026-10-10-follow-the-packet-chapter-2-concepts.md`, línea 289). Además, la regla del estudiante dice que la lista de puertos del 05 es 22, 80, 443, 3306 y 5432, y la línea 79 de este plan lo pone en la definición de `well-known-ports`, mientras que la tabla del spec dice «Números que cada servicio usa por costumbre, como el 22 de SSH. Es una convención: nada obliga a respetarla.».
+- **Provisional.** La Tarea 2 registra el id `well-known-ports` con la definición del spec. El id no cambia sin la respuesta del estudiante.
+- **Opciones que se barajan.** Ninguna se elige aquí.
+  - **A. Pasar a «puerto por defecto»:** el número que un servicio usa si nadie lo cambia. El id, el nombre oficial y la definición de la Tarea 2 cambian, y también el nombre que el 05 presenta.
+  - **B. Mantener «puertos conocidos»** con una definición que diga el rango de IANA (de 0 a 1023). El id y el nombre no cambian; el 3306 y el 5432 quedan fuera de ese rango, así que la definición y la lista del 05 tendrían que decir qué hacen con ellos.
+- **Cuándo.** La respuesta llega antes de la Tarea 26 (el 05), que es la que presenta el término.
+- **Bloquea.** La Tarea 26.
+- **Recomendación: la decide el estudiante; llega antes de la Tarea 26.**
 
 ## Decididas sin el estudiante (para revisar)
 
@@ -1347,7 +1359,7 @@ Propósito: que el estudiante vea, renderizadas, las opciones visuales y contest
 
 ### Tarea 26: Bloque 2 · 04 y 05
 
-**Presenta:** bit, prefijo, CIDR, máscara de subred (04); rango de puertos, SSH, puertos conocidos (05) (fichas 02-04 y 02-05). **Depende de:** D-6.
+**Presenta:** bit, prefijo, CIDR, máscara de subred (04); rango de puertos, SSH, puertos conocidos (05) (fichas 02-04 y 02-05). **Depende de:** D-6 y D-18.
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/ports-and-rules/04-is-it-in-my-block.ts` y `05-the-whole-rule.ts`.
