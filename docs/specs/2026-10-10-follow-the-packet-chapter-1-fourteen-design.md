@@ -1,6 +1,6 @@
 # Sigue el paquete: capítulo 1 «Tu primer día» en catorce subcapítulos
 
-Fecha: 2026-10-10 · Estado: los 14 subcapítulos, las decisiones y lo que queda fuera los aprobó el estudiante el 2026-10-10. Ese mismo día decidió también lo que el plan dejaba abierto (D-1 a D-10, abajo); solo la elección visual (D-6) sigue abierta, en el plan.
+Fecha: 2026-10-10 · Estado: los 14 subcapítulos, las decisiones y lo que queda fuera los aprobó el estudiante el 2026-10-10. Ese mismo día decidió también lo que el plan dejaba abierto (D-1 a D-10, abajo; D-11 y D-12, en el plan) y, tras jugar el 09 y el 10, D-13 a D-16 (abajo). Ya no queda ninguna decisión abierta: la elección visual (D-6) también se decidió, en el plan. El capítulo está implementado (Tareas 0 a 28 del plan); falta la prueba humana del capítulo entero.
 
 Sustituye los cuatro incidentes del capítulo 1 (01-01 a 01-04) que describe `docs/specs/2026-10-09-follow-the-packet-chapter-1-design.md`: su sección «Capítulo 1» (mundo e incidentes) y el riesgo «Primer día lento». De aquel spec sigue valiendo todo lo demás: el catálogo de entidades, el modelo genérico, la mecánica `send`, la escalera de términos, el progreso y desbloqueo, y las reglas de copia. Plan de implementación: `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md`.
 
@@ -19,6 +19,7 @@ El capítulo sigue siendo el 1, de nivel 0 («Bases»), con el título «Tu prim
 3. Solo usa términos de subcapítulos anteriores. El texto de una pieza, de una ficha, de un motivo y de un sello cuenta como texto.
 4. Una sola pregunta de explicación por incidente, atómica, con tres opciones y una correcta. Cada opción incorrecta refleja un error real.
 5. No hay predicciones. Lo que un subcapítulo quiere que el jugador anticipe se pregunta al final, en la explicación a Lucía. Así lo decidió el estudiante: «NO quiero predecir. Me gusta explicar a Lucía al final.»
+6. Nunca un comportamiento distinto de la red sin decirle al jugador por qué (D-14). Si la red se porta distinto de lo que ya vio, el report, la explicación correcta o el takeaway nombran el dispositivo o router cuya configuración cambió.
 
 ## Decisiones del estudiante (2026-10-10)
 
@@ -41,6 +42,13 @@ Decididas después, sobre lo que el plan dejó abierto (cada una con su número 
 - **D-9. Sin predicciones.** «NO quiero predecir. Me gusta explicar a Lucía al final.» Lo que el 03, el 06 y el 09 iban a predecir pasa a su pregunta de explicación final.
 - **D-10. La terminal muestra la sintaxis de Linux:** `ping -t 3 <ip>` y `traceroute -I <ip>` (el traceroute del juego usa ICMP Echo). En el Mac del estudiante `-t` es un tiempo límite y el TTL se fija con `-m`; las instancias EC2 de los labs sí son Linux.
 
+Decididas después de jugar el 09 y el 10 (el plan las trae completas):
+
+- **D-13. El bucle del 09 tiene causa visible.** Al estudiante el bucle le pareció «mágico», porque nada decía qué había cambiado. El report del 09 dice que alguien cambió la configuración de `router-proveedor` y que ahora devuelve todo lo que recibe a `router-oficina`. La explicación correcta da la cadena completa: la oficina se lo pasa al proveedor, el proveedor se lo devuelve, cada router decide solo por la IP de destino y no recuerda si el paquete ya pasó por él, y lo que está mal es la configuración, nunca un router que «se confundió». Sin la palabra «ruta» (capítulo 2). El jugador sigue sin configurar rutas.
+- **D-14. Nunca un comportamiento distinto de la red sin decirle al jugador por qué.** Es una regla del proyecto (`.claude/rules/explained-behavior-changes.md`) y un test compara el mundo antes y después de los cambios de cada incidente y de cada caso del 14 (`src/levels/explained-changes.test.ts`). Lo que cambió en este spec: el 06 dice que cada dispositivo de los dos pisos le manda a `router-oficina` lo que va a otra red local; el 08, que `router-oficina` ahora manda hacia internet lo que no es de la oficina; el 10 nombra, en la explicación correcta, lo que cambió en `router-proveedor`; el 04-02 dice qué regla quitaron y cuál pusieron. El 14 reestructura sus cambios: el firewall de `tu-laptop` que deja salir todo y la reparación del tramo roto del 10 por el proveedor (ya no ocurre en el 11) son cambios del propio 14, y su report los dice una vez; el caso 7 cierra esa salida y su causa correcta lo dice.
+- **D-15. El 10 no dice dónde murió el ping hasta que corre un traceroute (opción B).** Quien manda un ping perdido en silencio no sabe dónde murió; solo el traceroute muestra los routers que contestan. Hasta entonces la caja del ping dice solo «timeout: pasó el tiempo de espera y no volvió nada», el paquete se detiene justo afuera de `tu-laptop` con el sello «?» y el mapa no dibuja ningún router. Después de un traceroute aparecen los routers que sus líneas nombran (`router-oficina` y `router-proveedor`); `router-destino`, que ninguna línea nombra, no se dibuja nunca. El sello del ping no se mueve: un ping solo nunca revela dónde murió.
+- **D-16. Ningún texto lee una línea `*` de traceroute como el lugar donde murió el paquete.** Algunos routers no mandan Time Exceeded, o un firewall bloquea esos avisos, y aun así reenvían el paquete. Lo que sí se concluye en el 10: el tramo roto está, muy probablemente, después del último router que respondió, porque desde ahí no responde nada más hasta el máximo de saltos y el ping tampoco vuelve; un router que no avisa no siempre es el corte. Fuente en la tabla de abajo.
+
 ## El mapa que crece
 
 La oficina de Lucía, cada incidente parte del mundo del anterior. Los números exactos pueden ajustarse al escribir los textos; lo que no cambia es el reparto de qué aparece en cada bloque.
@@ -58,7 +66,7 @@ La oficina de Lucía, cada incidente parte del mundo del anterior. Los números 
 | `router-oficina` | `192.168.1.1` (puerta de enlace del piso 1), `192.168.2.1` (piso 2) y su salida a internet | 06 |
 | Proveedor y camino a internet | dos routers más y un servidor que contesta ping, con direcciones de documentación (RFC 5737) | 08 |
 | Impresora de otra oficina | `10.0.0.10`, una IP privada que no usa esta oficina (D-3) | 08 |
-| Un bucle entre dos routers | dado por el mundo; el jugador no configura rutas | 09 |
+| Un bucle entre dos routers | dado por el mundo; el jugador no configura rutas y el report dice qué cambió (D-13) | 09 |
 | Un tramo roto, sin aviso | detrás de un router | 10 |
 | Firewall de `laptop-marta` visible | descarta sin avisar | 11 |
 | Firewall de `tu-laptop` con regla de salida | | 13 |
@@ -78,7 +86,7 @@ Direcciones de documentación (RFC 5737): `192.0.2.0/24`, `198.51.100.0/24` y `2
 | 07 | A quién mandas lo de afuera | Sin puerta de enlace, tu laptop no saca nada de su red | puerta de enlace predeterminada | un ping al otro piso desde una laptop sin puerta de enlace | no sale; tras configurarla, vuelve |
 | 08 | La red de redes | Internet no enruta las IP privadas | internet, IP privada, IP pública | un ping al servidor de internet y otro a la impresora de otra oficina | el primero vuelve; el segundo muere en el camino |
 | 09 | Contar saltos | Cada router resta 1 al TTL; en 0 lo descarta y avisa | salto (hop), TTL, Time Exceeded | pings con TTL elegido en un bucle entre dos routers | Time Exceeded desde el router que lo tiró |
-| 10 | Ver el camino | traceroute enseña cada router del camino | traceroute | un ping que se pierde y un traceroute | el último router que contesta marca dónde se corta |
+| 10 | Ver el camino | traceroute enseña cada router del camino | traceroute | un ping que se pierde y un traceroute | los routers que contestan muestran el camino; el corte está, muy probablemente, después del último (D-15, D-16) |
 | 11 | El guardia | Un firewall descarta sin avisar | firewall, tráfico, descartar (drop) | el ping a `laptop-marta` del 05 | muere en su firewall, sin aviso |
 | 12 | Tu primera regla | Todo lo que ninguna regla permite queda denegado | regla, permitir, denegar, denegación por defecto, mínimo privilegio | el ping de soporte y el de una visita | entra solo el de soporte |
 | 13 | Entrar y salir | Una regla vale para entrada o para salida | entrada (inbound), salida (outbound) | un ping que tu propia laptop no deja salir | sale con una regla de salida |
@@ -100,8 +108,8 @@ Direcciones de documentación (RFC 5737): `192.0.2.0/24`, `198.51.100.0/24` y `2
 - **06 · Tu red y el router.** El ping al otro piso pasa por el router; el de la impresora, no. Lucía pregunta al final por qué.
 - **07 · A quién mandas lo de afuera.** Tu laptop no tiene puerta de enlace y no saca paquetes de su red. Eliges la correcta.
 - **08 · La red de redes.** Dos pings: al servidor de internet llega; a la impresora de otra oficina muere, porque miles de redes usan esa IP y internet no la enruta. Cómo sale el paquete de la oficina es una caja negra.
-- **09 · Contar saltos.** Cada router resta 1 al TTL. En un bucle entre dos routers el TTL llega a 0 y el router que lo tira avisa. El bucle viene dado; el jugador diagnostica, no configura rutas.
-- **10 · Ver el camino.** Cada línea de traceroute es la IP del router que avisó. Donde se corta, el último router que contestó señala el tramo roto.
+- **09 · Contar saltos.** Cada router resta 1 al TTL. En un bucle entre dos routers el TTL llega a 0 y el router que lo tira avisa. El bucle viene dado; el jugador diagnostica, no configura rutas. El report dice por qué hay bucle: alguien cambió la configuración de `router-proveedor` (D-13).
+- **10 · Ver el camino.** Cada línea de traceroute es la IP del router que avisó. Mientras no corre un traceroute, el ping perdido no dice dónde murió y el mapa no dibuja ningún router (D-15). Un `*` no es el lugar donde murió el paquete (D-16): el tramo roto está, muy probablemente, después del último router que contestó.
 
 ### Bloque 4 · El guardia (11, 12 y 13)
 
@@ -193,6 +201,7 @@ Todas las fuentes se consultaron el 2026-10-10. Una cita entre comillas es liter
 | TTL por defecto de macOS: `net.inet.ip.ttl` = 64 | `sysctl net.inet.ip.ttl`, verificado por el copiloto en el Mac del estudiante (macOS 26.6.2) el 2026-10-10 |
 | traceroute usa el campo TTL y provoca un ICMP TIME_EXCEEDED de cada router; empieza con TTL 1 y sube de uno en uno; un `*` es una sonda sin respuesta tras el tiempo de espera; `-I` usa ICMP ECHO | `traceroute(8)`, FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=traceroute&sektion=8 |
 | traceroute de Linux: «utilizes the IP protocol's time to live (TTL) field and attempts to elicit an ICMP TIME_EXCEEDED response from each gateway»; el método por defecto envía datagramas UDP a puertos «unlikely»; `-I, --icmp`: «Use ICMP ECHO for probes»; un `*` si no hay respuesta; el máximo por defecto es 30 saltos | `traceroute(8)` del paquete traceroute 2.1.6, página del 11 de octubre de 2006, en la copia empaquetada de Arch Linux: https://man.archlinux.org/man/traceroute.8 (consultada el 2026-10-10). Es la página del proyecto (https://traceroute.sourceforge.net/, que no publica el texto del manual); man7.org y Debian no respondieron, así que no hay otra copia primaria |
+| Un `*` no es el lugar donde murió el paquete: hay routers que «either don't send ICMP "time exceeded" messages or send them with a ttl too small to reach us»; el ejemplo de la página muestra los saltos 12 y 14 a 17 sin respuesta y el 18 respondiendo | `man traceroute` de macOS, verificado por el copiloto en el Mac del estudiante el 2026-10-10 (no lo leí yo; la frase entre comillas es la que él devolvió) |
 | tracert envía Echo Request con TTL creciente; «When the TTL on a packet reaches 0, the router is expected to return an ICMP time Exceeded message to the source computer.»; muestra las interfaces cercanas de cada router y `*` si no responde | Microsoft Learn, `tracert`: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/tracert |
 | ping de Windows: el mensaje «Request timed out» aparece cuando no llega el Echo Reply en el tiempo de espera (4000 ms por defecto); `/i` fija el TTL | Microsoft Learn, `ping`: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ping |
 | DROP: «DROP means to drop the packet on the floor.»; REJECT «is used to send back an error packet in response to the matched packet: otherwise it is equivalent to DROP» | `iptables(8)` e `iptables-extensions(8)`, Debian bookworm: https://manpages.debian.org/bookworm/iptables/iptables.8.en.html · https://manpages.debian.org/bookworm/iptables/iptables-extensions.8.en.html |
@@ -208,7 +217,7 @@ Lo siguiente **no** se pudo comprobar en una fuente primaria. El juego no lo afi
 - **Que el ping de Linux muestre el aviso con la IP de tu propia laptop como origen** («From 192.168.1.10 … Destination Host Unreachable»). El núcleo genera el ICMP y iputils tiene la cadena (fuentes primarias), pero la línea completa solo se vio descrita en guías de diagnóstico y foros.
 - **El texto del aviso en Windows.** La página oficial de `ping` solo documenta «Request timed out». «Destination host unreachable» con la IP de la propia laptop como origen solo aparece en foros de Microsoft Q&A y en archivos de foros, que no son documentación oficial; además se reporta que antes de Windows 7 una IP sin dueño daba «Request timed out».
 - **El TTL por defecto de Windows.** La página de `ping` de Windows dice «the default TTL value for the host» sin cifra. Se suele decir 128, pero no se verificó.
-- **Que el `traceroute` de macOS se comporte como el de FreeBSD o el de Linux.** Solo se leyó la página de FreeBSD y la del paquete 2.1.6 de Linux; no se comprobó el de macOS.
+- **Que el `traceroute` de macOS se comporte como el de FreeBSD o el de Linux.** Solo se leyó la página de FreeBSD y la del paquete 2.1.6 de Linux. De macOS solo se verificó lo que su página dice de los `*` (D-16); el resto de su comportamiento no se comprobó.
 - **La razón por la que un firewall descarta en vez de rechazar** («para no revelar que hay alguien»). Las páginas de iptables solo dicen qué hace cada acción, no por qué se elige. Es la razón que el estudiante aprobó como idea del subcapítulo 11; el juego afirma el mecanismo y presenta la razón como idea de diseño, sin citar a nadie.
 - **Las cifras del RTT** (loopback casi cero, un par de milisegundos en la oficina, decenas hacia internet) son ilustrativas, no medidas. Ninguna fuente las fija.
 - **Si los firewalls de equipo comunes dejan pasar el loopback por defecto** (ufw, pf en macOS y el Firewall de Windows Defender). No se verificó. El juego no da ninguna razón de que esos pings vuelvan y declara la simplificación (ver «Simplificaciones declaradas»).
@@ -226,6 +235,6 @@ Lo siguiente **no** se pudo comprobar en una fuente primaria. El juego no lo afi
 
 - **Densidad de 03 y 12.** El 03 presenta cinco términos (`solicitud` y `respuesta` dejaron de ser términos, D-7) y una pregunta final sobre el encabezado de la respuesta. El 12 presenta cinco términos y dos fichas de origen que necesitan nombre. Son los primeros en separarse tras la prueba humana. Separar un incidente corre los ids siguientes, sin costo: no hay progreso que conservar (D-1).
 - **Un firewall que no se ve.** El 05 pide un misterio que el 11 resuelve. Si el firewall aparece en el mapa, en un sello «Bloqueado» o en un motivo antes del 11, el misterio se estropea y la escalera de términos falla. El plan lo trata con una regla (las piezas, los sellos y los motivos dependen de lo que el jugador ya conoce) y una prueba por texto.
-- **Primer día lento, otra vez.** Catorce subcapítulos antes del capítulo 4 es más que cuatro. Cada uno es corto por diseño y cada bloque tiene una prueba humana propia; si alguno sobra, se fusiona con el vecino.
+- **Primer día lento, otra vez.** Catorce subcapítulos antes del capítulo 4 es más que cuatro. Cada uno es corto por diseño y el estudiante prueba el capítulo entero una sola vez, al final (lo decidió el 2026-10-10, y no una prueba por bloque); si alguno sobra, se fusiona con el vecino.
 - **Un bucle y un tramo roto son modelos de red.** Que el juego los traiga como mundo dado y no como rutas editables evita enseñar la tabla de rutas antes del capítulo 2; a cambio, el modelo guarda rutas que ninguna pantalla muestra.
 - **Lo que el capítulo 4 hereda.** Presentar `public-ip` y `internet` en el capítulo 1 cambia lo que muestra la caja de inspección del capítulo 4 (D-5, aceptado). Las trazas del capítulo 4 no cambian.

@@ -2,6 +2,8 @@
 
 Fecha: 2026-10-09 · Estado: diseño aprobado por partes en la conversación; falta la revisión del spec escrito
 
+> **Nota (2026-10-10):** los incidentes 01-01 a 01-04 de este spec (su sección «Capítulo 1 · Introducción: “Tu primer día”», con el mundo y los cuatro incidentes) y el riesgo «Primer día lento» los sustituye el [spec del capítulo 1 en catorce subcapítulos](2026-10-10-follow-the-packet-chapter-1-fourteen-design.md), que ya está implementado. De este spec siguen valiendo el catálogo de entidades, el modelo genérico, la mecánica `send`, la escalera de términos, el progreso y el desbloqueo, y las reglas de copia.
+
 Amplía `docs/specs/2026-10-08-follow-the-packet-live-incidents-design.md`. De aquel spec siguen valiendo, sin cambios salvo lo que se dice aquí:
 - la mecánica `filter` del capítulo 4;
 - la escalera de términos;

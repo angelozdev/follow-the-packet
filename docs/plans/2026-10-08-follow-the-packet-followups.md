@@ -14,6 +14,8 @@
 
 > **Estado (temario de 33 capítulos, `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`):** `CHAPTERS` y el roadmap pasan a los 33 capítulos del juego. Queda abierto I1 (bloque I); I2 lo decidió el estudiante. Siguen pendientes E4, E8, E9, G2, G9, A1, A2 y H1 a H3.
 
+> **Estado (capítulo 1 en catorce subcapítulos, `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md`):** las Tareas 0 a 28 están hechas. Sigue abierto I1: los catorce incidentes citan la misma lección y la misma nota que los cuatro de antes. El puente del 04-01 se cerró: ya no presenta ningún término del capítulo 1 y un test lo exige. El arreglo de la distribución de las tarjetas (`c8bc2f4`) toca a E8, pero no se cambió su estado. H1 habla del 01-03 de los cuatro incidentes de antes, que el capítulo retiró. Hay que volver a mirarlo en el mapa nuevo, así que sigue pendiente. Lo que quedó del capítulo está en el bloque J. Siguen pendientes E4, E8, E9, G2, G9, A1, A2 y H1 a H3.
+
 Las ideas y el rumbo del juego van en la [hoja de ruta](follow-the-packet-roadmap.md).
 
 Backlog, no plan. La próxima sesión lo convierte en plan en plan mode (Opus diseña; subagentes Sonnet implementan; revisión final con Codex `gpt-6.1-sol` `high`).
@@ -148,7 +150,7 @@ Lo encontró la revisión final del plan `docs/plans/2026-10-09-follow-the-packe
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
-| H1 | Al explorar las 12 combinaciones del 01-03, seis sellos «perdido» se apilan sobre las etiquetas de «Casa de Lucía» y del router | Pendiente |
+| H1 | Al explorar las 12 combinaciones del 01-03 (el de los cuatro incidentes de antes, ya retirado), seis sellos «perdido» se apilan sobre las etiquetas de «Casa de Lucía» y del router | Pendiente: el 01-03 de hoy es otro incidente (¿Estás ahí?); comprobar si pasa algo parecido en el mapa nuevo |
 | H2 | La terminal no da retroalimentación al lector de pantalla después de «Enviar»: falta una línea `aria-live` que diga cómo terminó el paquete | Pendiente |
 | H3 | El texto de ayuda de la inspección y la leyenda de los sellos y el candado se leen como un solo bloque gris, y la leyenda omite el sello del intruso (doble anillo ✓) que se ve en el 04-01 | Pendiente |
 
@@ -160,6 +162,18 @@ Lo dejó el plan `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`. Ningu
 |---|----------|---------|
 | I1 | Cada incidente cita una lección de `syllabus.md` (`src/levels/registry.test.ts`, «cites a lesson of syllabus.md and a concept note that exists»). Los capítulos 3, 17, 20, 24 y del 25 en adelante no tienen lección en el curso: su primer incidente no podrá cumplirlo. Hoy lo cumplen los seis incidentes que existen, de los capítulos 1 y 4 | Pendiente: decidirlo cuando uno de esos capítulos tenga su primer incidente (por ejemplo, que la lección sea opcional si el capítulo no nombra módulos del curso, o que cite un tema de la hoja de ruta de AWS) |
 | I2 | 31 de los 33 capítulos son «Próximamente» y usan la tarjeta `soon`, que se desvanece entera con `opacity: 0.5`. Medido sobre el papel de la página: el número en bermellón queda en 2.25:1, el título en 2.98:1 y «Próximamente» en 2.21:1, bajo el 4.5:1 de WCAG 1.4.3; sin desvanecer serían 5.26, 13.36 y 6.45 | Decidido por el estudiante (2026-10-10): se queda el desvanecido («me gustan que estén con opacidad»). Es contenido inactivo, un capítulo que aún no se abre. `DESIGN.md` («Contrast») y la guía de `src/design/` lo anotan con sus cifras, para que nadie lo «arregle» |
+
+## Bloque J: lo que dejó el capítulo 1 en catorce subcapítulos (2026-10-10)
+
+Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md` (sus notas de la Tarea 13 y de la Tarea 27) y el arreglo de la distribución de las tarjetas (`c8bc2f4`). Ninguno impide jugar el capítulo 1. Lo que anote la prueba humana del capítulo entero se agrega aquí después de hacerla.
+
+| # | Hallazgo | Destino |
+|---|----------|---------|
+| J1 | A 390 px, una tarjeta acoplada todavía tapa la parte de arriba de una etiqueta del mapa | Pendiente |
+| J2 | Entre 901 y unos 1054 px, la ayuda de la caja de inspección todavía puede superponerse a una tarjeta acoplada | Pendiente |
+| J3 | A 1280×800, la caja de inspección del 04-01 tapa «Security Group servidor2» y dos sellos. A 1440×900 la etiqueta queda libre. Ya pasaba antes del plan y ninguna prueba corre a ese tamaño | Pendiente: es el mismo problema que E4, visto a 1280×800 |
+| J4 | Una intermitencia, vista una sola vez, en la prueba e2e `in 06 and 08 the map is at full size: two laptops of a floor stand as far apart as at any window` (1280×800). Pasó al repetirla y en las corridas siguientes. No se halló la causa y no se afirma ninguna | Pendiente: si vuelve a verse, anotar la corrida y el mensaje antes de tocar nada |
+| J5 | El ícono `settings` de `CardIcon` (la tarjeta «Ajustes de red») no tiene especimen en `#/entidades`. Tampoco lo tienen `question`, `inspection` y `case`: el catálogo solo muestra `lucia`, `result`, `chapter` y `terminal` (revisado con `grep` sobre `src/ui/catalog/interface-section.tsx`) | Decidido en la Tarea 28: van en la sección «Elementos de la interfaz», junto al especimen del terminal, y se hacen en la primera tarea que regrabe `tests/e2e/snapshots/interface-darwin.png` a propósito. La Tarea 28 es solo de documentos y no las toca. Pendiente |
 
 ## Fuera de este backlog (decide el estudiante)
 

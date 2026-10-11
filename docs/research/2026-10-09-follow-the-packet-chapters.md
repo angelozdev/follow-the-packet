@@ -62,11 +62,11 @@ Este documento solo corta capítulos. No diseña incidentes ni lista conceptos: 
 
 #### 1 · Tu primer día
 - **Objetivo:** seguir un paquete en una red y decir por qué llegó o murió.
-- **Problema real:** sin IP, ida y vuelta e IP privada, ningún error de red de AWS se entiende.
+- **Problema real:** sin IP, ida y vuelta, puerta de enlace, saltos, la diferencia entre silencio y aviso, IP privada y firewall, ningún error de red de AWS se entiende.
 - **Prerrequisitos:** ninguno.
-- **Temas:** dirección IP · paquete y ping · ICMP (Echo Request y Echo Reply) · router e internet · IP privada · firewall y regla.
-- **Qué viaja y qué configura:** un ping entre dispositivos de la oficina; el jugador elige origen, destino y mensaje, y al final una regla de firewall.
-- **Preguntas para la investigación:** ya resueltas en su [spec](../specs/2026-10-09-follow-the-packet-chapter-1-design.md). Queda la prueba humana: ¿se fusiona algún incidente?
+- **Temas (catorce subcapítulos, en cinco bloques):** red, dispositivo (host), dirección IP e IPv4 · paquete, encabezado, IP de origen e IP de destino · protocolo, ICMP, ping, Echo Request y Echo Reply · loopback, localhost y RTT · timeout y Destination Host Unreachable · red local (LAN) y router · puerta de enlace predeterminada · internet, IP privada e IP pública · salto, TTL y Time Exceeded · traceroute · firewall, tráfico y descartar · regla, permitir, denegar, denegación por defecto y mínimo privilegio · entrada y salida.
+- **Qué viaja y qué configura:** un ping, y desde el 09 un traceroute, entre los dispositivos de la oficina de Lucía, que crece de un piso a dos pisos con un router, internet con un servidor que contesta y un firewall. En el 01 nada viaja: el jugador marca dispositivos y elige IP con fichas. Después elige origen, destino y mensaje (en el 09, también el TTL) y configura la puerta de enlace de una laptop (07) y las reglas de entrada y de salida de un firewall (12 y 13). En el 14 diagnostica siete casos sin cambiar la red.
+- **Preguntas para la investigación:** ya resueltas en su [spec](../specs/2026-10-10-follow-the-packet-chapter-1-fourteen-design.md) y su [plan](../plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md). Queda la prueba humana del capítulo entero: ¿se fusiona o se separa algún subcapítulo? El 03 y el 12 son los más densos.
 
 #### 2 · Puertos y nombres
 - **Objetivo:** decir a qué servicio de un dispositivo va un paquete y cómo un nombre se vuelve una IP.
@@ -365,7 +365,7 @@ Este documento solo corta capítulos. No diseña incidentes ni lista conceptos: 
 
 ## 5. Encaje con lo que ya existe
 
-**Capítulo 1 «Tu primer día».** Sigue siendo el 1, en el nivel 0, sin cambios. Su lista «Fuera de alcance» (IP pública, NAT de la oficina, DNS, puertos, TCP, UDP, cliente/servidor, stateless) se vuelve el contenido del capítulo 2, del 3 (cliente/servidor) y del 6 (stateless). La oficina vuelve en el 12 (VPN) y en el 29 (la mudanza).
+**Capítulo 1 «Tu primer día».** Sigue siendo el 1, en el nivel 0. Sus cuatro incidentes los reemplazaron catorce (01-01 a 01-14, según el [spec de los catorce subcapítulos](../specs/2026-10-10-follow-the-packet-chapter-1-fourteen-design.md)), y el progreso guardado se reseteó con una clave nueva (D-1 del plan). Su lista «Fuera de alcance» (IP pública, NAT de la oficina, DNS, puertos, TCP, UDP, cliente/servidor, stateless) se vuelve el contenido del capítulo 2, del 3 (cliente/servidor) y del 6 (stateless). La oficina vuelve en el 12 (VPN) y en el 29 (la mudanza).
 
 **Capítulo 4 «La noche de guardia».** Sigue siendo el 4, ahora en el nivel 1. El 04-01 y el 04-02 no cambian. Lo planeado para el 04-03 al 04-08 se revisa: CIDR, IP pública, NAT y DNS genéricos llegan antes, en el capítulo 2, y el 4 se queda con los nombres de AWS (rango CIDR de la VPC, IP pública de la instancia, nombres DNS de la instancia). El 04-01 ya no va justo después del 01-04: en medio quedan el 2 y el 3.
 
