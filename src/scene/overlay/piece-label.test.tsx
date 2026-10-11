@@ -8,10 +8,11 @@ import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 const SERVER: MapPiece = { id: 'device:servidor2', kind: 'device', variant: 'ec2-instance', anchorId: 'servidor2', label: '[[servidor2]]', locked: true, state: 'normal' };
 const SG_PIECE: MapPiece = { id: 'firewall:sg-servidor2', kind: 'firewall', variant: 'security-group', anchorId: 'servidor2', label: '{{security-group}} [[servidor2]]', locked: false, state: 'normal' };
 
-function renderLabel(piece: MapPiece) {
-  const handlers = { onInspect: vi.fn(), onActivate: vi.fn() };
-  render(<PieceLabel piece={piece} {...handlers} />);
-  return handlers;
+function renderLabel(piece: MapPiece, pinned = false) {
+  const trigger = { onPointerEnter: vi.fn(), onPointerLeave: vi.fn(), onFocus: vi.fn(), onBlur: vi.fn(), onClick: vi.fn(), 'data-pinned': pinned ? (true as const) : undefined };
+  const onActivate = vi.fn();
+  render(<PieceLabel piece={piece} trigger={trigger} onActivate={onActivate} />);
+  return { trigger, onActivate };
 }
 
 const LAPTOP: MapPiece = {
@@ -53,25 +54,38 @@ describe('piece label', () => {
     expect(label.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('hovering or focusing inspects the piece, and leaving stops', async () => {
+  it('hovering, focusing, leaving and blurring it call the props of its trigger', async () => {
     const user = userEvent.setup();
-    const { onInspect } = renderLabel(SG_PIECE);
+    const { trigger } = renderLabel(SG_PIECE);
     const label = screen.getByRole('button', { name: 'Security Group servidor2' });
     await user.hover(label);
-    expect(onInspect).toHaveBeenLastCalledWith(SG_PIECE.id);
+    expect(trigger.onPointerEnter).toHaveBeenCalledTimes(1);
     await user.unhover(label);
-    expect(onInspect).toHaveBeenLastCalledWith(null);
+    expect(trigger.onPointerLeave).toHaveBeenCalledTimes(1);
     await user.tab();
-    expect(onInspect).toHaveBeenLastCalledWith(SG_PIECE.id);
+    expect(trigger.onFocus).toHaveBeenCalledTimes(1);
+    await user.tab();
+    expect(trigger.onBlur).toHaveBeenCalledTimes(1);
   });
 
-  it('a click or Enter activates it', async () => {
+  it('a click or Enter activates it and also calls the click of its trigger', async () => {
     const user = userEvent.setup();
-    const { onActivate } = renderLabel(SG_PIECE);
+    const { onActivate, trigger } = renderLabel(SG_PIECE);
     await user.click(screen.getByRole('button', { name: 'Security Group servidor2' }));
     await user.keyboard('{Enter}');
     expect(onActivate).toHaveBeenCalledTimes(2);
     expect(onActivate).toHaveBeenCalledWith(SG_PIECE.id);
+    expect(trigger.onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('wears the pinned mark of its trigger', () => {
+    renderLabel(SG_PIECE, true);
+    expect(screen.getByRole('button', { name: 'Security Group servidor2' })).toHaveAttribute('data-pinned');
+  });
+
+  it('wears no pinned mark when its trigger gives none', () => {
+    renderLabel(SG_PIECE);
+    expect(screen.getByRole('button', { name: 'Security Group servidor2' })).not.toHaveAttribute('data-pinned');
   });
 
   it('a device under attack carries its alert inside its label, read as text, so it never covers the label', () => {
@@ -104,11 +118,11 @@ describe('piece label', () => {
 
   it('inspects the piece from its own button and not from the settings entry', async () => {
     const user = userEvent.setup();
-    const { onInspect } = renderLabel(LAPTOP);
+    const { trigger } = renderLabel(LAPTOP);
     await user.hover(screen.getByRole('button', { name: 'Ajustes de red de tu-laptop' }));
-    expect(onInspect).not.toHaveBeenCalled();
+    expect(trigger.onPointerEnter).not.toHaveBeenCalled();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
-    expect(onInspect).toHaveBeenLastCalledWith(LAPTOP.id);
+    expect(trigger.onPointerEnter).toHaveBeenCalledTimes(1);
   });
 
   it('a piece without a settings entry draws one button only', () => {

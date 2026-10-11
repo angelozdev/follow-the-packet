@@ -2,7 +2,7 @@ import { toPlainText, type TermText } from '@/copy';
 import type { Trace } from '@/engine';
 import { PacketTrace, StampPiece } from '@/scene/entities';
 import { pathFor, spreadStamps, startsOnMap, type Layout } from '@/scene/layout';
-import type { OnInspect } from '@/scene/overlay/inspect-handlers';
+import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import { flowLook, type FlowResult } from './flow-look';
 import { FlowTraffic, SentTraffic } from './flow-traffic';
 
@@ -19,7 +19,7 @@ export interface MapSent extends MapFlow {
 }
 
 /** Draws every live flow and every packet the player sent along its path, each with its stamp at the end; without animations, each path is drawn still. A packet that starts at a piece the map does not draw is not drawn. */
-export function Traffic({ flows, sent, layout, still, onInspect }: { flows: MapFlow[]; sent: MapSent[]; layout: Layout; still: boolean; onInspect: OnInspect }) {
+export function Traffic({ flows, sent, layout, still, inspectTrigger }: { flows: MapFlow[]; sent: MapSent[]; layout: Layout; still: boolean; inspectTrigger: InspectTrigger }) {
   const packets: (MapFlow & { send?: number })[] = [...flows, ...sent].filter((packet) => startsOnMap(packet.packet, layout));
   const paths = packets.map((packet) => pathFor(packet.trace, packet.packet, layout, packet.hiddenStop));
   const stamps = spreadStamps(paths.map((path) => path[path.length - 1]));
@@ -32,7 +32,7 @@ export function Traffic({ flows, sent, layout, still, onInspect }: { flows: MapF
           <group key={packet.id}>
             {still && <PacketTrace {...moving} />}
             {!still && (packet.send === undefined ? <FlowTraffic look={moving} index={index} /> : <SentTraffic look={moving} send={packet.send} />)}
-            <StampPiece position={stamps[index]} state={stamp} name={toPlainText(packet.label)} pieceId={packet.pieceId} onInspect={onInspect} />
+            <StampPiece position={stamps[index]} state={stamp} name={toPlainText(packet.label)} trigger={inspectTrigger(packet.pieceId)} />
           </group>
         );
       })}

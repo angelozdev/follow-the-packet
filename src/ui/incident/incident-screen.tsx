@@ -1,7 +1,7 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { caseCard, caseSummary, countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
+import { caseCard, caseSummary, countStars, firewallCard, identifyCard, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -26,22 +26,22 @@ interface IncidentScreenProps {
 
 export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: IncidentScreenProps) {
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
-  const { inspecting, onInspect, holder } = useInspection();
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const [still, setStill] = useStillMode();
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
+  const opensCard = (pieceId: string) => playing && pieces.some((piece) => (piece.id === pieceId && piece.configurable) || piece.settings?.id === pieceId);
+  const { inspection, pinned, trigger, release, heading, holder } = useInspection(session, opensCard);
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const terminal = playing && cardPieceId ? terminalCard(session, cardPieceId) : null;
   const identify = playing && cardPieceId ? identifyCard(session, cardPieceId) : null;
   const settings = playing && cardPieceId ? settingsCard(session, cardPieceId) : null;
-  const inspection = inspecting ? inspect(session, inspecting) : null;
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const { incident } = session;
 
   const activate = (pieceId: string) => {
-    if (playing && pieces.some((piece) => (piece.id === pieceId && piece.configurable) || piece.settings?.id === pieceId)) setCardPieceId(pieceId);
+    if (opensCard(pieceId)) setCardPieceId(pieceId);
   };
   const closeCard = () => {
     if (cardPieceId) document.getElementById(pieceDomId(cardPieceId))?.focus();
@@ -115,13 +115,13 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
               />
             ))
           }
-          onInspect={onInspect}
+          inspectTrigger={trigger}
           onActivate={activate}
         />
       </div>
       <div aria-live="polite" className="incident__inspection" {...holder}>
         {inspection ? (
-          <InspectionBox inspection={inspection} />
+          <InspectionBox inspection={inspection} pinned={pinned} heading={heading} onClose={release} />
         ) : (
           <>
             <p className="muted">{SCREEN_TEXT.inspectHelp}</p>

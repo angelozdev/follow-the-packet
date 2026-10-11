@@ -2,7 +2,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing/incidents';
@@ -12,13 +12,13 @@ vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
   return {
-    GameScene: ({ pieces, flows, sent, overlay, onInspect, onActivate }: GameSceneProps) => (
+    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, onActivate }: GameSceneProps) => (
       <div>
         {pieces.map((piece) => (
-          <PieceLabel key={piece.id} piece={piece} onInspect={onInspect} onActivate={onActivate} />
+          <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
         ))}
         {[...flows, ...sent].map((flow) => (
-          <button key={flow.id} type="button" onFocus={() => onInspect(flow.pieceId)}>
+          <button key={flow.id} type="button" {...inspectTrigger(flow.pieceId)}>
             {toPlainText(flow.label)}
           </button>
         ))}
@@ -41,8 +41,42 @@ const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
 const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened));
 const BEFORE_THE_GRACE_ENDS_MS = 100;
 const AFTER_THE_GRACE_ENDS_MS = 1000;
+const TAB_STOPS_LIMIT = 80;
 
 type User = ReturnType<typeof userEvent.setup>;
+
+afterEach(() => vi.useRealTimers());
+
+function renderWithFakeTimers() {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  renderFirst();
+  return user;
+}
+
+function wait(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
+function expectCardKeepsTheFocusAndItsBoxIsPinned() {
+  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+  expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
+  expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+}
+
+async function pinTheStampWithTheKeyboard(user: User) {
+  const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
+  await tabTo(user, stamp);
+  await user.keyboard('{Enter}');
+  return stamp;
+}
+
+async function tabTo(user: User, element: HTMLElement) {
+  for (let stops = 0; stops < TAB_STOPS_LIMIT && document.activeElement !== element; stops++) await user.tab();
+  expect(element).toHaveFocus();
+}
 
 function renderFirst() {
   const onFinish = vi.fn();
@@ -165,21 +199,6 @@ describe('incident screen', () => {
 });
 
 describe('the inspection box can be reached with the mouse', () => {
-  afterEach(() => vi.useRealTimers());
-
-  function renderWithFakeTimers() {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    renderFirst();
-    return user;
-  }
-
-  function wait(ms: number) {
-    act(() => {
-      vi.advanceTimersByTime(ms);
-    });
-  }
-
   it('lingers for a moment after the pointer leaves the piece, so the pointer can cross to it, and then goes', async () => {
     const user = renderWithFakeTimers();
     const piece = screen.getByRole('button', { name: LOCKED_SERVER });
@@ -215,6 +234,152 @@ describe('the inspection box can be reached with the mouse', () => {
     expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
     wait(AFTER_THE_GRACE_ENDS_MS);
     expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+  });
+});
+
+describe('a floating inspection box can be pinned', () => {
+  it('clicking a stamp pins its box with «Fijada» and «Cerrar», and hovering another piece leaves it', async () => {
+    const user = renderWithFakeTimers();
+    const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
+    await user.click(stamp);
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(within(box).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
+    expect(stamp).toHaveAttribute('data-pinned');
+    const piece = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.hover(piece);
+    await user.unhover(piece);
+    await user.unhover(stamp);
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(piece).not.toHaveAttribute('data-pinned');
+  });
+
+  it('a box that is only a preview shows neither «Fijada» nor «Cerrar»', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await user.hover(screen.getByRole('button', { name: ATTACKER_PACKET }));
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expect(box).not.toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(within(box).queryByRole('button', { name: INSPECTION_TEXT.closeLabel })).toBeNull();
+  });
+
+  it('Enter on a stamp pins its box and puts the focus on its heading; Escape gives the focus back to the stamp', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const stamp = await pinTheStampWithTheKeyboard(user);
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(within(box).getByRole('heading', { name: ATTACKER_PACKET })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
+    expect(stamp).toHaveFocus();
+  });
+
+  it('Shift+Tab from the heading of a pinned box reaches «Cerrar», and Enter on it releases the box and gives the focus back to the stamp', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const stamp = await pinTheStampWithTheKeyboard(user);
+    await user.tab({ shift: true });
+    expect(within(screen.getByRole('region', { name: ATTACKER_PACKET })).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
+    expect(stamp).toHaveFocus();
+  });
+
+  it("clicking a piece that opens a card opens it, keeps the focus in it and pins the piece's box", async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expectCardKeepsTheFocusAndItsBoxIsPinned();
+  });
+
+  it("Enter on a piece that opens a card keeps the focus in the card and pins the piece's box", async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    await user.keyboard('{Enter}');
+    expectCardKeepsTheFocusAndItsBoxIsPinned();
+  });
+
+  it('a box pinned with the keyboard on a piece that opens a card does not take the focus when the phase changes', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    await user.keyboard('{Enter}');
+    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    await tabTo(user, within(card).getByRole('button', { name: ECHO_REQUEST }));
+    await user.keyboard('{Enter}');
+    await tabTo(user, within(card).getByRole('button', { name: SG_SERVIDOR1 }));
+    await user.keyboard('{Enter}');
+    await tabTo(user, screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
+  });
+
+  it('Escape inside a card opened from a pinned piece closes the card, releases the box and leaves the focus on the piece', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const label = screen.getByRole('button', { name: SG_SERVIDOR2 });
+    await user.click(label);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
+    expect(label).toHaveFocus();
+    expect(label).not.toHaveAttribute('data-pinned');
+  });
+
+  it('«Cerrar» unpins the box', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
+    await user.click(stamp);
+    await user.click(within(screen.getByRole('region', { name: ATTACKER_PACKET })).getByRole('button', { name: INSPECTION_TEXT.closeLabel }));
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    expect(stamp).not.toHaveAttribute('data-pinned');
+    expect(stamp).toHaveFocus();
+  });
+
+  it('a click on another piece releases the box and pins the box of that piece', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
+    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
+    expect(screen.getByRole('region', { name: 'servidor2' })).toHaveTextContent(INSPECTION_TEXT.pinned);
+  });
+});
+
+describe('a pinned inspection box whose piece is gone', () => {
+  const GATEWAY = gatewayIncident();
+  const ENTRY = 'Ajustes de red de tu-laptop';
+  const ROUTER = '192.168.1.1';
+  const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
+
+  it('a pinned box whose piece is gone is released', async () => {
+    const user = userEvent.setup();
+    render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
+    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+    await user.click(screen.getByRole('button', { name: LOST_PING }));
+    expect(screen.getByRole('region', { name: LOST_PING })).toHaveTextContent(INSPECTION_TEXT.pinned);
+
+    await tabTo(user, screen.getByRole('button', { name: ENTRY }));
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('region', { name: LOST_PING })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    await tabTo(user, within(screen.getByRole('dialog', { name: ENTRY })).getByRole('button', { name: ROUTER }));
+    await user.keyboard('{Enter}');
+
+    expect(screen.queryByRole('button', { name: LOST_PING })).toBeNull();
+    expect(screen.queryByRole('region', { name: LOST_PING })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
+    expect(screen.getByRole('region', { name: 'tu-laptop' })).not.toHaveTextContent(INSPECTION_TEXT.pinned);
   });
 });
 

@@ -1,64 +1,54 @@
-import { useTimeout } from '@mantine/hooks';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useMergedRef } from '@mantine/hooks';
+import { useEffect, useRef, useState } from 'react';
+import { inspect, type Session } from '@/game';
+import { useFloatingBox } from '@/ui/floating-box/use-floating-box';
 
-const GRACE_MS = 400;
 const BODY = '.card__body';
+const SCOPE = 'inspection';
 
-interface InspectionControls {
-  inspecting: string | null;
-  onInspect: (pieceId: string | null) => void;
-  holder: {
-    ref: RefObject<HTMLDivElement | null>;
-    'data-scrolls': true | undefined;
-    onMouseEnter: () => void;
-    onMouseLeave: () => void;
-  };
-}
-
-/** Returns the piece the box inspects, what a piece calls when the mouse or the focus reaches it (a piece id) or leaves it (null), and the props of the element that holds the box. The box lingers for a moment after the pointer leaves a piece, so the pointer can cross to it, and stays for as long as the pointer is over it, so a text that does not fit can be scrolled; it goes as soon as the pointer leaves it, and the next piece the pointer reaches takes it at once. The holder says when the body of the box has more text than it shows (`data-scrolls`): only then does the box take the mouse, so one that fits never stands between the pointer and the label under it. */
-export function useInspection(): InspectionControls {
-  const [inspecting, setInspecting] = useState<string | null>(null);
+/** Returns what the inspection box shows (the inspection of the piece or the stamp on display, or null), whether it is pinned, the props of the trigger of a piece id, how to release the box, the ref of the box's heading and the props of the element that holds the box. It is the floating box of `useFloatingBox` over the inspections of the session: a piece whose inspection no longer exists is released. A pin from the keyboard moves the focus to the heading of the box, unless `opensCard` says, at the moment of the pin, that the same click opens a card, which keeps the focus: the decision is taken once, when the pin happens, and used once, so a later change of phase never moves the focus. The holder says when the body of the box has more text than it shows (`data-scrolls`): only then does the box take the mouse, pinned or not, so one that fits never stands between the pointer and the label under it. */
+export function useInspection(session: Session, opensCard: (pieceId: string) => boolean) {
+  const focusOnPin = useRef<string | null>(null);
+  const box = useFloatingBox<string>(SCOPE, {
+    onPin: (key, fromKeyboard) => {
+      focusOnPin.current = fromKeyboard && !opensCard(key) ? key : null;
+    },
+  });
+  const { shown, pinned, release } = box;
   const [scrolls, setScrolls] = useState(false);
-  const holder = useRef<HTMLDivElement>(null);
-  const overBox = useRef(false);
-  const linger = useTimeout(() => {
-    if (!overBox.current) setInspecting(null);
-  }, GRACE_MS);
+  const watched = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const holderRef = useMergedRef<HTMLDivElement>(box.box.ref, watched);
+  const inspection = shown === null ? null : inspect(session, shown);
+  const gone = shown !== null && inspection === null;
 
   useEffect(() => {
-    const element = holder.current;
+    const element = watched.current;
     if (element === null || typeof ResizeObserver === 'undefined') return;
     const watcher = new ResizeObserver(() => {
       const body = element.querySelector(BODY);
-      if (body === null) overBox.current = false;
       setScrolls(body !== null && body.scrollHeight > body.clientHeight + 1);
     });
     watcher.observe(element);
     return () => watcher.disconnect();
-  }, [inspecting]);
+  }, [shown]);
 
-  const onInspect = (pieceId: string | null) => {
-    if (pieceId === null) {
-      linger.start();
-      return;
-    }
-    linger.clear();
-    setInspecting(pieceId);
-  };
+  useEffect(() => {
+    if (gone) release();
+  }, [gone, release]);
+
+  useEffect(() => {
+    if (!pinned || shown === null || focusOnPin.current !== shown) return;
+    focusOnPin.current = null;
+    heading.current?.focus();
+  }, [pinned, shown]);
+
   return {
-    inspecting,
-    onInspect,
-    holder: {
-      ref: holder,
-      'data-scrolls': scrolls ? true : undefined,
-      onMouseEnter: () => {
-        overBox.current = true;
-        linger.clear();
-      },
-      onMouseLeave: () => {
-        overBox.current = false;
-        setInspecting(null);
-      },
-    },
+    inspection,
+    pinned: pinned && inspection !== null,
+    trigger: box.trigger,
+    release,
+    heading,
+    holder: { ref: holderRef, 'data-scrolls': scrolls ? true : undefined, onPointerEnter: box.box.onPointerEnter, onPointerLeave: box.box.onPointerLeave },
   };
 }

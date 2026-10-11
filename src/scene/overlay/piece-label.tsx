@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { MAP_TEXT, parseTermText, type EntityRef, type TermSegment, type TermText } from '@/copy';
 import { NameTag } from '@/design';
 import { InkIcon } from '@/scene/ink';
-import { inspectHandlers, type OnInspect } from './inspect-handlers';
+import type { TriggerProps } from './inspect-trigger';
 
 export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 
@@ -39,16 +39,19 @@ function buttonClass(segments: TermSegment[], locked: boolean): string {
   return ['map-button', isOnlyName(segments) && 'map-button--name', locked && 'map-button--locked'].filter(Boolean).join(' ');
 }
 
-/** The label of a piece: a button that opens its card, with its name, its lock and its alert. A piece with a second entry, such as the settings card of a device, has a second button under it. */
-export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; onInspect: OnInspect; onActivate: (pieceId: string) => void }) {
+/** The label of a piece: a button that opens its card, with its name, its lock and its alert; the props of its trigger inspect the piece (its click goes with the one that opens the card). A piece with a second entry, such as the settings card of a device, has a second button under it. */
+export function PieceLabel({ piece, trigger, onActivate }: { piece: MapPiece; trigger: TriggerProps; onActivate: (pieceId: string) => void }) {
   const segments = parseTermText(piece.label);
   const label = (
     <button
       type="button"
       id={pieceDomId(piece.id)}
       className={buttonClass(segments, piece.locked)}
-      onClick={() => onActivate(piece.id)}
-      {...inspectHandlers(piece.id, onInspect)}
+      {...trigger}
+      onClick={(event) => {
+        trigger.onClick?.(event);
+        onActivate(piece.id);
+      }}
     >
       {piece.state === 'intruded' && (
         <>

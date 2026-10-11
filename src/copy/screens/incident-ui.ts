@@ -23,6 +23,9 @@ export const MAP_TEXT = {
 
 export const INSPECTION_TEXT = {
   type: 'Inspección',
+  pinned: 'Fijada',
+  close: 'Cerrar',
+  closeLabel: 'Cerrar la caja de inspección',
   whatIs: 'Qué es',
   ipAddress: '{{ip-address}}',
   privateIp: '{{private-ip}}',
@@ -194,6 +197,6 @@ export const RESULT_TEXT = {
 export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
-  inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
+  inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está. Haz clic, o pulsa Enter, para dejar la caja fija.',
   stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso. Una pieza con candado no se puede cambiar en este incidente.',
 } as const;
