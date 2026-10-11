@@ -77,7 +77,6 @@ export const NAME = {
   visitor: nameTag(DEVICE.visitor.name),
   router: nameTag(ROUTER.office.name),
   provider: nameTag(ROUTER.provider.name),
-  destination: nameTag(ROUTER.destination.name),
   server: nameTag(SERVER.name),
 } as const;
 
@@ -267,7 +266,7 @@ export const LOOP_CAUSE = `Alguien cambió la configuración de ${NAME.provider}
 /** What 01-10 changes: no loop, but a broken stretch behind the router of the provider, which no longer has a way to the server and, being set up so, does not warn. */
 export const BROKEN_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [backToOffice(ROUTER.office.id)], sendsUnreachable: false }];
 
-/** What 01-11 changes: the provider fixed the broken stretch, so its router has its way to the server again and warns when it has none, as it did in 01-08. */
+/** What 01-14 changes before its cases, besides the firewall of your laptop: the provider fixed the broken stretch of 01-10, so its router has its way to the server again and warns when it has none, as it did in 01-08. The report of 01-14 says so. */
 export const REPAIRED_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: PROVIDER_ROUTES, sendsUnreachable: true }];
 
 export const WHAT = {

@@ -27,18 +27,18 @@ export default defineIncident({
   question: `¿Por qué el {{ping}} a ${NAME.andres} pasó por el {{router}} y el de la ${NAME.printer} no?`,
   explanation: [
     {
-      text: 'Porque el {{router}} es más rápido que el cable.',
-      feedback: `No. Un router no sirve para ir más rápido: sirve para conectar redes. ${NAME.andres} está en otra {{lan|red local}}, y a otra red local solo se llega por el router.`,
+      text: 'Porque el {{router}} es más rápido que el cable, así que el {{ping}} lo usa para llegar antes.',
+      feedback: `Un router no sirve para ir más rápido: sirve para conectar redes. ${NAME.andres} está en otra {{lan|red local}}, y a otra red local solo se llega por el router.`,
       correct: false,
     },
     {
-      text: 'Porque todo {{packet|paquete}} pasa por el {{router}}, también los que van dentro del piso.',
-      feedback: `No. El {{ping}} a la ${NAME.printer} no pasó por el router: se entregó directo, dentro de tu {{lan|red local}}, y por eso su caja no dice por dónde pasó.`,
+      text: 'Porque todo {{packet|paquete}} pasa por el {{router}}, también los que van dentro de un mismo piso.',
+      feedback: `El {{ping}} a la ${NAME.printer} no pasó por el router: se entregó directo, dentro de tu {{lan|red local}}, y por eso su caja no dice por dónde pasó.`,
       correct: false,
     },
     {
-      text: `Porque ${NAME.andres} está en otra {{lan|red local}}, y lo que sale de tu red local pasa por el {{router}}.`,
-      feedback: `Eso es. La ${NAME.printer} está en tu red local y el {{packet|paquete}} le llega directo. ${NAME.andres} está en otra, así que el paquete pasa por el router, que lo lleva a esa red.`,
+      text: `Porque ${NAME.andres} está en otra {{lan|red local}} y a esa solo se llega por el {{router}}.`,
+      feedback: `La ${NAME.printer} está en tu red local y el {{packet|paquete}} le llega directo. ${NAME.andres} está en otra, así que el paquete pasa por el router, que lo lleva a esa red.`,
       correct: true,
     },
   ],

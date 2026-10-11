@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { toPlainText } from '@/copy';
 import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
@@ -11,6 +12,7 @@ import { caseWorld, solvedWorld, startWorld } from './world';
 
 const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13', '01-14', '04-01', '04-02'];
 const HINT_COUNT = 2;
+const WORDS_THE_CARD_WRITES = /^(No[.:]|No es eso\.|Eso es\b|Correcto\.)/;
 const lessons = syllabusLessons();
 
 interface Scene {
@@ -71,6 +73,11 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
       expect(hints).toHaveLength(HINT_COUNT);
       expect(options.filter((option) => option.correct)).toHaveLength(1);
     }
+  });
+
+  it('writes no feedback that starts with the words the card already writes before it, Correcto. or No es eso.', () => {
+    const options = isGuided(incident) ? incident.explanation : incident.diagnose.cases.flatMap((spec) => spec.cause.options);
+    expect(options.map((option) => toPlainText(option.feedback)).filter((feedback) => WORDS_THE_CARD_WRITES.test(feedback))).toEqual([]);
   });
 
   it('sends nothing from the office to the outside, neither in a flow nor with its chips', () => {

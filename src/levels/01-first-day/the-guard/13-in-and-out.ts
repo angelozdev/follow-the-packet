@@ -21,18 +21,18 @@ export default defineIncident({
   question: 'Si pones una {{rule|regla}} en la {{inbound|entrada}}, ¿por qué el {{ping}} sigue sin salir?',
   explanation: [
     {
-      text: `Porque ${NAME.you} no tiene {{firewall}}.`,
-      feedback: `No. El ✕ está en ${NAME.you}: su {{firewall}} detuvo el {{ping}} al salir.`,
+      text: `Porque ${NAME.you} no tiene {{firewall}} y el {{ping}} se pierde en la {{network|red}}.`,
+      feedback: `El ✕ está en ${NAME.you}: su {{firewall}} detuvo el {{ping}} al salir.`,
       correct: false,
     },
     {
-      text: `Porque el {{ping}} se bloqueó en ${NAME.lucia}.`,
-      feedback: `No. El {{ping}} nunca salió de ${NAME.you}: el ✕ no está en ${NAME.lucia}.`,
+      text: `Porque el {{ping}} llegó a ${NAME.lucia} y allí se bloqueó, por eso no volvió.`,
+      feedback: `El {{ping}} nunca salió de ${NAME.you}: el ✕ no está en ${NAME.lucia}.`,
       correct: false,
     },
     {
-      text: `Porque las {{rule|reglas}} de la {{inbound|entrada}} controlan lo que llega a ${NAME.you}, y lo que sale lo controlan las de la {{outbound|salida}}.`,
-      feedback: `Eso es. El {{ping}} sale por la {{outbound|salida}} de ${NAME.you}, y allí ninguna {{rule|regla}} lo {{allow|permitía}}. Una regla en la {{inbound|entrada}} no cambia lo que sale.`,
+      text: 'Porque las {{rule|reglas}} de la {{inbound|entrada}} controlan lo que llega, y las de la {{outbound|salida}}, lo que sale.',
+      feedback: `El {{ping}} sale por la {{outbound|salida}} de ${NAME.you}, y allí ninguna {{rule|regla}} lo {{allow|permitía}}. Una regla en la {{inbound|entrada}} no cambia lo que sale.`,
       correct: true,
     },
   ],

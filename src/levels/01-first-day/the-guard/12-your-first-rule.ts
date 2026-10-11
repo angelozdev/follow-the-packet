@@ -31,17 +31,17 @@ export default defineIncident({
   explanation: [
     {
       text: 'Porque lo que ninguna {{rule|regla}} {{allow|permite}} queda {{deny|denegado}}.',
-      feedback: 'Eso es. Se llama {{default-deny}}: el {{firewall}} {{deny|deniega}} todo lo que ninguna {{rule|regla}} permite. No hace falta una {{rule|regla}} contra la visita.',
+      feedback: 'Se llama {{default-deny}}: el {{firewall}} {{deny|deniega}} todo lo que ninguna {{rule|regla}} permite. No hace falta una {{rule|regla}} contra la visita.',
       correct: true,
     },
     {
-      text: 'Porque el {{firewall}} reconoce a las visitas.',
-      feedback: `No. El {{firewall}} no sabe quién es una visita: compara la {{source-ip}} de cada {{packet|paquete}} con sus {{rule|reglas}}, y la de ${NAME.visitor} no coincide con ninguna.`,
+      text: 'Porque el {{firewall}} reconoce a las visitas y las deja afuera.',
+      feedback: `El {{firewall}} no sabe quién es una visita: compara la {{source-ip}} de cada {{packet|paquete}} con sus {{rule|reglas}}, y la de ${NAME.visitor} no coincide con ninguna.`,
       correct: false,
     },
     {
-      text: `Porque la {{rule|regla}} de ${NAME.lucia} también la prohíbe.`,
-      feedback: 'No. En este {{firewall}}, una {{rule|regla}} solo {{allow|permite}}: no prohíbe a nadie. Lo que ninguna regla permite ya queda {{deny|denegado}}.',
+      text: `Porque la {{rule|regla}} de ${NAME.lucia} también prohíbe a la visita.`,
+      feedback: 'En este {{firewall}}, una {{rule|regla}} solo {{allow|permite}}: no prohíbe a nadie. Lo que ninguna regla permite ya queda {{deny|denegado}}.',
       correct: false,
     },
   ],

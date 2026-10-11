@@ -102,7 +102,7 @@ async function playTheOffice(page: Page) {
   await expect(printer.getByRole('status')).toContainText(NOTE_RULE);
   await confirm(printer);
   await expect(printer).toBeHidden();
-  await submitAndFinish(page, /en IPv4 cada uno de los cuatro números va de 0 a 255/);
+  await submitAndFinish(page, /en IPv4 los cuatro números van de 0 a 255/);
 }
 
 async function playTheEnvelope(page: Page) {
@@ -126,7 +126,7 @@ async function playWhenItDoesNotComeBack(page: Page) {
   const terminal = await openTerminal(page);
   await sendTo(terminal, IP.marta);
   await sendTo(terminal, IP.nobody);
-  await submitAndFinish(page, /Con el aviso, alguien te dice que no pudo entregar el paquete/);
+  await submitAndFinish(page, /Con el aviso alguien te dice que falló la entrega/);
 }
 
 async function playTheRouter(page: Page) {
@@ -134,7 +134,7 @@ async function playTheRouter(page: Page) {
   await sendTo(terminal, IP.printer);
   await sendTo(terminal, IP.andres);
   await expect(page.getByRole('button', { name: ARRIVED_AT_ANDRES })).toBeVisible();
-  await submitAndFinish(page, /está en otra red local, y lo que sale de tu red local pasa por el router/);
+  await submitAndFinish(page, /está en otra red local y a esa solo se llega por el router/);
 }
 
 /** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the settings card and sends it again, which now arrives: the pick clears the stamps of the old world. */
@@ -171,7 +171,7 @@ async function playCountingHops(page: Page) {
   await expect(page.getByRole('button', { name: WARNED_BY_ROUTER })).toHaveCount(1);
   await sendMessage(terminal, 'ping con TTL 64');
   await expect(page.getByRole('button', { name: WARNED_BY_ROUTER })).toHaveCount(2);
-  await submitAndFinish(page, /daba vueltas entre los mismos dos routers/);
+  await submitAndFinish(page, /daba vueltas entre dos routers y su TTL llegó a 0/);
 }
 
 async function playSeeingThePath(page: Page) {
@@ -207,7 +207,7 @@ async function playInAndOut(page: Page) {
   await firewall.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
   await firewall.getByRole('button', { name: LUCIA_CHIP, exact: true }).click();
   await confirm(firewall);
-  await submitAndFinish(page, /controlan lo que llega a tu-laptop, y lo que sale lo controlan las de la salida/);
+  await submitAndFinish(page, /controlan lo que llega, y las de la salida, lo que sale/);
 }
 
 /** Opens the terminal of the origin of a case of 01-14 and sends the tests the player runs in it. */

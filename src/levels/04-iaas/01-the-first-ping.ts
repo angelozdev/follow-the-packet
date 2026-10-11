@@ -23,12 +23,12 @@ export default defineIncident({
   explanation: [
     {
       text: 'servidor2 estaba apagado.',
-      feedback: 'No: servidor2 estaba encendido. El {{ping}} se quedaba en su {{security-group}}, antes de llegar.',
+      feedback: 'servidor2 estaba encendido. El {{ping}} se quedaba en su {{security-group}}, antes de llegar.',
       correct: false,
     },
     {
       text: 'El {{security-group}} de servidor2 solo deja pasar lo que una {{inbound-rule}} permite, y no había ninguna para el {{ping}} de servidor1.',
-      feedback: 'Eso es. Sin una {{inbound-rule}} que lo permita, el {{security-group}} no deja pasar nada.',
+      feedback: 'Sin una {{inbound-rule}} que lo permita, el {{security-group}} no deja pasar nada.',
       correct: true,
     },
     {

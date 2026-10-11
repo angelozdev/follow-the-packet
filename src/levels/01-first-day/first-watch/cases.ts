@@ -49,7 +49,7 @@ export const CASES: CaseSpec[] = [
     shown: WATCH_GATEWAY_PIECES,
     from: ORIGIN.you,
     to: FROM_YOUR_LAPTOP,
-    report: `Tu {{ping}} a ${NAME.server} no vuelve. Haz cuatro pruebas, en orden, de la más cercana a la más lejana: el {{loopback}} de tu laptop (${IP.loopback}), tu {{ip-address|IP}} (${IP.you}), el {{router}} (${IP.router}) y el servidor.`,
+    report: `Tu {{ping}} a ${NAME.server} no vuelve. Haz cuatro pruebas, en orden, de la más cercana a la más lejana: el {{loopback}} de ${NAME.you} (${IP.loopback}), tu {{ip-address|IP}} (${IP.you}), el {{router}} (${IP.router}) y el servidor.`,
     hints: [
       'Mira hasta dónde llegan las pruebas, en orden. La primera que falla marca por dónde seguir.',
       `Mira la caja del {{ping}} a ${NAME.server}: en «Dónde y por qué se detuvo» está lo que pasó.`,
@@ -119,7 +119,7 @@ export const CASES: CaseSpec[] = [
     shown: LOOP_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.server, ADDRESS.otherOffice],
-    report: `El {{ping}} a la impresora de otra oficina, la ${IP.otherOfficePrinter}, no vuelve. Pruébalo desde tu laptop.`,
+    report: `El {{ping}} a la impresora de otra oficina, la ${IP.otherOfficePrinter}, no vuelve. Pruébalo desde ${NAME.you}.`,
     hints: [`Haz también un {{ping}} a ${NAME.server}. Compara cuál vuelve y cuál no.`, `Mira la caja del {{ping}} a la ${IP.otherOfficePrinter}: dice dónde se detuvo.`],
     cause: cause(
       `¿Por qué no vuelve el {{ping}} a la ${IP.otherOfficePrinter}?`,
@@ -129,7 +129,7 @@ export const CASES: CaseSpec[] = [
         `${NAME.provider} descartó el {{ping}} sin avisar. Las {{private-ip|IP privadas}} se repiten en muchas redes, y por eso {{internet}} no las entrega.`,
       ],
       [
-        [`Porque ${NAME.server} bloquea los {{ping|pings}} que vienen de tu laptop.`, `El {{ping}} a ${NAME.server} vuelve, así que no bloquea tus pings.`],
+        [`Porque ${NAME.server} bloquea los {{ping|pings}} que vienen de ${NAME.you}.`, `El {{ping}} a ${NAME.server} vuelve, así que no bloquea tus pings.`],
         [`Porque ${NAME.you} no tiene {{default-gateway}}.`, `El {{ping}} a ${NAME.server} sale por la {{default-gateway}} y vuelve: ${NAME.you} sí la tiene.`],
       ],
     ),
@@ -192,7 +192,7 @@ export const CASES: CaseSpec[] = [
     shown: WATCH_GATEWAY_PIECES,
     from: ORIGIN.you,
     to: FROM_YOUR_LAPTOP,
-    report: 'Desde tu laptop, ningún {{ping}} a otro {{device|dispositivo}} vuelve.',
+    report: `Desde ${NAME.you}, ningún {{ping}} a otro {{device|dispositivo}} vuelve.`,
     hints: ['Mira dónde está el ✕ de los {{ping|pings}} que no vuelven.', `Mira las {{rule|reglas}} de la {{outbound|salida}} del {{firewall}} de ${NAME.you}.`],
     cause: cause(
       `¿Por qué no vuelve ni el {{ping}} al {{router}}, el ${IP.router}?`,
@@ -203,7 +203,7 @@ export const CASES: CaseSpec[] = [
       ],
       [
         [
-          'Porque el {{router}} está caído y no contesta los {{ping|pings}} de tu laptop.',
+          `Porque el {{router}} está caído y no contesta los {{ping|pings}} de ${NAME.you}.`,
           `El {{ping}} ni siquiera salió de ${NAME.you}: el ✕ está en su {{firewall}}. El {{router}} nunca lo recibió.`,
         ],
         [

@@ -194,7 +194,7 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'forward-no-host':
       return `${router(reason.routerId, { start: true })} tiene conectada la {{network|red}} de ${reason.ip}, pero ningún {{device|dispositivo}} tiene esa IP: ${routerDrops(known)} ${routerOutcome(reason.warns)}`;
     case 'forward-private-dropped':
-      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${router(reason.routerId, { start: true, bare: true })}, ya fuera de la oficina, ${routerDrops(known)} sin avisar.`;
+      return `${reason.ip} es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. ${router(reason.routerId, { start: true, bare: true })}, ya fuera de la oficina, ${word(known, 'drop', 'descartó')} el {{packet|paquete}} y no avisó.`;
     case 'forward-router-replies': {
       const owner = placeOf(reason.routerId) === 'named' ? `${router(reason.routerId)}, un {{router}}` : router(reason.routerId);
       return `La IP ${reason.ip} es de ${owner}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;

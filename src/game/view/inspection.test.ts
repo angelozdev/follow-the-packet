@@ -421,7 +421,7 @@ describe('a packet of an office with routers', () => {
   it('the reason a packet stopped does not name a router that is not drawn either', () => {
     const lost = sentTo(drawing(start, 'your-laptop', officeRouter.id), 'private');
     const stop = field(lost, 'Dónde y por qué se detuvo');
-    expect(stop?.[1]).toBe('10.0.0.10 es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descarta el paquete sin avisar.');
+    expect(stop?.[1]).toBe('10.0.0.10 es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descartó el paquete y no avisó.');
     expect(stop?.[1]).not.toContain(provider.id);
     expect(field(sentTo(start, 'private'), 'Dónde y por qué se detuvo')?.[1]).toContain(provider.id);
   });

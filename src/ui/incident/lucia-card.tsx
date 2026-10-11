@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { LUCIA_TEXT, TERMS, TERM_ENTITY, type TermId, type TermText } from '@/copy';
+import { LUCIA_TEXT, TERMS, TERM_ENTITY, termsIn, type TermId, type TermText } from '@/copy';
 import { Button, Card } from '@/design';
 import { canAskHint, hintsOf, isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import { isGuided, type IncidentTask } from '@/levels';
@@ -42,6 +42,16 @@ function glossaryOrder(known: ReadonlySet<TermId>, newTerms: ReadonlySet<TermId>
   return [...known].sort((a, b) => Number(newTerms.has(b)) - Number(newTerms.has(a)) || byName(a, b));
 }
 
+/** Returns, for each text in the order the card shows it, the new terms it marks: those that appear in it for the first time on the card, so a term is marked once however many texts use it. */
+function newTermsFirstSeen(texts: TermText[], newTerms: ReadonlySet<TermId>): ReadonlySet<TermId>[] {
+  const unseen = new Set(newTerms);
+  return texts.map((text) => {
+    const firstSeen = new Set(termsIn(text).filter((id) => unseen.has(id)));
+    firstSeen.forEach((id) => unseen.delete(id));
+    return firstSeen;
+  });
+}
+
 function Glossary({ terms, newTerms }: { terms: TermId[]; newTerms: ReadonlySet<TermId> }) {
   return (
     <dl className="glossary">
@@ -82,10 +92,11 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
   const withTasks = isGuided(incident) ? incident : null;
   const hints = hintsOf(session);
   const newTerms = new Set(incident.introduces);
+  const [reportTerms, ...taskTerms] = newTermsFirstSeen([incident.report, ...(withTasks?.tasks.map((task) => task.text) ?? [])], newTerms);
   return (
     <Card aria-labelledby="lucia-title" header={{ icon: <CardIcon kind="lucia" />, title: <h2 id="lucia-title">{LUCIA_TEXT.name}</h2>, meta: LUCIA_TEXT.role }}>
       <p>
-        <TaggedText text={incident.report} newTerms={newTerms} />
+        <TaggedText text={incident.report} newTerms={reportTerms} />
       </p>
       {isIntruding(session) && (
         <p key={session.alerts} role="alert" className="lucia__alert">
@@ -96,12 +107,12 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
         <>
           <h3>{LUCIA_TEXT.tasks}</h3>
           <ul className="tasks">
-            {withTasks.tasks.map((task) => {
+            {withTasks.tasks.map((task, index) => {
               const done = taskHolds(task, session.runs, session.sent, session.answers);
               return (
                 <li key={task.id} className="task">
                   <span aria-hidden="true">{done ? '✓ ' : '☐ '}</span>
-                  <TaggedText text={task.text} newTerms={newTerms} />
+                  <TaggedText text={task.text} newTerms={taskTerms[index]} />
                   <span className="sr-only"> ({done ? LUCIA_TEXT.done : LUCIA_TEXT.pending})</span>
                 </li>
               );

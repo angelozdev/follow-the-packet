@@ -270,7 +270,7 @@ test.describe('Sin animaciones', () => {
       await page.getByRole('button', { name: /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/ }).hover();
       const why = page.getByRole('region', { name: 'ping de tu-laptop a 10.0.0.10' });
       await expect(why).toContainText('10.0.0.10 es una IP privada: se repite en muchas redes y internet no la entrega');
-      await expect(why).toContainText('Un router, ya fuera de la oficina, descarta el paquete sin avisar');
+      await expect(why).toContainText('Un router, ya fuera de la oficina, descartó el paquete y no avisó');
       await expect(why).not.toContainText('router-proveedor');
     });
 

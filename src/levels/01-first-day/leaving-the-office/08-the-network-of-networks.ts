@@ -27,19 +27,19 @@ export default defineIncident({
   question: '¿Por qué el {{ping}} a la impresora de otra oficina no llegó?',
   explanation: [
     {
-      text: 'Porque el servidor de internet no contestó el {{ping}}.',
-      feedback: 'No. El {{ping}} al servidor sí volvió. El otro murió afuera de la oficina, antes de llegar a su destino.',
+      text: 'Porque el servidor de {{internet}} no pudo contestar el {{ping}}.',
+      feedback: 'El {{ping}} al servidor sí volvió. El otro murió afuera de la oficina, antes de llegar a su destino.',
       correct: false,
     },
     {
       text: 'Porque 10.0.0.10 es una {{private-ip|IP privada}} y {{internet}} no la entrega.',
       feedback:
-        'Eso es. Muchas redes usan la misma {{private-ip|IP privada}}, así que {{internet}} no sabe a cuál llevar el {{packet|paquete}}: un {{router}} de afuera lo descarta sin avisar. La {{public-ip|IP pública}} del servidor sí se alcanza desde internet.',
+        'Muchas redes usan la misma {{private-ip|IP privada}}, así que {{internet}} no sabe a cuál llevar el {{packet|paquete}}. Aquí, el primer {{router}} fuera de la oficina lo descartó y no avisó. La {{public-ip|IP pública}} del servidor sí se alcanza desde internet.',
       correct: true,
     },
     {
-      text: `Porque ${NAME.router} no deja salir los {{ping|pings}} de la oficina.`,
-      feedback: `No. El {{ping}} al servidor también salió por ${NAME.router}, y volvió.`,
+      text: `Porque ${NAME.router} no deja salir los {{ping|pings}} de la oficina hacia {{internet}}.`,
+      feedback: `El {{ping}} al servidor también salió por ${NAME.router}, y volvió.`,
       correct: false,
     },
   ],

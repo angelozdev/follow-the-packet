@@ -26,18 +26,18 @@ export default defineIncident({
   question: `¿Por qué el {{ping}} a ${IP.loopback} tarda casi nada?`,
   explanation: [
     {
-      text: `Porque ${IP.loopback} es la {{ip-address|IP}} más rápida de la {{network|red}}.`,
-      feedback: `No. Ningún número de IP da velocidad. Tarda casi nada porque el {{packet|paquete}} no sale de ${NAME.you}, no por su número.`,
+      text: `Porque ${IP.loopback} es la {{ip-address|IP}} más rápida de toda la {{network|red}} de la oficina.`,
+      feedback: `Ningún número de IP da velocidad. Tarda casi nada porque el {{packet|paquete}} no sale de ${NAME.you}, no por su número.`,
       correct: false,
     },
     {
       text: 'Porque con una IP de {{loopback}} no hace falta que vuelva un {{echo-reply}}.',
-      feedback: `No. Sí vuelve: ${NAME.you} recibe el {{echo-request}} y contesta con un {{echo-reply}}, como viste en la caja. Lo que cambia es el recorrido, que es el más corto.`,
+      feedback: `Sí vuelve: ${NAME.you} recibe el {{echo-request}} y contesta con un {{echo-reply}}, como viste en la caja. Lo que cambia es el recorrido, que es el más corto.`,
       correct: false,
     },
     {
       text: `Porque el {{packet|paquete}} no sale de ${NAME.you}: ${IP.loopback} siempre es tu propio {{device|dispositivo}}.`,
-      feedback: `Eso es. El paquete va y vuelve dentro de ${NAME.you}, sin salir a la {{network|red}}. Por eso su {{rtt}} es el más bajo.`,
+      feedback: `El paquete va y vuelve dentro de ${NAME.you}, sin salir a la {{network|red}}. Por eso su {{rtt}} es el más bajo.`,
       correct: true,
     },
   ],

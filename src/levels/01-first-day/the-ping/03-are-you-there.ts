@@ -12,7 +12,7 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'],
   changes: [],
-  report: `Haz un ping a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. El {{ping}} manda un mensaje y espera otro de vuelta: el que va es un {{echo-request}} y el que vuelve, un {{echo-reply}}. Son mensajes de {{icmp}}, un {{protocol|protocolo}}. Mira el {{header|encabezado}} de cada uno en la caja.`,
+  report: `Haz un {{ping}} a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. El {{ping}} manda un mensaje y espera otro de vuelta: el que va es un {{echo-request}} y el que vuelve, un {{echo-reply}}. Son mensajes de {{icmp}}, un {{protocol|protocolo}}. Mira el {{header|encabezado}} de cada uno en la caja.`,
   tasks: [pingTask(TASK.ping, `Que tu {{ping}} a la ${NAME.printer} vuelva con su {{echo-reply}}.`, ADDRESS.printer.id, 'replied', DEVICE.printer.id)],
   flows: [],
   send: { from: [ORIGIN.you], to: [ADDRESS.printer, ADDRESS.lucia], message: [MESSAGE.ping] },
@@ -24,17 +24,17 @@ export default defineIncident({
   explanation: [
     {
       text: `La {{source-ip|IP de origen}} es la de la ${NAME.printer} y la {{destination-ip|IP de destino}} es la de ${NAME.you}.`,
-      feedback: 'Eso es. El {{echo-reply}} vuelve a quien preguntó, así que lleva invertidos el origen y el destino del {{echo-request}}.',
+      feedback: 'El {{echo-reply}} vuelve a quien preguntó, así que lleva invertidos el origen y el destino del {{echo-request}}.',
       correct: true,
     },
     {
-      text: `La {{source-ip|IP de origen}} es la de ${NAME.you} y la {{destination-ip|IP de destino}} es la de la ${NAME.printer}: las mismas que la ida.`,
-      feedback: `No. Con esas IP el mensaje saldría otra vez de ${NAME.you} hacia la ${NAME.printer} y no volvería a ti. Compara los dos {{header|encabezados}} en la caja: están invertidos.`,
+      text: `La {{source-ip|IP de origen}} es la de ${NAME.you} y la {{destination-ip|IP de destino}} es la de la ${NAME.printer}, como en la ida.`,
+      feedback: `Con esas IP el mensaje saldría otra vez de ${NAME.you} hacia la ${NAME.printer} y no volvería a ti. Compara los dos {{header|encabezados}} en la caja: están invertidos.`,
       correct: false,
     },
     {
-      text: 'Solo lleva la {{destination-ip|IP de destino}}: la de origen no hace falta.',
-      feedback: 'No. Todo {{header|encabezado}} lleva las dos: la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}. El del {{echo-reply}} también; míralo en la caja.',
+      text: 'Solo lleva la {{destination-ip|IP de destino}}, porque la de origen no hace falta en una respuesta.',
+      feedback: 'Todo {{header|encabezado}} lleva las dos: la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}. El del {{echo-reply}} también; míralo en la caja.',
       correct: false,
     },
   ],

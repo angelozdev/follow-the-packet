@@ -15,7 +15,7 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['packet', 'header', 'source-ip', 'destination-ip'],
   changes: [{ type: 'connectDevice', deviceId: DEVICE.visitor.id }],
-  report: `${NAME.visitor} ya está conectada. Ahora envía un {{packet|paquete}} desde ${NAME.you} a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. Después pasa el mouse por el paquete y mira su {{header|encabezado}}: lleva la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}.`,
+  report: `${NAME.visitor} ya está conectada. Ahora envía un {{packet|paquete}} desde ${NAME.you} a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. Después pasa el mouse por el {{packet|paquete}} y mira su {{header|encabezado}}: lleva la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}.`,
   tasks: [
     {
       id: TASK.packet,
@@ -33,17 +33,17 @@ export default defineIncident({
   explanation: [
     {
       text: 'Porque la red lo adivinó por el nombre del {{device|dispositivo}}.',
-      feedback: 'No. El {{header|encabezado}} no lleva nombres, lleva IP. La red entrega el {{packet|paquete}} al dispositivo que tiene la {{destination-ip|IP de destino}}.',
+      feedback: 'El {{header|encabezado}} no lleva nombres, lleva IP. La red entrega el {{packet|paquete}} al dispositivo que tiene la {{destination-ip|IP de destino}}.',
       correct: false,
     },
     {
       text: `Porque su {{source-ip|IP de origen}} era la de ${NAME.marta}.`,
-      feedback: `No. La IP de origen dice quién envía el paquete, y era la de ${NAME.you}. A quién se entrega lo dice la {{destination-ip|IP de destino}}.`,
+      feedback: `La IP de origen dice quién envía el paquete, y era la de ${NAME.you}. A quién se entrega lo dice la {{destination-ip|IP de destino}}.`,
       correct: false,
     },
     {
       text: `Porque su {{destination-ip|IP de destino}} era la de ${NAME.marta}.`,
-      feedback: 'Eso es. La red entrega el {{packet|paquete}} al {{device|dispositivo}} que tiene la IP de destino del {{header|encabezado}}, sea o no el que querías.',
+      feedback: 'La red entrega el {{packet|paquete}} al {{device|dispositivo}} que tiene la IP de destino del {{header|encabezado}}, sea o no el que querías.',
       correct: true,
     },
   ],

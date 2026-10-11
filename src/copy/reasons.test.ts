@@ -122,7 +122,7 @@ const ROUTER_CASES: [Reason, string, string[]][] = [
   ],
   [
     { code: 'forward-private-dropped', routerId: provider.id, ip: '10.0.0.10' },
-    '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. [[router-provider]], ya fuera de la oficina, {{drop|descarta}} el {{packet|paquete}} sin avisar.',
+    '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. [[router-provider]], ya fuera de la oficina, {{drop|descartó}} el {{packet|paquete}} y no avisó.',
     ['private-ip', 'internet', 'drop', 'packet'],
   ],
   [
@@ -385,7 +385,7 @@ describe('describeReason for a router the map does not draw', () => {
     ],
     [
       { code: 'forward-private-dropped', routerId: provider.id, ip: '10.0.0.10' },
-      '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. Un {{router}}, ya fuera de la oficina, {{drop|descarta}} el {{packet|paquete}} sin avisar.',
+      '10.0.0.10 es una {{private-ip}}: se repite en muchas redes y {{internet}} no la entrega. Un {{router}}, ya fuera de la oficina, {{drop|descartó}} el {{packet|paquete}} y no avisó.',
     ],
     [
       { code: 'forward-router-replies', routerId: provider.id, ip: provider.towardOffice },
@@ -429,7 +429,7 @@ describe('describeReason for a router that discards a packet', () => {
     const early = describeReason(reason, FLOORS, without('drop'));
     expect(termsIn(early)).not.toContain('drop');
     expect(toPlainText(early)).toBe(toPlainText(describeReason(reason, FLOORS, EVERY_TERM)));
-    expect(toPlainText(early)).toContain('descarta');
+    expect(toPlainText(early)).toMatch(/descarta|descartó/);
     expect(termsIn(describeReason(reason, FLOORS, EVERY_TERM))).toContain('drop');
   });
 });

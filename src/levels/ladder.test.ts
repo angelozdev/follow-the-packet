@@ -4,7 +4,7 @@ import { ipInCidr, lansOf } from '@/engine';
 import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
 import { IP } from './01-first-day/shared';
 import { FROM } from './04-iaas/shared';
-import type { Incident, SendIncident } from './contract/incident';
+import { isGuided, type Incident, type SendIncident } from './contract/incident';
 import { RULES_TERM, chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
@@ -107,6 +107,18 @@ describe('term ladder', () => {
     expect(namedTerms('Los paquetes llegan a los dispositivos.', ['packet', 'device'])).toEqual(['packet', 'device']);
     expect(namedTerms('Dos routers y cinco reglas.', ['router', 'rule'])).toEqual(['router', 'rule']);
     expect(namedTerms('Tres Redshifts y un redshift.', ['network'])).toEqual([]);
+  });
+
+  it('every mention of a term an incident introduces, in its report and its tasks, is tagged, so the first one wears the nuevo mark', () => {
+    const untaggedWords = (text: string) =>
+      parseTermText(text)
+        .flatMap((segment) => (segment.kind === 'text' ? [segment.text] : []))
+        .join(' ');
+    const untagged = INCIDENTS.flatMap((incident) => {
+      const texts = [incident.report, ...(isGuided(incident) ? incident.tasks.map((task) => task.text) : [])];
+      return texts.flatMap((text) => namedTerms(untaggedWords(text), incident.introduces).map((term) => `${incident.id}: ${term}`));
+    });
+    expect(untagged).toEqual([]);
   });
 
   it('introduces, incident by incident, the terms of the approved design', () => {

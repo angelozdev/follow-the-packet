@@ -27,18 +27,18 @@ export default defineIncident({
   question: '¿Por qué el {{ping}} con {{ttl}} 64 no llegó al servidor?',
   explanation: [
     {
-      text: 'Porque el {{packet|paquete}} daba vueltas entre los mismos dos {{router|routers}}: el {{ttl}} bajaba en cada {{hop|salto}} hasta llegar a 0.',
-      feedback: `Eso es. ${NAME.router} le pasa el {{packet|paquete}} a ${NAME.provider}, porque por ahí se sale de la oficina. ${NAME.provider} sigue su configuración nueva y se lo devuelve. Ningún {{router}} falla: lo que está mal es esa configuración. Cada {{router}} decide solo mirando la {{destination-ip|IP de destino}} y no recuerda si el {{packet|paquete}} ya pasó por él. Por eso el {{packet|paquete}} va y viene hasta que el {{ttl}} llega a 0: entonces un {{router}} lo descarta y avisa con {{time-exceeded}}. Con {{ttl}} 3 avisó ${NAME.router}, el primer {{router}} del camino: el {{packet|paquete}} había vuelto a pasar por él.`,
+      text: 'Porque el {{packet|paquete}} daba vueltas entre dos {{router|routers}} y su {{ttl}} llegó a 0.',
+      feedback: `${NAME.router} le pasa el {{packet|paquete}} a ${NAME.provider}, porque por ahí se sale de la oficina. ${NAME.provider} sigue su configuración nueva y se lo devuelve. Ningún {{router}} falla: lo que está mal es esa configuración. Cada {{router}} decide solo mirando la {{destination-ip|IP de destino}}. Ninguno recuerda si el {{packet|paquete}} ya pasó por él. Por eso el {{packet|paquete}} va y viene hasta que el {{ttl}} llega a 0.`,
       correct: true,
     },
     {
-      text: 'Porque el servidor lo descartó.',
-      feedback: 'No. El {{packet|paquete}} no llegó al servidor: un {{router}} lo descartó antes y avisó con {{time-exceeded}}. El aviso viene de un router, no del servidor.',
+      text: 'Porque el servidor de {{internet}} recibió el {{ping}}, pero lo descartó antes de contestar.',
+      feedback: 'El {{packet|paquete}} no llegó al servidor: un {{router}} lo descartó antes y avisó con {{time-exceeded}}. El aviso viene de un router, no del servidor.',
       correct: false,
     },
     {
-      text: 'Porque 64 es un {{ttl}} demasiado alto para {{internet}}.',
-      feedback: 'No. 64 alcanza para cruzar muchísimos {{router|routers}}, y aquí el camino tiene muy pocos. El {{ttl}} se gastó porque el {{packet|paquete}} daba vueltas.',
+      text: 'Porque 64 es un {{ttl}} demasiado alto y los {{router|routers}} de {{internet}} lo rechazan.',
+      feedback: '64 alcanza para cruzar muchísimos {{router|routers}}, y aquí el camino tiene muy pocos. El {{ttl}} se gastó porque el {{packet|paquete}} daba vueltas.',
       correct: false,
     },
   ],

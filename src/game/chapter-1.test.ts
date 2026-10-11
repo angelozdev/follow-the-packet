@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TERMINAL_TEXT, TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
-import { applyAction, extraOpenings, networkSchema, stopStep } from '@/engine';
+import { applyAction, extraOpenings, networkSchema, simulate, stopStep } from '@/engine';
 import { INCIDENTS, caseWorld, isGuided, revealsRoutersByTraceroute, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, REPAIRED_STRETCH, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
 import type { FlowRun, SentPacket } from './flow-runs';
 import { firewallCard } from './view/cards/firewall-card';
 import { identifyCard } from './view/cards/identify-card';
@@ -84,7 +84,8 @@ const THE_CHAIN_OF_THE_LOOP = [
   `${ROUTER.office.name} le pasa el paquete a ${ROUTER.provider.name}`,
   `${ROUTER.provider.name} sigue su configuración nueva y se lo devuelve`,
   'lo que está mal es esa configuración',
-  'decide solo mirando la IP de destino y no recuerda si el paquete ya pasó por él',
+  'decide solo mirando la IP de destino',
+  'Ninguno recuerda si el paquete ya pasó por él',
   'el paquete va y viene hasta que el TTL llega a 0',
 ];
 const EACH_ONE_SENDS_IT_TO_THE_OTHER = 'quedan configurados de modo que cada uno se lo manda al otro';
@@ -103,7 +104,7 @@ const READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE = [
 ];
 const TEXTS_THAT_READ_A_TRACEROUTE = [TERMS.traceroute.definition, TERMS['time-exceeded'].definition, TERMS.hop.definition, ...Object.values(TERMINAL_TEXT.route.notes)];
 const AFTER_THE_LAST_ROUTER_THAT_ANSWERED = /sigue a router-proveedor, el último router que contestó/;
-const THE_ROUTER_IN_FRONT_OF_THE_SERVER_IS_NOT_LISTED = /router-destino, el router que está frente al servidor, no sale en ninguna línea del traceroute.*Lo más probable es que el paquete ni llegue al servidor/;
+const NO_ROUTER_AFTER_THE_PROVIDER_IS_LISTED = /El traceroute no listó ningún router después de router-proveedor: desde el salto 3 nadie contesta hasta el máximo de saltos\. Lo más probable es que el paquete ni llegue al servidor/;
 const THE_LAST_ROUTER_THAT_ANSWERED_HINT = /último router que sí contestó/;
 const NOTHING_ANSWERS_UP_TO_THE_MAXIMUM = /(nadie contesta|no contesta nadie) hasta el máximo de saltos/;
 const THE_PING_DOES_NOT_COME_BACK = /ping tampoco vuelve/;
@@ -113,6 +114,9 @@ const A_SINGLE_STAR_PROVES_NOTHING = /Un solo \* no lo prueba: algunos routers r
 const ROUTER_OUTSIDE_THE_LOOP = new RegExp(`${ROUTER.destination.name}|${IP.destination.replaceAll('.', '\\.')}`);
 const TIMED_OUT = 'timeout: pasó el tiempo de espera y no volvió nada.';
 const ROUTER_IPS = [IP.router, IP.provider, IP.destination];
+const A_ROUTER_THAT_ALWAYS_DROPS = /\bde afuera\b[^.]*\bdescarta\b|\bfuera de la oficina,? descarta\b|\brouters? (de afuera )?descartan\b/i;
+const THE_FIRST_ROUTER_OUTSIDE_DROPPED_IT = 'el primer router fuera de la oficina lo descartó y no avisó';
+const YOUR_LAPTOP_IN_WORDS = /\btu laptop\b/i;
 const A_ROUTER_OR_ITS_IP = new RegExp([...Object.values(ROUTER).map((router) => router.name), ...ROUTER_IPS.map((ip) => `(?<!\\d)${ip.replaceAll('.', '\\.')}(?!\\d)`)].join('|'));
 const A_HOP = /salto|pasó por/i;
 const A_ROUTER_THAT_DISCARDS = /descarta|no sabe a qué/;
@@ -167,6 +171,11 @@ const A_PING_THAT_DOES_NOT_COME_BACK = [/\bpings?\b.*\bno vuelv/i, /\bning[uú]n
 const SWITCHED_OFF_OR_DOWN = /apagad|ca[ií]d[oa]|encendid|prendid/i;
 const FEEDBACK_ECHO = /^(No\.|No es eso\.|Eso es\.|Correcto\.)/;
 const LONGEST_OVER_SHORTEST = 1.4;
+const QUESTIONS_BEFORE_THE_WATCH = 13;
+const A_THIRD = 3;
+const END_OF_SENTENCE = /(?<=[.!?])\s+/;
+const MOST_SENTENCES_OF_A_CHAIN = 6;
+const LONGEST_SENTENCE_OF_A_CHAIN = 150;
 
 function incidentOf(id: string): Incident {
   const found = INCIDENTS.find((candidate) => candidate.id === id);
@@ -250,6 +259,10 @@ function fieldLines(session: Session, pieceId: string, label: string): string[] 
 /** Returns true when a text that shows a hop nobody answered says, in a sentence with no hedge, where the packet died or the path broke: a router that does not warn may still forward the packet. */
 function readsSilenceAsTheBreak(text: string): boolean {
   return A_SILENT_HOP.test(text) && text.split(SENTENCE_BREAK).some((sentence) => WHERE_THE_PACKET_DIED.test(sentence) && !A_HEDGE.test(sentence));
+}
+
+function providerOf(world: Session['world']) {
+  return world.routers?.find((router) => router.id === ROUTER.provider.id);
 }
 
 function deviceNameAt(session: Session, ip: string): string | undefined {
@@ -699,7 +712,7 @@ describe('01-08, the network of networks', () => {
   const toServer = pingTo(start, ADDRESS.server.id);
   const toOtherOffice = pingTo(start, ADDRESS.otherOffice.id);
   const both = pingTo(start, ADDRESS.server.id, ADDRESS.otherOffice.id);
-  const STOPPED_TEXT = `${IP.otherOfficePrinter} es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descarta el paquete sin avisar.`;
+  const STOPPED_TEXT = `${IP.otherOfficePrinter} es una IP privada: se repite en muchas redes y internet no la entrega. Un router, ya fuera de la oficina, descartó el paquete y no avisó.`;
 
   it('01-08: a ping to the server of the internet comes back', () => {
     const [run] = toServer.sent;
@@ -741,6 +754,13 @@ describe('01-08, the network of networks', () => {
     const steps = both.sent.flatMap((run) => run.trace.steps);
     expect(steps.filter((step) => /nat/i.test(`${step.stage} ${step.reason.code}`))).toEqual([]);
     expect(steps.some((step) => step.reason.code === 'route-leaves-office')).toBe(true);
+  });
+
+  it('01-08: the right explanation says what happened to this ping, that the first router outside the office dropped it and did not warn, and no text states it as a rule of routers', () => {
+    const right = guidedOf(THE_NETWORK_OF_NETWORKS).explanation.find((option) => option.correct);
+    expect(toPlainText(right?.feedback ?? '')).toContain(THE_FIRST_ROUTER_OUTSIDE_DROPPED_IT);
+    expect(incidentTexts(guidedOf(THE_NETWORK_OF_NETWORKS)).map((text) => toPlainText(text)).filter((text) => A_ROUTER_THAT_ALWAYS_DROPS.test(text))).toEqual([]);
+    expect(everythingShown(both).filter((text) => A_ROUTER_THAT_ALWAYS_DROPS.test(text))).toEqual([]);
   });
 
   it('01-08: draws the office of 01-06, the internet and the server, and no router of the provider', () => {
@@ -920,7 +940,11 @@ describe('01-10, seeing the path', () => {
     expect([NOTHING_ANSWERS_UP_TO_THE_MAXIMUM, THE_PING_DOES_NOT_COME_BACK, VERY_PROBABLY_AFTER, A_ROUTER_THAT_DOES_NOT_WARN].filter((pattern) => !pattern.test(feedback))).toEqual([]);
     expect([NOTHING_ANSWERS_UP_TO_THE_MAXIMUM, THE_PING_DOES_NOT_COME_BACK, VERY_PROBABLY_AFTER, A_SINGLE_STAR_PROVES_NOTHING].filter((pattern) => !pattern.test(toPlainText(incident.takeaway)))).toEqual([]);
     expect(toPlainText(incident.hints.at(-1) ?? '')).toMatch(THE_LAST_ROUTER_THAT_ANSWERED_HINT);
-    expect(toPlainText(incident.explanation[1].feedback)).toMatch(THE_ROUTER_IN_FRONT_OF_THE_SERVER_IS_NOT_LISTED);
+    expect(toPlainText(incident.explanation[1].feedback)).toMatch(NO_ROUTER_AFTER_THE_PROVIDER_IS_LISTED);
+  });
+
+  it('01-10: no text of the incident names router-destino or its IP, which the map never draws', () => {
+    expect(incidentTexts(guidedOf(SEEING_THE_PATH)).map((text) => toPlainText(text)).filter((text) => ROUTER_OUTSIDE_THE_LOOP.test(text))).toEqual([]);
   });
 
   it('01-10: tu-laptop is the only device of the office drawn; before a traceroute no router is drawn, and after it the office router and router-proveedor are', () => {
@@ -1128,7 +1152,7 @@ describe('01-11, the guard', () => {
     const [right] = explanation.filter((option) => option.correct);
     expect(termsIn(right.text)).toEqual(expect.arrayContaining(['firewall', 'drop']));
     expect(toPlainText(right.text)).toMatch(/sin avisar|no avisó/);
-    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toMatch(/^No\./);
+    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toContain('mapa');
   });
 
   it('01-11: the first task does not give the answer away, and the second hint names the field of the box that holds it', () => {
@@ -1139,13 +1163,16 @@ describe('01-11, the guard', () => {
     expect(firewallBox()?.fields.map((field) => toPlainText(field.label))).not.toContain(STOPPED_LABEL);
   });
 
-  it('01-11: starts from the world of 01-10 solved with the broken stretch repaired, so the provider router is the one of 01-08 again', () => {
+  it('01-11: starts from the world of 01-10 solved, with no change of its own, so the provider router keeps the broken stretch', () => {
     const before = solvedWorld(INCIDENTS, SEEING_THE_PATH);
-    const providerOf = (world: typeof before) => world.routers?.find((router) => router.id === ROUTER.provider.id);
-    expect(providerOf(before)?.sendsUnreachable).toBe(false);
-    expect(providerOf(start.world)).toEqual(providerOf(startWorld(INCIDENTS, THE_NETWORK_OF_NETWORKS)));
-    expect({ ...start.world, routers: undefined }).toEqual({ ...before, routers: undefined });
+    expect(guidedOf(THE_GUARD).changes).toEqual([]);
+    expect(start.world).toEqual(before);
+    expect(providerOf(start.world)?.sendsUnreachable).toBe(false);
     expect(networkSchema.safeParse(start.world).success).toBe(true);
+  });
+
+  it('01-11: its report says nothing of router-proveedor or of the stretch, which the map of 01-11 does not draw', () => {
+    expect(toPlainText(guidedOf(THE_GUARD).report)).not.toMatch(new RegExp(`${ROUTER.provider.name}|tramo|proveedor`));
   });
 });
 
@@ -1297,7 +1324,7 @@ describe('01-12, your first rule', () => {
     const [right] = explanation.filter((option) => option.correct);
     expect(termsIn(right.feedback)).toEqual(expect.arrayContaining(['default-deny']));
     expect(termsIn(right.text)).toEqual(expect.arrayContaining(['rule', 'allow', 'deny']));
-    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toMatch(/^No\./);
+    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toMatch(/\breglas?\b/);
   });
 
   it('01-12: the hints name the chips of the card and the second ones names the least privilege', () => {
@@ -1456,12 +1483,21 @@ describe('the rules of 01-12 and 01-13', () => {
     }
   });
 
-  it('01-12 and 01-13: the question is one question and each wrong option is refuted by its own feedback, which starts with No', () => {
+  it('01-12 and 01-13: the question is one question and each wrong option is refuted by its own feedback', () => {
     for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
       const { question, explanation } = guidedOf(id);
       expect(toPlainText(question ?? '').match(/\?/g), id).toHaveLength(1);
-      expect(explanation.filter((option) => !option.correct).map((option) => toPlainText(option.feedback).startsWith('No.')), id).toEqual([true, true]);
-      expect(toPlainText(explanation.find((option) => option.correct)?.feedback ?? '').startsWith('Eso es.'), id).toBe(true);
+      expect(new Set(explanation.map((option) => toPlainText(option.feedback))).size, id).toBe(explanation.length);
+    }
+  });
+
+  it('01-12 and 01-13: use no internet, so the broken stretch of router-proveedor changes none of their results', () => {
+    for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
+      const world = startWorld(INCIDENTS, id);
+      const repaired = REPAIRED_STRETCH.reduce(applyAction, world);
+      expect(providerOf(world), id).toEqual(providerOf(solvedWorld(INCIDENTS, SEEING_THE_PATH)));
+      expect(providerOf(repaired), id).not.toEqual(providerOf(world));
+      for (const { packet } of guidedOf(id).flows) expect(simulate(world, packet), id).toEqual(simulate(repaired, packet));
     }
   });
 });
@@ -1499,6 +1535,32 @@ describe('the thirteen incidents of blocks 1 to 4', () => {
     for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
       const session = startSession(INCIDENTS, id);
       expect(pieceViews({ ...session, known: new Set([...session.known, 'internet']) }).some((piece) => piece.kind === 'internet'), id).toBe(false);
+    }
+  });
+});
+
+describe('the options and the right explanations of 01-01 to 01-13', () => {
+  const questions = INCIDENTS.filter((incident) => incident.chapter === 1 && incident.id !== FINAL_WATCH).map((incident) => guidedOf(incident.id));
+  const sizes = questions.map((incident) => incident.explanation.map((option) => toPlainText(option.text).length));
+  const rightSizes = questions.map((incident, index) => sizes[index][incident.explanation.findIndex((option) => option.correct)]);
+
+  it('in no incident is the longest of the three options more than 1.4 times the shortest', () => {
+    expect(questions).toHaveLength(QUESTIONS_BEFORE_THE_WATCH);
+    expect(questions.filter((_, index) => Math.max(...sizes[index]) > Math.min(...sizes[index]) * LONGEST_OVER_SHORTEST).map((incident) => incident.id)).toEqual([]);
+  });
+
+  it('the right option is the longest in at most a third of the questions and the shortest in at most a third, so its length gives nothing away', () => {
+    const longest = questions.filter((_, index) => rightSizes[index] === Math.max(...sizes[index]));
+    const shortest = questions.filter((_, index) => rightSizes[index] === Math.min(...sizes[index]));
+    expect(longest.length).toBeLessThanOrEqual(Math.floor(QUESTIONS_BEFORE_THE_WATCH / A_THIRD));
+    expect(shortest.length).toBeLessThanOrEqual(Math.floor(QUESTIONS_BEFORE_THE_WATCH / A_THIRD));
+  });
+
+  it('01-09 and 01-10: the right explanation is the essential chain, in at most six short sentences with one idea each', () => {
+    for (const id of [COUNTING_HOPS, SEEING_THE_PATH]) {
+      const sentences = toPlainText(guidedOf(id).explanation.find((option) => option.correct)?.feedback ?? '').split(END_OF_SENTENCE);
+      expect(sentences.length, id).toBeLessThanOrEqual(MOST_SENTENCES_OF_A_CHAIN);
+      expect(sentences.filter((sentence) => sentence.length > LONGEST_SENTENCE_OF_A_CHAIN), id).toEqual([]);
     }
   });
 });
@@ -1812,14 +1874,23 @@ describe('the changes to the world that chapter 1 explains', () => {
     expect(rightFeedback(SEEING_THE_PATH)).toContain(THE_PROVIDER_ROUTER_DOES_NOT_KNOW_THE_WAY);
   });
 
-  it('01-11: the report says that the provider fixed the broken stretch and router-proveedor went back to its earlier configuration', () => {
-    expect(plainReport(THE_GUARD)).toContain(THE_PROVIDER_FIXED_THE_STRETCH);
+  it('01-14: the report says that the provider fixed the broken stretch and router-proveedor went back to its earlier configuration, and the repair is one of its own changes', () => {
+    expect(plainReport(FINAL_WATCH)).toContain(THE_PROVIDER_FIXED_THE_STRETCH);
+    expect(watchOf().changes).toEqual(expect.arrayContaining(REPAIRED_STRETCH));
+    expect(providerOf(solvedWorld(INCIDENTS, IN_AND_OUT))).toEqual(providerOf(solvedWorld(INCIDENTS, SEEING_THE_PATH)));
+    expect(providerOf(startWorld(INCIDENTS, FINAL_WATCH))).toEqual(providerOf(startWorld(INCIDENTS, THE_NETWORK_OF_NETWORKS)));
   });
 
   it('01-14: the report says that someone changed the firewall of tu-laptop to let everything out, and the right cause of case 7 says that someone took that rule away', () => {
     expect(plainReport(FINAL_WATCH)).toContain(YOUR_FIREWALL_LETS_EVERYTHING_OUT);
     const right = watchOf().diagnose.cases[CLOSED_CASE - 1].cause.options.find((option) => option.correct);
     expect(toPlainText(right?.feedback ?? '')).toContain(SOMEONE_TOOK_THE_OPEN_RULE_AWAY);
+  });
+
+  it('no text of chapter 1 names your laptop with words, as «tu laptop», instead of its name tag', () => {
+    const texts = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incidentTexts(incident).map((text) => toPlainText(text)));
+    expect(texts.length).toBeGreaterThan(0);
+    expect(texts.filter((text) => YOUR_LAPTOP_IN_WORDS.test(text))).toEqual([]);
   });
 
   it('no text of 01-06, 01-08, 01-10, 01-11 or 01-14 says that a router got confused, and none says ruta or tabla, which chapter 2 teaches', () => {

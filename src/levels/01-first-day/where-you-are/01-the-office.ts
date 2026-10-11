@@ -79,18 +79,18 @@ export default defineIncident({
   question: `¿Por qué ${IP.note} no puede ser la {{ip-address|dirección IP}} de la ${NAME.printer}?`,
   explanation: [
     {
-      text: 'Porque ya la usa otro {{device|dispositivo}}.',
-      feedback: 'No. Ningún dispositivo la usa. El problema es el número: 300 pasa de 255.',
+      text: 'Porque ya la usa otro {{device|dispositivo}} de la {{network|red}}.',
+      feedback: 'Ningún dispositivo la usa. El problema es el número: 300 pasa de 255.',
       correct: false,
     },
     {
-      text: 'Porque en {{ipv4}} cada uno de los cuatro números va de 0 a 255.',
-      feedback: `Eso es. El último número de ${IP.note} es 300, y pasa de 255: no es una dirección {{ipv4}}.`,
+      text: 'Porque en {{ipv4}} los cuatro números van de 0 a 255.',
+      feedback: `El último número de ${IP.note} es 300, y pasa de 255: no es una dirección {{ipv4}}.`,
       correct: true,
     },
     {
-      text: 'Porque es una {{ip-address|IP}} de otra {{network|red}}.',
-      feedback: 'No. No es de otra {{network|red}}: no es de ninguna. El 300 pasa de 255.',
+      text: 'Porque es una {{ip-address|IP}} que pertenece a otra {{network|red}}, no a la oficina.',
+      feedback: 'Esa IP no es de otra {{network|red}}: no es de ninguna, porque el 300 pasa de 255.',
       correct: false,
     },
   ],

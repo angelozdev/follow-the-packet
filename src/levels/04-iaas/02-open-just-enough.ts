@@ -26,7 +26,7 @@ export default defineIncident({
   explanation: [
     {
       text: 'Había que abrir la vuelta, porque es la que llega a servidor2.',
-      feedback: 'No: lo que llega a servidor2 es la ida, el {{echo-request}}. Por eso la {{inbound-rule}} del turno de día no arreglaba nada.',
+      feedback: 'Lo que llega a servidor2 es la ida, el {{echo-request}}. Por eso la {{inbound-rule}} del turno de día no arreglaba nada.',
       correct: false,
     },
     {
@@ -36,7 +36,7 @@ export default defineIncident({
     },
     {
       text: 'Un {{ping}} tiene ida ({{echo-request}}) y vuelta ({{echo-reply}}). Para entrar a servidor2 solo hace falta permitir la ida, y solo desde {{security-group|SG}} servidor1.',
-      feedback: 'Eso es. Abrir solo lo que hace falta, y solo para quien lo necesita, se llama {{least-privilege}}.',
+      feedback: 'Abrir solo lo que hace falta, y solo para quien lo necesita, se llama {{least-privilege}}.',
       correct: true,
     },
   ],

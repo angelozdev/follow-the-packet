@@ -41,6 +41,10 @@ function termRow(name: string): HTMLElement {
   return row;
 }
 
+function usesOf(container: HTMLElement, id: TermId): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('.term')].filter((term) => term.textContent === TERMS[id].name && !term.closest('.lucia__glossary'));
+}
+
 function namesOf(ids: TermId[]): string[] {
   return ids.map((id) => TERMS[id].name).sort((a, b) => a.localeCompare(b, 'es'));
 }
@@ -71,6 +75,16 @@ describe("Lucía's card", () => {
     expect(glossaryNames()).toEqual([...namesOf(second.introduces), ...namesOf(earlier)]);
     const marked = [...glossary().querySelectorAll('dt')].filter((dt) => within(dt).queryByText(LUCIA_TEXT.newBadge));
     expect(marked.map(nameOf)).toEqual(namesOf(second.introduces));
+  });
+
+  it('marks a new term once on the card, at its first appearance, however often the report and the tasks use it', () => {
+    const { container } = render(<Harness incidentId="01-03" />);
+    for (const id of ['ping', 'echo-reply'] as const) {
+      const uses = usesOf(container, id);
+      expect(uses.length, id).toBeGreaterThan(1);
+      expect(uses.filter((use) => use.nextElementSibling?.classList.contains('term__new')), id).toEqual([uses[0]]);
+    }
+    expect(screen.getByRole('listitem').querySelector('.term__new')).toBeNull();
   });
 
   it('shows the icon of the entity a term names, and none for a term with no entity', () => {

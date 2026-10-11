@@ -27,6 +27,14 @@ describe('TaggedText', () => {
     expect(screen.getByText(TERMS['inbound-rule'].name).nextElementSibling).toHaveTextContent(LUCIA_TEXT.newBadge);
   });
 
+  it('marks a new term only at its first appearance in the text', () => {
+    const { container } = render(<TaggedText text="Un {{ping}} va, otro {{ping}} vuelve y el {{security-group}} mira." newTerms={new Set<TermId>(['ping', 'security-group'])} />);
+    const [firstPing, secondPing] = screen.getAllByText(TERMS.ping.name);
+    expect(firstPing.nextElementSibling).toHaveTextContent(LUCIA_TEXT.newBadge);
+    expect(secondPing.nextElementSibling).not.toHaveClass('term__new');
+    expect(container.querySelectorAll('.term__new')).toHaveLength(2);
+  });
+
   it('hovering a term shows its definition in document.body, out of any clipping box, and leaving hides it', async () => {
     const user = userEvent.setup();
     render(

@@ -44,18 +44,18 @@ export default defineIncident({
   question: `¿Por qué tu {{ping}} a ${NAME.andres} no salió de ${NAME.you}?`,
   explanation: [
     {
-      text: `Porque ${NAME.you} no tenía {{default-gateway|puerta de enlace predeterminada}}: no sabía a quién entregar los {{packet|paquetes}} que van a otra {{lan|red local}}.`,
-      feedback: 'Eso es. Lo de tu red local se entrega directo. Lo que va a otra red local se entrega a la {{default-gateway|puerta de enlace predeterminada}}, que debe ser la {{ip-address|IP}} de un {{router}}. Sin ese ajuste, el {{packet|paquete}} ni sale.',
+      text: `Porque ${NAME.you} no tenía {{default-gateway|puerta de enlace predeterminada}} y no sabía a quién entregar el {{ping}}.`,
+      feedback: 'Lo de tu red local se entrega directo. Lo que va a otra red local se entrega a la {{default-gateway|puerta de enlace predeterminada}}, que debe ser la {{ip-address|IP}} de un {{router}}. Sin ese ajuste, el {{packet|paquete}} ni sale.',
       correct: true,
     },
     {
-      text: 'Porque el {{router}} de tu piso no estaba funcionando.',
-      feedback: `No. El {{packet|paquete}} ni salió de ${NAME.you}: nunca llegó al router, así que el router ni pudo recibirlo. Lo que faltaba era un ajuste de ${NAME.you}.`,
+      text: 'Porque el {{router}} de tu piso no estaba funcionando y no recibió el {{ping}}.',
+      feedback: `El {{packet|paquete}} ni salió de ${NAME.you}: nunca llegó al router, así que el router ni pudo recibirlo. Lo que faltaba era un ajuste de ${NAME.you}.`,
       correct: false,
     },
     {
-      text: `Porque ${NAME.andres} no tiene {{ip-address|IP}}.`,
-      feedback: `No. ${NAME.andres} sí tiene IP, ${IP.andres}, y se ve en su caja. El {{ping}} no salió porque ${NAME.you} no sabía a quién entregarlo.`,
+      text: `Porque ${NAME.andres} no tiene {{ip-address|IP}} y por eso no puede contestar el {{ping}}.`,
+      feedback: `${NAME.andres} sí tiene IP, ${IP.andres}, y se ve en su caja. El {{ping}} no salió porque ${NAME.you} no sabía a quién entregarlo.`,
       correct: false,
     },
   ],
