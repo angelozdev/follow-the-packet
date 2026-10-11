@@ -7,7 +7,7 @@
 - lo que le falta al contrato del incidente y a la sesión: resultados esperados más ricos, mensajes con TTL y traceroute, la mecánica de identificar (01), la tarjeta «Ajustes de red» con la puerta de enlace (07), los casos (14) y la tarjeta del firewall con las pestañas «Entrada» y «Salida» (13);
 - en el sistema de diseño: un estilo nuevo para todas las tarjetas del juego, también las del capítulo 4 (el estilo B, con el botón primario como sello), y la primitiva `Tabs`, hecha con Radix, que es la única dependencia nueva;
 - una regla que oculta lo que el jugador aún no conoce (el firewall del 05 no se ve hasta el 11);
-- los catorce incidentes, en cinco bloques, cada uno con una prueba humana.
+- los catorce incidentes, en cinco bloques, con una sola prueba humana, la del capítulo entero, después de la Tarea 28.
 
 **Architecture:**
 1. **Decisiones, estructura y términos (Tareas 0 a 2).** Los prototipos y las decisiones del estudiante (Tarea 0). `src/levels/` y otras carpetas están en el tope de 12 archivos o cerca de él: una mudanza sin cambio de comportamiento les da espacio y los incidentes se reparten en una carpeta por bloque (Tarea 1); otra mudanza hace sitio en `src/design/` para la primitiva nueva (Tarea 1a). Los términos nuevos se registran antes de que nada los etiquete (Tarea 2).
@@ -15,7 +15,7 @@
 3. **Contrato, sistema de diseño y juego (Tareas 10 a 15).** Se amplía el contrato `send`. El sistema de diseño estrena el estilo B para todas las tarjetas, con el botón primario como sello (Tarea 11a), y la primitiva `Tabs` (Tarea 11b). Después se suman dos mecánicas pequeñas (`identify` y `diagnose`), el ajuste de la puerta de enlace como una tarjeta propia, «Ajustes de red», y la tarjeta del firewall gana la dirección con las pestañas «Entrada» y «Salida». No hay predicción: la comprensión se verifica con la pregunta final a Lucía. Todo reutiliza las primitivas de `@/design`, y las tarjetas nuevas nacen en el estilo B.
 4. **Escena (Tareas 16 a 18).** Pisos, routers y servidor; el aviso como paquete y sello; el RTT y la salida de traceroute. Las decisiones visuales de la 16 (V6: el mapa sigue la historia, opción b), la 17 y la 18 ya están tomadas.
 5. **Contenido (Tareas 19 a 26).** Los catorce incidentes por bloques. Un «puente» temporal en el 04-01 mantiene verde el capítulo 4 mientras se construye.
-6. **Cierre (Tareas 27 y 28).** Playwright del capítulo entero y los documentos.
+6. **Cierre (Tareas 27 y 28).** Playwright del capítulo entero y los documentos. La prueba humana del capítulo entero va después (sección «Prueba humana del capítulo entero»).
 
 **Tech Stack:** el de hoy (Vite 8.3.3, TypeScript 6.0.3, React 19.3, React Three Fiber 9.8.1, drei 10.7.9, three 0.186.1, zod 4.6.5, `@mantine/hooks` 9.7.1, Vitest 5.0.3, Testing Library con user-event, Playwright 1.64, pnpm 11.3.0) más una dependencia nueva, `@radix-ui/react-tabs`, con versión exacta (Tarea 11b; candidata el 2026-10-10: 1.1.21). `package.json` y `pnpm-lock.yaml` cambian solo en esa tarea.
 
@@ -45,7 +45,7 @@
 - **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 11a (el estilo B repinta todas las tarjetas, también las del capítulo 4, y el botón primario pasa a ser el sello: el diff de la interfaz es ese cambio, que el estudiante aprobó el 2026-10-10 contra el prototipo del inventario; ese inventario no toca el sello ni las etiquetas del mapa, así que la captura de piezas no cambia en esta tarea), la 11b (solo suma el especimen de `Tabs` a la de la interfaz), la 16 (solo suma el especimen del servidor de internet a la de piezas) y la 17 (solo suma los especímenes del aviso y de su sello a la de piezas). La 1a es una mudanza y no las toca. Las Tareas 12 a 15 tampoco. Sus tarjetas se arman con primitivas y contenido que `#/entidades` ya fotografía; si una suma un elemento de contenido sin especimen, lo suma y regraba a propósito, como dice «Adding a variant instead of a new element» de `DESIGN.md`.
 - **"Listo"** = `pnpm check` pasa entero (tipos, lint, estructura, jscpd, Vitest y Playwright). Cada tarea cierra con eso; lo que su sección llama «Cierre» es lo que se suma. Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
 - **Commits.** Uno por tarea, cuando el estudiante lo aprueba (regla del repo), con `git add` de las rutas que la tarea lista, nunca `git add .`. El mensaje termina con una línea en blanco y `Claude-Session: https://claude.ai/code/session_01Ce4XnAt6WDkNZzoR4QRWgh` (segundo `-m`). Nunca se agrega nada de `labs/03-ping-connectivity/` (tiene cambios sin commit del estudiante). Sin `git push` hasta que el estudiante lo pida.
-- **Servidores y procesos.** No se arranca nada en los puertos 5173 y 5180 (el servidor del estudiante). Playwright levanta el suyo en el 4183. Si una tarea deja un proceso, se mata solo ese PID; nunca `pkill` por patrón. Para las pruebas humanas el estudiante usa su propio servidor.
+- **Servidores y procesos.** No se arranca nada en los puertos 5173 y 5180 (el servidor del estudiante). Playwright levanta el suyo en el 4183. Si una tarea deja un proceso, se mata solo ese PID; nunca `pkill` por patrón. Para la prueba humana el estudiante usa su propio servidor.
 - **Ejecución.** La sesión principal orquesta y cada tarea la hace un subagente con `model: sonnet` explícito; la ejecución ligera es la de siempre: un implementador por tarea, gobernado por los comandos de verificación de la propia tarea, y un revisor solo al final y en lo que el estudiante seguirá en vivo (los textos de los catorce y el 14). Al cerrar un bloque se sugiere `/clear`.
 - Ningún comando `aws`.
 
@@ -95,7 +95,7 @@ Toda elección visual nueva se le muestra al estudiante con prototipos renderiza
 Qué cambia en el plan:
 - **Tarea 16:** la distribución coloca solo las piezas que el incidente dibuja, a tamaño completo y sin una cámara común. Qué piezas usa cada incidente lo dice una lista propia del incidente (punto 20 de «Decididas sin el estudiante», _para revisar_). Inventario, fila 26.
 - **Tarea 11:** su regla de piezas queda como está (una pieza se dibuja cuando su término es conocido). El término `router` es uno solo para el de la oficina y los del proveedor, así que esa regla no alcanza para mostrar uno en el 06 y los otros en el 09 y el 10: la Tarea 16 le suma la lista del incidente (una pieza se dibuja si el incidente la lista y su término es conocido).
-- **Tareas 22 y 23 y las fichas 06 a 10:** cada incidente trae su lista. El mundo no cambia por eso: el 08 conserva en el modelo los routers del proveedor, porque el ping a `10.0.0.10` necesita uno que lo descarte; cambia lo que se dibuja. El 07 y el 09 no se prototiparon; sus mapas se deducen de la misma regla y se revisan en la prueba humana del bloque 3.
+- **Tareas 22 y 23 y las fichas 06 a 10:** cada incidente trae su lista. El mundo no cambia por eso: el 08 conserva en el modelo los routers del proveedor, porque el ping a `10.0.0.10` necesita uno que lo descarte; cambia lo que se dibuja. El 07 y el 09 no se prototiparon; sus mapas se deducen de la misma regla y se revisan en la prueba humana del capítulo entero.
 - **Rigor:** lo que se dibuja y lo que dice la caja deben coincidir. Un router que no se dibuja no lo nombra el campo «Pasó por» (Tarea 18), ni el motivo del paquete que muere afuera de la oficina (08), ni una línea de traceroute: el motivo dice que el ping murió afuera de la oficina, sin nombrar el router. Los routers que avisan (09) o que contestan un traceroute (10) sí se dibujan.
 - **Tarea 27 y Review Focus 11:** las pruebas de geometría del 06 y del 08 conservan su nombre y miden el mapa a tamaño completo; se suma una de ajuste para el 06, el 08 y el 10.
 - **Tarea 0:** no esperó a V6; V6 quedó escrita en «Decisiones visuales aprobadas» y la tarea está cerrada.
@@ -123,7 +123,7 @@ Todo lo decidido está escrito en este documento (sección «Decisiones visuales
 8. **Los 14 citan la misma lección y la misma nota que hoy** (`Lab: Comprobación de Conectividad entre Instancias EC2 usando PING`, `concepts/security-groups.md`), como hoy; el choque con la regla de lecciones es el pendiente I1 del backlog.
 9. **Las fichas de origen del 12 se llaman «Cualquier IP de origen»** (con el término `source-ip`) y `[laptop-lucia] (IP 192.168.1.11)`. Así no hace falta un término nuevo y cada ficha nombra un término por su nombre oficial.
 10. **Un único `placeRule`.** Las reglas de salida se agregan con un campo `direction` y una ficha de destino; el capítulo 4 sigue usando `fromId` y entrada sin cambios.
-11. **Las pruebas humanas son del estudiante, con su servidor.**
+11. **La prueba humana es del estudiante, con su servidor.**
 12. **Cómo se resetea el progreso (D-1).** Clave nueva `v2` y borrado de la `v1` al cargar: lo más simple que deja el almacenamiento limpio, sin copiar nada.
 13. **Las pestañas solo aparecen cuando la tarjeta tiene las dos direcciones.** _Para revisar._ Un firewall que solo tiene reglas de entrada (el de una laptop hasta el 13 y el Security Group del capítulo 4) muestra su lista como hoy, sin pestañas: una sola pestaña no enseña nada y los tests de la tarjeta del capítulo 4 siguen sin cambiar de contenido. Las pestañas llegan con las reglas de salida (el 13 y, más adelante, el Security Group y la NACL).
 14. **Por dónde se abre «Ajustes de red».** _Para revisar._ El código de hoy abre una sola tarjeta por pieza, así que la laptop que envía y además tiene ajustes necesita una entrada nueva. El plan no la decide (Tarea 13); quien implementa elige la más simple que no sume una entidad al catálogo y la anota aquí.
@@ -140,8 +140,15 @@ Todo lo decidido está escrito en este documento (sección «Decisiones visuales
 25. **La etiqueta de un paquete que no sale del emisor nombra el destino como lo escribió el jugador** («ping de tu-laptop a 127.0.0.1», «ping de tu-laptop a localhost»). Decidida el 2026-10-10. Así los sellos y los nombres accesibles no chocan.
 26. **El texto del timeout no afirma que el paquete no llegó, y el del aviso no dice que algo volvió.** Decidida el 2026-10-10. Timeout: «timeout: pasó el tiempo de espera y no volvió nada.» (con `laptop-marta` el paquete llega a su puerta y quien envía no lo sabe). Aviso: «No llegó. Apareció un aviso: no se pudo llegar al destino.» (el aviso de la propia laptop no viaja).
 27. **`officeLeaks` no cuenta el loopback como fuga.** Decidida el 2026-10-10. Se suma al punto 7: un paquete de loopback no sale del equipo.
-28. **Definiciones corregidas por rigor.** Decidida el 2026-10-10. `device` ya no dice «conectado» (falso para `laptop-visita`); `ip-address` dice «Debe ser único en su red» (un requisito, no un hecho que no puede fallar); `ipv4` usa el ejemplo `192.168.1.20` para no regalar la tarea del 01; las definiciones de `echo-request`, `echo-reply` y `host-unreachable` ya no citan el número de tipo (el «tipo» no está definido y el 03 es denso). `time-exceeded` todavía dice «(tipo 11)»: se revisa en el bloque 3.
+28. **Definiciones corregidas por rigor.** Decidida el 2026-10-10. `device` ya no dice «conectado» (falso para `laptop-visita`); `ip-address` dice «Debe ser único en su red» (un requisito, no un hecho que no puede fallar); `ipv4` usa el ejemplo `192.168.1.20` para no regalar la tarea del 01; las definiciones de `echo-request`, `echo-reply` y `host-unreachable` ya no citan el número de tipo (el «tipo» no está definido y el 03 es denso). `time-exceeded` dejó «(tipo 11)» en el bloque 3 (punto 35).
 29. **La caja de un dispositivo de oficina tiene el campo «Conexión».** Decidida el 2026-10-10. `laptop-visita` conserva su IP (una IP configurada puede existir sin cable) y la pertenencia a la red se explica por la conexión.
+30. **El encabezado de un viaje que sale de la oficina se rotula «(en tu red local)»,** con la línea «Fuera de la oficina el encabezado cambia: lo verás en el capítulo 2.» Decidida el 2026-10-10. Razón: mostrar `192.168.1.10` como destino a través de internet contradiría que internet no entrega IP privadas; no se nombra NAT.
+31. **Con una lista `shown`, el globo de internet y el borde se dibujan solo si alguna pieza de la lista está fuera de la oficina.** Decidida el 2026-10-10 (V6 b). Completa el punto 20. Sin lista, rige la regla de antes, así que el capítulo 4 no cambia.
+32. **Ningún texto de respuesta dice «mismo camino».** Decidida el 2026-10-10. `replyText` devuelve «Llega la respuesta.» también en el caso que antes decía «La respuesta vuelve por el mismo camino.». Misma razón que el punto 5.
+33. **El texto de la entrada vacía de un firewall de equipo dice solo que no tiene reglas.** Decidida el 2026-10-10. Antes decía «no deja entrar nada», falso porque la respuesta entra. El del Security Group sigue la redacción de AWS. La caja rotula «Reglas para lo que llega» antes de que `inbound` se conozca.
+34. **En el 13 se ve, de fondo, el ping de soporte de `laptop-lucia` a `laptop-marta` (flujo `ambient`).** Decidida el 2026-10-10. Así la regla del 12 no cuenta como apertura de más en la estrella del medio. Se revisa en la prueba final.
+35. **Definiciones ajustadas.** Decidida el 2026-10-10. `deny` dice «No dejar pasar un paquete por el firewall.»; `rtt`, «…recibir lo que vuelve»; `lan` no nombra el router; `router`, «…hacia la red de su IP de destino»; `default-gateway`, «Un ajuste guardado: la IP a la que un dispositivo manda los paquetes que van a otra red local. Debe ser la de un router.»; `firewall` no lleva «reglas»; `public-ip` no lleva «instancia»; `time-exceeded` no lleva «(tipo 11)».
+36. **La etiqueta del sello de intruso para lectores de pantalla dice «Entró y no debía.»** Decidida el 2026-10-10. Antes decía «Entró sin permiso», falso cuando una regla lo permitió. «Además, algo prohibido está entrando.» se queda: sale en la captura de la interfaz y habla de lo que el incidente prohíbe.
 
 ## Inventario de mecánicas
 
@@ -356,7 +363,7 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 - **Fallo y causa:** con TTL 64 el paquete da vueltas entre los dos routers hasta que el TTL llega a 0.
 - **Pregunta:** «¿Por qué el ping con TTL 64 no llegó al servidor?» Correcta: en el bucle el paquete pasa una y otra vez por los mismos routers; cada salto resta 1 hasta llegar a 0 y el router lo descarta y avisa. Incorrectas: «el servidor lo bloqueó»; «64 es demasiado alto para internet».
 - **Pistas:** (1) cada router resta 1. (2) prueba TTL 1 y TTL 2 y mira quién avisa.
-- **Mapa (V6 b; no se prototipó, se deduce de la misma regla y se revisa en la prueba humana del bloque 3):** `tu-laptop`, los dos routers del bucle (`router-oficina` y el del proveedor, que se dibuja desde aquí), el globo `internet` y `servidor-internet`, que es el destino de todos los pings aunque ninguno llegue. No se dibujan las demás laptops ni la impresora, ni el router de destino del proveedor, que ningún paquete cruza. Cada Time Exceeded vuelve desde un router dibujado.
+- **Mapa (V6 b; no se prototipó, se deduce de la misma regla y se revisa en la prueba humana del capítulo entero):** `tu-laptop`, los dos routers del bucle (`router-oficina` y el del proveedor, que se dibuja desde aquí), el globo `internet` y `servidor-internet`, que es el destino de todos los pings aunque ninguno llegue. No se dibujan las demás laptops ni la impresora, ni el router de destino del proveedor, que ningún paquete cruza. Cada Time Exceeded vuelve desde un router dibujado.
 
 **01-10 · Ver el camino** · `send` con traceroute · término: traceroute
 - **Mundo:** `updateRouter` quita el bucle y deja un tramo roto sin aviso detrás del segundo router (`sendsUnreachable` falso).
@@ -451,8 +458,8 @@ Cada riesgo, con la prueba que lo guarda.
 11. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 27): `after the pings of 08, no label or stamp overlaps`, `in 06 the open terminal covers neither the router nor the labels of the second floor` y `in 06, 08 and 10 the whole map and its labels fit the area of the map at full size`, a 1280×800 y a 1440×900. Con V6 b cada incidente dibuja solo lo que usa y a tamaño completo; el ajuste lo prueba la Tarea 27 y el sitio de cada pieza, la 16.
 12. **Las capturas cambian solo lo que se quiso.** Cada vez que se regraban (Tareas 11a, 11b, 16 y 17): en la 11a el diff es el repintado de las tarjetas y del botón primario como sello, que el estudiante aprobó en el prototipo del inventario, y nada más se mueve (la captura de piezas no cambia); en la 11b, la 16 y la 17 el diff muestra solo los especímenes nuevos. Playwright `entities` pasa después.
 13. **Carpetas.** `pnpm structure` pasa en cada tarea; el tope de 12 no se rompe.
-14. **Texto llano.** Los hitos de prueba humana (Tareas 23, 25 y 26; las de las Tareas 20 y 21 las reemplazó la prueba final del capítulo entero) son la comprobación: el estudiante lee cada bloque y dice si algún mensaje lo pierde.
-15. **Rigor, sin simplificar a lo falso (D-11).** Ninguna opción, recomendada o no, enseña algo inexacto. Tests: `01-13: no text of the incident says or suggests that a firewall closes its outbound side by default`, `the empty outbound list of a host firewall never says that a closed outbound side is the default of a firewall`, `calls the setting by its term, the default gateway, and not by the label of any operating system`, `the reply through the firewall of a laptop gives no reason for letting it through`, `the text of a warning quotes no operating system and says only what the player saw` y `01-14: every case report names a ping that does not come back and none uses a verb of the web`. Y la lectura del estudiante en las pruebas humanas.
+14. **Texto llano.** La comprobación es la prueba humana del capítulo entero, una sola, después de la Tarea 28 (el estudiante lo decidió el 2026-10-10; ninguna de las Tareas 20 a 26 se detiene a esperar una): lee los catorce y dice si algún mensaje lo pierde.
+15. **Rigor, sin simplificar a lo falso (D-11).** Ninguna opción, recomendada o no, enseña algo inexacto. Tests: `01-13: no text of the incident says or suggests that a firewall closes its outbound side by default`, `the empty outbound list of a host firewall never says that a closed outbound side is the default of a firewall`, `calls the setting by its term, the default gateway, and not by the label of any operating system`, `the reply through the firewall of a laptop gives no reason for letting it through`, `the text of a warning quotes no operating system and says only what the player saw` y `01-14: every case report names a ping that does not come back and none uses a verb of the web`. Y la lectura del estudiante en la prueba humana del capítulo entero.
 16. **La dependencia nueva.** Los tests de `Tabs` (teclado con `user-event`, la pestaña elegida y las clases del sistema de diseño) y el cierre de la Tarea 11b: `package.json` con la versión exacta, sin `^` ni `~`, y `pnpm-lock.yaml` que solo agrega paquetes `@radix-ui/*`. Ninguna otra tarea toca esos dos archivos.
 17. **Un estilo, una primitiva por familia.** En la Tarea 11a los tests de hoy de las primitivas y de las tarjetas del capítulo 4 pasan sin cambiar de contenido, el estudiante revisa el diff de las capturas contra el prototipo aprobado y no nace ninguna primitiva hermana (`DESIGN.md`). El botón primario sigue siendo `Button` `primary`; que sea un sello y que no se mueva con `prefers-reduced-motion` lo guarda la prueba `the primary button looks like a stamp and does not move when pressed under reduced motion` (Playwright, estilo calculado; punto 23 de «Decididas sin el estudiante»).
 18. **La línea de una ficha sale al pulsar «Listo», y con ella la regla de la nota.** Tests de la Tarea 12: `pressing Listo with the wrong IP picked shows its feedback and leaves the task open`, `the rule of the note shows on Listo in the three paths: the note's IP kept, the right IP, and the other valid IP`, `a pick counts only after Listo, and Escape keeps the answer saved before`, `picking another chip hides the feedback line` y `Escape closes the card even when the chip picked has a feedback line`. Punto 22 de «Decididas sin el estudiante»: la tarea de la impresora solo se cumple con un «Listo» que muestra la línea, así que ni Escape ni enviar la solución se saltan la regla.
@@ -1075,7 +1082,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 **Interfaces:** una columna por LAN que tenga una pieza dibujada; los routers dibujados a lo largo del camino a la izquierda, en orden, y el servidor pasado el último; el camino de un paquete pasa por los saltos de su traza que se dibujan y se detiene en el router que lo descarta, si ese router se dibuja. La pieza de un dispositivo desconectado se dibuja fuera de la losa. Esta tarea recibe los saltos ya calculados en la traza (`Trace.hops`). El especimen del servidor de internet se distingue del de `ec2-instance`, que ya dibuja un servidor: el estudiante lo compara en el diff de la captura.
 
 **El mapa sigue la historia (V6 b, decidida el 2026-10-10).** Cada incidente dibuja solo las piezas que usa, a tamaño completo, y la oficina puede quedar en otro sitio que en el incidente anterior:
-- **Qué piezas usa un incidente (_para revisar_, punto 20 de «Decididas sin el estudiante»).** El incidente gana un campo opcional, `shown`: la lista de ids del mundo (dispositivos, routers y actores) que dibuja. Sin la lista dibuja todo el mundo, como hoy; así el capítulo 4 y todo incidente que no la traiga no cambian. Con la lista, una pieza se dibuja si está en ella y su término es conocido (la regla de la Tarea 11). Un firewall se dibuja con su dispositivo; una losa de piso, si alguna de sus piezas se dibuja; el globo de internet y el borde no llevan id y siguen solo la regla de términos.
+- **Qué piezas usa un incidente (_para revisar_, punto 20 de «Decididas sin el estudiante»).** El incidente gana un campo opcional, `shown`: la lista de ids del mundo (dispositivos, routers y actores) que dibuja. Sin la lista dibuja todo el mundo, como hoy; así el capítulo 4 y todo incidente que no la traiga no cambian. Con la lista, una pieza se dibuja si está en ella y su término es conocido (la regla de la Tarea 11). Un firewall se dibuja con su dispositivo; una losa de piso, si alguna de sus piezas se dibuja; el globo de internet y el borde no llevan id: con lista se dibujan solo si alguna pieza de la lista está fuera de la oficina (punto 31 de «Decididas sin el estudiante»); sin lista siguen solo la regla de términos.
 - **Quién lo calcula.** `game` (`pieceViews`) calcula una sola vez el conjunto de ids que se dibujan y se lo pasa a `computeLayout`; el layout no lee la lista ni decide qué se ve (`view-renders-domain-result`). La forma exacta de la firma la decide quien implementa.
 - **Tamaño y sitio.** El zoom del mapa (`CAMERA_ZOOM`) y el tamaño de cada pieza no cambian de un incidente a otro: nada se reduce para que quepa. Cada incidente se coloca solo con sus piezas, así que la oficina cambia de sitio cuando cambian las piezas. Que el mapa cabe en el ancho que le queda (900 px en 1280×800, con el panel de 380 px a la derecha) lo prueba la Tarea 27.
 - **Un router que no se dibuja.** El mundo lo conserva (el ping a `10.0.0.10` del 08 necesita uno que lo descarte); el mapa no. El camino se traza directo entre las piezas dibujadas que lo rodean, y un paquete que muere en él termina en el tramo entre la última pieza dibujada que cruzó y la siguiente (en el 08, entre `router-oficina` y el globo), con el sello de perdido. Ningún texto nombra ese router (Tarea 18).
@@ -1234,7 +1241,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Cierre:** `grep -rn "01-0[1-4]" src tests` solo muestra ids de los incidentes nuevos; `pnpm check` verde; golden sin cambios. **Commit:** `feat(levels): retire the four incidents of chapter 1 and add block 1, the office and the envelope`.
 
-**Prueba humana del bloque 1: reemplazada por la prueba final del capítulo entero.** El estudiante aprobó el bloque 1 el 2026-10-10 con «perfecto continua» y eligió probar el capítulo entero al final (Tarea 26). La leyenda de sellos se queda como está (estudiante, 2026-10-10).
+**Prueba humana del bloque 1: reemplazada por la prueba final del capítulo entero.** El estudiante aprobó el bloque 1 el 2026-10-10 con «perfecto continua» y eligió probar el capítulo entero al final, después de la Tarea 28. La leyenda de sellos se queda como está (estudiante, 2026-10-10).
 
 ---
 
@@ -1261,7 +1268,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Commit:** `feat(levels): add chapter 1 block 2, the ping`.
 
-**Prueba humana del bloque 2: reemplazada por la prueba final del capítulo entero.** El estudiante lo decidió el 2026-10-10, al aprobar el bloque 1 con «perfecto continua»: prueba el capítulo entero al final (Tarea 26). La leyenda de sellos se queda como está (estudiante, 2026-10-10).
+**Prueba humana del bloque 2: reemplazada por la prueba final del capítulo entero.** El estudiante lo decidió el 2026-10-10, al aprobar el bloque 1 con «perfecto continua»: prueba el capítulo entero al final, después de la Tarea 28. La leyenda de sellos se queda como está (estudiante, 2026-10-10).
 
 ---
 
@@ -1285,6 +1292,11 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `01-07: setting 192.168.1.1 as gateway makes the ping come back and clears the stamps of before`.
 - `01-07: the gateway is set from the Ajustes de red card of the laptop, and its terminal offers no setting`.
 - Los genéricos y los de la escalera sobre siete incidentes.
+
+**Notas de la implementación (2026-10-10):**
+- `BASE_WORLD` declara el piso 1 y el rango de la oficina, `192.168.0.0/16`, así que del 01 al 05 también se dibujan la losa y la etiqueta «Piso 1» (la tabla de mapas del spec pone el «Piso 1» ya en el 01).
+- La caja del router muestra «IP en Piso 1» e «IP en Piso 2» (`lansOf`).
+- La opción equivocada «el router estaba apagado» se redacta «no estaba funcionando».
 
 **Commit:** `feat(levels): add chapter 1 block 3, your network, the router and the gateway`.
 
@@ -1320,9 +1332,15 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `ladder.test.ts`, `the official name of ICMP says Internet before the term internet arrives: the one declared leak` vuelve a exigir que ICMP se presente antes que `internet` (en la Tarea 20 se relajó por el puente).
 - Los genéricos y los de la escalera sobre diez incidentes.
 
+**Notas de la implementación (2026-10-10):**
+- `updateRouter` también recibe `interfaces`, porque el bucle del 09 necesita la interfaz del router de la oficina que mira hacia fuera. La caja lista como máximo 8 saltos y después dice «y N saltos más».
+- La fila «IP pública» se esconde para los dispositivos de la oficina.
+- Un campo de inspección con un solo valor corto se dibuja junto a su etiqueta, para que la caja del 04-01 deje libre «Security Group servidor2» a 1440×900. Pendiente: a 1280×800 la caja del 04-01 todavía tapa esa etiqueta y dos sellos; ya pasaba antes de este plan y ninguna prueba corre a ese tamaño.
+- Decisión pendiente, preguntada al estudiante: si el 10 esconde dónde murió el ping hasta que corra traceroute (A: se queda como está; B: se esconde).
+
 **Commit:** `feat(levels): add chapter 1 block 3, the network of networks, hops and the path`.
 
-**Prueba humana del bloque 3.** Se juegan 06 a 10. Comprueba: (a) que el mapa con pisos y routers no se amontona; (b) que el 09 se explica con lo que se vio en la caja; (c) que la salida de traceroute se lee; (d) que el 08 no deja una duda sobre cómo sale el paquete (caja negra); (e) que 06 y 07 no se sienten largos.
+**Sin prueba humana propia (decidido por el estudiante el 2026-10-10).** Sus comprobaciones pasan a la sección «Prueba humana del capítulo entero», después de la Tarea 28.
 
 ---
 
@@ -1369,7 +1387,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Commit:** `feat(levels): add chapter 1 block 4, your first rule and in and out`.
 
-**Prueba humana del bloque 4.** Se juegan 11, 12 y 13. Comprueba: (a) que el 11 resuelve el misterio del 05 con una sola idea; (b) si el 12 se siente pesado (el segundo riesgo declarado; si sí, se separa); (c) que la ficha «Cualquier IP de origen» se entiende; (d) que las pestañas «Entrada» y «Salida» se ven y se entienden en la tarjeta; (e) que ningún mensaje sugiere que una salida cerrada es lo normal de un firewall.
+**Sin prueba humana propia (decidido por el estudiante el 2026-10-10).** Sus comprobaciones pasan a la sección «Prueba humana del capítulo entero», después de la Tarea 28.
 
 ---
 
@@ -1400,7 +1418,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 
 **Commit:** `feat(levels): add chapter 1 block 5, the final watch`.
 
-**Prueba humana del bloque 5 y del capítulo entero.** El estudiante juega el 14 y, después, los catorce de seguido. Comprueba: (a) que los casos sin pistas se pueden resolver con lo aprendido; (b) que la secuencia de cuatro pruebas del primer caso ayuda; (c) si el capítulo entero se siente largo (el riesgo «primer día lento», otra vez): qué se fusiona o se separa; (d) que el capítulo 4 sigue jugable.
+**Sin prueba humana propia (decidido por el estudiante el 2026-10-10).** El 14 y los catorce de seguido se prueban en la sección «Prueba humana del capítulo entero», después de la Tarea 28.
 
 ---
 
@@ -1422,6 +1440,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 - `in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping`.
 - `in 13 the tabs Entrada and Salida of the firewall card are reached and switched with the keyboard`.
 - Cada prueba de geometría corre a 1280×800 y a 1440×900, con el mapa a tamaño completo (V6 b). Si al escribir el 11 al 14 el mundo entero no cabe a tamaño completo, ese incidente trae su lista y la prueba de ajuste se amplía a él (punto 20 de «Decididas sin el estudiante»).
+- Dos defectos de distribución que halló la Tarea 23 y que esta tarea corrige en la distribución cuando corran las pruebas de geometría: en el 08 el sello del servidor se superpone con su propia etiqueta; en el 10 la terminal abierta tapa el globo y el servidor.
 
 **Commit:** `test(e2e): play the fourteen incidents of chapter 1`.
 
@@ -1430,7 +1449,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 ### Tarea 28: Documentos
 
 **Archivos:**
-- Modify: `README.md` (el capítulo 1 es de catorce subcapítulos; enlaza el spec y este plan), `DESIGN.md` (se revisa que refleje el estilo B, `Tabs`, la nueva estructura de `src/design/` y las variantes de V4 y V5; cada tarea ya lo actualizó), `../../docs/plans/follow-the-packet-roadmap.md` (la fila pasa de `en curso` a `hecho` con los commits, y «Prueba humana del capítulo 1» se reemplaza por las de los cinco bloques), `../../docs/plans/2026-10-08-follow-the-packet-followups.md` (lo que quedó: I1, el puente que se cerró, lo que anotaron las pruebas humanas), `../../docs/specs/2026-10-09-follow-the-packet-chapter-1-design.md` (una nota al inicio: los incidentes 01-01 a 01-04 y el riesgo «Primer día lento» los sustituye el spec nuevo), `../../docs/research/2026-10-09-follow-the-packet-chapters.md` (la ficha del capítulo 1: temas y «qué viaja y qué configura»; la tabla de la sección 2 no cambia), este documento (los totales reales y las decisiones tomadas).
+- Modify: `README.md` (el capítulo 1 es de catorce subcapítulos; enlaza el spec y este plan), `DESIGN.md` (se revisa que refleje el estilo B, `Tabs`, la nueva estructura de `src/design/` y las variantes de V4 y V5; cada tarea ya lo actualizó), `../../docs/plans/follow-the-packet-roadmap.md` (la fila pasa de `en curso` a `hecho` con los commits, y «Prueba humana del capítulo 1» se reemplaza por la del capítulo entero, que se hace después de esta tarea), `../../docs/plans/2026-10-08-follow-the-packet-followups.md` (lo que quedó: I1, el puente que se cerró, lo que anote la prueba humana del capítulo entero, que se agrega después de hacerla), `../../docs/specs/2026-10-09-follow-the-packet-chapter-1-design.md` (una nota al inicio: los incidentes 01-01 a 01-04 y el riesgo «Primer día lento» los sustituye el spec nuevo), `../../docs/research/2026-10-09-follow-the-packet-chapters.md` (la ficha del capítulo 1: temas y «qué viaja y qué configura»; la tabla de la sección 2 no cambia), este documento (los totales reales y las decisiones tomadas).
 - Decidir dónde va el especimen del ícono `settings` de `card-icon.tsx` (queda de la Tarea 13): el catálogo no lo tiene y sumarlo regraba la captura de la interfaz (`tests/e2e/snapshots/interface-darwin.png`).
 - Antes de cerrar, correr el chequeo de links del `CLAUDE.md` del repo sobre el Markdown cambiado: debe decir `LINKS OK`.
 
@@ -1439,6 +1458,13 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 **Cierre:** `pnpm check` verde. **Commit:** `docs: record chapter 1 in fourteen subchapters`. Al cerrar el plan se sugiere `/clear`.
 
 ---
+
+## Prueba humana del capítulo entero
+
+**Decidido por el estudiante el 2026-10-10:** probar el capítulo entero una sola vez, después de la Tarea 28, y no al cerrar cada bloque. Las Tareas 23, 25 y 26 no se detienen a esperar una prueba humana (las de las Tareas 20 y 21 ya estaban reemplazadas por esta). El estudiante usa su propio servidor, juega los catorce de seguido y entra después al capítulo 4. Comprueba:
+- **Del bloque 3 (06 a 10):** (a) que el mapa con pisos y routers no se amontona; (b) que el 09 se explica con lo que se vio en la caja; (c) que la salida de traceroute se lee; (d) que el 08 no deja una duda sobre cómo sale el paquete (caja negra); (e) que 06 y 07 no se sienten largos.
+- **Del bloque 4 (11 a 13):** (a) que el 11 resuelve el misterio del 05 con una sola idea; (b) si el 12 se siente pesado (el segundo riesgo declarado; si sí, se separa); (c) que la ficha «Cualquier IP de origen» se entiende; (d) que las pestañas «Entrada» y «Salida» se ven y se entienden en la tarjeta; (e) que ningún mensaje sugiere que una salida cerrada es lo normal de un firewall; (f) que en el 13 el ping de soporte de fondo hace que la regla del 12 no cuente como apertura de más en la estrella del medio (punto 34 de «Decididas sin el estudiante»).
+- **Del bloque 5 y del capítulo entero:** (a) que los casos del 14 sin pistas se pueden resolver con lo aprendido; (b) que la secuencia de cuatro pruebas del primer caso ayuda; (c) si el capítulo entero se siente largo (el riesgo «primer día lento», otra vez): qué se fusiona o se separa; (d) que el capítulo 4 sigue jugable.
 
 ## Cobertura de requisitos
 
@@ -1464,7 +1490,7 @@ Propósito: las pestañas «Entrada» y «Salida» de la tarjeta del firewall. L
 | NAT como caja negra | Tarea 6 (`the trip out of the office has no step and no reason that names NAT or the public IP`) y Tarea 23 |
 | Lo que queda fuera del capítulo | Tarea 20 (`names no topic of the chapters that come later, in any text of chapter 1`) |
 | Un solo motor, mecánicas que le faltan | «Inventario de mecánicas»; Tareas 3 a 9 |
-| Cada bloque cierra con una prueba humana (la de las Tareas 20 y 21 la reemplazó la prueba final del capítulo entero) | Tareas 20, 21, 23, 25 y 26 |
+| Una sola prueba humana, la del capítulo entero, después de la Tarea 28 (el estudiante la eligió el 2026-10-10; ninguna tarea se detiene a esperarla) | Tareas 20, 21, 23, 25 y 26, y la sección «Prueba humana del capítulo entero» |
 | Decisiones que no toma quien escribe | «Decisiones del estudiante (2026-10-10)» (con D-12), D-6 (V6 incluida) y la Tarea 0 |
 | El capítulo 4 no cambia lo que calcula | Review Focus 1 y el cierre de las Tareas 3 a 9 |
 | Docs, roadmap, spec viejo, tests e2e como tareas | Tareas 27 y 28 |
