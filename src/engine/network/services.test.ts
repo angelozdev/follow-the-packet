@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { LOOPBACK_IP } from '@/engine/network/addressing/cidr';
 import { tcpService } from '@/testing';
 import { listensOn, lookupService } from './services';
 import type { Service } from './types';
@@ -6,7 +7,8 @@ import type { Service } from './types';
 const APP_PORT = 3000;
 const NETWORK_IP = '192.168.1.11';
 const PUBLIC_IP = '34.244.254.100';
-const LOOPBACK_IPS = ['127.0.0.1', '127.5.5.5', '127.255.255.254'];
+const OTHER_LOOPBACK_IP = '127.5.5.5';
+const LOOPBACK_IPS = [LOOPBACK_IP, OTHER_LOOPBACK_IP, '127.255.255.254'];
 const NOT_LOOPBACK_IPS = ['126.255.255.255', '128.0.0.1', NETWORK_IP, PUBLIC_IP];
 
 const onAll = tcpService(APP_PORT);
@@ -21,14 +23,12 @@ describe('lookupService', () => {
     }
   });
 
-  it('a service on the loopback address accepts only a packet to 127.x.x.x', () => {
-    for (const ip of LOOPBACK_IPS) {
-      expect(listensOn(onLoopback, ip), ip).toBe(true);
-      expect(lookup([onLoopback], ip), ip).toBe('accepts');
-    }
-    for (const ip of NOT_LOOPBACK_IPS) {
+  it('a service on the loopback address accepts only a packet to 127.0.0.1', () => {
+    expect(listensOn(onLoopback, LOOPBACK_IP)).toBe(true);
+    expect(lookup([onLoopback], LOOPBACK_IP)).toBe('accepts');
+    for (const ip of [OTHER_LOOPBACK_IP, ...NOT_LOOPBACK_IPS]) {
       expect(listensOn(onLoopback, ip), ip).toBe(false);
-      expect(lookup([onLoopback], ip), ip).not.toBe('accepts');
+      expect(lookup([onLoopback], ip), ip).toBe('wrong-address');
     }
   });
 

@@ -11,6 +11,7 @@ const LISTENING_PORT = 3000;
 const CLOSED_PORT = 80;
 const DNS_PORT = 53;
 const GIVEN_SOURCE_PORT = 40000;
+const OTHER_LOOPBACK_IP = '127.5.5.5';
 const SERVER_ONE = '172.31.16.131';
 const SERVER_TWO = '172.31.38.97';
 
@@ -206,7 +207,7 @@ describe('services and the listening address in a trip', () => {
     expect(everywhere.exchange).toEqual([syn, synAck, ack]);
     expect(everywhere.steps.find((step) => step.stage === 'host')?.reason).toEqual({ code: 'host-accepts', deviceId: LUCIA, port: LISTENING_PORT });
     const own = serving(tcpService(LISTENING_PORT, 'loopback'));
-    for (const to of ['127.0.0.1', '127.5.5.5', 'localhost']) {
+    for (const to of ['127.0.0.1', 'localhost']) {
       const fromItself = simulate(own, tcp(device(LUCIA), to, LISTENING_PORT));
       expect(fromItself.outcome, to).toBe('replied');
       expect(fromItself.steps.find((step) => step.stage === 'host')?.reason, to).toEqual({ code: 'host-accepts', deviceId: LUCIA, port: LISTENING_PORT });
@@ -220,15 +221,18 @@ describe('services and the listening address in a trip', () => {
     expect(simulate(net, tcp(you, OFFICE.lucia, LISTENING_PORT)).outcome).toBe('replied');
   });
 
-  it('a service on the loopback address refuses a packet to the IP of the device on the network, from another device and from itself', () => {
+  it('a service on the loopback address refuses a packet to any other IP of the device, the network one from another device or from itself and another 127.x.x.x one from itself', () => {
     const net = serving(tcpService(LISTENING_PORT, 'loopback'));
-    for (const from of [you, device(LUCIA)]) {
-      const trace = simulate(net, tcp(from, OFFICE.lucia, LISTENING_PORT));
-      expect(trace.outcome, from.id).toBe('refused');
-      expect(trace.exchange, from.id).toEqual([syn, rst]);
-      expect(trace.steps.at(-1), from.id).toMatchObject({ stage: 'host', verdict: 'reject', reason: { code: 'host-wrong-address', deviceId: LUCIA, port: LISTENING_PORT, ip: OFFICE.lucia } });
-      expect(trace.tcpdump.at(-1), from.id).toMatchObject({ direction: 'Out', summary: `TCP ${LISTENING_PORT} RST` });
+    const itself = device(LUCIA);
+    for (const [from, to] of [[you, OFFICE.lucia], [itself, OFFICE.lucia], [itself, OTHER_LOOPBACK_IP]] as const) {
+      const trace = simulate(net, tcp(from, to, LISTENING_PORT));
+      const label = `${from.id} to ${to}`;
+      expect(trace.outcome, label).toBe('refused');
+      expect(trace.exchange, label).toEqual([syn, rst]);
+      expect(trace.steps.at(-1), label).toMatchObject({ stage: 'host', verdict: 'reject', reason: { code: 'host-wrong-address', deviceId: LUCIA, port: LISTENING_PORT, ip: to } });
+      expect(trace.tcpdump.at(-1), label).toMatchObject({ direction: 'Out', summary: `TCP ${LISTENING_PORT} RST` });
     }
+    expect(simulate(net, tcp(you, OTHER_LOOPBACK_IP, LISTENING_PORT)).steps.at(-1)?.reason).toEqual({ code: 'host-refused', deviceId: you.id, port: LISTENING_PORT });
     const nobody = simulate(serving(), tcp(you, OFFICE.lucia, LISTENING_PORT));
     expect(nobody.steps.at(-1)?.reason).toEqual({ code: 'host-refused', deviceId: LUCIA, port: LISTENING_PORT });
   });
