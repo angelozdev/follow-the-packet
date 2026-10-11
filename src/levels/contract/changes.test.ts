@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nameTag } from '@/copy';
-import { applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
 import { ATTACKER_IP, OFFICE_FLOORS, allOut, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
 import { changedFloors, changedNames, mentions, unnamedChanges } from './changes';
 
@@ -28,6 +28,8 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   setServices: { action: { type: 'setServices', ownerId: 'lucia-laptop', services: [] }, names: [NAMES.lucia] },
   setListenAddress: { action: { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: LUCIA_APP.port, listen: 'loopback' }, names: [NAMES.lucia] },
   updateRouter: { action: { type: 'updateRouter', routerId: officeRouter.id, sendsUnreachable: false }, names: [anyRouter.name] },
+  addRoute: { action: { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: OFFICE_FLOORS.provider.id } }, names: [anyRouter.name] },
+  removeRoute: { action: { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT }, names: [anyRouter.name] },
   addActor: { action: { type: 'addActor', actor: { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' } }, names: [] },
   addLan: { action: { type: 'addLan', lan: FLOOR_3 }, names: [] },
   addDevice: { action: { type: 'addDevice', device: { ...anyDevice, id: 'new-laptop', name: 'laptop-nueva', privateIp: floor1.nobody } }, names: [] },

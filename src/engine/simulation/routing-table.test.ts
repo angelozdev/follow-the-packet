@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ipInCidr, isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
+import { applyAction } from '@/engine/network/actions';
 import { isConnected, lanOf } from '@/engine/network/addressing/topology';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import type { Device, Network, PacketSpec } from '@/engine/network/types';
+import { stopStep } from '@/engine/simulation/paths/checkpoints';
 import { OFFICE_FLOORS, chapter1Worlds, device, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
 import { simulate } from './simulate';
 
@@ -101,5 +103,65 @@ describe('the routing table in the simulation', () => {
     const unresolved = simulate(world, ping(you, 'no-such-name.example'));
     expect([unplugged.outcome, self.outcome, loopback.outcome, unresolved.outcome]).toEqual(['no-route', 'replied', 'replied', 'unresolved']);
     for (const trace of [unplugged, self, loopback, unresolved]) expect(trace).not.toHaveProperty('routes');
+  });
+});
+
+describe('the routes of a router that the player edits', () => {
+  const withoutRoutes = (): Network => applyAction(officeTwoFloorsNet(), { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT });
+  const withRoute = (net: Network, to: string): Network => applyAction(net, { type: 'addRoute', routerId: officeRouter.id, route: { to, next: provider.id } });
+
+  it('a router with no route that covers the destination warns Destination Net Unreachable', () => {
+    const net = withoutRoutes();
+    expect(net.routers?.find((router) => router.id === officeRouter.id)?.routes).toEqual([]);
+    for (const destination of [server.ip, OUTSIDE_IP, '10.0.0.10']) {
+      const trace = simulate(net, ping(you, destination));
+      expect(trace.outcome, destination).toBe('unreachable');
+      expect(trace.notice).toEqual({ kind: 'net-unreachable', fromId: officeRouter.id, fromIp: floor1.gateway });
+      expect(stopStep(trace)).toEqual({
+        stage: 'forward',
+        at: officeRouter.id,
+        verdict: 'drop',
+        reason: { code: 'forward-no-route', routerId: officeRouter.id, ip: destination, warns: true },
+      });
+      expect(trace.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id]);
+      expect(trace.routes?.map((decision) => decision.holderId)).toEqual(['your-laptop']);
+      expect([trace.destinationId, trace.tcpdump]).toEqual([null, []]);
+    }
+    const lan = simulate(net, ping(you, floor2.andres));
+    expect([lan.outcome, lan.routes?.map((decision) => decision.holderId)]).toEqual(['replied', ['your-laptop', officeRouter.id]]);
+    expect(simulate(withRoute(net, ROUTE_DEFAULT), ping(you, server.ip)).outcome).toBe('replied');
+  });
+
+  it('with only a default route, a private destination is dropped by the provider with no warning, as in chapter 1', () => {
+    const onlyDefault = withRoute(withoutRoutes(), ROUTE_DEFAULT);
+    for (const privateIp of ['10.0.0.10', '10.0.0.20', '172.16.4.4']) {
+      const trace = simulate(onlyDefault, ping(you, privateIp));
+      expect(trace.outcome, privateIp).toBe('timeout');
+      expect(stopStep(trace)).toEqual({ stage: 'forward', at: provider.id, verdict: 'drop', reason: { code: 'forward-private-dropped', routerId: provider.id, ip: privateIp } });
+      expect(trace).not.toHaveProperty('notice');
+      expect(trace.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id, provider.id]);
+      expect(trace.routes?.map(({ holderId, kind }) => [holderId, kind])).toEqual([['your-laptop', 'default'], [officeRouter.id, 'default']]);
+      expect(trace).toEqual(simulate(officeTwoFloorsNet(), ping(you, privateIp)));
+    }
+  });
+
+  it('a more specific route beats the default route and the trace says so', () => {
+    const net = withRoute(officeTwoFloorsNet(), server.range);
+    const trace = simulate(net, ping(you, server.ip));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.routes?.[1]).toEqual({
+      holderId: officeRouter.id,
+      route: { to: server.range, via: provider.towardOffice },
+      kind: 'static',
+      alsoCovered: [{ to: ROUTE_DEFAULT, kind: 'default', via: provider.towardOffice }],
+    });
+    const listedFirst = applyAction(officeTwoFloorsNet(), {
+      type: 'updateRouter',
+      routerId: officeRouter.id,
+      routes: [{ to: server.range, next: provider.id }, { to: ROUTE_DEFAULT, next: provider.id }],
+    });
+    expect(simulate(listedFirst, ping(you, server.ip)).routes).toEqual(trace.routes);
+    const elsewhere = simulate(net, ping(you, OUTSIDE_IP));
+    expect(elsewhere.routes?.[1]).toEqual({ holderId: officeRouter.id, route: { to: ROUTE_DEFAULT, via: provider.towardOffice }, kind: 'default', alsoCovered: [] });
   });
 });

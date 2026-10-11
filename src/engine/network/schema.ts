@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from '@/engine/network/addressing/cidr';
+import { ipInCidr, isIpv4, isPrivateCidr, networkOf, parseCidr } from '@/engine/network/addressing/cidr';
 import { lanOf, lansOf } from '@/engine/network/addressing/topology';
 
 export const ROUTE_DEFAULT = 'default';
@@ -86,6 +86,17 @@ export const lanSchema = z.object({ id: nonEmpty, name: nonEmpty, cidr, latencyM
 export const routerInterfaceSchema = z.object({ ip: ipSchema, faces: nonEmpty });
 
 export const routeSchema = z.object({ to: z.union([z.literal(ROUTE_DEFAULT), cidr]), next: nonEmpty });
+
+function destinationKey(to: string): string {
+  if (!isCidr(to)) return to;
+  const { prefix } = parseCidr(to);
+  return prefix === 0 ? ROUTE_DEFAULT : networkOf(to.split('/')[0], prefix);
+}
+
+/** True when two destinations of a route are the same one: a range is its first address and its prefix, so 198.51.100.7/24 is 198.51.100.0/24, and `default` is 0.0.0.0/0, the range of every IP. A table holds one route to each destination. */
+export function sameDestination(a: string, b: string): boolean {
+  return destinationKey(a) === destinationKey(b);
+}
 
 export const routerSchema = z.object({
   id: nonEmpty,
@@ -196,6 +207,12 @@ function checkOffice(net: NetworkShape, fail: Fail): void {
   }
 }
 
+function checkDestinations(router: z.infer<typeof routerSchema>, fail: Fail): void {
+  router.routes.forEach((route, index) => {
+    if (router.routes.slice(0, index).some((earlier) => sameDestination(earlier.to, route.to))) fail(`${router.id}: two routes to ${route.to}`);
+  });
+}
+
 function checkRouters(net: NetworkShape, fail: Fail): void {
   const routers = net.routers ?? [];
   const routerIds = new Set(routers.map((router) => router.id));
@@ -208,6 +225,7 @@ function checkRouters(net: NetworkShape, fail: Fail): void {
     for (const route of router.routes) {
       if (!routerIds.has(route.next)) fail(`${router.id}: the route to ${route.to} goes through ${route.next}, which is not a router`);
     }
+    checkDestinations(router, fail);
   }
 }
 

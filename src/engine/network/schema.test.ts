@@ -144,6 +144,19 @@ describe('networkSchema with floors, routers and servers of the internet', () =>
     expect(problems(toDevice)).toContain(`${officeRouter.id}: the route to 10.0.0.0/8 goes through printer, which is not a router`);
   });
 
+  it('rejects a router table with two routes to the same destination', () => {
+    const twice = (routes: Router['routes']) => problems(withRouter(officeTwoFloorsNet(), officeRouter.id, { routes }));
+    const message = (to: string) => `${officeRouter.id}: two routes to ${to}`;
+    expect(twice([{ to: 'default', next: provider.id }, { to: 'default', next: backbone.id }])).toContain(message('default'));
+    expect(twice([{ to: server.range, next: provider.id }, { to: server.range, next: provider.id }])).toContain(message(server.range));
+    expect(twice([{ to: server.range, next: provider.id }, { to: '198.51.100.7/24', next: backbone.id }])).toContain(message('198.51.100.7/24'));
+    expect(twice([{ to: 'default', next: provider.id }, { to: '0.0.0.0/0', next: provider.id }])).toContain(message('0.0.0.0/0'));
+    expect(twice([{ to: server.range, next: provider.id }, { to: '198.51.100.0/25', next: provider.id }, { to: 'default', next: provider.id }])).toEqual([]);
+    expect(problems(officeTwoFloorsNet())).toEqual([]);
+    const sharedByTwoRouters = withRouter(officeTwoFloorsNet(), officeRouter.id, { routes: [{ to: floor1.cidr, next: provider.id }] });
+    expect(problems(withRouter(sharedByTwoRouters, provider.id, { routes: [{ to: floor1.cidr, next: officeRouter.id }] }))).toEqual([]);
+  });
+
   it('rejects a route whose range is neither default nor a CIDR', () => {
     const net = withRouter(officeTwoFloorsNet(), officeRouter.id, { routes: [{ to: 'everywhere', next: provider.id }] });
     expect(problems(net)).toContain('invalid CIDR');

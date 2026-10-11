@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, serviceSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Direction, Firewall, Lan, Network, Router, Rule, ServerActor, Service } from './types';
+import type { Actor, Device, Direction, Firewall, Lan, Network, Route, Router, Rule, ServerActor, Service } from './types';
 
 const nonEmpty = z.string().min(1);
 
@@ -19,6 +19,8 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addRouter'), router: routerSchema }),
   z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema) }),
   z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.shape }),
+  z.object({ type: z.literal('addRoute'), routerId: nonEmpty, route: routeSchema }),
+  z.object({ type: z.literal('removeRoute'), routerId: nonEmpty, to: routeSchema.shape.to }),
   z.object({
     type: z.literal('updateRouter'),
     routerId: nonEmpty,
@@ -41,6 +43,20 @@ function changeRouter(net: Network, routerId: string, change: (router: Router) =
   const routers = net.routers ?? [];
   if (!routers.some((r) => r.id === routerId)) return net;
   return { ...net, routers: routers.map((r) => (r.id === routerId ? change(r) : r)) };
+}
+
+/** Adds a route at the end of the table of a router, unless the router is not there or already has a route to that destination: a table holds one route to each. */
+function withRoute(net: Network, routerId: string, route: Route): Network {
+  const router = (net.routers ?? []).find((r) => r.id === routerId);
+  if (!router || router.routes.some(({ to }) => sameDestination(to, route.to))) return net;
+  return changeRouter(net, routerId, (r) => ({ ...r, routes: [...r.routes, route] }));
+}
+
+/** Removes the route of a destination from the table of a router, unless the router is not there or has no route to it. */
+function withoutRoute(net: Network, routerId: string, destination: string): Network {
+  const router = (net.routers ?? []).find((r) => r.id === routerId);
+  if (!router?.routes.some(({ to }) => sameDestination(to, destination))) return net;
+  return changeRouter(net, routerId, (r) => ({ ...r, routes: r.routes.filter(({ to }) => !sameDestination(to, destination)) }));
 }
 
 function changeRules(net: Network, firewallId: string, direction: Direction, change: (rules: Rule[]) => Rule[]): Network {
@@ -88,7 +104,7 @@ function withLan(net: Network, lan: Lan): Network {
   return { ...net, lans: [...(net.lans ?? lansOf(net)), lan] };
 }
 
-/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
+/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network; so does an `addRoute` for a destination the router already has a route to and a `removeRoute` for one it has none to. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
 export function applyAction(net: Network, action: NetworkAction): Network {
   switch (action.type) {
     case 'addRule':
@@ -117,6 +133,10 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return servicesOf(net, action.ownerId) ? withServices(net, action.ownerId, action.services) : net;
     case 'setListenAddress':
       return withListenAddress(net, action);
+    case 'addRoute':
+      return withRoute(net, action.routerId, action.route);
+    case 'removeRoute':
+      return withoutRoute(net, action.routerId, action.to);
     case 'updateRouter':
       return changeRouter(net, action.routerId, (r) => ({
         ...r,

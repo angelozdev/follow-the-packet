@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { simulate, type Firewall, type Reason } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, simulate, type Firewall, type Reason } from '@/engine';
 import { EVERY_TERM, OFFICE, OFFICE_FLOORS, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
@@ -530,5 +530,16 @@ describe('describeReason for a datagram that a host answers with Port Unreachabl
     const toServer = simulate(FLOORS, datagram(server.ip, 123));
     expect(toServer.steps.at(-1)?.reason).toEqual({ code: 'host-udp-closed', deviceId: server.id, port: 123 });
     expect(toPlainText(describeReason(toServer.steps.at(-1)!.reason, FLOORS, EVERY_TERM))).toContain('servidor-internet');
+  });
+});
+
+describe('the router of the office that has no route for the destination', () => {
+  it('says it does not know where to send the packet, drops it and warns, as any router with no route does', () => {
+    const noRoutes = applyAction(FLOORS, { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT });
+    const reason = simulate(noRoutes, ping(device('your-laptop'), server.ip)).steps.at(-1)?.reason;
+    expect(reason).toEqual({ code: 'forward-no-route', routerId: officeRouter.id, ip: server.ip, warns: true });
+    const text = describeReason(reason!, noRoutes, EVERY_TERM);
+    expect(text).toBe('[[router-office]] no sabe a qué {{router}} mandar un {{packet|paquete}} para 198.51.100.50: lo {{drop|descarta}} y avisa a quien lo envió que no pudo entregarlo.');
+    expect(termsIn(text)).toEqual(['router', 'packet', 'drop']);
   });
 });

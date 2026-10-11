@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
 import { applyAction, networkActionSchema, type NetworkAction } from './actions';
-import { networkSchema } from './schema';
+import { ROUTE_DEFAULT, networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
 import type { Actor, Device, Firewall, Lan, Network, Router, ServerActor, Service } from './types';
 
@@ -177,6 +177,79 @@ describe('applyAction on an office with floors', () => {
     expect(validate(updated)).toEqual([]);
     expect(validate(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, interfaces: [{ ip: '203.0.113.20', faces: GHOST }] }))).toHaveLength(1);
     expect(routerOf(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, routes: [] }), officeRouter.id)?.interfaces).toEqual(office?.interfaces);
+  });
+
+  it('addRoute adds a route and keeps the others', () => {
+    const net = officeTwoFloorsNet();
+    const office = routerOf(net, officeRouter.id);
+    const toServer = { to: OFFICE_FLOORS.server.range, next: provider.id };
+    const toFloor = { to: floor2.cidr, next: backbone.id };
+    const added = applyAction(applyAction(net, { type: 'addRoute', routerId: officeRouter.id, route: toServer }), { type: 'addRoute', routerId: officeRouter.id, route: toFloor });
+    expect(routerOf(added, officeRouter.id)).toEqual({ ...office, routes: [...(office?.routes ?? []), toServer, toFloor] });
+    expect(routerOf(added, provider.id)).toEqual(routerOf(net, provider.id));
+    expect(routerOf(added, backbone.id)).toEqual(routerOf(net, backbone.id));
+    const sharedWithTheProvider = applyAction(net, { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.range, next: provider.id } });
+    expect(routerOf(sharedWithTheProvider, officeRouter.id)?.routes).toHaveLength(2);
+    expect(validate(added)).toEqual([]);
+    expect(validate(sharedWithTheProvider)).toEqual([]);
+  });
+
+  it('addRoute for a destination that already has a route returns the same network', () => {
+    const net = officeTwoFloorsNet();
+    const sameDefault: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: ROUTE_DEFAULT, next: provider.id } };
+    const otherNextHop: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: ROUTE_DEFAULT, next: backbone.id } };
+    const defaultWrittenAsARange: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: '0.0.0.0/0', next: provider.id } };
+    for (const action of [sameDefault, otherNextHop, defaultWrittenAsARange]) expect(applyAction(net, action)).toBe(net);
+    const withRange = applyAction(net, { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: provider.id } });
+    expect(withRange).not.toBe(net);
+    const sameRange: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: backbone.id } };
+    const sameRangeWithHostBits: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: '198.51.100.7/24', next: provider.id } };
+    expect(applyAction(withRange, sameRange)).toBe(withRange);
+    expect(applyAction(withRange, sameRangeWithHostBits)).toBe(withRange);
+    const otherLength: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: '198.51.100.0/25', next: provider.id } };
+    expect(routerOf(applyAction(withRange, otherLength), officeRouter.id)?.routes).toHaveLength(3);
+  });
+
+  it('removeRoute removes the route of one destination', () => {
+    const net = officeTwoFloorsNet();
+    const providerBefore = routerOf(net, provider.id);
+    const removed = applyAction(net, { type: 'removeRoute', routerId: provider.id, to: OFFICE_FLOORS.server.range });
+    expect(routerOf(removed, provider.id)).toEqual({ ...providerBefore, routes: [{ to: OFFICE_FLOORS.range, next: officeRouter.id }] });
+    expect(routerOf(removed, officeRouter.id)).toEqual(routerOf(net, officeRouter.id));
+    expect(routerOf(removed, backbone.id)).toEqual(routerOf(net, backbone.id));
+    const emptied = applyAction(net, { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT });
+    expect(routerOf(emptied, officeRouter.id)).toEqual({ ...routerOf(net, officeRouter.id), routes: [] });
+    const asARange = applyAction(net, { type: 'removeRoute', routerId: officeRouter.id, to: '0.0.0.0/0' });
+    const withHostBits = applyAction(net, { type: 'removeRoute', routerId: provider.id, to: '198.51.100.9/24' });
+    expect(routerOf(asARange, officeRouter.id)?.routes).toEqual([]);
+    expect(routerOf(withHostBits, provider.id)).toEqual(routerOf(removed, provider.id));
+    expect(validate(emptied)).toEqual([]);
+    expect(routerOf(applyAction(emptied, { type: 'addRoute', routerId: officeRouter.id, route: { to: ROUTE_DEFAULT, next: provider.id } }), officeRouter.id)).toEqual(routerOf(net, officeRouter.id));
+  });
+
+  it('actions on unknown routers return the same network', () => {
+    const net = officeTwoFloorsNet();
+    const unknown: NetworkAction[] = [
+      { type: 'addRoute', routerId: GHOST, route: { to: ROUTE_DEFAULT, next: provider.id } },
+      { type: 'removeRoute', routerId: GHOST, to: ROUTE_DEFAULT },
+      { type: 'removeRoute', routerId: officeRouter.id, to: OFFICE_FLOORS.server.range },
+      { type: 'removeRoute', routerId: provider.id, to: ROUTE_DEFAULT },
+    ];
+    for (const action of unknown) expect(applyAction(net, action), JSON.stringify(action)).toBe(net);
+    const routerless = officeNet();
+    expect(applyAction(routerless, unknown[0])).toBe(routerless);
+    expect(applyAction(routerless, unknown[1])).toBe(routerless);
+  });
+
+  it('a route is a destination that is default or a CIDR, and a router that exists', () => {
+    const parses = (action: unknown) => networkActionSchema.safeParse(action).success;
+    expect(parses({ type: 'addRoute', routerId: officeRouter.id, route: { to: '10.0.0.0/16', next: provider.id } })).toBe(true);
+    expect(parses({ type: 'addRoute', routerId: officeRouter.id, route: { to: ROUTE_DEFAULT, next: provider.id } })).toBe(true);
+    expect(parses({ type: 'addRoute', routerId: officeRouter.id, route: { to: 'everywhere', next: provider.id } })).toBe(false);
+    expect(parses({ type: 'addRoute', routerId: officeRouter.id, route: { to: ROUTE_DEFAULT } })).toBe(false);
+    expect(parses({ type: 'removeRoute', routerId: officeRouter.id, to: '10.0.0.0/16' })).toBe(true);
+    expect(parses({ type: 'removeRoute', routerId: officeRouter.id, to: 'everywhere' })).toBe(false);
+    expect(parses({ type: 'removeRoute', routerId: '', to: ROUTE_DEFAULT })).toBe(false);
   });
 
   it('setServices replaces the services of a device or server', () => {
