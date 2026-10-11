@@ -1,5 +1,5 @@
 import { MAP_TEXT, SETTINGS_TEXT, entityTerm, nameTag, type EntityRef, type TermId, type TermText } from '@/copy';
-import { isClientActor, lansOf, type Network } from '@/engine';
+import { facesALan, isClientActor, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, currentCase, type Session } from '@/game/session';
 import { revealsRoutersByTraceroute, shownOf } from '@/levels';
@@ -27,6 +27,7 @@ interface PieceFacts {
   configurable: boolean;
   state: PieceState;
   settings?: SettingsEntry;
+  inOffice?: boolean;
 }
 
 export type PieceView = PieceEntity & PieceFacts & { term: TermId | null };
@@ -82,7 +83,7 @@ function firewalls(session: Session): PieceView[] {
 function routers(session: Session): PieceView[] {
   return (session.world.routers ?? [])
     .filter((router) => drawsRouter(session, router.id))
-    .map((router) => piece(ROUTER_ENTITY, { id: PIECE_ID.router(router.id), anchorId: router.id, label: nameTag(router.name), locked: true, configurable: false, state: 'normal' }));
+    .map((router) => piece(ROUTER_ENTITY, { id: PIECE_ID.router(router.id), anchorId: router.id, label: nameTag(router.name), locked: true, configurable: false, state: 'normal', inOffice: facesALan(session.world, router) }));
 }
 
 function loneEdge({ world, known }: Pick<Session, 'world' | 'known'>): PieceView[] {
@@ -99,8 +100,7 @@ function drawsOutside(session: Session): boolean {
   const { world } = session;
   const shown = shownIds(session);
   if (shown === undefined) return true;
-  const lanIds = lansOf(world).map((lan) => lan.id);
-  const outsideRouters = (world.routers ?? []).filter((router) => !router.interfaces.some((face) => lanIds.includes(face.faces)) && !waitsForTraceroute(session, router.id));
+  const outsideRouters = (world.routers ?? []).filter((router) => !facesALan(world, router) && !waitsForTraceroute(session, router.id));
   const outsideIds = [...world.actors, ...outsideRouters].map((outsider) => outsider.id);
   return shown.some((id) => outsideIds.includes(id));
 }

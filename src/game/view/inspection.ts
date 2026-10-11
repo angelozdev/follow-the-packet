@@ -238,7 +238,7 @@ function packet(session: Session, run: PacketRun): Inspection {
       ...pathField(session, knowsTheRoute ? hops : []),
       { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known, run.trace.destinationId ? deviceName(session.world, run.trace.destinationId) : undefined)] },
       ...roundTripField(session, run),
-      ...(step && knowsTheRoute ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
+      ...(step && knowsTheRoute && !traced ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
     ],
   };
 }

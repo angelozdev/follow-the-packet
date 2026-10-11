@@ -273,4 +273,13 @@ describe('pieceViews of an incident that lists what it draws', () => {
     );
     expect(idsOf(floors())).not.toContain(PIECE_ID.edge);
   });
+
+  it('says of each router piece whether the router faces a local network, so the map can order the road from the office outward', () => {
+    const routers = pieceViews(floors()).filter((piece) => piece.kind === 'edge');
+    expect(routers.map(({ anchorId, inOffice }) => [anchorId, inOffice])).toEqual([
+      [officeRouter.id, true],
+      [provider.id, false],
+      [backbone.id, false],
+    ]);
+  });
 });

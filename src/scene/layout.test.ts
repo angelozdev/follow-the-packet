@@ -158,7 +158,7 @@ describe('pathFor in an office', () => {
   });
 
   it('while the map does not show the outside, a packet never travels to the edge it does not draw', () => {
-    const alone = { ...net, actors: [] };
+    const alone = withDevice({ ...net, actors: [] }, 'your-laptop', { gateway: '192.168.1.1' });
     const inside = computeLayout(alone, false);
     const packet = ping(device('your-laptop'), '8.8.8.8');
     const path = pathFor(simulate(alone, packet), packet, inside);
@@ -200,7 +200,7 @@ describe('pathFor when a firewall the player does not know stops the packet', ()
 const FLOORS = officeTwoFloorsNet();
 const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
 const placedDevice = (anchorId: string): LayoutPiece => ({ kind: 'device', anchorId });
-const placedRouter = (anchorId: string): LayoutPiece => ({ kind: 'edge', anchorId });
+const placedRouter = (anchorId: string): LayoutPiece => ({ kind: 'edge', anchorId, inOffice: anchorId === officeRouter.id });
 const GLOBE: LayoutPiece = { kind: 'internet', anchorId: 'internet' };
 const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer'].map(placedDevice);
 const ALL_ROUTERS = [officeRouter, provider, backbone].map((router) => placedRouter(router.id));
@@ -242,6 +242,14 @@ describe('computeLayout of an office with floors', () => {
     expect(skipping.routers[officeRouter.id]).toEqual(skipping.edge);
     expect(skipping.edge[0] - skipping.routers[backbone.id][0]).toBeCloseTo(office[0] - inProvider[0]);
     expect(Object.keys(skipping.routers)).toEqual([officeRouter.id, backbone.id]);
+  });
+
+  it('orders the routers from the one the pieces say is in the office outward, whatever order the world lists them', () => {
+    const listedBackwards = { ...FLOORS, routers: [...(FLOORS.routers ?? [])].reverse() };
+    const layout = computeLayout(listedBackwards, OFFICE_AND_ROAD);
+    const [office, inProvider, inBackbone] = [officeRouter, provider, backbone].map((router) => layout.routers[router.id][0]);
+    expect(office).toBeGreaterThan(inProvider);
+    expect(inProvider).toBeGreaterThan(inBackbone);
   });
 
   it('a server of the internet stands past the last drawn router', () => {
@@ -480,6 +488,26 @@ describe('pathFor in an office with routers', () => {
     }
     const loopback = trace('your-laptop', '127.0.0.1');
     expect(loopback.trace.steps.map((step) => step.reason.code)).toContain('route-loopback');
+  });
+
+  it('a ping with no gateway or not connected never draws a path out of the device', () => {
+    const toAndres = ping(device('your-laptop'), OFFICE_FLOORS.floor2.andres);
+    const noGateway = simulate(withDevice(FLOORS, 'your-laptop', { gateway: undefined }), toAndres);
+    expect(noGateway.steps.map((step) => step.reason.code)).toContain('route-no-gateway');
+    expect(pathFor(noGateway, toAndres, layout)).toEqual([you.door, you.doorstep]);
+    const toLucia = ping(device('your-laptop'), floor1.lucia);
+    const unplugged = simulate(withDevice(FLOORS, 'your-laptop', { connected: false }), toLucia);
+    expect(unplugged.steps.map((step) => step.reason.code)).toContain('route-not-connected');
+    expect(pathFor(unplugged, toLucia, layout)).toEqual([you.door, you.doorstep]);
+  });
+
+  it("a packet handed to a gateway that is not a router ends at that device's door", () => {
+    const toAndres = ping(device('your-laptop'), OFFICE_FLOORS.floor2.andres);
+    const handed = simulate(withDevice(FLOORS, 'your-laptop', { gateway: floor1.printer }), toAndres);
+    expect(handed.destinationId).toBeNull();
+    expect(handed.steps.at(-1)?.reason.code).toBe('route-gateway-not-a-router');
+    const printer = layout.devices.printer;
+    expect(pathFor(handed, toAndres, layout)).toEqual([you.door, you.firewall, you.road, printer.road, printer.firewall, printer.door]);
   });
 
   it('a packet whose sender is not drawn starts nowhere on the map', () => {

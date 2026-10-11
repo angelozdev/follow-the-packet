@@ -1,5 +1,5 @@
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router, type Rule } from '@/engine';
+import { ECHO_REQUEST, ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router, type Rule } from '@/engine';
 import { ruleIdFor, type AddressChip, type ExpectedOutcome, type Flow, type FlowKind, type FromChip, type MessageChip, type OriginChip, type SendMove, type SendTask, type ToChip, type WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
@@ -14,7 +14,6 @@ const SERVER_MS = 20;
 const SERVER_RANGE = '198.51.100.0/24';
 const LOCALHOST = 'localhost';
 const SINGLE_ADDRESS = '/32';
-const ECHO_REQUEST = 8;
 
 export const IP = {
   you: '192.168.1.10',
@@ -147,20 +146,20 @@ export const ADDRESS = {
 } satisfies Record<string, AddressChip>;
 
 export const MESSAGE = {
-  packet: { id: 'packet', label: '{{packet}}', icmpType: 8, command: 'packet' },
-  ping: { id: 'ping', label: '{{ping}}', icmpType: 8, command: 'ping' },
-  traceroute: { id: 'traceroute', label: '{{traceroute}}', icmpType: 8, command: 'traceroute' },
+  packet: { id: 'packet', label: '{{packet}}', icmpType: ECHO_REQUEST, command: 'packet' },
+  ping: { id: 'ping', label: '{{ping}}', icmpType: ECHO_REQUEST, command: 'ping' },
+  traceroute: { id: 'traceroute', label: '{{traceroute}}', icmpType: ECHO_REQUEST, command: 'traceroute' },
 } satisfies Record<string, MessageChip>;
 
 /** Returns the message of a ping that leaves with this TTL, such as the `ping -t 3 <ip>` the terminal writes for it. */
 function pingWithTtl(ttl: number): MessageChip {
-  return { id: `ping-ttl-${ttl}`, label: `{{ping}} con {{ttl}} ${ttl}`, icmpType: 8, command: 'ping', ttl };
+  return { id: `ping-ttl-${ttl}`, label: `{{ping}} con {{ttl}} ${ttl}`, icmpType: ECHO_REQUEST, command: 'ping', ttl };
 }
 
 export const PING_WITH_TTL = { 1: pingWithTtl(1), 2: pingWithTtl(2), 3: pingWithTtl(3), 5: pingWithTtl(5), 64: pingWithTtl(64) } as const;
 
 /** Returns the rule that lets everything out, whatever the destination. */
-export function letEverythingOut(id: string): Rule {
+function letEverythingOut(id: string): Rule {
   return { id, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANY_IPV4 } };
 }
 

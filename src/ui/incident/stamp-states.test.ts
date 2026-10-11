@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { stampLabel, toPlainText, type TermId } from '@/copy';
 import { pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { INCIDENTS } from '@/levels';
-import { ADDRESS, DEVICE, IP, ROUTER } from '@/levels/01-first-day/shared';
+import { ADDRESS, DEVICE, GATEWAY, IP, MESSAGE, ORIGIN, ROUTER } from '@/levels/01-first-day/shared';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { computeLayout, pathFor } from '@/scene/layout';
 import { flowLook } from '@/scene/traffic/flow-look';
@@ -189,7 +189,7 @@ describe('the stamp of a ping that dies at a router the map does not draw', () =
   const session = startSession(INCIDENTS, '01-08');
   const sent = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId: ADDRESS.otherOffice.id, messageId: 'ping' });
   const [run] = sent.sent;
-  const layout = computeLayout(sent.world, pieceViews(sent).map(({ kind, anchorId }) => ({ kind, anchorId })));
+  const layout = computeLayout(sent.world, pieceViews(sent));
   const path = pathFor(run.trace, run.packet, layout, run.hiddenStop);
 
   it('01-08: the lost ping to 10.0.0.10 ends on the road between the office router and the internet, with the lost stamp', () => {
@@ -201,5 +201,41 @@ describe('the stamp of a ping that dies at a router the map does not draw', () =
     expect(path.slice(0, -1).map(([x]) => x)).not.toContain(layout.internet[0]);
     expect(drawn(run).look).toMatchObject({ end: 'lost', stamp: 'lost' });
     expect(drawn(run).name).toMatch(/Perdido\.$/);
+  });
+});
+
+describe('the path of a ping that a device cannot send or hands to a gateway that is not a router, in the incidents of chapter 1', () => {
+  const watch = INCIDENTS.find((incident) => incident.id === '01-14');
+  const rightCause = (session: Session) => (watch?.mechanic === 'diagnose' ? watch.diagnose.cases[session.caseIndex].cause.options.findIndex((option) => option.correct) : -1);
+  const atCase = (number: number) =>
+    Array.from({ length: number - 1 }).reduce<Session>((session) => sessionReducer(sessionReducer(session, { type: 'nameCause', index: rightCause(session) }), { type: 'nextCase' }), startSession(INCIDENTS, '01-14'));
+  const pingFrom = (session: Session, fromId: string, toId: string) => {
+    const sent = sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId: MESSAGE.ping.id });
+    const run = sent.sent.at(-1);
+    if (!run) throw new Error('nothing was sent');
+    const layout = computeLayout(sent.world, pieceViews(sent));
+    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop) };
+  };
+
+  it('01-07: with no gateway the ping to laptop-andres never leaves the doorstep of tu-laptop', () => {
+    const { run, layout, path } = pingFrom(startSession(INCIDENTS, '01-07'), ORIGIN.you.id, ADDRESS.andres.id);
+    expect(run.trace.outcome).toBe('no-route');
+    expect(path).toEqual([layout.devices[DEVICE.you.id].door, layout.devices[DEVICE.you.id].doorstep]);
+  });
+
+  it('01-07: with the printer as the gateway the ping ends at the door of the printer, which is drawn', () => {
+    const picked = sessionReducer(startSession(INCIDENTS, '01-07'), { type: 'setSetting', deviceId: DEVICE.you.id, settingId: GATEWAY.setting, chipId: GATEWAY.printer });
+    const { run, layout, path } = pingFrom(picked, ORIGIN.you.id, ADDRESS.andres.id);
+    expect(run.trace.steps.at(-1)).toMatchObject({ at: DEVICE.printer.id, reason: { code: 'route-gateway-not-a-router' } });
+    expect(layout.devices[DEVICE.printer.id]).toBeDefined();
+    expect(path.at(-1)).toEqual(layout.devices[DEVICE.printer.id].door);
+  });
+
+  it('01-14: the pings of case 1 and case 3 that have no gateway to leave by never leave the doorstep of the sender', () => {
+    const [first, third] = [pingFrom(atCase(1), ORIGIN.you.id, ADDRESS.server.id), pingFrom(atCase(3), ORIGIN.andres.id, ADDRESS.printer.id)];
+    for (const [{ run, layout, path }, sender] of [[first, DEVICE.you.id], [third, DEVICE.andres.id]] as const) {
+      expect(run.trace.steps.map((step) => step.reason.code)).toContain('route-no-gateway');
+      expect(path).toEqual([layout.devices[sender].door, layout.devices[sender].doorstep]);
+    }
   });
 });

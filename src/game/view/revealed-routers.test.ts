@@ -98,8 +98,10 @@ describe('the stop of a ping that a router dropped without a warning', () => {
     }
   });
 
-  it('keeps the box of a packet that a router warned about, and the box of the traceroute, as they were', () => {
+  it('keeps the box of a packet that a router warned about as it was, and gives the box of the traceroute its hops and no place where it stopped', () => {
     expect(fieldOf(send(start, 'server', 'ping-2'), PATH_LABEL, 'ping-2')).toBeDefined();
-    expect(fieldOf(send(start, 'server', 'trace'), STOPPED_LABEL, 'trace')).toBeDefined();
+    expect(fieldOf(send(start, 'server', 'ping-2'), STOPPED_LABEL, 'ping-2')).toBeDefined();
+    expect(fieldOf(send(start, 'server', 'trace'), PATH_LABEL, 'trace')).toBeDefined();
+    expect(fieldOf(send(start, 'server', 'trace'), STOPPED_LABEL, 'trace')).toBeUndefined();
   });
 });

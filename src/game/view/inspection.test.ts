@@ -525,6 +525,28 @@ describe('a packet of an office with routers', () => {
   });
 });
 
+describe("a traceroute's box", () => {
+  const ROUTED = routedSendIncident();
+  const start = startSession([ROUTED], ROUTED.id);
+  const STOPPED = 'Dónde y por qué se detuvo';
+  const boxOf = (toId: string, messageId: string) => {
+    const sent = sessionReducer(start, { type: 'sendPacket', fromId: 'you', toId, messageId });
+    return plain(inspect(sent, sent.sent[0].pieceId));
+  };
+  const labelsOf = (box: ReturnType<typeof boxOf>) => box?.fields.map(([label]) => label);
+
+  it('lists its lines and states no reason for where its probes stopped', () => {
+    for (const to of ['server', 'private', 'no-server', 'nobody']) {
+      const traced = boxOf(to, 'trace');
+      expect(labelsOf(traced), to).not.toContain(STOPPED);
+      expect(labelsOf(traced), to).toContain('Resultado');
+    }
+    expect(labelsOf(boxOf('server', 'trace'))).toContain('Saltos');
+    expect(labelsOf(boxOf('private', 'trace'))).toContain('Saltos');
+    expect(labelsOf(boxOf('private', 'ping'))).toContain(STOPPED);
+  });
+});
+
 describe('a packet that goes round a loop', () => {
   const looping = startSession(INCIDENTS, '01-09');
   const hopsOf = (session: Session, messageId: string): string[] => {

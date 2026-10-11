@@ -115,6 +115,7 @@ const TIMED_OUT = 'timeout: pasó el tiempo de espera y no volvió nada.';
 const ROUTER_IPS = [IP.router, IP.provider, IP.destination];
 const A_ROUTER_OR_ITS_IP = new RegExp([...Object.values(ROUTER).map((router) => router.name), ...ROUTER_IPS.map((ip) => `(?<!\\d)${ip.replaceAll('.', '\\.')}(?!\\d)`)].join('|'));
 const A_HOP = /salto|pasó por/i;
+const A_ROUTER_THAT_DISCARDS = /descarta|no sabe a qué/;
 const ROUTERS_NOT_DRAWN_YET = ['device:servidor-internet', 'device:tu-laptop', 'internet:internet'];
 const ROUTERS_THAT_ANSWERED = [...ROUTERS_NOT_DRAWN_YET, `edge:${ROUTER.office.name}`, `edge:${ROUTER.provider.name}`].sort();
 const DROPPED_TEXT = 'El firewall de laptop-marta descartó el paquete sin avisar.';
@@ -980,11 +981,12 @@ describe('01-10, seeing the path', () => {
     }
   });
 
-  it('01-10: the box of the traceroute lists its routers as before, once they are drawn', () => {
+  it('01-10: the box of the traceroute lists its routers as before, once they are drawn, and says nothing of where its last probe stopped', () => {
     const run = sentTo(both, ADDRESS.server.id, MESSAGE.traceroute.id);
     expect(run.hiddenStop).toBe(false);
     expect(fieldLines(both, run.pieceId, HOPS_LABEL)).toEqual([ROUTER_LINE, PROVIDER_LINE]);
-    expect(fieldLines(both, run.pieceId, STOPPED_LABEL)?.[0]).toContain(ROUTER.provider.name);
+    expect(fieldLines(both, run.pieceId, STOPPED_LABEL)).toBeUndefined();
+    expect(plainBox(both, run.pieceId).filter((text) => A_ROUTER_THAT_DISCARDS.test(text))).toEqual([]);
   });
 
   it('01-10: is the only incident whose routers wait for a traceroute to be drawn', () => {
@@ -1630,6 +1632,10 @@ describe('01-14, the final watch', () => {
     expect(ips).toEqual(Array.from({ length: TRACEROUTE_LINES }, (_, index) => (index % 2 === 0 ? IP.router : IP.provider)));
     expect(new Set(ips).size).toBe(2);
     expect([ROUTER.office.id, ROUTER.provider.id].map((id) => drawsRouter(start, id))).toEqual([true, true]);
+    const session = sendWith(start, MESSAGE.traceroute.id, ADDRESS.server.id);
+    expect(fieldLines(session, traced.pieceId, HOPS_LABEL)?.length).toBeGreaterThan(0);
+    expect(fieldLines(session, traced.pieceId, STOPPED_LABEL)).toBeUndefined();
+    expect(plainBox(session, traced.pieceId).filter((text) => A_ROUTER_THAT_DISCARDS.test(text))).toEqual([]);
   });
 
   it('01-14: the right cause of case 5 names router-proveedor and the change of its configuration, its report does not give the cause away, and no text says a router got confused or says ruta', () => {

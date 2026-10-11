@@ -141,7 +141,7 @@ export function unknownShownIds(incident: Incident, world: Network, spec?: CaseS
 }
 
 /** Returns the ids of the devices whose card an identify incident offers, in the order of its cards; none for any other incident. */
-export function cardDeviceIds(incident: Incident): string[] {
+function cardDeviceIds(incident: Incident): string[] {
   return incident.mechanic === 'identify' ? incident.identify.cards.map((card) => card.deviceId) : [];
 }
 

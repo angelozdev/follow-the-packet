@@ -67,10 +67,11 @@ export interface Layout {
   bounds: { left: number; right: number };
 }
 
-/** A piece the map draws, as the layout sees it: its kind and what it stands for. A device piece whose anchor is a server of the internet stands for that server, and an edge piece whose anchor is a router of the world stands for that router. */
+/** A piece the map draws, as the layout sees it: its kind and what it stands for. A device piece whose anchor is a server of the internet stands for that server, and an edge piece whose anchor is a router of the world stands for that router and says, with `inOffice`, whether that router faces a local network: the road lists the routers from the office outward, and what faces the office is something the engine knows and the layout does not decide. */
 export interface LayoutPiece {
   kind: MapPieceKind;
   anchorId: string;
+  inOffice?: boolean;
 }
 
 interface Column {
@@ -143,15 +144,10 @@ function wholeMap(net: Network, outside: boolean): LayoutPiece[] {
   ];
 }
 
-function facesALan(net: Network, router: Router): boolean {
-  const others = new Set([...(net.routers ?? []), ...net.actors].map((thing) => thing.id));
-  return router.interfaces.some((face) => !others.has(face.faces));
-}
-
-/** Orders the routers from the office outward: first the ones that face a local network, then the ones they face, and so on; a router nothing reaches comes last. */
-function roadOrder(net: Network): Router[] {
+/** Orders the routers from the office outward: first the ones the pieces say are in the office, then the ones they face, and so on; a router nothing reaches comes last, in the order the world lists it. */
+function roadOrder(net: Network, inOffice: ReadonlySet<string>): Router[] {
   const routers = net.routers ?? [];
-  const order = routers.filter((router) => facesALan(net, router));
+  const order = routers.filter((router) => inOffice.has(router.id));
   for (const router of order) {
     for (const face of router.interfaces) {
       const next = routers.find((candidate) => candidate.id === face.faces);
@@ -164,7 +160,7 @@ function roadOrder(net: Network): Router[] {
 function drawnOf(net: Network, pieces: readonly LayoutPiece[]): Drawn {
   const anchors = (kind: MapPieceKind) => new Set(pieces.filter((piece) => piece.kind === kind).map((piece) => piece.anchorId));
   const [deviceIds, actorIds, edgeIds] = [anchors('device'), anchors('actor'), anchors('edge')];
-  const routers = roadOrder(net);
+  const routers = roadOrder(net, new Set(pieces.filter((piece) => piece.kind === 'edge' && piece.inOffice).map((piece) => piece.anchorId)));
   return {
     devices: net.devices.filter((d) => deviceIds.has(d.id)),
     servers: net.actors.filter(isServer).filter((a) => deviceIds.has(a.id)),
@@ -377,7 +373,8 @@ export function terminalSide(anchorX: number, avoidXs: number[], room: number, g
   return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : preferred;
 }
 
-const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid', 'forward-no-owner'];
+const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid', 'route-no-gateway', 'route-not-connected', 'forward-no-owner'];
+const NOT_A_ROUTER: Reason['code'] = 'route-gateway-not-a-router';
 const DROPPED_BY_A_ROUTER: Reason['code'][] = ['forward-ttl-exceeded', 'forward-no-route', 'forward-no-host', 'forward-private-dropped'];
 
 function spotOfActor(layout: Layout, id: string): Vec2 | undefined {
@@ -410,6 +407,11 @@ function throughRouters(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
   return [...through, betweenStops(through[through.length - 1], layout)];
 }
 
+function gatewayThatDrops(trace: Trace): string | undefined {
+  const step = trace.steps.find((s) => s.stage === 'forward' && s.verdict === 'drop' && s.reason.code === NOT_A_ROUTER);
+  return step && 'deviceId' in step.reason ? step.reason.deviceId : undefined;
+}
+
 /** Appends the end of the road when the packet was answered by a router or a server instead of a device: its spot if the map draws it, or half way to the next drawn stop if not. */
 function toResponder(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
   const id = trace.destinationId;
@@ -417,7 +419,7 @@ function toResponder(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
   return spot ? [...points, spot] : points;
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address, to an address that is not valid or to an IP that nobody in its network has (its own device warns, so nothing goes out), at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true what stopped it is something the player cannot place: a firewall the map does not draw, so there is nothing in front of the device to stop at (it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out), or a router that dropped it, where the sender cannot know it died (it stays at the doorstep of its sender, never along the routers). */
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address, to an address that is not valid, to an IP that nobody in its network has (its own device warns, so nothing goes out), or when its device has no cable or no default gateway for it, at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it, at the door of a device that is the default gateway of the sender and is not a router. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true what stopped it is something the player cannot place: a firewall the map does not draw, so there is nothing in front of the device to stop at (it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out), or a router that dropped it, where the sender cannot know it died (it stays at the doorstep of its sender, never along the routers). */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hiddenStop = false): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
@@ -432,7 +434,8 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hidden
   if (trace.steps.some((s) => (s.stage === 'route' || s.stage === 'dns') && s.verdict === 'drop')) return points;
 
   const crossed = throughRouters(points, trace, layout);
-  const dest = trace.destinationId ? layout.devices[trace.destinationId] : undefined;
+  const receiverId = trace.destinationId ?? gatewayThatDrops(trace);
+  const dest = receiverId ? layout.devices[receiverId] : undefined;
   if (!dest) return toResponder(crossed, trace, layout);
   crossed.push(dest.road, dest.firewall);
   if (!hiddenStop && trace.steps.some((s) => s.stage === 'firewall-in' && s.verdict === 'drop')) return crossed;

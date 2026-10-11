@@ -1,10 +1,9 @@
-import { TTL_MAX } from '@/engine/network/schema';
+import { ECHO_REQUEST, TTL_MAX } from '@/engine/network/schema';
 import type { Endpoint, Network } from '@/engine/network/types';
 import { simulate } from './simulate';
 import type { NoticeKind, Outcome, Trace } from './trace';
 
 const FIRST_TTL = 1;
-const ECHO_REQUEST = 8;
 
 /** The most hops the game's traceroute probes. A number of the game, not the default of any system. */
 export const TRACEROUTE_MAX_HOPS = 8;

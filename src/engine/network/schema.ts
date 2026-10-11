@@ -26,7 +26,10 @@ export const directionSchema = z.enum(['inbound', 'outbound']);
 /** The direction of a rule that does not say one: inbound. */
 export const DEFAULT_DIRECTION: z.infer<typeof directionSchema> = 'inbound';
 
-export const icmpTypeSchema = z.union([z.literal(0), z.literal(8)]);
+/** The ICMP type of an Echo Request, the message a ping sends (RFC 792). */
+export const ECHO_REQUEST = 8;
+
+export const icmpTypeSchema = z.union([z.literal(0), z.literal(ECHO_REQUEST)]);
 
 export const ruleWhatSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('all') }),

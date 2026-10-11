@@ -61,7 +61,7 @@ export function rowText(row: RuleRow | OutboundRow | DescribedRow): TermText {
 }
 
 /** True when the player can set the outbound rules of this firewall: the ladder has opened them for its kind and the incident offers Destination chips to write them with. */
-export function hasOutboundList(session: Session, firewall: Firewall): boolean {
+function hasOutboundList(session: Session, firewall: Firewall): boolean {
   const { incident } = session;
   return session.parts.outboundRules[firewall.kind] && incident.mechanic === 'filter' && incident.chips.to !== undefined;
 }

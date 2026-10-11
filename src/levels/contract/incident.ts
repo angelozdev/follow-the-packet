@@ -1,9 +1,8 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { DEFAULT_DIRECTION, OUTCOMES, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema, type Direction } from '@/engine';
+import { DEFAULT_DIRECTION, ECHO_REQUEST, OUTCOMES, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema, type Direction } from '@/engine';
 
 const id = z.string().min(1);
-const ECHO_REQUEST = 8;
 const SEGMENTED_CHIPS = 2;
 
 function termTextProblem(text: string): string | undefined {

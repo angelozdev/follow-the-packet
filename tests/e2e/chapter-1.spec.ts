@@ -34,6 +34,17 @@ const SENDING: Record<string, (terminal: Locator) => Promise<void>> = {
   '01-10': sendThePingAndTheTraceroute,
 };
 
+async function reloadWithProgress(page: Page, progress: Record<string, number>) {
+  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify(progress)]);
+  await page.reload();
+}
+
+async function expectFirstPingOpenWith(page: Page, progress: Record<string, number>) {
+  await reloadWithProgress(page, progress);
+  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
+  await expect(page.locator('li[data-level-id="04-01"]')).not.toContainText(LOCKED);
+}
+
 async function expectApart(opened: Locator, target: Locator) {
   await expect(opened).toBeVisible();
   await expect(target).toBeVisible();
@@ -121,25 +132,22 @@ test('the roadmap lists the fourteen incidents of chapter 1 with their stars', a
   expect(errors).toEqual([]);
 });
 
-test('chapter 1 opens at 01-01 and nothing after it is open before it is played', async ({ page }) => {
+test('chapter 1 opens at 01-01 and 04-01 opens once the incident before it has a star', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/');
   await expect(page.getByRole('link', { name: '1. La oficina' })).toHaveAttribute('href', '#/level/01-01');
   await expect(page.locator('li[data-level-id="01-02"]')).toContainText(LOCKED);
   await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
+  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_1]: 1 });
   expect(errors).toEqual([]);
 });
 
 test('04-01 opens after 01-14 has a star', async ({ page }) => {
   const errors = collectErrors(page);
+  await startWithProgress(page, { '01-13': 3 });
   await page.goto('/');
-  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify({ '01-13': 3 })]);
-  await page.reload();
   await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify({ [LAST_BUILT_OF_CHAPTER_1]: 1 })]);
-  await page.reload();
-  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
-  await expect(page.locator('li[data-level-id="04-01"]')).not.toContainText(LOCKED);
+  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_1]: 1 });
   expect(errors).toEqual([]);
 });
 
