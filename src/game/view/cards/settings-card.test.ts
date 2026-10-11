@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '@/engine';
-import { filterIncident, gatewayIncident, identifyIncident, sendIncident } from '@/testing';
+import { OFFICE_FLOORS, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, officeWithNames, sendIncident, tcpService } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { settingsCard, settingsDeviceIds } from './settings-card';
@@ -56,5 +56,28 @@ describe('settings card', () => {
     expect(settingsDeviceIds(startSession([twice], twice.id))).toEqual(['your-laptop']);
     const sending = sendIncident();
     expect(settingsDeviceIds(startSession([sending], sending.id))).toEqual([]);
+  });
+});
+
+describe('settings card of the other kinds of setting', () => {
+  const NAMES = namesSendIncident();
+  const SERVING = { ...NAMES, base: applyAction(officeWithNames(), { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000)] }) };
+  const START_NAMES = startSession([SERVING], SERVING.id);
+  const set = (session: Session, deviceId: string, settingId: string, chipId: string): Session => sessionReducer(session, { type: 'setSetting', deviceId, settingId, chipId });
+  const pickedIn = (session: Session, deviceId: string): (string | null)[] => (settingsCard(session, PIECE_ID.settings(deviceId))?.settings ?? []).map(({ picked }) => picked);
+
+  it('the chip picked for a DNS server is the one that matches the resolver of the device, not its gateway', () => {
+    expect(START_NAMES.world.devices.find((device) => device.id === 'your-laptop')?.gateway).toBe(OFFICE_FLOORS.floor1.gateway);
+    expect(pickedIn(START_NAMES, 'your-laptop')).toEqual(['resolver']);
+    expect(pickedIn(set(START_NAMES, 'your-laptop', 'resolver', 'none'), 'your-laptop')).toEqual(['none']);
+    const elsewhere = applyAction(START_NAMES.world, { type: 'setDnsServer', deviceId: 'your-laptop', server: '198.51.100.200' });
+    expect(pickedIn({ ...START_NAMES, world: elsewhere }, 'your-laptop')).toEqual([null]);
+  });
+
+  it('the chip picked for a listen address is the one that matches the service it names, and none when the device has no such service', () => {
+    expect(pickedIn(START_NAMES, 'lucia-laptop')).toEqual(['all']);
+    expect(pickedIn(set(START_NAMES, 'lucia-laptop', 'app', 'loopback'), 'lucia-laptop')).toEqual(['loopback']);
+    const noService = startSession([NAMES], NAMES.id);
+    expect(pickedIn(noService, 'lucia-laptop')).toEqual([null]);
   });
 });

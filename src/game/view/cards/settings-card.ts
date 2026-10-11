@@ -1,5 +1,5 @@
 import { SETTINGS_TEXT, deviceName, toPlainText, type TermText } from '@/copy';
-import type { SendIncident, SettingSpec } from '@/levels';
+import { settingValue, type SendIncident, type SettingSpec } from '@/levels';
 import type { Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 
@@ -32,7 +32,7 @@ export function settingsDeviceIds(session: Session): string[] {
   return [...new Set(offeredSettings(session).map((setting) => setting.deviceId))];
 }
 
-/** Returns what the settings card of a device shows, opened from its settings entry (`PIECE_ID.settings`): its title and, for each setting the incident offers for it, the name of the tray by its term, the chips, and the chip that matches the world, which is the one whose value is the gateway the device has now (no value when it has none), or none when no chip stands for it. `pieceId` is the piece of the device the card sits beside. Null when the incident offers no setting for that device. */
+/** Returns what the settings card of a device shows, opened from its settings entry (`PIECE_ID.settings`): its title and, for each setting the incident offers for it, the name of the tray by its term, the chips, and the chip that matches the world, which is the one whose value is what the setting has now (`settingValue`: the gateway or the DNS server the device has, no value when it has none, or the listen address of the service it names), or none when no chip stands for it. `pieceId` is the piece of the device the card sits beside. Null when the incident offers no setting for that device. */
 export function settingsCard(session: Session, entryId: string): SettingsCard | null {
   const deviceId = settingsDeviceIds(session).find((candidate) => PIECE_ID.settings(candidate) === entryId);
   const device = session.world.devices.find((candidate) => candidate.id === deviceId);
@@ -46,7 +46,7 @@ export function settingsCard(session: Session, entryId: string): SettingsCard | 
       .map((setting) => ({
         id: setting.id,
         name: toPlainText(setting.name),
-        picked: setting.chips.find((chip) => chip.value === (device.gateway ?? null))?.id ?? null,
+        picked: setting.chips.find((chip) => chip.value === settingValue(session.world, setting))?.id ?? null,
         chips: setting.chips.map(({ id, label }) => ({ id, label })),
       })),
   };

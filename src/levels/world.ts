@@ -16,22 +16,31 @@ function listenOf(device: Device, { protocol, port }: NonNullable<SettingSpec['s
   return device.host.services.find((service) => service.protocol === protocol && service.port === port)?.listen;
 }
 
+/** Returns the value a setting has in the world now, the one the chip that matches the world carries: the default gateway or the DNS server of its device (null when it has none) or the listen address of the service it names (null when the device has no such service, or is not in the world). The session applies a setting by comparing with it, and the card of settings picks its chip by it, so the two cannot disagree. */
+export function settingValue(world: Network, setting: SettingSpec): string | null {
+  const device = world.devices.find((candidate) => candidate.id === setting.deviceId);
+  switch (settingKind(setting)) {
+    case 'gateway':
+      return device?.gateway ?? null;
+    case 'dns-server':
+      return device?.dnsServer ?? null;
+    case 'listen-address':
+      return (device && setting.service && listenOf(device, setting.service)) || null;
+  }
+}
+
 function applySetting(world: Network, incident: Incident, { deviceId, settingId, chipId }: SettingMove): Network {
   const setting = incident.mechanic === 'send' ? incident.send.settings?.find((candidate) => candidate.deviceId === deviceId && candidate.id === settingId) : undefined;
   const chip = setting?.chips.find((candidate) => candidate.id === chipId);
-  const device = world.devices.find((candidate) => candidate.id === deviceId);
-  if (!setting || !chip || !device) return world;
-  const value = chip.value;
+  if (!setting || !chip || !world.devices.some((candidate) => candidate.id === deviceId) || settingValue(world, setting) === chip.value) return world;
   switch (settingKind(setting)) {
     case 'gateway':
-      return (device.gateway ?? null) === value ? world : applyAction(world, { type: 'setGateway', deviceId, gateway: value ?? undefined });
+      return applyAction(world, { type: 'setGateway', deviceId, gateway: chip.value ?? undefined });
     case 'dns-server':
-      return (device.dnsServer ?? null) === value ? world : applyAction(world, { type: 'setDnsServer', deviceId, server: value ?? undefined });
+      return applyAction(world, { type: 'setDnsServer', deviceId, server: chip.value ?? undefined });
     case 'listen-address': {
-      const { service } = setting;
-      const listen = listenSchema.safeParse(value);
-      const current = service && listenOf(device, service);
-      return service && listen.success && current !== undefined && current !== listen.data ? applyAction(world, { type: 'setListenAddress', ownerId: deviceId, ...service, listen: listen.data }) : world;
+      const listen = listenSchema.safeParse(chip.value);
+      return setting.service && listen.success ? applyAction(world, { type: 'setListenAddress', ownerId: deviceId, ...setting.service, listen: listen.data }) : world;
     }
   }
 }

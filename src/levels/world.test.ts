@@ -7,7 +7,7 @@ import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlaceEntryMove, type PlayerMove, type SettingMove, type TableSpec } from './contract/incident';
 import { recordEntryId, routeEntryId } from './contract/tables';
 import { INCIDENTS } from './registry';
-import { applyMove, caseWorld, placementProblem, solvedWorld, startWorld, worldBeforeChanges } from './world';
+import { applyMove, caseWorld, placementProblem, settingValue, solvedWorld, startWorld, worldBeforeChanges } from './world';
 
 function incident(id: string): Incident {
   const found = INCIDENTS.find((i) => i.id === id);
@@ -440,5 +440,18 @@ describe('applyMove of the tables, the clock and the settings of chapter 2', () 
     expect(applyMove(loopback, NAMES, set('loopback'))).toBe(loopback);
     expect(applyMove(serving, NAMES, set('all'))).toBe(serving);
     expect(applyMove(start, NAMES, set('loopback'))).toBe(start);
+  });
+
+  it('settingValue reads the value a setting has in the world, by its kind', () => {
+    const [resolverSetting, listenSetting] = NAMES.send.settings!;
+    const serving = applyAction(start, { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000, 'loopback')] });
+    expect(settingValue(start, resolverSetting)).toBe(resolver.ip);
+    expect(settingValue(applyAction(start, { type: 'setDnsServer', deviceId: 'your-laptop' }), resolverSetting)).toBeNull();
+    expect(settingValue(serving, listenSetting)).toBe('loopback');
+    expect(settingValue(start, listenSetting)).toBeNull();
+    expect(settingValue(start, { ...listenSetting, deviceId: 'ghost' })).toBeNull();
+    const gateway = gatewayIncident();
+    expect(settingValue(startWorld([gateway], gateway.id), gateway.send.settings![0])).toBeNull();
+    expect(settingValue(applyMove(startWorld([gateway], gateway.id), gateway, { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'router' }), gateway.send.settings![0])).toBe(floor1.gateway);
   });
 });
