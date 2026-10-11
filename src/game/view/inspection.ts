@@ -5,7 +5,7 @@ import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
-import { dnsField, exchangeField, headerFields, type InspectionField } from './packet-fields';
+import { dnsField, exchangeField, headerFields, routeField, translationField, type InspectionField } from './packet-fields';
 import { drawsRouter, isDrawn, isShown } from './pieces';
 import { placesOf, routerPlace } from './router-place';
 
@@ -202,7 +202,7 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
   return cameBack && session.known.has('rtt') ? [{ label: INSPECTION_TEXT.roundTrip, lines: [roundTripText(rttMs), INSPECTION_TEXT.exampleTime] }] : [];
 }
 
-/** The box of a packet, in the order the packet lives it: what it is, its message, the name it was sent to, its headers, what its two ends said, the routers it crossed, the result and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the routers nor the reason, since its sender cannot tell where it died. */
+/** The box of a packet, in the order the packet lives it: what it is, its message, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the routers it crossed, the result and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
 function packet(session: Session, run: PacketRun): Inspection {
   const step = stopStep(run.trace);
   const { hops, destinationId } = run.trace;
@@ -216,6 +216,7 @@ function packet(session: Session, run: PacketRun): Inspection {
       ...visible([...definition(traced ? 'traceroute' : packetTerm(run.packet, session.known)), ...messageField(run.packet)], session.known),
       ...dnsField(session, run),
       ...headerFields(run, session.known, !traced),
+      ...(path ? [...routeField(session, run), ...translationField(session, run)] : []),
       ...exchangeField(session, run),
       ...pathField(session, knowsTheRoute ? hops : []),
       { label: INSPECTION_TEXT.result, lines: [describeResult(run.trace, session.known, destinationId ? deviceName(session.world, destinationId) : undefined)] },

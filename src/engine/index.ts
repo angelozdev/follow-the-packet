@@ -41,6 +41,8 @@ export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/paths/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/paths/traceroute';
 export { OUTCOMES } from './simulation/trace';
 export type { Checkpoint, DnsStatus, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, PacketHeader, Reason, Step, Trace } from './simulation/trace';
+export type { RouteDecision } from './network/addressing/routing-table';
+export type { Translation } from './nat/translation';
 export { extraOpenings, reachesHost } from './exposure/exposure';
 export { privateDnsName, publicDnsName } from './network/naming/dns';
 export { RECORD_PROBLEMS, RECORD_TTL, recordProblem, zoneOf } from './dns/records';

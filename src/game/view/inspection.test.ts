@@ -4,7 +4,7 @@ import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from 
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { CHAPTER_1_TERMS, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect, type Inspection } from './inspection';
@@ -366,6 +366,7 @@ describe('a packet of an office with routers', () => {
   const { officeRouter, provider, backbone, server } = OFFICE_FLOORS;
   const ROUTED = routedSendIncident();
   const start = startSession([ROUTED], ROUTED.id);
+  const inChapter1 = startSession([{ ...ROUTED, introduces: [...CHAPTER_1_TERMS] }], ROUTED.id);
   const sentTo = (session: Session, toId: string, messageId = 'ping') => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId });
   const lastBox = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId));
   const field = (session: Session, label: string) => lastBox(session)?.fields.find(([name]) => name === label);
@@ -383,8 +384,8 @@ describe('a packet of an office with routers', () => {
 
   it('a packet that came back shows its time after the result, and a warning that came back shows it too', () => {
     const labels = (session: Session) => lastBox(session)?.fields.map(([name]) => name);
-    expect(labels(sentTo(start, 'printer'))).toEqual(['Qué es', 'Mensaje', REQUEST_HEADER, 'Encabezado del Echo Reply', 'Resultado', ROUND_TRIP]);
-    const expired = sentTo(start, 'server', 'ping-2');
+    expect(labels(sentTo(inChapter1, 'printer'))).toEqual(['Qué es', 'Mensaje', REQUEST_HEADER, 'Encabezado del Echo Reply', 'Resultado', ROUND_TRIP]);
+    const expired = sentTo(inChapter1, 'server', 'ping-2');
     expect(expired.sent[0].trace.outcome).toBe('ttl-exceeded');
     expect(labels(expired)?.slice(-3)).toEqual(['Resultado', ROUND_TRIP, 'Dónde y por qué se detuvo']);
     expect(field(expired, ROUND_TRIP)?.[1]).toBe('20 ms');
@@ -408,14 +409,15 @@ describe('a packet of an office with routers', () => {
   });
 
   it('the path of a packet names only the routers its incident draws, and writes outside the office for the stretch through routers that are not drawn', () => {
-    const drawn = sentTo(start, 'server');
+    const drawn = sentTo(inChapter1, 'server');
     expect(field(drawn, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'router-provider (203.0.113.1)', 'router-backbone (203.0.113.2)']);
-    const partly = sentTo(drawing(start, 'your-laptop', officeRouter.id, server.id), 'server');
+    const partly = sentTo(drawing(inChapter1, 'your-laptop', officeRouter.id, server.id), 'server');
     expect(field(partly, 'Saltos')).toEqual(['Saltos', 'router-office (192.168.1.1)', 'fuera de la oficina']);
-    const hidden = sentTo(drawing(start, 'your-laptop', server.id), 'server');
+    const hidden = sentTo(drawing(inChapter1, 'your-laptop', server.id), 'server');
     expect(field(hidden, 'Saltos')).toEqual(['Saltos', 'dentro de la oficina', 'fuera de la oficina']);
     const text = JSON.stringify(lastBox(partly));
-    for (const id of [provider.id, backbone.id, provider.towardOffice, backbone.towardProvider]) expect(text).not.toContain(id);
+    const wholeWord = (id: string) => new RegExp(`(?<!\\d)${id.replaceAll('.', '\\.')}(?!\\d)`);
+    for (const id of [provider.id, backbone.id, provider.towardOffice, backbone.towardProvider]) expect(text).not.toMatch(wholeWord(id));
   });
 
   it('the reason a packet stopped does not name a router that is not drawn either', () => {
@@ -468,13 +470,13 @@ describe('a packet of an office with routers', () => {
 
   it('the header of a trip that leaves the office is labelled as seen in the local network', () => {
     const notes = (session: Session, label: string) => inspect(session, session.sent[0].pieceId)?.fields.filter((candidate) => toPlainText(candidate.label) === label).flatMap((candidate) => (candidate.notes ?? []).map((note) => toPlainText(note)));
-    const answered = sentTo(start, 'server');
+    const answered = sentTo(inChapter1, 'server');
     expect(field(answered, LOCAL_REQUEST_HEADER)).toEqual([LOCAL_REQUEST_HEADER, 'IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`, 'TTL al salir: 64']);
     expect(field(answered, LOCAL_REPLY_HEADER)).toEqual([LOCAL_REPLY_HEADER, `IP de origen: ${server.ip}`, 'IP de destino: 192.168.1.10']);
     expect(field(answered, REQUEST_HEADER)).toBeUndefined();
     expect(notes(answered, LOCAL_REQUEST_HEADER)).toEqual([]);
     expect(notes(answered, LOCAL_REPLY_HEADER)).toEqual([HEADER_CHANGES]);
-    const lost = sentTo(start, 'private');
+    const lost = sentTo(inChapter1, 'private');
     expect(notes(lost, LOCAL_HEADER)).toEqual([HEADER_CHANGES]);
     expect(lastBox(answered)?.fields.flat().join(' ')).not.toMatch(/NAT|pública/);
     expect(JSON.stringify(inspect(answered, answered.sent[0].pieceId))).not.toMatch(/NAT|pública/);
@@ -726,9 +728,9 @@ describe('the box of a packet with ports and names', () => {
   });
 });
 
-describe('the fields of a packet with ports and names that leaves the office or comes in', () => {
+describe('the route a packet used and the translation the NAT made', () => {
   const NAMES = namesSendIncident();
-  const { officeRouter, server } = OFFICE_FLOORS;
+  const { officeRouter, provider, backbone, server } = OFFICE_FLOORS;
   const OUTSIDE = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
   const app = { protocol: 'tcp', port: 3000, listen: 'all' } as const;
   const incident = {
@@ -750,11 +752,79 @@ describe('the fields of a packet with ports and names that leaves the office or 
   const start: Session = { ...base, world: actions.reduce((net, action) => applyAction(net, action), base.world) };
   const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
   const sent = (session: Session, fromId: string, toId: string, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
+  const fields = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId))?.fields ?? [];
+  const field = (session: Session, label: string) => fields(session).find(([name]) => name === label);
+  const drawing = (session: Session, ...ids: string[]): Session => ({ ...session, incident: { ...session.incident, shown: ids } });
+  const ANYWHERE = '0.0.0.0/0';
 
-  it('tags only the terms the player knows in the fields of a packet with ports, names and a translation, whichever term is missing', () => {
+  it('the box says which route a packet used behind the term route', () => {
+    const inside = sent(start, 'you', 'lucia', 'ping');
+    expect(field(inside, 'Ruta que usó')).toEqual(['Ruta que usó', `tu-laptop: ${OFFICE_FLOORS.floor1.cidr} · ruta de red conectada · directo · es la más específica: también cubría ${ANYWHERE}`]);
+    expect(field(sent(without(start, 'most-specific-route'), 'you', 'lucia', 'ping'), 'Ruta que usó')?.[1]).toBe(`tu-laptop: ${OFFICE_FLOORS.floor1.cidr} · ruta de red conectada · directo`);
+    expect(field(sent(without(start, 'connected-route'), 'you', 'lucia', 'ping'), 'Ruta que usó')?.[1]).toContain('· ruta ·');
+    expect(field(sent(without(start, 'route'), 'you', 'lucia', 'ping'), 'Ruta que usó')).toBeUndefined();
+    const leaving = sent(start, 'you', 'server', 'ping');
+    expect(field(leaving, 'Ruta que usó')).toEqual([
+      'Ruta que usó',
+      `tu-laptop: ${ANYWHERE} · ruta por defecto · siguiente salto ${OFFICE_FLOORS.floor1.gateway}`,
+      `router-office: ${ANYWHERE} · ruta por defecto · siguiente salto ${provider.towardOffice}`,
+      `router-provider: ${server.range} · ruta · siguiente salto ${backbone.towardProvider}`,
+      `router-backbone: ${server.range} · ruta de red conectada · directo`,
+    ]);
+    expect(field(sent(without(start, 'next-hop'), 'you', 'server', 'ping'), 'Ruta que usó')?.[1]).toBe(`tu-laptop: ${ANYWHERE} · ruta por defecto · sale por ${OFFICE_FLOORS.floor1.gateway}`);
+  });
+
+  it('the box names a router or an IP of the route only when the map draws it', () => {
+    const drawn = drawing(start, 'your-laptop', officeRouter.id, server.id);
+    const route = field(sent(drawn, 'you', 'server', 'ping'), 'Ruta que usó');
+    expect(route).toEqual(['Ruta que usó', `tu-laptop: ${ANYWHERE} · ruta por defecto · siguiente salto ${OFFICE_FLOORS.floor1.gateway}`, `router-office: ${ANYWHERE} · ruta por defecto`]);
+    expect(JSON.stringify(route)).not.toMatch(/router-provider|router-backbone|203\.0\.113\.[123]\b/);
+  });
+
+  it('the route field says whose route it lists, also for a packet that enters from outside', () => {
+    const entering = sent(start, 'home', 'uplink', 'nc-3000');
+    expect(entering.sent[0].trace.routes?.map((decision) => decision.holderId)).toEqual([officeRouter.id]);
+    expect(field(entering, 'Ruta que usó')).toEqual(['Ruta que usó', `router-office: ${OFFICE_FLOORS.floor2.cidr} · ruta de red conectada · directo · es la más específica: también cubría ${ANYWHERE}`]);
+    expect(JSON.stringify(field(entering, 'Ruta que usó'))).not.toContain('casa-lucia');
+  });
+
+  it('the box shows the header in the local network and the header in the internet once nat is known', () => {
+    const nc = sent(start, 'you', 'server', 'nc-3000');
+    expect(nc.sent[0].replied).toBe(true);
+    expect(field(nc, 'Encabezado de ida (en tu red local)')).toEqual([
+      'Encabezado de ida (en tu red local)', 'IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`, 'Puerto de origen: 51514', 'Puerto de destino: 3000', 'TTL al salir: 64',
+    ]);
+    expect(field(nc, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `IP de origen: ${officeRouter.uplink}`, `IP de destino: ${server.ip}`, 'Puerto de origen: 40001', 'Puerto de destino: 3000']);
+    expect(field(nc, 'Traducción')).toEqual(['Traducción', `192.168.1.10:51514 → ${officeRouter.uplink}:40001`, 'Cambió la IP y el puerto de origen (traducción de puertos).', 'Es una fila nueva de la tabla de traducciones.']);
+    const early = sent(without(start, 'nat'), 'you', 'server', 'nc-3000');
+    expect(fields(early).map(([label]) => label).filter((label) => label.includes('internet') || label === 'Traducción')).toEqual([]);
+    expect(field(sent(without(start, 'translation-table', 'napt'), 'you', 'server', 'nc-3000'), 'Traducción')).toEqual(['Traducción', `192.168.1.10:51514 → ${officeRouter.uplink}:40001`, 'Cambió la IP y el puerto de origen.']);
+    const second = sent(nc, 'you', 'server', 'nc-3000');
+    expect(field(second, 'Traducción')?.[1]).toBe(`192.168.1.10:51515 → ${officeRouter.uplink}:40002`);
+  });
+
+  it('the note that the header changes outside the office goes away once nat is known', () => {
+    const notes = (session: Session) => inspect(session, session.sent[0].pieceId)?.fields.flatMap((candidate) => (candidate.notes ?? []).map((note) => toPlainText(note))) ?? [];
+    expect(notes(sent(start, 'you', 'server', 'ping'))).toEqual([]);
+    expect(notes(sent(without(start, 'nat'), 'you', 'server', 'ping'))).toEqual([HEADER_CHANGES]);
+    expect(notes(sent(without(start, 'nat'), 'you', 'server', 'nc-3000'))).toEqual([HEADER_CHANGES]);
+    expect(notes(sent(start, 'you', 'lucia', 'ping'))).toEqual([]);
+  });
+
+  it('a translation of a ping has no port in the box and none in the label', () => {
+    const ping = sent(start, 'you', 'server', 'ping');
+    expect(ping.sent[0].trace.translation).toMatchObject({ protocol: 'icmp', outside: { ip: officeRouter.uplink } });
+    expect(ping.sent[0].trace.translation?.outside).not.toHaveProperty('port');
+    expect(field(ping, 'Traducción')).toEqual(['Traducción', `192.168.1.10 → ${officeRouter.uplink}`, 'ICMP no usa puertos: solo cambió la IP de origen.']);
+    expect(field(ping, 'Encabezado del Echo Request (en internet)')).toEqual(['Encabezado del Echo Request (en internet)', `IP de origen: ${officeRouter.uplink}`, `IP de destino: ${server.ip}`]);
+    expect(toPlainText(ping.sent[0].label)).toBe('ping de tu-laptop a servidor-internet');
+    expect(fields(ping).flat().join(' ')).not.toMatch(/Puerto|40001|:\d{4,5}/);
+  });
+
+  it('tags only the terms the player knows in the fields of a packet with ports, names, routes and a translation, whichever term is missing', () => {
     const cached = [{ name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 }] as const;
     const world: Session = { ...start, world: withResolverCache(start.world, [...cached]) };
-    const OWN_FIELDS = /^(DNS|Encabezado|Saludo de tres pasos|Consulta y respuesta)/;
+    const OWN_FIELDS = /^(DNS|Encabezado|Ruta que usó|Traducción|Saludo de tres pasos|Consulta y respuesta)/;
     const sends = [['you', 'server', 'nc-3000'], ['you', 'server', 'ping'], ['you', 'lucia', 'nc'], ['you', 'www', 'dig'], ['you', 'www', 'ping'], ['you', 'missing', 'ping'], ['you', 'missing', 'dig'], ['home', 'uplink', 'nc-3000']] as const;
     for (const missing of start.known) {
       const unaware = without(world, missing);
@@ -765,5 +835,12 @@ describe('the fields of a packet with ports and names that leaves the office or 
         expect(shown.length === 0 || unknownTerms(texts, taken.known).length === 0, `${missing} / ${toPlainText(run.label)}: ${unknownTerms(texts, taken.known)}`).toBe(true);
       }
     }
+  });
+
+  it('a packet that comes in from outside shows the public end it was sent to and the device it reached', () => {
+    const entering = sent(start, 'home', 'uplink', 'nc-3000');
+    expect(field(entering, 'Traducción')).toEqual(['Traducción', `${officeRouter.uplink}:3000 → 192.168.2.15:3000`, 'Un reenvío de puertos lo entregó a ese dispositivo.']);
+    expect(field(sent(without(entering, 'port-forwarding'), 'home', 'uplink', 'nc-3000'), 'Traducción')).toEqual(['Traducción', `${officeRouter.uplink}:3000 → 192.168.2.15:3000`]);
+    expect(fields(entering).map(([label]) => label).filter((label) => label.includes('internet'))).toEqual([]);
   });
 });

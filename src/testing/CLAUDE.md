@@ -6,5 +6,6 @@ Helpers for tests only: network fixtures (`fixtures.ts`: the lab 03 VPC and the 
 - `dig(from, name)` builds the `dig` of a name (a UDP datagram to port 53 with `lookup: 'dig'` and the name as destination) and `withResolverCache(net, entries)` gives the resolver of `officeWithNames()` an initial `dns.cache`, measured against the clock of the game.
 - `tcpService(port, listen)` builds a TCP `Service` (on all addresses unless told otherwise) for the tests that give a device or a server a program.
 - `EVERY_TERM` is every registered term, for the tests that do not care what the player knows yet; a test about what is hidden builds its own set or its own incident.
+- `CHAPTER_1_TERMS` is the terms the incidents of chapter 1 introduce: for a test of chapter 1 that sends packets and must not see a term of a later chapter (`EVERY_TERM` includes them, so the box of a trip would show a route or a translation). A test that needs a session with it builds the incident with `introduces: [...CHAPTER_1_TERMS]`.
 - Production code never imports `@/testing`.
 - May import: `@/engine`, `@/copy`, `@/levels`.

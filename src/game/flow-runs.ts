@@ -77,7 +77,7 @@ function firewallKnown(step: Step, known: ReadonlySet<TermId>): boolean {
 /** Returns the warning that came back to the sender when the player knows its term, else null: an unknown term hides the warning, and the packet is seen as one that nobody answered. Only the look changes; the outcome, `by` and the trace are those of the engine. */
 function visibleWarning(packet: PacketSpec, trace: Trace, known: ReadonlySet<TermId>): Warning | null {
   if (!trace.notice) return null;
-  const warning = warningOf(trace.notice, packet);
+  const warning = warningOf(trace.notice, packet, known);
   return known.has(warning.term) ? warning : null;
 }
 

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, parseTermText, termsIn, toPlainText, unofficialNames, type TermId, type TermText } from '@/copy';
-import type { Firewall, Network } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, type Firewall, type Network } from '@/engine';
 import { INCIDENTS, isGuided, sendCombinations, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { incidentTexts, unknownTerms } from '@/levels/ladder';
-import { officeNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, officeNet, sendIncident, withDevice } from '@/testing';
+import { ADDRESS, MESSAGE, ORIGIN, ROUTER } from '@/levels/01-first-day/shared';
 import { currentCase, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
@@ -149,5 +150,41 @@ describe('the firewall before the incident that introduces it', () => {
       expect(shown.flatMap(pieceViews).filter((piece) => piece.kind === 'firewall')).not.toEqual([]);
       expect(mentionsFirewall(shown)).not.toEqual([]);
     }
+  });
+});
+
+describe('the terms of a player who has finished a later chapter', () => {
+  const THE_NETWORK_OF_NETWORKS = '01-08';
+  const CHAPTER_2: Incident = { ...sendIncident(), id: '02-99', chapter: 2, order: 99, introduces: [...EVERY_TERM] };
+  const AFTER_CHAPTER_2 = [...INCIDENTS, CHAPTER_2].sort((a, b) => a.chapter - b.chapter || a.order - b.order);
+  const CHAPTER_2_TERMS: TermId[] = ['route', 'nat', 'net-unreachable'];
+  const CHAPTER_2_FIELDS = /\(en internet\)|Ruta que usó|Traducción/;
+  const TRIPS = [ADDRESS.server, ADDRESS.otherOffice, ADDRESS.printer].map((to) => ({ type: 'sendPacket', fromId: ORIGIN.you.id, toId: to.id, messageId: MESSAGE.ping.id }) as const);
+  const again = startSession(AFTER_CHAPTER_2, THE_NETWORK_OF_NETWORKS);
+  const first = startSession(INCIDENTS, THE_NETWORK_OF_NETWORKS);
+  const tripsOf = (session: Session) => TRIPS.map((trip) => sessionReducer(session, trip));
+  const boxOf = (session: Session) => inspect(session, session.sent[0].pieceId);
+  const labelsOf = (session: Session) => boxOf(session)?.fields.map((field) => toPlainText(field.label)) ?? [];
+  const withoutDefaultRoute = (session: Session): Session => ({ ...session, world: applyAction(session.world, { type: 'removeRoute', routerId: ROUTER.office.id, to: ROUTE_DEFAULT }) });
+  const warningOfTheTrip = (session: Session) => sessionReducer(withoutDefaultRoute(session), TRIPS[0]).sent[0].warning;
+
+  it('a player who finished chapter 2 and opens 01-08 again sees the box of chapter 1, with no header in the internet and no term of chapter 2', () => {
+    expect(AFTER_CHAPTER_2.findIndex((incident) => incident.id === CHAPTER_2.id)).toBeGreaterThan(AFTER_CHAPTER_2.findIndex((incident) => incident.id === THE_NETWORK_OF_NETWORKS));
+    expect(again.known).toEqual(first.known);
+    expect(CHAPTER_2_TERMS.filter((term) => again.known.has(term))).toEqual([]);
+    const trips = tripsOf(again);
+    expect(trips.map((trip) => JSON.stringify(boxOf(trip)))).toEqual(tripsOf(first).map((trip) => JSON.stringify(boxOf(trip))));
+    expect(trips.flatMap(labelsOf).filter((label) => CHAPTER_2_FIELDS.test(label))).toEqual([]);
+    for (const trip of trips) expect(unknownTerms(shownTexts(trip), trip.known)).toEqual([]);
+  });
+
+  it('the same trip shows the header in the internet, the route and the translation once the terms of chapter 2 are known, so the check above can fail', () => {
+    const [toServer] = tripsOf({ ...again, known: EVERY_TERM });
+    expect(labelsOf(toServer).filter((label) => CHAPTER_2_FIELDS.test(label))).toHaveLength(3);
+  });
+
+  it('a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term', () => {
+    expect(warningOfTheTrip(again)).toEqual({ term: 'host-unreachable', by: 'router' });
+    expect(warningOfTheTrip({ ...again, known: EVERY_TERM })).toEqual({ term: 'net-unreachable', by: 'router' });
   });
 });

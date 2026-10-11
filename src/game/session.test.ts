@@ -4,7 +4,7 @@ import { applyAction, type ServerActor } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, sendIncident, tcpService, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, sendIncident, tcpService, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -441,7 +441,7 @@ describe('a warning that comes back to the sender', () => {
   const warnings = (known: ReadonlySet<TermId>) => Object.fromEntries(runFlows(floors, flows, known).map((run) => [run.id, run.warning]));
 
   it('is part of the result of its run, with the kind of warning and who generated it', () => {
-    expect(warnings(EVERY_TERM)).toEqual({
+    expect(warnings(CHAPTER_1_TERMS)).toEqual({
       own: { term: 'host-unreachable', by: 'sender' },
       expired: { term: 'time-exceeded', by: 'router' },
       'no-route': { term: 'host-unreachable', by: 'router' },

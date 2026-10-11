@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { simulateSequence } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, simulateSequence } from '@/engine';
 import { packetFromChips, startWorld } from '@/levels';
+import type { TermId } from '@/copy';
 import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident } from '@/testing';
 import { lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch } from './flow-runs';
 
@@ -68,5 +69,16 @@ describe('the sends of the player', () => {
     const runs = sendSequence(WORLD, NAMES, [dispatch('dig', 'www', 1, 0), dispatch('ping', 'lucia', 2, 1), dispatch('dig', 'www', 3, 2)], EVERY_TERM);
     expect(lastOfEach(runs).map((run) => [run.id, run.send])).toEqual([['sent-you-www-dig', 3], ['sent-you-lucia-ping', 2]]);
     expect(lastOfEach([])).toEqual([]);
+  });
+});
+
+describe('the warning a run shows', () => {
+  const withoutRoutes = applyAction(WORLD, { type: 'removeRoute', routerId: OFFICE_FLOORS.officeRouter.id, to: ROUTE_DEFAULT });
+  const toServer = (known: ReadonlySet<TermId>) => sendPacket(withoutRoutes, NAMES, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'ping' }, 1, known);
+
+  it('a router with no route is named Destination Net Unreachable by the run once that term is known, and Destination Host Unreachable before', () => {
+    expect(toServer(EVERY_TERM)?.warning).toEqual({ term: 'net-unreachable', by: 'router' });
+    expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable')))?.warning).toEqual({ term: 'host-unreachable', by: 'router' });
+    expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable' && term !== 'host-unreachable')))?.warning).toBeNull();
   });
 });

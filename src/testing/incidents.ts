@@ -1,4 +1,4 @@
-import { nameTag } from '@/copy';
+import { nameTag, type TermId } from '@/copy';
 import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction, type PacketSpec } from '@/engine';
 import {
   INCIDENTS,
@@ -25,6 +25,9 @@ export function filterIncident(id: string): FilterIncident {
   if (found?.mechanic !== 'filter') throw new Error(`${id} is not a filter incident`);
   return found;
 }
+
+/** Returns the terms the incidents of chapter 1 introduce, which is what a player knows at the end of the chapter and nothing more: the set for a test of chapter 1 that must not see a term of a later chapter, which `EVERY_TERM` includes. */
+export const CHAPTER_1_TERMS: ReadonlySet<TermId> = new Set(INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces));
 
 const CHAPTER_4_INCIDENTS = ['04-01', '04-02'];
 
