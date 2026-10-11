@@ -181,8 +181,20 @@ export const TERMINAL_TEXT = {
   traceroute: (address: string): TermText => `traceroute -I ${address}`,
   packet: (origin: TermText, address: string): TermText => `paquete de ${origin} a ${address}`,
   handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
+  nc: (address: string, port: number): TermText => `nc -vz -w 3 ${address} ${port}`,
+  dig: (name: string): TermText => `dig ${name}`,
   incomplete: 'Elige una ficha de cada bandeja.',
   send: 'Enviar',
+  output: {
+    label: { nc: 'Salida de nc', dig: 'Salida de dig' },
+    folded: (count: number): string => `⋯ ${count === 1 ? '1 línea plegada' : `${count} líneas plegadas`}`,
+    show: (count: number): string => (count === 1 ? 'Ver la línea restante' : `Ver las ${count} líneas restantes`),
+    hide: (count: number): string => (count === 1 ? 'Ocultar la línea restante' : `Ocultar las ${count} líneas restantes`),
+    notes: {
+      nc: 'El tiempo es una cifra de ejemplo.',
+      dig: 'El id, el tiempo, la fecha y el tamaño son cifras de ejemplo.',
+    } satisfies Record<'nc' | 'dig', TermText>,
+  },
   route: {
     label: 'Salida de traceroute',
     hop: (hop: number, address: TermText): TermText => `${hop}\u00a0\u00a0${address}`,

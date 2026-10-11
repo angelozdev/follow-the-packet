@@ -1,8 +1,10 @@
-import type { ComponentProps, ReactNode } from 'react';
-import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
+import { useState, type ComponentProps, type ReactNode } from 'react';
+import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, digOutput, type TermId } from '@/copy';
 import { Button, Card, ChipTray, Choice, Table, Tabs } from '@/design';
+import { toolOutputOf } from '@/game';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
+import { OutputCard } from '@/ui/incident/map-cards/terminal/output-card';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -42,6 +44,12 @@ const [FIXED_ROUTE, REMOVABLE_ROUTE, ROUTE_IN_USE] = TABLE.routes.map(({ to, via
   cells: [<code key={to}>{to}</code>, <TaggedText key={via} text={via} />],
 }));
 const TABLE_ROWS = [FIXED_ROUTE, { ...REMOVABLE_ROUTE, onRemove: noPick }, { ...ROUTE_IN_USE, inUse: true, onRemove: noPick }];
+const DIG = SAMPLE.dig;
+const DIG_OUTPUT = toolOutputOf(
+  'dig',
+  digOutput({ kind: 'reply', name: DIG.name, status: 'NOERROR', answers: [{ name: DIG.name, type: 'A', value: DIG.address, ttl: DIG.ttl }], server: DIG.server, queryMs: DIG.queryMs, at: 0 }),
+  [TERMINAL_TEXT.output.notes.dig],
+);
 
 function Specimen({ caption, wide = false, children }: { caption: string; wide?: boolean; children: ReactNode }) {
   return (
@@ -56,6 +64,26 @@ function RoutesCard({ rows }: Pick<ComponentProps<typeof Table>, 'rows'>) {
   return (
     <Card header={{ icon: <EntityIcon entity={{ kind: 'edge', variant: 'router' }} />, title: <h2>{TABLE.title}</h2>, meta: <TaggedText text={TABLE.owner} /> }}>
       <Table caption={TABLE.caption} columns={TABLE_COLUMNS} rows={rows} emptyText={TABLE.empty} inUseText={TABLE.inUse} removeText={TABLE.remove} />
+    </Card>
+  );
+}
+
+function OutputSpecimen() {
+  const [unfolded, setUnfolded] = useState(false);
+  return (
+    <Card header={{ icon: <CardIcon kind="terminal" />, title: <h2><TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} /></h2> }}>
+      <div className="chip-card">
+        <div className="chip-card__body">
+          <p className="slot">
+            <code>{TERMINAL_TEXT.dig(DIG.name)}</code>
+          </p>
+          <OutputCard printed={{ kind: 'tool', tool: DIG_OUTPUT }} unfolded={unfolded} onToggle={() => setUnfolded(!unfolded)} />
+        </div>
+        <div className="chip-card__actions">
+          <Button variant="primary">{TERMINAL_TEXT.send}</Button>
+          <Button>{TASK_CARD_TEXT.done}</Button>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -260,6 +288,11 @@ export function InterfaceSection() {
         </Specimen>
         <Specimen caption={VARIANT.tableEmpty} wide>
           <RoutesCard rows={[]} />
+        </Specimen>
+      </Family>
+      <Family name={INTERFACE_TEXT.family.output}>
+        <Specimen caption={VARIANT.output} wide>
+          <OutputSpecimen />
         </Specimen>
       </Family>
     </section>

@@ -24,8 +24,17 @@ const ROW_COPIES = 6;
 const WHEEL_PX = 120;
 const SCROLLBAR_PX = 12;
 const FOCUS_RING_PX = 4;
+const OUTPUT_GROUP = 'Salida de dig';
+const OUTPUT_FOLDED_LINES = 17;
+const OUTPUT_SHOW = `Ver las ${OUTPUT_FOLDED_LINES} líneas restantes`;
+const OUTPUT_HIDE = `Ocultar las ${OUTPUT_FOLDED_LINES} líneas restantes`;
+const OUTPUT_FOLD_MARK = /líneas plegadas$/;
+const OUTPUT_KEY_LINES = [/status: NOERROR/, ';; ANSWER SECTION:', /^www\.lucia\.example\.\t300/];
+const OUTPUT_FIRST_FOLDED = '; <<>> DiG 9.18.50 <<>> www.lucia.example';
+const OUTPUT_LAST_FOLDED = /MSG SIZE/;
+const OUTPUT_LINES_ON_VIEW = 3;
 
-test.use({ viewport: { width: 1280, height: 2200 }, deviceScaleFactor: 1 });
+test.use({ viewport: { width: 1280, height: 2600 }, deviceScaleFactor: 1 });
 
 interface Look {
   textTransform: string;
@@ -37,6 +46,17 @@ interface Look {
   height: number;
   tilt: number;
   lift: number;
+}
+
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function isInside(box: Box, region: Box): boolean {
+  return box.x >= region.x && box.y >= region.y && box.x + box.width <= region.x + region.width && box.y + box.height <= region.y + region.height;
 }
 
 async function lookOf(button: Locator): Promise<Look> {
@@ -164,6 +184,21 @@ test.describe('Sin animaciones', () => {
     }
   });
 
+  test('the interface specimen of the output card is part of the capture', async ({ page }) => {
+    await openCatalog(page);
+    const elements = page.getByRole('region', { name: INTERFACE });
+    const output = elements.getByRole('group', { name: OUTPUT_GROUP });
+    await expect(output).toBeVisible();
+    await expect(output.locator('code')).toHaveCount(OUTPUT_LINES_ON_VIEW);
+    for (const key of OUTPUT_KEY_LINES) await expect(output.locator('.output__line--key').filter({ hasText: key })).toBeVisible();
+    await expect(output.getByText(OUTPUT_FOLD_MARK)).toHaveCount(OUTPUT_LINES_ON_VIEW);
+    await expect(output.getByText(OUTPUT_FIRST_FOLDED)).toHaveCount(0);
+    await expect(elements.getByRole('button', { name: OUTPUT_SHOW })).toHaveAttribute('aria-expanded', 'false');
+    const [region, box] = await Promise.all([elements.boundingBox(), output.boundingBox()]);
+    if (region === null || box === null) throw new Error('the output specimen is not drawn');
+    expect(isInside(box, region), 'the specimen is inside the captured region').toBe(true);
+  });
+
   test('the focus ring of a remove button fits inside the wrapper of the Table', async ({ page }) => {
     await openCatalog(page);
     const filled = page.getByRole('region', { name: INTERFACE }).getByRole('table', { name: TABLE_CAPTION }).first();
@@ -214,6 +249,46 @@ test.describe('Sin animaciones', () => {
     if (shown === null || finalCard === null) throw new Error('the card of the long Table lost a part');
     expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
     expect(shown.y + shown.height, 'the Table ends inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
+  });
+
+  test('an unfolded output in a card on the map stays inside the card, scrolls in its body and keeps the foot in view', async ({ page }) => {
+    await openCatalog(page);
+    const elements = page.getByRole('region', { name: INTERFACE });
+    await elements.getByRole('button', { name: OUTPUT_SHOW }).click();
+    await expect(elements.getByRole('button', { name: OUTPUT_HIDE })).toBeVisible();
+    await page.evaluate(
+      ([group, width, room]) => {
+        const source = document.querySelector(`[aria-label="${group}"]`)?.closest('.card');
+        if (!source) throw new Error('the specimen of the output is not on the page');
+        const holder = document.createElement('div');
+        holder.className = 'map-card';
+        holder.dataset.testid = 'long-output';
+        holder.style.cssText = `position: fixed; top: 16px; left: 16px; z-index: 100; --card-width: ${width}px; --card-room: ${room}px`;
+        holder.append(source.cloneNode(true));
+        document.body.append(holder);
+      },
+      [OUTPUT_GROUP, MAP_CARD_WIDTH_PX, MAP_CARD_ROOM_PX] as const,
+    );
+    const holder = page.getByTestId('long-output');
+    const card = holder.locator('.card');
+    const body = holder.locator('.chip-card__body');
+    const lastLine = holder.getByRole('group', { name: OUTPUT_GROUP }).locator('code').filter({ hasText: OUTPUT_LAST_FOLDED });
+    const [before, cardBox] = await Promise.all([body.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight })), card.boundingBox()]);
+    if (cardBox === null) throw new Error('the card of the long output is not drawn');
+    expect(cardBox.height, 'the card keeps the height the map gives it').toBeLessThanOrEqual(MAP_CARD_ROOM_PX + 1);
+    expect(before.scrollHeight, 'the output has more lines than it shows').toBeGreaterThan(before.clientHeight + 1);
+    expect(await body.evaluate((element) => getComputedStyle(element).overflowY), 'the body of the card scrolls').toBe('auto');
+    expect(await body.evaluate((element) => getComputedStyle(element, '::-webkit-scrollbar').width), 'the body draws its own scrollbar').toBe(`${SCROLLBAR_PX}px`);
+    const [band, foot] = await Promise.all([card.locator('.card__band').boundingBox(), holder.locator('.chip-card__actions').boundingBox()]);
+    if (band === null || foot === null) throw new Error('the card of the long output lost its band or its foot');
+    expect(band.y, 'the band of the card stays at its top').toBeGreaterThanOrEqual(cardBox.y);
+    expect(foot.y + foot.height, 'the foot stays inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height);
+    expect(await reachWithWheel(page, lastLine, { within: body, wheelPx: WHEEL_PX }), 'the last line comes into view with the wheel').toBe(true);
+    const [shown, finalCard, finalFoot] = await Promise.all([body.boundingBox(), card.boundingBox(), holder.locator('.chip-card__actions').boundingBox()]);
+    if (shown === null || finalCard === null || finalFoot === null) throw new Error('the card of the long output lost a part');
+    expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
+    expect(shown.y + shown.height, 'the output ends above the foot').toBeLessThanOrEqual(finalFoot.y);
+    expect(finalFoot.y + finalFoot.height, 'the foot is still inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
   });
 });
 

@@ -9,3 +9,7 @@ export { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName
 export type { StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';
 export { CATALOG_TEXT, INTERFACE_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './screens/ui';
 export { ACTOR_ROLE_TEXT, CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, RESULT_TEXT, SCREEN_TEXT, SETTINGS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from './screens/incident-ui';
+export { digOutput } from './tools/dig-output';
+export type { DigFailure, DigLine, DigReply, DigResult } from './tools/dig-output';
+export { ncOutput } from './tools/nc-output';
+export type { NcResult } from './tools/nc-output';

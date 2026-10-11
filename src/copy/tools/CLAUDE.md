@@ -1,0 +1,61 @@
+# copy/tools
+
+What the commands `nc` and `dig` print, line by line, as the tool prints it: `nc-output.ts` (`ncat` 7.93 of Nmap), `dig-output.ts` (`dig` of BIND 9.18) and `dns-message-size.ts` (the bytes of a DNS reply, for the `MSG SIZE` line of `dig`). They are pure functions over plain data: which result a trace stands for (opened, refused, timed out, answered) is decided by the view (`src/game/view/cards/terminal/output-card.ts`), which calls them and hands the lines to the output card of the terminal (`src/ui/incident/map-cards/terminal/`).
+
+## The rule
+
+**Before a line is printed, its origin is read, and a line the origin does not confirm is not printed.** The output card then shows nothing for that send and the inspection box says what happened ("timeout" or "sin respuesta"). Every test of a line cites its source and the date it was read (all on 2026-10-11, in the tests of this folder). A figure the tool measures and the game cannot (the id of a `dig`, its time, its date, its size, the seconds of an `nc`) is an example of the game, and the card says so under the output.
+
+The game imitates what Amazon Linux 2023 gives: `nc` is `ncat` 7.93 (package `nmap-ncat`) and `dig` is of BIND 9.18. That is a datum of the main session, not re-checked against the repository of Amazon Linux nor in an EC2 (decided D-5).
+
+## `nc -vz -w 3 <address> <port>`: `ncat` 7.93
+
+Sources: `nmap-7.93` (downloaded and read on 2026-10-11). Everything goes to stderr with the prefix `Ncat: `, which `loguser` writes (`ncat/util.c:126-135`). `-v` makes it print the banner and the result, `-z` makes it connect and quit (`ncat/ncat_connect.c:1265-1267`) and `-w 3` is the wait of the connection.
+
+| Line | Printed when | Origin |
+|------|--------------|--------|
+| `Ncat: Version 7.93 ( https://nmap.org/ncat )` | always, first | `ncat/ncat_main.c:215-218` (`print_banner`), called at `:672-673` when `-v` is given; `ncat/ncat.h:81-83` (`NCAT_NAME`, `NCAT_URL`, `NCAT_VERSION`) |
+| `Ncat: Connected to <ip>:<port>.` | the connection opened | `ncat/ncat_connect.c:274` (and `:288` in a build without OpenSSL), `connect_report`; the IP is the peer's, so a name is shown as the IP it gave |
+| `Ncat: 0 bytes sent, 0 bytes received in <t> seconds.` | the connection opened; nothing was sent (`-z`) | `ncat/ncat_connect.c:1141`, `%.2f`; the time is the round trip of the game |
+| `Ncat: Connection refused.` | the host answered with a reset: nobody listens on the port | `ncat/ncat_connect.c:1245-1248` prints `socket_strerror` (`nbase/nbase_misc.c:110-124`, `strerror` on Linux); the text of `ECONNREFUSED` is `sysdeps/gnu/errlist.h:422` of glibc 2.34, read on 2026-10-11 at `https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=sysdeps/gnu/errlist.h;hb=refs/tags/glibc-2.34` (and `manual/errno.texi`, `@errno{ECONNREFUSED, 61, Connection refused}`) |
+| `Ncat: TIMEOUT.` | nobody answered within the wait | `ncat/ncat_connect.c:1245-1248` prints `nse_status2str` (`nsock/src/nsock_event.c:521-526`: `TIMEOUT`; nmap 7.70 printed the text of `ETIMEDOUT`, 7.80 and later print `TIMEOUT`) |
+
+A failure `exit(1)`s before the bytes line (`ncat_connect.c:1249`), so a refusal and a timeout print only the banner and their line. It prints no `[tcp/...]` and no service name: that is the OpenBSD `nc`, which the game does not imitate. The lookup of a name is not shown: `ncat` prints nothing about it, and the question that an `nc` by name makes to the resolver is not a send of the player.
+
+**Not printed, because the origin does not confirm it:** the text for a host that answered with an ICMP unreachable (`No route to host` is the text of `EHOSTUNREACH` in glibc, but whether a connecting TCP socket fails with it or waits for the timeout depends on the kernel: `icmp_err_convert` marks it non-fatal), a name that did not resolve (the text comes from `gai_strerror` of the libc, not read), and the lines of a name with several addresses (`Connection to <ip> failed: ...` and `Trying next address...`, `ncat_connect.c:1212-1232`: the names of the game have one address, and the name `localhost` is the exception, because `ncat` resolves it to `::1` and `127.0.0.1` and which one it tries first, and what it prints for the first, was not read: the card prints nothing for an `nc` to `localhost`, and does print the lines of one to `127.0.0.1`).
+
+**Amazon Linux 2023 and macOS (D-5).** On Amazon Linux 2023 `nc` is not in the standard AMI: it is installed with `sudo dnf install nmap-ncat` (a datum of the main session, not re-checked). The `nc` of macOS is another program and prints other lines. Run on this Mac on 2026-10-11 **[local]**: `nc -vz -w 3 127.0.0.1 9` gave `nc: connectx to 127.0.0.1 port 9 (tcp) failed: Connection refused` and `nc -vz -w 3 -G 2 10.255.255.1 80` gave `nc: connectx to 10.255.255.1 port 80 (tcp) failed: Operation timed out`; the open case was not tried. Whoever tries it on a Mac sees those lines and not the ones of the game; the takeaway of 02-01 says so.
+
+## `dig <name>`: BIND 9.18
+
+Sources: `bind-9.18.50` (downloaded and read on 2026-10-11, `PACKAGE_VERSION` 9.18.50 from `configure.ac:17-23`). No `@server`: `dig` asks the resolver of the network settings (the `resolv.conf` of the device), so the card names no server in the command. `dig` prints to stdout, warnings and errors included (`dig.c:2988-3025`, `dighost.c` `default_warnerr`).
+
+An answer, in this order (`dig.c` `printmessage` and `received`):
+
+| Line | Origin |
+|------|--------|
+| a blank line, `; <<>> DiG 9.18.50 <<>> <name>` and `;; global options: +cmd` | `dig.c:1013-1043` (`printgreeting`, the first command line begins with `"\n"`) |
+| `;; Got answer:`, then `;; ->>HEADER<<- opcode: QUERY, status: <status>, id: <id>` | `dig.c:831` and `:841-843`; the status text is `NOERROR`, `NXDOMAIN` or `SERVFAIL` (`rcode_totext`) |
+| `;; flags: qr rd ra; QUERY: 1, ANSWER: n, AUTHORITY: n, ADDITIONAL: 1` | `dig.c:845-871`; the counts are those of the message |
+| a blank line, `;; OPT PSEUDOSECTION:` and `; EDNS: version: 0, flags:; udp: 1232` | `dig.c:993`; `lib/dns/message.c:3883-3908`. The pseudosection is printed when the reply carries an OPT record, which the game's resolver is modelled to do; 1232 is the default `max-udp-size` of `named` (`doc/arm/reference.rst`) |
+| `;; QUESTION SECTION:` and `;<name>.` with its columns | `lib/dns/message.c:125-126` and `:3291-3369` (`dns_message_sectiontotext`: an empty section prints nothing, a full one its header and a blank line after it); `lib/dns/masterdump.c:821-880` |
+| `;; ANSWER SECTION:` and each record: `<owner>.<TAB>ttl<TAB>IN<TAB>A<TAB>address` or `CNAME<TAB>target.` | `lib/dns/masterdump.c:573-740`, `lib/dns/rdata/in_1/a_1.c:54`, `lib/dns/rdata/generic/cname_5.c:45`; the columns are those of `dig.c:688-690` (24, 32, 40, 48 with tabs of 8, `indent` of `masterdump.c:276`) |
+| `;; AUTHORITY SECTION:` and the SOA of the zone, in one line with its five numbers | `lib/dns/rdata/generic/soa_6.c:83` |
+| a blank line, `;; Query time: <n> msec`, `;; SERVER: <ip>#53(<ip>) (UDP)`, `;; WHEN: <date>`, `;; MSG SIZE  rcvd: <n>` and a blank line | `dig.c:367-413` (`received`); the name of a server taken from `resolv.conf` is its address (`dighost.c:526`, `get_server_list`) |
+
+**What the game puts there.** `status` and the records are the ones of the trace (`Trace.dns`): the answer of the resolver, each record with the TTL it has left. The authority section carries the SOA of the zone for an NXDOMAIN and for a name that exists and has no address, with the TTL that RFC 2308 §3 asks (the smaller of the SOA's own and its MINIMUM: the engine computes it, `src/engine/dns/CLAUDE.md`); a NOERROR with an answer and a SERVFAIL carry none: `dig` prints a section only when the message has records in it (`message.c:3291`), and the resolver of the game answers with the records of the answer and nothing else (it adds no NS records and no glue; a real server may, and that was not checked). The id (41237), the query time (the round trip of the game), the date (a date of the game that moves on with the game clock) and the size are examples. The size is not invented: `dns-message-size.ts` counts the header, the question, the records with their names compressed as RFC 1035 §4.1.4 says, and the 11 bytes of the OPT record; it gives the `MSG SIZE` that the `dig` 9.10.6 of this Mac printed for two real answers of 1.1.1.1 on 2026-10-11 **[local]** (61 and 100 bytes), and the columns of the records are those it printed.
+
+A `dig` that got no answer (`dighost.c`, `recv_done`): a line `;; communications error to <ip>#53: <reason>` for each attempt, then its command line and `;; no servers could be reached` (`dighost.c:4047` and `:4119-4120`). The attempts are 3: `+tries` is 3 by default (`dig.c` help text) and, with no `options attempts` in resolv.conf, `irs_resconf_getattempts` gives 3 (`lib/irs/resconf.c:543`, `dighost.c:1319-1324`). `<reason>` is `timed out` (`lib/isc/result.c:25`) when nobody answered, and `connection refused` (`result.c:35`) when the host at the resolver address rejected the datagram with Port Unreachable: the socket of `dig` is a connected UDP socket (`lib/isc/netmgr/udp.c:952`), the kernel reports an ICMP Port Unreachable on it as `ECONNREFUSED` (Linux 6.1, `net/ipv4/icmp.c:130-131`, `icmp_err_convert`, and `__udp4_lib_err` in `net/ipv4/udp.c`, read on 2026-10-11 at `git.kernel.org` tag `v6.1`), `uverr2result.c:83-84` turns `UV_ECONNREFUSED` into `ISC_R_CONNREFUSED` and `udp_recv_cb` hands that result to `dig` (`udp.c:611-612`). Two hops of that chain were not read: how libuv turns the pending error of the socket into `UV_ECONNREFUSED` for the callback, and that the `dig` of Amazon Linux 2023 runs on a 6.1 kernel.
+
+**Not printed, because the origin does not confirm it:** a `dig` from a device with no resolver (the fallback to `127.0.0.1` and `::1` is in `dighost.c`, but the game has no loopback resolver to ask), a datagram that a host answered though it is no resolver (`dig` would say it got a bad packet; the text was not read), a warning that a router sent back (`icmp_err_convert` marks a Host and a Net Unreachable non-fatal and `__udp4_lib_err` ignores a non-fatal error on a connected UDP socket unless `IP_RECVERR` is set, which the sockets of BIND do not do, `udp.c` and `netmgr.c` have no `IP_RECVERR`; so a real `dig` would most likely time out, but libuv was not read and the game also has warnings that its own sender raises, so it prints nothing instead of guessing) and the failure of the `connect` of the socket (`UDP setup with ... failed`, `dighost.c:3210`, with the text of the error). A SERVFAIL with an Extended DNS Error (`; EDE:`, printed by `message.c:3664` when the reply carries it) and a reply with a COOKIE are not modelled.
+
+## Sin verificar
+
+- That the repository of Amazon Linux 2023 serves `ncat` 7.93 and BIND 9.18.50 (D-5: a datum of the main session), and the glibc and the kernel it runs on (glibc 2.34 and Linux 6.1 were read; theirs was not).
+- That the resolver of a real EC2 (the Route 53 Resolver, or a local stub) answers with the records and flags the game prints, and with an OPT of 1232.
+- The `resolv.conf` of Amazon Linux: 3 attempts hold whenever it has no `options attempts`.
+- The lines of other results (above).
+- `nc` and `dig` as the student runs them in an EC2: the student may paste `nc -vz -w 3` against a closed and a filtered port and `dig` against a name that exists and one that does not, and this guide records the differences. Nothing was pasted by the time of Task 18.
+
+- Not here: which result a trace stands for and which lines stay in view (`src/game/view/cards/terminal/`), the Spanish texts of the card (`src/copy/screens/incident-ui.ts`), drawing the lines (`src/ui/incident/map-cards/terminal/`).
+- May import: `@/engine`.

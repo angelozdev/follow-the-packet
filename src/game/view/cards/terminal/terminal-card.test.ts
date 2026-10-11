@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
-import { diagnoseIncident, gatewayIncident, sendIncident } from '@/testing';
+import { diagnoseIncident, gatewayIncident, namesSendIncident, sendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { terminalCard, terminalLine } from './terminal-card';
@@ -120,6 +120,26 @@ describe('terminalLine of a message with a command', () => {
   });
 });
 
+
+describe('terminalLine of an nc and a dig', () => {
+  const NAMES = namesSendIncident();
+  const names = startSession([NAMES], NAMES.id);
+
+  it('the line of an nc uses -vz and -w 3 in the Linux syntax', () => {
+    expect(terminalLine(names, { to: 'lucia', message: 'nc' })).toBe('nc -vz -w 3 192.168.1.11 3000');
+    expect(terminalLine(names, { to: 'www', message: 'nc' })).toBe('nc -vz -w 3 www.lucia.example 3000');
+  });
+
+  it('the line of a dig names the name and no server', () => {
+    expect(terminalLine(names, { to: 'www', message: 'dig' })).toBe('dig www.lucia.example');
+    expect(terminalLine(names, { to: 'missing', message: 'dig' })).not.toContain('@');
+  });
+
+  it('is null until an address is picked, as for any other message', () => {
+    expect(terminalLine(names, { message: 'nc' })).toBeNull();
+    expect(terminalLine(names, { message: 'dig' })).toBeNull();
+  });
+});
 
 describe('terminalCard of a diagnose incident', () => {
   const DIAGNOSE = diagnoseIncident();

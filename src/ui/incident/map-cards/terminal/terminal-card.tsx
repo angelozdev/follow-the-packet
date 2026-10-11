@@ -1,68 +1,42 @@
 import { useState } from 'react';
 import { TERMINAL_TEXT, type TermText } from '@/copy';
 import { Button, ChipTray } from '@/design';
-import type { SendPicks, SendTrayName, TerminalCard as Terminal, TracerouteView } from '@/game';
+import type { SendPicks, SendTrayName, TerminalCard as Terminal, ToolOutput, TracerouteView } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
 import { ChipCard, trayChips } from '@/ui/incident/map-cards/chip-card';
+import { OutputCard, type Printed } from './output-card';
 
 interface TerminalCardProps {
   card: Terminal;
   describe: (picks: Partial<SendPicks>) => TermText | null;
   route: (picks: Partial<SendPicks>) => TracerouteView | null;
+  printed?: (picks: Partial<SendPicks>) => ToolOutput | null;
   onPickOrigin: (fromId: string) => void;
   onSend: (picks: SendPicks) => void;
   onClose: () => void;
 }
 
-/** What a traceroute printed: its hops as a numbered list, with the IP that answered (or a star) and the time of each, and the notes that say what the stars, the marks and the times mean. */
-function RouteOutput({ route }: { route: TracerouteView }) {
-  return (
-    <>
-      {route.error && (
-        <p className="muted">
-          <TaggedText text={route.error} />
-        </p>
-      )}
-      {route.lines.length > 0 && (
-        <ol className="rules" aria-label={TERMINAL_TEXT.route.label}>
-          {route.lines.map((line) => {
-            const aside = TERMINAL_TEXT.route.aside(line.time, line.mark);
-            return (
-              <li key={line.hop}>
-                <span className="rules__text">
-                  <code>{TERMINAL_TEXT.route.hop(line.hop, line.address)}</code>
-                </span>
-                {aside && (
-                  <span className="muted">
-                    <code>{aside}</code>
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {route.notes.map((note) => (
-        <p key={note} className="muted">
-          <TaggedText text={note} />
-        </p>
-      ))}
-    </>
-  );
+function printedBy(route: TracerouteView | null, tool: ToolOutput | null): Printed | null {
+  if (route) return { kind: 'route', route };
+  return tool ? { kind: 'tool', tool } : null;
 }
 
-/** The terminal of an origin: a chip from each tray it shows, the line those chips make (the real ping command, or a packet made by hand), "Enviar" and, once a traceroute was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. */
-export function TerminalCard({ card, describe, route, onPickOrigin, onSend, onClose }: TerminalCardProps) {
+/** The terminal of an origin: a chip from each tray it shows, the line those chips make (the real command, or a packet made by hand), "Enviar" and, once a traceroute, an `nc` or a `dig` was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. Whether the output of a `dig` is unfolded is kept here, not in the output, and goes back to folded when another chip is picked. */
+export function TerminalCard({ card, describe, route, printed, onPickOrigin, onSend, onClose }: TerminalCardProps) {
   const [picks, setPicks] = useState<Partial<SendPicks>>(card.fixed);
+  const [unfolded, setUnfolded] = useState(false);
   const heading = useFocusOnMount<HTMLHeadingElement>();
   const chosen: Partial<SendPicks> = { ...picks, from: card.fromId };
   const line = describe(chosen);
-  const output = route(chosen);
+  const output = printedBy(route(chosen), printed?.(chosen) ?? null);
   const pick = (tray: SendTrayName, chipId: string) => {
     if (tray === 'from') onPickOrigin(chipId);
-    else setPicks({ ...picks, [tray]: chipId });
+    else {
+      setPicks({ ...picks, [tray]: chipId });
+      setUnfolded(false);
+    }
   };
   const send = () => {
     if (chosen.to && chosen.message) onSend({ from: card.fromId, to: chosen.to, message: chosen.message });
@@ -88,7 +62,7 @@ export function TerminalCard({ card, describe, route, onPickOrigin, onSend, onCl
           <span className="slot__empty">{TERMINAL_TEXT.incomplete}</span>
         )}
       </p>
-      {output && <RouteOutput route={output} />}
+      {output && <OutputCard printed={output} unfolded={unfolded} onToggle={() => setUnfolded(!unfolded)} />}
       {card.trays.map((tray) => (
         <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
       ))}

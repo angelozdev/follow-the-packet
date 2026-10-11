@@ -1,7 +1,7 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { caseCard, caseSummary, countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, tracerouteLines } from '@/game';
+import { caseCard, caseSummary, countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, toolOutput, tracerouteLines } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -93,6 +93,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
                 card={terminal}
                 describe={(picks) => terminalLine(session, picks)}
                 route={(picks) => tracerouteLines(session, picks)}
+                printed={(picks) => toolOutput(session, picks)}
                 onPickOrigin={(fromId) => setCardPieceId(terminal.origins[fromId])}
                 onSend={({ from, to, message }) => dispatch({ type: 'sendPacket', fromId: from, toId: to, messageId: message })}
                 onClose={closeCard}
