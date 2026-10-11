@@ -1,11 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PROGRESS_KEY } from '@/storage/progress';
-import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
+import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
 import { CHAPTER_1, IP, LOST_TO_SERVER, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
-import { FULL_STARS, closeCase } from './closing';
-import { collectErrors } from './console-errors';
-import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps } from './map-boxes';
-import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';
+import { FULL_STARS, closeCase } from '@e2e/closing';
+import { collectErrors } from '@e2e/console-errors';
+import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps } from '@e2e/map-boxes';
+import { CHAPTER_1_DONE, startWithProgress } from '@e2e/saved-progress';
 
 const LOCKED = '(bloqueado)';
 const FIRST_PING_LINK = '1. El primer ping';

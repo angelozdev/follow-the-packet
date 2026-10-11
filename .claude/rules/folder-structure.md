@@ -36,6 +36,7 @@ Answer in order; the first "yes" decides:
 - Each layer has a barrel (`index.ts`) with named re-exports only (`export { X } from './x'`, `export type { T } from './t'`), never `export *`, exporting exactly what other layers use.
 - Across a layer boundary, import the barrel through the alias (`@/engine`); inside a layer, import the file directly (`./x`). Never import a barrel from inside its own folder. No `../` imports at all.
 - The alias `@/` points at `src/` and is configured in `tsconfig.json`, `vite.config.ts` and Vitest.
+- The end-to-end tests have their own alias, `@e2e/` → `tests/e2e/`, configured in `tsconfig.json`: a spec in a subfolder of `tests/e2e/` imports a shared helper through it and never with `../`; nothing in `src/` imports it.
 - A test that mocks a module targets the file that defines the export, not its barrel.
 
 ## Boundaries

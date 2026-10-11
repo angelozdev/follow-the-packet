@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { cardProblems, reachWithWheel } from './card-boxes';
 import { card, openCard, openTerminal, sendTo } from './cards';
-import { IP, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway } from './chapter-1-play';
+import { IP, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
 import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';

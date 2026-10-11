@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
-import { closeCase, submitAndFinish } from './closing';
+import { confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
+import { closeCase, submitAndFinish } from '@e2e/closing';
 
 export const IP = {
   you: '192.168.1.10',
