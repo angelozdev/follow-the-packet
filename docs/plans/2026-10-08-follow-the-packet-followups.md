@@ -165,7 +165,7 @@ Lo dejó el plan `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`. Ningu
 
 ## Bloque J: lo que dejó el capítulo 1 en catorce subcapítulos (2026-10-10)
 
-Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md` (sus notas de la Tarea 13 y de la Tarea 27) y el arreglo de la distribución de las tarjetas (`c8bc2f4`). Ninguno impide jugar el capítulo 1. Lo que anote la prueba humana del capítulo entero se agrega aquí después de hacerla.
+Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md` (sus notas de la Tarea 13 y de la Tarea 27), el arreglo de la distribución de las tarjetas (`c8bc2f4`) y el de las cajas flotantes que se desplazan cuando su texto no cabe (`b2f5a0d`). Ninguno impide jugar el capítulo 1. Lo que anote la prueba humana del capítulo entero se agrega aquí después de hacerla.
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
@@ -174,6 +174,12 @@ Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.m
 | J3 | A 1280×800, la caja de inspección del 04-01 tapa «Security Group servidor2» y dos sellos. A 1440×900 la etiqueta queda libre. Ya pasaba antes del plan y ninguna prueba corre a ese tamaño | Pendiente: es el mismo problema que E4, visto a 1280×800 |
 | J4 | Una intermitencia, vista una sola vez, en la prueba e2e `in 06 and 08 the map is at full size: two laptops of a floor stand as far apart as at any window` (1280×800). Pasó al repetirla y en las corridas siguientes. No se halló la causa y no se afirma ninguna | Pendiente: si vuelve a verse, anotar la corrida y el mensaje antes de tocar nada |
 | J5 | El ícono `settings` de `CardIcon` (la tarjeta «Ajustes de red») no tiene especimen en `#/entidades`. Tampoco lo tienen `question`, `inspection` y `case`: el catálogo solo muestra `lucia`, `result`, `chapter` y `terminal` (revisado con `grep` sobre `src/ui/catalog/interface-section.tsx`) | Decidido en la Tarea 28: van en la sección «Elementos de la interfaz», junto al especimen del terminal, y se hacen en la primera tarea que regrabe `tests/e2e/snapshots/interface-darwin.png` a propósito. La Tarea 28 es solo de documentos y no las toca. Pendiente |
+| J6 | A 390 px, la tarjeta de `laptop-visita` queda 76 px fuera del borde izquierdo. Ya pasaba antes del arreglo de las cajas (`b2f5a0d`) | Pendiente |
+| J7 | Con el teclado no se puede hacer scroll dentro de la caja de inspección (accesibilidad). Se vio al arreglar las cajas que se desplazan (`b2f5a0d`) | Pendiente |
+| J8 | A 1280×360, el texto de ayuda pisa las tarjetas | Pendiente |
+| J9 | A 1000×700, la caja de inspección pisa la terminal | Pendiente |
+| J10 | En el 01-07, a 900×500, el título intercepta clics | Pendiente |
+| J11 | A 844×390, una tarjeta se pasa 2 px del mapa | Pendiente |
 
 ## Fuera de este backlog (decide el estudiante)
 
