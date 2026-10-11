@@ -5,7 +5,7 @@ import type { CaseCard as Case } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { ContinueButton, OptionList, type OptionLine } from './explanation-card';
-import { useFocusOnMount } from './use-focus-on-mount';
+import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 
 interface CaseCardProps {
   card: Case;

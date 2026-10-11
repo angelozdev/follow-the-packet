@@ -5,7 +5,7 @@ import type { Mechanic } from '@/levels';
 import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
-import { useFocusOnMount } from './use-focus-on-mount';
+import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 
 const STAR_KEYS = ['closed', 'middle', 'explained'] as const satisfies readonly (keyof EarnedStars)[];
 

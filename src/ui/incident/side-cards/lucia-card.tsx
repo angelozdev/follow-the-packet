@@ -6,7 +6,7 @@ import { isGuided, type IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
-import { useFocusOnMount } from './use-focus-on-mount';
+import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 
 interface HintLineProps {
   number: number;

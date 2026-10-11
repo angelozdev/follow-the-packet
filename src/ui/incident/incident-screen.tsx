@@ -6,15 +6,15 @@ import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
-import { CaseCard } from './case-card';
-import { ExplanationCard } from './explanation-card';
+import { CaseCard } from './side-cards/case-card';
+import { ExplanationCard } from './side-cards/explanation-card';
 import { InspectionBox } from './inspection-box';
-import { LuciaCard } from './lucia-card';
+import { LuciaCard } from './side-cards/lucia-card';
 import { IdentifyCard } from './map-cards/identify-card';
 import { SettingsCard } from './map-cards/settings-card';
 import { TaskCard } from './map-cards/task-card';
 import { TerminalCard } from './map-cards/terminal/terminal-card';
-import { ResultCard } from './result-card';
+import { ResultCard } from './side-cards/result-card';
 import { useInspection } from './use-inspection';
 
 interface IncidentScreenProps {

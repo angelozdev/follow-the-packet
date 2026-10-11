@@ -3,7 +3,7 @@ import { Button, Card, Choice, Message } from '@/design';
 import type { ExplanationOption } from '@/levels';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
-import { useFocusOnMount } from './use-focus-on-mount';
+import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 
 interface ExplanationCardProps {
   question: TermText;
