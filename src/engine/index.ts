@@ -31,7 +31,8 @@ export type {
 } from './network/types';
 export { isClientActor, isConnected, lansOf } from './network/addressing/topology';
 export { facesALan } from './network/addressing/routing';
-export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
+export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, cidr as cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, listenSchema, networkSchema, packetSchema, realPort as portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
+export { DNS_PORT } from './dns/resolve';
 export { LOOPBACK_IP, ipInCidr, isIpv4, isLoopbackIpv4 } from './network/addressing/cidr';
 export { simulate } from './simulation/simulate';
 export { simulateSequence } from './simulation/sequence';

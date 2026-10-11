@@ -5,7 +5,7 @@ import { toPlainText } from '@/copy';
 import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
-import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds, type SendOwner } from './contract/chips';
+import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
 import { incidentSchema, isGuided, type CaseSpec, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
@@ -90,6 +90,17 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
   it('every card of an incident names a device in its start world', () => {
     expect(unknownCardDeviceIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
+  });
+
+  it('every table owner and every setting device names something in the start world of its incident', () => {
+    const world = startWorld(INCIDENTS, incident.id);
+    expect(unknownTableOwnerIds(incident, world)).toEqual([]);
+    expect(unknownSettingDeviceIds(incident, world)).toEqual([]);
+    expect(caseScenesOf(incident).flatMap(({ spec, world: inCase }) => unknownTableOwnerIds(incident, inCase, spec))).toEqual([]);
+  });
+
+  it('every device a classify card sorts exists in the start world of its incident', () => {
+    expect(unknownClassifiedDeviceIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
   });
 
   it('every id in the list of shown pieces of an incident names something in its world, and in a diagnose, in the world of each case', () => {

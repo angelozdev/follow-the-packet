@@ -1,6 +1,6 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
-import { peerIdOf, ruleIdFor, type AddressChip, type CaseSpec, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
+import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
+import { peerIdOf, ruleIdFor, type AddressChip, type CaseSpec, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
 type Combination = Omit<SendMove, 'type'>;
@@ -51,15 +51,36 @@ function pickedChips(incident: SendOwner, { fromId, toId, messageId }: Combinati
   return from && to && message ? { from, to, message } : null;
 }
 
-function icmpPacket({ from, to, message }: PickedChips): PacketSpec {
-  return { from: from.endpoint, to: to.address, protocol: 'icmp', icmpType: message.icmpType };
+function icmpPacket({ from, to, message }: PickedChips): PacketSpec | null {
+  return message.icmpType === undefined ? null : { from: from.endpoint, to: to.address, protocol: 'icmp', icmpType: message.icmpType };
 }
 
-/** Builds the packet three send chips stand for: an ICMP message from the origin to the address, with the TTL of the message chip when it has one; null when the incident does not offer one of them, and null for a traceroute, which sends a packet per hop and not a single one. */
+function ncPacket({ from, to, message }: PickedChips): PacketSpec | null {
+  return message.port === undefined ? null : { from: from.endpoint, to: to.address, protocol: 'tcp', port: message.port };
+}
+
+function digPacket({ from, to }: PickedChips): PacketSpec {
+  return { from: from.endpoint, to: to.address, protocol: 'udp', port: DNS_PORT, lookup: 'dig' };
+}
+
+function withTtl(packet: PacketSpec | null, { ttl }: MessageChip): PacketSpec | null {
+  return packet && ttl !== undefined ? { ...packet, ttl } : packet;
+}
+
+/** Builds the packet three send chips stand for: an ICMP message from the origin to the address, with the TTL of the message chip when it has one; a TCP packet to the port of the message chip for an `nc`; a UDP datagram to port 53 that reads no hosts file, with the address (a name) as its destination, for a `dig`. Null when the incident does not offer one of the chips, and null for a traceroute, which sends a packet per hop and not a single one. */
 export function packetFromChips(incident: SendOwner, combination: Combination): PacketSpec | null {
   const picked = pickedChips(incident, combination);
-  if (!picked || picked.message.command === 'traceroute') return null;
-  return picked.message.ttl === undefined ? icmpPacket(picked) : { ...icmpPacket(picked), ttl: picked.message.ttl };
+  if (!picked) return null;
+  switch (picked.message.command) {
+    case 'traceroute':
+      return null;
+    case 'nc':
+      return ncPacket(picked);
+    case 'dig':
+      return digPacket(picked);
+    default:
+      return withTtl(icmpPacket(picked), picked.message);
+  }
 }
 
 /** Builds the Echo Request that a traceroute repeats with a growing TTL, from the origin to the address; null unless the message chip is a traceroute the incident offers with these two chips. */
@@ -140,6 +161,10 @@ export function unknownShownIds(incident: Incident, world: Network, spec?: CaseS
   return (shownOf(incident, spec) ?? []).filter((id) => !placed.has(id));
 }
 
+function deviceIdsOf(world: Network): Set<string> {
+  return new Set(world.devices.map((device) => device.id));
+}
+
 /** Returns the ids of the devices whose card an identify incident offers, in the order of its cards; none for any other incident. */
 function cardDeviceIds(incident: Incident): string[] {
   return incident.mechanic === 'identify' ? incident.identify.cards.map((card) => card.deviceId) : [];
@@ -147,8 +172,39 @@ function cardDeviceIds(incident: Incident): string[] {
 
 /** Returns the ids of the cards of an identify incident that name no device of the world, in the order of its cards. */
 export function unknownCardDeviceIds(incident: Incident, world: Network): string[] {
-  const devices = new Set(world.devices.map((device) => device.id));
+  const devices = deviceIdsOf(world);
   return cardDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
+}
+
+/** Returns the ids of the devices the card that classifies of an identify incident holds: its owner and then every device it sorts; none for an incident with no such card. */
+function classifiedDeviceIds(incident: Incident): string[] {
+  const classify = incident.mechanic === 'identify' ? incident.identify.classify : undefined;
+  return classify ? [classify.deviceId, ...classify.items] : [];
+}
+
+/** Returns the ids of the owner and of the items of the card that classifies that name no device of the world, in that order. */
+export function unknownClassifiedDeviceIds(incident: Incident, world: Network): string[] {
+  const devices = deviceIdsOf(world);
+  return classifiedDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
+}
+
+/** Returns the tables the player edits: those a send incident offers, or, given a case of a diagnose, those of its fix. A case is checked in its own world, so the tables of the cases are not part of the incident's. */
+function tablesOf(incident: Incident, spec?: CaseSpec): TableSpec[] {
+  if (spec) return spec.fix?.tables ?? [];
+  return incident.mechanic === 'send' ? (incident.send.tables ?? []) : [];
+}
+
+/** Returns the owners of the tables the player edits that are not what the table needs in the world: a router for a table of routes and a server of the internet for a table of records. A case of a diagnose is given with its own world. */
+export function unknownTableOwnerIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
+  const owners = { routes: new Set((world.routers ?? []).map((router) => router.id)), records: new Set(world.actors.filter((actor) => actor.kind === 'server').map((actor) => actor.id)) };
+  return tablesOf(incident, spec).flatMap(({ kind, ownerId }) => (owners[kind].has(ownerId) ? [] : [ownerId]));
+}
+
+/** Returns the devices that the settings of a send incident belong to that are not in the world, in the order of its settings. */
+export function unknownSettingDeviceIds(incident: Incident, world: Network): string[] {
+  const devices = deviceIdsOf(world);
+  const settings = incident.mechanic === 'send' ? (incident.send.settings ?? []) : [];
+  return settings.map((setting) => setting.deviceId).filter((deviceId) => !devices.has(deviceId));
 }
 
 function ownersFor(incident: Incident, spec?: CaseSpec): SendOwner[] {
@@ -161,7 +217,7 @@ function sendersOf(incident: Incident, spec?: CaseSpec): string[] {
     case 'diagnose':
       return ownersFor(incident, spec).flatMap((owner) => owner.send.from.map((chip) => chip.endpoint.id));
     case 'identify':
-      return cardDeviceIds(incident);
+      return [...cardDeviceIds(incident), ...classifiedDeviceIds(incident)];
     case 'filter':
       return incident.flows.map((flow) => flow.packet.from.id);
   }
@@ -170,6 +226,16 @@ function sendersOf(incident: Incident, spec?: CaseSpec): string[] {
 function addressesOf(incident: Incident, spec?: CaseSpec): string[] {
   const owners = ownersFor(incident, spec);
   return owners.length > 0 ? owners.flatMap((owner) => owner.send.to.map((chip) => chip.address)) : incident.flows.map((flow) => flow.packet.to);
+}
+
+function nextHopsOf(table: TableSpec): string[] {
+  return table.kind === 'routes' ? table.trays.nextHop.map((chip) => chip.value) : [];
+}
+
+function editedBy(incident: Incident, spec?: CaseSpec): string[] {
+  const devices = incident.mechanic === 'send' && !spec ? (incident.send.settings ?? []).map((setting) => setting.deviceId) : [];
+  const tables = tablesOf(incident, spec);
+  return [...devices, ...tables.map((table) => table.ownerId), ...tables.flatMap(nextHopsOf)];
 }
 
 function expectedBy(incident: Incident): string[] {
@@ -187,11 +253,11 @@ function drawnWith(world: Network, id: string): string {
   return world.devices.find((device) => device.firewallIds.includes(id))?.id ?? id;
 }
 
-/** Returns, in order, what the list of shown pieces must hold and lacks: the sender (or, in an identify incident, the device of every card; in a diagnose, the senders and the addresses of every case, or of the one case given, which is checked in its own world), the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
+/** Returns, in order, what the list of shown pieces must hold and lacks: the sender (or, in an identify incident, the device of every card and those its card that classifies holds; in a diagnose, the senders and the addresses of every case, or of the one case given, which is checked in its own world), the owner of every address it sends to (an address nobody has needs none), whoever a task expects (a firewall is drawn with its device) and what the player edits: the device of every setting, the owner of every table and the routers its chips name as the next hop. An incident with no list draws the whole world, so it lacks nothing. */
 export function missingShownIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
   const list = shownOf(incident, spec);
   if (!list) return [];
   const shown = new Set(list);
-  const needed = [...sendersOf(incident, spec), ...addressesOf(incident, spec).flatMap((address) => ownerOf(world, address)), ...expectedBy(incident).map((id) => drawnWith(world, id))];
+  const needed = [...sendersOf(incident, spec), ...addressesOf(incident, spec).flatMap((address) => ownerOf(world, address)), ...expectedBy(incident).map((id) => drawnWith(world, id)), ...editedBy(incident, spec)];
   return needed.filter((id, index) => !shown.has(id) && needed.indexOf(id) === index);
 }

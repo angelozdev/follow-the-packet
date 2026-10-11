@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { DEFAULT_DIRECTION, ECHO_REQUEST, OUTCOMES, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkActionSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema, type Direction } from '@/engine';
+import { DEFAULT_DIRECTION, DNS_PORT, ECHO_REQUEST, OUTCOMES, cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, isIpv4, listenSchema, networkActionSchema, networkSchema, packetSchema, portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema, type Direction, type DnsStatus } from '@/engine';
 
 const id = z.string().min(1);
 const SEGMENTED_CHIPS = 2;
@@ -42,31 +42,79 @@ export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, r
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });
 const filterTaskSchema = z.object({ id, text: termText, flowIds: z.array(id).min(1) });
 const expectedOutcomeSchema = z.enum([...OUTCOMES, 'reached', 'any'] as const);
+const EXPECTED_STATUSES = ['NXDOMAIN', 'SERVFAIL'] as const satisfies readonly DnsStatus[];
+const expectedAnswerSchema = z
+  .object({ ip: ipSchema.optional(), alias: z.boolean().optional() })
+  .refine((answer) => answer.ip !== undefined || answer.alias !== undefined, { message: 'an expected answer names an IP or says whether it came through an alias' });
 const sendTaskSchema = z.object({
   id,
   text: termText,
-  expect: z.object({ fromId: id, toId: id, messageId: id, outcome: expectedOutcomeSchema, by: id.optional() }),
+  expect: z.object({
+    fromId: id,
+    toId: id,
+    messageId: id,
+    outcome: expectedOutcomeSchema,
+    by: id.optional(),
+    answer: expectedAnswerSchema.optional(),
+    status: z.enum(EXPECTED_STATUSES).optional(),
+  }),
 });
 const whatChipSchema = z.object({ id, label: termText, what: ruleWhatSchema });
 const peerChipSchema = z.object({ id, label: termText, peer: rulePeerSchema });
 const originChipSchema = z.object({ id, endpoint: endpointSchema });
 const addressChipSchema = z.object({ id, address: id });
+const MESSAGE_COMMANDS = ['packet', 'ping', 'traceroute', 'nc', 'dig'] as const;
+const COMMAND_PROTOCOL: Record<(typeof MESSAGE_COMMANDS)[number], z.infer<typeof packetSchema>['protocol']> = { packet: 'icmp', ping: 'icmp', traceroute: 'icmp', nc: 'tcp', dig: 'udp' };
 const messageChipSchema = z
   .object({
     id,
     label: termText,
-    icmpType: icmpTypeSchema,
-    command: z.enum(['packet', 'ping', 'traceroute']).optional(),
+    icmpType: icmpTypeSchema.optional(),
+    command: z.enum(MESSAGE_COMMANDS).optional(),
+    protocol: packetSchema.shape.protocol.optional(),
+    port: portSchema.optional(),
     ttl: packetSchema.shape.ttl,
   })
   .superRefine((chip, ctx) => {
-    if (chip.ttl !== undefined && chip.command !== 'ping') ctx.addIssue({ code: 'custom', message: 'a TTL belongs to a ping', path: ['ttl'] });
-    if ((chip.command === 'ping' || chip.command === 'traceroute') && chip.icmpType !== ECHO_REQUEST) {
-      ctx.addIssue({ code: 'custom', message: `a ${chip.command} sends an Echo Request`, path: ['icmpType'] });
-    }
+    const issue = (message: string, path: string) => ctx.addIssue({ code: 'custom', message, path: [path] });
+    const protocol = chip.command ? COMMAND_PROTOCOL[chip.command] : 'icmp';
+    if (chip.protocol !== undefined && chip.protocol !== protocol) issue(`a message ${chip.command ? `of ${chip.command}` : 'with no command'} is ${protocol}`, 'protocol');
+    if (chip.ttl !== undefined && chip.command !== 'ping') issue('a TTL belongs to a ping', 'ttl');
+    if ((chip.command === 'ping' || chip.command === 'traceroute') && chip.icmpType !== ECHO_REQUEST) issue(`a ${chip.command} sends an Echo Request`, 'icmpType');
+    if (protocol === 'icmp' && chip.icmpType === undefined) issue('an ICMP message needs its type', 'icmpType');
+    if (protocol === 'icmp' && chip.port !== undefined) issue('an ICMP message has no port', 'port');
+    if (protocol !== 'icmp' && chip.icmpType !== undefined) issue(`a ${chip.command} has no ICMP type`, 'icmpType');
+    if (chip.command === 'nc' && chip.port === undefined) issue('an nc needs the port it tests', 'port');
+    if (chip.command === 'dig' && chip.port !== undefined && chip.port !== DNS_PORT) issue(`a dig goes to port ${DNS_PORT}`, 'port');
   });
-const settingChipSchema = z.object({ id, label: termText, value: ipSchema.nullable() });
-const settingSchema = z.object({ id, deviceId: id, name: termText, chips: z.array(settingChipSchema).min(2) });
+const SETTING_KINDS = ['gateway', 'dns-server', 'listen-address'] as const;
+const settingChipSchema = z.object({ id, label: termText, value: z.union([ipSchema, listenSchema]).nullable() });
+const settingSchema = z
+  .object({
+    id,
+    deviceId: id,
+    kind: z.enum(SETTING_KINDS).optional(),
+    service: z.object({ protocol: packetSchema.shape.protocol.exclude(['icmp']), port: portSchema }).optional(),
+    name: termText,
+    chips: z.array(settingChipSchema).min(2),
+  })
+  .superRefine((setting, ctx) => {
+    const listens = settingKind(setting) === 'listen-address';
+    if (listens !== (setting.service !== undefined)) ctx.addIssue({ code: 'custom', message: 'only a listen address names its service, and it needs one', path: ['service'] });
+    setting.chips.forEach(({ value }, index) => {
+      const fits = listens ? listenSchema.safeParse(value).success : value === null || isIpv4(value);
+      if (!fits) ctx.addIssue({ code: 'custom', message: `a value of ${settingKind(setting)} does not fit: ${value}`, path: ['chips', index, 'value'] });
+    });
+  });
+
+const tray = <Value extends z.ZodType>(value: Value) => z.array(z.object({ id, label: termText, value })).min(1);
+const tableShape = { id, ownerId: id };
+const tableSchema = z.discriminatedUnion('kind', [
+  z.object({ ...tableShape, kind: z.literal('routes'), trays: z.object({ destination: tray(routeSchema.shape.to), nextHop: tray(routeSchema.shape.next) }) }),
+  z.object({ ...tableShape, kind: z.literal('records'), trays: z.object({ name: tray(recordKeySchema.shape.name), type: tray(recordKeySchema.shape.type), value: tray(recordKeySchema.shape.value) }) }),
+]);
+const clockSchema = z.object({ steps: z.array(z.object({ id, label: termText, seconds: z.number().int().positive() })).min(1) });
+const PIECE_CARDS = ['terminal', 'settings', 'services', 'routes', 'records'] as const;
 const identifyTaskSchema = z.object({ id, text: termText, expect: z.object({ deviceId: id, trayId: id, chipId: id }) });
 const cardChipSchema = z.object({ id, label: termText, feedback: termText.optional() });
 const cardTraySchema = z.object({
@@ -78,6 +126,8 @@ const cardTraySchema = z.object({
   segmented: z.boolean().optional(),
 });
 const cardSchema = z.object({ deviceId: id, question: termText.optional(), trays: z.array(cardTraySchema).min(1) });
+const binSchema = z.object({ id, name: z.string().min(1) });
+const classifySchema = z.object({ deviceId: id, cidr: cidrSchema, trayId: id, bins: z.tuple([binSchema, binSchema]), items: z.array(id).min(1) });
 const optionSchema = z.object({ text: termText, feedback: termText, correct: z.boolean() });
 const sendChipsShape = {
   from: z.array(originChipSchema).min(1),
@@ -90,6 +140,7 @@ const caseSchema = z.object({
   shown: z.array(id).min(1).optional(),
   report: termText,
   send: z.object(sendChipsShape),
+  fix: z.object({ tables: z.array(tableSchema).min(1), tasks: z.array(sendTaskSchema).min(1) }).optional(),
   hints: z.tuple([termText, termText]),
   cause: z.object({ question: termText, options: z.tuple([optionSchema, optionSchema, optionSchema]) }),
 });
@@ -132,7 +183,13 @@ const sendIncidentSchema = z.object({
   mechanic: z.literal('send'),
   tasks: z.array(sendTaskSchema).min(1),
   flows: z.array(flowSchema),
-  send: z.object({ ...sendChipsShape, settings: z.array(settingSchema).min(1).optional() }),
+  send: z.object({
+    ...sendChipsShape,
+    settings: z.array(settingSchema).min(1).optional(),
+    tables: z.array(tableSchema).min(1).optional(),
+    clock: clockSchema.optional(),
+    opensFirst: z.record(id, z.enum(PIECE_CARDS)).optional(),
+  }),
   revealRoutersByTraceroute: z.boolean().optional(),
   solution: z.array(sendMoveSchema).min(1),
 });
@@ -143,7 +200,7 @@ const identifyIncidentSchema = z.object({
   mechanic: z.literal('identify'),
   tasks: z.array(identifyTaskSchema).min(1),
   flows: z.array(flowSchema),
-  identify: z.object({ cards: z.array(cardSchema).min(1) }),
+  identify: z.object({ cards: z.array(cardSchema).min(1), classify: classifySchema.optional() }),
   solution: z.array(answerCardSchema).min(1),
 });
 
@@ -158,7 +215,11 @@ type FilterShape = z.infer<typeof filterIncidentSchema>;
 type SendShape = z.infer<typeof sendIncidentSchema>;
 type IdentifyShape = z.infer<typeof identifyIncidentSchema>;
 type DiagnoseShape = z.infer<typeof diagnoseIncidentSchema>;
-type SendChipsShape = z.infer<typeof caseSchema>['send'];
+type SendChipsShape = CaseShape['send'];
+type CaseShape = z.infer<typeof caseSchema>;
+type TableShape = z.infer<typeof tableSchema>;
+type ClassifyShape = NonNullable<IdentifyShape['identify']['classify']>;
+type Combination = { fromId: string; toId: string; messageId: string };
 type Flows = FilterShape['flows'];
 type CardTrayShape = z.infer<typeof cardTraySchema>;
 type Fail = (message: string) => void;
@@ -210,9 +271,16 @@ function checkSettings({ send }: SendShape, fail: Fail): void {
   uniqueIn(fail)('setting', settings.map((setting) => `${setting.deviceId}/${setting.id}`));
   for (const setting of settings) {
     const where = `${setting.deviceId}/${setting.id}`;
-    if (!origins.has(setting.deviceId)) fail(`${where}: a setting belongs to a device that sends`);
+    if (settingKind(setting) !== 'listen-address' && !origins.has(setting.deviceId)) fail(`${where}: a setting belongs to a device that sends`);
     uniqueIn(fail)(`${where}: chip id`, setting.chips.map((chip) => chip.id));
     uniqueIn(fail)(`${where}: chip value`, setting.chips.map((chip) => String(chip.value)));
+  }
+}
+
+function checkTables(tables: TableShape[], where: string, fail: Fail): void {
+  uniqueIn(fail)(`${where}table id`, tables.map((table) => table.id));
+  for (const table of tables) {
+    for (const [trayName, chips] of Object.entries<{ id: string }[]>(table.trays)) uniqueIn(fail)(`${where}${table.id}/${trayName}: chip id`, chips.map((chip) => chip.id));
   }
 }
 
@@ -231,11 +299,19 @@ function checkAmbient(flows: Flows, mechanic: Mechanic, fail: Fail): void {
   }
 }
 
+function offeredBy(ids: ReturnType<typeof checkSendChips>) {
+  return (combination: Combination) => ids.from.includes(combination.fromId) && ids.to.includes(combination.toId) && ids.message.includes(combination.messageId);
+}
+
 function checkSend(incident: SendShape, fail: Fail): void {
   const ids = checkSendChips(incident.send, '', fail);
   checkSettings(incident, fail);
-  const offers = (combination: { fromId: string; toId: string; messageId: string }) =>
-    ids.from.includes(combination.fromId) && ids.to.includes(combination.toId) && ids.message.includes(combination.messageId);
+  checkTables(incident.send.tables ?? [], '', fail);
+  uniqueIn(fail)('clock step id', (incident.send.clock?.steps ?? []).map((step) => step.id));
+  for (const [pieceId, card] of Object.entries(incident.send.opensFirst ?? {})) {
+    if (!cardsOfPiece(incident.send, pieceId).includes(card)) fail(`${pieceId} has no ${card} card to open first`);
+  }
+  const offers = offeredBy(ids);
   const offersSetting = ({ deviceId, settingId, chipId }: Extract<SendShape['solution'][number], { type: 'setSetting' }>) =>
     (incident.send.settings ?? []).some((setting) => setting.deviceId === deviceId && setting.id === settingId && setting.chips.some((chip) => chip.id === chipId));
   for (const task of incident.tasks) {
@@ -257,16 +333,31 @@ function checkTray(deviceId: string, tray: CardTrayShape, fail: Fail): void {
   if (tray.segmented && tray.chips.length !== SEGMENTED_CHIPS) fail(`${where}: a segmented tray has exactly ${SEGMENTED_CHIPS} chips`);
 }
 
+function checkClassify(classify: ClassifyShape, cards: IdentifyShape['identify']['cards'], fail: Fail): void {
+  const unique = uniqueIn(fail);
+  unique('classify bin id', classify.bins.map((bin) => bin.id));
+  unique('classify item', classify.items);
+  if (classify.items.includes(classify.deviceId)) fail(`${classify.deviceId}: the owner of the classify card sorts nothing of itself`);
+  const itemCards = cards.filter((card) => classify.items.includes(card.deviceId));
+  if (itemCards.some((card) => card.trays.some((tray) => tray.id === classify.trayId))) fail(`classify tray id ${classify.trayId} repeats a tray of the card of an item`);
+}
+
+function classifies(classify: ClassifyShape | undefined, { deviceId, trayId, chipId }: IdentifyShape['tasks'][number]['expect']): boolean {
+  return classify !== undefined && classify.trayId === trayId && classify.items.includes(deviceId) && classify.bins.some((bin) => bin.id === chipId);
+}
+
 function checkIdentify(incident: IdentifyShape, fail: Fail): void {
-  const { cards } = incident.identify;
+  const { cards, classify } = incident.identify;
   const unique = uniqueIn(fail);
   unique('card device', cards.map((card) => card.deviceId));
   for (const card of cards) {
     unique(`${card.deviceId}: tray id`, card.trays.map((tray) => tray.id));
     for (const tray of card.trays) checkTray(card.deviceId, tray, fail);
   }
-  const offers = ({ deviceId, trayId, chipId }: IdentifyShape['tasks'][number]['expect']) =>
-    cards.some((card) => card.deviceId === deviceId && card.trays.some((tray) => tray.id === trayId && tray.chips.some((chip) => chip.id === chipId)));
+  if (classify) checkClassify(classify, cards, fail);
+  const offers = (expect: IdentifyShape['tasks'][number]['expect']) =>
+    classifies(classify, expect) ||
+    cards.some((card) => card.deviceId === expect.deviceId && card.trays.some((tray) => tray.id === expect.trayId && tray.chips.some((chip) => chip.id === expect.chipId)));
   for (const task of incident.tasks) {
     if (!offers(task.expect)) fail(`${task.id}: expects a chip the cards do not offer`);
   }
@@ -278,11 +369,21 @@ function checkIdentify(incident: IdentifyShape, fail: Fail): void {
   if (incident.flows.length > 0) fail('an identify incident sends nothing');
 }
 
+function checkFix({ tables, tasks }: NonNullable<CaseShape['fix']>, ids: ReturnType<typeof checkSendChips>, where: string, fail: Fail): void {
+  checkTables(tables, `${where}: fix `, fail);
+  uniqueIn(fail)(`${where}: fix task id`, tasks.map((task) => task.id));
+  const offers = offeredBy(ids);
+  for (const task of tasks) {
+    if (!offers(task.expect)) fail(`${where}: ${task.id} expects chips the case does not offer`);
+  }
+}
+
 function checkDiagnose(incident: DiagnoseShape, fail: Fail): void {
   const { cases } = incident.diagnose;
   uniqueIn(fail)('case id', cases.map((spec) => spec.id));
   for (const spec of cases) {
-    checkSendChips(spec.send, `${spec.id}: `, fail);
+    const ids = checkSendChips(spec.send, `${spec.id}: `, fail);
+    if (spec.fix) checkFix(spec.fix, ids, spec.id, fail);
     uniqueIn(fail)(`${spec.id}: shown id`, spec.shown ?? []);
     if (spec.cause.options.filter((option) => option.correct).length !== 1) fail(`${spec.id}: exactly one cause is correct`);
   }
@@ -336,6 +437,11 @@ export type AddressChip = SendIncident['send']['to'][number];
 export type SettingSpec = NonNullable<SendIncident['send']['settings']>[number];
 export type SettingChip = SettingSpec['chips'][number];
 export type MessageChip = SendIncident['send']['message'][number];
+export type SettingKind = (typeof SETTING_KINDS)[number];
+export type TableSpec = TableShape;
+export type ClockStep = NonNullable<SendIncident['send']['clock']>['steps'][number];
+export type ClassifySpec = ClassifyShape;
+export type PieceCard = (typeof PIECE_CARDS)[number];
 export type CaseSpec = DiagnoseIncident['diagnose']['cases'][number];
 export type SendChips = CaseSpec['send'];
 export type ExpectedOutcome = SendTask['expect']['outcome'];
@@ -355,6 +461,28 @@ export type LevelRole = Incident['role'];
 /** True for an incident the player works through tasks (a filter, a send or an identify), and false for a diagnose, which has cases. */
 export function isGuided(incident: Incident): incident is GuidedIncident {
   return incident.mechanic !== 'diagnose';
+}
+
+/** Returns the kind of a setting: a gateway when it names none, as every setting of chapter 1 does. */
+export function settingKind({ kind = 'gateway' }: Pick<SettingSpec, 'kind'>): SettingKind {
+  return kind;
+}
+
+/** Returns the cards a piece of the world has in a send incident, in the order it opens them when the incident names none: the terminal when it is an origin, the network settings (a gateway or a DNS server), the services (a listen address), then the tables of routes and of records it owns. */
+export function cardsOfPiece({ from, settings = [], tables = [] }: SendIncident['send'], pieceId: string): PieceCard[] {
+  const has: Record<PieceCard, boolean> = {
+    terminal: from.some(({ endpoint }) => endpoint.id === pieceId),
+    settings: settings.some((setting) => setting.deviceId === pieceId && settingKind(setting) !== 'listen-address'),
+    services: settings.some((setting) => setting.deviceId === pieceId && settingKind(setting) === 'listen-address'),
+    routes: tables.some((table) => table.ownerId === pieceId && table.kind === 'routes'),
+    records: tables.some((table) => table.ownerId === pieceId && table.kind === 'records'),
+  };
+  return PIECE_CARDS.filter((card) => has[card]);
+}
+
+/** Returns the card a piece opens first: the one the incident names (`send.opensFirst`) or, with none, the first it has (the terminal, then the settings or the services, then the tables); none for a piece with no card. */
+export function firstCardOf(send: SendIncident['send'], pieceId: string): PieceCard | undefined {
+  return send.opensFirst?.[pieceId] ?? cardsOfPiece(send, pieceId).at(0);
 }
 
 /** Returns the id of the peer chip a placement names: the Destination chip of an outbound rule, the Source chip of an inbound one. */

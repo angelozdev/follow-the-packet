@@ -1,7 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, routedSendIncident, sendIncident } from '@/testing';
-import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, unknownCardDeviceIds } from './chips';
-import { incidentSchema, isGuided, playerMoveSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
+import { packetSchema } from '@/engine';
+import { caseWorld } from '@/levels/world';
+import { incidentTexts } from '@/levels/ladder';
+import {
+  NAME_SERVERS,
+  NOTE_RULE,
+  OFFICE_FLOORS,
+  actor,
+  classifyIncident,
+  device,
+  diagnoseIncident,
+  dig,
+  gatewayIncident,
+  identifyIncident,
+  lab03Net,
+  namesSendIncident,
+  officeNet,
+  officeTwoFloorsNet,
+  officeWithNames,
+  outboundFilterIncident,
+  ping,
+  repairableDiagnoseIncident,
+  routedSendIncident,
+  sendIncident,
+  tcp,
+} from '@/testing';
+import {
+  missingShownIds,
+  officeLeaks,
+  packetFromChips,
+  probeFromChips,
+  revealsRoutersByTraceroute,
+  sendCombinations,
+  unknownCardDeviceIds,
+  unknownClassifiedDeviceIds,
+  unknownSettingDeviceIds,
+  unknownTableOwnerIds,
+} from './chips';
+import { cardsOfPiece, firstCardOf, incidentSchema, isGuided, playerMoveSchema, ruleIdFor, settingKind, type MessageChip, type SendIncident, type TableSpec } from './incident';
 
 const SEND = sendIncident();
 const LOOPBACK_ADDRESSES = ['127.0.0.1', '127.1.2.3', 'localhost'];
@@ -506,5 +542,347 @@ describe('diagnose incident contract', () => {
     expect(officeLeaks(DIAGNOSE, officeTwoFloorsNet())).toEqual([]);
     expect(missingShownIds({ ...DIAGNOSE, shown: ['your-laptop'] }, officeTwoFloorsNet())).toEqual(expect.arrayContaining(['andres-laptop', 'marta-laptop', 'printer', 'internet-server']));
     expect(missingShownIds(DIAGNOSE, officeTwoFloorsNet())).toEqual([]);
+  });
+});
+
+const NAMES = namesSendIncident();
+const { floor1, server, provider, officeRouter } = OFFICE_FLOORS;
+const WWW = `www.${NAME_SERVERS.zone}`;
+const [, NC, DIG] = NAMES.send.message;
+const [RESOLVER, LISTEN] = NAMES.send.settings ?? [];
+const tableOf = <Kind extends TableSpec['kind']>(kind: Kind) => NAMES.send.tables!.find((table): table is Extract<TableSpec, { kind: Kind }> => table.kind === kind)!;
+const ROUTES = tableOf('routes');
+const RECORDS = tableOf('records');
+const accepts = (incident: unknown) => incidentSchema.safeParse(incident).success;
+const withSend = (patch: Record<string, unknown>) => ({ ...NAMES, send: { ...NAMES.send, ...patch } });
+const withNamesMessage = (...message: Record<string, unknown>[]) => withSend({ message: [...NAMES.send.message, ...message] });
+const withSettings = (...settings: unknown[]) => withSend({ settings });
+const withTables = (...tables: unknown[]) => withSend({ tables });
+
+describe('message chips of chapter 2', () => {
+  it('accepts an nc message with a tcp port and a dig message', () => {
+    expect(accepts(NAMES)).toBe(true);
+    expect(NAMES.send.message.map(({ command }) => command)).toEqual(['ping', 'nc', 'dig']);
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-implied', protocol: undefined }))).toBe(true);
+    expect(accepts(withNamesMessage({ ...DIG, id: 'dig-explicit', protocol: 'udp', port: 53 }))).toBe(true);
+  });
+
+  it('rejects an nc message with no port', () => {
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-bare', port: undefined }))).toBe(false);
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-port-0', port: 0 }))).toBe(false);
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-udp', protocol: 'udp' }))).toBe(false);
+  });
+
+  it('rejects a port on a ping', () => {
+    const echo = { id: 'ping-port', label: '{{ping}}', icmpType: 8, port: 80 };
+    expect(accepts(withNamesMessage({ ...echo, command: 'ping' }))).toBe(false);
+    expect(accepts(withNamesMessage({ ...echo, command: 'traceroute' }))).toBe(false);
+    expect(accepts(withNamesMessage(echo))).toBe(false);
+    expect(accepts(withNamesMessage({ ...DIG, id: 'dig-80', port: 80 }))).toBe(false);
+  });
+
+  it('rejects an icmp type on an nc message', () => {
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-echo', icmpType: 8 }))).toBe(false);
+    expect(accepts(withNamesMessage({ ...DIG, id: 'dig-echo', icmpType: 8 }))).toBe(false);
+    expect(accepts(withNamesMessage({ ...NC, id: 'nc-ttl', ttl: 3 }))).toBe(false);
+    expect(accepts(withNamesMessage({ id: 'echo-untyped', label: '{{ping}}', command: 'ping' }))).toBe(false);
+  });
+
+  it('builds the tcp packet of an nc with the port of the message chip', () => {
+    expect(packetFromChips(NAMES, { fromId: 'you', toId: 'lucia', messageId: 'nc' })).toEqual(tcp(device('your-laptop'), floor1.lucia, 3000));
+    const other = withNamesMessage({ ...NC, id: 'nc-5432', port: 5432 }) as unknown as SendIncident;
+    expect(packetFromChips(other, { fromId: 'you', toId: 'lucia', messageId: 'nc-5432' })).toMatchObject({ protocol: 'tcp', port: 5432 });
+    expect(packetFromChips(NAMES, { fromId: 'you', toId: 'ghost', messageId: 'nc' })).toBeNull();
+  });
+
+  it('builds the udp datagram of a dig with the name as destination and lookup dig', () => {
+    const packet = packetFromChips(NAMES, { fromId: 'you', toId: 'www', messageId: 'dig' });
+    expect(packet).toEqual(dig(device('your-laptop'), WWW));
+    expect(packet).toMatchObject({ protocol: 'udp', port: 53, lookup: 'dig', to: WWW });
+    expect(packetSchema.safeParse(packet).success).toBe(true);
+    expect(probeFromChips(NAMES, { fromId: 'you', toId: 'www', messageId: 'dig' })).toBeNull();
+  });
+
+  it('an address chip can be a name', () => {
+    expect(NAMES.send.to.map(({ address }) => address)).toContain(WWW);
+    expect(accepts(NAMES)).toBe(true);
+    expect(packetFromChips(NAMES, { fromId: 'you', toId: 'www', messageId: 'ping' })).toEqual(ping(device('your-laptop'), WWW));
+    expect(packetFromChips(NAMES, { fromId: 'you', toId: 'www', messageId: 'nc' })).toMatchObject({ protocol: 'tcp', to: WWW });
+    expect(accepts(withSend({ to: [{ id: 'empty', address: '' }] }))).toBe(false);
+  });
+
+  it('an nc and a dig to an address outside an office with no router are leaks', () => {
+    const toOutside = { ...SEND, send: { ...SEND.send, to: [{ id: 'dns', address: '8.8.8.8' }], message: [NC, DIG] } };
+    expect(officeLeaks(toOutside, officeNet())).toEqual(['your-laptop → 8.8.8.8', 'your-laptop → 8.8.8.8']);
+    expect(officeLeaks(toOutside, officeTwoFloorsNet())).toEqual([]);
+    const inside = { ...toOutside, send: { ...toOutside.send, to: [{ id: 'printer', address: OFFICE_FLOORS.floor1.printer }] } };
+    expect(officeLeaks(inside, officeTwoFloorsNet())).toEqual([]);
+  });
+});
+
+describe('settings of chapter 2', () => {
+  const [, loopback] = LISTEN.chips;
+  const gateway = gatewayIncident();
+
+  it('accepts a setting of kind gateway, dns-server or listen-address and rejects a chip value that does not fit its kind', () => {
+    expect([RESOLVER, LISTEN].map(settingKind)).toEqual(['dns-server', 'listen-address']);
+    expect(settingKind(gateway.send.settings![0])).toBe('gateway');
+    expect(accepts(NAMES) && accepts(gateway)).toBe(true);
+    expect(accepts(withSettings({ ...RESOLVER, kind: 'gateway' }, LISTEN))).toBe(true);
+    const chip = (value: unknown) => ({ id: 'odd', label: 'Otro', value });
+    const withChip = (setting: object, value: unknown) => withSettings({ ...setting, chips: [...(setting as typeof RESOLVER).chips, chip(value)] });
+    for (const value of ['all', 'loopback', '192.168.1.300']) expect(accepts(withChip(RESOLVER, value)), `dns-server ${value}`).toBe(false);
+    for (const value of [null, '198.51.100.8', 'everywhere']) expect(accepts(withChip(LISTEN, value)), `listen-address ${value}`).toBe(false);
+    expect(accepts(withChip({ ...gateway.send.settings![0], deviceId: 'your-laptop' }, 'all'))).toBe(false);
+  });
+
+  it('a listen address names its service, the other kinds name none, and an unknown kind is rejected', () => {
+    expect(accepts(withSettings(RESOLVER, { ...LISTEN, service: undefined }))).toBe(false);
+    expect(accepts(withSettings({ ...RESOLVER, service: LISTEN.service }, LISTEN))).toBe(false);
+    expect(accepts(withSettings(RESOLVER, { ...LISTEN, service: { protocol: 'icmp', port: 3000 } }))).toBe(false);
+    expect(accepts(withSettings(RESOLVER, { ...LISTEN, service: { protocol: 'tcp', port: 0 } }))).toBe(false);
+    expect(accepts(withSettings(RESOLVER, { ...LISTEN, kind: 'hosts' }))).toBe(false);
+    expect(loopback.value).toBe('loopback');
+  });
+
+  it('a gateway or a DNS server belongs to a device that sends, and a listen address to any device', () => {
+    expect(accepts(withSettings({ ...RESOLVER, deviceId: 'lucia-laptop' }))).toBe(false);
+    expect(accepts(withSettings(RESOLVER, { ...LISTEN, deviceId: 'printer' }))).toBe(true);
+    expect(accepts(withSettings(RESOLVER, LISTEN, { ...LISTEN, id: 'again' }))).toBe(true);
+    expect(accepts(withSettings(RESOLVER, LISTEN, LISTEN))).toBe(false);
+    expect(accepts(withSettings({ ...LISTEN, chips: [LISTEN.chips[0], { ...loopback, value: 'all' }] }))).toBe(false);
+  });
+});
+
+describe('tables and clock of chapter 2', () => {
+  it('accepts a table of routes with a destination tray and a next hop tray', () => {
+    expect(ROUTES).toMatchObject({ kind: 'routes', ownerId: provider.id });
+    expect(Object.keys(ROUTES.trays)).toEqual(['destination', 'nextHop']);
+    expect(accepts(NAMES)).toBe(true);
+    const tray = (patch: Record<string, unknown>) => withTables({ ...ROUTES, trays: { ...ROUTES.trays, ...patch } }, RECORDS);
+    const chip = { id: 'chip', label: 'Otro' };
+    expect(accepts(tray({ destination: [{ ...chip, value: '10.0.0.0/33' }] }))).toBe(false);
+    expect(accepts(tray({ destination: [{ ...chip, value: '198.51.100.0/24' }] }))).toBe(true);
+    expect(accepts(tray({ destination: [] }))).toBe(false);
+    expect(accepts(tray({ nextHop: undefined }))).toBe(false);
+    expect(accepts(tray({ nextHop: [{ ...chip, value: officeRouter.id }, { ...chip, value: provider.id }] }))).toBe(false);
+    expect(accepts(withTables(ROUTES, RECORDS, ROUTES))).toBe(false);
+  });
+
+  it('accepts a table of records with a name tray, a type tray and a value tray', () => {
+    expect(RECORDS).toMatchObject({ kind: 'records', ownerId: NAME_SERVERS.authoritative.id });
+    expect(Object.keys(RECORDS.trays)).toEqual(['name', 'type', 'value']);
+    const tray = (patch: Record<string, unknown>) => withTables(ROUTES, { ...RECORDS, trays: { ...RECORDS.trays, ...patch } });
+    expect(accepts(tray({ type: [{ id: 'mx', label: 'MX', value: 'MX' }] }))).toBe(false);
+    expect(accepts(tray({ type: [{ id: 'a', label: 'A', value: 'A' }, { id: 'cname', label: 'CNAME', value: 'CNAME' }] }))).toBe(true);
+    expect(accepts(tray({ value: undefined }))).toBe(false);
+    expect(accepts(tray({ name: [{ id: 'blank', label: 'Nada', value: '' }] }))).toBe(false);
+    expect(accepts(withTables({ ...RECORDS, trays: ROUTES.trays }))).toBe(false);
+  });
+
+  it('rejects a table whose owner is not a router or a server of the world', () => {
+    const world = officeWithNames();
+    const owned = (ownerId: string, table: TableSpec = ROUTES) => withTables({ ...table, ownerId }) as unknown as SendIncident;
+    expect(unknownTableOwnerIds(NAMES, world)).toEqual([]);
+    expect(unknownTableOwnerIds(owned('router-ghost'), world)).toEqual(['router-ghost']);
+    expect(unknownTableOwnerIds(owned(NAME_SERVERS.resolver.id), world)).toEqual([NAME_SERVERS.resolver.id]);
+    expect(unknownTableOwnerIds(owned(provider.id, RECORDS), world)).toEqual([provider.id]);
+    expect(unknownTableOwnerIds(owned('your-laptop'), world)).toEqual(['your-laptop']);
+    expect(unknownTableOwnerIds(sendIncident(), world)).toEqual([]);
+  });
+
+  it('lists the owner of a table of the fix of a case in the world of that case', () => {
+    const repairable = repairableDiagnoseIncident();
+    const [spec] = repairable.diagnose.cases.filter(({ fix }) => fix);
+    const world = caseWorld(officeTwoFloorsNet(), spec);
+    expect(unknownTableOwnerIds(repairable, world, spec)).toEqual([]);
+    expect(unknownTableOwnerIds(repairable, world)).toEqual([]);
+    expect(unknownTableOwnerIds(repairable, officeNet(), spec)).toEqual([OFFICE_FLOORS.backbone.id]);
+    expect(unknownTableOwnerIds(repairable, world, repairable.diagnose.cases[0])).toEqual([]);
+  });
+
+  it('lists the device of a setting that is not in the world', () => {
+    expect(unknownSettingDeviceIds(NAMES, officeWithNames())).toEqual([]);
+    expect(unknownSettingDeviceIds(NAMES, lab03Net())).toEqual(['your-laptop', 'lucia-laptop']);
+    expect(unknownSettingDeviceIds(sendIncident(), officeNet())).toEqual([]);
+  });
+
+  it('accepts a clock with steps of seconds', () => {
+    expect(NAMES.send.clock?.steps.map(({ seconds }) => seconds)).toEqual([60, 300]);
+    expect(accepts(NAMES)).toBe(true);
+    const [step] = NAMES.send.clock!.steps;
+    expect(accepts(withSend({ clock: undefined }))).toBe(true);
+    for (const patch of [{ seconds: 0 }, { seconds: -60 }, { seconds: 1.5 }, { label: '' }]) expect(accepts(withSend({ clock: { steps: [{ ...step, ...patch }] } })), JSON.stringify(patch)).toBe(false);
+    expect(accepts(withSend({ clock: { steps: [] } }))).toBe(false);
+    expect(accepts(withSend({ clock: { steps: [step, { ...step, seconds: 300 }] } }))).toBe(false);
+  });
+});
+
+describe('what a send task expects of the DNS', () => {
+  const [task] = NAMES.tasks;
+  const expecting = (patch: Record<string, unknown>) => ({ ...NAMES, tasks: [{ ...task, expect: { ...task.expect, ...patch } }] });
+
+  it('accepts an expected answer and an expected status', () => {
+    expect(task.expect.answer).toEqual({ ip: server.ip });
+    expect(NAMES.tasks[1].expect.status).toBe('NXDOMAIN');
+    expect(accepts(NAMES)).toBe(true);
+    expect(accepts(expecting({ answer: { ip: server.ip, alias: true } }))).toBe(true);
+    expect(accepts(expecting({ answer: { alias: false } }))).toBe(true);
+    expect(accepts(expecting({ answer: undefined, status: 'SERVFAIL' }))).toBe(true);
+    expect(accepts(expecting({ answer: { alias: true }, status: 'NXDOMAIN' }))).toBe(true);
+  });
+
+  it('rejects an expected answer with nothing in it, a bad IP and a status no dig ends with', () => {
+    expect(accepts(expecting({ answer: {} }))).toBe(false);
+    expect(accepts(expecting({ answer: { ip: '198.51.100.300' } }))).toBe(false);
+    expect(accepts(expecting({ status: 'REFUSED' }))).toBe(false);
+    expect(accepts(expecting({ outcome: undefined }))).toBe(false);
+  });
+});
+
+describe('the card a piece opens first', () => {
+  const opening = (opensFirst: Record<string, string>) => withSend({ opensFirst });
+
+  it('accepts the card a piece opens first and rejects a card the piece does not have', () => {
+    expect(NAMES.send.opensFirst).toEqual({ 'your-laptop': 'settings' });
+    expect(accepts(opening({ 'your-laptop': 'terminal' }))).toBe(true);
+    expect(accepts(opening({ 'lucia-laptop': 'services', [provider.id]: 'routes', [NAME_SERVERS.authoritative.id]: 'records' }))).toBe(true);
+    expect(accepts(opening({ 'lucia-laptop': 'terminal' }))).toBe(false);
+    expect(accepts(opening({ 'your-laptop': 'services' }))).toBe(false);
+    expect(accepts(opening({ 'lucia-laptop': 'settings' }))).toBe(false);
+    expect(accepts(opening({ [provider.id]: 'records' }))).toBe(false);
+    expect(accepts(opening({ printer: 'terminal' }))).toBe(false);
+    expect(accepts(opening({ 'your-laptop': 'cache' }))).toBe(false);
+  });
+
+  it('lists the cards of a piece in the order it opens them, and opens first the one the incident names or, with none, the first it has', () => {
+    const { send } = NAMES;
+    expect(cardsOfPiece(send, 'your-laptop')).toEqual(['terminal', 'settings']);
+    expect(cardsOfPiece(send, 'lucia-laptop')).toEqual(['services']);
+    expect(cardsOfPiece(send, provider.id)).toEqual(['routes']);
+    expect(cardsOfPiece(send, NAME_SERVERS.authoritative.id)).toEqual(['records']);
+    expect(cardsOfPiece(send, 'printer')).toEqual([]);
+    expect(firstCardOf(send, 'your-laptop')).toBe('settings');
+    expect(firstCardOf({ ...send, opensFirst: undefined }, 'your-laptop')).toBe('terminal');
+    expect(firstCardOf(send, 'lucia-laptop')).toBe('services');
+    expect(firstCardOf(send, 'printer')).toBeUndefined();
+    expect(firstCardOf(gatewayIncident().send, 'your-laptop')).toBe('terminal');
+  });
+});
+
+describe('a case with a fix', () => {
+  const repairable = repairableDiagnoseIncident();
+  const index = repairable.diagnose.cases.findIndex(({ fix }) => fix);
+  const [fixed] = repairable.diagnose.cases.filter(({ fix }) => fix);
+  const fix = fixed.fix!;
+  const withFix = (patch: Record<string, unknown>) => ({ ...repairable, diagnose: { cases: repairable.diagnose.cases.map((spec, at) => (at === index ? { ...spec, fix: { ...fix, ...patch } } : spec)) } });
+
+  it('accepts a case with a fix and rejects a fix whose tasks name chips the case does not offer', () => {
+    expect(accepts(repairable)).toBe(true);
+    expect(accepts(diagnoseIncident())).toBe(true);
+    const [task] = fix.tasks;
+    for (const expectation of [{ toId: 'ghost' }, { fromId: 'ghost' }, { messageId: 'ghost' }]) {
+      expect(accepts(withFix({ tasks: [{ ...task, expect: { ...task.expect, ...expectation } }] })), JSON.stringify(expectation)).toBe(false);
+    }
+  });
+
+  it('rejects a fix with no table or no task, a repeated table or task id, and a table of a record that is not valid', () => {
+    const [table] = fix.tables;
+    const [task] = fix.tasks;
+    expect(accepts(withFix({ tables: [] }))).toBe(false);
+    expect(accepts(withFix({ tasks: [] }))).toBe(false);
+    expect(accepts(withFix({ tables: [table, table] }))).toBe(false);
+    expect(accepts(withFix({ tasks: [task, task] }))).toBe(false);
+    expect(accepts(withFix({ tables: [{ ...table, kind: 'cache' }] }))).toBe(false);
+    expect(accepts(withFix({ tasks: [{ ...task, text: 'La {{puerta}} falla.' }] }))).toBe(false);
+  });
+
+  it('keeps the other cases, which have no fix, as they were', () => {
+    expect(repairable.diagnose.cases.filter((spec) => !spec.fix)).toHaveLength(repairable.diagnose.cases.length - 1);
+    expect(fixed.fix).toBeDefined();
+  });
+});
+
+describe('the card that classifies in an identify incident', () => {
+  const CLASSIFY = classifyIncident();
+  const { classify } = CLASSIFY.identify;
+  const withClassify = (patch: Record<string, unknown>) => ({ ...CLASSIFY, identify: { ...CLASSIFY.identify, classify: { ...classify, ...patch } } });
+
+  it('accepts an identify incident whose card classifies other devices into two named bins around a CIDR block', () => {
+    expect(accepts(CLASSIFY)).toBe(true);
+    expect(classify).toMatchObject({ deviceId: 'your-laptop', cidr: floor1.cidr, items: ['printer', 'andres-laptop'] });
+    expect(classify?.bins.map(({ name }) => name)).toEqual([`Dentro de ${floor1.cidr}`, 'Fuera']);
+    expect(accepts({ ...CLASSIFY, identify: { cards: CLASSIFY.identify.cards } })).toBe(false);
+    expect(accepts(withClassify({ cidr: '192.168.1.0/28' }))).toBe(true);
+  });
+
+  it('rejects a classify card whose block is not a CIDR block, whose bins repeat an id or whose items repeat a device', () => {
+    for (const cidr of ['mi-red', floor1.you, '192.168.1.0/33', '192.168.1.300/24', '']) expect(accepts(withClassify({ cidr })), cidr).toBe(false);
+    const [inside, outside] = classify!.bins;
+    expect(accepts(withClassify({ bins: [inside, { ...outside, id: inside.id }] }))).toBe(false);
+    expect(accepts(withClassify({ bins: [inside] }))).toBe(false);
+    expect(accepts(withClassify({ bins: [inside, outside, { id: 'maybe', name: 'Tal vez' }] }))).toBe(false);
+    expect(accepts(withClassify({ items: ['printer', 'printer'] }))).toBe(false);
+    expect(accepts(withClassify({ items: [] }))).toBe(false);
+    expect(accepts(withClassify({ items: ['printer', 'your-laptop'] }))).toBe(false);
+    expect(accepts(withClassify({ trayId: '' }))).toBe(false);
+  });
+
+  it('an identify task can expect the bin of a classified item and the solution can answer for it', () => {
+    const [block, printer, andres] = CLASSIFY.tasks;
+    expect(printer.expect).toEqual({ deviceId: 'printer', trayId: classify!.trayId, chipId: 'inside' });
+    expect(CLASSIFY.solution).toContainEqual({ type: 'answerCard', deviceId: 'printer', picks: { [classify!.trayId]: 'inside' } });
+    for (const expectation of [{ chipId: 'ghost' }, { trayId: 'ghost' }, { deviceId: 'guest-laptop' }, { deviceId: 'your-laptop' }]) {
+      expect(accepts({ ...CLASSIFY, tasks: [block, { ...andres, expect: { ...andres.expect, ...expectation } }] }), JSON.stringify(expectation)).toBe(false);
+    }
+    const answering = (move: Record<string, unknown>) => ({ ...CLASSIFY, solution: [...CLASSIFY.solution, { type: 'answerCard', ...move }] });
+    expect(accepts(answering({ deviceId: 'printer', picks: { [classify!.trayId]: 'ghost' } }))).toBe(false);
+    expect(accepts(answering({ deviceId: 'guest-laptop', picks: { [classify!.trayId]: 'inside' } }))).toBe(false);
+    expect(accepts(answering({ deviceId: 'printer', picks: { [classify!.trayId]: 'outside' } }))).toBe(true);
+  });
+
+  it('keeps the tray of a classified item apart from the trays of its own card', () => {
+    const [yourCard] = CLASSIFY.identify.cards;
+    const printerCard = { deviceId: 'printer', trays: [{ id: classify!.trayId, name: 'Otra', chips: yourCard.trays[0].chips }] };
+    expect(accepts({ ...CLASSIFY, identify: { ...CLASSIFY.identify, cards: [yourCard, printerCard] } })).toBe(false);
+    expect(accepts({ ...CLASSIFY, identify: { ...CLASSIFY.identify, cards: [yourCard, { ...printerCard, trays: [{ ...printerCard.trays[0], id: 'ip' }] }] } })).toBe(true);
+  });
+
+  it('lists the devices the card that classifies holds that the world does not have, its owner first', () => {
+    expect(unknownClassifiedDeviceIds(CLASSIFY, officeTwoFloorsNet())).toEqual([]);
+    expect(unknownClassifiedDeviceIds(CLASSIFY, officeNet())).toEqual(['andres-laptop']);
+    expect(unknownClassifiedDeviceIds({ ...CLASSIFY, identify: { cards: CLASSIFY.identify.cards, classify: { ...classify!, deviceId: 'ghost' } } }, officeTwoFloorsNet())).toEqual(['ghost']);
+    expect(unknownClassifiedDeviceIds(identifyIncident(), officeNet())).toEqual([]);
+    expect(unknownClassifiedDeviceIds(sendIncident(), officeNet())).toEqual([]);
+  });
+});
+
+describe('what an incident of chapter 2 draws and says', () => {
+  const world = officeWithNames();
+  const everything = ['your-laptop', 'lucia-laptop', server.id, provider.id, NAME_SERVERS.authoritative.id, officeRouter.id];
+
+  it('asks the list of shown pieces for the devices that settings belong to, the owners of the tables and the routers a next hop chip names', () => {
+    expect(missingShownIds({ ...NAMES, shown: everything }, world)).toEqual([]);
+    expect(missingShownIds({ ...NAMES, shown: ['your-laptop', server.id] }, world)).toEqual(['lucia-laptop', provider.id, NAME_SERVERS.authoritative.id, officeRouter.id]);
+    expect(missingShownIds({ ...NAMES, shown: everything.filter((id) => id !== officeRouter.id) }, world)).toEqual([officeRouter.id]);
+  });
+
+  it('asks the list of shown pieces of a case for the owners of its fix and of an identify incident for the devices its card classifies', () => {
+    const repairable = repairableDiagnoseIncident();
+    const [fixed] = repairable.diagnose.cases.filter(({ fix }) => fix);
+    const only = { ...fixed, shown: ['marta-laptop', server.id] };
+    expect(missingShownIds(repairable, officeTwoFloorsNet(), only)).toEqual([OFFICE_FLOORS.backbone.id, OFFICE_FLOORS.provider.id]);
+    const classifying = classifyIncident();
+    expect(missingShownIds({ ...classifying, shown: ['your-laptop'] }, officeTwoFloorsNet())).toEqual(['printer', 'andres-laptop']);
+    expect(missingShownIds({ ...classifying, shown: ['your-laptop', 'printer', 'andres-laptop'] }, officeTwoFloorsNet())).toEqual([]);
+  });
+
+  it('reads the labels of the tables and of the clock, and the texts of the fix of a case, as texts of the incident', () => {
+    const labelled = withSend({ tables: [{ ...ROUTES, trays: { ...ROUTES.trays, nextHop: [{ id: 'hop', label: '{{next-hop}}', value: officeRouter.id }] } }, RECORDS], clock: { steps: [{ id: 'wait', label: 'Esperar {{dns-ttl}}', seconds: 60 }] } });
+    expect(incidentTexts(labelled as unknown as SendIncident)).toEqual(expect.arrayContaining(['{{next-hop}}', 'Esperar {{dns-ttl}}']));
+    expect(incidentTexts(NAMES)).toEqual(expect.arrayContaining([...ROUTES.trays.destination.map(({ label }) => label), ...NAMES.send.clock!.steps.map(({ label }) => label)]));
+    const repairable = repairableDiagnoseIncident();
+    expect(incidentTexts(repairable)).toEqual(expect.arrayContaining(['Que vuelva el {{ping}} al servidor.']));
+    expect(incidentTexts(diagnoseIncident())).not.toContain('Que vuelva el {{ping}} al servidor.');
   });
 });

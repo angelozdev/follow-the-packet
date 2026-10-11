@@ -17,7 +17,7 @@ import {
   type SendIncident,
   type SendOwner,
 } from '@/levels';
-import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, ping, withDevice } from './fixtures';
+import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, officeWithNames, ping, withDevice } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
 export function filterIncident(id: string): FilterIncident {
@@ -351,4 +351,98 @@ export function diagnoseIncident(): DiagnoseIncident {
       ],
     },
   };
+}
+
+type TableSpec = NonNullable<SendIncident['send']['tables']>[number];
+
+const chipsOf = <Value extends string>(...values: Value[]) => values.map((value) => ({ id: value, label: value, value }));
+
+/** Returns a table of routes for the owner, with a chip for each destination and each next hop. */
+function routesTable(id: string, ownerId: string, destinations: string[], nextHops: string[]): TableSpec {
+  return { id, kind: 'routes', ownerId, trays: { destination: chipsOf(...destinations), nextHop: chipsOf(...nextHops) } };
+}
+
+/** Returns a send incident on the office with names (`officeWithNames`), with every term introduced, that offers what chapter 2 adds to the contract: from your laptop, a ping, an `nc` to the port 3000 and a `dig`, to the IP of laptop-lucia, to a name of the zone and to the IP of the server; the settings of the resolver of your laptop and of the listen address of the port 3000 of laptop-lucia; a table of routes of the provider and one of records of the authoritative server; a clock with two steps; and the tasks that the `dig` of the name answers with the IP of the server, and that the `dig` of a name nobody holds ends as NXDOMAIN. Your laptop opens its settings first. */
+export function namesSendIncident(): SendIncident {
+  const { floor1, server, officeRouter, provider, range } = OFFICE_FLOORS;
+  const { zone, authoritative, resolver } = NAME_SERVERS;
+  const chip = (id: string, value: string | null) => ({ id, label: value ?? 'Ninguno', value });
+  const dig = { fromId: 'you', messageId: 'dig', outcome: 'replied' } as const;
+  return {
+    ...routedSendIncident(),
+    base: officeWithNames(),
+    tasks: [
+      { id: 'www', text: 'Que el {{dig}} de www dé la IP del servidor.', expect: { ...dig, toId: 'www', answer: { ip: server.ip } } },
+      { id: 'missing', text: 'Que el {{dig}} de un nombre sin dueño dé {{nxdomain}}.', expect: { ...dig, toId: 'missing', status: 'NXDOMAIN' } },
+    ],
+    send: {
+      from: [{ id: 'you', endpoint: device('your-laptop') }],
+      to: [
+        { id: 'lucia', address: floor1.lucia },
+        { id: 'www', address: `www.${zone}` },
+        { id: 'missing', address: `nadie.${zone}` },
+        { id: 'server', address: server.ip },
+      ],
+      message: [
+        { id: 'ping', label: '{{ping}}', command: 'ping', icmpType: 8 },
+        { id: 'nc', label: '{{nc}} · puerto 3000', command: 'nc', protocol: 'tcp', port: 3000 },
+        { id: 'dig', label: '{{dig}}', command: 'dig' },
+      ],
+      settings: [
+        { id: 'resolver', deviceId: 'your-laptop', kind: 'dns-server', name: '{{resolver}}', chips: [chip('none', null), chip('resolver', resolver.ip)] },
+        {
+          id: 'app',
+          deviceId: 'lucia-laptop',
+          kind: 'listen-address',
+          service: { protocol: 'tcp', port: 3000 },
+          name: '{{listen-address}}',
+          chips: [chip('all', 'all'), chip('loopback', 'loopback')],
+        },
+      ],
+      tables: [
+        routesTable('routes', provider.id, ['default', range], [officeRouter.id]),
+        { id: 'records', kind: 'records', ownerId: authoritative.id, trays: { name: chipsOf(`www.${zone}`), type: chipsOf('A', 'CNAME'), value: chipsOf(server.ip) } },
+      ],
+      clock: { steps: [{ id: 'one-minute', label: 'Esperar 1 min', seconds: 60 }, { id: 'five-minutes', label: 'Esperar 5 min', seconds: 300 }] },
+      opensFirst: { 'your-laptop': 'settings' },
+    },
+    solution: [{ type: 'sendPacket', fromId: 'you', toId: 'www', messageId: 'dig' }],
+  };
+}
+
+/** Returns an identify incident on the office of the map that grows whose card of your laptop asks for its block and classifies the printer and laptop-andres into the bins "Dentro de 192.168.1.0/24" and "Fuera". The printer is inside the block and laptop-andres, on the other floor, is outside. */
+export function classifyIncident(): IdentifyIncident {
+  const { floor1 } = OFFICE_FLOORS;
+  const base = identifyIncident();
+  const answer = (item: string, binId: string) => ({ type: 'answerCard', deviceId: item, picks: { bin: binId } }) as const;
+  return {
+    ...base,
+    tasks: [
+      { id: 'block', text: 'Que el bloque de tu-laptop sea {{cidr}}.', expect: { deviceId: 'your-laptop', trayId: 'block', chipId: 'right' } },
+      { id: 'printer', text: 'Que la impresora quede dentro del bloque.', expect: { deviceId: 'printer', trayId: 'bin', chipId: 'inside' } },
+      { id: 'andres', text: 'Que laptop-andres quede fuera del bloque.', expect: { deviceId: 'andres-laptop', trayId: 'bin', chipId: 'outside' } },
+    ],
+    identify: {
+      cards: [
+        {
+          deviceId: 'your-laptop',
+          question: '¿Cuál es su bloque?',
+          trays: [{ id: 'block', name: 'Bloque', chips: [{ id: 'right', label: floor1.cidr, feedback: 'Correcto.' }, { id: 'small', label: `${floor1.you}/28`, feedback: 'Ese bloque es más chico.' }] }],
+        },
+      ],
+      classify: { deviceId: 'your-laptop', cidr: floor1.cidr, trayId: 'bin', bins: [{ id: 'inside', name: `Dentro de ${floor1.cidr}` }, { id: 'outside', name: 'Fuera' }], items: ['printer', 'andres-laptop'] },
+    },
+    solution: [{ type: 'answerCard', deviceId: 'your-laptop', picks: { block: 'right' } }, answer('printer', 'inside'), answer('andres-laptop', 'outside')],
+  };
+}
+
+/** Returns a diagnose incident whose fifth case, a loop between two routers, has a fix: the table of routes of the backbone, with the default route and the range of the office as destinations and the provider as next hop, and the task that the ping to the server comes back. */
+export function repairableDiagnoseIncident(): DiagnoseIncident {
+  const { backbone, provider, range } = OFFICE_FLOORS;
+  const incident = diagnoseIncident();
+  const fix: NonNullable<CaseSpec['fix']> = {
+    tables: [routesTable('routes', backbone.id, ['default', range], [provider.id])],
+    tasks: [{ id: 'server', text: 'Que vuelva el {{ping}} al servidor.', expect: { fromId: 'origin', toId: 'server', messageId: 'ping', outcome: 'replied' } }],
+  };
+  return { ...incident, diagnose: { cases: incident.diagnose.cases.map((spec) => (spec.id === 'case-5' ? { ...spec, fix } : spec)) } };
 }

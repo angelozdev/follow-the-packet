@@ -1,6 +1,6 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
 import type { Direction, FirewallKind } from '@/engine';
-import { isGuided, type Incident } from './contract/incident';
+import { isGuided, type CaseSpec, type Incident, type TableSpec } from './contract/incident';
 
 export interface ConfigurableParts {
   inboundRules: Record<FirewallKind, boolean>;
@@ -59,10 +59,25 @@ function settingTexts(incident: Incident): TermText[] {
   return (incident.send.settings ?? []).flatMap((setting) => [setting.name, ...setting.chips.map((chip) => chip.label)]);
 }
 
-/** Returns the texts of the cases of a diagnose incident: for each case its report, its hints, its question and the text and the feedback of each cause; none for any other incident. */
+/** Returns the label of every chip of the trays of the tables the player edits. */
+function tableTexts(tables: TableSpec[]): TermText[] {
+  return tables.flatMap((table) => Object.values<{ label: TermText }[]>(table.trays).flatMap((chips) => chips.map((chip) => chip.label)));
+}
+
+/** Returns the texts the tables and the clock of a send incident show: the label of each chip of each table and of each step of the clock; none for any other incident. */
+function editorTexts(incident: Incident): TermText[] {
+  if (incident.mechanic !== 'send') return [];
+  return [...tableTexts(incident.send.tables ?? []), ...(incident.send.clock?.steps ?? []).map((step) => step.label)];
+}
+
+function fixTexts({ fix }: CaseSpec): TermText[] {
+  return fix ? [...tableTexts(fix.tables), ...fix.tasks.map((task) => task.text)] : [];
+}
+
+/** Returns the texts of the cases of a diagnose incident: for each case its report, its hints, its question, the text and the feedback of each cause and, when it has a fix, the chips of its tables and the text of its tasks; none for any other incident. */
 function caseTexts(incident: Incident): TermText[] {
   if (incident.mechanic !== 'diagnose') return [];
-  return incident.diagnose.cases.flatMap((spec) => [spec.report, ...spec.hints, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback])]);
+  return incident.diagnose.cases.flatMap((spec) => [spec.report, ...spec.hints, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback]), ...fixTexts(spec)]);
 }
 
 /** Returns the texts of the follow-up of an incident: the hints, the question and the explanation of one that has tasks, and the texts of the cases of a diagnose. */
@@ -71,7 +86,7 @@ function followUpTexts(incident: Incident): TermText[] {
   return [...incident.hints, ...(incident.question ? [incident.question] : []), ...incident.explanation.flatMap((option) => [option.text, option.feedback])];
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings of a send incident, hints, the question, the explanation and the takeaway; for a diagnose, the texts of each case instead of the tasks, the hints, the question and the explanation. */
+/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings, tables and clock of a send incident, hints, the question, the explanation and the takeaway; for a diagnose, the texts of each case instead of the tasks, the hints, the question and the explanation. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
@@ -79,6 +94,7 @@ export function incidentTexts(incident: Incident): TermText[] {
     ...chipLabels(incident),
     ...cardTexts(incident),
     ...settingTexts(incident),
+    ...editorTexts(incident),
     ...followUpTexts(incident),
     incident.takeaway,
   ];

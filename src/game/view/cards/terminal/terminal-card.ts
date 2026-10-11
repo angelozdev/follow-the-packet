@@ -65,7 +65,7 @@ function lineKindOf(message: MessageChip): NonNullable<MessageChip['command']> |
   return packetMessage({ protocol: 'icmp', icmpType: message.icmpType }) === 'echo-request' ? 'ping' : 'handmade';
 }
 
-/** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. Null until the address and the message (and, for a packet, the origin) are picked. */
+/** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. An `nc` and a `dig` have no line yet: null. Null until the address and the message (and, for a packet, the origin) are picked. */
 export function terminalLine(session: Session, { from, to, message }: Partial<SendPicks>): TermText | null {
   const offers = sendingOf(session);
   const address = offers?.send.to.find((chip) => chip.id === to)?.address;
@@ -82,5 +82,8 @@ export function terminalLine(session: Session, { from, to, message }: Partial<Se
     }
     case 'handmade':
       return TERMINAL_TEXT.handmade(picked.label, address);
+    case 'nc':
+    case 'dig':
+      return null;
   }
 }

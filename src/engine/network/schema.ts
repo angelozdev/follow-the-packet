@@ -21,11 +21,12 @@ function isCidr(value: string): boolean {
   }
 }
 
-const cidr = z.string().refine(isCidr, 'invalid CIDR');
+/** A range written as an IPv4 address and a prefix, such as 192.168.1.0/24. */
+export const cidr = z.string().refine(isCidr, 'invalid CIDR');
 const PORT_MAX = 65535;
 const port = z.number().int().min(0).max(PORT_MAX);
 /** A port a program binds or a packet leaves from: from 1 to 65535, since IANA marks port 0 as reserved. */
-const realPort = z.number().int().min(1).max(PORT_MAX);
+export const realPort = z.number().int().min(1).max(PORT_MAX);
 const nonEmpty = z.string().min(1);
 const latencyMs = z.number().nonnegative();
 const UINT32_MAX = 4294967295;
@@ -65,10 +66,13 @@ export const firewallSchema = z.object({
   outbound: z.array(ruleSchema),
 });
 
+/** Where a service listens: on every IP of the device (`all`) or only on 127.0.0.1 (`loopback`). */
+export const listenSchema = z.enum(['all', 'loopback']);
+
 export const serviceSchema = z.object({
   protocol: z.enum(['tcp', 'udp']),
   port: realPort,
-  listen: z.enum(['all', 'loopback']),
+  listen: listenSchema,
 });
 
 export const soaSchema = z.object({ mname: nonEmpty, rname: nonEmpty, serial: unsigned32, refresh: unsigned32, retry: unsigned32, expire: unsigned32, minimum: unsigned32 });
