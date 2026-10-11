@@ -31,13 +31,18 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove):
   return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule, direction });
 }
 
-/** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in game order. */
-export function startWorld(incidents: Incident[], incidentId: string): Network {
+/** Returns the world the changes of an incident are made on: the reference solution of the previous incident of its chapter, or, for the one that opens its chapter and has no changes, its base world. Incidents come in game order. */
+export function worldBeforeChanges(incidents: Incident[], incidentId: string): Network {
   const incident = findIncident(incidents, incidentId);
   if (incident.base) return incident.base;
   const previous = incidents.filter((i) => i.chapter === incident.chapter && i.order < incident.order).at(-1);
   if (!previous) throw new Error(`${incidentId} has changes but no previous incident`);
-  return (incident.changes ?? []).reduce(applyAction, solvedWorld(incidents, previous.id));
+  return solvedWorld(incidents, previous.id);
+}
+
+/** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in game order. */
+export function startWorld(incidents: Incident[], incidentId: string): Network {
+  return (findIncident(incidents, incidentId).changes ?? []).reduce(applyAction, worldBeforeChanges(incidents, incidentId));
 }
 
 /** Returns the world a case of a diagnose incident starts from: the world the incident starts from (`start`) plus the changes of the case itself, never the world of the case before. */

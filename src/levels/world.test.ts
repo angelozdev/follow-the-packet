@@ -5,7 +5,7 @@ import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
 import { INCIDENTS } from './registry';
-import { applyMove, caseWorld, solvedWorld, startWorld } from './world';
+import { applyMove, caseWorld, solvedWorld, startWorld, worldBeforeChanges } from './world';
 
 function incident(id: string): Incident {
   const found = INCIDENTS.find((i) => i.id === id);
@@ -31,6 +31,12 @@ describe('the world that grows', () => {
     const start = startWorld(INCIDENTS, '04-02');
     expect(start).toEqual((incident('04-02').changes ?? []).reduce(applyAction, solvedWorld(INCIDENTS, '04-01')));
     expect(inbound(start, SG.servidor2)).toEqual([DAY_SHIFT_RULE]);
+  });
+
+  it('worldBeforeChanges is the base world of the incident that opens a chapter and the solution of the incident before it for the rest', () => {
+    expect(worldBeforeChanges(INCIDENTS, '04-01')).toBe(incident('04-01').base);
+    expect(worldBeforeChanges(INCIDENTS, '04-02')).toEqual(solvedWorld(INCIDENTS, '04-01'));
+    expect((incident('04-02').changes ?? []).reduce(applyAction, worldBeforeChanges(INCIDENTS, '04-02'))).toEqual(startWorld(INCIDENTS, '04-02'));
   });
 
   it.each(IDS)('%s starts and ends with a valid network, and so does every case of a diagnose', (id) => {
