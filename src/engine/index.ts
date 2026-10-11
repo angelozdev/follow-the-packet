@@ -25,6 +25,8 @@ export { facesALan } from './network/addressing/routing';
 export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { ipInCidr, isIpv4, isLoopbackIpv4 } from './network/addressing/cidr';
 export { simulate } from './simulation/simulate';
+export { simulateSequence } from './simulation/sequence';
+export type { Send } from './simulation/sequence';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/paths/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/paths/traceroute';
 export { OUTCOMES } from './simulation/trace';
