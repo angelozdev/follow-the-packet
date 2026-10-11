@@ -129,6 +129,11 @@ export function shownOf(incident: Incident, spec?: CaseSpec | null): string[] | 
   return spec?.shown ?? incident.shown;
 }
 
+/** True when a send incident draws its routers only once a traceroute the player sent names them: its list of shown pieces holds them, and they wait. Any other incident draws every router it lists from the start. */
+export function revealsRoutersByTraceroute(incident: Incident): boolean {
+  return incident.mechanic === 'send' && incident.revealRoutersByTraceroute === true;
+}
+
 /** Returns the ids in the list of shown pieces that name no device, router or actor of the world: a firewall is drawn with its device and is not listed by itself. An incident with no list draws the whole world, so it has none. A case of a diagnose incident is checked in its own world, against its own list or the incident's. */
 export function unknownShownIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
   const placed = new Set(placedIds(world));

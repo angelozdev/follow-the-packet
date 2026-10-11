@@ -27,12 +27,13 @@ const ECHO_REQUEST = 'ICMP · Echo Request';
 const LUCIA_CHIP = 'laptop-lucia (IP 192.168.1.11)';
 const OUTBOUND_TAB = /^salida$/i;
 const PING_TTLS = [1, 2, 3, 64];
-const TRACEROUTE_MESSAGES = ['ping', 'traceroute'];
+const PING_MESSAGE = 'ping';
+const TRACEROUTE_MESSAGES = [PING_MESSAGE, 'traceroute'];
 const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/;
 const LOST_TO_ANDRES = /^Paquete: ping de tu-laptop a 192\.168\.2\.15\. Perdido\.$/;
 const ARRIVED_AT_SERVER = /^Paquete: ping de tu-laptop a servidor-internet\. Llegó\.$/;
 const LOST_TO_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
-const LOST_TO_SERVER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/;
+export const LOST_TO_SERVER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/;
 const WARNED_BY_ROUTER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
 
 export interface PlayedIncident {
@@ -66,6 +67,11 @@ async function sendEach(terminal: Locator, messages: string[]) {
 /** Sends the pings that leave your laptop with each TTL the incident offers. */
 export async function sendThePingsWithTtl(terminal: Locator) {
   await sendEach(terminal, PING_TTLS.map((ttl) => `ping con TTL ${ttl}`));
+}
+
+/** Sends only the ping of 01-10 from the open terminal: the player has not run a traceroute yet. */
+export async function sendOnlyThePing(terminal: Locator) {
+  await sendMessage(terminal, PING_MESSAGE);
 }
 
 /** Sends a ping and then a traceroute from the open terminal. */
@@ -170,7 +176,7 @@ async function playCountingHops(page: Page) {
 
 async function playSeeingThePath(page: Page) {
   const terminal = await openTerminal(page);
-  await sendMessage(terminal, 'ping');
+  await sendOnlyThePing(terminal);
   await expect(page.getByRole('button', { name: LOST_TO_SERVER })).toBeVisible();
   await sendMessage(terminal, 'traceroute');
   const route = terminal.getByRole('list', { name: 'Salida de traceroute' });

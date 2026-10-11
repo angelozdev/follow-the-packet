@@ -1,7 +1,8 @@
-import { INSPECTION_TEXT, TERMINAL_TEXT, describeOutcome, roundTripText, type TermId, type TermText } from '@/copy';
+import { INSPECTION_TEXT, TERMINAL_TEXT, describeOutcome, roundTripText, type TermText } from '@/copy';
 import type { TracerouteLine, UnreachableKind } from '@/engine';
 import type { Session } from '@/game/session';
 import { routerPlace } from '@/game/view/router-place';
+import { routerWithIp, visibleIp } from '@/game/view/revealed-routers';
 import type { SendPicks } from './terminal-card';
 
 /** One line of the output of a traceroute: the hop number, the IP that answered (a star when nobody did, or where the router stands when the map does not draw it), the time as text and, on the last line of a warning that the destination cannot be reached, its mark. */
@@ -21,16 +22,9 @@ export interface TracerouteView {
 
 const UNREACHABLE_KINDS = Object.keys(TERMINAL_TEXT.route.marks) as UnreachableKind[];
 
-/** Returns the IP that answered when the player can see the answer: the destination always, and a warning once its term is known; an unknown warning is seen as a hop nobody answered. */
-function visibleIp(line: TracerouteLine, known: ReadonlySet<TermId>): string | undefined {
-  if (line.reached) return line.ip;
-  const warning: TermId = line.unreachable ? 'host-unreachable' : 'time-exceeded';
-  return known.has(warning) ? line.ip : undefined;
-}
-
 /** Returns the IP as the line shows it: itself, or, for a router the map does not draw, only where it stands. */
 function addressOf(session: Session, ip: string): string {
-  const router = (session.world.routers ?? []).find((candidate) => candidate.interfaces.some((face) => face.ip === ip));
+  const router = routerWithIp(session.world, ip);
   const place = router ? routerPlace(session, router.id) : 'named';
   return place === 'named' ? ip : INSPECTION_TEXT.place[place];
 }

@@ -1,6 +1,6 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeOutcome, describeReason, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketHeader, type PacketSpec, type Router, type ServerActor, type Trace } from '@/engine';
-import type { PacketRun } from '@/game/flow-runs';
+import { routerOutOfSight, type PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
@@ -228,16 +228,17 @@ function packet(session: Session, run: PacketRun): Inspection {
   const step = stopStep(run.trace);
   const { header, hops } = run.trace;
   const traced = 'route' in run && run.route !== undefined;
+  const knowsTheRoute = routerOutOfSight(session.incident, run) === undefined;
   const options = { ttl: !traced, local: leavesTheOffice(run.trace) };
   return {
     entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.intruder },
     title: run.label,
     fields: [
       ...visible([...definition(traced ? 'traceroute' : packetTerm(run.packet, session.known)), ...messageField(run.packet), ...(header ? headerFields(header, session.known, options) : [])], session.known),
-      ...pathField(session, hops),
+      ...pathField(session, knowsTheRoute ? hops : []),
       { label: INSPECTION_TEXT.result, lines: [describeOutcome(run.trace.outcome, session.known, run.trace.destinationId ? deviceName(session.world, run.trace.destinationId) : undefined)] },
       ...roundTripField(session, run),
-      ...(step ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
+      ...(step && knowsTheRoute ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
     ],
   };
 }

@@ -417,7 +417,7 @@ function toResponder(points: Vec2[], trace: Trace, layout: Layout): Vec2[] {
   return spot ? [...points, spot] : points;
 }
 
-/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address, to an address that is not valid or to an IP that nobody in its network has (its own device warns, so nothing goes out), at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true a firewall the map does not draw stopped it, so there is nothing in front of the device to stop at: it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out. */
+/** Returns the points the packet travels along its trace, ending where it stopped: at its own doorstep for a packet to its own IP, to a loopback address, to an address that is not valid or to an IP that nobody in its network has (its own device warns, so nothing goes out), at the far end of the road when no device has its IP, in the internet when the internet does not deliver it, in front of the firewall that drops it. It crosses the edge only while the map shows the outside, and goes through the routers of its trace that the map draws, in order: it ends at the router that drops it, or, when the map does not draw that router, half way between the last stop it crossed and the next one. When `hiddenStop` is true what stopped it is something the player cannot place: a firewall the map does not draw, so there is nothing in front of the device to stop at (it ends at the door of the device that has the firewall, going in, and stays at its own doorstep, going out), or a router that dropped it, where the sender cannot know it died (it stays at the doorstep of its sender, never along the routers). */
 export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hiddenStop = false): Vec2[] {
   const from = packet.from;
   const source = from.kind === 'device' ? layout.devices[from.id] : undefined;
@@ -425,6 +425,7 @@ export function pathFor(trace: Trace, packet: PacketSpec, layout: Layout, hidden
   if (from.kind === 'device' && !source) return [[layout.roadToX, layout.roadZ]];
   const points: Vec2[] = source ? [source.door, source.firewall, source.road] : [spotOfActor(layout, from.id) ?? layout.internet, layout.internet];
 
+  if (source && hiddenStop && routerThatDrops(trace) !== undefined) return [source.door, source.doorstep];
   if (trace.steps.some((s) => s.stage === 'firewall-out' && s.verdict === 'drop')) return source && hiddenStop ? [source.door, source.doorstep] : points.slice(0, 2);
   if (trace.steps.some((s) => NOBODY_HAS_IT.includes(s.reason.code))) return [...points, [layout.roadToX, layout.roadZ]];
   if (layout.outside && trace.steps.some((s) => s.stage === 'nat' || (s.stage === 'route' && EDGE_PLACES.includes(s.at)))) points.push(layout.edge);

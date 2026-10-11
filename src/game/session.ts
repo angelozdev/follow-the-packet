@@ -6,6 +6,7 @@ import {
   configurableParts,
   isGuided,
   knownTerms,
+  revealsRoutersByTraceroute,
   startWorld,
   type AnswerMove,
   type CaseSpec,
@@ -18,7 +19,7 @@ import {
   type SendOwner,
   type SettingMove,
 } from '@/levels';
-import { runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
+import { hideStopsOutOfSight, runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
 import { earnsMiddle, everyCauseAtFirstTry, noHintInAnyCase, type CaseResult, type Stars } from './stars';
 import { failingTaskIds, type Answers } from './tasks';
 
@@ -71,6 +72,14 @@ function initialAnswers(incident: Incident): Answers {
   return Object.fromEntries(picked.filter(([, picks]) => Object.keys(picks).length > 0));
 }
 
+/** Returns the session with the stop of every run hidden that the player cannot place: in an incident whose routers wait for a traceroute, a packet that vanished at a router out of sight keeps its stop hidden before and after a traceroute. The same session when nothing changes, and always for any other incident. */
+function hideStops(state: Session): Session {
+  if (!revealsRoutersByTraceroute(state.incident)) return state;
+  const runs = hideStopsOutOfSight(state.incident, state.runs);
+  const sent = hideStopsOutOfSight(state.incident, state.sent);
+  return runs === state.runs && sent === state.sent ? state : { ...state, runs, sent };
+}
+
 /** Starts an incident from its canonical world, with Lucía's reply empty and every initial pick of its cards as the answer saved. A diagnose starts at its first case, whose world is the one the incident starts from plus the changes of that case. */
 export function startSession(incidents: Incident[], incidentId: string): Session {
   const incident = incidents.find((i) => i.id === incidentId);
@@ -79,7 +88,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
   const start = startWorld(incidents, incidentId);
   const world = incident.mechanic === 'diagnose' ? caseWorld(start, incident.diagnose.cases[0]) : start;
   const runs = runFlows(world, incident.flows, known);
-  return {
+  return hideStops({
     incident,
     known,
     parts: configurableParts(known),
@@ -98,7 +107,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     caseIndex: 0,
     caseResults: [],
     named: [],
-  };
+  });
 }
 
 /** Returns the case a diagnose incident is on; null for any other incident. */
@@ -218,7 +227,7 @@ function nextCase(state: Session): Session {
   return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], hintsShown: 0, named: [] };
 }
 
-export function sessionReducer(state: Session, action: SessionAction): Session {
+function reduce(state: Session, action: SessionAction): Session {
   switch (action.type) {
     case 'placeRule':
     case 'removeRule':
@@ -242,6 +251,10 @@ export function sessionReducer(state: Session, action: SessionAction): Session {
     case 'showResult':
       return state.phase === 'explaining' && (state.choice !== null || !isGuided(state.incident)) ? { ...state, phase: 'result' } : state;
   }
+}
+
+export function sessionReducer(state: Session, action: SessionAction): Session {
+  return hideStops(reduce(state, action));
 }
 
 /** Returns the stars as they stand: closed, the middle star of the mechanic at the close (only what is needed, or no hints in the incident, or in any case of a diagnose), and the first explanation right (in a diagnose, the cause of every case named right at the first try). */

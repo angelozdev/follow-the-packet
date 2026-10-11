@@ -13,6 +13,7 @@ export default defineIncident({
   introduces: ['traceroute'],
   changes: BROKEN_STRETCH,
   shown: PATH_PIECES,
+  revealRoutersByTraceroute: true,
   report: 'Se rompió un tramo del camino al servidor. Un {{ping}} al servidor no vuelve, y tampoco aparece ningún aviso. Un {{traceroute}} lista los {{router|routers}} del camino que avisan. Haz un ping al servidor y después un traceroute.',
   tasks: [
     pingTask(TASK.serverSilence, 'Haz un {{ping}} al servidor y comprueba que no vuelve nada.', ADDRESS.server.id, 'timeout'),

@@ -2,11 +2,12 @@ import { MAP_TEXT, SETTINGS_TEXT, entityTerm, nameTag, type EntityRef, type Term
 import { isClientActor, lansOf, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
 import { canConfigure, currentCase, type Session } from '@/game/session';
-import { shownOf } from '@/levels';
+import { revealsRoutersByTraceroute, shownOf } from '@/levels';
 import { PIECE_ID } from './piece-id';
 import { identifyPieces } from './cards/identify-card';
 import { settingsDeviceIds } from './cards/settings-card';
 import { originPieces } from './cards/terminal-card';
+import { revealedRouterIds } from './revealed-routers';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 export type PieceState = 'normal' | 'intruded' | 'blocking';
@@ -55,9 +56,13 @@ export function isShown(session: Session, id: string): boolean {
   return shown === undefined || shown.includes(id);
 }
 
-/** True when the map draws the router with this id: the incident shows it and the term router is known. A text that names a router must agree with this. */
+function waitsForTraceroute(session: Session, routerId: string): boolean {
+  return revealsRoutersByTraceroute(session.incident) && !revealedRouterIds(session).has(routerId);
+}
+
+/** True when the map draws the router with this id: the incident shows it, the term router is known and, in an incident whose routers wait for a traceroute, a traceroute the player sent names it. A text that names a router must agree with this. */
 export function drawsRouter(session: Session, routerId: string): boolean {
-  return isShown(session, routerId) && isDrawn(session.known, ROUTER_ENTITY);
+  return isShown(session, routerId) && isDrawn(session.known, ROUTER_ENTITY) && !waitsForTraceroute(session, routerId);
 }
 
 function firewalls(session: Session): PieceView[] {
@@ -89,13 +94,13 @@ function hasRouters(world: Network): boolean {
   return (world.routers ?? []).length > 0;
 }
 
-/** True when the map has something to show outside the office: the incident lists nothing, and then draws the whole world, or it lists an actor or a router outside the office, one with no interface facing a local network. The lone edge and the internet, which have no id to list, are drawn only then. */
+/** True when the map has something to show outside the office: the incident lists nothing, and then draws the whole world, or it lists an actor or a router outside the office, one with no interface facing a local network, that is not waiting for a traceroute. The lone edge and the internet, which have no id to list, are drawn only then. */
 function drawsOutside(session: Session): boolean {
   const { world } = session;
   const shown = shownIds(session);
   if (shown === undefined) return true;
   const lanIds = lansOf(world).map((lan) => lan.id);
-  const outsideRouters = (world.routers ?? []).filter((router) => !router.interfaces.some((face) => lanIds.includes(face.faces)));
+  const outsideRouters = (world.routers ?? []).filter((router) => !router.interfaces.some((face) => lanIds.includes(face.faces)) && !waitsForTraceroute(session, router.id));
   const outsideIds = [...world.actors, ...outsideRouters].map((outsider) => outsider.id);
   return shown.some((id) => outsideIds.includes(id));
 }

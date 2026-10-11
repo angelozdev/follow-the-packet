@@ -1,6 +1,6 @@
 import { entityTerm, packetLabel, tracerouteLabel, warningOf, type TermId, type TermText, type Warning } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
-import { packetFromChips, probeFromChips, type Flow, type FlowKind, type SendMove, type SendOwner } from '@/levels';
+import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
 
 export interface PacketRun {
@@ -32,6 +32,31 @@ export interface SentPacket extends PacketRun {
 
 function firewallStops(trace: Trace): Step[] {
   return trace.steps.filter((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop');
+}
+
+function hiddenByFirewall(trace: Trace, blocked: boolean): boolean {
+  return firewallStops(trace).length > 0 && !blocked;
+}
+
+/** Returns the id of the router that dropped the packet without sending any warning back, or undefined when no router did. */
+function silentRouterStop(trace: Trace): string | undefined {
+  const step = stopStep(trace);
+  return step?.stage === 'forward' && trace.notice === undefined && 'routerId' in step.reason ? step.reason.routerId : undefined;
+}
+
+/** Returns the router that dropped a packet without a warning when its sender cannot tell where it died, and undefined otherwise. That is the case in an incident whose routers wait for a traceroute (`revealsRoutersByTraceroute`), for any packet but a traceroute: a ping that gets no answer says nothing about the routers it crossed, and only a traceroute shows the ones that answer. */
+export function routerOutOfSight(incident: Incident, run: PacketRun): string | undefined {
+  const traced = 'route' in run && run.route !== undefined;
+  return revealsRoutersByTraceroute(incident) && !traced ? silentRouterStop(run.trace) : undefined;
+}
+
+/** Returns the runs with `hiddenStop` set for every packet whose stop the player cannot place: one that a firewall the player does not know stopped, as always, and one that vanished at a router out of sight (`routerOutOfSight`), whether or not a traceroute has drawn that router since, because a ping alone never reveals where it died. The same array when nothing changes. */
+export function hideStopsOutOfSight<T extends PacketRun>(incident: Incident, runs: T[]): T[] {
+  const hidden = runs.map((run) => {
+    const hiddenStop = hiddenByFirewall(run.trace, run.blocked) || routerOutOfSight(incident, run) !== undefined;
+    return hiddenStop === run.hiddenStop ? run : { ...run, hiddenStop };
+  });
+  return hidden.every((run, index) => run === runs[index]) ? runs : hidden;
 }
 
 /** True when the firewall that dropped the packet at this step is a term the player knows. */
@@ -77,7 +102,7 @@ function runPacket(world: Network, known: ReadonlySet<TermId>, id: string, packe
     replied: trace.outcome === 'replied',
     reached: reachesHost(trace),
     blocked,
-    hiddenStop: stops.length > 0 && !blocked,
+    hiddenStop: hiddenByFirewall(trace, blocked),
     warning: visibleWarning(packet, trace, known),
     by: stoppedBy(world, packet, trace),
     intruder,

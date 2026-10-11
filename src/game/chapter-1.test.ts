@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TERMINAL_TEXT, TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
 import { applyAction, extraOpenings, networkSchema, stopStep } from '@/engine';
-import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
+import { INCIDENTS, caseWorld, isGuided, revealsRoutersByTraceroute, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
 import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
@@ -111,6 +111,12 @@ const VERY_PROBABLY_AFTER = /lo más probable es que el tramo roto esté despué
 const A_ROUTER_THAT_DOES_NOT_WARN = /no siempre es el corte: algunos reenvían el paquete sin avisar/;
 const A_SINGLE_STAR_PROVES_NOTHING = /Un solo \* no lo prueba: algunos routers reenvían el paquete sin avisar/;
 const ROUTER_OUTSIDE_THE_LOOP = new RegExp(`${ROUTER.destination.name}|${IP.destination.replaceAll('.', '\\.')}`);
+const TIMED_OUT = 'timeout: pasó el tiempo de espera y no volvió nada.';
+const ROUTER_IPS = [IP.router, IP.provider, IP.destination];
+const A_ROUTER_OR_ITS_IP = new RegExp([...Object.values(ROUTER).map((router) => router.name), ...ROUTER_IPS.map((ip) => `(?<!\\d)${ip.replaceAll('.', '\\.')}(?!\\d)`)].join('|'));
+const A_HOP = /salto|pasó por/i;
+const ROUTERS_NOT_DRAWN_YET = ['device:servidor-internet', 'device:tu-laptop', 'internet:internet'];
+const ROUTERS_THAT_ANSWERED = [...ROUTERS_NOT_DRAWN_YET, `edge:${ROUTER.office.name}`, `edge:${ROUTER.provider.name}`].sort();
 const DROPPED_TEXT = 'El firewall de laptop-marta descartó el paquete sin avisar.';
 const GUARD_PLACE = 1;
 const NO_REASON_GIVEN = /revel|stateful|stateless|recuerda|mismo camino|esconde|oculta/i;
@@ -916,9 +922,73 @@ describe('01-10, seeing the path', () => {
     expect(toPlainText(incident.explanation[1].feedback)).toMatch(THE_ROUTER_IN_FRONT_OF_THE_SERVER_IS_NOT_LISTED);
   });
 
-  it('01-10: tu-laptop is the only device of the office drawn, and the office router, the two routers of the provider, the internet and the server are drawn', () => {
-    expect(drawnLabels(start)).toEqual(['device:servidor-internet', 'device:tu-laptop', 'edge:router-destino', 'edge:router-oficina', 'edge:router-proveedor', 'internet:internet']);
-    expect(pieceViews(start).filter((piece) => piece.kind === 'device').map((piece) => piece.anchorId)).toEqual([DEVICE.you.id, SERVER.id]);
+  it('01-10: tu-laptop is the only device of the office drawn; before a traceroute no router is drawn, and after it the office router and router-proveedor are', () => {
+    for (const session of [start, pinged]) expect(drawnLabels(session)).toEqual(ROUTERS_NOT_DRAWN_YET);
+    for (const session of [traced, both]) expect(drawnLabels(session)).toEqual(ROUTERS_THAT_ANSWERED);
+    for (const session of [start, pinged, traced, both]) expect(pieceViews(session).filter((piece) => piece.kind === 'device').map((piece) => piece.anchorId)).toEqual([DEVICE.you.id, SERVER.id]);
+  });
+
+  it('01-10: before a traceroute, the map draws no router and the lost ping stops just outside tu-laptop', () => {
+    for (const session of [start, pinged]) {
+      expect(pieceViews(session).filter((piece) => piece.kind === 'edge')).toEqual([]);
+      expect(Object.values(ROUTER).filter((router) => drawsRouter(session, router.id))).toEqual([]);
+    }
+    const [run] = pinged.sent;
+    expect(run).toMatchObject({ hiddenStop: true, blocked: false, replied: false, reached: false, warning: null, trace: { outcome: 'timeout' } });
+    expect(run.trace.steps.at(-1)).toMatchObject({ stage: 'forward', at: ROUTER.provider.id, verdict: 'drop' });
+  });
+
+  it("01-10: before a traceroute, no text of the ping's box names a router or a hop", () => {
+    const [run] = pinged.sent;
+    expect(plainBox(pinged, run.pieceId).filter((text) => A_ROUTER_OR_ITS_IP.test(text) || A_HOP.test(text))).toEqual([]);
+    expect(fieldLines(pinged, run.pieceId, RESULT_LABEL)).toEqual([TIMED_OUT]);
+    expect([HOPS_LABEL, PASSED_THROUGH_LABEL, STOPPED_LABEL].map((label) => fieldLines(pinged, run.pieceId, label))).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('01-10: the question about the broken stretch cannot be answered from the map before a traceroute', () => {
+    const incident = guidedOf(SEEING_THE_PATH);
+    const whileTheTasksAreOpen = [incident.report, ...incident.tasks.map((task) => task.text), ...incident.hints].map((text) => toPlainText(text));
+    for (const session of [start, pinged]) {
+      for (const router of Object.values(ROUTER)) expect(inspect(session, PIECE_ID.router(router.id)), router.id).toBeNull();
+      expect(sessionReducer(session, { type: 'submit' }).phase).toBe('playing');
+      expect(everythingShown(session).filter((text) => A_ROUTER_OR_ITS_IP.test(text) || A_HOP.test(text))).toEqual([]);
+      expect(whileTheTasksAreOpen.filter((text) => A_ROUTER_OR_ITS_IP.test(text))).toEqual([]);
+    }
+  });
+
+  it('01-10: after a traceroute, the routers that answered appear and router-destino does not', () => {
+    for (const session of [traced, both]) {
+      expect(Object.values(ROUTER).filter((router) => drawsRouter(session, router.id)).map((router) => router.id)).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+      for (const router of [ROUTER.office, ROUTER.provider]) expect(toPlainText(inspect(session, PIECE_ID.router(router.id))?.title ?? ''), router.id).toBe(router.name);
+      expect(inspect(session, PIECE_ID.router(ROUTER.destination.id))).toBeNull();
+      expect(everythingShown(session).filter((text) => ROUTER_OUTSIDE_THE_LOOP.test(text))).toEqual([]);
+    }
+  });
+
+  it('01-10: the routers appear whichever of the two messages is sent first, and sending the ping again hides nothing', () => {
+    expect(drawnLabels(sendWith(traced, MESSAGE.ping.id, ADDRESS.server.id))).toEqual(ROUTERS_THAT_ANSWERED);
+    expect(drawnLabels(sendWith(both, MESSAGE.ping.id, ADDRESS.server.id))).toEqual(ROUTERS_THAT_ANSWERED);
+  });
+
+  it("01-10: after a traceroute, the lost ping's stamp stays just outside tu-laptop and its box still says only the timeout", () => {
+    for (const session of [both, sendWith(traced, MESSAGE.ping.id, ADDRESS.server.id)]) {
+      const ping = sentTo(session, ADDRESS.server.id, MESSAGE.ping.id);
+      expect(ping).toMatchObject({ hiddenStop: true, blocked: false, replied: false, reached: false });
+      expect(plainBox(session, ping.pieceId).filter((text) => A_ROUTER_OR_ITS_IP.test(text) || A_HOP.test(text))).toEqual([]);
+      expect(fieldLines(session, ping.pieceId, RESULT_LABEL)).toEqual([TIMED_OUT]);
+      expect([HOPS_LABEL, PASSED_THROUGH_LABEL, STOPPED_LABEL].map((label) => fieldLines(session, ping.pieceId, label))).toEqual([undefined, undefined, undefined]);
+    }
+  });
+
+  it('01-10: the box of the traceroute lists its routers as before, once they are drawn', () => {
+    const run = sentTo(both, ADDRESS.server.id, MESSAGE.traceroute.id);
+    expect(run.hiddenStop).toBe(false);
+    expect(fieldLines(both, run.pieceId, HOPS_LABEL)).toEqual([ROUTER_LINE, PROVIDER_LINE]);
+    expect(fieldLines(both, run.pieceId, STOPPED_LABEL)?.[0]).toContain(ROUTER.provider.name);
+  });
+
+  it('01-10: is the only incident whose routers wait for a traceroute to be drawn', () => {
+    expect(INCIDENTS.filter((incident) => revealsRoutersByTraceroute(incident)).map((incident) => incident.id)).toEqual([SEEING_THE_PATH]);
   });
 
   it('01-10: every router a line of the traceroute names is drawn', () => {

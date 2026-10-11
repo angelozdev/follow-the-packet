@@ -456,6 +456,15 @@ describe('pathFor in an office with routers', () => {
     expect(path.slice(0, -1).at(-1)).toEqual(outside.routers[officeRouter.id]);
   });
 
+  it('a packet that a router dropped without a warning, with its stop hidden, stays at the doorstep of its sender and never goes along the routers', () => {
+    const silent = trace('your-laptop', '10.0.0.10');
+    expect(silent.trace.notice).toBeUndefined();
+    expect(pathFor(silent.trace, silent.packet, layout, true)).toEqual([you.door, you.doorstep]);
+    expect(pathFor(silent.trace, silent.packet, layout)).toEqual([you.door, you.firewall, you.road, at(officeRouter.id), at(provider.id)]);
+    const delivered = trace('your-laptop', server.ip);
+    expect(pathFor(delivered.trace, delivered.packet, layout, true)).toEqual(pathFor(delivered.trace, delivered.packet, layout));
+  });
+
   it('a packet that dies at a router that is not drawn before any drawn router ends between the sender and the next piece', () => {
     const beyond = layoutOf(...FLOOR_1_DEVICES, GLOBE, SERVER_PIECE);
     const lost = trace('your-laptop', '10.0.0.10');

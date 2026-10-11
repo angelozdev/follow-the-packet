@@ -39,7 +39,7 @@ export type {
 } from './contract/incident';
 export { isGuided } from './contract/incident';
 export { INCIDENTS } from './registry';
-export { chipsOfRule, packetFromChips, probeFromChips, sendCombinations, shownOf } from './contract/chips';
+export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, shownOf } from './contract/chips';
 export type { SendOwner } from './contract/chips';
 export { applyMove, caseWorld, solvedWorld, startWorld } from './world';
 export { RULES_TERM, configurableParts, knownTerms } from './ladder';

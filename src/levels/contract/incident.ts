@@ -134,6 +134,7 @@ const sendIncidentSchema = z.object({
   tasks: z.array(sendTaskSchema).min(1),
   flows: z.array(flowSchema),
   send: z.object({ ...sendChipsShape, settings: z.array(settingSchema).min(1).optional() }),
+  revealRoutersByTraceroute: z.boolean().optional(),
   solution: z.array(sendMoveSchema).min(1),
 });
 
@@ -241,6 +242,7 @@ function checkSend(incident: SendShape, fail: Fail): void {
   for (const task of incident.tasks) {
     if (!offers(task.expect)) fail(`${task.id}: expects chips the incident does not offer`);
   }
+  if (incident.revealRoutersByTraceroute && !incident.send.message.some((chip) => chip.command === 'traceroute')) fail('routers that wait for a traceroute need a traceroute chip to name them');
   checkAmbient(incident.flows, incident.mechanic, fail);
   for (const move of incident.solution) {
     if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);

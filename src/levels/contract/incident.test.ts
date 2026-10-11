@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident } from '@/testing';
-import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, sendCombinations, unknownCardDeviceIds } from './chips';
+import { NOTE_RULE, OFFICE_FLOORS, actor, device, diagnoseIncident, gatewayIncident, identifyIncident, lab03Net, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, routedSendIncident, sendIncident } from '@/testing';
+import { missingShownIds, officeLeaks, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, unknownCardDeviceIds } from './chips';
 import { incidentSchema, isGuided, playerMoveSchema, ruleIdFor, type MessageChip, type SendIncident } from './incident';
 
 const SEND = sendIncident();
@@ -246,6 +246,35 @@ describe('shown pieces', () => {
   it('rejects a list that is empty or holds an empty id', () => {
     expect(incidentSchema.safeParse({ ...SEND, shown: [] }).success).toBe(false);
     expect(incidentSchema.safeParse({ ...SEND, shown: [''] }).success).toBe(false);
+  });
+});
+
+describe('routers that wait for a traceroute', () => {
+  const TRACEROUTE_ID = 'trace';
+  const SERVER_ID = 'server';
+  const ROUTED = {
+    ...routedSendIncident(),
+    tasks: [{ id: TRACEROUTE_ID, text: 'Corre un {{traceroute}}.', expect: { fromId: 'you', toId: SERVER_ID, messageId: TRACEROUTE_ID, outcome: 'any' as const } }],
+    solution: [{ type: 'sendPacket' as const, fromId: 'you', toId: SERVER_ID, messageId: TRACEROUTE_ID }],
+  };
+  const waiting = { ...ROUTED, revealRoutersByTraceroute: true };
+  const withoutTraceroute = { ...waiting, send: { ...waiting.send, message: waiting.send.message.filter((chip) => chip.id !== TRACEROUTE_ID) }, tasks: [{ ...ROUTED.tasks[0], expect: { ...ROUTED.tasks[0].expect, messageId: 'ping' } }], solution: [{ ...ROUTED.solution[0], messageId: 'ping' }] };
+
+  it('accepts the flag on a send incident that offers a traceroute, set or not', () => {
+    expect(incidentSchema.safeParse(ROUTED).success).toBe(true);
+    expect(incidentSchema.safeParse(waiting).success).toBe(true);
+    expect(incidentSchema.safeParse({ ...ROUTED, revealRoutersByTraceroute: false }).success).toBe(true);
+    expect(ROUTED).not.toHaveProperty('revealRoutersByTraceroute');
+  });
+
+  it('rejects the flag on a send incident with no traceroute to name the routers: they would never be drawn', () => {
+    expect(incidentSchema.safeParse({ ...withoutTraceroute, revealRoutersByTraceroute: false }).success).toBe(true);
+    expect(incidentSchema.safeParse(withoutTraceroute).success).toBe(false);
+  });
+
+  it('is true only for a send incident that sets it', () => {
+    expect(revealsRoutersByTraceroute(waiting)).toBe(true);
+    expect([ROUTED, { ...ROUTED, revealRoutersByTraceroute: false }, SEND, diagnoseIncident(), identifyIncident()].map((incident) => revealsRoutersByTraceroute(incident))).toEqual([false, false, false, false, false]);
   });
 });
 

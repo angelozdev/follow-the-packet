@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PROGRESS_KEY } from '@/storage/progress';
-import { card, confirm, openCard, openTerminal, sendTo } from './cards';
-import { CHAPTER_1, IP, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
+import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
+import { CHAPTER_1, IP, LOST_TO_SERVER, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
 import { FULL_STARS, closeCase } from './closing';
 import { collectErrors } from './console-errors';
 import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps } from './map-boxes';
@@ -17,6 +17,9 @@ const GLOBE_AND_SERVER = /internet/;
 const ROUTER = /router-oficina/;
 const FULL_SIZE_LAPTOP_DISTANCE_PX = 99.3;
 const LAPTOP_REACH_PX = { across: 56, down: 88 };
+const A_ROUTER_OF_THE_PATH = /router-(oficina|proveedor|destino)|(?<!\d)(192\.168\.1\.1|203\.0\.113\.\d+)(?!\d)/;
+const A_HOP = /salto|pasó por/i;
+const THE_PING_TO_THE_SERVER = `ping de tu-laptop a ${IP.server}`;
 const WINDOWS = [
   { width: 1280, height: 800 },
   { width: 1440, height: 900 },
@@ -37,17 +40,26 @@ async function expectApart(opened: Locator, target: Locator) {
   expect(overlaps(await opened.boundingBox(), await target.boundingBox())).toBe(false);
 }
 
-async function openAndSend(page: Page, id: string): Promise<Locator> {
+async function openAndSend(page: Page, id: string, sending = SENDING[id]): Promise<Locator> {
   await page.goto(`/#/level/${id}`);
   const terminal = await openTerminal(page);
-  await SENDING[id](terminal);
+  await sending(terminal);
   return terminal;
 }
 
-async function sendAndClose(page: Page, id: string) {
-  const terminal = await openAndSend(page, id);
+async function sendAndClose(page: Page, id: string, sending = SENDING[id]) {
+  const terminal = await openAndSend(page, id, sending);
   await confirm(terminal);
   await expect(terminal).toBeHidden();
+}
+
+async function expectBesideYourLaptop(page: Page, stamp: Locator) {
+  const [stampBox, label] = await Promise.all([stamp.boundingBox(), page.getByRole('button', { name: 'tu-laptop', exact: true }).boundingBox()]);
+  if (stampBox === null || label === null) throw new Error('the stamp or the laptop is not on the screen');
+  const [apart, below] = [stampBox.x + stampBox.width / 2 - (label.x + label.width / 2), stampBox.y + stampBox.height / 2 - (label.y + label.height / 2)];
+  expect(Math.abs(apart)).toBeLessThanOrEqual(LAPTOP_REACH_PX.across);
+  expect(below).toBeGreaterThan(0);
+  expect(below).toBeLessThanOrEqual(LAPTOP_REACH_PX.down);
 }
 
 async function openedBox(opened: Locator) {
@@ -157,6 +169,29 @@ test('in 11 the stamp of the ping to laptop-marta tells a screen reader that the
   await expect(page.getByRole('button', { name: /^Paquete:.*Perdido/ })).toHaveCount(0);
 });
 
+test('in 10 the question about the broken stretch cannot be answered from the map before a traceroute, and the routers that answered appear after it, with the lost ping still just outside tu-laptop', async ({ page }) => {
+  await startWithProgress(page, { '01-09': 1 });
+  const terminal = await openAndSend(page, '01-10', sendOnlyThePing);
+  const lost = page.getByRole('button', { name: LOST_TO_SERVER });
+  await expect(lost).toBeVisible();
+  await lost.hover();
+  const why = page.getByRole('region', { name: THE_PING_TO_THE_SERVER });
+  await expect(why).toContainText('timeout: pasó el tiempo de espera y no volvió nada.');
+  const routersOnTheMap = async () => (await mapBoxes(page)).map(({ name }) => name).filter((name) => A_ROUTER_OF_THE_PATH.test(name));
+  const [boxBefore, pageBefore] = await Promise.all([why.innerText(), page.locator('body').innerText()]);
+  expect(await routersOnTheMap()).toEqual([]);
+  expect([boxBefore, pageBefore].filter((text) => A_ROUTER_OF_THE_PATH.test(text))).toEqual([]);
+  expect(A_HOP.test(boxBefore)).toBe(false);
+
+  await sendMessage(terminal, 'traceroute');
+  await expect(terminal.getByRole('list', { name: 'Salida de traceroute' })).toBeVisible();
+  await expect.poll(routersOnTheMap).toEqual([expect.stringMatching(/^router-oficina/), expect.stringMatching(/^router-proveedor/)]);
+  await lost.hover();
+  await expect(why).toContainText('timeout: pasó el tiempo de espera y no volvió nada.');
+  expect(A_ROUTER_OF_THE_PATH.test(await why.innerText()) || A_HOP.test(await why.innerText())).toBe(false);
+  await expectBesideYourLaptop(page, lost);
+});
+
 test('in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping', async ({ page }) => {
   await startWithProgress(page, { '01-06': 1 });
   await page.goto('/#/level/01-07');
@@ -214,12 +249,7 @@ test.describe('Sin animaciones', () => {
       const warning = page.getByRole('button', { name: /^Paquete: ping de tu-laptop a 192\.168\.1\.50\. Apareció un aviso\.$/ });
       await expect(warning).toBeVisible();
       await page.keyboard.press('Escape');
-      const [stamp, label] = await Promise.all([warning.boundingBox(), page.getByRole('button', { name: 'tu-laptop', exact: true }).boundingBox()]);
-      if (stamp === null || label === null) throw new Error('the stamp or the laptop is not on the screen');
-      const [apart, below] = [stamp.x + stamp.width / 2 - (label.x + label.width / 2), stamp.y + stamp.height / 2 - (label.y + label.height / 2)];
-      expect(Math.abs(apart)).toBeLessThanOrEqual(LAPTOP_REACH_PX.across);
-      expect(below).toBeGreaterThan(0);
-      expect(below).toBeLessThanOrEqual(LAPTOP_REACH_PX.down);
+      await expectBesideYourLaptop(page, warning);
       await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(1);
       await expect.poll(() => overlappingPairs(page)).toEqual([]);
     });
@@ -252,6 +282,15 @@ test.describe('Sin animaciones', () => {
         await sendAndClose(page, id);
         await expect.poll(() => overlappingPairs(page), id).toEqual([]);
       }
+    });
+
+    test('in 01-10, before the traceroute, no label or stamp of the map overlaps, and the lost ping stands just outside tu-laptop', async ({ page }) => {
+      await startWithProgress(page, { '01-09': 1 });
+      await sendAndClose(page, '01-10', sendOnlyThePing);
+      const lost = page.getByRole('button', { name: LOST_TO_SERVER });
+      await expect(lost).toBeVisible();
+      await expect.poll(() => overlappingPairs(page)).toEqual([]);
+      await expectBesideYourLaptop(page, lost);
     });
 
     test('in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps', async ({ page }) => {
@@ -313,6 +352,15 @@ inEachWindow(() => {
   });
 
   fitTest('in 06, 08 and 10 the whole map and its labels fit the area of the map at full size', ['01-06', '01-08', '01-10']);
+
+  test('in 10, before the traceroute, the whole map and its labels fit the area of the map at full size, with nothing sent and with the ping sent', async ({ page }) => {
+    await startWithProgress(page, CHAPTER_1_DONE);
+    await page.goto('/#/level/01-10');
+    await expect.poll(async () => outsideTheArea(page, await mapArea(page)), 'nothing sent').toEqual([]);
+    await sendAndClose(page, '01-10', sendOnlyThePing);
+    await expect(page.getByRole('button', { name: LOST_TO_SERVER })).toBeVisible();
+    await expect.poll(async () => outsideTheArea(page, await mapArea(page)), 'the ping sent').toEqual([]);
+  });
 
   test('in 14 the whole map and its labels fit the area of the map at full size, in each of its seven cases', async ({ page }) => {
     await startWithProgress(page, CHAPTER_1_DONE);

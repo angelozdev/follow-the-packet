@@ -184,7 +184,7 @@ export const INTERNET_PIECES: string[] = [...OFFICE_PIECES, SERVER.id];
 /** The ids of the pieces 01-09 and cases 4 and 5 of 01-14 draw: your laptop, the two routers the packet goes back and forth between (or, in case 4, crosses before the second one drops it) and the server it never reaches. The router in front of the server is crossed by no packet, and the rest of the office is not used. */
 export const LOOP_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.provider.id, SERVER.id];
 
-/** The ids of the pieces 01-10 draws: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The rest of the office is not used. */
+/** The ids of the pieces 01-10 lists: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The routers wait for a traceroute to name them, and the one behind the broken stretch no line names, so it is never drawn. The rest of the office is not used. */
 export const PATH_PIECES: string[] = [...LOOP_PIECES, ROUTER.destination.id];
 
 /** The ids of the pieces 01-11 and 01-13 draw: the sender, the laptop that answers and laptop-marta, whose firewall is drawn with it (in 01-13 because the rule of 01-12 goes on working in the background). The printer and the routers stay in the world and are not used, so they are not drawn. */
