@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deathPoint, stopStep } from './checkpoints';
+import { deathPoint, stopStep } from '@/engine/simulation/paths/checkpoints';
 import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';

@@ -1,7 +1,7 @@
 import { ECHO_REQUEST, TTL_MAX } from '@/engine/network/schema';
 import type { Endpoint, Network } from '@/engine/network/types';
-import { simulate } from './simulate';
-import type { NoticeKind, Outcome, Trace } from './trace';
+import { simulate } from '@/engine/simulation/simulate';
+import type { NoticeKind, Outcome, Trace } from '@/engine/simulation/trace';
 
 const FIRST_TTL = 1;
 

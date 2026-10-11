@@ -1,6 +1,6 @@
-import { isConnected, lanOf } from '@/engine/network/topology';
+import { isConnected, lanOf } from '@/engine/network/addressing/topology';
 import { CONTINUE, addLeg, stop, type Delivery, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
-import { arriveAt, enterRouter, sendNotice } from '@/engine/simulation/routers';
+import { arriveAt, enterRouter, sendNotice } from '@/engine/simulation/paths/routers';
 import type { Device, Lan, Network, Router } from '@/engine/network/types';
 
 type Neighbour = { kind: 'device'; device: Device } | { kind: 'router'; router: Router };

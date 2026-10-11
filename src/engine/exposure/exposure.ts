@@ -1,4 +1,4 @@
-import { isClientActor } from '@/engine/network/topology';
+import { isClientActor } from '@/engine/network/addressing/topology';
 import type { Actor, Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import { simulate } from '@/engine/simulation/simulate';
 import type { Trace } from '@/engine/simulation/trace';

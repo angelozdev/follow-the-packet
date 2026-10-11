@@ -1,4 +1,4 @@
-import type { Checkpoint, Step, Trace } from './trace';
+import type { Checkpoint, Step, Trace } from '@/engine/simulation/trace';
 
 /** Returns the step where the packet was dropped or rejected, or undefined when nothing stopped it. */
 export function stopStep(trace: Trace): Step | undefined {

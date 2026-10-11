@@ -1,4 +1,4 @@
-import type { Actor, ClientActor, Device, Lan, Network } from './types';
+import type { Actor, ClientActor, Device, Lan, Network } from '@/engine/network/types';
 
 export const IMPLICIT_LAN_ID = 'lan';
 const IMPLICIT_LAN_LATENCY_MS = 1;

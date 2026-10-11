@@ -1,9 +1,9 @@
-import { bestRoute, interfaceTowards, onwardFrom, ownsIp } from '@/engine/network/routing';
+import { bestRoute, interfaceTowards, onwardFrom, ownsIp } from '@/engine/network/addressing/routing';
+import { lanOf } from '@/engine/network/addressing/topology';
 import { DEFAULT_TTL } from '@/engine/network/schema';
-import { lanOf } from '@/engine/network/topology';
 import type { Device, Router, ServerActor } from '@/engine/network/types';
-import { CONTINUE, addLeg, stop, type SimContext, type StageResult } from './context';
-import type { NoticeKind, Notice, Reason } from './trace';
+import { CONTINUE, addLeg, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
+import type { NoticeKind, Notice, Reason } from '@/engine/simulation/trace';
 
 /** Hands the packet to a device of the network: the firewall of that device, its host and its reply come next. */
 export function arriveAt(ctx: SimContext, dest: Device): StageResult {

@@ -1,4 +1,4 @@
-import { LOOPBACK_IP, isIpv4 } from '@/engine/network/cidr';
+import { LOOPBACK_IP, isIpv4 } from '@/engine/network/addressing/cidr';
 import { CONTINUE, stop, type Stage } from '@/engine/simulation/context';
 
 const LOCALHOST = 'localhost';

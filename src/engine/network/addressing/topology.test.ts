@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet } from '@/testing';
 import { IMPLICIT_LAN_ID, isClientActor, isConnected, lanOf, lansOf } from './topology';
-import type { Actor } from './types';
+import type { Actor } from '@/engine/network/types';
 
 const { floor1, floor2, server } = OFFICE_FLOORS;
 

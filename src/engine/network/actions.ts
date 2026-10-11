@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema } from './schema';
-import { lansOf } from './topology';
+import { lansOf } from '@/engine/network/addressing/topology';
 import type { Device, Direction, Firewall, Lan, Network, Router, Rule } from './types';
 
 const nonEmpty = z.string().min(1);

@@ -5,7 +5,7 @@ import type { SendPicks, SendTrayName, TerminalCard as Terminal, TracerouteView 
 import { CardIcon } from '@/ui/card-icon';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { ChipCard, trayChips } from './chip-card';
+import { ChipCard, trayChips } from '@/ui/incident/map-cards/chip-card';
 
 interface TerminalCardProps {
   card: Terminal;

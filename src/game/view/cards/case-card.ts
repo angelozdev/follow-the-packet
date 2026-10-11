@@ -1,7 +1,7 @@
 import { endpointName, type TermText } from '@/copy';
 import { caseClosed, currentCase, type Session } from '@/game/session';
 import { firstTry } from '@/game/stars';
-import { terminalLine } from './terminal-card';
+import { terminalLine } from '@/game/view/cards/terminal/terminal-card';
 
 export type CauseState = 'untried' | 'wrong' | 'right';
 

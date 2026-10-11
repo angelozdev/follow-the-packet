@@ -1,7 +1,7 @@
 import { ipInCidr, isPrivateIpv4, parseCidr } from './cidr';
-import { ROUTE_DEFAULT } from './schema';
+import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { isConnected, lanOf, lansOf } from './topology';
-import type { Device, Network, Route, Router, ServerActor } from './types';
+import type { Device, Network, Route, Router, ServerActor } from '@/engine/network/types';
 
 const SERVER_LINK_PREFIX = 24;
 

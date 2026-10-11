@@ -13,7 +13,7 @@ import { LuciaCard } from './lucia-card';
 import { IdentifyCard } from './map-cards/identify-card';
 import { SettingsCard } from './map-cards/settings-card';
 import { TaskCard } from './map-cards/task-card';
-import { TerminalCard } from './map-cards/terminal-card';
+import { TerminalCard } from './map-cards/terminal/terminal-card';
 import { ResultCard } from './result-card';
 
 interface IncidentScreenProps {

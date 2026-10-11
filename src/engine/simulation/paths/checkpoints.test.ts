@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from './checkpoints';
-import type { Trace } from './trace';
+import type { Trace } from '@/engine/simulation/trace';
 
 const base: Omit<Trace, 'steps' | 'outcome'> = {
   resolvedIp: '172.31.38.97',

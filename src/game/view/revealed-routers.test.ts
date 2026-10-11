@@ -3,7 +3,7 @@ import { toPlainText, type TermId } from '@/copy';
 import { applyAction } from '@/engine';
 import { OFFICE_FLOORS, officeTwoFloorsNet, routedSendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
-import { tracerouteLines } from './cards/traceroute-lines';
+import { tracerouteLines } from '@/game/view/cards/terminal/traceroute-lines';
 import { inspect } from './inspection';
 import { pieceViews } from './pieces';
 import { revealedRouterIds } from './revealed-routers';

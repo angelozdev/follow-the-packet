@@ -4,7 +4,7 @@ import { applyAction } from '@/engine/network/actions';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import type { Network, Route } from '@/engine/network/types';
 import { stopStep } from './checkpoints';
-import { simulate } from './simulate';
+import { simulate } from '@/engine/simulation/simulate';
 import { TRACEROUTE_MAX_HOPS, traceroute } from './traceroute';
 
 describe('traceroute', () => {

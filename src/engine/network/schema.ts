@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from './cidr';
-import { lanOf, lansOf } from './topology';
+import { ipInCidr, isIpv4, isPrivateCidr, parseCidr } from '@/engine/network/addressing/cidr';
+import { lanOf, lansOf } from '@/engine/network/addressing/topology';
 
 export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;

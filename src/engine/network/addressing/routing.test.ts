@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing';
 import { bestRoute, facesALan, interfaceTowards, onwardFrom, ownsIp } from './routing';
-import { ROUTE_DEFAULT } from './schema';
-import type { Router } from './types';
+import { ROUTE_DEFAULT } from '@/engine/network/schema';
+import type { Router } from '@/engine/network/types';
 
 const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
 const net = officeTwoFloorsNet();

@@ -7,7 +7,7 @@ import { forwardStage } from './stages/forward';
 import { hostStage } from './stages/host';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
-import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/cidr';
+import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Outcome, PacketHeader, Trace } from './trace';

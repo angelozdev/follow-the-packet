@@ -5,7 +5,7 @@ import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { canConfigure, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { settingsCard } from './cards/settings-card';
-import { terminalCard } from './cards/terminal-card';
+import { terminalCard } from '@/game/view/cards/terminal/terminal-card';
 import { PIECE_ID } from './piece-id';
 import { drawsRouter, pieceViews } from './pieces';
 

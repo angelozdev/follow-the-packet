@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, withDevice } from '@/testing';
 import { applyAction, networkActionSchema, type NetworkAction } from './actions';
 import { networkSchema } from './schema';
-import { IMPLICIT_LAN_ID } from './topology';
+import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
 import type { Actor, Device, Firewall, Lan, Network, Router } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;

@@ -1,5 +1,5 @@
-import { ipInCidr, isLoopbackIpv4, isPrivateIpv4 } from '@/engine/network/cidr';
-import { isConnected, lanOf } from '@/engine/network/topology';
+import { ipInCidr, isLoopbackIpv4, isPrivateIpv4 } from '@/engine/network/addressing/cidr';
+import { isConnected, lanOf } from '@/engine/network/addressing/topology';
 import { CONTINUE, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
 import type { Reason } from '@/engine/simulation/trace';
 import type { Device } from '@/engine/network/types';

@@ -6,7 +6,7 @@ import { revealsRoutersByTraceroute, shownOf } from '@/levels';
 import { PIECE_ID } from './piece-id';
 import { identifyPieces } from './cards/identify-card';
 import { settingsDeviceIds } from './cards/settings-card';
-import { originPieces } from './cards/terminal-card';
+import { originPieces } from '@/game/view/cards/terminal/terminal-card';
 import { revealedRouterIds } from './revealed-routers';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';

@@ -1,4 +1,4 @@
-import { ipInCidr } from '@/engine/network/cidr';
+import { ipInCidr } from '@/engine/network/addressing/cidr';
 import type { Firewall, PacketSpec, RulePeer, RuleWhat } from '@/engine/network/types';
 import type { RuleCheck } from './trace';
 

@@ -9,8 +9,8 @@ import { firewallCard } from './cards/firewall-card';
 import { inspect } from './inspection';
 import { parsePieceId } from './piece-id';
 import { pieceViews, type PieceKind } from './pieces';
-import { terminalCard, terminalLine } from './cards/terminal-card';
-import { tracerouteLines } from './cards/traceroute-lines';
+import { terminalCard, terminalLine } from '@/game/view/cards/terminal/terminal-card';
+import { tracerouteLines } from '@/game/view/cards/terminal/traceroute-lines';
 
 const NAMED_BY_KIND: PieceKind[] = ['firewall', 'edge', 'internet'];
 const RETIRED_NAMES = ['puerta', 'todo internet', 'entrada desde internet', 'red privada', 'ping completo', 'linux ignora el ping', 'desde dónde'];
