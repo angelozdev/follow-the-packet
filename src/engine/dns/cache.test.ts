@@ -55,6 +55,15 @@ describe('the cache of a resolver in a sequence', () => {
     expect(answers[1]).toMatchObject({ answers: [alias(BLOG, WWW, 200), address(WWW, 200)], ttlLeft: 200 });
   });
 
+  it('asking for an alias asks for the whole chain, so it retires the stale address that was cached for its target', () => {
+    const stale = withResolverCache(net, [entry(WWW, OLD_IP, 240)]);
+    const answers = simulateSequence(stale, [WWW, BLOG, WWW].map((name, at) => ({ packet: dig(you, name), at }))).map((trace) => trace.dns!);
+    expect(answers.map(({ fromCache }) => fromCache)).toEqual([true, false, true]);
+    expect(answers[0].answers).toEqual([address(WWW, 240, OLD_IP)]);
+    expect(answers[1].answers.map(({ type, value }) => `${type} ${value}`)).toEqual([`CNAME ${WWW}`, `A ${site}`]);
+    expect(answers[2].answers).toEqual([address(WWW, 299)]);
+  });
+
   it('stores only an answer that holds an address: NXDOMAIN, SERVFAIL and a name with no address are asked again', () => {
     for (const name of [`noexiste.${zone}`, `www.${downZone}`, zone]) {
       expect(digsAt(net, name, [0, 1]).map(({ fromCache }) => fromCache), name).toEqual([false, false]);

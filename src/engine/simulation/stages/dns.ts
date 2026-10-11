@@ -41,7 +41,7 @@ function followAnswer(ctx: SimContext, device: Device, resolution: Answered): St
   return CONTINUE;
 }
 
-/** Ends the lookup of a device that has a resolver and got no answer. With none set, it ends as it always did for an office, with `dns-unresolved` and nothing sent. Otherwise the question went out and one of two things happened: it reached a host that is no resolver (`dns-no-resolver`, which names that host), or it never reached one, because a firewall or a router dropped it or warned, or nobody has the IP (`dns-resolver-silent`). The warning that came back, if one did, is in `Resolution.query`. */
+/** Ends the lookup of a device that has a resolver and got no answer. With none set, it ends as it always did for an office, with `dns-unresolved` and nothing sent. Otherwise the question went out and one of two things happened: a host got it and did not answer it as a resolver (`dns-no-resolver`, which names that host), or no host got it, because a firewall or a router dropped it or warned, or nobody has the IP (`dns-resolver-silent`). The warning that came back, if one did, is in `Resolution.query`. */
 function failUnanswered(ctx: SimContext, device: Device, resolution: Unanswered): StageResult {
   if (device.dnsServer === undefined) return fail(ctx, { code: 'dns-unresolved', name: ctx.packet.to, fromInside: true });
   const asked = { deviceId: device.id, name: ctx.packet.to, ip: device.dnsServer };

@@ -663,6 +663,15 @@ describe('what a device is told when it asks its resolver for a name', () => {
     expect(describeReason(notResolver, NAMED, NONE)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.21, y [[impresora]] no le contestó como un servidor de nombres.');
   });
 
+  it('a router that got the question is named only as the map draws it', () => {
+    const toRouter = reasonOf(applyAction(NAMED, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.gateway }), `www.${zone}`);
+    expect(toRouter).toMatchObject({ code: 'dns-no-resolver', hostId: OFFICE_FLOORS.officeRouter.id });
+    expect(describeReason(toRouter, NAMED, EVERY_TERM)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.1, y [[router-office]] no le contestó como un {{resolver}}.');
+    const unnamed = describeReason(toRouter, NAMED, EVERY_TERM, (): RouterPlace => 'inside');
+    expect(unnamed).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.1, y un {{router}} de la oficina no le contestó como un {{resolver}}.');
+    expect(toPlainText(describeReason(toRouter, NAMED, NONE, (): RouterPlace => 'outside'))).toBe('tu-laptop preguntó por www.lucia.example a 192.168.1.1, y un router de afuera de la oficina no le contestó como un servidor de nombres.');
+  });
+
   it('tags only the terms the player knows, whichever of its terms is missing', () => {
     const terms = ['dns-query', 'resolver', 'cname-record', 'a-record', 'nxdomain', 'servfail', 'dns-cache', 'dns-ttl', 'hosts-file'] as const;
     for (const reason of every) {

@@ -232,8 +232,10 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `${dnsQuestion(net, known, reason)}: el nombre existe, pero ${known.has('a-record') ? 'no tiene un {{a-record}}' : 'no tiene ninguna IP asociada'}.`;
     case 'dns-resolver-silent':
       return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, ${known.has('resolver') ? 'su {{resolver}}' : 'su servidor de nombres'}, y no recibió respuesta a su pregunta.`;
-    case 'dns-no-resolver':
-      return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, y ${deviceName(net, reason.hostId)} no le contestó como ${known.has('resolver') ? 'un {{resolver}}' : 'un servidor de nombres'}.`;
+    case 'dns-no-resolver': {
+      const host = (net.routers ?? []).some((candidate) => candidate.id === reason.hostId) ? router(reason.hostId) : deviceName(net, reason.hostId);
+      return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, y ${host} no le contestó como ${known.has('resolver') ? 'un {{resolver}}' : 'un servidor de nombres'}.`;
+    }
     case 'route-private-from-outside':
       return 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.';
     case 'route-no-device':

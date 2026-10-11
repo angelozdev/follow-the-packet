@@ -46,7 +46,7 @@ interface Unanswered {
   notAResolver?: string;
 }
 
-/** What a lookup found: the answer of a resolver, with the resolver that gave it, the packet that carried the question and the cache after it, or the lack of one (`dns.status` is then `NO-RESOLVER`). When nobody answered, `notAResolver` is the id of the device or server that received the question and is not a resolver, either because it answered anyway or because it rejected the datagram with Port Unreachable; it is absent when the question never got to a host (a firewall dropped it, a router warned or nobody has the IP) and when nothing was sent. */
+/** What a lookup found: the answer of a resolver, with the resolver that gave it, the packet that carried the question and the cache after it, or the lack of one (`dns.status` is then `NO-RESOLVER`). When nobody answered, `notAResolver` is the id of the device, router or server that got the question and did not answer it as a resolver: it is no resolver and answered anyway, or it rejected the datagram with Port Unreachable because nothing listens on port 53 there or the service listens only on another address (a resolver that listens only on the loopback address is one of those); it is absent when the question never got to a host (a firewall dropped it, a router warned or nobody has the IP) and when nothing was sent. */
 export type Resolution = Answered | Unanswered;
 
 function upstreamFor(resolver: ServerActor, name: string): { zone: string; serverId: string } | undefined {
@@ -90,7 +90,7 @@ function resolverReached(net: Network, query: Trace): ServerActor | undefined {
   return query.outcome === 'replied' && reached?.dns?.role === 'resolver' ? reached : undefined;
 }
 
-/** The id of the device or server that took a question and is not a resolver, if the trace of the question says one did: it answered the datagram though it is no resolver, or it rejected it with Port Unreachable because nothing listens on port 53 there (or only on another address). A question that died on the way, or that a router or the sender itself warned about, reached no host. */
+/** The id of the host that got a question and did not answer it as a resolver, if the trace of the question says one did: it answered the datagram though it is no resolver, or it rejected it with Port Unreachable because nothing listens on port 53 there (or only on another address). A question that died on the way, or that a router or the sender itself warned about, reached no host. */
 function nonResolverAt(query: Trace): string | undefined {
   const reachedAHost = query.outcome === 'replied' || query.notice?.kind === 'port-unreachable';
   return reachedAHost ? (query.destinationId ?? undefined) : undefined;
