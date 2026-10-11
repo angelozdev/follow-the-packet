@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { reachWithWheel } from './card-boxes';
 import { collectErrors } from './console-errors';
 
 const FONT_HOSTS = /fonts\.(googleapis|gstatic)\.com/;
@@ -13,6 +14,16 @@ const OPTIONS = ['Una respuesta posible', 'La respuesta elegida', 'Una respuesta
 const LETTER = /^[A-Z]$/;
 const TILT_DEGREES = -2;
 const PRESS_PX = 2;
+const TABLE_CAPTION = 'Rutas de router-oficina';
+const EMPTY_TABLE = 'Sin rutas.';
+const ROW_IN_USE = 'en uso';
+const REMOVE_BUTTON = /^Quitar /;
+const MAP_CARD_WIDTH_PX = 352;
+const MAP_CARD_ROOM_PX = 224;
+const ROW_COPIES = 6;
+const WHEEL_PX = 120;
+const SCROLLBAR_PX = 12;
+const FOCUS_RING_PX = 4;
 
 test.use({ viewport: { width: 1280, height: 2200 }, deviceScaleFactor: 1 });
 
@@ -130,6 +141,79 @@ test.describe('Sin animaciones', () => {
     await elements.getByRole('button', { name: FOCUSED_OPTION }).focus();
     await expect(elements).toHaveScreenshot('interface.png', { maxDiffPixels: 0, threshold: 0 });
     expect(errors).toEqual([]);
+  });
+
+  test('the interface specimen of Table is part of the capture', async ({ page }) => {
+    await openCatalog(page);
+    const elements = page.getByRole('region', { name: INTERFACE });
+    const tables = elements.getByRole('table', { name: TABLE_CAPTION });
+    await expect(tables).toHaveCount(2);
+    const [filled, empty] = [tables.first(), tables.last()];
+    await expect(filled.getByRole('button', { name: REMOVE_BUTTON })).toHaveCount(2);
+    await expect(filled.getByText(ROW_IN_USE, { exact: true })).toBeVisible();
+    await expect(empty.getByText(EMPTY_TABLE, { exact: true })).toBeVisible();
+    const region = await elements.boundingBox();
+    if (region === null) throw new Error('the interface section is not on the page');
+    for (const table of [filled, empty]) {
+      const box = await table.boundingBox();
+      if (box === null) throw new Error('a specimen of Table is not drawn');
+      expect(box.x).toBeGreaterThanOrEqual(region.x);
+      expect(box.y).toBeGreaterThanOrEqual(region.y);
+      expect(box.x + box.width).toBeLessThanOrEqual(region.x + region.width);
+      expect(box.y + box.height).toBeLessThanOrEqual(region.y + region.height);
+    }
+  });
+
+  test('the focus ring of a remove button fits inside the wrapper of the Table', async ({ page }) => {
+    await openCatalog(page);
+    const filled = page.getByRole('region', { name: INTERFACE }).getByRole('table', { name: TABLE_CAPTION }).first();
+    const [last] = await filled.getByRole('button', { name: REMOVE_BUTTON }).all().then((buttons) => buttons.slice(-1));
+    await last.focus();
+    const [button, wrapper] = await Promise.all([last.boundingBox(), filled.locator('xpath=..').boundingBox()]);
+    if (button === null || wrapper === null) throw new Error('the Table is not drawn');
+    expect(button.x + button.width + FOCUS_RING_PX).toBeLessThanOrEqual(wrapper.x + wrapper.width);
+    expect(button.y - FOCUS_RING_PX).toBeGreaterThanOrEqual(wrapper.y);
+    expect(button.y + button.height + FOCUS_RING_PX).toBeLessThanOrEqual(wrapper.y + wrapper.height);
+  });
+
+  test('a long Table in a card on the map stays inside the card and scrolls there', async ({ page }) => {
+    await openCatalog(page);
+    await page.evaluate(
+      ([caption, width, room, copies]) => {
+        const source = [...document.querySelectorAll('table')].find((table) => table.caption?.textContent === caption)?.closest('.card');
+        const rows = source?.querySelectorAll('tbody tr');
+        if (!source || !rows) throw new Error('the specimen of Table is not on the page');
+        const card = source.cloneNode(true) as Element;
+        const body = card.querySelector('tbody');
+        for (let copy = 0; copy < copies; copy++) for (const row of rows) body?.append(row.cloneNode(true));
+        const holder = document.createElement('div');
+        holder.className = 'map-card';
+        holder.dataset.testid = 'long-table';
+        holder.style.cssText = `position: fixed; top: 16px; left: 16px; z-index: 100; --card-width: ${width}px; --card-room: ${room}px`;
+        holder.append(card);
+        document.body.append(holder);
+      },
+      [TABLE_CAPTION, MAP_CARD_WIDTH_PX, MAP_CARD_ROOM_PX, ROW_COPIES] as const,
+    );
+    const holder = page.getByTestId('long-table');
+    const card = holder.locator('.card');
+    const wrapper = holder.locator('.table');
+    const lastRow = holder.locator('tbody tr').last();
+    const [before, cardBox, tableBox] = await Promise.all([wrapper.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight })), card.boundingBox(), holder.locator('table').boundingBox()]);
+    if (cardBox === null || tableBox === null) throw new Error('the card of the long Table is not drawn');
+    expect(cardBox.height, 'the card keeps the height the map gives it').toBeLessThanOrEqual(MAP_CARD_ROOM_PX + 1);
+    expect(before.scrollHeight, 'the Table has more rows than it shows').toBeGreaterThan(before.clientHeight + 1);
+    expect(await wrapper.evaluate((element) => getComputedStyle(element).overflowY), 'the Table scrolls in its wrapper').toBe('auto');
+    expect(await wrapper.evaluate((element) => getComputedStyle(element, '::-webkit-scrollbar').width), 'the wrapper draws its own scrollbar').toBe(`${SCROLLBAR_PX}px`);
+    const band = await card.locator('.card__band').boundingBox();
+    if (band === null) throw new Error('the card of the long Table has no band');
+    expect(band.y, 'the band of the card stays at its top').toBeGreaterThanOrEqual(cardBox.y);
+    expect(band.y + band.height, 'the band stays above the Table').toBeLessThanOrEqual(tableBox.y);
+    expect(await reachWithWheel(page, lastRow, { within: wrapper, wheelPx: WHEEL_PX }), 'the last row comes into view with the wheel').toBe(true);
+    const [shown, finalCard] = await Promise.all([wrapper.boundingBox(), card.boundingBox()]);
+    if (shown === null || finalCard === null) throw new Error('the card of the long Table lost a part');
+    expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
+    expect(shown.y + shown.height, 'the Table ends inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
   });
 });
 

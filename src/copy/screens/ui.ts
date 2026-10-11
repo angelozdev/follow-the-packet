@@ -52,7 +52,7 @@ export const CATALOG_TEXT = {
 
 export const INTERFACE_TEXT = {
   title: 'Elementos de la interfaz',
-  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas', tabs: 'Pestañas' },
+  family: { buttons: 'Botones', choices: 'Fichas y opciones', cards: 'Tarjetas', text: 'Textos y etiquetas', tabs: 'Pestañas', tables: 'Tablas' },
   variant: {
     primary: 'principal',
     secondary: 'secundario',
@@ -84,6 +84,8 @@ export const INTERFACE_TEXT = {
     alert: 'alerta',
     reply: 'respuesta de Lucía',
     tabs: 'pestañas: elegida y sin elegir',
+    table: 'tabla: una fila fija, una que se quita y una en uso',
+    tableEmpty: 'tabla vacía',
   },
   sample: {
     chips: ['{{icmp}} · {{echo-request}}', '{{icmp}} · {{echo-reply}}'],
@@ -101,6 +103,20 @@ export const INTERFACE_TEXT = {
     no: 'No',
     feedback: 'Por qué la respuesta es así.',
     tabs: { name: 'Sentido de las reglas', in: 'Entrada', out: 'Salida' },
+    table: {
+      title: 'Tabla de rutas',
+      owner: nameTag('router-oficina'),
+      caption: 'Rutas de router-oficina',
+      columns: { to: 'Destino', via: 'Por dónde sale' },
+      routes: [
+        { to: '192.168.1.0/24', via: 'directo' },
+        { to: '0.0.0.0/0', via: `203.0.113.1 ${nameTag('router-proveedor')}` },
+        { to: '10.0.0.0/16', via: `172.16.0.2 ${nameTag('router-sucursal')}` },
+      ],
+      empty: 'Sin rutas.',
+      inUse: 'en uso',
+      remove: 'Quitar',
+    },
   },
 } as const;
 

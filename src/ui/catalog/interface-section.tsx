@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, type TermId } from '@/copy';
-import { Button, Card, ChipTray, Choice, Tabs } from '@/design';
+import { Button, Card, ChipTray, Choice, Table, Tabs } from '@/design';
+import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
@@ -31,6 +32,16 @@ const SAMPLE_TABS = [
   },
 ];
 const [FIRST_TAB] = SAMPLE_TABS;
+const TABLE = SAMPLE.table;
+const TABLE_COLUMNS = [
+  { id: 'to', label: TABLE.columns.to },
+  { id: 'via', label: TABLE.columns.via },
+];
+const [FIXED_ROUTE, REMOVABLE_ROUTE, ROUTE_IN_USE] = TABLE.routes.map(({ to, via }) => ({
+  id: to,
+  cells: [<code key={to}>{to}</code>, <TaggedText key={via} text={via} />],
+}));
+const TABLE_ROWS = [FIXED_ROUTE, { ...REMOVABLE_ROUTE, onRemove: noPick }, { ...ROUTE_IN_USE, inUse: true, onRemove: noPick }];
 
 function Specimen({ caption, wide = false, children }: { caption: string; wide?: boolean; children: ReactNode }) {
   return (
@@ -38,6 +49,14 @@ function Specimen({ caption, wide = false, children }: { caption: string; wide?:
       {children}
       <figcaption className="catalog__caption">{caption}</figcaption>
     </figure>
+  );
+}
+
+function RoutesCard({ rows }: Pick<ComponentProps<typeof Table>, 'rows'>) {
+  return (
+    <Card header={{ icon: <EntityIcon entity={{ kind: 'edge', variant: 'router' }} />, title: <h2>{TABLE.title}</h2>, meta: <TaggedText text={TABLE.owner} /> }}>
+      <Table caption={TABLE.caption} columns={TABLE_COLUMNS} rows={rows} emptyText={TABLE.empty} inUseText={TABLE.inUse} removeText={TABLE.remove} />
+    </Card>
   );
 }
 
@@ -233,6 +252,14 @@ export function InterfaceSection() {
       <Family name={INTERFACE_TEXT.family.tabs}>
         <Specimen caption={VARIANT.tabs} wide>
           <Tabs name={SAMPLE.tabs.name} tabs={SAMPLE_TABS} selected={FIRST_TAB.id} onSelect={noPick} />
+        </Specimen>
+      </Family>
+      <Family name={INTERFACE_TEXT.family.tables}>
+        <Specimen caption={VARIANT.table} wide>
+          <RoutesCard rows={TABLE_ROWS} />
+        </Specimen>
+        <Specimen caption={VARIANT.tableEmpty} wide>
+          <RoutesCard rows={[]} />
         </Specimen>
       </Family>
     </section>
