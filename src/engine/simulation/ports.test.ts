@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { probePackets, withProbeActor } from '@/engine/exposure/exposure';
 import { DEFAULT_SOURCE_PORT, DEFAULT_TTL, packetSchema } from '@/engine/network/schema';
-import type { Network, PacketSpec } from '@/engine/network/types';
-import { OFFICE, OFFICE_FLOORS, allOut, chapter4Worlds, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import type { Firewall, Network, PacketSpec, Rule, Service } from '@/engine/network/types';
+import { OFFICE, OFFICE_FLOORS, allOut, chapter4Worlds, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { openingOf, type SimContext } from './context';
 import { simulate } from './simulate';
 import { replyStage } from './stages/reply';
@@ -23,7 +23,7 @@ const query = { from: 'client', kind: 'query' };
 const response = { from: 'server', kind: 'response' };
 
 const udp = (from: PacketSpec['from'], to: string, port: number): PacketSpec => ({ from, to, protocol: 'udp', port });
-const listening = (): Network => withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, listeningTcpPorts: [LISTENING_PORT] } });
+const listening = (): Network => withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [tcpService(LISTENING_PORT)] } });
 const guarded = (): Network => withDevice(listening(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
 const openVpc = (): Network => withInbound(lab03Net(), 'sg-servidor2', allOut('everything'));
 
@@ -159,7 +159,7 @@ describe('the source port and the exchange of a trace', () => {
 
   it('the ICMP branch of the host stage keeps every field it had', () => {
     const replied = simulate(officeNet(), ping(you, OFFICE.lucia));
-    const ignored = simulate(withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [] } }), ping(you, OFFICE.lucia));
+    const ignored = simulate(withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: true, services: [] } }), ping(you, OFFICE.lucia));
     const unsolicited = simulate(officeNet(), { ...ping(you, OFFICE.lucia), icmpType: 0 });
     expect([replied, ignored, unsolicited].map((trace) => trace.outcome)).toEqual(['replied', 'arrived-no-reply', 'arrived-no-reply']);
     const alwaysThere = ['destinationId', 'effectiveSource', 'header', 'outcome', 'resolvedIp', 'steps', 'tcpdump'];
@@ -170,5 +170,122 @@ describe('the source port and the exchange of a trace', () => {
     expect(Object.keys(replied.header!.reply!).sort()).toEqual(['destination', 'source']);
     expect(replied.tcpdump.map((line) => line.summary)).toEqual(['ICMP echo request', 'ICMP echo reply']);
     expect(replied.steps.map((step) => step.reason.code).slice(-2)).toEqual(['host-replies', 'reply-stateful']);
+  });
+});
+
+const LUCIA = 'lucia-laptop';
+const APP_PORT = 443;
+const serving = (...services: Service[]): Network => withDevice(officeNet(), LUCIA, { host: { ignoreIcmpEcho: false, services } });
+const serverServing = (...services: Service[]): Network => {
+  const net = officeTwoFloorsNet();
+  return { ...net, actors: net.actors.map((entry) => (entry.kind === 'server' ? { ...entry, services } : entry)) };
+};
+const tcpRule = (id: string, peerIp: string): Rule => ({ id, what: { kind: 'tcp', fromPort: LISTENING_PORT, toPort: LISTENING_PORT }, peer: { kind: 'cidr', cidr: `${peerIp}/32` } });
+const hostFirewall = (name: string, inbound: Rule[], outbound: Rule[]): Firewall => ({ id: `fw-${name}`, name, kind: 'host-firewall', inbound, outbound });
+const stagesOf = (trace: ReturnType<typeof simulate>): string[] => trace.steps.map((step) => step.stage);
+
+describe('services and the listening address in a trip', () => {
+  it('a tcp port nobody listens on answers with a reset and a firewall that drops answers with nothing', () => {
+    const closed = simulate(officeNet(), tcp(you, OFFICE.lucia, CLOSED_PORT));
+    expect(closed.outcome).toBe('refused');
+    expect(closed.exchange).toEqual([syn, rst]);
+    expect(closed.steps.at(-1)).toMatchObject({ stage: 'host', at: LUCIA, verdict: 'reject', reason: { code: 'host-refused', deviceId: LUCIA, port: CLOSED_PORT } });
+    expect(closed.tcpdump.at(-1)).toMatchObject({ deviceId: LUCIA, direction: 'Out', summary: `TCP ${CLOSED_PORT} RST` });
+    const dropped = simulate(withDevice(officeNet(), LUCIA, { firewallIds: ['fw-lucia'] }), tcp(you, OFFICE.lucia, CLOSED_PORT));
+    expect(dropped.outcome).toBe('timeout');
+    expect(dropped.exchange).toEqual([syn]);
+    expect(stagesOf(dropped)).not.toContain('host');
+    expect(dropped.tcpdump).toEqual([]);
+    expect(dropped).not.toHaveProperty('rttMs');
+    expect(closed).toHaveProperty('rttMs');
+  });
+
+  it('a tcp port with a service on the right address is accepted', () => {
+    const everywhere = simulate(serving(tcpService(LISTENING_PORT)), tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(everywhere.outcome).toBe('replied');
+    expect(everywhere.exchange).toEqual([syn, synAck, ack]);
+    expect(everywhere.steps.find((step) => step.stage === 'host')?.reason).toEqual({ code: 'host-accepts', deviceId: LUCIA, port: LISTENING_PORT });
+    const own = serving(tcpService(LISTENING_PORT, 'loopback'));
+    for (const to of ['127.0.0.1', '127.5.5.5', 'localhost']) {
+      const fromItself = simulate(own, tcp(device(LUCIA), to, LISTENING_PORT));
+      expect(fromItself.outcome, to).toBe('replied');
+      expect(fromItself.steps.find((step) => step.stage === 'host')?.reason, to).toEqual({ code: 'host-accepts', deviceId: LUCIA, port: LISTENING_PORT });
+    }
+  });
+
+  it('a service answers only the port and the protocol it listens on', () => {
+    const net = serving(tcpService(LISTENING_PORT), { protocol: 'udp', port: DNS_PORT, listen: 'all' });
+    expect(simulate(net, tcp(you, OFFICE.lucia, DNS_PORT)).outcome).toBe('refused');
+    expect(simulate(net, tcp(you, OFFICE.lucia, LISTENING_PORT + 1)).outcome).toBe('refused');
+    expect(simulate(net, tcp(you, OFFICE.lucia, LISTENING_PORT)).outcome).toBe('replied');
+  });
+
+  it('a service on the loopback address refuses a packet to the IP of the device on the network, from another device and from itself', () => {
+    const net = serving(tcpService(LISTENING_PORT, 'loopback'));
+    for (const from of [you, device(LUCIA)]) {
+      const trace = simulate(net, tcp(from, OFFICE.lucia, LISTENING_PORT));
+      expect(trace.outcome, from.id).toBe('refused');
+      expect(trace.exchange, from.id).toEqual([syn, rst]);
+      expect(trace.steps.at(-1), from.id).toMatchObject({ stage: 'host', verdict: 'reject', reason: { code: 'host-wrong-address', deviceId: LUCIA, port: LISTENING_PORT, ip: OFFICE.lucia } });
+      expect(trace.tcpdump.at(-1), from.id).toMatchObject({ direction: 'Out', summary: `TCP ${LISTENING_PORT} RST` });
+    }
+    const nobody = simulate(serving(), tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(nobody.steps.at(-1)?.reason).toEqual({ code: 'host-refused', deviceId: LUCIA, port: LISTENING_PORT });
+  });
+
+  it('a firewall in front of a service on the loopback address drops the packet before the host answers', () => {
+    const net = withDevice(serving(tcpService(LISTENING_PORT, 'loopback')), LUCIA, { firewallIds: ['fw-lucia'] });
+    const trace = simulate(net, tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(trace.outcome).toBe('timeout');
+    expect(stagesOf(trace)).not.toContain('host');
+  });
+
+  it('a server of the internet accepts a tcp connection on a port it serves', () => {
+    const { server } = OFFICE_FLOORS;
+    const accepted = simulate(serverServing(tcpService(APP_PORT)), tcp(you, server.ip, APP_PORT));
+    expect(accepted.outcome).toBe('replied');
+    expect(accepted.destinationId).toBe(server.id);
+    expect(accepted.exchange).toEqual([syn, synAck, ack]);
+    expect(accepted.header?.reply).toMatchObject({ source: server.ip, sourcePort: APP_PORT, destinationPort: DEFAULT_SOURCE_PORT });
+    expect(accepted.steps.find((step) => step.stage === 'host')?.reason).toEqual({ code: 'host-accepts', deviceId: server.id, port: APP_PORT });
+    expect(accepted.tcpdump).toEqual([]);
+    const closed = simulate(serverServing(tcpService(APP_PORT)), tcp(you, server.ip, CLOSED_PORT));
+    expect(closed.outcome).toBe('refused');
+    expect(closed.exchange).toEqual([syn, rst]);
+    const otherProtocol = simulate(serverServing({ protocol: 'udp', port: APP_PORT, listen: 'all' }), tcp(you, server.ip, APP_PORT));
+    expect(otherProtocol.outcome).toBe('refused');
+    expect(simulate(officeTwoFloorsNet(), tcp(you, server.ip, APP_PORT)).outcome).toBe('refused');
+  });
+
+  it('a router has no services: it refuses a tcp connection to its own interface', () => {
+    const trace = simulate(serverServing(tcpService(APP_PORT)), tcp(you, OFFICE_FLOORS.floor1.gateway, APP_PORT));
+    expect(trace.outcome).toBe('refused');
+    expect(trace.steps.at(-1)?.reason).toEqual({ code: 'host-refused', deviceId: OFFICE_FLOORS.officeRouter.id, port: APP_PORT });
+  });
+
+  it('the reply of a tcp connection is never stopped by a firewall, outbound or inbound', () => {
+    const closedAfterRequest = [hostFirewall('you', [], [tcpRule('you-out', OFFICE.lucia)]), hostFirewall('lucia', [tcpRule('lucia-in', OFFICE.you)], [])];
+    const guarding = withDevice(withDevice(serving(tcpService(LISTENING_PORT)), 'your-laptop', { firewallIds: ['fw-you'] }), LUCIA, { firewallIds: ['fw-lucia'] });
+    const net: Network = { ...guarding, firewalls: closedAfterRequest };
+    const trace = simulate(net, tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.exchange).toEqual([syn, synAck, ack]);
+    expect(stagesOf(trace).filter((stage) => stage === 'firewall-out' || stage === 'firewall-in')).toEqual(['firewall-out', 'firewall-in']);
+    expect(stagesOf(trace).slice(stagesOf(trace).indexOf('host') + 1)).toEqual(['reply']);
+    const noOutbound = simulate({ ...net, firewalls: [hostFirewall('you', [], []), closedAfterRequest[1]] }, tcp(you, OFFICE.lucia, LISTENING_PORT));
+    const noInbound = simulate({ ...net, firewalls: [closedAfterRequest[0], hostFirewall('lucia', [], [])] }, tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect([noOutbound.outcome, noInbound.outcome]).toEqual(['timeout', 'timeout']);
+    expect(stagesOf(noOutbound).at(-1)).toBe('firewall-out');
+    expect(stagesOf(noInbound).at(-1)).toBe('firewall-in');
+  });
+
+  it('the reply of a tcp connection to a server of the internet is never stopped by the firewall of the sender', () => {
+    const { server } = OFFICE_FLOORS;
+    const outToServer: Rule = { id: 'you-out', what: { kind: 'tcp', fromPort: APP_PORT, toPort: APP_PORT }, peer: { kind: 'cidr', cidr: `${server.ip}/32` } };
+    const net = withDevice(serverServing(tcpService(APP_PORT)), 'your-laptop', { firewallIds: ['fw-you'] });
+    const trace = simulate({ ...net, firewalls: [hostFirewall('you', [], [outToServer])] }, tcp(you, server.ip, APP_PORT));
+    expect(trace.outcome).toBe('replied');
+    expect(stagesOf(trace).filter((stage) => stage === 'firewall-in')).toEqual([]);
+    expect(stagesOf(trace).at(-1)).toBe('reply');
   });
 });

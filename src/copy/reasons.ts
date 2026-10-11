@@ -1,4 +1,4 @@
-import type { FirewallKind, Network, Reason } from '@/engine';
+import { LOOPBACK_IP, type FirewallKind, type Network, type Reason } from '@/engine';
 import { NOT_DELIVERED, deviceName } from './packet-labels';
 import { word, type TermText } from './term-text';
 import type { TermId } from './terms';
@@ -59,6 +59,10 @@ const ROUTE_INSIDE: Record<Network['kind'], TermText> = {
   vpc: 'Viaja por dentro de la {{vpc}}.',
   office: 'Viaja por dentro de la {{network|red}} de la oficina.',
 };
+
+function refusedAtArrival(net: Network, deviceId: string): TermText {
+  return `Llega, pero ${deviceName(net, deviceId)} lo rechaza.`;
+}
 
 const SENDER_WARNS: TermText = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
 
@@ -126,8 +130,8 @@ function warning(term: TermId): HiddenCause {
   return { term, text: NOT_DELIVERED };
 }
 
-/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back. */
-function hiddenCause(reason: Reason): HiddenCause | null {
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address says only that the packet arrived and was rejected. */
+function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
   switch (reason.code) {
     case 'forward-no-owner':
       return warning('host-unreachable');
@@ -138,14 +142,16 @@ function hiddenCause(reason: Reason): HiddenCause | null {
       return warning('time-exceeded');
     case 'host-ignores-echo':
       return { term: 'icmp-echo-ignore-all', text: NOTHING_CAME_BACK };
+    case 'host-wrong-address':
+      return { term: 'listen-address', text: refusedAtArrival(net, reason.deviceId) };
     default:
       return null;
   }
 }
 
-/** Turns an engine reason into the sentence the player reads, with the terms they know tagged; while the term that names a hidden cause is unknown, the sentence says only what the player saw: that nothing came back, or that the packet did not reach its destination. `placeOf` says where each router stands for the player: one the map does not draw is never named, by name or by IP. */
+/** Turns an engine reason into the sentence the player reads, with the terms they know tagged; while the term that names a hidden cause is unknown, the sentence says only what the player saw: that nothing came back, that the packet did not reach its destination, or that it arrived and was rejected. `placeOf` says where each router stands for the player: one the map does not draw is never named, by name or by IP. */
 export function describeReason(reason: Reason, net: Network, known: ReadonlySet<TermId>, placeOf: PlaceOf = ALL_NAMED): TermText {
-  const hidden = hiddenCause(reason);
+  const hidden = hiddenCause(reason, net);
   const router = (routerId: string, options?: RouterRef) => routerRef(net, known, placeOf, routerId, options);
   if (hidden && !known.has(hidden.term)) return hidden.text;
   switch (reason.code) {
@@ -212,6 +218,8 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `${deviceName(net, reason.deviceId)} contesta.`;
     case 'host-refused':
       return `Llega, pero ningún programa escucha en el puerto ${reason.port}: ${deviceName(net, reason.deviceId)} lo rechaza.`;
+    case 'host-wrong-address':
+      return `${refusedAtArrival(net, reason.deviceId)} El ${word(known, 'service', 'servicio')} del ${word(known, 'port', 'puerto')} ${reason.port} tiene como {{listen-address}} ${LOOPBACK_IP}, y el ${word(known, 'packet', 'paquete')} va a ${reason.ip}.`;
     case 'host-accepts':
       return `Un programa escucha en el puerto ${reason.port} y acepta.`;
     case 'host-udp-no-service':

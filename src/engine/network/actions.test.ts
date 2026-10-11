@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, withDevice } from '@/testing';
+import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
 import { applyAction, networkActionSchema, type NetworkAction } from './actions';
 import { networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Firewall, Lan, Network, Router } from './types';
+import type { Actor, Device, Firewall, Lan, Network, Router, ServerActor, Service } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
 const OFFICE_ACTIONS = new Set<NetworkAction['type']>(['updateRouter', 'connectDevice', 'setGateway']);
+const APP: Service = tcpService(3000);
+const DATABASE: Service = tcpService(5432);
+const NAME_SERVER: Service = { protocol: 'udp', port: 53, listen: 'all' };
 
 const inboundIds = (net: Network, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.inbound.map((r) => r.id);
 const outboundIds = (net: Network, firewallId: string) => net.firewalls.find((f) => f.id === firewallId)?.outbound.map((r) => r.id);
 const deviceOf = (net: Network, id: string) => net.devices.find((d) => d.id === id);
 const routerOf = (net: Network, id: string) => net.routers?.find((r) => r.id === id);
+const serverOf = (net: Network, id: string) => net.actors.find((a): a is ServerActor => a.kind === 'server' && a.id === id);
 const validate = (net: Network) => networkSchema.safeParse(net).error?.issues.map((issue) => issue.message) ?? [];
 
 const GHOST = 'ghost';
@@ -29,6 +33,11 @@ const UNKNOWN_IDS: [string, NetworkAction][] = [
   ['connectDevice on a device', { type: 'connectDevice', deviceId: GHOST }],
   ['setGateway on a device', { type: 'setGateway', deviceId: GHOST, gateway: floor1.gateway }],
   ['updateRouter on a router', { type: 'updateRouter', routerId: GHOST, routes: [], sendsUnreachable: false }],
+  ['setServices on a device or server', { type: 'setServices', ownerId: GHOST, services: [APP] }],
+  ['setServices on an actor that is not a server', { type: 'setServices', ownerId: 'you', services: [APP] }],
+  ['setListenAddress on a device or server', { type: 'setListenAddress', ownerId: GHOST, protocol: 'tcp', port: 22, listen: 'loopback' }],
+  ['setListenAddress on a port the owner does not serve', { type: 'setListenAddress', ownerId: 'servidor1', protocol: 'tcp', port: 80, listen: 'loopback' }],
+  ['setListenAddress on a protocol the owner does not serve', { type: 'setListenAddress', ownerId: 'servidor1', protocol: 'udp', port: 22, listen: 'loopback' }],
 ];
 
 describe('applyAction', () => {
@@ -115,7 +124,7 @@ describe('applyAction on an office with floors', () => {
       kind: 'laptop',
       privateIp: FLOOR_3.ana,
       firewallIds: [],
-      host: { ignoreIcmpEcho: false, listeningTcpPorts: [] },
+      host: { ignoreIcmpEcho: false, services: [] },
       lanId: lan.id,
       gateway: FLOOR_3.gateway,
     };
@@ -168,6 +177,44 @@ describe('applyAction on an office with floors', () => {
     expect(validate(updated)).toEqual([]);
     expect(validate(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, interfaces: [{ ip: '203.0.113.20', faces: GHOST }] }))).toHaveLength(1);
     expect(routerOf(applyAction(net, { type: 'updateRouter', routerId: officeRouter.id, routes: [] }), officeRouter.id)?.interfaces).toEqual(office?.interfaces);
+  });
+
+  it('setServices replaces the services of a device or server', () => {
+    const net = officeTwoFloorsNet();
+    const device = applyAction(applyAction(net, { type: 'setServices', ownerId: 'lucia-laptop', services: [APP, DATABASE] }), { type: 'setServices', ownerId: 'lucia-laptop', services: [NAME_SERVER] });
+    expect(deviceOf(device, 'lucia-laptop')?.host.services).toEqual([NAME_SERVER]);
+    expect(deviceOf(device, 'lucia-laptop')?.host.ignoreIcmpEcho).toBe(false);
+    expect(deviceOf(device, 'marta-laptop')).toEqual(deviceOf(net, 'marta-laptop'));
+    const server = applyAction(net, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [APP, DATABASE] });
+    expect(serverOf(server, OFFICE_FLOORS.server.id)?.services).toEqual([APP, DATABASE]);
+    expect(applyAction(server, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [] }).actors).toEqual(net.actors.map((a) => (a.kind === 'server' ? { ...a, services: [] } : a)));
+    expect(deviceOf(server, 'lucia-laptop')).toEqual(deviceOf(net, 'lucia-laptop'));
+    expect(validate(device)).toEqual([]);
+    expect(validate(server)).toEqual([]);
+  });
+
+  it('setListenAddress changes the address of one service and keeps the rest', () => {
+    const net = applyAction(officeTwoFloorsNet(), { type: 'setServices', ownerId: 'lucia-laptop', services: [APP, DATABASE, { ...APP, protocol: 'udp' }] });
+    const moved = applyAction(net, { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: 3000, listen: 'loopback' });
+    expect(deviceOf(moved, 'lucia-laptop')?.host.services).toEqual([tcpService(3000, 'loopback'), DATABASE, { ...APP, protocol: 'udp' }]);
+    const back = applyAction(moved, { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: 3000, listen: 'all' });
+    expect(deviceOf(back, 'lucia-laptop')?.host.services).toEqual(deviceOf(net, 'lucia-laptop')?.host.services);
+    expect(deviceOf(moved, 'marta-laptop')).toEqual(deviceOf(net, 'marta-laptop'));
+    const served = applyAction(net, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [DATABASE, NAME_SERVER] });
+    const serverMoved = applyAction(served, { type: 'setListenAddress', ownerId: OFFICE_FLOORS.server.id, protocol: 'udp', port: 53, listen: 'loopback' });
+    expect(serverOf(serverMoved, OFFICE_FLOORS.server.id)?.services).toEqual([DATABASE, { ...NAME_SERVER, listen: 'loopback' }]);
+    expect(validate(moved)).toEqual([]);
+    expect(validate(serverMoved)).toEqual([]);
+  });
+
+  it('a service is a protocol, a port from 1 to 65535 and a listening address', () => {
+    const parses = (services: unknown[]) => networkActionSchema.safeParse({ type: 'setServices', ownerId: 'lucia-laptop', services }).success;
+    expect(parses([APP, NAME_SERVER, tcpService(65535, 'loopback')])).toBe(true);
+    expect(parses([{ ...APP, port: 0 }])).toBe(false);
+    expect(parses([{ ...APP, port: 65536 }])).toBe(false);
+    expect(parses([{ ...APP, protocol: 'icmp' }])).toBe(false);
+    expect(parses([{ ...APP, listen: '0.0.0.0' }])).toBe(false);
+    expect(parses([{ protocol: 'tcp', port: 3000 }])).toBe(false);
   });
 
   it('actions on unknown ids return the same network', () => {

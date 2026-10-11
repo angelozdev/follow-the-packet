@@ -1,7 +1,7 @@
 import { bestRoute, interfaceTowards, onwardFrom, ownsIp } from '@/engine/network/addressing/routing';
 import { lanOf } from '@/engine/network/addressing/topology';
 import { DEFAULT_TTL } from '@/engine/network/schema';
-import type { Device, Router, ServerActor } from '@/engine/network/types';
+import type { Device, Router, ServerActor, Service } from '@/engine/network/types';
 import { CONTINUE, addLeg, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
 import type { NoticeKind, Notice, Reason } from '@/engine/simulation/trace';
 
@@ -18,8 +18,8 @@ export function sendNotice(ctx: SimContext, notice: Notice): StageResult {
   return stop(notice.kind === 'time-exceeded' ? 'ttl-exceeded' : 'unreachable');
 }
 
-function answerAs(ctx: SimContext, id: string, ip: string, replies: Reason): StageResult {
-  ctx.responder = { id, ip, replies };
+function answerAs(ctx: SimContext, id: string, ip: string, replies: Reason, services?: Service[]): StageResult {
+  ctx.responder = { id, ip, replies, ...(services && { services }) };
   return CONTINUE;
 }
 
@@ -73,7 +73,7 @@ function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: numbe
 
 function answerFromServer(ctx: SimContext, server: ServerActor): StageResult {
   addLeg(ctx, server.latencyMs);
-  return answerAs(ctx, server.id, server.ip, { code: 'host-replies', deviceId: server.id });
+  return answerAs(ctx, server.id, server.ip, { code: 'host-replies', deviceId: server.id }, server.services);
 }
 
 function pass(ctx: SimContext, router: Router, ttl: number, ingress: string): StageResult {

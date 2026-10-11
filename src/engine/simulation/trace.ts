@@ -57,6 +57,7 @@ export type Reason =
   | { code: 'host-ignores-echo'; deviceId: string }
   | { code: 'host-replies'; deviceId: string }
   | { code: 'host-refused'; deviceId: string; port: number }
+  | { code: 'host-wrong-address'; deviceId: string; port: number; ip: string }
   | { code: 'host-accepts'; deviceId: string; port: number }
   | { code: 'host-udp-no-service'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nameTag } from '@/copy';
 import { applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
-import { ATTACKER_IP, OFFICE_FLOORS, allOut, officeTwoFloorsNet, withDevice } from '@/testing';
+import { ATTACKER_IP, OFFICE_FLOORS, allOut, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
 import { changedFloors, changedNames, mentions, unnamedChanges } from './changes';
 
 const { floor1, floor2, officeRouter } = OFFICE_FLOORS;
@@ -11,7 +11,8 @@ const FLOOR_3 = { id: 'floor-3', name: 'Piso 3', cidr: '192.168.3.0/24', latency
 const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer', 'guest-laptop'];
 const FLOOR_1_NAMES = ['tu-laptop', 'laptop-lucia', 'laptop-marta', 'impresora', 'laptop-visita'];
 
-const world: Network = withDevice({ ...officeTwoFloorsNet(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id] });
+const LUCIA_APP = tcpService(3000);
+const world: Network = withDevice({ ...officeTwoFloorsNet(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id], host: { ignoreIcmpEcho: false, services: [LUCIA_APP] } });
 const [anyDevice] = world.devices;
 const [anyRouter] = world.routers ?? [];
 
@@ -24,6 +25,8 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   addFirewall: { action: { type: 'addFirewall', deviceId: 'your-laptop', firewall: { ...LUCIA_FIREWALL, id: 'fw-you', name: NAMES.you } }, names: [NAMES.you] },
   connectDevice: { action: { type: 'connectDevice', deviceId: 'guest-laptop' }, names: [NAMES.visitor] },
   setGateway: { action: { type: 'setGateway', deviceId: 'your-laptop' }, names: [NAMES.you] },
+  setServices: { action: { type: 'setServices', ownerId: 'lucia-laptop', services: [] }, names: [NAMES.lucia] },
+  setListenAddress: { action: { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: LUCIA_APP.port, listen: 'loopback' }, names: [NAMES.lucia] },
   updateRouter: { action: { type: 'updateRouter', routerId: officeRouter.id, sendsUnreachable: false }, names: [anyRouter.name] },
   addActor: { action: { type: 'addActor', actor: { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' } }, names: [] },
   addLan: { action: { type: 'addLan', lan: FLOOR_3 }, names: [] },
@@ -42,6 +45,14 @@ describe('changedNames', () => {
       const moved: Network = { ...world, actors: world.actors.map((actor) => (actor === internetServer ? { ...actor, ...patch } : actor)) };
       expect(changedNames(world, moved), JSON.stringify(patch)).toEqual([internetServer?.name]);
     }
+  });
+
+  it('names a server of the internet whose services change', () => {
+    const internetServer = world.actors.find((actor) => actor.kind === 'server');
+    const served = applyAction(world, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [tcpService(443)] });
+    expect(changedNames(world, served)).toEqual([internetServer?.name]);
+    const moved = applyAction(served, { type: 'setListenAddress', ownerId: OFFICE_FLOORS.server.id, protocol: 'tcp', port: 443, listen: 'loopback' });
+    expect(changedNames(served, moved)).toEqual([internetServer?.name]);
   });
 
   it('names nothing when an action changes nothing, because its target is not there or already is as asked', () => {

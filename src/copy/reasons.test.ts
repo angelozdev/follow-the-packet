@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type Firewall, type Reason } from '@/engine';
-import { EVERY_TERM, OFFICE_FLOORS, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE, OFFICE_FLOORS, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
@@ -431,5 +431,55 @@ describe('describeReason for a router that discards a packet', () => {
     expect(toPlainText(early)).toBe(toPlainText(describeReason(reason, FLOORS, EVERY_TERM)));
     expect(toPlainText(early)).toMatch(/descarta|descartó/);
     expect(termsIn(describeReason(reason, FLOORS, EVERY_TERM))).toContain('drop');
+  });
+});
+
+describe('describeReason for a refusal because of the listening address', () => {
+  const wrongAddress: Reason = { code: 'host-wrong-address', deviceId: 'servidor2', port: 3000, ip: '172.31.38.97' };
+  const ARRIVED_AND_REFUSED = 'Llega, pero [[servidor2]] lo rechaza.';
+  const KNOWN_TEXT = `${ARRIVED_AND_REFUSED} El {{service|servicio}} del {{port|puerto}} 3000 tiene como {{listen-address}} 127.0.0.1, y el {{packet|paquete}} va a 172.31.38.97.`;
+
+  it('names the service, its listening address and the IP the packet goes to once the listening address is known', () => {
+    const text = describeReason(wrongAddress, NET, EVERY_TERM);
+    expect(text).toBe(KNOWN_TEXT);
+    expect(termsIn(text)).toEqual(['service', 'port', 'listen-address', 'packet']);
+    expect(toPlainText(text)).toBe('Llega, pero servidor2 lo rechaza. El servicio del puerto 3000 tiene como dirección de escucha 127.0.0.1, y el paquete va a 172.31.38.97.');
+  });
+
+  it('says only that the packet arrived and was rejected while the listening address is unknown', () => {
+    const text = describeReason(wrongAddress, NET, without('listen-address'));
+    expect(text).toBe(ARRIVED_AND_REFUSED);
+    expect(termsIn(text)).toEqual([]);
+    expect(toPlainText(text)).not.toMatch(/escucha|programa|servicio|puerto|dirección/i);
+  });
+
+  it('tags only the terms the player knows, whichever of its terms is missing', () => {
+    for (const missing of ['service', 'port', 'packet', 'listen-address'] as const) {
+      const known = without(missing);
+      const text = describeReason(wrongAddress, NET, known);
+      expect(() => termsIn(text), missing).not.toThrow();
+      expect(termsIn(text).filter((tagged) => !known.has(tagged)), missing).toEqual([]);
+    }
+  });
+
+  it('never says that no program listens, since one does, and gives no reason for a reply to come back', () => {
+    for (const known of [EVERY_TERM, without('listen-address'), without('service', 'port', 'packet')]) {
+      expect(toPlainText(describeReason(wrongAddress, NET, known))).not.toMatch(/ningún programa|nadie escucha|stateful|conversación|recuerda|porque/i);
+    }
+  });
+
+  it('names a server of the internet and a device the same way', () => {
+    const text = describeReason({ ...wrongAddress, deviceId: OFFICE_FLOORS.server.id, ip: OFFICE_FLOORS.server.ip }, FLOORS, EVERY_TERM);
+    expect(toPlainText(text)).toContain('servidor-internet');
+    expect(toPlainText(text)).toContain(OFFICE_FLOORS.server.ip);
+  });
+
+  it('is what a loopback service answers a packet to the IP of its device with', () => {
+    const net = withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [tcpService(3000, 'loopback')] } });
+    const trace = simulate(net, tcp(device('your-laptop'), OFFICE.lucia, 3000));
+    expect(trace.outcome).toBe('refused');
+    const reason = trace.steps.at(-1)!.reason;
+    expect(reason).toEqual({ code: 'host-wrong-address', deviceId: 'lucia-laptop', port: 3000, ip: OFFICE.lucia });
+    expect(toPlainText(describeReason(reason, net, EVERY_TERM))).toContain(`va a ${OFFICE.lucia}`);
   });
 });

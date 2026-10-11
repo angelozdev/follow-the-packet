@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
-import type { Device, Direction, Firewall, Lan, Network, Router, Rule } from './types';
+import type { Actor, Device, Direction, Firewall, Lan, Network, Router, Rule, ServerActor, Service } from './types';
 
 const nonEmpty = z.string().min(1);
 
@@ -17,6 +17,8 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addLan'), lan: lanSchema }),
   z.object({ type: z.literal('addDevice'), device: deviceSchema }),
   z.object({ type: z.literal('addRouter'), router: routerSchema }),
+  z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema) }),
+  z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.shape }),
   z.object({
     type: z.literal('updateRouter'),
     routerId: nonEmpty,
@@ -32,6 +34,8 @@ function changeDevice(net: Network, deviceId: string, change: (device: Device) =
   if (!net.devices.some((d) => d.id === deviceId)) return net;
   return { ...net, devices: net.devices.map((d) => (d.id === deviceId ? change(d) : d)) };
 }
+
+const isServer = (actor: Actor): actor is ServerActor => actor.kind === 'server';
 
 function changeRouter(net: Network, routerId: string, change: (router: Router) => Router): Network {
   const routers = net.routers ?? [];
@@ -59,6 +63,25 @@ function withFirewall(net: Network, deviceId: string, firewall: Firewall): Netwo
 function withGateway(device: Device, gateway: string | undefined): Device {
   if (gateway !== undefined) return { ...device, gateway };
   return Object.fromEntries(Object.entries(device).filter(([key]) => key !== 'gateway')) as Device;
+}
+
+/** Returns the services of a device or of a server of the internet, or undefined when the network has neither under that id. */
+function servicesOf(net: Network, ownerId: string): Service[] | undefined {
+  const device = net.devices.find((d) => d.id === ownerId);
+  if (device) return device.host.services;
+  const server = net.actors.find((a): a is ServerActor => isServer(a) && a.id === ownerId);
+  return server && (server.services ?? []);
+}
+
+function withServices(net: Network, ownerId: string, services: Service[]): Network {
+  if (net.devices.some((d) => d.id === ownerId)) return changeDevice(net, ownerId, (d) => ({ ...d, host: { ...d.host, services } }));
+  return { ...net, actors: net.actors.map((a) => (isServer(a) && a.id === ownerId ? { ...a, services } : a)) };
+}
+
+function withListenAddress(net: Network, { ownerId, protocol, port, listen }: Extract<NetworkAction, { type: 'setListenAddress' }>): Network {
+  const isIt = (service: Service) => service.protocol === protocol && service.port === port;
+  const services = servicesOf(net, ownerId);
+  return services?.some(isIt) ? withServices(net, ownerId, services.map((service) => (isIt(service) ? { ...service, listen } : service))) : net;
 }
 
 function withLan(net: Network, lan: Lan): Network {
@@ -90,6 +113,10 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return { ...net, devices: [...net.devices, action.device] };
     case 'addRouter':
       return { ...net, routers: [...(net.routers ?? []), action.router] };
+    case 'setServices':
+      return servicesOf(net, action.ownerId) ? withServices(net, action.ownerId, action.services) : net;
+    case 'setListenAddress':
+      return withListenAddress(net, action);
     case 'updateRouter':
       return changeRouter(net, action.routerId, (r) => ({
         ...r,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from '@/engine/simulation/paths/checkpoints';
-import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { applyAction, type NetworkAction } from '@/engine/network/actions';
@@ -75,7 +75,7 @@ describe('lab 03 in the engine', () => {
   });
 
   it('V6: Linux ignores the ping; it arrives (tcpdump In) but nobody answers', () => {
-    const net = withDevice(withEcho(), 'servidor2', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [22] } });
+    const net = withDevice(withEcho(), 'servidor2', { host: { ignoreIcmpEcho: true, services: [tcpService(22)] } });
     const trace = simulate(net, ping(device('servidor1'), S2.private));
     expect(trace.outcome).toBe('arrived-no-reply');
     expect(deathPoint(trace)).toEqual({ stage: 'host', at: 'servidor2' });
@@ -748,7 +748,7 @@ describe('the header, the reply and the round trip time', () => {
   });
 
   it('only a packet that was answered has a reply header', () => {
-    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [] } });
+    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, services: [] } });
     const traces = [simulate(deaf, ping(device('your-laptop'), floor1.printer)), sendFromYou(floor1.nobody), sendFromYou(server.ip, 2), simulate(floors(), tcp(device('your-laptop'), floor1.printer, 80))];
     expect(traces.map((trace) => trace.outcome)).toEqual(['arrived-no-reply', 'unreachable', 'ttl-exceeded', 'refused']);
     for (const trace of traces) {
@@ -845,7 +845,7 @@ describe('the header, the reply and the round trip time', () => {
 
   it('a trip that brings nothing back has no round trip time', () => {
     const quiet: Network = { ...floors(), routers: (floors().routers ?? []).map((router) => ({ ...router, sendsUnreachable: false })) };
-    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, listeningTcpPorts: [] } });
+    const deaf = withDevice(floors(), 'printer', { host: { ignoreIcmpEcho: true, services: [] } });
     const traces = [
       simulate(quiet, ping(device('your-laptop'), '8.8.8.8')),
       simulate(quiet, ping(device('your-laptop'), '10.0.0.10')),

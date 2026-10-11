@@ -22,7 +22,8 @@ function isCidr(value: string): boolean {
 const cidr = z.string().refine(isCidr, 'invalid CIDR');
 const PORT_MAX = 65535;
 const port = z.number().int().min(0).max(PORT_MAX);
-const sourcePort = z.number().int().min(1).max(PORT_MAX);
+/** A port a program binds or a packet leaves from: from 1 to 65535, since IANA marks port 0 as reserved. */
+const realPort = z.number().int().min(1).max(PORT_MAX);
 const nonEmpty = z.string().min(1);
 const latencyMs = z.number().nonnegative();
 
@@ -57,6 +58,12 @@ export const firewallSchema = z.object({
   outbound: z.array(ruleSchema),
 });
 
+export const serviceSchema = z.object({
+  protocol: z.enum(['tcp', 'udp']),
+  port: realPort,
+  listen: z.enum(['all', 'loopback']),
+});
+
 export const deviceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -65,7 +72,7 @@ export const deviceSchema = z.object({
   privateIp: ipSchema,
   publicIp: ipSchema.optional(),
   firewallIds: z.array(z.string().min(1)),
-  host: z.object({ ignoreIcmpEcho: z.boolean(), listeningTcpPorts: z.array(port) }),
+  host: z.object({ ignoreIcmpEcho: z.boolean(), services: z.array(serviceSchema) }),
   appTarget: z.string().min(1).optional(),
   lanId: nonEmpty.optional(),
   gateway: ipSchema.optional(),
@@ -93,7 +100,7 @@ const actorShape = { id: nonEmpty, name: nonEmpty, ip: ipSchema };
 
 export const actorSchema = z.discriminatedUnion('kind', [
   z.object({ ...actorShape, kind: z.enum(['you', 'attacker', 'home']) }),
-  z.object({ ...actorShape, kind: z.literal('server'), latencyMs }),
+  z.object({ ...actorShape, kind: z.literal('server'), latencyMs, services: z.array(serviceSchema).optional() }),
 ]);
 
 const networkShape = z.object({
@@ -243,7 +250,7 @@ export const packetSchema = z
     to: z.string().min(1),
     protocol: z.enum(['tcp', 'udp', 'icmp']),
     port: port.optional(),
-    sourcePort: sourcePort.optional(),
+    sourcePort: realPort.optional(),
     icmpType: icmpTypeSchema.optional(),
     ttl: z.number().int().min(1).max(TTL_MAX).optional(),
   })

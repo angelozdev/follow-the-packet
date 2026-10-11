@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine/simulation/simulate';
 import { extraOpenings, flowKey, probePackets, reachesHost } from './exposure';
-import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, withDevice, withInbound } from '@/testing';
+import type { Rule } from '@/engine/network/types';
+import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
 const expected = [
@@ -118,5 +119,30 @@ describe('an office with two LANs, routers and a server of the internet', () => 
     const packets = probePackets(officeTwoFloorsNet());
     expect(packets.some((probe) => probe.from.kind === 'actor' && probe.from.id === server.id)).toBe(false);
     expect(packets.some((probe) => probe.to === server.ip)).toBe(false);
+  });
+});
+
+describe('a tcp rule in an office', () => {
+  const SSH = 22;
+  const tcpFromYou = (id: string, fromPort: number, toPort = fromPort): Rule => ({ id, what: { kind: 'tcp', fromPort, toPort }, peer: { kind: 'cidr', cidr: `${OFFICE.you}/32` } });
+  const guarded = (...rules: Rule[]) =>
+    withInbound(withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'], host: { ignoreIcmpEcho: false, services: [tcpService(SSH)] } }), 'fw-lucia', ...rules);
+  const expected = [tcp(device('your-laptop'), OFFICE.lucia, SSH)];
+
+  it('the probe battery still finds the extra opening of a tcp rule in an office', () => {
+    expect(extraOpenings(guarded(tcpFromYou('ssh', SSH)), expected)).toEqual([]);
+    const extra = extraOpenings(guarded(tcpFromYou('ssh', SSH), tcpFromYou('database', 5432)), expected);
+    expect(extra).toEqual([tcp(device('your-laptop'), OFFICE.lucia, 5432)]);
+  });
+
+  it('a port range of 1-1023 is caught by the probe battery through the ports 80 and 443', () => {
+    const extra = extraOpenings(guarded(tcpFromYou('well-known', 1, 1023)), expected);
+    expect(extra).toEqual([tcp(device('your-laptop'), OFFICE.lucia, 80), tcp(device('your-laptop'), OFFICE.lucia, 443)]);
+    expect(extra.map((probe) => probe.port)).not.toContain(3306);
+    expect(extra.map((probe) => probe.port)).not.toContain(5432);
+  });
+
+  it('a range that holds none of the ports the battery probes besides 22 looks exact to it', () => {
+    expect(extraOpenings(guarded(tcpFromYou('around-ssh', 20, 25)), expected)).toEqual([]);
   });
 });

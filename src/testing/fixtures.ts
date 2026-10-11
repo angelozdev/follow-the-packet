@@ -1,5 +1,5 @@
 import { TERMS, type TermId } from '@/copy';
-import { ROUTE_DEFAULT, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule } from '@/engine';
+import { ROUTE_DEFAULT, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule, type Service } from '@/engine';
 
 /** Every registered term, for the tests that do not care what the player knows yet. */
 export const EVERY_TERM: ReadonlySet<TermId> = new Set(Object.keys(TERMS) as TermId[]);
@@ -23,6 +23,7 @@ export const device = (id: string): Endpoint => ({ kind: 'device', id });
 export const actor = (id: string): Endpoint => ({ kind: 'actor', id });
 export const ping = (from: Endpoint, to: string): PacketSpec => ({ from, to, protocol: 'icmp', icmpType: 8 });
 export const tcp = (from: Endpoint, to: string, port: number): PacketSpec => ({ from, to, protocol: 'tcp', port });
+export const tcpService = (port: number, listen: Service['listen'] = 'all'): Service => ({ protocol: 'tcp', port, listen });
 
 /** Returns the lab 03 network: two EC2 instances in different availability zones, SSH only from your Mac. */
 export function lab03Net(): Network {
@@ -43,7 +44,7 @@ export function lab03Net(): Network {
         privateIp: '172.31.16.131',
         publicIp: '54.78.154.66',
         firewallIds: ['sg-servidor1'],
-        host: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
+        host: { ignoreIcmpEcho: false, services: [tcpService(22)] },
       },
       {
         id: 'servidor2',
@@ -53,7 +54,7 @@ export function lab03Net(): Network {
         privateIp: '172.31.38.97',
         publicIp: '34.244.254.100',
         firewallIds: ['sg-servidor2'],
-        host: { ignoreIcmpEcho: false, listeningTcpPorts: [22] },
+        host: { ignoreIcmpEcho: false, services: [tcpService(22)] },
       },
     ],
     firewalls: [
@@ -78,7 +79,7 @@ export function lab03Net(): Network {
 export const OFFICE = { cidr: '192.168.1.0/24', you: '192.168.1.10', lucia: '192.168.1.11', printer: '192.168.1.20', nobody: '192.168.1.30' } as const;
 
 function officeDevice(id: string, kind: Device['kind'], privateIp: string): Device {
-  return { id, name: id, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, listeningTcpPorts: [] } };
+  return { id, name: id, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, services: [] } };
 }
 
 /** Returns the chapter 1 office: your laptop, Lucía's laptop and a printer behind a router, none with a firewall yet; Lucía's host firewall exists but guards nothing. */

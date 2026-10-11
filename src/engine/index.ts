@@ -18,12 +18,13 @@ export type {
   RulePeer,
   RuleWhat,
   ServerActor,
+  Service,
   Subnet,
 } from './network/types';
 export { isClientActor, isConnected, lansOf } from './network/addressing/topology';
 export { facesALan } from './network/addressing/routing';
 export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, networkSchema, packetSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
-export { ipInCidr, isIpv4, isLoopbackIpv4 } from './network/addressing/cidr';
+export { LOOPBACK_IP, ipInCidr, isIpv4, isLoopbackIpv4 } from './network/addressing/cidr';
 export { simulate } from './simulation/simulate';
 export { simulateSequence } from './simulation/sequence';
 export type { Send } from './simulation/sequence';

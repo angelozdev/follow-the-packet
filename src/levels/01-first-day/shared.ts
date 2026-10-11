@@ -103,7 +103,7 @@ export const TASK = {
 
 /** Returns a device of the office on floor 1, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
 function officeDevice({ id, name }: { id: string; name: string }, kind: Device['kind'], privateIp: string, patch: Partial<Device> = {}): Device {
-  return { id, name, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, listeningTcpPorts: [] }, lanId: FLOOR.first.id, ...patch };
+  return { id, name, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, services: [] }, lanId: FLOOR.first.id, ...patch };
 }
 
 /** The world chapter 1 starts from: floor 1 of the office, a local network of its own inside the range of the whole office, with your laptop, Lucía's, Marta's and the printer on it, and the visitor's laptop with no cable. It has no firewall, router, internet or actor yet: each block adds what it needs. */

@@ -1,0 +1,17 @@
+import { isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
+import type { Service } from './types';
+
+/** What a device or a server does with a packet for a protocol and a port: `accepts` when a service takes it, `wrong-address` when a service listens on that port but not on the IP the packet is for, and `closed` when nobody listens on that port. */
+export type ServiceLookup = 'accepts' | 'wrong-address' | 'closed';
+
+/** True when the service takes a packet addressed to `destinationIp`. A service on `all` addresses takes it whatever the IP, because the packet reached the device by one of its own; a service on the loopback address takes only a `127.x.x.x` destination. Reasoned from ip(7), not tested on a real machine (`src/engine/network/CLAUDE.md`). */
+export function listensOn(service: Pick<Service, 'listen'>, destinationIp: string): boolean {
+  return service.listen === 'all' || isLoopbackIpv4(destinationIp);
+}
+
+/** Looks for the service that takes a packet of `protocol` for `port` and `destinationIp`, among the `services` of a device or a server. */
+export function lookupService(services: readonly Service[], protocol: Service['protocol'], port: number, destinationIp: string): ServiceLookup {
+  const onPort = services.filter((service) => service.protocol === protocol && service.port === port);
+  if (onPort.some((service) => listensOn(service, destinationIp))) return 'accepts';
+  return onPort.length > 0 ? 'wrong-address' : 'closed';
+}

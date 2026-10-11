@@ -27,7 +27,7 @@ function server(ips: { id: string; private: string; public: string }, subnetId: 
     privateIp: ips.private,
     publicIp: ips.public,
     firewallIds: [sgId],
-    host: { ignoreIcmpEcho: false, listeningTcpPorts: [SSH_PORT] },
+    host: { ignoreIcmpEcho: false, services: [{ protocol: 'tcp', port: SSH_PORT, listen: 'all' }] },
   };
 }
 

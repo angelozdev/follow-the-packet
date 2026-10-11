@@ -15,6 +15,7 @@ import type {
   rulePeerSchema,
   ruleSchema,
   ruleWhatSchema,
+  serviceSchema,
   subnetSchema,
 } from './schema';
 
@@ -23,6 +24,7 @@ export type RulePeer = z.infer<typeof rulePeerSchema>;
 export type Rule = z.infer<typeof ruleSchema>;
 export type Firewall = z.infer<typeof firewallSchema>;
 export type FirewallKind = Firewall['kind'];
+export type Service = z.infer<typeof serviceSchema>;
 export type Device = z.infer<typeof deviceSchema>;
 export type Subnet = z.infer<typeof subnetSchema>;
 export type Direction = z.infer<typeof directionSchema>;

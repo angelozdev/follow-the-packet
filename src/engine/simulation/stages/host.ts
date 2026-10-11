@@ -1,4 +1,14 @@
-import { CONTINUE, describePacket, logAt, receiverOf, sayRefusal, stop, type Stage } from '@/engine/simulation/context';
+import { lookupService } from '@/engine/network/services';
+import { CONTINUE, describePacket, logAt, receiverOf, sayRefusal, stop, type Receiver, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
+import type { Reason } from '@/engine/simulation/trace';
+
+/** The host answers a TCP packet with a reset: it logs the RST, says it in the exchange and ends the trip as `refused`. */
+function refuseTcp(ctx: SimContext, receiver: Receiver, reason: Reason): StageResult {
+  logAt(ctx, receiver, 'Out', receiver.ip, ctx.effectiveSource!, `TCP ${ctx.packet.port} RST`);
+  sayRefusal(ctx);
+  ctx.steps.push({ stage: 'host', at: receiver.id, verdict: 'reject', reason });
+  return stop('refused');
+}
 
 export const hostStage: Stage = (ctx) => {
   const receiver = receiverOf(ctx);
@@ -21,14 +31,17 @@ export const hostStage: Stage = (ctx) => {
   }
 
   if (p.protocol === 'tcp') {
-    if (!host.listeningTcpPorts.includes(p.port!)) {
-      logAt(ctx, receiver, 'Out', ip, src, `TCP ${p.port} RST`);
-      sayRefusal(ctx);
-      ctx.steps.push({ stage: 'host', at: id, verdict: 'reject', reason: { code: 'host-refused', deviceId: id, port: p.port! } });
-      return stop('refused');
+    const port = p.port!;
+    const destinationIp = ctx.destIp!;
+    switch (lookupService(host.services, 'tcp', port, destinationIp)) {
+      case 'closed':
+        return refuseTcp(ctx, receiver, { code: 'host-refused', deviceId: id, port });
+      case 'wrong-address':
+        return refuseTcp(ctx, receiver, { code: 'host-wrong-address', deviceId: id, port, ip: destinationIp });
+      case 'accepts':
+        ctx.steps.push({ stage: 'host', at: id, verdict: 'pass', reason: { code: 'host-accepts', deviceId: id, port } });
+        return CONTINUE;
     }
-    ctx.steps.push({ stage: 'host', at: id, verdict: 'pass', reason: { code: 'host-accepts', deviceId: id, port: p.port! } });
-    return CONTINUE;
   }
 
   ctx.steps.push({ stage: 'host', at: id, verdict: 'drop', reason: { code: 'host-udp-no-service', deviceId: id, port: p.port! } });
