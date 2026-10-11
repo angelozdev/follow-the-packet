@@ -1,5 +1,5 @@
 import { defineIncident } from '@/levels/contract/incident';
-import { CONCEPT, LESSON, WATCH_PIECES } from '@/levels/01-first-day/shared';
+import { CONCEPT, LESSON } from '@/levels/01-first-day/shared';
 import { CASES } from './cases';
 
 export default defineIncident({
@@ -13,7 +13,6 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: [],
   changes: [],
-  shown: WATCH_PIECES,
   report: 'Hoy estás de guardia. Cada caso trae un {{ping}} que no vuelve. Haz tus pruebas, mira el mapa y las cajas, y nombra la causa de cada caso.',
   flows: [],
   diagnose: { cases: CASES },

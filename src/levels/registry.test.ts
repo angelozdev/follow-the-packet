@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, REPO_ROOT, device, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
+import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
-import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds, type SendOwner } from './contract/chips';
-import { incidentSchema, isGuided, type Incident } from './contract/incident';
+import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownExpectedIds, unknownShownIds, type SendOwner } from './contract/chips';
+import { incidentSchema, isGuided, type CaseSpec, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
 
@@ -16,6 +16,17 @@ const lessons = syllabusLessons();
 interface Scene {
   owner: SendOwner;
   world: Network;
+  shown?: string[];
+}
+
+interface CaseScene {
+  spec: CaseSpec;
+  world: Network;
+}
+
+/** Returns each case of a diagnose incident with the world it plays in: the one the incident starts from plus its own changes. None for any other incident. */
+function caseScenesOf(incident: Incident): CaseScene[] {
+  return incident.mechanic === 'diagnose' ? incident.diagnose.cases.map((spec) => ({ spec, world: caseWorld(startWorld(INCIDENTS, incident.id), spec) })) : [];
 }
 
 /** Returns what an incident sends and the worlds it sends in: a send incident in the world it starts from and the one its solution leaves, and each case of a diagnose incident in its own world. */
@@ -24,16 +35,16 @@ function scenesOf(incident: Incident): Scene[] {
     case 'send':
       return [startWorld(INCIDENTS, incident.id), solvedWorld(INCIDENTS, incident.id)].map((world) => ({ owner: incident, world }));
     case 'diagnose':
-      return incident.diagnose.cases.map((spec) => ({ owner: spec, world: caseWorld(startWorld(INCIDENTS, incident.id), spec) }));
+      return caseScenesOf(incident).map(({ spec, world }) => ({ owner: spec, world, shown: spec.shown }));
     default:
       return [];
   }
 }
 
-/** Returns the routers the traceroutes of an incident cross that the list of its shown pieces lacks; none when it has no list, which draws the whole world. */
+/** Returns the routers the traceroutes of an incident cross that the list of its shown pieces lacks, scene by scene: the list of a case when it has its own, the incident's otherwise; none for a scene with no list, which draws the whole world. */
 function undrawnTracerouteRouters(incident: Incident, scenes: Scene[]): string[] {
-  const crossed = scenes.flatMap(({ owner, world }) => routersCrossedByTraceroutes(owner, world));
-  return incident.shown ? crossed.filter((id, index) => !incident.shown?.includes(id) && crossed.indexOf(id) === index) : [];
+  const lacking = scenes.flatMap(({ owner, world, shown = incident.shown }) => (shown ? routersCrossedByTraceroutes(owner, world).filter((id) => !shown.includes(id)) : []));
+  return lacking.filter((id, index) => lacking.indexOf(id) === index);
 }
 
 it('registers the prototype incidents in game order', () => {
@@ -74,12 +85,14 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(unknownCardDeviceIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
   });
 
-  it('every id in the list of shown pieces of an incident names something in its world', () => {
+  it('every id in the list of shown pieces of an incident names something in its world, and in a diagnose, in the world of each case', () => {
     expect(unknownShownIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
+    expect(caseScenesOf(incident).flatMap(({ spec, world }) => unknownShownIds(incident, world, spec))).toEqual([]);
   });
 
-  it('the list of shown pieces of an incident holds its sender, every destination that has an owner and every expected id', () => {
+  it('the list of shown pieces of an incident holds its sender, every destination that has an owner and every expected id, and in a diagnose, those of each case in its own list', () => {
     expect(missingShownIds(incident, startWorld(INCIDENTS, incident.id))).toEqual([]);
+    expect(caseScenesOf(incident).flatMap(({ spec, world }) => missingShownIds(incident, world, spec))).toEqual([]);
   });
 
   it('an incident that offers traceroute draws every router its traceroutes cross', () => {
@@ -160,6 +173,26 @@ describe('shown ids', () => {
     expect(missingShownIds(toGateway, world)).toEqual([officeRouter.id]);
   });
 
+  it('takes the list of a case of a diagnose when it has its own, and the list of the incident when it has none', () => {
+    const diagnosing = diagnoseIncident();
+    const [first, second] = diagnosing.diagnose.cases;
+    expect(shownOf(diagnosing, first)).toBeUndefined();
+    expect(shownOf({ ...diagnosing, shown: ['your-laptop'] }, first)).toEqual(['your-laptop']);
+    expect(shownOf({ ...diagnosing, shown: ['your-laptop'] }, { ...second, shown: ['printer'] })).toEqual(['printer']);
+  });
+
+  it('checks a case against its own list and its own world, and asks of it only what that case sends', () => {
+    const diagnosing = diagnoseIncident();
+    const [first, second] = diagnosing.diagnose.cases;
+    const lists = [['your-laptop', officeRouter.id, server.id], ['your-laptop', 'ghost']];
+    const incident: Incident = { ...diagnosing, diagnose: { cases: [{ ...first, shown: lists[0] }, { ...second, shown: lists[1] }] } };
+    const [listed, other] = incident.diagnose.cases;
+    expect(missingShownIds(incident, world, listed)).toEqual([]);
+    expect(unknownShownIds(incident, world, listed)).toEqual([]);
+    expect(missingShownIds(incident, world, other)).toEqual(['printer']);
+    expect(unknownShownIds(incident, world, other)).toEqual(['ghost']);
+  });
+
   it('asks for the device of every card of an identify incident', () => {
     const identifying = identifyIncident();
     expect(missingShownIds({ ...identifying, shown: ['printer'] }, officeTwoFloorsNet())).toEqual(['guest-laptop']);
@@ -193,5 +226,13 @@ describe('the routers a traceroute crosses', () => {
 
   it('asks for nothing of an incident with no list, which draws the whole world', () => {
     expect(undrawnTracerouteRouters({ ...routed, shown: undefined }, scenes(routed))).toEqual([]);
+  });
+
+  it('reads the list of each case of a diagnose, and the incident list only for a case with none', () => {
+    const everything = [...world.devices.map((d) => d.id), officeRouter.id, provider.id, backbone.id, ...world.actors.map((a) => a.id)];
+    const sceneOf = (shown?: string[]): Scene[] => [{ owner: routed, world, shown }];
+    expect(undrawnTracerouteRouters({ ...routed, shown: ['your-laptop'] }, sceneOf(everything))).toEqual([]);
+    expect(undrawnTracerouteRouters({ ...routed, shown: everything }, sceneOf(['your-laptop', officeRouter.id]))).toEqual([provider.id, backbone.id]);
+    expect(undrawnTracerouteRouters({ ...routed, shown: everything.filter((id) => id !== backbone.id) }, sceneOf())).toEqual([backbone.id]);
   });
 });

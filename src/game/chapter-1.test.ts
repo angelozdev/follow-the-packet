@@ -4,7 +4,7 @@ import { extraOpenings, networkSchema, stopStep } from '@/engine';
 import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WATCH_PIECES, WHAT } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
 import type { FlowRun, SentPacket } from './flow-runs';
 import { firewallCard } from './view/cards/firewall-card';
 import { identifyCard } from './view/cards/identify-card';
@@ -105,6 +105,18 @@ const NO_RULE_AT_ALL = 'Ninguna.';
 const ECHO_REQUEST_TO_LUCIA = `${ECHO_REQUEST_LABEL} → ${DEVICE.lucia.name}`;
 const YOUR_OUTBOUND_RULES_BY_CASE = [1, 1, 1, 1, 1, 1, 0];
 const YOUR_OUTBOUND_BY_CASE = [LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, ECHO_REQUEST_TO_LUCIA, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, NO_RULE_AT_ALL];
+const CASE_WITHOUT_YOUR_LAPTOP = 3;
+const YOUR_LAPTOP_DRAWN = [`device:${DEVICE.you.name}`, `firewall:firewall ${DEVICE.you.name}`];
+const THE_ROAD_TO_THE_SERVER = [`device:${SERVER.name}`, `edge:${ROUTER.office.name}`, 'internet:internet'];
+const WATCH_DRAWN_BY_CASE = [
+  [...YOUR_LAPTOP_DRAWN, ...THE_ROAD_TO_THE_SERVER],
+  [...YOUR_LAPTOP_DRAWN, `device:${DEVICE.printer.name}`],
+  [`device:${DEVICE.andres.name}`, `device:${DEVICE.printer.name}`, `edge:${ROUTER.office.name}`],
+  [...YOUR_LAPTOP_DRAWN, ...THE_ROAD_TO_THE_SERVER, `edge:${ROUTER.provider.name}`],
+  [...YOUR_LAPTOP_DRAWN, ...THE_ROAD_TO_THE_SERVER, `edge:${ROUTER.provider.name}`],
+  [...YOUR_LAPTOP_DRAWN, ...THE_ROAD_TO_THE_SERVER, `device:${DEVICE.lucia.name}`, `device:${DEVICE.printer.name}`, `firewall:firewall ${DEVICE.lucia.name}`],
+  [...YOUR_LAPTOP_DRAWN, ...THE_ROAD_TO_THE_SERVER],
+];
 const RIGHT_PLACES_OF_THE_WATCH = [1, 2, 0, 2, 0, 1, 2];
 const WEB_VERBS = /\b(abr\w+|entr\w+|carg\w+|naveg\w+|visit\w+|ingres\w+|acced\w+)\b/i;
 const A_PING_THAT_DOES_NOT_COME_BACK = [/\bpings?\b.*\bno vuelv/i, /\bning[uú]n ping\b.*\bvuelv/i];
@@ -1565,36 +1577,26 @@ describe('01-14, the final watch', () => {
     expect(worlds.flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
   });
 
-  it('01-14: draws what the seven cases use and the whole road to the server, and not laptop-marta or laptop-visita', () => {
-    const start = startSession(INCIDENTS, FINAL_WATCH);
-    expect(watchOf().shown).toEqual(WATCH_PIECES);
-    const drawn = drawnLabels(start);
-    expect(drawn).toEqual(
-      [
-        `device:${DEVICE.you.name}`,
-        `device:${DEVICE.lucia.name}`,
-        `device:${DEVICE.printer.name}`,
-        `device:${DEVICE.andres.name}`,
-        `device:${SERVER.name}`,
-        `edge:${ROUTER.office.name}`,
-        `edge:${ROUTER.provider.name}`,
-        `edge:${ROUTER.destination.name}`,
-        `firewall:firewall ${DEVICE.you.name}`,
-        'internet:internet',
-      ].sort(),
-    );
-    expect(drawn.filter((label) => label.includes(DEVICE.marta.name) || label.includes(DEVICE.visitor.name))).toEqual([]);
+  it('each case of 01-14 draws only the pieces it uses', () => {
+    const { cases } = watchOf().diagnose;
+    expect(watchOf().shown).toBeUndefined();
+    expect(cases.map((spec) => spec.shown?.length)).not.toContain(undefined);
+    const drawn = Array.from({ length: WATCH_CASES }, (_, index) => drawnLabels(atCase(index + 1)));
+    expect(drawn).toEqual(WATCH_DRAWN_BY_CASE.map((labels) => [...labels].sort()));
+    for (const labels of drawn) expect(labels.filter((label) => label.includes(DEVICE.marta.name) || label.includes(DEVICE.visitor.name))).toEqual([]);
   });
 
-  it('01-14: the firewall of your laptop reads in each case as the case needs it: everything out, only the ping to laptop-lucia in case 3, and no rule in case 7', () => {
+  it('01-14: the firewall of your laptop reads in each case that draws it as the case needs it: everything out, and no rule in case 7; case 3 does not draw it, and its world keeps the one rule of 01-13, the ping to laptop-lucia', () => {
     const outbound = (session: Session) => fieldLines(session, PIECE_ID.firewall(FIREWALL.you), OUTBOUND_LABEL);
-    expect(Array.from({ length: WATCH_CASES }, (_, index) => outbound(atCase(index + 1)))).toEqual(YOUR_OUTBOUND_BY_CASE.map((line) => [line]));
+    const read = Array.from({ length: WATCH_CASES }, (_, index) => outbound(atCase(index + 1)));
+    expect(read).toEqual(YOUR_OUTBOUND_BY_CASE.map((line, index) => (index + 1 === CASE_WITHOUT_YOUR_LAPTOP ? undefined : [line])));
+    const kept = atCase(CASE_WITHOUT_YOUR_LAPTOP).world.firewalls.find((firewall) => firewall.id === FIREWALL.you)?.outbound.map((rule) => rule.peer);
+    expect(kept).toEqual([{ kind: 'cidr', cidr: `${IP.lucia}/32` }]);
   });
 
-  it('01-14: the routers the traceroute of case 5 crosses are in the list of shown pieces, and case 5 is the only case that offers a traceroute', () => {
-    const incident = watchOf();
-    const { cases } = incident.diagnose;
-    const shown = incident.shown ?? [];
+  it('01-14: the routers the traceroute of case 5 crosses are in the list of shown pieces of that case, and case 5 is the only case that offers a traceroute', () => {
+    const { cases } = watchOf().diagnose;
+    const shown = cases[4].shown ?? [];
     const crossed = routersCrossedByTraceroutes(cases[4], caseWorlds()[4]);
     expect(crossed).toEqual([ROUTER.office.id, ROUTER.provider.id]);
     expect(crossed.filter((id) => !shown.includes(id))).toEqual([]);

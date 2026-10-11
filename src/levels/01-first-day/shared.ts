@@ -181,7 +181,7 @@ export const OFFICE_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.p
 /** The ids of the pieces 01-08 draws: the office of 01-06 and the server of the internet. The routers of the provider stay in the world, because the ping to a private IP of another office dies at one of them, and are not drawn yet. */
 export const INTERNET_PIECES: string[] = [...OFFICE_PIECES, SERVER.id];
 
-/** The ids of the pieces 01-09 draws: your laptop, the two routers the packet goes back and forth between and the server it never reaches. The router in front of the server is crossed by no packet, and the rest of the office is not used. */
+/** The ids of the pieces 01-09 and cases 4 and 5 of 01-14 draw: your laptop, the two routers the packet goes back and forth between (or, in case 4, crosses before the second one drops it) and the server it never reaches. The router in front of the server is crossed by no packet, and the rest of the office is not used. */
 export const LOOP_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.provider.id, SERVER.id];
 
 /** The ids of the pieces 01-10 draws: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The rest of the office is not used. */
@@ -193,8 +193,17 @@ export const GUARD_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.ma
 /** The ids of the pieces 01-12 draws: the laptop that must get in, the visitor's laptop that must not, and laptop-marta, whose firewall is drawn with it. Your laptop, the printer and the routers stay in the world and are not used, so they are not drawn. */
 export const RULE_PIECES: string[] = [DEVICE.lucia.id, DEVICE.visitor.id, DEVICE.marta.id];
 
-/** The ids of the pieces 01-14 draws, the widest map of the chapter: what the seven cases use. The two floors keep the devices that send or answer (your laptop, laptop-lucia and the printer on floor 1, laptop-andres on floor 2), the office router and the two routers of the provider are the road to the server, which a ping crosses when it reaches the server, and the server closes it. The visitor's laptop and laptop-marta are in the world and no case uses them, so they are not drawn. */
-export const WATCH_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.printer.id, DEVICE.andres.id, ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id, SERVER.id];
+/** The ids of the pieces cases 1 and 7 of 01-14 draw: your laptop, the router whose IP the third test pings and the server of the fourth. In case 1 your laptop has no gateway and in case 7 its firewall holds everything back, so neither case goes farther than the router, and no router of the provider is drawn. */
+export const WATCH_GATEWAY_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, SERVER.id];
+
+/** The ids of the pieces case 2 of 01-14 draws: your laptop, which warns for the IP nobody has, and the printer, whose real IP the player compares with it. */
+export const WATCH_PRINTER_PIECES: string[] = [DEVICE.you.id, DEVICE.printer.id];
+
+/** The ids of the pieces case 3 of 01-14 draws: laptop-andres, whose tests start on the second floor, the router between the floors and the printer on the first floor, which is the destination that fails. */
+export const WATCH_SECOND_FLOOR_PIECES: string[] = [DEVICE.andres.id, ROUTER.office.id, DEVICE.printer.id];
+
+/** The ids of the pieces case 6 of 01-14 draws: your laptop, the two laptops of the floor that its pings are compared on (laptop-lucia, whose firewall is drawn with it, and the printer), the router and the server. */
+export const WATCH_FIREWALL_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.printer.id, ROUTER.office.id, SERVER.id];
 
 const OFFICE_FACES: Router['interfaces'] = [
   { ip: IP.router, faces: FLOOR.first.id },

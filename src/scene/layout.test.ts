@@ -15,6 +15,7 @@ import {
   computeLayout,
   cumulativeLengths,
   dockOffset,
+  dockRoom,
   labelPosition,
   layoutCenter,
   pathFor,
@@ -293,6 +294,14 @@ describe('computeLayout of an office with floors', () => {
     }
   });
 
+  it('the name of a floor floats clear of the label of the firewall of the only device on that floor', () => {
+    const layout = layoutOf(placedDevice('your-laptop'));
+    const { pixel } = projection(layout, MAPS[0]);
+    const name = boxAround('floor name', pixel(layout.floors[floor1.id].label), FLOOR_NAME_HALF_WIDTH, FLOOR_NAME_HALF_HEIGHT);
+    const firewall = boxAround('firewall label', pixel(labelPosition({ kind: 'firewall', anchorId: 'your-laptop' }, layout)), FIREWALL_LABEL_HALF_WIDTH, LABEL_HALF_HEIGHT);
+    expect(hits(name, firewall)).toBe(false);
+  });
+
   it('the office keeps full size in every incident, whichever pieces it draws', () => {
     const whole = layoutOf(...OFFICE_AND_ROAD);
     const pair = layoutOf(placedDevice('your-laptop'), placedDevice('lucia-laptop'));
@@ -335,6 +344,24 @@ describe('computeLayout of an office with floors', () => {
     expect(tracing.routers[officeRouter.id]).toEqual(tracing.edge);
     expect(Object.keys(tracing.floors)).toEqual([floor1.id]);
     expect(tracing.stops).toHaveLength(5);
+  });
+
+  it('the label of a server of the internet floats above the stamp of a ping that reaches the server', () => {
+    const layout = layoutOf(...OFFICE_AND_ROAD);
+    const { pixel } = projection(layout, MAPS[0]);
+    const [x, z] = layout.servers[server.id];
+    const label = boxAround('label', pixel(labelPosition(SERVER_PIECE, layout)), SERVER_LABEL_HALF_WIDTH, LABEL_HALF_HEIGHT);
+    const stamp = boxAround('stamp', pixel([x, STAMP_HEIGHT, z]), STAMP_RADIUS, STAMP_RADIUS);
+    expect(hits(label, stamp)).toBe(false);
+  });
+
+  it('the camera keeps the whole label of the server of the internet inside the map of the narrowest window', () => {
+    const office = ['your-laptop', 'lucia-laptop', 'printer', 'andres-laptop'].map(placedDevice);
+    const layout = layoutOf(...office, placedRouter(officeRouter.id), GLOBE, SERVER_PIECE);
+    const [map] = MAPS;
+    const [x] = projection(layout, map).pixel(labelPosition(SERVER_PIECE, layout));
+    expect(x - SERVER_LABEL_HALF_WIDTH).toBeGreaterThanOrEqual(0);
+    expect(x + SERVER_LABEL_HALF_WIDTH).toBeLessThanOrEqual(map.width);
   });
 
   it('a lone edge, the internet and a client actor still lay out as in a network with no routers', () => {
@@ -518,6 +545,10 @@ type Piece = { kind: MapPieceKind; anchorId: string };
 const STAMP_RADIUS = 16;
 const STAMP_HEIGHT = 0.9;
 const LABEL_HALF_HEIGHT = 11;
+const SERVER_LABEL_HALF_WIDTH = 78;
+const FIREWALL_LABEL_HALF_WIDTH = 73;
+const FLOOR_NAME_HALF_WIDTH = 24;
+const FLOOR_NAME_HALF_HEIGHT = 14;
 const MAPS: MapSize[] = [
   { window: '1280×800', width: 900, height: 800 },
   { window: '1440×900', width: 1060, height: 900 },
@@ -650,6 +681,39 @@ describe('the terminal card in the office with the outside drawn', () => {
   });
 });
 
+describe('the room of a card docked in the corner', () => {
+  const FEET = 16;
+
+  it('is the height from the corner up to the feet of the lowest piece that the card spans', () => {
+    expect(dockRoom([{ x: 100, bottom: 300 }, { x: 220, bottom: 380 }], { height: 800 })).toBe(800 - 6 - (380 + FEET));
+  });
+
+  it('ignores a piece that stands beside the card, out of its span', () => {
+    expect(dockRoom([{ x: 100, bottom: 300 }, { x: 600, bottom: 700 }], { height: 800 })).toBe(800 - 6 - (300 + FEET));
+    expect(dockRoom([{ x: 600, bottom: 700 }], { height: 800 })).toBeNull();
+  });
+
+  it('never leaves less than a card that can be used, whatever the window', () => {
+    expect(dockRoom([{ x: 100, bottom: 700 }], { height: 800 })).toBe(200);
+  });
+
+  it.each(MAPS)('at $window a terminal docked in the map where 01-10 draws the road takes a height that covers no label', (map) => {
+    const road = [...ALL_ROUTERS, GLOBE, SERVER_PIECE];
+    const layout = layoutOf(placedDevice('your-laptop'), ...road);
+    const { pixel } = projection(layout, map);
+    const origin = placedDevice('your-laptop');
+    const placement = cardPlacement(origin, road, layout);
+    const avoid = placement.avoid ?? [];
+    const room = dockRoom(avoid.map((label, index) => ({ x: pixel(label)[0], bottom: pixel(placement.rooted[index])[1] })), map);
+    const side = terminalSide(pixel(placement.position)[0], avoid.map((point) => pixel(point)[0]), map.width, placement.gap);
+    expect(side).toBe('dock');
+    expect(room).not.toBeNull();
+    const card: Hazard = { name: 'card', x0: 6, x1: 6 + CARD_WIDTH, y0: map.height - 6 - (room ?? 0), y1: map.height - 6 };
+    const labels = [origin, ...road].map((piece) => boxAround(piece.anchorId, pixel(labelPosition(piece, layout)), LABEL_REACH, LABEL_HALF_HEIGHT));
+    expect(labels.filter((label) => hits(card, label)).map(({ name }) => name)).toEqual([]);
+  });
+});
+
 describe('where a card opens', () => {
   const GAP = 68;
 
@@ -705,6 +769,17 @@ describe('paths and stamps', () => {
     const stamps = spreadStamps([door, doorstep, firewall]);
     stamps.forEach((stamp, index) => {
       for (const other of stamps.slice(index + 1)) expect(Math.hypot(stamp[0] - other[0], stamp[1] - other[1])).toBeGreaterThanOrEqual(minimumGap);
+    });
+  });
+
+  it('moves apart stamps that are farther than the minimum on the ground and still overlap on the screen, such as the two tests that stay at the doorstep and the one that ends on the road in front of it', () => {
+    const layout = layoutOf(placedDevice('your-laptop'));
+    const { doorstep, road } = layout.devices['your-laptop'];
+    const { pixel } = projection(layout, MAPS[0]);
+    const boxes = spreadStamps([doorstep, doorstep, road]).map(([x, z], index) => boxAround(`stamp ${index + 1}`, pixel([x, STAMP_HEIGHT, z]), STAMP_RADIUS, STAMP_RADIUS));
+    expect(Math.hypot(doorstep[0] - road[0], doorstep[1] - road[1])).toBeGreaterThan(1);
+    boxes.forEach((box, index) => {
+      for (const other of boxes.slice(index + 1)) expect(hits(box, other), `${box.name} / ${other.name}`).toBe(false);
     });
   });
 

@@ -1,12 +1,13 @@
 import type { NetworkAction } from '@/engine';
 import { ruleIdFor, type AddressChip, type CaseSpec, type ExplanationOption, type MessageChip, type OriginChip } from '@/levels/contract/incident';
-import { ADDRESS, DEVICE, FIREWALL, IP, LOOP, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, TO, WHAT, letEverythingOut } from '@/levels/01-first-day/shared';
+import { ADDRESS, DEVICE, FIREWALL, IP, LOOP, LOOP_PIECES, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, TO, WATCH_FIREWALL_PIECES, WATCH_GATEWAY_PIECES, WATCH_PRINTER_PIECES, WATCH_SECOND_FLOOR_PIECES, WHAT, letEverythingOut } from '@/levels/01-first-day/shared';
 
 type Place = 0 | 1 | 2;
 type Reply = readonly [text: string, feedback: string];
 
 interface Probe {
   changes?: NetworkAction[];
+  shown: string[];
   from: OriginChip;
   to: AddressChip[];
   message?: MessageChip[];
@@ -30,9 +31,9 @@ function cause(question: string, place: Place, right: Reply, [first, second]: [R
   return { question, options: ARRANGEMENTS[place](option(right, true), option(first, false), option(second, false)) };
 }
 
-/** Returns case number `number` of the final watch: the tests its origin can send (a ping unless it offers other messages), the changes it makes to the world before the incident (never to the case before), what Lucía reports, its two hints and its question of cause. */
-function watchCase(number: number, { changes, from, to, message = [MESSAGE.ping], report, hints, cause: question }: Probe): CaseSpec {
-  return { id: `case-${number}`, ...(changes && { changes }), report, send: { from: [from], to, message }, hints, cause: question };
+/** Returns case number `number` of the final watch: the tests its origin can send (a ping unless it offers other messages), the changes it makes to the world before the incident (never to the case before), the pieces its screen draws (only what the case uses), what Lucía reports, its two hints and its question of cause. */
+function watchCase(number: number, { changes, shown, from, to, message = [MESSAGE.ping], report, hints, cause: question }: Probe): CaseSpec {
+  return { id: `case-${number}`, ...(changes && { changes }), shown, report, send: { from: [from], to, message }, hints, cause: question };
 }
 
 /** The four tests of the ladder, from the closest to the farthest: the loopback of the laptop, its own IP, the IP of its router and the server of the internet. Case 1 guides the player with them and case 7 offers them again. */
@@ -56,6 +57,7 @@ function withoutGateway(deviceId: string): NetworkAction {
 export const CASES: CaseSpec[] = [
   watchCase(1, {
     changes: [...OPEN_YOUR_OUTBOUND, withoutGateway(DEVICE.you.id)],
+    shown: WATCH_GATEWAY_PIECES,
     from: ORIGIN.you,
     to: FROM_YOUR_LAPTOP,
     report: `Tu {{ping}} a ${NAME.server} no vuelve. Haz cuatro pruebas, en orden, de la más cercana a la más lejana: el {{loopback}} de tu laptop (${IP.loopback}), tu {{ip-address|IP}} (${IP.you}), el {{router}} (${IP.router}) y el servidor.`,
@@ -78,6 +80,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(2, {
     changes: OPEN_YOUR_OUTBOUND,
+    shown: WATCH_PRINTER_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.typo, ADDRESS.printer],
     report: `Anoté la ${IP.typo} como la {{ip-address|IP}} de la ${NAME.printer}, y el {{ping}} a esa IP no vuelve.`,
@@ -100,6 +103,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(3, {
     changes: [withoutGateway(DEVICE.andres.id)],
+    shown: WATCH_SECOND_FLOOR_PIECES,
     from: ORIGIN.andres,
     to: [ADDRESS.loopback, ADDRESS.andres, ADDRESS.secondFloorRouter, ADDRESS.printer],
     report: `El {{ping}} de ${NAME.andres} a la ${NAME.printer} del piso 1 no vuelve.`,
@@ -125,6 +129,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(4, {
     changes: OPEN_YOUR_OUTBOUND,
+    shown: LOOP_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.server, ADDRESS.otherOffice],
     report: `El {{ping}} a la impresora de otra oficina, la ${IP.otherOfficePrinter}, no vuelve. Pruébalo desde tu laptop.`,
@@ -144,6 +149,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(5, {
     changes: [...OPEN_YOUR_OUTBOUND, ...LOOP],
+    shown: LOOP_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.server],
     message: [MESSAGE.ping, MESSAGE.traceroute, PING_WITH_TTL[1], PING_WITH_TTL[2], PING_WITH_TTL[3]],
@@ -170,6 +176,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(6, {
     changes: [...OPEN_YOUR_OUTBOUND, LUCIA_FIREWALL],
+    shown: WATCH_FIREWALL_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.lucia, ADDRESS.printer, ADDRESS.gateway, ADDRESS.server],
     report: `Los {{ping|pings}} a ${NAME.lucia} no vuelven, pero los de la ${NAME.printer} sí.`,
@@ -195,6 +202,7 @@ export const CASES: CaseSpec[] = [
   }),
   watchCase(7, {
     changes: [CLOSE_YOUR_OUTBOUND],
+    shown: WATCH_GATEWAY_PIECES,
     from: ORIGIN.you,
     to: FROM_YOUR_LAPTOP,
     report: 'Desde tu laptop, ningún {{ping}} a otro {{device|dispositivo}} vuelve.',

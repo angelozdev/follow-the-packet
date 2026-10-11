@@ -14,11 +14,12 @@ export const CARD_WIDTH = 300;
 /** Half the width in pixels that a card keeps clear around the label of another piece: the widest label, a name with its lock. */
 export const LABEL_REACH = 64;
 
-/** Where a card anchors on the map and how it keeps clear of it: its distance in pixels from the anchor, and the labels it must not cover (null when only the room on screen decides its side). */
+/** Where a card anchors on the map and how it keeps clear of it: its distance in pixels from the anchor, the labels it must not cover (null when only the room on screen decides its side) and the point on the ground where each of those pieces stands, in the same order. */
 export interface CardPlacement {
   position: Vec3;
   gap: number;
   avoid: Vec3[] | null;
+  rooted: Vec3[];
 }
 
 export interface SubnetSpot {
@@ -102,18 +103,25 @@ const ACTOR_SPACING = 2.5;
 const ROUTER_GAP = 2.4;
 const SLAB_GAP = 0.4;
 const UNPLUGGED_GAP = 2;
-const FLOOR_LABEL_Z = DEPTH / 2 - 0.35;
+const FLOOR_LABEL_Z = DEPTH / 2 + 0.4;
 const SERVER_KIND: Actor['kind'] = 'server';
 const ACTOR_STAGGER_Z = 1.6;
 const LABEL_OFFSET: Record<MapPieceKind, Vec3> = { device: [0, 1.75, 0], firewall: [0, 0.1, 0.8], actor: [0, 0.05, 1.1], edge: [0, 3.1, 0], internet: [0, 2.1, 0] };
+const SERVER_LABEL_OFFSET: Vec3 = [0, 2.05, 0];
+const SERVER_LABEL_OVERHANG = 1.75;
 const CARD_Y = 0.5;
 const CAMERA_OFFSET = 14;
 const FIREWALL_CARD_GAP = 110;
 const ORIGIN_CARD_GAP = 70;
 const CARD_MARGIN = 12;
 const DOCK_MARGIN = 6;
+const GROUND_REACH = 16;
+const MIN_DOCK_ROOM = 200;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
+const STAMP_PX = 32;
+const UNIT_PX_X = CAMERA_ZOOM / Math.SQRT2;
+const UNIT_PX_Y = CAMERA_ZOOM / Math.sqrt(6);
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
 const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device'];
 
@@ -249,7 +257,8 @@ export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boo
   const way = layOutOutside(drawn, office.sheetWidth);
   const outside = drawn.edge || drawn.internet || drawn.routers.length > 0 || drawn.servers.length > 0 || drawn.clients.length > 0;
   const waystations = [...(drawn.edge ? [way.edge[0]] : []), ...Object.values(way.routers).map(([x]) => x)];
-  const reached = [...waystations, ...(drawn.internet ? [way.internet[0]] : []), ...[...Object.values(way.servers), ...Object.values(way.actors)].map(([x]) => x)];
+  const overhanging = Object.values(way.servers).map(([x]) => x - SERVER_LABEL_OVERHANG);
+  const reached = [...waystations, ...(drawn.internet ? [way.internet[0]] : []), ...overhanging, ...Object.values(way.actors).map(([x]) => x)];
   const roadStart = waystations.length > 0 ? Math.min(...waystations) : way.edge[0];
   return {
     sheet: { width: office.sheetWidth, depth: DEPTH },
@@ -293,10 +302,10 @@ export function labelOffset(kind: MapPieceKind): Vec3 {
   return LABEL_OFFSET[kind];
 }
 
-/** Returns where the label of a piece floats on the map. */
+/** Returns where the label of a piece floats on the map. The label of a server of the internet floats higher than the label of a device, above the stamp of a ping that reaches the server: that stamp stands on the server itself, where the packet ends, and not at a door beside it. */
 export function labelPosition(piece: { kind: MapPieceKind; anchorId: string }, layout: Layout): Vec3 {
   const [x, z] = piecePosition(piece, layout);
-  const [dx, y, dz] = labelOffset(piece.kind);
+  const [dx, y, dz] = piece.kind === 'device' && layout.servers[piece.anchorId] ? SERVER_LABEL_OFFSET : labelOffset(piece.kind);
   return [x + dx, y, z + dz];
 }
 
@@ -320,8 +329,13 @@ export function sideForNdc(ndcX: number): CardSide {
 /** Returns how the card of a piece anchors. A firewall's card keeps its wide gap and takes the side with more room. The terminal of a device or an actor sits closer, just past its mat and label, and avoids the labels of every piece, its own included (the label of an actor hangs to the left of it), so it never hides the thing the player has to read, or docks in the corner of the map when it cannot. */
 export function cardPlacement(piece: { kind: MapPieceKind; anchorId: string }, others: { kind: MapPieceKind; anchorId: string }[], layout: Layout): CardPlacement {
   const position = cardAnchorPosition(piece, layout);
-  if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null };
-  return { position, gap: ORIGIN_CARD_GAP, avoid: [piece, ...others].map((other) => labelPosition(other, layout)) };
+  const pieces = [piece, ...others];
+  const rooted = pieces.map((other): Vec3 => {
+    const [x, z] = piecePosition(other, layout);
+    return [x, 0, z];
+  });
+  if (piece.kind === 'firewall') return { position, gap: FIREWALL_CARD_GAP, avoid: null, rooted };
+  return { position, gap: ORIGIN_CARD_GAP, avoid: pieces.map((other) => labelPosition(other, layout)), rooted };
 }
 
 /** Returns the horizontal span in pixels, from the map's left edge, that a card covers on a side of its anchor. */
@@ -338,6 +352,13 @@ function opensClear(side: CardSide, anchorX: number, avoidXs: number[], room: nu
 /** Returns how far from its anchor, in pixels, the bottom left corner of a docked card sits, so that corner lands on the map's bottom left corner, `DOCK_MARGIN` in: the card's shadow still fits, and no room that the corner has is lost. The card hangs from that corner, so its height does not matter. */
 export function dockOffset(anchor: Vec2, map: { width: number; height: number }): Vec2 {
   return [DOCK_MARGIN - anchor[0], map.height - DOCK_MARGIN - anchor[1]];
+}
+
+/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it covers no piece: the height from the corner up to the lowest piece the card spans, a piece being its label and all that hangs under it down to its feet (`x` is where its label centers, `bottom` the pixel row of its ground point). A card that grows with what it shows takes this height and scrolls, so the dock does not cover what the player has to read. It is null when no piece stands above the card, and never less than `MIN_DOCK_ROOM`, so a window too short for the map keeps a card that can be used. */
+export function dockRoom(pieces: { x: number; bottom: number }[], map: { height: number }): number | null {
+  const spanned = pieces.filter(({ x }) => x + LABEL_REACH > DOCK_MARGIN && x - LABEL_REACH < DOCK_MARGIN + CARD_WIDTH);
+  if (spanned.length === 0) return null;
+  return Math.max(MIN_DOCK_ROOM, map.height - DOCK_MARGIN - Math.max(...spanned.map(({ bottom }) => bottom + GROUND_REACH)));
 }
 
 /** Picks where a terminal opens, with every x in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each taken as `LABEL_REACH` wide on both sides), else the other side when that one does, else the dock: the map is a band from the upper left to the lower right, so its bottom left corner is free. A map too narrow to hold the card keeps the side with more room. */
@@ -443,12 +464,19 @@ function distance(a: Vec2, b: Vec2): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
-/** Returns the group of each point: points chained by gaps shorter than `STAMP_NEAR` share one (A near B and B near C make one group). */
+/** True when two stamps would touch: they stand closer than `STAMP_NEAR` on the ground, or their circles overlap on the screen, which a pair that is a little farther apart can do along the diagonals of the isometric view. */
+function areNear(a: Vec2, b: Vec2): boolean {
+  const apart = [a[0] - b[0], a[1] - b[1]];
+  const onScreen = [Math.abs(apart[0] - apart[1]) * UNIT_PX_X, Math.abs(apart[0] + apart[1]) * UNIT_PX_Y];
+  return distance(a, b) < STAMP_NEAR || (onScreen[0] < STAMP_PX && onScreen[1] < STAMP_PX);
+}
+
+/** Returns the group of each point: points chained by gaps shorter than `STAMP_NEAR`, or whose stamps would overlap, share one (A near B and B near C make one group). */
 function nearGroups(points: Vec2[]): number[] {
   const groups = points.map((_, index) => index);
   points.forEach((point, index) => {
     points.forEach((other, otherIndex) => {
-      if (groups[otherIndex] !== groups[index] && distance(point, other) < STAMP_NEAR) merge(groups, groups[index], groups[otherIndex]);
+      if (groups[otherIndex] !== groups[index] && areNear(point, other)) merge(groups, groups[index], groups[otherIndex]);
     });
   });
   return groups;
@@ -472,17 +500,17 @@ function placeGroups(points: Vec2[], groups: number[]): Vec2[] {
   });
 }
 
-/** Returns two stamps of different groups that ended up closer than `STAMP_NEAR`, or null when there are none. */
+/** Returns two stamps of different groups that ended up near each other (`areNear`), or null when there are none. */
 function closePair(stamps: Vec2[], groups: number[]): [number, number] | null {
   for (let a = 0; a < stamps.length; a++) {
     for (let b = a + 1; b < stamps.length; b++) {
-      if (groups[a] !== groups[b] && distance(stamps[a], stamps[b]) < STAMP_NEAR) return [a, b];
+      if (groups[a] !== groups[b] && areNear(stamps[a], stamps[b])) return [a, b];
     }
   }
   return null;
 }
 
-/** Moves stamps that are close together apart along the screen's horizontal, so no two end up closer than `STAMP_NEAR`: points chained by gaps shorter than `STAMP_NEAR` form a group spread around its average, and two groups whose spread stamps come too close join into one. Each stamp keeps its side of the screen within its group; a stamp with no close neighbour stays where it is. */
+/** Moves stamps that are close together apart along the screen's horizontal, so no two end up near each other (`areNear`): points chained by near gaps form a group spread around its average, and two groups whose spread stamps come too close join into one. Each stamp keeps its side of the screen within its group; a stamp with no close neighbour stays where it is. */
 export function spreadStamps(points: Vec2[]): Vec2[] {
   const groups = nearGroups(points);
   for (;;) {

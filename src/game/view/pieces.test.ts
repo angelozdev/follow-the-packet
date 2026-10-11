@@ -196,6 +196,17 @@ describe('pieceViews of an incident that lists what it draws', () => {
     expect(idsOf(floors(['your-laptop']))).toEqual([PIECE_ID.device('your-laptop')]);
   });
 
+  it('a case of a diagnose draws the pieces of its own list, and the list of the incident when it has none', () => {
+    const diagnosing = diagnoseIncident();
+    const [one, two, three] = diagnosing.diagnose.cases;
+    const incident = { ...diagnosing, shown: ['andres-laptop'], diagnose: { cases: [{ ...one, shown: ['your-laptop', officeRouter.id] }, { ...two, shown: ['your-laptop', 'printer'] }, three] } };
+    const closeCase = (index: number): SessionAction[] => [{ type: 'nameCause', index: incident.diagnose.cases[index].cause.options.findIndex((option) => option.correct) }, { type: 'nextCase' }];
+    const atCase = (index: number): Session => Array.from({ length: index }, (_, offset) => closeCase(offset)).flat().reduce(sessionReducer, startSession([incident], incident.id));
+    expect(idsOf(atCase(0))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.router(officeRouter.id)]);
+    expect(idsOf(atCase(1))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.device('printer')]);
+    expect(idsOf(atCase(2))).toEqual([PIECE_ID.device('andres-laptop')]);
+  });
+
   it('draws a piece of the list only once its term is known', () => {
     expect(idsOf(knowingNot(floors(SHOWN), 'router'))).not.toContain(PIECE_ID.router(officeRouter.id));
     expect(idsOf(knowingNot(floors(SHOWN), 'internet'))).not.toContain(PIECE_ID.internet);

@@ -68,7 +68,17 @@ export function TerminalCard({ card, describe, route, onPickOrigin, onSend, onCl
     if (chosen.to && chosen.message) onSend({ from: card.fromId, to: chosen.to, message: chosen.message });
   };
   return (
-    <ChipCard title={card.title} icon={<CardIcon kind="terminal" />} heading={heading} onClose={onClose}>
+    <ChipCard
+      title={card.title}
+      icon={<CardIcon kind="terminal" />}
+      heading={heading}
+      onClose={onClose}
+      actions={
+        <Button variant="primary" disabled={!line} onClick={send}>
+          {TERMINAL_TEXT.send}
+        </Button>
+      }
+    >
       <p className="slot" aria-live="polite">
         {line ? (
           <code>
@@ -82,9 +92,6 @@ export function TerminalCard({ card, describe, route, onPickOrigin, onSend, onCl
       {card.trays.map((tray) => (
         <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
       ))}
-      <Button variant="primary" disabled={!line} onClick={send}>
-        {TERMINAL_TEXT.send}
-      </Button>
     </ChipCard>
   );
 }

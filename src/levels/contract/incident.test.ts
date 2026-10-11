@@ -424,6 +424,15 @@ describe('diagnose incident contract', () => {
     expect(isGuided(SEND)).toBe(true);
   });
 
+  it('accepts a case with a list of shown ids of its own, and rejects one with a repeated id, an empty list or an empty id', () => {
+    const shown = ['your-laptop', OFFICE_FLOORS.officeRouter.id];
+    expect(incidentSchema.safeParse(withFirst({ shown })).success).toBe(true);
+    expect(incidentSchema.safeParse(withFirst({ shown: [...shown, shown[0]] })).success).toBe(false);
+    expect(incidentSchema.safeParse(withFirst({ shown: [] })).success).toBe(false);
+    expect(incidentSchema.safeParse(withFirst({ shown: [''] })).success).toBe(false);
+    expect(first).not.toHaveProperty('shown');
+  });
+
   it('rejects a case without a cause question', () => {
     expect(incidentSchema.safeParse(withFirst({ cause: undefined })).success).toBe(false);
     expect(incidentSchema.safeParse(withFirst({ cause: { options: first.cause.options } })).success).toBe(false);

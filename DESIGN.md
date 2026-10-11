@@ -101,7 +101,7 @@ A 4 px grid. Every margin, padding and gap uses a step, except the one-off measu
 - **Shadows:** `--shadow-sm` (buttons, a lip of 3 px below), `--shadow-card` (cards, a lip of 5 px below), `--shadow-tip` (the tooltip, in emphasis).
 - **Focus:** one rule for every element, `:focus-visible` with `--focus-ring` at `--focus-offset`. The only exception is the title stripe of a card, where `--focus-ring-on-ink` draws the same ring in `--color-on-fill`, because vermilion beside ink is 2.5:1 and the title of a card is focused when it opens.
 - **One-off measures** that belong to a single rule stay in it: the side panel (380 px), the inspection box (22 rem), the stamp (32 px), the alert mark (15 px), the letter of an option (1.8 rem), the padding of a map label (1 px 6 px) and of a name tag (0.35 em), and two measures relative to their own text: the right margin of `.entity-icon` (`0.35em`) and the font size of `.name-tag` (`0.82em`).
-- **A card on the map** takes its width and its gap to its piece from `src/scene/layout.ts`, which needs them to pick the card's side: `card-anchor.tsx` sets `--card-width`, `--card-gap`, `--card-x` and `--card-y` on every map card, and only the docked card (`.map-card--dock`, in the corner of the map) reads x and y. They are not tokens.
+- **A card on the map** takes its width and its gap to its piece from `src/scene/layout.ts`, which needs them to pick the card's side: `card-anchor.tsx` sets `--card-width`, `--card-gap`, `--card-x`, `--card-y` and `--card-room` on every map card, and only the docked card (`.map-card--dock`, in the corner of the map) reads x, y and room: room caps its height, and its body scrolls when the content is taller. They are not tokens.
 
 ## Primitives
 

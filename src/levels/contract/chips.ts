@@ -1,6 +1,6 @@
 import compare from 'just-compare';
 import { DEFAULT_DIRECTION, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
-import { peerIdOf, ruleIdFor, type AddressChip, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
+import { peerIdOf, ruleIdFor, type AddressChip, type CaseSpec, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type ToChip, type WhatChip } from './incident';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
 type Combination = Omit<SendMove, 'type'>;
@@ -124,10 +124,15 @@ export function unknownExpectedIds(incident: Incident, world: Network): string[]
   return incident.tasks.flatMap(({ expect }) => (expect.by !== undefined && !known.has(expect.by) ? [expect.by] : []));
 }
 
-/** Returns the ids in the list of shown pieces of an incident that name no device, router or actor of the world: a firewall is drawn with its device and is not listed by itself. An incident with no list draws the whole world, so it has none. */
-export function unknownShownIds(incident: Incident, world: Network): string[] {
+/** Returns the list of shown pieces that applies: the list of the case, when a case of a diagnose incident has its own, and the list of the incident otherwise. With no list the whole world is drawn, and this is undefined. */
+export function shownOf(incident: Incident, spec?: CaseSpec | null): string[] | undefined {
+  return spec?.shown ?? incident.shown;
+}
+
+/** Returns the ids in the list of shown pieces that name no device, router or actor of the world: a firewall is drawn with its device and is not listed by itself. An incident with no list draws the whole world, so it has none. A case of a diagnose incident is checked in its own world, against its own list or the incident's. */
+export function unknownShownIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
   const placed = new Set(placedIds(world));
-  return (incident.shown ?? []).filter((id) => !placed.has(id));
+  return (shownOf(incident, spec) ?? []).filter((id) => !placed.has(id));
 }
 
 /** Returns the ids of the devices whose card an identify incident offers, in the order of its cards; none for any other incident. */
@@ -141,11 +146,15 @@ export function unknownCardDeviceIds(incident: Incident, world: Network): string
   return cardDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
 }
 
-function sendersOf(incident: Incident): string[] {
+function ownersFor(incident: Incident, spec?: CaseSpec): SendOwner[] {
+  return spec ? [spec] : sendOwnersOf(incident);
+}
+
+function sendersOf(incident: Incident, spec?: CaseSpec): string[] {
   switch (incident.mechanic) {
     case 'send':
     case 'diagnose':
-      return sendOwnersOf(incident).flatMap((owner) => owner.send.from.map((chip) => chip.endpoint.id));
+      return ownersFor(incident, spec).flatMap((owner) => owner.send.from.map((chip) => chip.endpoint.id));
     case 'identify':
       return cardDeviceIds(incident);
     case 'filter':
@@ -153,8 +162,8 @@ function sendersOf(incident: Incident): string[] {
   }
 }
 
-function addressesOf(incident: Incident): string[] {
-  const owners = sendOwnersOf(incident);
+function addressesOf(incident: Incident, spec?: CaseSpec): string[] {
+  const owners = ownersFor(incident, spec);
   return owners.length > 0 ? owners.flatMap((owner) => owner.send.to.map((chip) => chip.address)) : incident.flows.map((flow) => flow.packet.to);
 }
 
@@ -173,10 +182,11 @@ function drawnWith(world: Network, id: string): string {
   return world.devices.find((device) => device.firewallIds.includes(id))?.id ?? id;
 }
 
-/** Returns, in order, what the list of shown pieces of an incident must hold and lacks: the sender (or, in an identify incident, the device of every card; in a diagnose, the senders and the addresses of every case), the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
-export function missingShownIds(incident: Incident, world: Network): string[] {
-  if (!incident.shown) return [];
-  const shown = new Set(incident.shown);
-  const needed = [...sendersOf(incident), ...addressesOf(incident).flatMap((address) => ownerOf(world, address)), ...expectedBy(incident).map((id) => drawnWith(world, id))];
+/** Returns, in order, what the list of shown pieces must hold and lacks: the sender (or, in an identify incident, the device of every card; in a diagnose, the senders and the addresses of every case, or of the one case given, which is checked in its own world), the owner of every address it sends to (an address nobody has needs none) and whoever a task expects (a firewall is drawn with its device). An incident with no list draws the whole world, so it lacks nothing. */
+export function missingShownIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
+  const list = shownOf(incident, spec);
+  if (!list) return [];
+  const shown = new Set(list);
+  const needed = [...sendersOf(incident, spec), ...addressesOf(incident, spec).flatMap((address) => ownerOf(world, address)), ...expectedBy(incident).map((id) => drawnWith(world, id))];
   return needed.filter((id, index) => !shown.has(id) && needed.indexOf(id) === index);
 }

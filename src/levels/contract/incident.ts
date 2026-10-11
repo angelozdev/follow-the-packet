@@ -88,6 +88,7 @@ const sendChipsShape = {
 const caseSchema = z.object({
   id,
   changes: z.array(networkActionSchema).optional(),
+  shown: z.array(id).min(1).optional(),
   report: termText,
   send: z.object(sendChipsShape),
   hints: z.tuple([termText, termText]),
@@ -281,6 +282,7 @@ function checkDiagnose(incident: DiagnoseShape, fail: Fail): void {
   uniqueIn(fail)('case id', cases.map((spec) => spec.id));
   for (const spec of cases) {
     checkSendChips(spec.send, `${spec.id}: `, fail);
+    uniqueIn(fail)(`${spec.id}: shown id`, spec.shown ?? []);
     if (spec.cause.options.filter((option) => option.correct).length !== 1) fail(`${spec.id}: exactly one cause is correct`);
   }
   checkAmbient(incident.flows, incident.mechanic, fail);
