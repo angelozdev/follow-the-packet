@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
+import { ATTACKER_IP, NAME_SERVERS, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, tcpService, withDevice } from '@/testing';
 import { applyAction, networkActionSchema, type NetworkAction } from './actions';
 import { ROUTE_DEFAULT, networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Firewall, Forward, Lan, Network, Router, ServerActor, Service } from './types';
+import type { Actor, Device, Firewall, Forward, Lan, Network, Router, ServerActor, ServerDns, Service } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
@@ -334,5 +334,60 @@ describe('applyAction on an office with floors', () => {
       const net = OFFICE_ACTIONS.has(action.type) ? officeTwoFloorsNet() : lab03Net();
       expect(applyAction(net, action), name).toBe(net);
     }
+  });
+});
+
+describe('applyAction for the DNS', () => {
+  const { resolver, authoritative } = NAME_SERVERS;
+  const dnsOf = (net: Network, id: string) => serverOf(net, id)?.dns;
+  const withHome = (net: Network): Network => applyAction(net, { type: 'addActor', actor: { id: 'home', name: 'casa-lucia', kind: 'home', ip: '192.0.2.77' } });
+
+  it('setDnsServer sets the resolver of a device and takes it away when it gives none', () => {
+    const net = officeTwoFloorsNet();
+    const set = applyAction(net, { type: 'setDnsServer', deviceId: 'your-laptop', server: resolver.ip });
+    expect(deviceOf(set, 'your-laptop')?.dnsServer).toBe(resolver.ip);
+    expect(deviceOf(set, 'printer')).toEqual(deviceOf(net, 'printer'));
+    const cleared = applyAction(set, { type: 'setDnsServer', deviceId: 'your-laptop' });
+    expect(cleared).toEqual(net);
+    expect(deviceOf(cleared, 'your-laptop')).not.toHaveProperty('dnsServer');
+    expect(validate(set)).toEqual([]);
+    expect(networkActionSchema.safeParse({ type: 'setDnsServer', deviceId: 'your-laptop', server: 'not-an-ip' }).success).toBe(false);
+  });
+
+  it('setDns replaces the DNS of a server of the internet and takes it away when it gives none', () => {
+    const net = officeTwoFloorsNet();
+    const dns: ServerDns = { role: 'resolver', upstreams: [] };
+    const set = applyAction(net, { type: 'setDns', ownerId: OFFICE_FLOORS.server.id, dns });
+    expect(serverOf(set, OFFICE_FLOORS.server.id)?.dns).toEqual(dns);
+    const replaced = applyAction(set, { type: 'setDns', ownerId: OFFICE_FLOORS.server.id, dns: { role: 'authoritative' } });
+    expect(serverOf(replaced, OFFICE_FLOORS.server.id)?.dns).toEqual({ role: 'authoritative' });
+    expect(applyAction(set, { type: 'setDns', ownerId: OFFICE_FLOORS.server.id })).toEqual(net);
+    expect(dnsOf(applyAction(officeWithNames(), { type: 'setDns', ownerId: resolver.id }), resolver.id)).toBeUndefined();
+  });
+
+  it('setDns, setDnsServer, addRecord and removeRecord on an id the network does not have return the same network', () => {
+    const net = withHome(officeWithNames());
+    const record = { name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site } as const;
+    const actions: NetworkAction[] = [
+      { type: 'setDns', ownerId: GHOST, dns: { role: 'resolver' } },
+      { type: 'setDns', ownerId: 'home', dns: { role: 'resolver' } },
+      { type: 'setDns', ownerId: 'your-laptop', dns: { role: 'resolver' } },
+      { type: 'setDnsServer', deviceId: GHOST, server: resolver.ip },
+      { type: 'setDnsServer', deviceId: 'home', server: resolver.ip },
+      { type: 'addRecord', serverId: 'home', record: { ...record, ttl: 300 } },
+      { type: 'removeRecord', serverId: 'home', record },
+    ];
+    for (const action of actions) expect(applyAction(net, action), JSON.stringify(action)).toBe(net);
+    expect(applyAction(net, { type: 'removeRecord', serverId: authoritative.id, record })).not.toBe(net);
+  });
+
+  it('the cache of a resolver takes an address or an alias with a time of expiry and nothing else', () => {
+    const entry = { name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 };
+    const parses = (cache: unknown[]) => networkActionSchema.safeParse({ type: 'setDns', ownerId: resolver.id, dns: { role: 'resolver', cache } }).success;
+    expect(parses([entry, { ...entry, type: 'CNAME', value: `www.${NAME_SERVERS.zone}` }])).toBe(true);
+    expect(parses([{ ...entry, expiresAt: -1 }])).toBe(false);
+    expect(parses([{ ...entry, type: 'NS' }])).toBe(false);
+    expect(parses([{ ...entry, value: '' }])).toBe(false);
+    expect(parses([{ name: entry.name, type: 'A', value: entry.value }])).toBe(false);
   });
 });

@@ -5,7 +5,7 @@ import type { DnsStatus, DnsTrace, Trace } from '@/engine/simulation/trace';
 /** The port a DNS server listens on, for UDP and for TCP: RFC 1035 §4.2 (read on 2026-10-11), "The Internet supports name server access using TCP on server port 53 (decimal) as well as datagram access using UDP on UDP port 53 (decimal)". The game sends every question over UDP. */
 export const DNS_PORT = 53;
 
-/** How many names a chain of aliases may visit before the resolver gives up: 8. It is the game's bound, so a loop of aliases ends; it is not claimed to be the limit of any resolver. */
+/** The most aliases a chain may follow before the resolver gives up: 8, so a chain of 8 aliases and an address resolves and one of 9 aliases is SERVFAIL. It is the game's bound, so a loop of aliases ends; it is not claimed to be the limit of any resolver. */
 export const MAX_ALIAS_STEPS = 8;
 
 /** How a name is looked up: `system` is what `ping` and `nc` do, and `dig` is the question itself. Both ask the resolver of the device; they differ in what is read first, which is the job of the hosts file. */
@@ -45,7 +45,7 @@ function upstreamFor(resolver: ServerActor, name: string): { zone: string; serve
 
 function asks(net: Network, resolver: ServerActor, name: string, chain: AnswerRecord[], visited: ReadonlySet<string>): Answer {
   const key = normalizeName(name);
-  if (visited.has(key) || visited.size >= MAX_ALIAS_STEPS) return { status: 'SERVFAIL', answers: [] };
+  if (visited.has(key) || visited.size > MAX_ALIAS_STEPS) return { status: 'SERVFAIL', answers: [] };
   const upstream = upstreamFor(resolver, name);
   if (!upstream) return { status: 'NXDOMAIN', answers: chain };
   const server = authoritativeServer(net, upstream.serverId);

@@ -84,8 +84,9 @@ describe('resolving a name', () => {
   it('a loop of aliases ends as SERVFAIL', () => {
     const world = withLuciaRecords(net, [cname(`a.${ZONE}`, `b.${ZONE}`), cname(`b.${ZONE}`, `a.${ZONE}`)]);
     expect(ask(`a.${ZONE}`, world).dns).toMatchObject({ status: 'SERVFAIL', answers: [] });
-    const longChain = Array.from({ length: MAX_ALIAS_STEPS + 1 }, (_, index) => cname(`c${index}.${ZONE}`, `c${index + 1}.${ZONE}`));
-    expect(ask(`c0.${ZONE}`, withLuciaRecords(net, [...longChain, aRecord(`c${MAX_ALIAS_STEPS + 1}.${ZONE}`)])).dns.status).toBe('SERVFAIL');
+    const chain = (aliases: number) => [...Array.from({ length: aliases }, (_, index) => cname(`c${index}.${ZONE}`, `c${index + 1}.${ZONE}`)), aRecord(`c${aliases}.${ZONE}`)];
+    expect(ask(`c0.${ZONE}`, withLuciaRecords(net, chain(MAX_ALIAS_STEPS))).dns.status).toBe('NOERROR');
+    expect(ask(`c0.${ZONE}`, withLuciaRecords(net, chain(MAX_ALIAS_STEPS + 1))).dns).toMatchObject({ status: 'SERVFAIL', answers: [] });
   });
 
   it('a name that nobody has answers NXDOMAIN', () => {
