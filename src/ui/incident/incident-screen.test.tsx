@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import type { GameSceneProps } from '@/scene';
@@ -39,6 +39,8 @@ const FULL_STARS = 3;
 const FIRST = filterIncident('04-01');
 const RIGHT_ANSWER = /no había ninguna para el ping de servidor1/;
 const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened));
+const BEFORE_THE_GRACE_ENDS_MS = 100;
+const AFTER_THE_GRACE_ENDS_MS = 1000;
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -159,6 +161,60 @@ describe('incident screen', () => {
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
     expect(onFinish).toHaveBeenCalledWith(FULL_STARS);
     expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeInTheDocument();
+  });
+});
+
+describe('the inspection box can be reached with the mouse', () => {
+  afterEach(() => vi.useRealTimers());
+
+  function renderWithFakeTimers() {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderFirst();
+    return user;
+  }
+
+  function wait(ms: number) {
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  }
+
+  it('lingers for a moment after the pointer leaves the piece, so the pointer can cross to it, and then goes', async () => {
+    const user = renderWithFakeTimers();
+    const piece = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.hover(piece);
+    await user.unhover(piece);
+    wait(BEFORE_THE_GRACE_ENDS_MS);
+    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+  });
+
+  it('stays while the pointer is over it, however long, and goes as soon as the pointer leaves it', async () => {
+    const user = renderWithFakeTimers();
+    const piece = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.hover(piece);
+    await user.unhover(piece);
+    const box = screen.getByRole('region', { name: 'servidor2' });
+    await user.hover(box);
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
+    await user.unhover(box);
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+  });
+
+  it('gives way at once to the next piece the pointer reaches', async () => {
+    const user = renderWithFakeTimers();
+    const first = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.hover(first);
+    await user.unhover(first);
+    await user.hover(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
   });
 });
 

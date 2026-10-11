@@ -134,6 +134,28 @@ export async function cardProblems(page: Page, minGap: number = MIN_GAP_PX, minB
   }, [minGap, minButtonGap] as const);
 }
 
+/** Returns one line per card of the map that sticks out of it above or below, which cuts its band or its foot off, and per card beside its piece that rises under the title bar that floats over the top of the map: the map holds a card whatever the window, and a card taller than the map scrolls its body. */
+export async function cardsOutsideTheMap(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const EPSILON = 0.5;
+    const map = document.querySelector('.incident__map')?.getBoundingClientRect();
+    const bar = document.querySelector('.incident__bar')?.getBoundingClientRect();
+    if (!map || !bar) return [];
+    return [...document.querySelectorAll('.map-card')].flatMap((holder) => {
+      const card = holder.querySelector('.card');
+      if (!card) return [];
+      const { top, bottom } = card.getBoundingClientRect();
+      const name = card.querySelector('h2')?.textContent?.trim() ?? 'a card';
+      const beside = holder.matches('.map-card--left, .map-card--right');
+      const problems: string[] = [];
+      if (top < map.top - EPSILON) problems.push(`${name} sticks out of the map by ${(map.top - top).toFixed(1)}px above`);
+      else if (beside && top < bar.bottom - EPSILON) problems.push(`${name} rises ${(bar.bottom - top).toFixed(1)}px under the title bar`);
+      if (bottom > map.bottom + EPSILON) problems.push(`${name} sticks out of the map by ${(bottom - map.bottom).toFixed(1)}px below`);
+      return problems;
+    });
+  });
+}
+
 /** True when the element lies wholly in the window and is what a click lands on at its middle and at a quarter of its width from each side, so nothing covers it and no ancestor cuts it off. */
 export async function isReachable(page: Page, target: Locator): Promise<boolean> {
   const [box, viewport] = await Promise.all([target.boundingBox(), page.viewportSize()]);
@@ -150,17 +172,28 @@ export async function isReachable(page: Page, target: Locator): Promise<boolean>
   );
 }
 
-/** Turns the mouse wheel over the side panel until the element can be reached, and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. */
-export async function reachWithWheel(page: Page, target: Locator): Promise<boolean> {
-  const [panel, viewport] = await Promise.all([page.locator(SIDE_PANEL).boundingBox(), page.viewportSize()]);
-  if (panel === null || viewport === null) throw new Error('the side panel is not on the page');
+async function isInside(target: Locator, scroller: Locator): Promise<boolean> {
+  const [box, frame] = await Promise.all([target.boundingBox(), scroller.boundingBox()]);
+  return box !== null && frame !== null && box.y >= frame.y - 1 && box.y + box.height <= frame.y + frame.height + 1;
+}
+
+interface WheelOptions {
+  within?: Locator;
+  wheelPx?: number;
+}
+
+/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it; and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. */
+export async function reachWithWheel(page: Page, target: Locator, { within, wheelPx = WHEEL_PX }: WheelOptions = {}): Promise<boolean> {
+  const [panel, viewport] = await Promise.all([(within ?? page.locator(SIDE_PANEL)).boundingBox(), page.viewportSize()]);
+  if (panel === null || viewport === null) throw new Error('the scroller is not on the page');
+  const readable = async () => (await isReachable(page, target)) && (within === undefined || (await isInside(target, within)));
   const shownTop = Math.max(panel.y, 0);
   const shownBottom = Math.min(panel.y + panel.height, viewport.height);
   await page.mouse.move(panel.x + panel.width / 2, (shownTop + shownBottom) / 2);
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    if (await isReachable(page, target)) return true;
-    await page.mouse.wheel(0, WHEEL_PX);
+    if (await readable()) return true;
+    await page.mouse.wheel(0, wheelPx);
     await page.evaluate(() => new Promise<void>((settled) => requestAnimationFrame(() => requestAnimationFrame(() => settled()))));
   }
-  return isReachable(page, target);
+  return readable();
 }

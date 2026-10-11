@@ -15,6 +15,7 @@ import { SettingsCard } from './map-cards/settings-card';
 import { TaskCard } from './map-cards/task-card';
 import { TerminalCard } from './map-cards/terminal/terminal-card';
 import { ResultCard } from './result-card';
+import { useInspection } from './use-inspection';
 
 interface IncidentScreenProps {
   incidents: Incident[];
@@ -25,7 +26,7 @@ interface IncidentScreenProps {
 
 export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: IncidentScreenProps) {
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
-  const [inspecting, setInspecting] = useState<string | null>(null);
+  const { inspecting, onInspect, holder } = useInspection();
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const [still, setStill] = useStillMode();
   const playing = session.phase === 'playing';
@@ -114,11 +115,11 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
               />
             ))
           }
-          onInspect={setInspecting}
+          onInspect={onInspect}
           onActivate={activate}
         />
       </div>
-      <div aria-live="polite" className="incident__inspection">
+      <div aria-live="polite" className="incident__inspection" {...holder}>
         {inspection ? (
           <InspectionBox inspection={inspection} />
         ) : (
