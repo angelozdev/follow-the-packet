@@ -1,6 +1,6 @@
 import type { NetworkAction } from '@/engine';
 import { ruleIdFor, type AddressChip, type CaseSpec, type ExplanationOption, type MessageChip, type OriginChip } from '@/levels/contract/incident';
-import { ADDRESS, DEVICE, FIREWALL, IP, LOOP, LOOP_PIECES, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, TO, WATCH_FIREWALL_PIECES, WATCH_GATEWAY_PIECES, WATCH_PRINTER_PIECES, WATCH_SECOND_FLOOR_PIECES, WHAT, letEverythingOut } from '@/levels/01-first-day/shared';
+import { ADDRESS, DEVICE, FIREWALL, IP, LOOP, LOOP_CAUSE, LOOP_PIECES, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, TO, WATCH_FIREWALL_PIECES, WATCH_GATEWAY_PIECES, WATCH_PRINTER_PIECES, WATCH_SECOND_FLOOR_PIECES, WHAT, letEverythingOut } from '@/levels/01-first-day/shared';
 
 type Place = 0 | 1 | 2;
 type Reply = readonly [text: string, feedback: string];
@@ -160,7 +160,7 @@ export const CASES: CaseSpec[] = [
       0,
       [
         'Porque el {{packet|paquete}} da vueltas entre los mismos dos {{router|routers}}.',
-        `El {{ttl}} baja en cada {{hop|salto}} hasta llegar a 0. Los avisos de {{time-exceeded}} vienen de dos {{router|routers}} que se alternan, y el {{traceroute}} repite sus {{ip-address|IP}}: la ${IP.router} y la ${IP.provider}.`,
+        `El {{ttl}} baja en cada {{hop|salto}} hasta llegar a 0. Los avisos de {{time-exceeded}} vienen de dos {{router|routers}} que se alternan, y el {{traceroute}} repite sus {{ip-address|IP}}: la ${IP.router} y la ${IP.provider}. ${LOOP_CAUSE} ${NAME.router} se lo manda otra vez a ${NAME.provider}, y el {{packet|paquete}} no avanza.`,
       ],
       [
         [

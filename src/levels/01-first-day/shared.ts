@@ -263,6 +263,8 @@ export const INTERNET: NetworkAction[] = [
 /** What 01-09 changes: the router of the provider sends everything it does not know back to the office router, and the office router sends it to the provider again, so a packet to the server goes back and forth between the two. The player does not configure routes: the loop is given. */
 export const LOOP: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [{ to: ROUTE_DEFAULT, next: ROUTER.office.id }] }];
 
+export const LOOP_CAUSE = `Alguien cambió la configuración de ${NAME.provider}: ahora todo lo que recibe se lo devuelve a ${NAME.router}.`;
+
 /** What 01-10 changes: no loop, but a broken stretch behind the router of the provider, which no longer has a way to the server and, being set up so, does not warn. */
 export const BROKEN_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: [backToOffice(ROUTER.office.id)], sendsUnreachable: false }];
 

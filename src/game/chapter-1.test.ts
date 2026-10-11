@@ -77,6 +77,18 @@ const A_SILENT_HOP = /\*|callaba|nadie contesta|no contestó a tiempo|sin respue
 const WHERE_THE_PACKET_DIED = /murió|se cortó|se perdió|se detuvo|se frenó|el corte|tramo roto|se rompe|se rompió/i;
 const A_HEDGE = /lo más probable|no siempre|no lo prueba/i;
 const SENTENCE_BREAK = /(?<=[.!?:])\s+/;
+const LOOP_CASE = 5;
+const LOOP_CAUSE_TEXT = `Alguien cambió la configuración de ${ROUTER.provider.name}: ahora todo lo que recibe se lo devuelve a ${ROUTER.office.name}.`;
+const THE_PINGS_DO_NOT_ARRIVE = 'Los pings al servidor ya no llegan.';
+const THE_CHAIN_OF_THE_LOOP = [
+  `${ROUTER.office.name} le pasa el paquete a ${ROUTER.provider.name}`,
+  `${ROUTER.provider.name} sigue su configuración nueva y se lo devuelve`,
+  'lo que está mal es esa configuración',
+  'decide solo mirando la IP de destino y no recuerda si el paquete ya pasó por él',
+  'el paquete va y viene hasta que el TTL llega a 0',
+];
+const EACH_ONE_SENDS_IT_TO_THE_OTHER = 'quedan configurados de modo que cada uno se lo manda al otro';
+const A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE = /confund|equivoc|\bpiensa|\bcree\b|\brutas?\b|tabla/i;
 const READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE = [
   'No. El salto 3 ya callaba y el servidor está más allá: el corte empieza antes de llegar a él.',
   'Eso es. El traceroute listó router-oficina y router-proveedor, y desde el salto 3 solo hay *. El corte está en el último router que contestó o justo después.',
@@ -807,6 +819,25 @@ describe('01-09, counting hops', () => {
     expect(fieldLines(sent, run.pieceId, PASSED_THROUGH_LABEL)).toBeUndefined();
     expect(fieldLines(sent, run.pieceId, ROUND_TRIP_LABEL)).toEqual([roundTripText(run.trace.rttMs ?? Number.NaN), EXAMPLE_FIGURE]);
   });
+
+  it('01-09: the report names router-proveedor and router-oficina and says its configuration changed, before saying the pings do not arrive', () => {
+    const report = toPlainText(guidedOf(COUNTING_HOPS).report);
+    expect(report).toContain(`${LOOP_CAUSE_TEXT} ${THE_PINGS_DO_NOT_ARRIVE}`);
+    expect(report.startsWith(LOOP_CAUSE_TEXT)).toBe(true);
+  });
+
+  it('01-09: the right explanation gives the whole chain, in order: the office router passes it on, the router of the provider hands it back, each router looks only at the destination IP, and the fault is the configuration', () => {
+    const right = guidedOf(COUNTING_HOPS).explanation.find((option) => option.correct);
+    const feedback = toPlainText(right?.feedback ?? '');
+    const positions = THE_CHAIN_OF_THE_LOOP.map((part) => feedback.indexOf(part));
+    expect(positions.filter((position) => position < 0)).toEqual([]);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    expect(toPlainText(guidedOf(COUNTING_HOPS).takeaway)).toContain(EACH_ONE_SENDS_IT_TO_THE_OTHER);
+  });
+
+  it('01-09: no text of the incident says that a router got confused, and none says ruta or tabla, which chapter 2 teaches', () => {
+    expect(incidentTexts(guidedOf(COUNTING_HOPS)).map((text) => toPlainText(text)).filter((text) => A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE.test(text))).toEqual([]);
+  });
 });
 
 describe('01-10, seeing the path', () => {
@@ -1516,6 +1547,15 @@ describe('01-14, the final watch', () => {
     expect(ips).toEqual(Array.from({ length: TRACEROUTE_LINES }, (_, index) => (index % 2 === 0 ? IP.router : IP.provider)));
     expect(new Set(ips).size).toBe(2);
     expect([ROUTER.office.id, ROUTER.provider.id].map((id) => drawsRouter(start, id))).toEqual([true, true]);
+  });
+
+  it('01-14: the right cause of case 5 names router-proveedor and the change of its configuration, its report does not give the cause away, and no text says a router got confused or says ruta', () => {
+    const spec = watchOf().diagnose.cases[LOOP_CASE - 1];
+    const right = spec.cause.options.find((option) => option.correct);
+    expect(toPlainText(right?.feedback ?? '')).toContain(`${LOOP_CAUSE_TEXT} ${ROUTER.office.name} se lo manda otra vez a ${ROUTER.provider.name}`);
+    expect(toPlainText(spec.report)).not.toContain(ROUTER.provider.name);
+    const texts = [spec.report, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback])].map((text) => toPlainText(text));
+    expect(texts.filter((text) => A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE.test(text))).toEqual([]);
   });
 
   it('01-14: case 6 is silent towards one laptop only, and its firewall is visible', () => {
