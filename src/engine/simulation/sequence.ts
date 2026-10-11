@@ -1,6 +1,6 @@
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Network, PacketSpec } from '@/engine/network/types';
-import { simulate } from './simulate';
+import { run, type Carried } from './simulate';
 import type { Trace } from './trace';
 
 /** One packet of a sequence and the second of the game clock it leaves at. */
@@ -9,8 +9,8 @@ export interface Send {
   at: number;
 }
 
-/** What a sequence carries from one send to the next: for each sender, by id, the ephemeral source port its next TCP or UDP packet leaves from. */
-interface SequenceState {
+/** What a sequence carries from one send to the next: for each sender, by id, the ephemeral source port its next TCP or UDP packet leaves from, and what the pipeline hands on (the translation table of the NAT). */
+interface SequenceState extends Carried {
   nextSourcePort: Readonly<Record<string, number>>;
 }
 
@@ -19,7 +19,7 @@ interface Advance {
   trace: Trace;
 }
 
-const emptyState = (): SequenceState => ({ nextSourcePort: {} });
+const emptyState = (): SequenceState => ({ nextSourcePort: {}, nat: [] });
 
 /** Gives a TCP or UDP packet that has no source port the next one of its sender and moves that sender on by one. A packet that brings its own port keeps it and leaves the counter as it was, like a port a program binds by hand; an ICMP message has no ports. Returns the packet to simulate and the state after it. */
 function withSourcePort(state: SequenceState, packet: PacketSpec): { state: SequenceState; packet: PacketSpec } {
@@ -32,10 +32,11 @@ function withSourcePort(state: SequenceState, packet: PacketSpec): { state: Sequ
 /** Simulates one send of the sequence from the state the previous sends left, and returns its trace with the state for the next one. */
 function advance(net: Network, state: SequenceState, { packet }: Send): Advance {
   const next = withSourcePort(state, packet);
-  return { state: next.state, trace: simulate(net, next.packet) };
+  const { trace, carried } = run(net, next.packet, next.state);
+  return { state: { ...next.state, ...carried }, trace };
 }
 
-/** Simulates the sends in order and returns one trace per send, in the same order. What one send leaves behind (so far, the source port of its sender) is the input of the next, so the same sends in the same network always give the same traces; a single `simulate` knows nothing of the sends before it. */
+/** Simulates the sends in order and returns one trace per send, in the same order. What one send leaves behind (the source port of its sender and the rows of the NAT) is the input of the next, so the same sends in the same network always give the same traces; a single `simulate` knows nothing of the sends before it. */
 export function simulateSequence(net: Network, sends: readonly Send[]): Trace[] {
   const traces: Trace[] = [];
   let state = emptyState();

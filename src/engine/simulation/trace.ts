@@ -1,3 +1,4 @@
+import type { Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import type { FirewallKind, IcmpType } from '@/engine/network/types';
 
@@ -123,5 +124,6 @@ export interface Trace {
   header?: PacketHeader;
   exchange?: ExchangeMessage[];
   routes?: RouteDecision[];
+  translation?: Translation;
   rttMs?: number;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, networkSchema, type Network, type NetworkAction } from '@/engine';
+import { applyAction, networkSchema, simulate, type Network, type NetworkAction, type PacketSpec } from '@/engine';
 import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, officeNet, outboundFilterIncident } from '@/testing';
+import { DEVICE, IP } from './01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
@@ -257,5 +258,66 @@ describe('the worlds of a diagnose incident', () => {
   it('a diagnose incident ends as it started, because the player only names causes', () => {
     expect(solvedWorld(CHAIN, DIAGNOSE.id)).toEqual(start);
     expect(applyMove(start, DIAGNOSE, { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'none' })).toBe(start);
+  });
+});
+
+describe('the world chapter 2 starts from', () => {
+  const OFFICE_ROUTER = 'office-router';
+  const TO_PROVIDER = [`${OFFICE_ROUTER}:63`, 'provider-router:62'];
+  const TO_DESTINATION = [...TO_PROVIDER, 'destination-router:61'];
+  const AT_THE_OFFICE_ROUTER = [`${OFFICE_ROUTER}:63`];
+  type Trip = [outcome: string, hops: string[] | undefined, rttMs: number | undefined, notice: string | undefined];
+  const YOUR_LAPTOP: [string, Trip][] = [
+    [IP.server, ['replied', TO_DESTINATION, 84, undefined]],
+    [IP.otherOfficePrinter, ['timeout', TO_PROVIDER, undefined, undefined]],
+    [IP.printer, ['replied', undefined, 2, undefined]],
+    [IP.lucia, ['replied', undefined, 2, undefined]],
+    [IP.andres, ['replied', AT_THE_OFFICE_ROUTER, 6, undefined]],
+    [IP.router, ['replied', undefined, 4, undefined]],
+    [IP.routerSecondFloor, ['replied', undefined, 4, undefined]],
+    [IP.officeUplink, ['replied', undefined, 4, undefined]],
+    [IP.provider, ['replied', AT_THE_OFFICE_ROUTER, 20, undefined]],
+    [IP.providerOnward, ['replied', AT_THE_OFFICE_ROUTER, 20, undefined]],
+    [IP.destination, ['replied', TO_PROVIDER, 44, undefined]],
+    [IP.destinationServer, ['replied', TO_PROVIDER, 44, undefined]],
+    [IP.nobody, ['unreachable', undefined, undefined, 'host-unreachable']],
+    [IP.loopback, ['replied', undefined, 0.05, undefined]],
+    ['localhost', ['replied', undefined, 0.05, undefined]],
+    ['8.8.8.8', ['unreachable', TO_PROVIDER, 20, 'net-unreachable']],
+  ];
+  const FROM_ANDRES: [string, Trip][] = [
+    [IP.server, ['replied', TO_DESTINATION, 84, undefined]],
+    [IP.otherOfficePrinter, ['timeout', TO_PROVIDER, undefined, undefined]],
+    [IP.printer, ['replied', AT_THE_OFFICE_ROUTER, 6, undefined]],
+    [IP.andres, ['replied', undefined, 0.05, undefined]],
+    [IP.nobody, ['unreachable', AT_THE_OFFICE_ROUTER, 4, 'host-unreachable']],
+    ['8.8.8.8', ['unreachable', TO_PROVIDER, 20, 'net-unreachable']],
+  ];
+  const BY_TTL: [number, Trip][] = [
+    [1, ['ttl-exceeded', [`${OFFICE_ROUTER}:0`], 4, 'time-exceeded']],
+    [2, ['ttl-exceeded', [`${OFFICE_ROUTER}:1`, 'provider-router:0'], 20, 'time-exceeded']],
+    [3, ['ttl-exceeded', [`${OFFICE_ROUTER}:2`, 'provider-router:1', 'destination-router:0'], 44, 'time-exceeded']],
+    [4, ['replied', [`${OFFICE_ROUTER}:3`, 'provider-router:2', 'destination-router:1'], 84, undefined]],
+  ];
+  const ping = (fromId: string, to: string, ttl?: number): PacketSpec => ({ from: { kind: 'device', id: fromId }, to, protocol: 'icmp', icmpType: 8, ...(ttl && { ttl }) });
+  const tripOf = (world: Network, packet: PacketSpec): Trip => {
+    const trace = simulate(world, packet);
+    return [trace.outcome, trace.hops?.map(({ routerId, ttlLeft }) => `${routerId}:${ttlLeft}`), trace.rttMs, trace.notice?.kind];
+  };
+
+  it('the pings of chapter 1 give the same outcome, hops and times in the world chapter 2 starts from', () => {
+    const world = solvedWorld(INCIDENTS, '01-14');
+    expect(world.routers?.map((router) => router.id)).toEqual([OFFICE_ROUTER, 'provider-router', 'destination-router']);
+    for (const [to, trip] of YOUR_LAPTOP) expect(tripOf(world, ping(DEVICE.you.id, to)), `your laptop to ${to}`).toEqual(trip);
+    for (const [to, trip] of FROM_ANDRES) expect(tripOf(world, ping(DEVICE.andres.id, to)), `Andrés's laptop to ${to}`).toEqual(trip);
+    for (const [ttl, trip] of BY_TTL) expect(tripOf(world, ping(DEVICE.you.id, IP.server, ttl)), `ttl ${ttl}`).toEqual(trip);
+  });
+
+  it('a ping that leaves the office is translated and still shows the private IP as its source', () => {
+    const world = solvedWorld(INCIDENTS, '01-14');
+    const toServer = simulate(world, ping(DEVICE.you.id, IP.server));
+    expect(toServer.translation).toEqual({ protocol: 'icmp', inside: { ip: IP.you }, outside: { ip: IP.officeUplink }, isNew: false, fixed: false });
+    expect([toServer.effectiveSource, toServer.header?.request.source]).toEqual([IP.you, IP.you]);
+    for (const to of [IP.printer, IP.andres, IP.router, IP.officeUplink, IP.nobody, IP.loopback]) expect(simulate(world, ping(DEVICE.you.id, to)), to).not.toHaveProperty('translation');
   });
 });

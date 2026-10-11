@@ -1,4 +1,4 @@
-import { openingOf, type SimContext, type Stage } from './context';
+import { openingOf, sourcePortOf, type SimContext, type Stage } from './context';
 import { addressStage } from './stages/address';
 import { dnsStage } from './stages/dns';
 import { firewallInStage } from './stages/firewall-in';
@@ -8,7 +8,8 @@ import { hostStage } from './stages/host';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
 import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
-import { DEFAULT_SOURCE_PORT, DEFAULT_TTL } from '@/engine/network/schema';
+import type { NatTable } from '@/engine/nat/translation';
+import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { ExchangeMessage, Outcome, PacketHeader, PortPair, Trace } from './trace';
 
@@ -34,8 +35,9 @@ function sourceIpOf(ctx: SimContext, destIp: string): string {
 }
 
 /** The ports a TCP or UDP packet leaves with: the source port it was given or `DEFAULT_SOURCE_PORT`, and the port it is for. ICMP has no ports. */
-function portsOf({ protocol, port, sourcePort }: PacketSpec): PortPair | undefined {
-  return protocol === 'icmp' ? undefined : { sourcePort: sourcePort ?? DEFAULT_SOURCE_PORT, destinationPort: port! };
+function portsOf(packet: PacketSpec): PortPair | undefined {
+  const { protocol, port } = packet;
+  return protocol === 'icmp' ? undefined : { sourcePort: sourcePortOf(packet), destinationPort: port! };
 }
 
 /** The header of the packet the sender put on the wire, in an office: its private IP as source (`127.0.0.1` for a packet to a loopback address), the resolved destination, the TTL it left with and, for TCP and UDP, its two ports. A packet that stopped at its sender (an address that is not valid, a name nobody resolved, no cable or no gateway) has none, and neither has a VPC. The reply is the request with source and destination swapped (RFC 792), the ports too, and only a packet that was answered has one. */
@@ -75,16 +77,35 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     ...(header && { header }),
     ...(exchange && { exchange }),
     ...(ctx.routes && { routes: ctx.routes }),
+    ...(ctx.translation && { translation: ctx.translation }),
     ...(rttMs !== undefined && { rttMs }),
   };
 }
 
-/** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. */
-export function simulate(net: Network, packet: PacketSpec): Trace {
-  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet) };
+/** What a send inherits from the sends before it and hands on to the next: the translation table of the NAT. */
+export interface Carried {
+  nat: NatTable;
+}
+
+/** The trace of a packet and what it leaves for the next send. */
+export interface Run {
+  trace: Trace;
+  carried: Carried;
+}
+
+const NOTHING_CARRIED: Carried = { nat: [] };
+
+/** Runs the packet through every stage, starting from what the sends before it carried, and returns its trace with what it carries on. The same network, packet and carried state always give the same result, and the state it receives is never changed. */
+export function run(net: Network, packet: PacketSpec, carried: Carried): Run {
+  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nat: carried.nat, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet) };
   for (const stage of PIPELINE) {
     const result = stage(ctx);
-    if (result.done) return finish(ctx, result.outcome);
+    if (result.done) return { trace: finish(ctx, result.outcome), carried: { nat: ctx.nat } };
   }
   throw new Error('the simulation ended without an outcome');
+}
+
+/** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. It knows nothing of the sends before it, so a packet that leaves the office is translated against an empty table. */
+export function simulate(net: Network, packet: PacketSpec): Trace {
+  return run(net, packet, NOTHING_CARRIED).trace;
 }

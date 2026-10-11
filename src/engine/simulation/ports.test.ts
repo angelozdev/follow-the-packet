@@ -95,6 +95,7 @@ describe('the source port and the exchange of a trace', () => {
       source: { endpoint: you, id: sender.id, ip: sender.privateIp, inside: true, device: sender },
       dest: net.devices[1],
       effectiveSource: sender.privateIp,
+      nat: [],
       hops: [],
       legsMs: [],
       steps: [],

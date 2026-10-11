@@ -4,6 +4,7 @@ import { lanOf } from '@/engine/network/addressing/topology';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Device, Router, ServerActor, Service } from '@/engine/network/types';
 import { CONTINUE, addLeg, recordRoute, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
+import { translateOnExit } from '@/engine/simulation/stages/nat';
 import type { NoticeKind, Notice, Reason } from '@/engine/simulation/trace';
 
 /** Hands the packet to a device of the network: the firewall of that device, its host and its reply come next. */
@@ -72,9 +73,11 @@ function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: numbe
       return arriveAt(ctx, onward.device);
     case 'server':
       crossed(ctx, router, from, ttlLeft);
+      translateOnExit(ctx, router, onward.server.id);
       return answerFromServer(ctx, onward.server);
     case 'router':
       crossed(ctx, router, from, ttlLeft);
+      translateOnExit(ctx, router, onward.router.id);
       return pass(ctx, onward.router, ttlLeft, onward.ingress);
   }
 }

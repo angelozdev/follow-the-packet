@@ -1,4 +1,6 @@
+import type { NatTable, Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
+import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Device, Endpoint, Network, PacketSpec, Service } from '@/engine/network/types';
 import type { ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
 
@@ -34,6 +36,8 @@ export interface SimContext {
   responder?: Responder;
   notice?: Notice;
   routes?: RouteDecision[];
+  nat: NatTable;
+  translation?: Translation;
   hops: Hop[];
   legsMs: number[];
   steps: Step[];
@@ -54,6 +58,11 @@ export function receiverOf(ctx: SimContext): Receiver {
 /** Records a tcpdump line at the receiver when it is a device: the player can read a device's tcpdump, not a router's or a server's. */
 export function logAt(ctx: SimContext, receiver: Receiver, direction: TcpdumpLine['direction'], src: string, dst: string, summary: string): void {
   if (receiver.device) ctx.tcpdump.push({ deviceId: receiver.id, direction, src, dst, summary });
+}
+
+/** The source port a TCP or UDP packet leaves from: the one it was given or `DEFAULT_SOURCE_PORT`. An ICMP message has no ports. */
+export function sourcePortOf({ sourcePort }: Pick<PacketSpec, 'sourcePort'>): number {
+  return sourcePort ?? DEFAULT_SOURCE_PORT;
 }
 
 /** Records the route a holder picked to carry the packet on. */
