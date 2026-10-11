@@ -42,7 +42,8 @@
         "alias @/ -> src/; all ../ imports banned; one index.ts barrel per layer",
         "cap 12 files per folder, tests and barrel included; guide file CLAUDE.md per folder",
         "enforced: no-restricted-imports rules generated from the layer table in eslint.config.js (pnpm lint, proven by scripts/eslint-config.test.ts) and scripts/check-structure.ts for the 12-file cap and the guides (pnpm structure).",
-        "deviation: boundaries use core no-restricted-imports generated from the layer table instead of eslint-plugin-boundaries (no extra dependency or alias resolver)"
+        "deviation: boundaries use core no-restricted-imports generated from the layer table instead of eslint-plugin-boundaries (no extra dependency or alias resolver)",
+        "deviation: the end-to-end tests have a second alias, @e2e/ -> tests/e2e/ (in tsconfig.json), so a spec in a subfolder of tests/e2e/ imports the shared helpers without ../; nothing in src/ imports it. Local to this project, not a generic rule"
       ]
     },
     "kebab-case-filenames": {
