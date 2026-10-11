@@ -4,7 +4,7 @@ import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e
 import { CHAPTER_1, IP, LOST_TO_SERVER, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
 import { FULL_STARS, closeCase } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
-import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps } from '@e2e/map-boxes';
+import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps, recordLabels, recordedLabels, type Box } from '@e2e/map-boxes';
 import { CHAPTER_1_DONE, startWithProgress } from '@e2e/saved-progress';
 
 const LOCKED = '(bloqueado)';
@@ -77,6 +77,12 @@ async function openedBox(opened: Locator) {
   const box = await opened.boundingBox();
   if (box === null) throw new Error('the card is not on the screen');
   return box;
+}
+
+function distanceBetweenLaptops(boxes: Box[]): number | undefined {
+  const [yours, lucia] = [/^tu-laptop$/, /^laptop-lucia/].map((name) => boxes.find((box) => name.test(box.name.trim())));
+  if (yours === undefined || lucia === undefined) return undefined;
+  return Math.hypot(lucia.x + lucia.width / 2 - (yours.x + yours.width / 2), lucia.y + lucia.height / 2 - (yours.y + yours.height / 2));
 }
 
 function inEachWindow(define: () => void) {
@@ -357,6 +363,16 @@ inEachWindow(() => {
       const apart = Math.hypot(lucia.x + lucia.width / 2 - (yours.x + yours.width / 2), lucia.y + lucia.height / 2 - (yours.y + yours.height / 2));
       expect(apart, id).toBeCloseTo(FULL_SIZE_LAPTOP_DISTANCE_PX, 0);
     }
+  });
+
+  test('the labels of the map stand where they belong from the first moment they show', async ({ page }) => {
+    await startWithProgress(page, CHAPTER_1_DONE);
+    await page.goto('/');
+    await recordLabels(page);
+    await page.goto('/#/level/01-08');
+    await expect.poll(async () => distanceBetweenLaptops(await mapBoxes(page)), 'the labels settle').toBeCloseTo(FULL_SIZE_LAPTOP_DISTANCE_PX, 0);
+    const distances = (await recordedLabels(page)).map(distanceBetweenLaptops).filter((distance) => distance !== undefined);
+    expect(new Set(distances.map((distance) => distance.toFixed(2))).size, `the distances the laptops stood at: ${distances.map((distance) => distance.toFixed(2)).join(', ')}`).toBe(1);
   });
 
   fitTest('in 06, 08 and 10 the whole map and its labels fit the area of the map at full size', ['01-06', '01-08', '01-10']);

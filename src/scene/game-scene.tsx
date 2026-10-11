@@ -47,7 +47,7 @@ export function GameScene({ world, pieces, flows, sent, still, activePieceId, ov
   const active = pieces.find((piece) => piece.id === activePieceId);
   const placement = active && cardPlacement(active, pieces.filter((piece) => piece.id !== active.id), layout);
   return (
-    <MapCanvas camera={cameraPosition(layout)} zoom={CAMERA_ZOOM}>
+    <MapCanvas camera={cameraPosition(layout)} target={[cx, 0, cz]} zoom={CAMERA_ZOOM}>
       <MapControls target={[cx, 0, cz]} enableRotate={false} minZoom={18} maxZoom={110} screenSpacePanning />
       {floors.length === 0 && layout.sheet.width > 0 && <NetworkPiece variant={world.kind} width={layout.sheet.width} depth={layout.sheet.depth} />}
       {floors.map(([id, floor]) => (
