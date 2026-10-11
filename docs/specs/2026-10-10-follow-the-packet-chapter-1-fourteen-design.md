@@ -159,6 +159,7 @@ La simulación sigue siendo un solo motor (`src/engine/`) que calcula el resulta
 | El proveedor de internet son dos routers y un servidor con IP de documentación | Alcanza para ver saltos, un bucle y un tramo roto |
 | Las rutas existen en el modelo, no se muestran ni se editan | La tabla de rutas es del capítulo 2 |
 | Un router sin ruta puede responder o callar, según su configuración | La realidad lo permite (RFC 1812, §5.2.7.1 pide el aviso; algunas redes lo filtran) |
+| El firewall de un equipo no filtra el loopback ni los paquetes a su propia IP: esos pings siempre vuelven. | En un sistema real depende de la configuración del firewall (por ejemplo, la cadena `OUTPUT` de iptables también ve el tráfico de `lo` salvo que una regla lo permita); el juego no enseña esa configuración. Ningún texto da la razón de que vuelvan (sin verificar para cada sistema). |
 
 ## Base de investigación (2026-10-10)
 
@@ -210,6 +211,7 @@ Lo siguiente **no** se pudo comprobar en una fuente primaria. El juego no lo afi
 - **Que el `traceroute` de macOS se comporte como el de FreeBSD o el de Linux.** Solo se leyó la página de FreeBSD y la del paquete 2.1.6 de Linux; no se comprobó el de macOS.
 - **La razón por la que un firewall descarta en vez de rechazar** («para no revelar que hay alguien»). Las páginas de iptables solo dicen qué hace cada acción, no por qué se elige. Es la razón que el estudiante aprobó como idea del subcapítulo 11; el juego afirma el mecanismo y presenta la razón como idea de diseño, sin citar a nadie.
 - **Las cifras del RTT** (loopback casi cero, un par de milisegundos en la oficina, decenas hacia internet) son ilustrativas, no medidas. Ninguna fuente las fija.
+- **Si los firewalls de equipo comunes dejan pasar el loopback por defecto** (ufw, pf en macOS y el Firewall de Windows Defender). No se verificó. El juego no da ninguna razón de que esos pings vuelvan y declara la simplificación (ver «Simplificaciones declaradas»).
 
 ## Fuera del capítulo
 

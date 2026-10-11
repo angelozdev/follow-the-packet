@@ -149,6 +149,7 @@ Todo lo decidido está escrito en este documento (sección «Decisiones visuales
 34. **En el 13 se ve, de fondo, el ping de soporte de `laptop-lucia` a `laptop-marta` (flujo `ambient`).** Decidida el 2026-10-10. Así la regla del 12 no cuenta como apertura de más en la estrella del medio. Se revisa en la prueba final.
 35. **Definiciones ajustadas.** Decidida el 2026-10-10. `deny` dice «No dejar pasar un paquete por el firewall.»; `rtt`, «…recibir lo que vuelve»; `lan` no nombra el router; `router`, «…hacia la red de su IP de destino»; `default-gateway`, «Un ajuste guardado: la IP a la que un dispositivo manda los paquetes que van a otra red local. Debe ser la de un router.»; `firewall` no lleva «reglas»; `public-ip` no lleva «instancia»; `time-exceeded` no lleva «(tipo 11)».
 36. **La etiqueta del sello de intruso para lectores de pantalla dice «Entró y no debía.»** Decidida el 2026-10-10. Antes decía «Entró sin permiso», falso cuando una regla lo permitió. «Además, algo prohibido está entrando.» se queda: sale en la captura de la interfaz y habla de lo que el incidente prohíbe.
+37. **El loopback y la propia IP no pasan por el firewall del equipo** (Tarea 3), y ningún texto da la razón (antes el caso 7 del 14 decía «porque no salen de tu laptop»). Declarado en las simplificaciones del spec.
 
 ## Inventario de mecánicas
 
@@ -427,6 +428,8 @@ El mundo base, común a todas: piso 1 en `192.168.1.x` con `tu-laptop` (.10), `l
 | 7 | Ningún ping de tu laptop vuelve | Loopback y tu IP vuelven; ni el router contesta; el ✕ está en tu laptop | Firewall de salida | «El router está caído» (el paquete murió en tu laptop); «falta la puerta de enlace» (con ella el ping ni siquiera sale del firewall) |
 
 **Nota de texto (estudiante, 2026-10-10).** El reporte de cada caso habla del ping que no vuelve (por ejemplo «Tu ping al servidor de internet no vuelve»), no de «abrir» ni de «entrar»: «no abre el servidor» suena a la web, que es del capítulo 3. Se revisaron los siete reportes con ese criterio: el 1 decía «no abre el servidor», el 4 «quiere la impresora», el 2 solo contaba qué anotó Lucía, y el 3, el 5, el 6 y el 7 hablaban de «llegar», «contestar» o «sacar» sin decir qué viaja. Los siete nombran ahora el ping. Los textos finales se escriben al ejecutar la Tarea 26 con el mismo criterio, y una prueba lo guarda (`01-14: every case report names a ping that does not come back and none uses a verb of the web`).
+
+**Revisión de las opciones (2026-10-10).** La revisión del 2026-10-10 equilibró las tres opciones de cada caso para que la correcta no sea la más larga, y reemplazó la opción «apagada» del caso 6 para romper el patrón del «estado del equipo». La tabla de arriba conserva el texto anterior de esa opción; los textos finales se escriben al ejecutar la Tarea 26.
 
 ## Cambios visibles del capítulo 4
 
