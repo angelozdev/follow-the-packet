@@ -177,7 +177,7 @@ async function playSeeingThePath(page: Page) {
   await expect(route).toContainText(IP.router);
   await expect(route).toContainText('203.0.113.1');
   await expect(route.getByRole('listitem')).toHaveCount(8);
-  await submitAndFinish(page, /En router-proveedor, el último router que contestó, o justo después/);
+  await submitAndFinish(page, /En el tramo que sigue a router-proveedor, el último router que contestó/);
 }
 
 async function playTheGuard(page: Page) {

@@ -69,7 +69,7 @@ export const TERMS = {
   },
   traceroute: {
     name: 'traceroute',
-    definition: 'Un comando que descubre los routers de un camino: manda paquetes con TTL 1, 2, 3… y anota quién avisa con Time Exceeded.',
+    definition: 'Un comando que lista los routers que avisan en un camino: manda paquetes con TTL 1, 2, 3… y anota sus Time Exceeded.',
   },
   internet: { name: 'internet', definition: 'La red mundial formada por muchas redes unidas entre sí.' },
   router: { name: 'router', definition: 'Un dispositivo que conecta redes: recibe paquetes que no son para él y los reenvía hacia la red de su IP de destino.' },

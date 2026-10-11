@@ -23,6 +23,8 @@ const OFFICIAL_NAMES: [TermId, string][] = [
 const RETIRED_IDS = ['server', 'linux-ignore-ping', 'request', 'response'];
 const PING_TERMS: TermId[] = ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'];
 const RETIRED_WORDS = /solicitud|respuesta/i;
+const TRACEROUTE_LISTS = 'lista los routers que avisan en un camino';
+const DISCOVERS_THE_PATH = /descubre/i;
 const TERMS_OF_THE_FOURTEEN: TermId[] = [
   'header',
   'loopback',
@@ -80,6 +82,11 @@ describe('term registry', () => {
     expect(lan.definition).toContain('se entregan directo');
     expect(router.definition).toContain('los reenvía hacia la red de su IP de destino');
     for (const { definition } of [lan, router, gateway]) expect(definition).not.toMatch(/macOS|Windows|Linux/);
+  });
+
+  it('the traceroute lists the routers that warn, not every router of the path, as a router may forward a packet and not warn', () => {
+    expect(TERMS.traceroute.definition).toContain(TRACEROUTE_LISTS);
+    expect(TERMS.traceroute.definition).not.toMatch(DISCOVERS_THE_PATH);
   });
 
   it('recognizes registered ids only', () => {

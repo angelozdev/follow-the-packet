@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
+import { TERMINAL_TEXT, TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
 import { extraOpenings, networkSchema, stopStep } from '@/engine';
 import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
@@ -73,6 +73,24 @@ const ROUTER_OUTSIDE = new RegExp(`${ROUTER.provider.name}|${ROUTER.destination.
 const TTL_VALUES = [1, 2, 3, 5, 64] as const;
 const STAR = '*';
 const TRACEROUTE_LINES = 8;
+const A_SILENT_HOP = /\*|callaba|nadie contesta|no contestó a tiempo|sin respuesta|no avisa/i;
+const WHERE_THE_PACKET_DIED = /murió|se cortó|se perdió|se detuvo|se frenó|el corte|tramo roto|se rompe|se rompió/i;
+const A_HEDGE = /lo más probable|no siempre|no lo prueba/i;
+const SENTENCE_BREAK = /(?<=[.!?:])\s+/;
+const READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE = [
+  'No. El salto 3 ya callaba y el servidor está más allá: el corte empieza antes de llegar a él.',
+  'Eso es. El traceroute listó router-oficina y router-proveedor, y desde el salto 3 solo hay *. El corte está en el último router que contestó o justo después.',
+  'traceroute lista los routers del camino: cada línea es la IP de uno que avisó con Time Exceeded. Si de pronto salen *, el corte está en el último router que contestó o justo después.',
+];
+const TEXTS_THAT_READ_A_TRACEROUTE = [TERMS.traceroute.definition, TERMS['time-exceeded'].definition, TERMS.hop.definition, ...Object.values(TERMINAL_TEXT.route.notes)];
+const AFTER_THE_LAST_ROUTER_THAT_ANSWERED = /sigue a router-proveedor, el último router que contestó/;
+const THE_ROUTER_IN_FRONT_OF_THE_SERVER_IS_NOT_LISTED = /router-destino, el router que está frente al servidor, no sale en ninguna línea del traceroute.*Lo más probable es que el paquete ni llegue al servidor/;
+const THE_LAST_ROUTER_THAT_ANSWERED_HINT = /último router que sí contestó/;
+const NOTHING_ANSWERS_UP_TO_THE_MAXIMUM = /(nadie contesta|no contesta nadie) hasta el máximo de saltos/;
+const THE_PING_DOES_NOT_COME_BACK = /ping tampoco vuelve/;
+const VERY_PROBABLY_AFTER = /lo más probable es que el tramo roto esté después de/;
+const A_ROUTER_THAT_DOES_NOT_WARN = /no siempre es el corte: algunos reenvían el paquete sin avisar/;
+const A_SINGLE_STAR_PROVES_NOTHING = /Un solo \* no lo prueba: algunos routers reenvían el paquete sin avisar/;
 const ROUTER_OUTSIDE_THE_LOOP = new RegExp(`${ROUTER.destination.name}|${IP.destination.replaceAll('.', '\\.')}`);
 const DROPPED_TEXT = 'El firewall de laptop-marta descartó el paquete sin avisar.';
 const GUARD_PLACE = 1;
@@ -195,6 +213,11 @@ function sentTo(session: Session, toId: string, messageId?: string): SentPacket 
 function fieldLines(session: Session, pieceId: string, label: string): string[] | undefined {
   const field = inspect(session, pieceId)?.fields.find((candidate) => toPlainText(candidate.label) === label);
   return field?.lines.map((line) => toPlainText(line));
+}
+
+/** Returns true when a text that shows a hop nobody answered says, in a sentence with no hedge, where the packet died or the path broke: a router that does not warn may still forward the packet. */
+function readsSilenceAsTheBreak(text: string): boolean {
+  return A_SILENT_HOP.test(text) && text.split(SENTENCE_BREAK).some((sentence) => WHERE_THE_PACKET_DIED.test(sentence) && !A_HEDGE.test(sentence));
 }
 
 function deviceNameAt(session: Session, ip: string): string | undefined {
@@ -837,6 +860,18 @@ describe('01-10, seeing the path', () => {
     expect(sentTo(traced, ADDRESS.server.id, MESSAGE.traceroute.id).route?.lines.filter((line) => line.ip !== undefined).map((line) => line.ip)).toEqual([IP.router, IP.provider]);
   });
 
+  it('01-10: concludes that the break is very probably after the last router that answered, and that a router that does not warn is not always the break', () => {
+    const incident = guidedOf(SEEING_THE_PATH);
+    const right = incident.explanation.filter((option) => option.correct);
+    expect(right).toHaveLength(1);
+    const [{ text, feedback }] = right.map((option) => ({ text: toPlainText(option.text), feedback: toPlainText(option.feedback) }));
+    expect(text).toMatch(AFTER_THE_LAST_ROUTER_THAT_ANSWERED);
+    expect([NOTHING_ANSWERS_UP_TO_THE_MAXIMUM, THE_PING_DOES_NOT_COME_BACK, VERY_PROBABLY_AFTER, A_ROUTER_THAT_DOES_NOT_WARN].filter((pattern) => !pattern.test(feedback))).toEqual([]);
+    expect([NOTHING_ANSWERS_UP_TO_THE_MAXIMUM, THE_PING_DOES_NOT_COME_BACK, VERY_PROBABLY_AFTER, A_SINGLE_STAR_PROVES_NOTHING].filter((pattern) => !pattern.test(toPlainText(incident.takeaway)))).toEqual([]);
+    expect(toPlainText(incident.hints.at(-1) ?? '')).toMatch(THE_LAST_ROUTER_THAT_ANSWERED_HINT);
+    expect(toPlainText(incident.explanation[1].feedback)).toMatch(THE_ROUTER_IN_FRONT_OF_THE_SERVER_IS_NOT_LISTED);
+  });
+
   it('01-10: tu-laptop is the only device of the office drawn, and the office router, the two routers of the provider, the internet and the server are drawn', () => {
     expect(drawnLabels(start)).toEqual(['device:servidor-internet', 'device:tu-laptop', 'edge:router-destino', 'edge:router-oficina', 'edge:router-proveedor', 'internet:internet']);
     expect(pieceViews(start).filter((piece) => piece.kind === 'device').map((piece) => piece.anchorId)).toEqual([DEVICE.you.id, SERVER.id]);
@@ -862,6 +897,19 @@ describe('01-10, seeing the path', () => {
     expect(broken).toMatchObject({ sendsUnreachable: false });
     expect(broken?.routes.map((route) => route.next)).toEqual([ROUTER.office.id]);
     expect(networkSchema.safeParse(start.world).success).toBe(true);
+  });
+});
+
+describe('the texts that read a traceroute', () => {
+  const texts = (): string[] => [...incidentTexts(guidedOf(SEEING_THE_PATH)), ...incidentTexts(watchOf()), ...TEXTS_THAT_READ_A_TRACEROUTE].map((text) => toPlainText(text));
+
+  it('no text reads a silent traceroute hop as the place where the packet died', () => {
+    expect(texts().length).toBeGreaterThan(TEXTS_THAT_READ_A_TRACEROUTE.length);
+    expect(texts().filter(readsSilenceAsTheBreak)).toEqual([]);
+  });
+
+  it('the scan catches the readings of a silent hop that the game once made', () => {
+    expect(READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE.filter(readsSilenceAsTheBreak)).toEqual(READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE);
   });
 });
 
