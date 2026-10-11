@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import type { Network, Outcome } from '@/engine';
+import { applyAction, type Network, type Outcome } from '@/engine';
 import type { MessageChip, SendIncident, SendTask } from '@/levels';
-import { EVERY_TERM, OFFICE_FLOORS, device, filterIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
-import { runFlows, sendPacket, type SentPacket } from './flow-runs';
+import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, device, filterIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { lastOfEach, runFlows, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
 import { failingTaskIds, taskHolds } from './tasks';
 
 const incident = filterIncident('04-01');
@@ -193,5 +193,83 @@ describe('identify tasks', () => {
     expect(taskHolds(guest, [], [])).toBe(false);
     expect(failingTaskIds(identifying.tasks, [], [], { 'guest-laptop': { 'in-network': 'no' } })).toEqual([printer.id]);
     expect(failingTaskIds(identifying.tasks, [], [], { 'guest-laptop': { 'in-network': 'no' }, printer: { ip: 'right' } })).toEqual([]);
+  });
+});
+
+describe('send tasks that expect what the DNS answered', () => {
+  const NAMES = namesSendIncident();
+  const { zone, site } = NAME_SERVERS;
+  const OTHER_IP = '198.51.100.51';
+  const addresses = [{ id: 'blog', address: `blog.${zone}` }, { id: 'down', address: `www.${NAME_SERVERS.downZone}` }, { id: 'broken', address: `rota.${zone}` }];
+  const NAMED = { ...NAMES, send: { ...NAMES.send, to: [...NAMES.send.to, ...addresses] } };
+  const world = startWorld([NAMED], NAMED.id);
+  const [www] = NAMES.tasks;
+  const asking = (toId: string, expect: Partial<SendTask['expect']>, messageId = 'dig'): SendTask => ({ ...www, expect: { fromId: 'you', toId, messageId, outcome: 'replied', ...expect } });
+  const dispatch = (toId: string, at: number, messageId = 'dig'): Dispatch => ({ move: { type: 'sendPacket', fromId: 'you', toId, messageId }, send: at + 1, at });
+  const sentAfter = (net: Network, ...dispatches: Dispatch[]): SentPacket[] => lastOfEach(sendSequence(net, NAMED, dispatches, EVERY_TERM));
+  const holds = (task: SendTask, sent: SentPacket[]) => taskHolds(task, [], sent);
+
+  it('a send task holds when the last dig answers with the expected ip', () => {
+    const answered = sentAfter(world, dispatch('www', 0));
+    expect(holds(asking('www', { answer: { ip: site } }), answered)).toBe(true);
+    expect(holds(asking('www', { answer: { ip: OTHER_IP } }), answered)).toBe(false);
+    expect(holds(asking('www', { answer: { ip: site } }), [])).toBe(false);
+    expect(holds(asking('www', { answer: { ip: site } }), sentAfter(world, dispatch('www', 0), dispatch('www', 60)))).toBe(true);
+    expect(holds(asking('missing', { answer: { ip: site } }), sentAfter(world, dispatch('missing', 0)))).toBe(false);
+    expect(holds(asking('www', { answer: { ip: site }, by: 'ghost' }), answered)).toBe(false);
+  });
+
+  it('an expected ip holds for a name the hosts file answered and for a ping by name', () => {
+    const hosted = applyAction(world, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: OTHER_IP }] });
+    const pinged = sentAfter(hosted, dispatch('www', 0, 'ping'));
+    expect(pinged[0].trace.dns?.usedHostsFile).toBe(true);
+    expect(holds(asking('www', { outcome: 'any', answer: { ip: OTHER_IP } }, 'ping'), pinged)).toBe(true);
+    expect(holds(asking('www', { outcome: 'any', answer: { ip: site } }, 'ping'), pinged)).toBe(false);
+    expect(holds(asking('www', { outcome: 'any', answer: { ip: site } }, 'ping'), sentAfter(world, dispatch('www', 0, 'ping')))).toBe(true);
+  });
+
+  it('an expected alias holds only when the answer came through a cname', () => {
+    const throughAlias = sentAfter(world, dispatch('blog', 0));
+    const direct = sentAfter(world, dispatch('www', 0));
+    expect(holds(asking('blog', { answer: { alias: true } }), throughAlias)).toBe(true);
+    expect(holds(asking('blog', { answer: { alias: false } }), throughAlias)).toBe(false);
+    expect(holds(asking('www', { answer: { alias: true } }), direct)).toBe(false);
+    expect(holds(asking('www', { answer: { alias: false } }), direct)).toBe(true);
+    expect(holds(asking('blog', { answer: { alias: true, ip: site } }), throughAlias)).toBe(true);
+    expect(holds(asking('blog', { answer: { alias: true, ip: OTHER_IP } }), throughAlias)).toBe(false);
+    const cached = sentAfter(world, dispatch('blog', 0), dispatch('blog', 30));
+    expect(cached[0].trace.dns?.fromCache).toBe(true);
+    expect(holds(asking('blog', { answer: { alias: true } }), cached)).toBe(true);
+  });
+
+  it('an expected alias that is not there does not hold when nobody answered', () => {
+    const silent = applyAction(world, { type: 'setDnsServer', deviceId: 'your-laptop' });
+    const nobody = sentAfter(silent, dispatch('www', 0));
+    expect(nobody[0].trace.dns?.status).toBe('NO-RESOLVER');
+    expect(holds(asking('www', { outcome: 'any', answer: { alias: false } }), nobody)).toBe(false);
+    expect(holds(asking('www', { outcome: 'any', answer: { alias: false } }), sentAfter(silent, dispatch('missing', 0)))).toBe(false);
+    expect(holds(asking('missing', { answer: { alias: false } }), sentAfter(world, dispatch('missing', 0)))).toBe(false);
+  });
+
+  it('an expected status holds when the dig ended with it', () => {
+    const missing = sentAfter(world, dispatch('missing', 0));
+    expect(holds(asking('missing', { status: 'NXDOMAIN' }), missing)).toBe(true);
+    expect(holds(asking('missing', { status: 'SERVFAIL' }), missing)).toBe(false);
+    expect(holds(asking('www', { status: 'NXDOMAIN' }), sentAfter(world, dispatch('www', 0)))).toBe(false);
+    expect(holds(asking('down', { status: 'SERVFAIL' }), sentAfter(world, dispatch('down', 0)))).toBe(true);
+    expect(holds(asking('down', { status: 'NXDOMAIN' }), sentAfter(world, dispatch('down', 0)))).toBe(false);
+    expect(holds(asking('missing', { status: 'NXDOMAIN' }), [])).toBe(false);
+    expect(holds(asking('missing', { status: 'NXDOMAIN', outcome: 'timeout' }), missing)).toBe(false);
+    expect(holds(asking('lucia', { status: 'NXDOMAIN', outcome: 'any' }, 'ping'), sentAfter(world, dispatch('lucia', 0, 'ping')))).toBe(false);
+  });
+
+  it('an expected status and an expected answer must both hold', () => {
+    const blog = sentAfter(world, dispatch('blog', 0));
+    expect(holds(asking('blog', { status: 'NXDOMAIN', answer: { alias: true } }), blog)).toBe(false);
+    expect(holds(asking('missing', { status: 'NXDOMAIN', answer: { alias: true } }), sentAfter(world, dispatch('missing', 0)))).toBe(false);
+    const dangling = applyAction(world, { type: 'addRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `rota.${zone}`, type: 'CNAME', value: `nadie.${zone}`, ttl: 300 } });
+    const broken = sentAfter(dangling, dispatch('broken', 0));
+    expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: true } }), broken)).toBe(true);
+    expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: false } }), broken)).toBe(false);
   });
 });

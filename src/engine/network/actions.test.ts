@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ATTACKER_IP, NAME_SERVERS, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, tcpService, withDevice } from '@/testing';
-import { applyAction, networkActionSchema, type NetworkAction } from './actions';
+import { ROUTE_PROBLEMS, applyAction, networkActionSchema, routeProblem, type NetworkAction, type RouteProblem } from './actions';
 import { ROUTE_DEFAULT, networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Firewall, Forward, Lan, Network, Router, ServerActor, ServerDns, Service } from './types';
+import type { Actor, Device, Firewall, Forward, Lan, Network, Route, Router, ServerActor, ServerDns, Service } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
@@ -209,6 +209,24 @@ describe('applyAction on an office with floors', () => {
     expect(applyAction(withRange, sameRangeWithHostBits)).toBe(withRange);
     const otherLength: NetworkAction = { type: 'addRoute', routerId: officeRouter.id, route: { to: '198.51.100.0/25', next: provider.id } };
     expect(routerOf(applyAction(withRange, otherLength), officeRouter.id)?.routes).toHaveLength(3);
+  });
+
+  it('routeProblem says why addRoute returns the same network, and nothing when it adds the route', () => {
+    const net = officeTwoFloorsNet();
+    const addRoute = (routerId: string, route: Route): NetworkAction => ({ type: 'addRoute', routerId, route });
+    const refused: [string, string, Route, RouteProblem][] = [
+      ['a destination the router already has a route to', officeRouter.id, { to: ROUTE_DEFAULT, next: backbone.id }, 'destination-has-route'],
+      ['the same destination written as a range', officeRouter.id, { to: '0.0.0.0/0', next: provider.id }, 'destination-has-route'],
+      ['a router that does not exist', GHOST, { to: ROUTE_DEFAULT, next: provider.id }, 'no-router'],
+    ];
+    for (const [name, routerId, route, why] of refused) {
+      expect(routeProblem(net, routerId, route), name).toBe(why);
+      expect(applyAction(net, addRoute(routerId, route)), name).toBe(net);
+    }
+    expect(new Set(refused.map(([, , , why]) => why))).toEqual(new Set(ROUTE_PROBLEMS));
+    const fresh: Route = { to: OFFICE_FLOORS.server.range, next: provider.id };
+    expect(routeProblem(net, officeRouter.id, fresh)).toBeUndefined();
+    expect(applyAction(net, addRoute(officeRouter.id, fresh))).not.toBe(net);
   });
 
   it('removeRoute removes the route of one destination', () => {

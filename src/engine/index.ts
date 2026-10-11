@@ -1,5 +1,5 @@
-export { applyAction, networkActionSchema } from './network/actions';
-export type { NetworkAction } from './network/actions';
+export { ROUTE_PROBLEMS, applyAction, networkActionSchema, routeProblem } from './network/actions';
+export type { NetworkAction, RouteProblem } from './network/actions';
 export type {
   Actor,
   AnswerRecord,
@@ -43,5 +43,6 @@ export { OUTCOMES } from './simulation/trace';
 export type { Checkpoint, DnsStatus, DnsTrace, Hop, Notice, Outcome, PacketHeader, Reason, Step, Trace } from './simulation/trace';
 export { extraOpenings, reachesHost } from './exposure/exposure';
 export { privateDnsName, publicDnsName } from './network/naming/dns';
-export { zoneOf } from './dns/records';
+export { RECORD_PROBLEMS, RECORD_TTL, recordProblem, zoneOf } from './dns/records';
+export type { RecordProblem } from './dns/records';
 export { stopStep } from './simulation/paths/checkpoints';

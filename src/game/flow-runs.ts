@@ -1,5 +1,5 @@
 import { entityTerm, packetLabel, tracerouteLabel, warningOf, type TermId, type TermText, type Warning } from '@/copy';
-import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
+import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, simulateSequence, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
 import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
 
@@ -27,7 +27,15 @@ export interface SentPacket extends PacketRun {
   toId: string;
   messageId: string;
   send: number;
+  at: number;
   route?: TracerouteResult;
+}
+
+/** One send of the player as it happened: the chips it names, the number of the send and the second of the game clock it left at. A list of them, in order, is all it takes to simulate the sends again. */
+export interface Dispatch {
+  move: SendMove;
+  send: number;
+  at: number;
 }
 
 function firewallStops(trace: Trace): Step[] {
@@ -90,8 +98,7 @@ function stoppedBy(world: Network, packet: PacketSpec, trace: Trace): string[] {
   }
 }
 
-function runPacket(world: Network, known: ReadonlySet<TermId>, id: string, packet: PacketSpec, intruder: boolean): PacketRun {
-  const trace = simulate(world, packet);
+function runOf(world: Network, known: ReadonlySet<TermId>, id: string, packet: PacketSpec, intruder: boolean, trace: Trace): PacketRun {
   const stops = firewallStops(trace);
   const blocked = stops.some((step) => firewallKnown(step, known));
   return {
@@ -112,23 +119,55 @@ function runPacket(world: Network, known: ReadonlySet<TermId>, id: string, packe
 
 /** Simulates every flow on the world and returns one run per flow, in the same order; a forbidden flow's packet is an intruder. A firewall the player does not know yet (a term not in `known`) stops a packet without blocking it: the run is `hiddenStop`, not `blocked`, and it is the only thing that changes. */
 export function runFlows(world: Network, flows: Flow[], known: ReadonlySet<TermId>): FlowRun[] {
-  return flows.map((flow) => ({ ...runPacket(world, known, flow.id, flow.packet, flow.kind === 'forbidden'), kind: flow.kind }));
+  return flows.map((flow) => ({ ...runOf(world, known, flow.id, flow.packet, flow.kind === 'forbidden', simulate(world, flow.packet)), kind: flow.kind }));
 }
 
-function sentRun(world: Network, known: ReadonlySet<TermId>, { fromId, toId, messageId }: SendMove, send: number, packet: PacketSpec, route?: TracerouteResult): SentPacket {
-  const run = runPacket(world, known, `sent-${fromId}-${toId}-${messageId}`, packet, false);
-  return { ...run, ...(route && { route, label: tracerouteLabel(packet, run.trace, world, known) }), fromId, toId, messageId, send };
+type Plan = { dispatch: Dispatch; packet: PacketSpec } | { dispatch: Dispatch; probe: PacketSpec };
+
+function sentRun(world: Network, known: ReadonlySet<TermId>, { move: { fromId, toId, messageId }, send, at }: Dispatch, packet: PacketSpec, trace: Trace, route?: TracerouteResult): SentPacket {
+  const run = runOf(world, known, `sent-${fromId}-${toId}-${messageId}`, packet, false, trace);
+  return { ...run, ...(route && { route, label: tracerouteLabel(packet, trace, world, known) }), fromId, toId, messageId, send, at };
 }
 
-/** Simulates what three send chips stand for, as the send number `send`; null when the incident, or the case of a diagnose, does not offer one of the chips. A message that is a single packet is simulated as it is. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe; it is labelled as a traceroute, not as the ping its last probe is. Its id names the combination, so a new send of the same chips replaces the old one. */
+/** True when the incident, or the case of a diagnose, offers the three chips of a send. */
+export function offersSend(offers: SendOwner, move: SendMove): boolean {
+  return packetFromChips(offers, move) !== null || probeFromChips(offers, move) !== null;
+}
+
+function planOf(offers: SendOwner, dispatch: Dispatch): Plan[] {
+  const packet = packetFromChips(offers, dispatch.move);
+  if (packet) return [{ dispatch, packet }];
+  const probe = probeFromChips(offers, dispatch.move);
+  return probe ? [{ dispatch, probe }] : [];
+}
+
+/** Simulates the sends of the player in the order they were made, each as the send number and the second of the game clock it carries, and returns one run per send the incident, or the case of a diagnose, offers (a send of chips it does not offer is left out). The single packets go through `simulateSequence`, so what one send leaves behind (the source port of its device, the rows of the translation table, what the resolver remembered) reaches the next one, and each is measured against its own second. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe; it is labelled as a traceroute, not as the ping its last probe is. A traceroute sends no TCP or UDP packet and asks no resolver, so it neither uses a port nor leaves a row in the sequence. Every run has an id that names its combination, so a later send of the same chips has the same id as an earlier one. */
+export function sendSequence(world: Network, offers: SendOwner, dispatches: readonly Dispatch[], known: ReadonlySet<TermId>): SentPacket[] {
+  const plans = dispatches.flatMap((dispatch) => planOf(offers, dispatch));
+  const single = plans.flatMap((plan) => ('packet' in plan ? [{ plan, send: { packet: plan.packet, at: plan.dispatch.at } }] : []));
+  const traces = new Map(simulateSequence(world, single.map(({ send }) => send)).map((trace, index) => [single[index].plan, trace]));
+  return plans.map((plan) => {
+    if ('packet' in plan) return sentRun(world, known, plan.dispatch, plan.packet, traces.get(plan)!);
+    const route = traceroute(world, plan.probe.from, plan.probe.to, TRACEROUTE_MAX_HOPS);
+    const last = route.lines.at(-1);
+    const packet = last ? { ...plan.probe, ttl: last.hop } : plan.probe;
+    return sentRun(world, known, plan.dispatch, packet, simulate(world, packet), route);
+  });
+}
+
+/** Simulates what three send chips stand for, as the send number `send`, on its own and at the start of the game clock; null when the incident, or the case of a diagnose, does not offer one of the chips. It knows nothing of the sends before it (`sendSequence` does). */
 export function sendPacket(world: Network, offers: SendOwner, move: SendMove, send: number, known: ReadonlySet<TermId>): SentPacket | null {
-  const packet = packetFromChips(offers, move);
-  if (packet) return sentRun(world, known, move, send, packet);
-  const probe = probeFromChips(offers, move);
-  if (!probe) return null;
-  const route = traceroute(world, probe.from, probe.to, TRACEROUTE_MAX_HOPS);
-  const last = route.lines.at(-1);
-  return sentRun(world, known, move, send, last ? { ...probe, ttl: last.hop } : probe, route);
+  return sendSequence(world, offers, [{ move, send, at: 0 }], known).at(0) ?? null;
+}
+
+/** Returns the last run of each combination of chips, in the order of the first send of each: a later send of the same chips replaces the earlier one and takes its place in the run, not in the list. */
+export function lastOfEach(runs: readonly SentPacket[]): SentPacket[] {
+  return [...new Map(runs.map((run) => [run.id, run])).values()];
+}
+
+/** Returns the send a run stands for, to simulate it again. */
+export function dispatchOf({ fromId, toId, messageId, send, at }: SentPacket): Dispatch {
+  return { move: { type: 'sendPacket', fromId, toId, messageId }, send, at };
 }
 
 /** Returns the devices that a forbidden flow reaches. */

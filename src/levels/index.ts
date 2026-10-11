@@ -6,6 +6,8 @@ export type {
   CardChip,
   CardSpec,
   CaseSpec,
+  ClassifySpec,
+  ClockStep,
   DiagnoseIncident,
   ExpectedOutcome,
   ExplanationOption,
@@ -24,23 +26,32 @@ export type {
   Mechanic,
   MessageChip,
   OriginChip,
+  PieceCard,
+  PlaceEntryMove,
   PlayerMove,
+  RemoveEntryMove,
   RuleMove,
   SendChips,
   SendIncident,
   SendMove,
   SendTask,
   SettingChip,
+  SettingKind,
   SettingMove,
   SettingSpec,
+  TableMove,
+  TableSpec,
   ToChip,
   TraySpec,
+  WaitMove,
   WhatChip,
 } from './contract/incident';
-export { isGuided } from './contract/incident';
+export { cardsOfPiece, firstCardOf, isGuided, settingKind } from './contract/incident';
+export { recordEntryId, routeEntryId } from './contract/tables';
 export { INCIDENTS } from './registry';
 export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, shownOf } from './contract/chips';
 export type { SendOwner } from './contract/chips';
-export { applyMove, caseWorld, solvedWorld, startWorld } from './world';
+export { applyMove, caseWorld, placementProblem, solvedWorld, startWorld } from './world';
+export type { EntryProblem } from './world';
 export { RULES_TERM, configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';

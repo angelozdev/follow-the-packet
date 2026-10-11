@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
+import { applyAction, type ServerActor } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { EVERY_TERM, OFFICE_FLOORS, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, sendIncident, tcpService, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -625,5 +626,224 @@ describe('the cases of a diagnose incident', () => {
   it('the explained star waits for the incident to close', () => {
     const partway = diagnosing(...closeCases(cases.length - 1));
     expect(starsOf(partway)).toEqual({ closed: false, middle: false, explained: false });
+  });
+});
+
+describe('the clock and the tables of chapter 2', () => {
+  const NAMES = namesSendIncident();
+  const { zone, authoritative } = NAME_SERVERS;
+  const { provider, officeRouter, server, range } = OFFICE_FLOORS;
+  const WWW = `www.${zone}`;
+  const send = (toId: string, messageId: string): SessionAction => ({ type: 'sendPacket', fromId: 'you', toId, messageId });
+  const DIG = send('www', 'dig');
+  const NC = send('lucia', 'nc');
+  const wait = (seconds: number): SessionAction => ({ type: 'wait', seconds });
+  const ONE_MINUTE = wait(60);
+  const FIVE_MINUTES = wait(300);
+  const setting = (deviceId: string, settingId: string, chipId: string): SessionAction => ({ type: 'setSetting', deviceId, settingId, chipId });
+  const placeRoute = (destination: string): SessionAction => ({ type: 'placeEntry', tableId: 'routes', picks: { destination, nextHop: officeRouter.id } });
+  const placeRecord = (type: string): SessionAction => ({ type: 'placeEntry', tableId: 'records', picks: { name: WWW, type, value: server.ip } });
+  const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([NAMES], NAMES.id));
+  const routesOf = (session: Session, routerId: string = provider.id) => session.world.routers?.find((router) => router.id === routerId)?.routes ?? [];
+  const recordsOf = (session: Session) => (session.world.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === authoritative.id)?.dns?.zones ?? []).flatMap((zone) => zone.records);
+  const deviceOf = (session: Session, id: string) => session.world.devices.find((candidate) => candidate.id === id)!;
+  const sourcePorts = (session: Session) => session.history.map((packet) => packet.trace.header?.request.sourcePort);
+
+  it('starts with the clock at zero and nothing sent', () => {
+    const start = playing();
+    expect([start.clock, start.sent, start.history, start.entryProblem]).toEqual([0, [], [], null]);
+  });
+
+  it('wait advances the clock and keeps the sends', () => {
+    const sent = playing(DIG);
+    const waited = sessionReducer(sent, ONE_MINUTE);
+    expect(waited.clock).toBe(60);
+    expect(waited.sent).toBe(sent.sent);
+    expect(waited.history).toBe(sent.history);
+    expect(waited.world).toBe(sent.world);
+    expect(sessionReducer(waited, FIVE_MINUTES).clock).toBe(360);
+    const rejected = playing(DIG, SUBMIT);
+    expect(sessionReducer(rejected, ONE_MINUTE).rejection).toBe(rejected.rejection);
+  });
+
+  it('waits only the steps of the clock of an incident that has one, while the incident is open', () => {
+    const start = playing();
+    for (const seconds of [30, 0, -60]) expect(sessionReducer(start, wait(seconds)), String(seconds)).toBe(start);
+    const noClock = sendIncident();
+    const quiet = startSession([noClock], noClock.id);
+    expect(sessionReducer(quiet, ONE_MINUTE)).toBe(quiet);
+    const closed = playing(send('www', 'dig'), send('missing', 'dig'), SUBMIT);
+    expect(closed.phase).toBe('explaining');
+    expect(sessionReducer(closed, ONE_MINUTE)).toBe(closed);
+    const identifying = identifyIncident();
+    const answering = startSession([identifying], identifying.id);
+    expect(sessionReducer(answering, ONE_MINUTE)).toBe(answering);
+  });
+
+  it('a sent packet keeps the time it left at', () => {
+    const session = playing(DIG, ONE_MINUTE, DIG, FIVE_MINUTES, send('lucia', 'ping'));
+    expect(session.history.map((packet) => [packet.send, packet.at])).toEqual([[1, 0], [2, 60], [3, 360]]);
+    expect(session.sent.map((packet) => [packet.id, packet.at])).toEqual([['sent-you-www-dig', 60], ['sent-you-lucia-ping', 360]]);
+    expect(session.sent[0].trace.dns).toMatchObject({ fromCache: true, ttlLeft: 240 });
+    expect(playing(FIVE_MINUTES, DIG, FIVE_MINUTES, DIG).sent[0].trace.dns?.fromCache).toBe(false);
+  });
+
+  it('the sends carry the translation table and the cache of one to the next, and the last of each combination is the one kept', () => {
+    const session = playing(DIG, DIG, NC);
+    expect(sourcePorts(session)).toEqual([51514, 51515, 51516]);
+    expect(session.history.map((packet) => packet.trace.dns?.fromCache)).toEqual([false, true, undefined]);
+    expect(session.history.slice(0, 2).map((packet) => packet.trace.translation?.outside.port)).toEqual([40001, 40002]);
+    expect(session.sent.map((packet) => [packet.id, packet.send])).toEqual([['sent-you-www-dig', 2], ['sent-you-lucia-nc', 3]]);
+    expect(session.sends).toBe(3);
+    expect(session.sent[0]).toBe(session.history[1]);
+  });
+
+  it('a move that changes the world clears the sends and keeps the clock', () => {
+    const sent = playing(DIG, ONE_MINUTE, NC);
+    expect(sourcePorts(sent)).toEqual([51514, 51515]);
+    const moves = [setting('your-laptop', 'resolver', 'none'), placeRoute('default'), { type: 'removeEntry', tableId: 'routes', entryId: range } as const];
+    for (const move of moves) {
+      const after = sessionReducer(sent, move);
+      expect(after.world, JSON.stringify(move)).not.toBe(sent.world);
+      expect([after.sent, after.history, after.clock, after.sends], JSON.stringify(move)).toEqual([[], [], 60, 2]);
+    }
+    const again = sessionReducer(sessionReducer(sent, placeRoute('default')), NC);
+    expect(sourcePorts(again)).toEqual([51514]);
+    expect(again.sent[0]).toMatchObject({ send: 3, at: 60 });
+  });
+
+  it('a move that changes nothing keeps the sends and the clock', () => {
+    const sent = playing(DIG, ONE_MINUTE);
+    for (const move of [setting('your-laptop', 'resolver', 'resolver'), { type: 'removeEntry', tableId: 'routes', entryId: 'ghost' } as const]) expect(sessionReducer(sent, move), JSON.stringify(move)).toBe(sent);
+    for (const move of [placeRoute(range), placeRecord('A')]) {
+      const refused = sessionReducer(sent, move);
+      expect([refused.world, refused.sent, refused.history, refused.clock], JSON.stringify(move)).toEqual([sent.world, sent.sent, sent.history, 60]);
+    }
+  });
+
+  it('placeEntry of a route changes the table and clears the sends', () => {
+    const sent = playing(DIG, NC);
+    expect(routesOf(sent).map(({ to }) => to)).not.toContain('default');
+    const placed = sessionReducer(sent, placeRoute('default'));
+    expect(routesOf(placed).at(-1)).toEqual({ to: 'default', next: officeRouter.id });
+    expect(routesOf(placed)).toHaveLength(routesOf(sent).length + 1);
+    expect([placed.sent, placed.history, placed.entryProblem]).toEqual([[], [], null]);
+    expect(placed.runs).toEqual(runFlows(placed.world, NAMES.flows, placed.known));
+  });
+
+  it('placeEntry of a record that the cname rule forbids leaves the world as it was and keeps the problem', () => {
+    const sent = playing(DIG, ONE_MINUTE);
+    const refused = sessionReducer(sent, placeRecord('CNAME'));
+    expect(refused.world).toBe(sent.world);
+    expect([refused.sent, refused.history, refused.clock]).toEqual([sent.sent, sent.history, 60]);
+    expect(refused.entryProblem).toEqual({ tableId: 'records', code: 'cname-with-other-records' });
+    expect(sessionReducer(refused, placeRecord('CNAME'))).toBe(refused);
+  });
+
+  it('placeEntry of a route to a destination that already has one leaves the world as it was and keeps the problem', () => {
+    const sent = playing(DIG);
+    const refused = sessionReducer(sent, placeRoute(range));
+    expect(refused.world).toBe(sent.world);
+    expect(refused.sent).toBe(sent.sent);
+    expect(refused.entryProblem).toEqual({ tableId: 'routes', code: 'destination-has-route' });
+    expect(sessionReducer(refused, placeRoute(range))).toBe(refused);
+  });
+
+  it('the problem stays through a send, a wait and a hint, and goes with the next change of the world', () => {
+    const refused = playing(placeRoute(range));
+    const problem = refused.entryProblem;
+    expect(problem).not.toBeNull();
+    for (const action of [DIG, ONE_MINUTE, { type: 'showHint' } as const]) expect(sessionReducer(refused, action).entryProblem, JSON.stringify(action)).toBe(problem);
+    expect(sessionReducer(refused, placeRoute('default')).entryProblem).toBeNull();
+    expect(sessionReducer(refused, setting('your-laptop', 'resolver', 'none')).entryProblem).toBeNull();
+    expect(sessionReducer(refused, placeRecord('CNAME')).entryProblem).toEqual({ tableId: 'records', code: 'cname-with-other-records' });
+  });
+
+  it('an entry the incident does not offer changes nothing and keeps no problem', () => {
+    const start = playing();
+    const odd: SessionAction[] = [{ type: 'placeEntry', tableId: 'ghost', picks: {} }, { type: 'placeEntry', tableId: 'routes', picks: { destination: 'ghost', nextHop: officeRouter.id } }, { type: 'placeEntry', tableId: 'routes', picks: { destination: 'default' } }];
+    for (const move of odd) expect(sessionReducer(start, move), JSON.stringify(move)).toBe(start);
+  });
+
+  it('removeEntry removes the row it names', () => {
+    const sent = playing(DIG);
+    const removed = sessionReducer(sent, { type: 'removeEntry', tableId: 'routes', entryId: range });
+    expect(routesOf(removed).map(({ to }) => to)).toEqual(routesOf(sent).map(({ to }) => to).filter((to) => to !== range));
+    expect([removed.sent, removed.history]).toEqual([[], []]);
+    const recordId = `${WWW}|A|${server.ip}`;
+    const noRecord = sessionReducer(sent, { type: 'removeEntry', tableId: 'records', entryId: recordId });
+    expect(recordsOf(noRecord).filter((record) => record.name === WWW)).toEqual([]);
+    expect(recordsOf(sent).filter((record) => record.name === WWW)).toHaveLength(1);
+    expect(sessionReducer(removed, { type: 'removeEntry', tableId: 'routes', entryId: range })).toBe(removed);
+  });
+
+  it('setSetting sets the dns server and the listen address of a device', () => {
+    const serving = { ...NAMES, base: applyAction(officeWithNames(), { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000)] }) };
+    const opened = (...actions: SessionAction[]) => actions.reduce(sessionReducer, startSession([serving], serving.id));
+    expect(deviceOf(opened(), 'your-laptop').dnsServer).toBe(NAME_SERVERS.resolver.ip);
+    const none = opened(setting('your-laptop', 'resolver', 'none'));
+    expect(deviceOf(none, 'your-laptop')).not.toHaveProperty('dnsServer');
+    expect(sessionReducer(none, DIG).sent[0].trace.dns?.status).toBe('NO-RESOLVER');
+    expect(deviceOf(opened(setting('your-laptop', 'resolver', 'none'), setting('your-laptop', 'resolver', 'resolver')), 'your-laptop').dnsServer).toBe(NAME_SERVERS.resolver.ip);
+    expect(opened(NC).sent[0].trace.outcome).toBe('replied');
+    const loopback = opened(NC, setting('lucia-laptop', 'app', 'loopback'));
+    expect(deviceOf(loopback, 'lucia-laptop').host.services).toEqual([tcpService(3000, 'loopback')]);
+    expect(loopback.sent).toEqual([]);
+    expect(sessionReducer(loopback, NC).sent[0].trace.outcome).toBe('refused');
+    expect(sessionReducer(sessionReducer(loopback, setting('lucia-laptop', 'app', 'all')), NC).sent[0].trace.outcome).toBe('replied');
+  });
+});
+
+describe('the card that classifies in an identify incident', () => {
+  const CLASSIFYING = classifyIncident();
+  const answer = (deviceId: string, picks: Record<string, string>): SessionAction => ({ type: 'answerCard', deviceId, picks });
+  const classifying = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([CLASSIFYING], CLASSIFYING.id));
+  const holds = (session: Session, taskId: string) => taskHolds(CLASSIFYING.tasks.find((task) => task.id === taskId)!, session.runs, session.sent, session.answers);
+
+  it('answering for a classified item saves its bin under its own device and a bin the card does not offer is left out', () => {
+    const placed = classifying(answer('printer', { bin: 'inside' }));
+    expect(placed.answers).toEqual({ printer: { bin: 'inside' } });
+    expect(holds(placed, 'printer')).toBe(true);
+    const both = sessionReducer(sessionReducer(placed, answer('andres-laptop', { bin: 'outside' })), answer('your-laptop', { block: 'right' }));
+    expect(both.answers).toEqual({ printer: { bin: 'inside' }, 'andres-laptop': { bin: 'outside' }, 'your-laptop': { block: 'right' } });
+    expect(sessionReducer(placed, answer('printer', { bin: 'outside' })).answers.printer).toEqual({ bin: 'outside' });
+    const start = classifying();
+    for (const move of [answer('printer', { bin: 'ghost' }), answer('printer', { other: 'inside' }), answer('lucia-laptop', { bin: 'inside' }), answer('your-laptop', { bin: 'inside' }), answer('ghost', { bin: 'inside' })]) {
+      expect(sessionReducer(start, move), JSON.stringify(move)).toBe(start);
+    }
+    expect(sessionReducer(placed, answer('printer', { bin: 'inside', other: 'inside' })).answers).toEqual(placed.answers);
+  });
+
+  it('a classified item has no answer until the player places it', () => {
+    const start = classifying();
+    expect(start.answers).toEqual({});
+    expect(holds(start, 'printer') || holds(start, 'andres')).toBe(false);
+    expect(sessionReducer(start, SUBMIT).rejection?.failingTaskIds).toEqual(['block', 'printer', 'andres']);
+  });
+
+  it('the reference solution closes it, and an item placed in the wrong bin keeps its task open', () => {
+    expect([...CLASSIFYING.solution, SUBMIT].reduce(sessionReducer, startSession([CLASSIFYING], CLASSIFYING.id)).phase).toBe('explaining');
+    const wrong = classifying(answer('your-laptop', { block: 'right' }), answer('printer', { bin: 'outside' }), answer('andres-laptop', { bin: 'outside' }));
+    expect(sessionReducer(wrong, SUBMIT).rejection?.failingTaskIds).toEqual(['printer']);
+  });
+});
+
+describe('a new case of a diagnose incident', () => {
+  const DIAGNOSE = diagnoseIncident();
+  const diagnosing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([DIAGNOSE], DIAGNOSE.id));
+  const right = (index: number): SessionAction => ({ type: 'nameCause', index: DIAGNOSE.diagnose.cases[index].cause.options.findIndex((option) => option.correct) });
+  const sendTest: SessionAction = { type: 'sendPacket', fromId: 'origin', toId: 'loopback', messageId: 'ping' };
+
+  it('starts with no sends in its history, and the send number and the clock go on', () => {
+    const first = diagnosing(sendTest, sendTest, right(0));
+    expect(first.history).toHaveLength(2);
+    const next = sessionReducer(first, { type: 'nextCase' });
+    expect([next.sent, next.history, next.sends, next.clock]).toEqual([[], [], 2, 0]);
+    expect(sessionReducer(next, { type: 'sendPacket', fromId: 'origin', toId: 'typo', messageId: 'ping' }).history.map((packet) => packet.send)).toEqual([3]);
+  });
+
+  it('waits no time and edits no table, because a case offers neither', () => {
+    const start = diagnosing();
+    for (const move of [{ type: 'wait', seconds: 60 }, { type: 'placeEntry', tableId: 'routes', picks: {} }, { type: 'removeEntry', tableId: 'routes', entryId: 'x' }] as const) expect(sessionReducer(start, move), move.type).toBe(start);
   });
 });

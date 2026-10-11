@@ -34,10 +34,13 @@ const removeRuleSchema = z.object({ type: z.literal('removeRule'), firewallId: i
 const sendPacketSchema = z.object({ type: z.literal('sendPacket'), fromId: id, toId: id, messageId: id });
 const answerCardSchema = z.object({ type: z.literal('answerCard'), deviceId: id, picks: z.record(id, id) });
 const setSettingSchema = z.object({ type: z.literal('setSetting'), deviceId: id, settingId: id, chipId: id });
+const placeEntrySchema = z.object({ type: z.literal('placeEntry'), tableId: id, picks: z.record(id, id) });
+const removeEntrySchema = z.object({ type: z.literal('removeEntry'), tableId: id, entryId: id });
+const waitSchema = z.object({ type: z.literal('wait'), seconds: z.number().int().positive() });
 const ruleMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema]);
-const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema]);
+const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
 
-export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema, setSettingSchema]);
+export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
 
 const flowSchema = z.object({ id, kind: flowKindSchema, packet: packetSchema });
 const filterTaskSchema = z.object({ id, text: termText, flowIds: z.array(id).min(1) });
@@ -113,7 +116,7 @@ const tableSchema = z.discriminatedUnion('kind', [
   z.object({ ...tableShape, kind: z.literal('routes'), trays: z.object({ destination: tray(routeSchema.shape.to), nextHop: tray(routeSchema.shape.next) }) }),
   z.object({ ...tableShape, kind: z.literal('records'), trays: z.object({ name: tray(recordKeySchema.shape.name), type: tray(recordKeySchema.shape.type), value: tray(recordKeySchema.shape.value) }) }),
 ]);
-const clockSchema = z.object({ steps: z.array(z.object({ id, label: termText, seconds: z.number().int().positive() })).min(1) });
+const clockSchema = z.object({ steps: z.array(z.object({ id, label: termText, seconds: waitSchema.shape.seconds })).min(1) });
 const PIECE_CARDS = ['terminal', 'settings', 'services', 'routes', 'records'] as const;
 const identifyTaskSchema = z.object({ id, text: termText, expect: z.object({ deviceId: id, trayId: id, chipId: id }) });
 const cardChipSchema = z.object({ id, label: termText, feedback: termText.optional() });
@@ -277,6 +280,11 @@ function checkSettings({ send }: SendShape, fail: Fail): void {
   }
 }
 
+function offersPlacement(tables: TableShape[], { tableId, picks }: Extract<SendShape['solution'][number], { type: 'placeEntry' }>): boolean {
+  const trays = Object.entries<{ id: string }[]>(tables.find((table) => table.id === tableId)?.trays ?? {});
+  return trays.length > 0 && Object.keys(picks).length === trays.length && trays.every(([name, chips]) => chips.some((chip) => chip.id === picks[name]));
+}
+
 function checkTables(tables: TableShape[], where: string, fail: Fail): void {
   uniqueIn(fail)(`${where}table id`, tables.map((table) => table.id));
   for (const table of tables) {
@@ -306,7 +314,8 @@ function offeredBy(ids: ReturnType<typeof checkSendChips>) {
 function checkSend(incident: SendShape, fail: Fail): void {
   const ids = checkSendChips(incident.send, '', fail);
   checkSettings(incident, fail);
-  checkTables(incident.send.tables ?? [], '', fail);
+  const tables = incident.send.tables ?? [];
+  checkTables(tables, '', fail);
   uniqueIn(fail)('clock step id', (incident.send.clock?.steps ?? []).map((step) => step.id));
   for (const [pieceId, card] of Object.entries(incident.send.opensFirst ?? {})) {
     if (!cardsOfPiece(incident.send, pieceId).includes(card)) fail(`${pieceId} has no ${card} card to open first`);
@@ -322,6 +331,9 @@ function checkSend(incident: SendShape, fail: Fail): void {
   for (const move of incident.solution) {
     if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
     if (move.type === 'setSetting' && !offersSetting(move)) fail(`the solution uses a setting the incident does not offer: ${move.deviceId}/${move.settingId}/${move.chipId}`);
+    if (move.type === 'placeEntry' && !offersPlacement(tables, move)) fail(`the solution places an entry the incident does not offer: ${move.tableId}`);
+    if (move.type === 'removeEntry' && !tables.some((table) => table.id === move.tableId)) fail(`the solution removes an entry from a table the incident does not offer: ${move.tableId}`);
+    if (move.type === 'wait' && !(incident.send.clock?.steps ?? []).some((step) => step.seconds === move.seconds)) fail(`the solution waits ${move.seconds} seconds, which is no step of the clock`);
   }
 }
 
@@ -453,6 +465,10 @@ export type RuleMove = z.infer<typeof ruleMoveSchema>;
 export type PlaceMove = z.infer<typeof placeRuleSchema>;
 export type SendMove = z.infer<typeof sendPacketSchema>;
 export type SettingMove = z.infer<typeof setSettingSchema>;
+export type PlaceEntryMove = z.infer<typeof placeEntrySchema>;
+export type RemoveEntryMove = z.infer<typeof removeEntrySchema>;
+export type TableMove = PlaceEntryMove | RemoveEntryMove;
+export type WaitMove = z.infer<typeof waitSchema>;
 export type AnswerMove = z.infer<typeof answerCardSchema>;
 export type ExplanationOption = GuidedIncident['explanation'][number];
 export type LevelEntry = Pick<Incident, 'id' | 'chapter' | 'order' | 'title' | 'role'>;

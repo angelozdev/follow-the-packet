@@ -6,11 +6,13 @@ import {
   configurableParts,
   isGuided,
   knownTerms,
+  placementProblem,
   revealsRoutersByTraceroute,
   startWorld,
   type AnswerMove,
   type CaseSpec,
   type ConfigurableParts,
+  type EntryProblem,
   type IdentifyIncident,
   type Incident,
   type PlayerMove,
@@ -18,8 +20,10 @@ import {
   type SendMove,
   type SendOwner,
   type SettingMove,
+  type TableMove,
+  type WaitMove,
 } from '@/levels';
-import { hideStopsOutOfSight, runFlows, sendPacket, type FlowRun, type SentPacket } from './flow-runs';
+import { dispatchOf, hideStopsOutOfSight, lastOfEach, offersSend, runFlows, sendSequence, type FlowRun, type SentPacket } from './flow-runs';
 import { earnsMiddle, everyCauseAtFirstTry, noHintInAnyCase, type CaseResult, type Stars } from './stars';
 import { failingTaskIds, type Answers } from './tasks';
 
@@ -31,6 +35,12 @@ export interface Rejection {
   intruding: boolean;
 }
 
+/** The entry of a table that the engine did not take, and why: the table it was placed in and the code of the problem. The view says it in words; the session keeps only the code. */
+export interface TableProblem {
+  tableId: string;
+  code: EntryProblem;
+}
+
 export interface Session {
   incident: Incident;
   known: ReadonlySet<TermId>;
@@ -39,7 +49,10 @@ export interface Session {
   world: Network;
   runs: FlowRun[];
   sent: SentPacket[];
+  history: SentPacket[];
   sends: number;
+  clock: number;
+  entryProblem: TableProblem | null;
   answers: Answers;
   rejection: Rejection | null;
   alerts: number;
@@ -77,7 +90,8 @@ function hideStops(state: Session): Session {
   if (!revealsRoutersByTraceroute(state.incident)) return state;
   const runs = hideStopsOutOfSight(state.incident, state.runs);
   const sent = hideStopsOutOfSight(state.incident, state.sent);
-  return runs === state.runs && sent === state.sent ? state : { ...state, runs, sent };
+  const history = hideStopsOutOfSight(state.incident, state.history);
+  return runs === state.runs && sent === state.sent && history === state.history ? state : { ...state, runs, sent, history };
 }
 
 /** Starts an incident from its canonical world, with Lucía's reply empty and every initial pick of its cards as the answer saved. A diagnose starts at its first case, whose world is the one the incident starts from plus the changes of that case. */
@@ -96,7 +110,10 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     world,
     runs,
     sent: [],
+    history: [],
     sends: 0,
+    clock: 0,
+    entryProblem: null,
     answers: initialAnswers(incident),
     rejection: null,
     alerts: hasIntrusion(runs) ? 1 : 0,
@@ -158,28 +175,49 @@ function move(state: Session, action: RuleMove): Session {
   return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
 }
 
-/** Sets a setting of a device on its card. It changes the world, so the flows are run again and the packets sent before are gone: their stamps described the old world. The send number goes on counting. A chip already in effect, or one the incident does not offer, changes nothing. */
-function setSetting(state: Session, action: SettingMove): Session {
-  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
-  const world = applyMove(state.world, state.incident, action);
-  if (world === state.world) return state;
-  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], rejection: null };
+/** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. */
+function withNewWorld(state: Session, world: Network): Session {
+  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], history: [], rejection: null, entryProblem: null };
 }
 
-/** Sends the packet of three chips: the last packet of each combination stays, and a new send takes Lucía's reply away. In a diagnose only the chips of the case the player is on can be sent. */
+/** Keeps the problem of an entry the engine refused, unless it is the one already kept. A refusal the incident gives nothing to explain leaves the session as it was. */
+function withProblem(state: Session, action: SettingMove | TableMove): Session {
+  if (action.type !== 'placeEntry') return state;
+  const code = placementProblem(state.world, state.incident, action);
+  const kept = state.entryProblem;
+  if (code === undefined || (kept?.tableId === action.tableId && kept.code === code)) return state;
+  return { ...state, entryProblem: { tableId: action.tableId, code } };
+}
+
+/** Changes the world with something the player sets or edits on a card of a piece: a setting, or an entry placed in or removed from a table. The flows are run again and the sends are gone, but the clock stays. A move that changes nothing returns the same session, though an entry the engine refuses keeps its problem for the table to show. */
+function edit(state: Session, action: SettingMove | TableMove): Session {
+  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
+  const world = applyMove(state.world, state.incident, action);
+  return world === state.world ? withProblem(state, action) : withNewWorld(state, world);
+}
+
+/** Moves the game clock on by one of the steps of the incident's clock. A time that is no step, an incident with no clock and a closed incident change nothing. */
+function wait(state: Session, { seconds }: WaitMove): Session {
+  const steps = state.incident.mechanic === 'send' ? (state.incident.send.clock?.steps ?? []) : [];
+  return state.phase === 'playing' && steps.some((step) => step.seconds === seconds) ? { ...state, clock: state.clock + seconds } : state;
+}
+
+/** Sends the packet of three chips at the second the clock is on. Every send since the world last changed is simulated again, in order, so each one starts from what the ones before left (`sendSequence`); the last packet of each combination stays in `sent`, and a new send takes Lucía's reply away. In a diagnose only the chips of the case the player is on can be sent. */
 function send(state: Session, action: SendMove): Session {
   const offers = sendingOf(state);
-  if (state.phase !== 'playing' || !offers) return state;
-  const packet = sendPacket(state.world, offers, action, state.sends + 1, state.known);
-  if (!packet) return state;
-  const again = state.sent.some((other) => other.id === packet.id);
-  const sent = again ? state.sent.map((other) => (other.id === packet.id ? packet : other)) : [...state.sent, packet];
-  return { ...state, sent, sends: packet.send, rejection: null };
+  if (state.phase !== 'playing' || !offers || !offersSend(offers, action)) return state;
+  const sends = state.sends + 1;
+  const history = sendSequence(state.world, offers, [...state.history.map(dispatchOf), { move: action, send: sends, at: state.clock }], state.known);
+  return { ...state, history, sent: lastOfEach(history), sends, rejection: null };
 }
 
 function offeredPicks({ identify }: IdentifyIncident, { deviceId, picks }: AnswerMove): Record<string, string> {
   const card = identify.cards.find((candidate) => candidate.deviceId === deviceId);
-  const offered = Object.entries(picks).filter(([trayId, chipId]) => card?.trays.find((tray) => tray.id === trayId)?.chips.some((chip) => chip.id === chipId));
+  const { classify } = identify;
+  const sortsIt = classify?.items.includes(deviceId) ?? false;
+  const offered = Object.entries(picks).filter(
+    ([trayId, chipId]) => card?.trays.find((tray) => tray.id === trayId)?.chips.some((chip) => chip.id === chipId) || (sortsIt && trayId === classify?.trayId && classify.bins.some((bin) => bin.id === chipId)),
+  );
   return Object.fromEntries(offered);
 }
 
@@ -224,7 +262,7 @@ function nextCase(state: Session): Session {
   if (state.phase !== 'playing' || incident.mechanic !== 'diagnose' || !caseClosed(state)) return state;
   const caseIndex = state.caseIndex + 1;
   const world = caseWorld(state.start, incident.diagnose.cases[caseIndex]);
-  return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], hintsShown: 0, named: [] };
+  return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], history: [], entryProblem: null, hintsShown: 0, named: [] };
 }
 
 function reduce(state: Session, action: SessionAction): Session {
@@ -235,7 +273,11 @@ function reduce(state: Session, action: SessionAction): Session {
     case 'sendPacket':
       return send(state, action);
     case 'setSetting':
-      return setSetting(state, action);
+    case 'placeEntry':
+    case 'removeEntry':
+      return edit(state, action);
+    case 'wait':
+      return wait(state, action);
     case 'answerCard':
       return answer(state, action);
     case 'submit':

@@ -52,11 +52,21 @@ function changeRouter(net: Network, routerId: string, change: (router: Router) =
   return { ...net, routers: routers.map((r) => (r.id === routerId ? change(r) : r)) };
 }
 
-/** Adds a route at the end of the table of a router, unless the router is not there or already has a route to that destination: a table holds one route to each. */
-function withRoute(net: Network, routerId: string, route: Route): Network {
+export const ROUTE_PROBLEMS = ['no-router', 'destination-has-route'] as const;
+
+/** Why a router does not take a route: the network has no router with that id, or the router already has a route to that destination, whatever its next hop (a table holds one route to each). */
+export type RouteProblem = (typeof ROUTE_PROBLEMS)[number];
+
+/** Says why a router does not take a route, or undefined when it does. `addRoute` applies a route only when there is no problem, so it returns the same network exactly when this returns a code. */
+export function routeProblem(net: Network, routerId: string, route: Route): RouteProblem | undefined {
   const router = (net.routers ?? []).find((r) => r.id === routerId);
-  if (!router || router.routes.some(({ to }) => sameDestination(to, route.to))) return net;
-  return changeRouter(net, routerId, (r) => ({ ...r, routes: [...r.routes, route] }));
+  if (!router) return 'no-router';
+  return router.routes.some(({ to }) => sameDestination(to, route.to)) ? 'destination-has-route' : undefined;
+}
+
+/** Adds a route at the end of the table of a router, unless `routeProblem` says the router does not take it. */
+function withRoute(net: Network, routerId: string, route: Route): Network {
+  return routeProblem(net, routerId, route) === undefined ? changeRouter(net, routerId, (r) => ({ ...r, routes: [...r.routes, route] })) : net;
 }
 
 /** Removes the route of a destination from the table of a router, unless the router is not there or has no route to it. */

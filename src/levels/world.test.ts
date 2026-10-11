@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, networkSchema, simulate, type Network, type NetworkAction, type PacketSpec } from '@/engine';
-import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, officeNet, outboundFilterIncident } from '@/testing';
+import { RECORD_TTL, applyAction, networkSchema, simulate, type Network, type NetworkAction, type PacketSpec, type ServerActor } from '@/engine';
+import { NAME_SERVERS, OFFICE_FLOORS, diagnoseIncident, gatewayIncident, namesSendIncident, officeNet, outboundFilterIncident, tcpService } from '@/testing';
 import { DEVICE, IP } from './01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
-import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
+import { ruleIdFor, type Incident, type PlaceEntryMove, type PlayerMove, type SettingMove, type TableSpec } from './contract/incident';
+import { recordEntryId, routeEntryId } from './contract/tables';
 import { INCIDENTS } from './registry';
-import { applyMove, caseWorld, solvedWorld, startWorld, worldBeforeChanges } from './world';
+import { applyMove, caseWorld, placementProblem, solvedWorld, startWorld, worldBeforeChanges } from './world';
 
 function incident(id: string): Incident {
   const found = INCIDENTS.find((i) => i.id === id);
@@ -319,5 +320,125 @@ describe('the world chapter 2 starts from', () => {
     expect(toServer.translation).toEqual({ protocol: 'icmp', inside: { ip: IP.you }, outside: { ip: IP.officeUplink }, isNew: false, fixed: false });
     expect([toServer.effectiveSource, toServer.header?.request.source]).toEqual([IP.you, IP.you]);
     for (const to of [IP.printer, IP.andres, IP.router, IP.officeUplink, IP.nobody, IP.loopback]) expect(simulate(world, ping(DEVICE.you.id, to)), to).not.toHaveProperty('translation');
+  });
+});
+
+describe('applyMove of the tables, the clock and the settings of chapter 2', () => {
+  const NAMES = namesSendIncident();
+  const { zone, authoritative, resolver } = NAME_SERVERS;
+  const { provider, range, server, floor1 } = OFFICE_FLOORS;
+  const WWW = `www.${zone}`;
+  const start = startWorld([NAMES], NAMES.id);
+  const tableOf = (kind: TableSpec['kind']) => NAMES.send.tables!.find((table) => table.kind === kind)!;
+  const placeRoute = (destination: string, nextHop: string = OFFICE_FLOORS.officeRouter.id): PlaceEntryMove => ({ type: 'placeEntry', tableId: tableOf('routes').id, picks: { destination, nextHop } });
+  const placeRecord = (name: string, type: string, value: string): PlaceEntryMove => ({ type: 'placeEntry', tableId: tableOf('records').id, picks: { name, type, value } });
+  const routesOf = (world: Network, routerId = provider.id) => world.routers?.find((router) => router.id === routerId)?.routes ?? [];
+  const serverOf = (world: Network, id: string) => world.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === id)!;
+  const recordsOf = (world: Network) => serverOf(world, authoritative.id).dns?.zones?.[0].records ?? [];
+  const deviceOf = (world: Network, id: string) => world.devices.find((device) => device.id === id)!;
+  const withTables = (...tables: TableSpec[]) => ({ ...NAMES, send: { ...NAMES.send, tables } });
+  const OTHER_IP = '198.51.100.51';
+  const chips = <Value extends string>(...values: Value[]) => values.map((value) => ({ id: value, label: value, value }));
+  const MORE_RECORDS = withTables({ id: 'records', kind: 'records', ownerId: authoritative.id, trays: { name: chips(WWW), type: chips('A', 'CNAME'), value: chips(server.ip, OTHER_IP) } });
+
+  it('placeEntry of a route adds it to the table of its owner and nothing else', () => {
+    const without = applyMove(start, NAMES, { type: 'removeEntry', tableId: tableOf('routes').id, entryId: routeEntryId({ to: range }) });
+    expect(routesOf(without)).toHaveLength(routesOf(start).length - 1);
+    const added = applyMove(without, NAMES, placeRoute(range));
+    expect(added).toEqual(applyAction(without, { type: 'addRoute', routerId: provider.id, route: { to: range, next: OFFICE_FLOORS.officeRouter.id } }));
+    expect(routesOf(added).at(-1)).toEqual({ to: range, next: OFFICE_FLOORS.officeRouter.id });
+    expect(networkSchema.safeParse(added).success).toBe(true);
+  });
+
+  it('placeEntry of a record adds it with the time to live of the game to the zone of its server', () => {
+    const added = applyMove(start, MORE_RECORDS, placeRecord(WWW, 'A', OTHER_IP));
+    expect(recordsOf(added).at(-1)).toEqual({ name: WWW, type: 'A', value: OTHER_IP, ttl: RECORD_TTL });
+    expect(recordsOf(added)).toHaveLength(recordsOf(start).length + 1);
+    expect(networkSchema.safeParse(added).success).toBe(true);
+  });
+
+  it('applyMove returns the same world when an entry is already in the table', () => {
+    expect(applyMove(start, NAMES, placeRoute(range))).toBe(start);
+    expect(applyMove(start, NAMES, placeRoute('default'))).not.toBe(start);
+    expect(applyMove(start, NAMES, placeRecord(WWW, 'A', server.ip))).toBe(start);
+  });
+
+  it('a placement the engine refuses, or one the incident does not offer, changes nothing', () => {
+    const blog = `blog.${zone}`;
+    const odd = withTables({ id: 'records', kind: 'records', ownerId: authoritative.id, trays: { name: [{ id: 'blog', label: blog, value: blog }, { id: 'www', label: WWW, value: WWW }, { id: 'shop', label: `tienda.${zone}`, value: `tienda.${zone}` }], type: [{ id: 'a', label: 'A', value: 'A' }, { id: 'cname', label: 'CNAME', value: 'CNAME' }], value: [{ id: 'ip', label: server.ip, value: server.ip }, { id: 'name', label: WWW, value: WWW }] } });
+    const place = (name: string, type: string, value: string): PlayerMove => ({ type: 'placeEntry', tableId: 'records', picks: { name, type, value } });
+    expect(applyMove(start, odd, place('blog', 'a', 'ip'))).toBe(start);
+    expect(applyMove(start, odd, place('www', 'a', 'name'))).toBe(start);
+    expect(applyMove(start, odd, place('www', 'cname', 'name'))).toBe(start);
+    expect(recordsOf(applyMove(start, odd, place('shop', 'cname', 'name'))).at(-1)).toEqual({ name: `tienda.${zone}`, type: 'CNAME', value: WWW, ttl: RECORD_TTL });
+    const wanted: PlayerMove[] = [{ ...placeRoute(range), tableId: 'ghost' }, placeRoute('ghost'), placeRoute(range, 'ghost'), { ...placeRoute(range), picks: { destination: range } }];
+    for (const move of wanted) expect(applyMove(start, NAMES, move), JSON.stringify(move)).toBe(start);
+  });
+
+  it('removeEntry removes the row it names, from a table of routes and from one of records', () => {
+    const route = { to: range, next: OFFICE_FLOORS.officeRouter.id };
+    const noRoute = applyMove(start, NAMES, { type: 'removeEntry', tableId: tableOf('routes').id, entryId: routeEntryId(route) });
+    expect(routesOf(noRoute)).toEqual(routesOf(start).filter(({ to }) => to !== range));
+    expect(noRoute).toEqual(applyAction(start, { type: 'removeRoute', routerId: provider.id, to: range }));
+    const www = { name: WWW, type: 'A' as const, value: server.ip };
+    const noRecord = applyMove(start, NAMES, { type: 'removeEntry', tableId: tableOf('records').id, entryId: recordEntryId(www) });
+    expect(recordsOf(noRecord).filter((record) => record.name === WWW)).toEqual([]);
+    expect(recordsOf(noRecord)).toHaveLength(recordsOf(start).length - 1);
+    expect(networkSchema.safeParse(noRecord).success).toBe(true);
+  });
+
+  it('an entry id that names no row, a record of the zone itself and an unknown table change nothing', () => {
+    const remove = (tableId: string, entryId: string): PlayerMove => ({ type: 'removeEntry', tableId, entryId });
+    const apex = recordsOf(start).find((record) => record.type === 'SOA')!;
+    expect(applyMove(start, NAMES, remove(tableOf('routes').id, 'ghost'))).toBe(start);
+    expect(applyMove(start, NAMES, remove(tableOf('records').id, recordEntryId({ name: WWW, type: 'A', value: '198.51.100.51' })))).toBe(start);
+    expect(applyMove(start, NAMES, remove(tableOf('records').id, recordEntryId({ name: apex.name, type: 'A', value: server.ip })))).toBe(start);
+    expect(applyMove(start, NAMES, remove('ghost', routeEntryId({ to: range })))).toBe(start);
+  });
+
+  it('names a route by its destination and a record by its name, type and value', () => {
+    expect(routeEntryId({ to: range })).toBe(range);
+    const ids = [recordEntryId({ name: WWW, type: 'A', value: server.ip }), recordEntryId({ name: WWW, type: 'CNAME', value: server.ip }), recordEntryId({ name: `blog.${zone}`, type: 'A', value: server.ip }), recordEntryId({ name: WWW, type: 'A', value: '198.51.100.51' })];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('only a send incident has tables to edit, and a wait changes no world', () => {
+    const first = incident('04-01');
+    const world = startWorld(INCIDENTS, first.id);
+    expect(applyMove(world, first, placeRoute(range))).toBe(world);
+    expect(applyMove(world, first, { type: 'removeEntry', tableId: 'routes', entryId: range })).toBe(world);
+    expect(applyMove(start, NAMES, { type: 'wait', seconds: 60 })).toBe(start);
+  });
+
+  it('placementProblem says why the engine refuses a placement the incident offers', () => {
+    expect(placementProblem(start, NAMES, placeRoute(range))).toBe('destination-has-route');
+    expect(placementProblem(start, NAMES, placeRecord(WWW, 'A', server.ip))).toBe('already-there');
+    expect(placementProblem(start, NAMES, placeRoute('default'))).toBeUndefined();
+    expect(placementProblem(start, NAMES, { ...placeRoute(range), tableId: 'ghost' })).toBeUndefined();
+    expect(placementProblem(start, NAMES, placeRoute('ghost'))).toBeUndefined();
+  });
+
+  it('a setting move sets the DNS server of a device, and a chip with no value takes it away', () => {
+    const set = (chipId: string): PlayerMove => ({ type: 'setSetting', deviceId: 'your-laptop', settingId: 'resolver', chipId });
+    expect(deviceOf(start, 'your-laptop').dnsServer).toBe(resolver.ip);
+    const cleared = applyMove(start, NAMES, set('none'));
+    expect(cleared).toEqual(applyAction(start, { type: 'setDnsServer', deviceId: 'your-laptop' }));
+    expect(deviceOf(cleared, 'your-laptop')).not.toHaveProperty('dnsServer');
+    const again = applyMove(cleared, NAMES, set('resolver'));
+    expect(again).toEqual(start);
+    expect(applyMove(start, NAMES, set('resolver'))).toBe(start);
+    expect(applyMove(cleared, NAMES, set('none'))).toBe(cleared);
+    expect(deviceOf(cleared, 'your-laptop').gateway).toBe(floor1.gateway);
+  });
+
+  it('a setting move sets the listen address of the service it names, and nothing else', () => {
+    const serving = applyAction(start, { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000), tcpService(22)] });
+    const set = (chipId: string): PlayerMove => ({ type: 'setSetting', deviceId: 'lucia-laptop', settingId: 'app', chipId });
+    const loopback = applyMove(serving, NAMES, set('loopback'));
+    expect(deviceOf(loopback, 'lucia-laptop').host.services).toEqual([tcpService(3000, 'loopback'), tcpService(22)]);
+    expect(applyMove(loopback, NAMES, set('all'))).toEqual(serving);
+    expect(applyMove(loopback, NAMES, set('loopback'))).toBe(loopback);
+    expect(applyMove(serving, NAMES, set('all'))).toBe(serving);
+    expect(applyMove(start, NAMES, set('loopback'))).toBe(start);
   });
 });

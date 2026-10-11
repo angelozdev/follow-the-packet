@@ -886,3 +886,45 @@ describe('what an incident of chapter 2 draws and says', () => {
     expect(incidentTexts(diagnoseIncident())).not.toContain('Que vuelva el {{ping}} al servidor.');
   });
 });
+
+describe('the moves on tables and on the clock', () => {
+  const place = { type: 'placeEntry', tableId: ROUTES.id, picks: { destination: 'default', nextHop: officeRouter.id } };
+  const record = { type: 'placeEntry', tableId: RECORDS.id, picks: { name: WWW, type: 'A', value: server.ip } };
+  const remove = { type: 'removeEntry', tableId: RECORDS.id, entryId: 'any-row' };
+  const wait = { type: 'wait', seconds: 60 };
+  const solving = (...moves: unknown[]) => ({ ...NAMES, solution: [...NAMES.solution, ...moves] });
+
+  it('accepts a solution that places an entry, removes one and waits a step of the clock', () => {
+    expect(accepts(solving(place, record, remove, wait))).toBe(true);
+    expect(accepts(solving({ ...wait, seconds: 300 }))).toBe(true);
+  });
+
+  it('rejects a solution that places an entry in a table, a tray or with a chip the incident does not offer', () => {
+    for (const patch of [{ tableId: 'ghost' }, { picks: { ...place.picks, destination: 'ghost' } }, { picks: { ...place.picks, nextHop: 'ghost' } }]) expect(accepts(solving({ ...place, ...patch })), JSON.stringify(patch)).toBe(false);
+    expect(accepts(solving({ ...remove, tableId: 'ghost' }))).toBe(false);
+  });
+
+  it('rejects a placement that leaves a tray empty or names one the table does not have', () => {
+    expect(accepts(solving({ ...place, picks: { destination: 'default' } }))).toBe(false);
+    expect(accepts(solving({ ...place, picks: {} }))).toBe(false);
+    expect(accepts(solving({ ...place, picks: { ...place.picks, type: 'A' } }))).toBe(false);
+    expect(accepts(solving({ ...record, tableId: ROUTES.id }))).toBe(false);
+  });
+
+  it('rejects a wait that is not a step of the clock, and any wait when the incident has no clock', () => {
+    for (const seconds of [30, 0, -60, 1.5]) expect(accepts(solving({ ...wait, seconds })), String(seconds)).toBe(false);
+    expect(accepts({ ...solving(wait), send: { ...NAMES.send, clock: undefined } })).toBe(false);
+  });
+
+  it('is a move of the player when it names a table and its picks or a whole number of seconds', () => {
+    for (const move of [place, record, remove, wait]) expect(playerMoveSchema.safeParse(move).success, JSON.stringify(move)).toBe(true);
+    for (const move of [{ ...place, picks: undefined }, { ...remove, entryId: '' }, { ...wait, seconds: 0 }, { ...wait, seconds: 0.5 }, { type: 'wait' }]) expect(playerMoveSchema.safeParse(move).success, JSON.stringify(move)).toBe(false);
+  });
+
+  it('stays out of the solution of an incident that is not a send', () => {
+    const classifying = classifyIncident();
+    expect(accepts({ ...classifying, solution: [...classifying.solution, wait] })).toBe(false);
+    const filtering = outboundFilterIncident();
+    expect(accepts({ ...filtering, solution: [...filtering.solution, place] })).toBe(false);
+  });
+});
