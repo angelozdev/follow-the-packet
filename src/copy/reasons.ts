@@ -130,7 +130,7 @@ function warning(term: TermId): HiddenCause {
   return { term, text: NOT_DELIVERED };
 }
 
-/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address says only that the packet arrived and was rejected. */
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected. */
 function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
   switch (reason.code) {
     case 'forward-no-owner':
@@ -144,6 +144,8 @@ function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
       return { term: 'icmp-echo-ignore-all', text: NOTHING_CAME_BACK };
     case 'host-wrong-address':
       return { term: 'listen-address', text: refusedAtArrival(net, reason.deviceId) };
+    case 'host-udp-closed':
+      return { term: 'port-unreachable', text: refusedAtArrival(net, reason.deviceId) };
     default:
       return null;
   }
@@ -222,8 +224,8 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `${refusedAtArrival(net, reason.deviceId)} El ${word(known, 'service', 'servicio')} del ${word(known, 'port', 'puerto')} ${reason.port} tiene como {{listen-address}} ${LOOPBACK_IP}, y el ${word(known, 'packet', 'paquete')} va a ${reason.ip}.`;
     case 'host-accepts':
       return `Un programa escucha en el puerto ${reason.port} y acepta.`;
-    case 'host-udp-no-service':
-      return `Llega por UDP al puerto ${reason.port}, pero en este juego ningún programa UDP contesta.`;
+    case 'host-udp-closed':
+      return `Llega por ${word(known, 'udp', 'UDP')} al ${word(known, 'port', 'puerto')} ${reason.port}, pero ningún programa escucha ahí: ${deviceName(net, reason.deviceId)} avisa con {{port-unreachable}}.`;
     case 'reply-stateful':
       return replyText(net, reason.deviceId, known);
   }

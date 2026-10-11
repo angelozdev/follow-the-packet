@@ -52,11 +52,11 @@ function exchangeOf(ctx: SimContext, header: PacketHeader | undefined): Exchange
   return header && ctx.exchange.length > 0 ? ctx.exchange : undefined;
 }
 
-/** The round trip time of an office, when something came back to the sender (a reply, a refusal or a warning): twice the sum of the legs the packet travelled, which stops at whoever answered or warned. A trip that never left the device (loopback, `localhost`, its own IP) takes a fixed, tiny time. A warning the sender generates itself has none: it comes only after the sender waited for someone to answer for that IP, and a ping prints no time for it. The times are illustrative, not measured. */
+/** The round trip time of an office, when something came back to the sender (a reply, a refusal or a warning): twice the sum of the legs the packet travelled, which stops at whoever answered or warned. A trip that never left the device (loopback, `localhost`, its own IP) takes a fixed, tiny time. A warning the sender generates itself has none: it comes only after the sender waited for someone to answer for that IP, and a ping prints no time for it. A Port Unreachable is not that kind of warning, because the host did receive the datagram and answered, so the one a device sends itself takes the same tiny time as any other trip that never left it. The times are illustrative, not measured. */
 function roundTripMs(ctx: SimContext, outcome: Outcome): number | undefined {
   if (ctx.net.kind !== 'office' || !COMES_BACK.has(outcome)) return undefined;
   if (ctx.legsMs.length > 0) return 2 * ctx.legsMs.reduce((total, latencyMs) => total + latencyMs, 0);
-  return ctx.notice ? undefined : HOST_ONLY_RTT_MS;
+  return ctx.notice && ctx.notice.kind !== 'port-unreachable' ? undefined : HOST_ONLY_RTT_MS;
 }
 
 function finish(ctx: SimContext, outcome: Outcome): Trace {

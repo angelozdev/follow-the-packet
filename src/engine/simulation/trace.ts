@@ -59,14 +59,14 @@ export type Reason =
   | { code: 'host-refused'; deviceId: string; port: number }
   | { code: 'host-wrong-address'; deviceId: string; port: number; ip: string }
   | { code: 'host-accepts'; deviceId: string; port: number }
-  | { code: 'host-udp-no-service'; deviceId: string; port: number }
+  | { code: 'host-udp-closed'; deviceId: string; port: number }
   | { code: 'reply-stateful'; deviceId: string };
 
 export const OUTCOMES = ['replied', 'timeout', 'refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'unreachable', 'ttl-exceeded', 'lost'] as const;
 
 export type Outcome = (typeof OUTCOMES)[number];
 
-export type NoticeKind = 'host-unreachable' | 'net-unreachable' | 'time-exceeded';
+export type NoticeKind = 'host-unreachable' | 'net-unreachable' | 'time-exceeded' | 'port-unreachable';
 
 /** The warning that came back to the sender: what it says, who generated it and from which IP. */
 export interface Notice {

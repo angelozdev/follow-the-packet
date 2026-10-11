@@ -44,7 +44,7 @@ describe('simulateSequence', () => {
   it('gives one trace per send, in the order of the sends', () => {
     const list = sends(toLucia(you), ping(you, OFFICE.lucia), datagramToLucia(printer));
     const traces = simulateSequence(officeNet(), list);
-    expect(traces.map((trace) => trace.outcome)).toEqual(['refused', 'replied', 'arrived-no-reply']);
+    expect(traces.map((trace) => trace.outcome)).toEqual(['refused', 'replied', 'unreachable']);
     expect(simulateSequence(officeNet(), [])).toEqual([]);
   });
 

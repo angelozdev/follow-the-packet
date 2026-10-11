@@ -40,7 +40,7 @@ describe('the source port and the exchange of a trace', () => {
     expect(silent.outcome).toBe('timeout');
     expect(silent.header?.request).toMatchObject({ sourcePort: DEFAULT_SOURCE_PORT, destinationPort: LISTENING_PORT });
     const datagram = simulate(officeNet(), udp(you, OFFICE.lucia, DNS_PORT));
-    expect(datagram.outcome).toBe('arrived-no-reply');
+    expect(datagram.outcome).toBe('unreachable');
     expect(datagram.header?.request).toEqual({ source: OFFICE.you, destination: OFFICE.lucia, ttl: DEFAULT_TTL, sourcePort: DEFAULT_SOURCE_PORT, destinationPort: DNS_PORT });
   });
 
@@ -79,9 +79,9 @@ describe('the source port and the exchange of a trace', () => {
     for (const trace of traces) expect(trace.exchange).toEqual([syn]);
   });
 
-  it('a udp datagram lists its query and no response, because nothing answers a datagram yet', () => {
+  it('a udp datagram that gets a warning or no answer lists only its query', () => {
     const traces = [simulate(officeNet(), udp(you, OFFICE.lucia, DNS_PORT)), simulate(officeTwoFloorsNet(), udp(you, OFFICE_FLOORS.server.ip, DNS_PORT)), simulate(guarded(), udp(you, OFFICE.lucia, DNS_PORT))];
-    expect(traces.map((trace) => trace.outcome)).toEqual(['arrived-no-reply', 'arrived-no-reply', 'timeout']);
+    expect(traces.map((trace) => trace.outcome)).toEqual(['unreachable', 'unreachable', 'timeout']);
     for (const trace of traces) expect(trace.exchange).toEqual([query]);
   });
 
@@ -136,7 +136,7 @@ describe('the source port and the exchange of a trace', () => {
     expect(echo.header).toStrictEqual({ request: { source: OFFICE.you, destination: OFFICE.lucia, ttl: DEFAULT_TTL }, reply: { source: OFFICE.lucia, destination: OFFICE.you } });
     expect(echo).not.toHaveProperty('exchange');
     const traces = [simulate(openVpc(), tcp(device('servidor1'), SERVER_TWO, 22)), simulate(openVpc(), tcp(device('servidor1'), SERVER_TWO, CLOSED_PORT)), simulate(openVpc(), udp(device('servidor1'), SERVER_TWO, DNS_PORT))];
-    expect(traces.map((trace) => trace.outcome)).toEqual(['replied', 'refused', 'arrived-no-reply']);
+    expect(traces.map((trace) => trace.outcome)).toEqual(['replied', 'refused', 'unreachable']);
     for (const trace of traces) {
       expect(trace).not.toHaveProperty('header');
       expect(trace).not.toHaveProperty('exchange');
@@ -291,5 +291,129 @@ describe('services and the listening address in a trip', () => {
     expect(trace.outcome).toBe('replied');
     expect(stagesOf(trace).filter((stage) => stage === 'firewall-in')).toEqual([]);
     expect(stagesOf(trace).at(-1)).toBe('reply');
+  });
+});
+
+const udpService = (port: number, listen: Service['listen'] = 'all'): Service => ({ protocol: 'udp', port, listen });
+const udpRule = (id: string, peerIp: string): Rule => ({ id, what: { kind: 'udp', fromPort: DNS_PORT, toPort: DNS_PORT }, peer: { kind: 'cidr', cidr: `${peerIp}/32` } });
+const portUnreachable = (fromId: string, fromIp: string) => ({ kind: 'port-unreachable', fromId, fromIp });
+const summaries = (trace: ReturnType<typeof simulate>): string[] => trace.tcpdump.map((line) => `${line.direction} ${line.summary}`);
+
+describe('udp services and Port Unreachable in a trip', () => {
+  it('a udp port nobody listens on answers with Port Unreachable', () => {
+    const trace = simulate(officeNet(), udp(you, OFFICE.lucia, DNS_PORT));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual(portUnreachable(LUCIA, OFFICE.lucia));
+    expect(trace.steps.at(-1)).toMatchObject({ stage: 'host', at: LUCIA, verdict: 'reject', reason: { code: 'host-udp-closed', deviceId: LUCIA, port: DNS_PORT } });
+    expect(trace.exchange).toEqual([query]);
+    expect(trace.header?.request).toMatchObject({ sourcePort: DEFAULT_SOURCE_PORT, destinationPort: DNS_PORT });
+    expect(trace.header).not.toHaveProperty('reply');
+    expect(summaries(trace)).toEqual([`In UDP ${DNS_PORT}`, `Out ICMP udp port ${DNS_PORT} unreachable`]);
+    expect(trace).toHaveProperty('rttMs');
+  });
+
+  it('a udp port with a service answers', () => {
+    const trace = simulate(serving(udpService(DNS_PORT)), udp(you, OFFICE.lucia, DNS_PORT));
+    expect(trace.outcome).toBe('replied');
+    expect(trace).not.toHaveProperty('notice');
+    expect(trace.exchange).toEqual([query, response]);
+    expect(trace.steps.find((step) => step.stage === 'host')?.reason).toEqual({ code: 'host-accepts', deviceId: LUCIA, port: DNS_PORT });
+    expect(trace.header?.reply).toEqual({ source: OFFICE.lucia, destination: OFFICE.you, sourcePort: DNS_PORT, destinationPort: DEFAULT_SOURCE_PORT });
+    expect(summaries(trace)).toEqual([`In UDP ${DNS_PORT}`, `Out UDP ${DNS_PORT} reply`]);
+    const { server } = OFFICE_FLOORS;
+    const fromServer = simulate(serverServing(udpService(DNS_PORT)), udp(you, server.ip, DNS_PORT));
+    expect(fromServer.outcome).toBe('replied');
+    expect(fromServer.destinationId).toBe(server.id);
+    expect(fromServer.exchange).toEqual([query, response]);
+    expect(fromServer.header?.reply).toMatchObject({ source: server.ip, sourcePort: DNS_PORT, destinationPort: DEFAULT_SOURCE_PORT });
+  });
+
+  it('a service answers a datagram only on the protocol, the port and the address it listens on', () => {
+    const asked = (net: Network, from: PacketSpec['from'], to: string, port = DNS_PORT) => simulate(net, udp(from, to, port));
+    for (const net of [serving(tcpService(DNS_PORT)), serving(udpService(DNS_PORT + 1)), serving()]) {
+      const trace = asked(net, you, OFFICE.lucia);
+      expect(trace.outcome).toBe('unreachable');
+      expect(trace.steps.at(-1)?.reason).toEqual({ code: 'host-udp-closed', deviceId: LUCIA, port: DNS_PORT });
+    }
+    const loopbackOnly = serving(udpService(DNS_PORT, 'loopback'));
+    const wrongAddress = asked(loopbackOnly, you, OFFICE.lucia);
+    expect(wrongAddress.outcome).toBe('unreachable');
+    expect(wrongAddress.notice).toEqual(portUnreachable(LUCIA, OFFICE.lucia));
+    expect(wrongAddress.steps.at(-1)).toMatchObject({ verdict: 'reject', reason: { code: 'host-wrong-address', deviceId: LUCIA, port: DNS_PORT, ip: OFFICE.lucia } });
+    expect(wrongAddress.exchange).toEqual([query]);
+    expect(asked(loopbackOnly, device(LUCIA), '127.0.0.1').outcome).toBe('replied');
+    expect(asked(loopbackOnly, device(LUCIA), OTHER_LOOPBACK_IP).steps.at(-1)?.reason).toEqual({ code: 'host-wrong-address', deviceId: LUCIA, port: DNS_PORT, ip: OTHER_LOOPBACK_IP });
+  });
+
+  it('a device, a server of the internet and a router each warn from themselves', () => {
+    const { server, floor1 } = OFFICE_FLOORS;
+    const toItself = simulate(officeNet(), udp(device(LUCIA), '127.0.0.1', DNS_PORT));
+    expect(toItself.outcome).toBe('unreachable');
+    expect(toItself.notice).toEqual(portUnreachable(LUCIA, '127.0.0.1'));
+    expect(toItself.rttMs).toBeGreaterThan(0);
+    const toServer = simulate(officeTwoFloorsNet(), udp(you, server.ip, DNS_PORT));
+    expect(toServer.outcome).toBe('unreachable');
+    expect(toServer.notice).toEqual(portUnreachable(server.id, server.ip));
+    expect(toServer.steps.at(-1)).toMatchObject({ stage: 'host', at: server.id, reason: { code: 'host-udp-closed', deviceId: server.id, port: DNS_PORT } });
+    expect(toServer.tcpdump).toEqual([]);
+    const toRouter = simulate(officeTwoFloorsNet(), udp(you, floor1.gateway, DNS_PORT));
+    expect(toRouter.outcome).toBe('unreachable');
+    expect(toRouter.notice).toEqual(portUnreachable(OFFICE_FLOORS.officeRouter.id, floor1.gateway));
+  });
+
+  it('a firewall that drops a udp datagram stays silent', () => {
+    const inbound = simulate(withDevice(serving(udpService(DNS_PORT)), LUCIA, { firewallIds: ['fw-lucia'] }), udp(you, OFFICE.lucia, DNS_PORT));
+    const closedAndInbound = simulate(withDevice(officeNet(), LUCIA, { firewallIds: ['fw-lucia'] }), udp(you, OFFICE.lucia, DNS_PORT));
+    const outbound = simulate({ ...withDevice(officeNet(), 'your-laptop', { firewallIds: ['fw-you'] }), firewalls: [hostFirewall('you', [], [])] }, udp(you, OFFICE.lucia, DNS_PORT));
+    expect([inbound.outcome, closedAndInbound.outcome, outbound.outcome]).toEqual(['timeout', 'timeout', 'timeout']);
+    expect(stagesOf(inbound).at(-1)).toBe('firewall-in');
+    expect(stagesOf(closedAndInbound)).not.toContain('host');
+    expect(stagesOf(outbound).at(-1)).toBe('firewall-out');
+    for (const trace of [inbound, closedAndInbound, outbound]) {
+      expect(trace).not.toHaveProperty('notice');
+      expect(trace).not.toHaveProperty('rttMs');
+      expect(trace.exchange).toEqual([query]);
+      expect(trace.tcpdump).toEqual([]);
+    }
+  });
+
+  it('the reply of a udp datagram is never stopped by a firewall, outbound or inbound', () => {
+    const world = (outbound: Rule[], inbound: Rule[], services: Service[]): Network => ({
+      ...withDevice(withDevice(serving(...services), 'your-laptop', { firewallIds: ['fw-you'] }), LUCIA, { firewallIds: ['fw-lucia'] }),
+      firewalls: [hostFirewall('you', [], outbound), hostFirewall('lucia', inbound, [])],
+    });
+    const letIn = [udpRule('lucia-in', OFFICE.you)];
+    const letOut = [udpRule('you-out', OFFICE.lucia)];
+    const datagram = udp(you, OFFICE.lucia, DNS_PORT);
+    const answered = simulate(world(letOut, letIn, [udpService(DNS_PORT)]), datagram);
+    expect(answered.outcome).toBe('replied');
+    expect(answered.exchange).toEqual([query, response]);
+    expect(stagesOf(answered).filter((stage) => stage === 'firewall-out' || stage === 'firewall-in')).toEqual(['firewall-out', 'firewall-in']);
+    expect(stagesOf(answered).slice(stagesOf(answered).indexOf('host') + 1)).toEqual(['reply']);
+    const warned = simulate(world(letOut, letIn, []), datagram);
+    expect(warned.outcome).toBe('unreachable');
+    expect(warned.notice).toEqual(portUnreachable(LUCIA, OFFICE.lucia));
+    expect(stagesOf(warned).slice(stagesOf(warned).indexOf('host') + 1)).toEqual([]);
+    const noOutbound = simulate(world([], letIn, [udpService(DNS_PORT)]), datagram);
+    const noInbound = simulate(world(letOut, [], [udpService(DNS_PORT)]), datagram);
+    expect([noOutbound.outcome, noInbound.outcome]).toEqual(['timeout', 'timeout']);
+    expect([stagesOf(noOutbound).at(-1), stagesOf(noInbound).at(-1)]).toEqual(['firewall-out', 'firewall-in']);
+  });
+
+  it('a udp packet to a host past a router warns from the host, not from the router', () => {
+    const { floor2, officeRouter } = OFFICE_FLOORS;
+    const trace = simulate(officeTwoFloorsNet(), udp(you, floor2.andres, DNS_PORT));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual(portUnreachable('andres-laptop', floor2.andres));
+    expect(trace.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id]);
+    expect(trace.destinationId).toBe('andres-laptop');
+    expect(trace.steps.at(-1)).toMatchObject({ stage: 'host', at: 'andres-laptop', reason: { code: 'host-udp-closed', port: DNS_PORT } });
+    const answered = simulate(withDevice(officeTwoFloorsNet(), 'andres-laptop', { host: { ignoreIcmpEcho: false, services: [udpService(DNS_PORT)] } }), udp(you, floor2.andres, DNS_PORT));
+    expect(answered.outcome).toBe('replied');
+    expect(answered.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id]);
+    const { server } = OFFICE_FLOORS;
+    const farAway = simulate(officeTwoFloorsNet(), udp(you, server.ip, DNS_PORT));
+    expect(farAway.hops?.map((hop) => hop.routerId)).toEqual([officeRouter.id, OFFICE_FLOORS.provider.id, OFFICE_FLOORS.backbone.id]);
+    expect(farAway.notice?.fromId).toBe(server.id);
   });
 });

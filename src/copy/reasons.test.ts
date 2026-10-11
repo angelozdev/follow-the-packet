@@ -43,7 +43,7 @@ const CASES: [Reason, string][] = [
   [{ code: 'host-replies', deviceId: 'servidor2' }, '[[servidor2]] contesta.'],
   [{ code: 'host-refused', deviceId: 'servidor2', port: 80 }, 'Llega, pero ningún programa escucha en el puerto 80: [[servidor2]] lo rechaza.'],
   [{ code: 'host-accepts', deviceId: 'servidor2', port: 22 }, 'Un programa escucha en el puerto 22 y acepta.'],
-  [{ code: 'host-udp-no-service', deviceId: 'servidor2', port: 53 }, 'Llega por UDP al puerto 53, pero en este juego ningún programa UDP contesta.'],
+  [{ code: 'host-udp-closed', deviceId: 'servidor2', port: 53 }, 'Llega por {{udp|UDP}} al {{port|puerto}} 53, pero ningún programa escucha ahí: [[servidor2]] avisa con {{port-unreachable}}.'],
   [{ code: 'reply-stateful', deviceId: 'servidor2' }, 'La respuesta vuelve sola: el {{security-group}} es {{stateful}} y recuerda la conversación.'],
 ];
 
@@ -481,5 +481,54 @@ describe('describeReason for a refusal because of the listening address', () => 
     const reason = trace.steps.at(-1)!.reason;
     expect(reason).toEqual({ code: 'host-wrong-address', deviceId: 'lucia-laptop', port: 3000, ip: OFFICE.lucia });
     expect(toPlainText(describeReason(reason, net, EVERY_TERM))).toContain(`va a ${OFFICE.lucia}`);
+  });
+});
+
+describe('describeReason for a datagram that a host answers with Port Unreachable', () => {
+  const closed: Reason = { code: 'host-udp-closed', deviceId: 'servidor2', port: 53 };
+  const ARRIVED_AND_REFUSED = 'Llega, pero [[servidor2]] lo rechaza.';
+  const KNOWN_TEXT = 'Llega por {{udp|UDP}} al {{port|puerto}} 53, pero ningún programa escucha ahí: [[servidor2]] avisa con {{port-unreachable}}.';
+
+  it('names the protocol, the port and the warning the host sent once Port Unreachable is known', () => {
+    const text = describeReason(closed, NET, EVERY_TERM);
+    expect(text).toBe(KNOWN_TEXT);
+    expect(termsIn(text)).toEqual(['udp', 'port', 'port-unreachable']);
+    expect(toPlainText(text)).toBe('Llega por UDP al puerto 53, pero ningún programa escucha ahí: servidor2 avisa con Port Unreachable.');
+  });
+
+  it('says only that the datagram arrived and was rejected while Port Unreachable is unknown', () => {
+    const text = describeReason(closed, NET, without('port-unreachable'));
+    expect(text).toBe(ARRIVED_AND_REFUSED);
+    expect(termsIn(text)).toEqual([]);
+    expect(toPlainText(text)).not.toMatch(/udp|puerto|programa|escucha|aviso|avisa/i);
+  });
+
+  it('tags only the terms the player knows, whichever of its terms is missing', () => {
+    for (const missing of ['udp', 'port', 'port-unreachable'] as const) {
+      const known = without(missing);
+      const text = describeReason(closed, NET, known);
+      expect(() => termsIn(text), missing).not.toThrow();
+      expect(termsIn(text).filter((tagged) => !known.has(tagged)), missing).toEqual([]);
+    }
+    expect(describeReason(closed, NET, without('udp', 'port'))).toBe('Llega por UDP al puerto 53, pero ningún programa escucha ahí: [[servidor2]] avisa con {{port-unreachable}}.');
+  });
+
+  it('quotes no operating system and gives no reason for a reply to come back', () => {
+    const quotesAnOperatingSystem = /windows|linux|macos|mac os|ubuntu|android|reply from|icmp_seq|bytes from|destination port unreachable/i;
+    for (const known of [EVERY_TERM, without('port-unreachable'), without('udp', 'port')]) {
+      expect(toPlainText(describeReason(closed, NET, known))).not.toMatch(quotesAnOperatingSystem);
+      expect(toPlainText(describeReason(closed, NET, known))).not.toMatch(/stateful|conversación|recuerda|porque/i);
+    }
+  });
+
+  it('is what a host with no program on a udp port gives, for a device and for a server of the internet', () => {
+    const { server } = OFFICE_FLOORS;
+    const datagram = (to: string, port: number) => ({ from: device('your-laptop'), to, protocol: 'udp', port }) as const;
+    const device_ = simulate(officeNet(), datagram(OFFICE.lucia, 53));
+    expect(device_.steps.at(-1)?.reason).toEqual({ code: 'host-udp-closed', deviceId: 'lucia-laptop', port: 53 });
+    expect(toPlainText(describeReason(device_.steps.at(-1)!.reason, officeNet(), EVERY_TERM))).toBe('Llega por UDP al puerto 53, pero ningún programa escucha ahí: lucia-laptop avisa con Port Unreachable.');
+    const toServer = simulate(FLOORS, datagram(server.ip, 123));
+    expect(toServer.steps.at(-1)?.reason).toEqual({ code: 'host-udp-closed', deviceId: server.id, port: 123 });
+    expect(toPlainText(describeReason(toServer.steps.at(-1)!.reason, FLOORS, EVERY_TERM))).toContain('servidor-internet');
   });
 });

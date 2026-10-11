@@ -88,6 +88,17 @@ describe('devices without a firewall', () => {
     expect(extraOpenings(net, [])).toEqual([]);
   });
 
+  it('a udp probe to a host with no service now ends in a warning and still counts as reaching the host', () => {
+    const net = officeNet();
+    const probe = probePackets(net).find((packet) => packet.protocol === 'udp' && packet.from.kind === 'device' && packet.from.id === 'your-laptop' && packet.to === OFFICE.lucia);
+    expect(probe).toBeDefined();
+    const trace = simulate(net, probe!);
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice?.kind).toBe('port-unreachable');
+    expect(reachesHost(trace)).toBe(true);
+    expect(extraOpenings(net, [])).toEqual([]);
+  });
+
   it('a host firewall that lets in more than the expected ping is an opening', () => {
     const guarded = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
     const fromPrinter = { id: 'echo-printer', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.printer}/32` } } as const;
