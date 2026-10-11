@@ -3,6 +3,9 @@ import type {
   actorSchema,
   deviceSchema,
   directionSchema,
+  dnsCacheEntrySchema,
+  dnsRecordSchema,
+  dnsSchema,
   endpointSchema,
   firewallSchema,
   forwardSchema,
@@ -17,7 +20,9 @@ import type {
   ruleSchema,
   ruleWhatSchema,
   serviceSchema,
+  soaSchema,
   subnetSchema,
+  zoneSchema,
 } from './schema';
 
 export type RuleWhat = z.infer<typeof ruleWhatSchema>;
@@ -27,6 +32,13 @@ export type Firewall = z.infer<typeof firewallSchema>;
 export type FirewallKind = Firewall['kind'];
 export type Service = z.infer<typeof serviceSchema>;
 export type Device = z.infer<typeof deviceSchema>;
+export type DnsRecord = z.infer<typeof dnsRecordSchema>;
+export type SoaRecord = Extract<DnsRecord, { type: 'SOA' }>;
+export type Soa = z.infer<typeof soaSchema>;
+export type AnswerRecord = Extract<DnsRecord, { type: 'A' | 'CNAME' }>;
+export type Zone = z.infer<typeof zoneSchema>;
+export type DnsCacheEntry = z.infer<typeof dnsCacheEntrySchema>;
+export type ServerDns = z.infer<typeof dnsSchema>;
 export type Subnet = z.infer<typeof subnetSchema>;
 export type Direction = z.infer<typeof directionSchema>;
 export type Lan = z.infer<typeof lanSchema>;

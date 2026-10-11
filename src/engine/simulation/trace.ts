@@ -1,6 +1,6 @@
 import type { Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
-import type { FirewallKind, IcmpType, Service } from '@/engine/network/types';
+import type { AnswerRecord, FirewallKind, IcmpType, Service, SoaRecord } from '@/engine/network/types';
 
 export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
@@ -31,6 +31,11 @@ export type Reason =
   | { code: 'address-localhost'; ip: string }
   | { code: 'dns-unresolved'; name: string; fromInside: boolean }
   | { code: 'dns-resolved'; name: string; ip: string; fromInside: boolean }
+  | { code: 'dns-answered'; deviceId: string; resolverId: string; name: string; ip: string; canonical?: string }
+  | { code: 'dns-nxdomain'; deviceId: string; resolverId: string; name: string }
+  | { code: 'dns-servfail'; deviceId: string; resolverId: string; name: string; serverId?: string }
+  | { code: 'dns-no-address'; deviceId: string; resolverId: string; name: string }
+  | { code: 'dns-no-resolver'; deviceId: string; name: string; ip: string }
   | { code: 'route-private-from-outside'; ip: string }
   | { code: 'route-no-device'; ip: string }
   | { code: 'route-private' }
@@ -106,6 +111,22 @@ export interface ExchangeMessage {
   kind: ExchangeKind;
 }
 
+export const DNS_STATUSES = ['NOERROR', 'NXDOMAIN', 'SERVFAIL', 'NO-RESOLVER'] as const;
+
+/** What came back for a name: the status of the answer (`NOERROR` also covers a name that exists and has no address, whose `answers` hold no A record) or `NO-RESOLVER` when nobody answered the question. */
+export type DnsStatus = (typeof DNS_STATUSES)[number];
+
+/** What happened to a name a packet was sent to. `answers` are the records of the answer in order, the aliases first and the addresses after them; `soa` is the SOA of the zone that gave a negative answer (a name that does not exist, or one that exists and holds no address), with the TTL of that answer, the smaller of the SOA's own and its MINIMUM (RFC 2308 §3), and is absent from every other status. */
+export interface DnsTrace {
+  name: string;
+  status: DnsStatus;
+  answers: AnswerRecord[];
+  soa?: SoaRecord;
+  fromCache: boolean;
+  usedHostsFile: boolean;
+  viaDig: boolean;
+}
+
 export interface TcpdumpLine {
   deviceId: string;
   direction: 'In' | 'Out';
@@ -127,5 +148,6 @@ export interface Trace {
   exchange?: ExchangeMessage[];
   routes?: RouteDecision[];
   translation?: Translation;
+  dns?: DnsTrace;
   rttMs?: number;
 }

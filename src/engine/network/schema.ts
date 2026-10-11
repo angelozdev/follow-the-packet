@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ipInCidr, isIpv4, isPrivateCidr, networkOf, parseCidr } from '@/engine/network/addressing/cidr';
 import { lanOf, lansOf } from '@/engine/network/addressing/topology';
+import { holdsAliasAndMore, isWithin, normalizeName, sameName } from '@/engine/dns/records';
 
 export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;
@@ -26,6 +27,11 @@ const port = z.number().int().min(0).max(PORT_MAX);
 const realPort = z.number().int().min(1).max(PORT_MAX);
 const nonEmpty = z.string().min(1);
 const latencyMs = z.number().nonnegative();
+const UINT32_MAX = 4294967295;
+const unsigned32 = z.number().int().min(0).max(UINT32_MAX);
+/** The largest TTL of a DNS record: 2^31 - 1, since a TTL is an unsigned number of 31 significant bits (RFC 2181 §8, read on 2026-10-11). */
+export const DNS_TTL_MAX = 2147483647;
+const dnsTtl = z.number().int().min(0).max(DNS_TTL_MAX);
 
 export const directionSchema = z.enum(['inbound', 'outbound']);
 /** The direction of a rule that does not say one: inbound. */
@@ -64,6 +70,37 @@ export const serviceSchema = z.object({
   listen: z.enum(['all', 'loopback']),
 });
 
+export const soaSchema = z.object({ mname: nonEmpty, rname: nonEmpty, serial: unsigned32, refresh: unsigned32, retry: unsigned32, expire: unsigned32, minimum: unsigned32 });
+
+const recordShape = { name: nonEmpty, ttl: dnsTtl };
+const addressRecordSchema = z.object({ ...recordShape, type: z.literal('A'), value: ipSchema });
+const aliasRecordSchema = z.object({ ...recordShape, type: z.literal('CNAME'), value: nonEmpty });
+
+/** The records a player can put in a zone and take out of it: an address and an alias. The NS and the SOA belong to the zone itself. */
+export const editableRecordSchema = z.discriminatedUnion('type', [addressRecordSchema, aliasRecordSchema]);
+
+export const dnsRecordSchema = z.discriminatedUnion('type', [
+  addressRecordSchema,
+  aliasRecordSchema,
+  z.object({ ...recordShape, type: z.literal('NS'), value: nonEmpty }),
+  z.object({ ...recordShape, type: z.literal('SOA'), value: soaSchema }),
+]);
+
+export const zoneSchema = z.object({ name: nonEmpty, records: z.array(dnsRecordSchema) });
+
+/** The three things that tell an address record or an alias from any other: its name, its type and its value. */
+export const recordKeySchema = z.object({ name: nonEmpty, type: z.enum(['A', 'CNAME']), value: nonEmpty });
+
+export const dnsCacheEntrySchema = recordKeySchema.extend({ expiresAt: z.number().nonnegative() });
+
+export const dnsSchema = z.object({
+  role: z.enum(['resolver', 'authoritative']),
+  upstreams: z.array(z.object({ zone: nonEmpty, serverId: nonEmpty })).optional(),
+  zones: z.array(zoneSchema).optional(),
+  cache: z.array(dnsCacheEntrySchema).optional(),
+  failing: z.boolean().optional(),
+});
+
 export const deviceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -77,6 +114,7 @@ export const deviceSchema = z.object({
   lanId: nonEmpty.optional(),
   gateway: ipSchema.optional(),
   connected: z.boolean().optional(),
+  dnsServer: ipSchema.optional(),
 });
 
 export const subnetSchema = z.object({ id: z.string().min(1), az: z.string().min(1), cidr });
@@ -119,7 +157,7 @@ const actorShape = { id: nonEmpty, name: nonEmpty, ip: ipSchema };
 
 export const actorSchema = z.discriminatedUnion('kind', [
   z.object({ ...actorShape, kind: z.enum(['you', 'attacker', 'home']) }),
-  z.object({ ...actorShape, kind: z.literal('server'), latencyMs, services: z.array(serviceSchema).optional() }),
+  z.object({ ...actorShape, kind: z.literal('server'), latencyMs, services: z.array(serviceSchema).optional(), dns: dnsSchema.optional() }),
 ]);
 
 const networkShape = z.object({
@@ -240,6 +278,33 @@ function checkRouters(net: NetworkShape, fail: Fail): void {
   }
 }
 
+type ServerShape = Extract<NetworkShape['actors'][number], { kind: 'server' }>;
+type ZoneShape = NonNullable<NonNullable<ServerShape['dns']>['zones']>[number];
+
+function checkZone(owner: string, zone: ZoneShape, fail: Fail): void {
+  const apex = zone.records.filter((record) => record.type === 'SOA');
+  if (apex.length !== 1) fail(`${owner}: the zone ${zone.name} has ${apex.length} SOA records and needs exactly one`);
+  else if (!sameName(apex[0].name, zone.name)) fail(`${owner}: the SOA of ${zone.name} is at ${apex[0].name}, not at the top of the zone`);
+  for (const record of zone.records) if (!isWithin(record.name, zone.name)) fail(`${owner}: ${record.name} is not within the zone ${zone.name}`);
+  for (const name of new Set(zone.records.map((record) => normalizeName(record.name)))) {
+    if (holdsAliasAndMore(zone.records, name)) fail(`${owner}: ${name} holds a CNAME and another record`);
+  }
+}
+
+function checkDns(net: NetworkShape, fail: Fail): void {
+  const servers = net.actors.filter((actor): actor is ServerShape => actor.kind === 'server');
+  if (net.kind === 'vpc') {
+    for (const server of servers) if (server.dns) fail(`${server.id}: a VPC has no DNS servers, its names are those of EC2`);
+    for (const device of net.devices) if (device.dnsServer !== undefined) fail(`${device.id}: a device in a VPC has no DNS server setting`);
+  }
+  for (const server of servers) {
+    for (const { zone, serverId } of server.dns?.upstreams ?? []) {
+      if (servers.find((candidate) => candidate.id === serverId)?.dns?.role !== 'authoritative') fail(`${server.id}: its server for ${zone} is ${serverId}, which is not an authoritative DNS server`);
+    }
+    for (const zone of server.dns?.zones ?? []) checkZone(server.id, zone, fail);
+  }
+}
+
 function checkFirewalls(net: NetworkShape, fail: Fail): void {
   const byId = new Map(net.firewalls.map((f) => [f.id, f]));
   for (const device of net.devices) {
@@ -265,6 +330,7 @@ export const networkSchema = networkShape.superRefine((net, ctx) => {
   if (net.kind === 'vpc') checkVpc(net, fail);
   else checkOffice(net, fail);
   checkRouters(net, fail);
+  checkDns(net, fail);
   checkFirewalls(net, fail);
 });
 

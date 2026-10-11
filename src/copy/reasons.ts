@@ -108,6 +108,17 @@ function replyText(net: Network, deviceId: string, known: ReadonlySet<TermId>): 
   return REPLY_ARRIVES;
 }
 
+const NO_IP_FOR = (name: string): TermText => `${name} no se convirtió en una IP.`;
+
+type DnsAsk = Extract<Reason, { code: 'dns-answered' | 'dns-nxdomain' | 'dns-servfail' | 'dns-no-address' }>;
+
+/** Writes the question a device put to its resolver, with the terms the player knows tagged: `[[tu-laptop]] hizo una consulta DNS por www.lucia.example a [[servidor-dns]], su resolver`. */
+function dnsQuestion(net: Network, known: ReadonlySet<TermId>, reason: DnsAsk): TermText {
+  const asked = known.has('dns-query') ? 'hizo una {{dns-query|consulta DNS}} por' : 'preguntó por';
+  const resolver = known.has('resolver') ? ', su {{resolver}}' : '';
+  return `${deviceName(net, reason.deviceId)} ${asked} ${reason.name} a ${deviceName(net, reason.resolverId)}${resolver}`;
+}
+
 function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
 }
@@ -154,6 +165,10 @@ function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
       return { term: 'listen-address', text: refusedAtArrival(net, reason.deviceId) };
     case 'host-udp-closed':
       return { term: 'port-unreachable', text: refusedAtArrival(net, reason.deviceId) };
+    case 'dns-nxdomain':
+      return { term: 'nxdomain', text: NO_IP_FOR(reason.name) };
+    case 'dns-servfail':
+      return { term: 'servfail', text: NO_IP_FOR(reason.name) };
     case 'nat-no-translation':
       return { term: 'translation-table', text: NOTHING_CAME_BACK };
     case 'nat-forwarded':
@@ -177,6 +192,18 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `El {{dns}} no conoce ${reason.name} cuando se pregunta desde ${side(reason.fromInside)} de la {{vpc}}.`;
     case 'dns-resolved':
       return `El {{dns}} convierte ${reason.name} en ${reason.ip} (se preguntó desde ${side(reason.fromInside)} de la {{vpc}}).`;
+    case 'dns-answered':
+      return reason.canonical
+        ? `${dnsQuestion(net, known, reason)}: ${reason.name} es un ${word(known, 'cname-record', 'alias')} de ${reason.canonical}, que es ${reason.ip}.`
+        : `${dnsQuestion(net, known, reason)}: la respuesta es ${reason.ip}.`;
+    case 'dns-nxdomain':
+      return `${deviceName(net, reason.resolverId)} contestó {{nxdomain}}: el nombre ${reason.name} no existe.`;
+    case 'dns-servfail':
+      return `${deviceName(net, reason.resolverId)} contestó {{servfail}}: no pudo averiguar ${reason.name}. No dice si el nombre existe.`;
+    case 'dns-no-address':
+      return `${dnsQuestion(net, known, reason)}: el nombre existe, pero ${known.has('a-record') ? 'no tiene un {{a-record}}' : 'no tiene ninguna IP asociada'}.`;
+    case 'dns-no-resolver':
+      return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, ${known.has('resolver') ? 'su {{resolver}}' : 'su servidor de nombres'}, y no recibió respuesta a su pregunta.`;
     case 'route-private-from-outside':
       return 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.';
     case 'route-no-device':

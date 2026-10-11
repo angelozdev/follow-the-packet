@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nameTag } from '@/copy';
 import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
-import { ATTACKER_IP, OFFICE_FLOORS, allOut, officeTwoFloorsNet, tcpService, withDevice } from '@/testing';
+import { ATTACKER_IP, NAME_SERVERS, OFFICE_FLOORS, allOut, officeWithNames, tcpService, withDevice } from '@/testing';
 import { changedFloors, changedNames, mentions, unnamedChanges } from './changes';
 
 const { floor1, floor2, officeRouter } = OFFICE_FLOORS;
@@ -12,7 +12,7 @@ const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer
 const FLOOR_1_NAMES = ['tu-laptop', 'laptop-lucia', 'laptop-marta', 'impresora', 'laptop-visita'];
 
 const LUCIA_APP = tcpService(3000);
-const world: Network = withDevice({ ...officeTwoFloorsNet(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id], host: { ignoreIcmpEcho: false, services: [LUCIA_APP] } });
+const world: Network = withDevice({ ...officeWithNames(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id], host: { ignoreIcmpEcho: false, services: [LUCIA_APP] } });
 const [anyDevice] = world.devices;
 const [anyRouter] = world.routers ?? [];
 
@@ -31,6 +31,10 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   addRoute: { action: { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: OFFICE_FLOORS.provider.id } }, names: [anyRouter.name] },
   removeRoute: { action: { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT }, names: [anyRouter.name] },
   setForwards: { action: { type: 'setForwards', routerId: officeRouter.id, forwards: [{ protocol: 'tcp', publicPort: 8080, toDeviceId: 'andres-laptop', toPort: 3000 }] }, names: [anyRouter.name] },
+  setDns: { action: { type: 'setDns', ownerId: NAME_SERVERS.resolver.id, dns: { role: 'resolver' } }, names: [NAME_SERVERS.resolver.id] },
+  setDnsServer: { action: { type: 'setDnsServer', deviceId: 'your-laptop' }, names: [NAMES.you] },
+  addRecord: { action: { type: 'addRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `tienda.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, ttl: 300 } }, names: [NAME_SERVERS.authoritative.id] },
+  removeRecord: { action: { type: 'removeRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site } }, names: [NAME_SERVERS.authoritative.id] },
   addActor: { action: { type: 'addActor', actor: { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' } }, names: [] },
   addLan: { action: { type: 'addLan', lan: FLOOR_3 }, names: [] },
   addDevice: { action: { type: 'addDevice', device: { ...anyDevice, id: 'new-laptop', name: 'laptop-nueva', privateIp: floor1.nobody } }, names: [] },

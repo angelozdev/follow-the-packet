@@ -1,6 +1,6 @@
 import { openingOf, sourcePortOf, type SimContext, type Stage } from './context';
 import { addressStage } from './stages/address';
-import { dnsStage } from './stages/dns';
+import { createDnsStage } from './stages/dns';
 import { firewallInStage } from './stages/firewall-in';
 import { firewallOutStage } from './stages/firewall-out';
 import { forwardStage } from './stages/forward';
@@ -13,7 +13,7 @@ import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { ExchangeMessage, Outcome, PacketHeader, PortPair, Trace } from './trace';
 
-export const PIPELINE: Stage[] = [addressStage, dnsStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, replyStage];
+export const PIPELINE: Stage[] = [addressStage, createDnsStage(sendQuery), routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
   if (from.kind === 'device') {
@@ -78,6 +78,7 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     ...(exchange && { exchange }),
     ...(ctx.routes && { routes: ctx.routes }),
     ...(ctx.translation && { translation: ctx.translation }),
+    ...(ctx.dns && { dns: ctx.dns }),
     ...(rttMs !== undefined && { rttMs }),
   };
 }
@@ -94,6 +95,11 @@ export interface Run {
 }
 
 const NOTHING_CARRIED: Carried = { nat: [] };
+
+/** Sends the question of a name lookup through the network as a packet of its own. It starts from what no send carried: the question is not one of the player's sends, so it neither uses up a source port nor leaves a row in the translation table of the sequence. */
+function sendQuery(net: Network, packet: PacketSpec): Trace {
+  return run(net, packet, NOTHING_CARRIED).trace;
+}
 
 /** Runs the packet through every stage, starting from what the sends before it carried, and returns its trace with what it carries on. The same network, packet and carried state always give the same result, and the state it receives is never changed. */
 export function run(net: Network, packet: PacketSpec, carried: Carried): Run {

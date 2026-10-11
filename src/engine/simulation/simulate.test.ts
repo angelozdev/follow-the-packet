@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from '@/engine/simulation/paths/checkpoints';
-import { OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
+import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { applyAction, type NetworkAction } from '@/engine/network/actions';
+import { privateDnsName, publicDnsName } from '@/engine/network/naming/dns';
 import type { Firewall, Network, PacketSpec, Route, Rule } from '@/engine/network/types';
 import type { Trace } from './trace';
 
@@ -880,5 +881,50 @@ describe('the header, the reply and the round trip time', () => {
       expect(trace).not.toHaveProperty('rttMs');
       expect(JSON.stringify(trace)).not.toMatch(/"header"|"rttMs"/);
     }
+  });
+});
+
+describe('names in a VPC and in an office', () => {
+  const REGION = 'eu-west-1';
+  const publicName = publicDnsName(S2.public, REGION);
+  const privateName = privateDnsName(S2.private, REGION);
+
+  it('the name of an EC2 instance still resolves as in a VPC', () => {
+    const inside = simulate(withEcho(), ping(device('servidor1'), publicName));
+    expect(inside.outcome).toBe('replied');
+    expect(inside.resolvedIp).toBe(S2.private);
+    expect(inside.steps[0]).toEqual({ stage: 'dns', at: 'servidor1', verdict: 'info', reason: { code: 'dns-resolved', name: publicName, ip: S2.private, fromInside: true } });
+    const outside = simulate(withInbound(withEcho(), 'sg-servidor2', allOut('everything')), ping(actor('you'), publicName));
+    expect(outside.resolvedIp).toBe(S2.public);
+    expect(outside.steps[0].reason).toEqual({ code: 'dns-resolved', name: publicName, ip: S2.public, fromInside: false });
+    const hidden = simulate(withEcho(), ping(actor('you'), privateName));
+    expect(hidden.outcome).toBe('unresolved');
+    expect(codes(hidden)).toEqual(['dns-unresolved']);
+    for (const trace of [inside, outside, hidden]) expect(trace).not.toHaveProperty('dns');
+  });
+
+  it('a name in an office with no dns server does not resolve', () => {
+    for (const net of [officeNet(), officeTwoFloorsNet()]) {
+      const trace = simulate(net, ping(device(net.devices[0].id), `www.${NAME_SERVERS.zone}`));
+      expect(trace.outcome).toBe('unresolved');
+      expect(trace.resolvedIp).toBeNull();
+      expect(codes(trace)).toEqual(['dns-unresolved']);
+      expect(trace.dns).toEqual({ name: `www.${NAME_SERVERS.zone}`, status: 'NO-RESOLVER', answers: [], fromCache: false, usedHostsFile: false, viaDig: false });
+      expect([trace.tcpdump, trace.hops, trace.header]).toEqual([[], undefined, undefined]);
+    }
+  });
+
+  it('a device of an office with a resolver does not ask it for the name of an EC2 instance', () => {
+    const trace = simulate(officeWithNames(), ping(device('your-laptop'), publicName));
+    expect(trace.outcome).toBe('unresolved');
+    expect(trace.dns?.status).toBe('NXDOMAIN');
+  });
+
+  it('a name sent from the internet to an office does not resolve either, and the office has no resolver for it', () => {
+    const withHome = applyAction(officeWithNames(), { type: 'addActor', actor: { id: 'home', name: 'casa-lucia', kind: 'home', ip: '192.0.2.77' } });
+    const trace = simulate(withHome, ping(actor('home'), `www.${NAME_SERVERS.zone}`));
+    expect(trace.outcome).toBe('unresolved');
+    expect(codes(trace)).toEqual(['dns-unresolved']);
+    expect(trace).not.toHaveProperty('dns');
   });
 });

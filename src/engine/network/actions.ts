@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, forwardSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, ipSchema, lanSchema, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Direction, Firewall, Forward, Lan, Network, Route, Router, Rule, ServerActor, Service } from './types';
+import { recordProblem, sameName, zoneHeldBy } from '@/engine/dns/records';
+import type { Actor, AnswerRecord, Device, Direction, DnsRecord, Firewall, Forward, Lan, Network, Route, Router, Rule, ServerActor, ServerDns, Service } from './types';
 
 const nonEmpty = z.string().min(1);
 
@@ -22,6 +23,10 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addRoute'), routerId: nonEmpty, route: routeSchema }),
   z.object({ type: z.literal('removeRoute'), routerId: nonEmpty, to: routeSchema.shape.to }),
   z.object({ type: z.literal('setForwards'), routerId: nonEmpty, forwards: z.array(forwardSchema) }),
+  z.object({ type: z.literal('setDns'), ownerId: nonEmpty, dns: dnsSchema.optional() }),
+  z.object({ type: z.literal('setDnsServer'), deviceId: nonEmpty, server: ipSchema.optional() }),
+  z.object({ type: z.literal('addRecord'), serverId: nonEmpty, record: editableRecordSchema }),
+  z.object({ type: z.literal('removeRecord'), serverId: nonEmpty, record: recordKeySchema }),
   z.object({
     type: z.literal('updateRouter'),
     routerId: nonEmpty,
@@ -81,8 +86,33 @@ function without<Value extends object>(value: Value, field: string): Value {
   return Object.fromEntries(Object.entries(value).filter(([key]) => key !== field)) as Value;
 }
 
-function withGateway(device: Device, gateway: string | undefined): Device {
-  return gateway !== undefined ? { ...device, gateway } : without(device, 'gateway');
+function withSetting(device: Device, setting: 'gateway' | 'dnsServer', value: string | undefined): Device {
+  return value !== undefined ? { ...device, [setting]: value } : without(device, setting);
+}
+
+/** Replaces the DNS setup of a server of the internet; with none, the server stops being a DNS server and the field goes away. */
+function withDns(net: Network, ownerId: string, dns: ServerDns | undefined): Network {
+  const changeServer = (server: ServerActor): ServerActor => (dns ? { ...server, dns } : without(server, 'dns'));
+  if (!net.actors.some((a) => isServer(a) && a.id === ownerId)) return net;
+  return { ...net, actors: net.actors.map((a) => (isServer(a) && a.id === ownerId ? changeServer(a) : a)) };
+}
+
+function changeZone(net: Network, serverId: string, zoneName: string, change: (records: DnsRecord[]) => DnsRecord[]): Network {
+  const changeZones = (dns: ServerDns): ServerDns => ({ ...dns, zones: (dns.zones ?? []).map((zone) => (zone.name === zoneName ? { ...zone, records: change(zone.records) } : zone)) });
+  return { ...net, actors: net.actors.map((a) => (isServer(a) && a.id === serverId && a.dns ? { ...a, dns: changeZones(a.dns) } : a)) };
+}
+
+/** Adds a record to the zone of an authoritative server that holds its name, unless the server does not take it (`recordProblem`). */
+function withRecord(net: Network, serverId: string, record: AnswerRecord): Network {
+  const zone = zoneHeldBy(net, serverId, record.name);
+  return zone && recordProblem(net, serverId, record) === undefined ? changeZone(net, serverId, zone.name, (records) => [...records, record]) : net;
+}
+
+/** Removes the record with that name, type and value from the zone that holds the name, unless it has none like it. */
+function withoutRecord(net: Network, serverId: string, key: Pick<AnswerRecord, 'name' | 'type' | 'value'>): Network {
+  const zone = zoneHeldBy(net, serverId, key.name);
+  const isIt = (record: DnsRecord) => sameName(record.name, key.name) && record.type === key.type && record.value === key.value;
+  return zone?.records.some(isIt) ? changeZone(net, serverId, zone.name, (records) => records.filter((record) => !isIt(record))) : net;
 }
 
 /** Replaces the forwards of a router; an empty list takes the field away, so a router that had none is the same one as before. */
@@ -131,7 +161,15 @@ export function applyAction(net: Network, action: NetworkAction): Network {
     case 'connectDevice':
       return changeDevice(net, action.deviceId, (d) => ({ ...d, connected: true }));
     case 'setGateway':
-      return changeDevice(net, action.deviceId, (d) => withGateway(d, action.gateway));
+      return changeDevice(net, action.deviceId, (d) => withSetting(d, 'gateway', action.gateway));
+    case 'setDnsServer':
+      return changeDevice(net, action.deviceId, (d) => withSetting(d, 'dnsServer', action.server));
+    case 'setDns':
+      return withDns(net, action.ownerId, action.dns);
+    case 'addRecord':
+      return withRecord(net, action.serverId, action.record);
+    case 'removeRecord':
+      return withoutRecord(net, action.serverId, action.record);
     case 'addLan':
       return withLan(net, action.lan);
     case 'addDevice':

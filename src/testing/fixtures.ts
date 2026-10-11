@@ -1,5 +1,5 @@
 import { TERMS, type TermId } from '@/copy';
-import { ROUTE_DEFAULT, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule, type Service } from '@/engine';
+import { ROUTE_DEFAULT, zoneOf, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule, type ServerActor, type ServerDns, type Service } from '@/engine';
 
 /** Every registered term, for the tests that do not care what the player knows yet. */
 export const EVERY_TERM: ReadonlySet<TermId> = new Set(Object.keys(TERMS) as TermId[]);
@@ -137,6 +137,43 @@ export function officeTwoFloorsNet(): Network {
       routerOf(provider.id, [[provider.towardOffice, officeRouter.id], [provider.towardInternet, backbone.id]], [{ to: server.range, next: backbone.id }, { to: range, next: officeRouter.id }], 8),
       routerOf(backbone.id, [[backbone.towardProvider, provider.id], [backbone.towardServer, server.id]], [{ to: range, next: provider.id }], 12),
     ],
+  };
+}
+
+export const NAME_SERVERS = {
+  zone: 'lucia.example',
+  downZone: 'noticias.example',
+  site: OFFICE_FLOORS.server.ip,
+  resolver: { id: 'servidor-dns', ip: '198.51.100.8', link: '198.51.100.2' },
+  authoritative: { id: 'servidor-autoritativo', ip: '198.51.100.53', link: '198.51.100.3' },
+  down: { id: 'servidor-autoritativo-noticias', ip: '198.51.100.54', link: '198.51.100.4' },
+} as const;
+
+type NameServer = { id: string; ip: string; link: string };
+
+const udpAndTcp53: Service[] = [{ protocol: 'udp', port: 53, listen: 'all' }, { protocol: 'tcp', port: 53, listen: 'all' }];
+
+function nameServer({ id, ip }: NameServer, dns: ServerDns): ServerActor {
+  return { id, name: id, ip, kind: 'server', latencyMs: 20, services: udpAndTcp53, dns };
+}
+
+/** Returns the office of the map that grows with the DNS of chapter 2: tu-laptop uses the resolver servidor-dns, which knows two authoritative servers behind router-backbone, one for lucia.example (www points to the server of the internet and blog is an alias of www) and one for noticias.example that is down. */
+export function officeWithNames(): Network {
+  const base = officeTwoFloorsNet();
+  const { resolver, authoritative, down, zone, downZone, site } = NAME_SERVERS;
+  const upstreams = [{ zone, serverId: authoritative.id }, { zone: downZone, serverId: down.id }];
+  const records = [{ name: `www.${zone}`, type: 'A', value: site, ttl: 300 }, { name: `blog.${zone}`, type: 'CNAME', value: `www.${zone}`, ttl: 300 }] as const;
+  const wired = (router: Router): Router => (router.id === OFFICE_FLOORS.backbone.id ? { ...router, interfaces: [...router.interfaces, ...[resolver, authoritative, down].map(({ id, link }) => ({ ip: link, faces: id }))] } : router);
+  return {
+    ...base,
+    devices: base.devices.map((d) => (d.id === 'your-laptop' ? { ...d, dnsServer: resolver.ip } : d)),
+    actors: [
+      ...base.actors,
+      nameServer(resolver, { role: 'resolver', upstreams }),
+      nameServer(authoritative, { role: 'authoritative', zones: [zoneOf(zone, records)] }),
+      nameServer(down, { role: 'authoritative', zones: [zoneOf(downZone, [{ name: `www.${downZone}`, type: 'A', value: '198.51.100.55', ttl: 300 }])], failing: true }),
+    ],
+    routers: (base.routers ?? []).map(wired),
   };
 }
 

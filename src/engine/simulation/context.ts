@@ -2,7 +2,7 @@ import type { NatTable, Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Device, Endpoint, Network, PacketSpec, Router, Service } from '@/engine/network/types';
-import type { ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
+import type { DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
 
 /** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
 export interface Delivery {
@@ -46,6 +46,7 @@ export interface SimContext {
   routes?: RouteDecision[];
   nat: NatTable;
   translation?: Translation;
+  dns?: DnsTrace;
   hops: Hop[];
   legsMs: number[];
   steps: Step[];
