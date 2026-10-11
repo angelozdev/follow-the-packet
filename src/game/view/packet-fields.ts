@@ -103,10 +103,11 @@ function system(session: Session, run: PacketRun, dns: DnsTrace): TermText[] {
   return step === stopStep(run.trace) ? [lead] : [lead, describeReason(step.reason, session.world, session.known, placesOf(session))];
 }
 
-/** The field with what happened to the name a packet was sent to, once `dns` is known. A `ping` or an `nc` by name asks first and sends after: it says that the device resolved the name before sending the packet, and how, with the sentence of the reason of that step: it asked its resolver, or its hosts file answered and nobody was asked. That question is not drawn and leaves no row in the translation table, so this is where it shows. A lookup that failed has its cause in the line where the packet stopped, and is not said twice. A `dig` is the question itself: the field lists what the resolver answered, with the records, whether the answer came from its cache (once `dns-cache` is known) and its TTL (once `dns-ttl` is known). */
+/** The field with what happened to the name a packet was sent to, once `dns` is known. A `ping` or an `nc` by name asks first and sends after: it says that the device resolved the name before sending the packet, and how, with the sentence of the reason of that step: it asked its resolver, or its hosts file answered and nobody was asked. That question is not drawn and leaves no row in the translation table, so this is where it shows. A lookup that failed has its cause in the line where the packet stopped, and is not said twice. A `dig` is the question itself, and one from a device with no resolver sends nothing, so it has no field; otherwise the field lists what the resolver answered, with the records, whether the answer came from its cache (once `dns-cache` is known) and its TTL (once `dns-ttl` is known). */
 export function dnsField(session: Session, run: PacketRun): InspectionField[] {
   const { dns } = run.trace;
   if (!dns || !session.known.has('dns')) return [];
-  const lines = dns.viaDig ? dig(session, run, dns) : system(session, run, dns);
+  const sent = run.trace.resolvedIp !== null;
+  const lines = dns.viaDig ? (sent ? dig(session, run, dns) : []) : system(session, run, dns);
   return lines.length > 0 ? [field(INSPECTION_TEXT.dns, lines)] : [];
 }

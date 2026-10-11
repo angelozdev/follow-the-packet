@@ -4,7 +4,7 @@ import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from 
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { NAME_SERVERS, OFFICE, actor, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect, type Inspection } from './inspection';
@@ -695,6 +695,14 @@ describe('the box of a packet with ports and names', () => {
     const missing = sentTo(base, 'missing', 'dig');
     expect(field(missing, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `NXDOMAIN: nadie.${zone} no existe.`]);
     expect(field(sentTo(without(base, 'nxdomain'), 'missing', 'dig'), 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `nadie.${zone} no se convirtió en una IP.`]);
+  });
+
+  it('a dig from a device with no resolver sends nothing and has no dns field', () => {
+    const lone = { ...NAMES, send: { ...NAMES.send, from: [...NAMES.send.from, { id: 'lucia', endpoint: device('lucia-laptop') }] } };
+    const dug = sessionReducer(startSession([lone], lone.id), { type: 'sendPacket', fromId: 'lucia', toId: 'www', messageId: 'dig' });
+    expect(dug.sent[0].trace).toMatchObject({ outcome: 'unresolved', resolvedIp: null });
+    expect(fields(dug).map(([label]) => label)).not.toContain('DNS');
+    expect(fields(dug).flat().join(' ')).not.toContain('no contestó');
   });
 
   it('the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered', () => {
