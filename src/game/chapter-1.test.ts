@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TERMINAL_TEXT, TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
-import { extraOpenings, networkSchema, stopStep } from '@/engine';
+import { applyAction, extraOpenings, networkSchema, stopStep } from '@/engine';
 import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
@@ -89,6 +89,13 @@ const THE_CHAIN_OF_THE_LOOP = [
 ];
 const EACH_ONE_SENDS_IT_TO_THE_OTHER = 'quedan configurados de modo que cada uno se lo manda al otro';
 const A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE = /confund|equivoc|\bpiensa|\bcree\b|\brutas?\b|tabla/i;
+const EVERY_DEVICE_SENDS_TO_THE_ROUTER = `Cada dispositivo del ${FLOOR.first.name} y del ${FLOOR.second.name} le manda a ${ROUTER.office.name} lo que va a otra red local.`;
+const THE_OFFICE_ROUTER_SENDS_OUT = `alguien cambió la configuración de ${ROUTER.office.name}: ahora manda hacia internet todo lo que no es de la oficina.`;
+const THE_PROVIDER_ROUTER_DOES_NOT_KNOW_THE_WAY = `alguien cambió la configuración de ${ROUTER.provider.name}, que ya no sabe a dónde mandar lo que va al servidor y tampoco avisa.`;
+const THE_PROVIDER_FIXED_THE_STRETCH = `el proveedor arregló el tramo roto de «Ver el camino»: ${ROUTER.provider.name} volvió a su configuración de antes.`;
+const YOUR_FIREWALL_LETS_EVERYTHING_OUT = `alguien cambió la configuración del firewall de ${DEVICE.you.name}: ahora deja salir todo.`;
+const SOMEONE_TOOK_THE_OPEN_RULE_AWAY = 'Alguien quitó la regla que dejaba salir todo, y su salida quedó sin ninguna regla que lo permita.';
+const CLOSED_CASE = 7;
 const READINGS_OF_A_SILENT_HOP_THE_GAME_ONCE_MADE = [
   'No. El salto 3 ya callaba y el servidor está más allá: el corte empieza antes de llegar a él.',
   'Eso es. El traceroute listó router-oficina y router-proveedor, y desde el salto 3 solo hay *. El corte está en el último router que contestó o justo después.',
@@ -131,10 +138,10 @@ const NO_GATEWAY_TO_SERVER = NO_GATEWAY_TEXT.replace(IP.andres, IP.server);
 const NO_GATEWAY_TO_PRINTER = NO_GATEWAY_TEXT.replace(IP.andres, IP.printer).replaceAll(DEVICE.you.name, DEVICE.andres.name);
 const WATCH_ROUTES_BY_CASE = [2, 2, 2, 2, 1, 2, 2];
 const LETS_EVERYTHING_OUT = 'deja salir todo el tráfico';
+const ANY_IPV4 = '0.0.0.0/0';
 const NO_RULE_AT_ALL = 'Ninguna.';
-const ECHO_REQUEST_TO_LUCIA = `${ECHO_REQUEST_LABEL} → ${DEVICE.lucia.name}`;
 const YOUR_OUTBOUND_RULES_BY_CASE = [1, 1, 1, 1, 1, 1, 0];
-const YOUR_OUTBOUND_BY_CASE = [LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, ECHO_REQUEST_TO_LUCIA, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, NO_RULE_AT_ALL];
+const YOUR_OUTBOUND_BY_CASE = [LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, NO_RULE_AT_ALL];
 const CASE_WITHOUT_YOUR_LAPTOP = 3;
 const YOUR_LAPTOP_DRAWN = [`device:${DEVICE.you.name}`, `firewall:firewall ${DEVICE.you.name}`];
 const THE_ROAD_TO_THE_SERVER = [`device:${SERVER.name}`, `edge:${ROUTER.office.name}`, 'internet:internet'];
@@ -154,9 +161,15 @@ const SWITCHED_OFF_OR_DOWN = /apagad|ca[ií]d[oa]|encendid|prendid/i;
 const FEEDBACK_ECHO = /^(No\.|No es eso\.|Eso es\.|Correcto\.)/;
 const LONGEST_OVER_SHORTEST = 1.4;
 
+function incidentOf(id: string): Incident {
+  const found = INCIDENTS.find((candidate) => candidate.id === id);
+  if (!found) throw new Error(`missing incident ${id}`);
+  return found;
+}
+
 function guidedOf(id: string) {
-  const incident = INCIDENTS.find((candidate) => candidate.id === id);
-  if (!incident || !isGuided(incident)) throw new Error(`${id} is not a guided incident`);
+  const incident = incidentOf(id);
+  if (!isGuided(incident)) throw new Error(`${id} is not a guided incident`);
   return incident;
 }
 
@@ -1461,7 +1474,7 @@ function stopCodesOf(session: Session): string {
 }
 
 function caseWorlds(): Session['world'][] {
-  const before = solvedWorld(INCIDENTS, IN_AND_OUT);
+  const before = startWorld(INCIDENTS, FINAL_WATCH);
   return watchOf().diagnose.cases.map((spec) => caseWorld(before, spec));
 }
 
@@ -1655,7 +1668,7 @@ describe('01-14, the final watch', () => {
 
   it('01-14: starts from the world of 01-13 solved, and each case adds only its own changes to it, never to the case before', () => {
     const worlds = caseWorlds();
-    expect(startWorld(INCIDENTS, FINAL_WATCH)).toEqual(solvedWorld(INCIDENTS, IN_AND_OUT));
+    expect(startWorld(INCIDENTS, FINAL_WATCH)).toEqual((watchOf().changes ?? []).reduce(applyAction, solvedWorld(INCIDENTS, IN_AND_OUT)));
     expect(solvedWorld(INCIDENTS, FINAL_WATCH)).toEqual(startWorld(INCIDENTS, FINAL_WATCH));
     expect(worlds.map((world) => yourDevice(world)?.gateway)).toEqual([undefined, ...Array.from({ length: WATCH_CASES - 1 }, () => IP.router)]);
     expect(worlds.map((world) => world.firewalls.find((firewall) => firewall.id === FIREWALL.you)?.outbound.length)).toEqual(YOUR_OUTBOUND_RULES_BY_CASE);
@@ -1674,12 +1687,12 @@ describe('01-14, the final watch', () => {
     for (const labels of drawn) expect(labels.filter((label) => label.includes(DEVICE.marta.name) || label.includes(DEVICE.visitor.name))).toEqual([]);
   });
 
-  it('01-14: the firewall of your laptop reads in each case that draws it as the case needs it: everything out, and no rule in case 7; case 3 does not draw it, and its world keeps the one rule of 01-13, the ping to laptop-lucia', () => {
+  it('01-14: the firewall of your laptop reads in each case that draws it as the case needs it: everything out, and no rule in case 7; case 3 does not draw it, and its world has the same rule that lets everything out', () => {
     const outbound = (session: Session) => fieldLines(session, PIECE_ID.firewall(FIREWALL.you), OUTBOUND_LABEL);
     const read = Array.from({ length: WATCH_CASES }, (_, index) => outbound(atCase(index + 1)));
     expect(read).toEqual(YOUR_OUTBOUND_BY_CASE.map((line, index) => (index + 1 === CASE_WITHOUT_YOUR_LAPTOP ? undefined : [line])));
     const kept = atCase(CASE_WITHOUT_YOUR_LAPTOP).world.firewalls.find((firewall) => firewall.id === FIREWALL.you)?.outbound.map((rule) => rule.peer);
-    expect(kept).toEqual([{ kind: 'cidr', cidr: `${IP.lucia}/32` }]);
+    expect(kept).toEqual([{ kind: 'cidr', cidr: ANY_IPV4 }]);
   });
 
   it('01-14: the routers the traceroute of case 5 crosses are in the list of shown pieces of that case, and case 5 is the only case that offers a traceroute', () => {
@@ -1703,5 +1716,38 @@ describe('01-14, the final watch', () => {
     expect(ids.indexOf(FINAL_WATCH)).toBe(ids.indexOf(IN_AND_OUT) + 1);
     expect(ids.slice(ids.indexOf(FINAL_WATCH) + 1)).toEqual(['04-01', '04-02']);
     expect(INCIDENTS.filter((incident) => incident.chapter === 1)).toHaveLength(CHAPTER_1_INCIDENTS);
+  });
+});
+
+describe('the changes to the world that chapter 1 explains', () => {
+  const plainReport = (id: string) => toPlainText(incidentOf(id).report);
+  const rightFeedback = (id: string) => toPlainText(guidedOf(id).explanation.find((option) => option.correct)?.feedback ?? '');
+
+  it('01-06: the report says in plain words that every device of both floors sends to router-oficina what goes to another local network, and uses no term of 01-07', () => {
+    expect(plainReport(YOUR_NETWORK)).toContain(EVERY_DEVICE_SENDS_TO_THE_ROUTER);
+    expect(termsIn(incidentOf(YOUR_NETWORK).report)).not.toContain('default-gateway');
+  });
+
+  it('01-08: the report says that someone changed the configuration of router-oficina so that it sends everything outside the office towards internet', () => {
+    expect(plainReport(THE_NETWORK_OF_NETWORKS)).toContain(THE_OFFICE_ROUTER_SENDS_OUT);
+  });
+
+  it('01-10: the right explanation says that someone changed the configuration of router-proveedor, which no longer knows where to send what goes to the server and does not warn', () => {
+    expect(rightFeedback(SEEING_THE_PATH)).toContain(THE_PROVIDER_ROUTER_DOES_NOT_KNOW_THE_WAY);
+  });
+
+  it('01-11: the report says that the provider fixed the broken stretch and router-proveedor went back to its earlier configuration', () => {
+    expect(plainReport(THE_GUARD)).toContain(THE_PROVIDER_FIXED_THE_STRETCH);
+  });
+
+  it('01-14: the report says that someone changed the firewall of tu-laptop to let everything out, and the right cause of case 7 says that someone took that rule away', () => {
+    expect(plainReport(FINAL_WATCH)).toContain(YOUR_FIREWALL_LETS_EVERYTHING_OUT);
+    const right = watchOf().diagnose.cases[CLOSED_CASE - 1].cause.options.find((option) => option.correct);
+    expect(toPlainText(right?.feedback ?? '')).toContain(SOMEONE_TOOK_THE_OPEN_RULE_AWAY);
+  });
+
+  it('no text of 01-06, 01-08, 01-10, 01-11 or 01-14 says that a router got confused, and none says ruta or tabla, which chapter 2 teaches', () => {
+    const texts = [YOUR_NETWORK, THE_NETWORK_OF_NETWORKS, SEEING_THE_PATH, THE_GUARD, FINAL_WATCH].flatMap((id) => incidentTexts(incidentOf(id)).map((text) => toPlainText(text)));
+    expect(texts.filter((text) => A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE.test(text))).toEqual([]);
   });
 });

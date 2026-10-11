@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TermText } from '@/copy';
 import type { Network } from '@/engine';
-import { DEVICE, ROUTER } from './01-first-day/shared';
+import { DEVICE } from './01-first-day/shared';
 import { S2 } from './04-iaas/shared';
 import { changedNames, unnamedChanges } from './contract/changes';
 import { isGuided, type CaseSpec, type Incident } from './contract/incident';
@@ -21,14 +21,7 @@ interface Change {
  * The incidents whose changes to the world the player is not told about yet, as incident (and case) → the devices and routers whose configuration changes and that no text names.
  * The test asserts that this list is exactly what the registry holds, so it can neither hide a new gap nor keep a fixed one; it is empty when every change is explained.
  */
-const UNEXPLAINED_CHANGES_PENDING: Record<string, string[]> = {
-  '01-06': [DEVICE.lucia.name, DEVICE.marta.name, DEVICE.visitor.name, DEVICE.you.name],
-  '01-08': [ROUTER.office.name],
-  '01-11': [ROUTER.provider.name],
-  '01-14/case-4': [DEVICE.you.name],
-  '01-14/case-5': [DEVICE.you.name],
-  '01-14/case-6': [DEVICE.you.name],
-};
+const UNEXPLAINED_CHANGES_PENDING: Record<string, string[]> = {};
 
 function rightFeedback(options: OptionTexts): TermText[] {
   return options.filter((option) => option.correct).map((option) => option.feedback);

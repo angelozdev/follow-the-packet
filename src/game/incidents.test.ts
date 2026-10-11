@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { toPlainText } from '@/copy';
 import type { Network } from '@/engine';
 import { INCIDENTS, applyMove, isGuided, startWorld, type FilterIncident, type GuidedIncident } from '@/levels';
 import { FIREWALL, FROM as OFFICE_FROM, TO as OFFICE_TO, WHAT as OFFICE_WHAT } from '@/levels/01-first-day/shared';
-import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
+import { DAY_SHIFT_RULE, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { EVERY_TERM, filterIncident } from '@/testing';
 import { runFlows } from './flow-runs';
 import { sessionReducer, startSession, starsOf } from './session';
 import { isTight } from './stars';
 import { taskHolds } from './tasks';
+
+const SOMEONE_REPLACED_YOUR_RULE = `Alguien cambió el Security Group de ${S2.id}: quitó la regla de entrada que dejaba entrar el ping y puso otra, porque dice que «abrió la respuesta del ping».`;
 
 function holdsAll(of: FilterIncident, world: Network): boolean {
   const runs = runFlows(world, of.flows, EVERY_TERM);
@@ -49,6 +52,10 @@ describe('04-02, only what is needed', () => {
   const start = startWorld(INCIDENTS, second.id);
   const fromServer1 = (whatId: string) => applyMove(start, second, { type: 'placeRule', firewallId: SG.servidor2, whatId, fromId: FROM.sgServidor1.id });
   const withoutDayShift = (world: Network) => applyMove(world, second, { type: 'removeRule', firewallId: SG.servidor2, ruleId: DAY_SHIFT_RULE.id });
+
+  it('the report says that someone changed the Security Group of servidor2, took the rule that let the ping in away and put another one', () => {
+    expect(toPlainText(second.report)).toContain(SOMEONE_REPLACED_YOUR_RULE);
+  });
 
   it('the way back (Echo Reply) does not let the ping in', () => {
     expect(holdsAll(second, fromServer1(WHAT.echoReply.id))).toBe(false);

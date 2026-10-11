@@ -38,7 +38,7 @@ export default defineIncident({
     },
     {
       text: `En el tramo que sigue a ${NAME.provider}, el último {{router}} que contestó.`,
-      feedback: `Eso es. El {{traceroute}} listó ${NAME.router} y ${NAME.provider}. Desde el {{hop|salto}} 3 nadie contesta hasta el máximo de saltos, y el {{ping}} tampoco vuelve. Por eso lo más probable es que el tramo roto esté después de ${NAME.provider}. Un router que no avisa no siempre es el corte: algunos reenvían el {{packet|paquete}} sin avisar.`,
+      feedback: `Eso es. El {{traceroute}} listó ${NAME.router} y ${NAME.provider}. Desde el {{hop|salto}} 3 nadie contesta hasta el máximo de saltos, y el {{ping}} tampoco vuelve. Por eso lo más probable es que el tramo roto esté después de ${NAME.provider}. Aquí fue así: alguien cambió la configuración de ${NAME.provider}, que ya no sabe a dónde mandar lo que va al servidor y tampoco avisa. Un router que no avisa no siempre es el corte: algunos reenvían el {{packet|paquete}} sin avisar.`,
       correct: true,
     },
   ],

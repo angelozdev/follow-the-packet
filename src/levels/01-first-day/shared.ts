@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
 import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router, type Rule } from '@/engine';
-import type { AddressChip, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, SendMove, SendTask, ToChip, WhatChip } from '@/levels/contract/incident';
+import { ruleIdFor, type AddressChip, type ExpectedOutcome, type Flow, type FlowKind, type FromChip, type MessageChip, type OriginChip, type SendMove, type SendTask, type ToChip, type WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
@@ -312,6 +312,17 @@ export const YOUR_FIREWALL: NetworkAction = {
   deviceId: DEVICE.you.id,
   firewall: { id: FIREWALL.you, name: DEVICE.you.name, kind: 'host-firewall', inbound: [], outbound: [] },
 };
+
+const YOUR_OUTBOUND_OPEN_RULE = letEverythingOut(`${FIREWALL.you}-out`);
+
+/** What 01-14 changes before its cases: the rule 01-13 wrote out of the firewall of your laptop is gone and one that lets everything out is there, so no case that pings other destinations stops at your own laptop. The report of 01-14 says so. The one rule is replaced by the other, so the firewall has one rule and not two. */
+export const OPEN_YOUR_OUTBOUND: NetworkAction[] = [
+  { type: 'removeRule', firewallId: FIREWALL.you, direction: 'outbound', ruleId: ruleIdFor(WHAT.echoRequest.id, TO.lucia.id, 'outbound') },
+  { type: 'addRule', firewallId: FIREWALL.you, direction: 'outbound', rule: YOUR_OUTBOUND_OPEN_RULE },
+];
+
+/** What case 7 of 01-14 changes: the rule that lets everything out is gone from the firewall of your laptop, so its outbound side has no rule at all. The right cause of the case says it. */
+export const CLOSE_YOUR_OUTBOUND: NetworkAction = { type: 'removeRule', firewallId: FIREWALL.you, direction: 'outbound', ruleId: YOUR_OUTBOUND_OPEN_RULE.id };
 
 /** Returns the task of a send incident that expects what a message sent from your laptop to an address ends in, and, when `by` is given, who answered, warned or dropped it. */
 export function sendTask(id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {

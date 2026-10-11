@@ -13,7 +13,7 @@ export default defineIncident({
   introduces: ['internet', 'private-ip', 'public-ip'],
   changes: INTERNET,
   shown: INTERNET_PIECES,
-  report: `Ahora la oficina está conectada a {{internet}}. Allá hay un servidor, ${NAME.server}, con la {{public-ip|IP pública}} 198.51.100.50. Haz un {{ping}} al servidor y otro a la impresora de otra oficina, que tiene la {{private-ip|IP privada}} 10.0.0.10. Mira dónde llega cada uno.`,
+  report: `Ahora la oficina está conectada a {{internet}}. Para eso, alguien cambió la configuración de ${NAME.router}: ahora manda hacia {{internet}} todo lo que no es de la oficina. Allá hay un servidor, ${NAME.server}, con la {{public-ip|IP pública}} 198.51.100.50. Haz un {{ping}} al servidor y otro a la impresora de otra oficina, que tiene la {{private-ip|IP privada}} 10.0.0.10. Mira dónde llega cada uno.`,
   tasks: [
     pingTask(TASK.server, 'Que vuelva tu {{ping}} al servidor.', ADDRESS.server.id, 'replied', SERVER.id),
     pingTask(TASK.otherOffice, 'Haz un {{ping}} a 10.0.0.10 y comprueba que no vuelve nada.', ADDRESS.otherOffice.id, 'timeout'),

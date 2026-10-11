@@ -13,7 +13,7 @@ export default defineIncident({
   introduces: ['firewall', 'traffic', 'drop'],
   changes: REPAIRED_STRETCH,
   shown: GUARD_PIECES,
-  report: `En «Cuando no vuelve», el {{ping}} a ${NAME.marta} no volvió y nadie avisó. Ahora el mapa muestra el {{firewall}} de ${NAME.marta}, que ya estaba ahí. Un {{firewall}} revisa el {{traffic|tráfico}} de un {{device|dispositivo}} y decide qué {{packet|paquetes}} deja pasar. Repite el ping a ${NAME.marta} y haz otro a ${NAME.lucia}, que no tiene {{firewall}}.`,
+  report: `En «Cuando no vuelve», el {{ping}} a ${NAME.marta} no volvió y nadie avisó. Ahora el mapa muestra el {{firewall}} de ${NAME.marta}, que ya estaba ahí. Un {{firewall}} revisa el {{traffic|tráfico}} de un {{device|dispositivo}} y decide qué {{packet|paquetes}} deja pasar. Repite el ping a ${NAME.marta} y haz otro a ${NAME.lucia}, que no tiene {{firewall}}. Aparte, el proveedor arregló el tramo roto de «Ver el camino»: ${NAME.provider} volvió a su configuración de antes.`,
   tasks: [
     pingTask(TASK.guard, `Que veas dónde se detiene un {{ping}} a ${NAME.marta}.`, ADDRESS.marta.id, 'timeout', FIREWALL.marta),
     pingTask(TASK.lucia, `Que vuelva tu {{ping}} a ${NAME.lucia}.`, ADDRESS.lucia.id, 'replied', DEVICE.lucia.id),

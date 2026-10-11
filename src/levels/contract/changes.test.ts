@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { nameTag } from '@/copy';
 import { applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
 import { ATTACKER_IP, OFFICE_FLOORS, allOut, officeTwoFloorsNet, withDevice } from '@/testing';
-import { changedNames, mentions, unnamedChanges } from './changes';
+import { changedFloors, changedNames, mentions, unnamedChanges } from './changes';
 
 const { floor1, floor2, officeRouter } = OFFICE_FLOORS;
 const LUCIA_FIREWALL: Firewall = { id: 'fw-lucia', name: 'laptop-lucia', kind: 'host-firewall', inbound: [], outbound: [allOut('fw-lucia-out')] };
 const NAMES = { you: 'tu-laptop', lucia: 'laptop-lucia', printer: 'impresora', visitor: 'laptop-visita' } as const;
 const FLOOR_3 = { id: 'floor-3', name: 'Piso 3', cidr: '192.168.3.0/24', latencyMs: 1 };
+const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer', 'guest-laptop'];
+const FLOOR_1_NAMES = ['tu-laptop', 'laptop-lucia', 'laptop-marta', 'impresora', 'laptop-visita'];
 
 const world: Network = withDevice({ ...officeTwoFloorsNet(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id] });
 const [anyDevice] = world.devices;
@@ -53,7 +55,31 @@ describe('changedNames', () => {
       { type: 'updateRouter', routerId: anyRouter.id, sendsUnreachable: false },
       { type: 'connectDevice', deviceId: 'guest-laptop' },
     ];
-    expect(changedNames(world, changes.reduce(applyAction, world))).toEqual([NAMES.visitor, anyRouter.name, NAMES.you].sort((a, b) => a.localeCompare(b)));
+    expect(changedNames(world, changes.reduce(applyAction, world))).toEqual(alphabetical([NAMES.visitor, anyRouter.name, NAMES.you]));
+  });
+});
+
+const alphabetical = (names: string[]): string[] => [...names].sort((a, b) => a.localeCompare(b));
+const withoutGateway = (...deviceIds: string[]): NetworkAction[] => deviceIds.map((deviceId) => ({ type: 'setGateway', deviceId }));
+const afterChanges = (changes: NetworkAction[]): Network => changes.reduce(applyAction, world);
+
+describe('changedFloors', () => {
+  it('lists the floor on which every device changed, with the names of its devices', () => {
+    expect(changedFloors(world, afterChanges(withoutGateway(...FLOOR_1_DEVICES)))).toEqual([{ name: floor1.name, devices: FLOOR_1_NAMES }]);
+  });
+
+  it('lists no floor on which a device stays as it was', () => {
+    expect(changedFloors(world, afterChanges(withoutGateway(...FLOOR_1_DEVICES.slice(1))))).toEqual([]);
+  });
+
+  it('lists no floor with a single device, which its own name tells apart', () => {
+    expect(world.devices.filter((device) => device.lanId === floor2.id)).toHaveLength(1);
+    expect(changedFloors(world, afterChanges(withoutGateway('andres-laptop')))).toEqual([]);
+  });
+
+  it('lists nothing when the world did not change or a router changed', () => {
+    expect(changedFloors(world, world)).toEqual([]);
+    expect(changedFloors(world, applyAction(world, BY_KIND.updateRouter.action))).toEqual([]);
   });
 });
 
@@ -85,5 +111,17 @@ describe('unnamedChanges', () => {
 
   it('asks for nothing when the world did not change', () => {
     expect(unnamedChanges(world, world, [])).toEqual([]);
+  });
+
+  it('counts every device of a floor as named when a text names the floor on which all of them changed', () => {
+    const everyDevice = afterChanges(withoutGateway(...FLOOR_1_DEVICES));
+    expect(unnamedChanges(world, everyDevice, [])).toEqual(alphabetical(FLOOR_1_NAMES));
+    expect(unnamedChanges(world, everyDevice, [`Cada dispositivo del ${floor1.name} cambió.`])).toEqual([]);
+    expect(unnamedChanges(world, everyDevice, [`Cada dispositivo del ${floor2.name} cambió.`])).toEqual(alphabetical(FLOOR_1_NAMES));
+  });
+
+  it('does not count a device as named by a floor on which not every device changed', () => {
+    const someDevices = afterChanges(withoutGateway(...FLOOR_1_DEVICES.slice(1)));
+    expect(unnamedChanges(world, someDevices, [`Cada dispositivo del ${floor1.name} cambió.`])).toEqual(alphabetical(FLOOR_1_NAMES.slice(1)));
   });
 });

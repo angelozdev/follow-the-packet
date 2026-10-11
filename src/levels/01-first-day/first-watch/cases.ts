@@ -1,6 +1,6 @@
 import type { NetworkAction } from '@/engine';
-import { ruleIdFor, type AddressChip, type CaseSpec, type ExplanationOption, type MessageChip, type OriginChip } from '@/levels/contract/incident';
-import { ADDRESS, DEVICE, FIREWALL, IP, LOOP, LOOP_CAUSE, LOOP_PIECES, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, TO, WATCH_FIREWALL_PIECES, WATCH_GATEWAY_PIECES, WATCH_PRINTER_PIECES, WATCH_SECOND_FLOOR_PIECES, WHAT, letEverythingOut } from '@/levels/01-first-day/shared';
+import type { AddressChip, CaseSpec, ExplanationOption, MessageChip, OriginChip } from '@/levels/contract/incident';
+import { ADDRESS, CLOSE_YOUR_OUTBOUND, DEVICE, IP, LOOP, LOOP_CAUSE, LOOP_PIECES, LUCIA_FIREWALL, MESSAGE, NAME, ORIGIN, PING_WITH_TTL, WATCH_FIREWALL_PIECES, WATCH_GATEWAY_PIECES, WATCH_PRINTER_PIECES, WATCH_SECOND_FLOOR_PIECES } from '@/levels/01-first-day/shared';
 
 type Place = 0 | 1 | 2;
 type Reply = readonly [text: string, feedback: string];
@@ -39,24 +39,13 @@ function watchCase(number: number, { changes, shown, from, to, message = [MESSAG
 /** The four tests of the ladder, from the closest to the farthest: the loopback of the laptop, its own IP, the IP of its router and the server of the internet. Case 1 guides the player with them and case 7 offers them again. */
 const FROM_YOUR_LAPTOP: AddressChip[] = [ADDRESS.loopback, ADDRESS.you, ADDRESS.gateway, ADDRESS.server];
 
-/** Takes the rule 01-13 wrote out of your laptop, so its outbound side has no rule at all. */
-const CLOSE_YOUR_OUTBOUND: NetworkAction = {
-  type: 'removeRule',
-  firewallId: FIREWALL.you,
-  direction: 'outbound',
-  ruleId: ruleIdFor(WHAT.echoRequest.id, TO.lucia.id, 'outbound'),
-};
-
-/** Opens the outbound side of your laptop again: the rule 01-13 wrote lets out only the ping to laptop-lucia, and a case that tests other destinations must not stop at your own firewall. It takes that rule out and lets everything out, so the firewall has one rule and not two. */
-const OPEN_YOUR_OUTBOUND: NetworkAction[] = [CLOSE_YOUR_OUTBOUND, { type: 'addRule', firewallId: FIREWALL.you, direction: 'outbound', rule: letEverythingOut(`${FIREWALL.you}-out`) }];
-
 function withoutGateway(deviceId: string): NetworkAction {
   return { type: 'setGateway', deviceId };
 }
 
 export const CASES: CaseSpec[] = [
   watchCase(1, {
-    changes: [...OPEN_YOUR_OUTBOUND, withoutGateway(DEVICE.you.id)],
+    changes: [withoutGateway(DEVICE.you.id)],
     shown: WATCH_GATEWAY_PIECES,
     from: ORIGIN.you,
     to: FROM_YOUR_LAPTOP,
@@ -79,7 +68,6 @@ export const CASES: CaseSpec[] = [
     ),
   }),
   watchCase(2, {
-    changes: OPEN_YOUR_OUTBOUND,
     shown: WATCH_PRINTER_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.typo, ADDRESS.printer],
@@ -128,7 +116,6 @@ export const CASES: CaseSpec[] = [
     ),
   }),
   watchCase(4, {
-    changes: OPEN_YOUR_OUTBOUND,
     shown: LOOP_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.server, ADDRESS.otherOffice],
@@ -148,7 +135,7 @@ export const CASES: CaseSpec[] = [
     ),
   }),
   watchCase(5, {
-    changes: [...OPEN_YOUR_OUTBOUND, ...LOOP],
+    changes: LOOP,
     shown: LOOP_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.server],
@@ -175,7 +162,7 @@ export const CASES: CaseSpec[] = [
     ),
   }),
   watchCase(6, {
-    changes: [...OPEN_YOUR_OUTBOUND, LUCIA_FIREWALL],
+    changes: [LUCIA_FIREWALL],
     shown: WATCH_FIREWALL_PIECES,
     from: ORIGIN.you,
     to: [ADDRESS.lucia, ADDRESS.printer, ADDRESS.gateway, ADDRESS.server],
@@ -212,7 +199,7 @@ export const CASES: CaseSpec[] = [
       2,
       [
         `Porque el {{firewall}} de ${NAME.you} no deja salir ningún {{ping}}.`,
-        `El ✕ está en ${NAME.you}: su {{firewall}} detuvo cada ping al salir, incluso el del {{router}}, porque su {{outbound|salida}} no tiene ninguna {{rule|regla}} que lo {{allow|permita}}. Los de {{loopback}} y de tu propia IP sí vuelven.`,
+        `El ✕ está en ${NAME.you}: su {{firewall}} detuvo cada ping al salir, incluso el del {{router}}. Alguien quitó la {{rule|regla}} que dejaba salir todo, y su {{outbound|salida}} quedó sin ninguna regla que lo {{allow|permita}}. Los de {{loopback}} y de tu propia IP sí vuelven.`,
       ],
       [
         [

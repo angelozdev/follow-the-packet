@@ -1,5 +1,5 @@
 import { defineIncident } from '@/levels/contract/incident';
-import { ADDRESS, CONCEPT, DEVICE, LESSON, MESSAGE, NAME, OFFICE_PIECES, ORIGIN, TWO_FLOORS, TASK, pingTask } from '@/levels/01-first-day/shared';
+import { ADDRESS, CONCEPT, DEVICE, FLOOR, LESSON, MESSAGE, NAME, OFFICE_PIECES, ORIGIN, TWO_FLOORS, TASK, pingTask } from '@/levels/01-first-day/shared';
 
 export default defineIncident({
   id: '01-06',
@@ -13,7 +13,7 @@ export default defineIncident({
   introduces: ['lan', 'router'],
   changes: TWO_FLOORS,
   shown: OFFICE_PIECES,
-  report: `La oficina ahora tiene dos pisos, y cada piso es una {{lan|red local}}. Aquí la red es 192.168.1.x: son las {{ip-address|IP}} que empiezan con 192.168.1. En el otro piso es 192.168.2.x. Un {{router}}, ${NAME.router}, conecta las dos redes. Haz un {{ping}} a la ${NAME.printer} y otro a ${NAME.andres}, y mira por dónde pasó cada uno.`,
+  report: `La oficina ahora tiene dos pisos, y cada piso es una {{lan|red local}}. Aquí la red es 192.168.1.x: son las {{ip-address|IP}} que empiezan con 192.168.1. En el otro piso es 192.168.2.x. Un {{router}}, ${NAME.router}, conecta las dos redes. Cada dispositivo del ${FLOOR.first.name} y del ${FLOOR.second.name} le manda a ${NAME.router} lo que va a otra {{lan|red local}}. Haz un {{ping}} a la ${NAME.printer} y otro a ${NAME.andres}, y mira por dónde pasó cada uno.`,
   tasks: [
     pingTask(TASK.ping, `Que vuelva tu {{ping}} a la ${NAME.printer}.`, ADDRESS.printer.id, 'replied', DEVICE.printer.id),
     pingTask(TASK.andres, `Que vuelva tu {{ping}} a ${NAME.andres}.`, ADDRESS.andres.id, 'replied', DEVICE.andres.id),

@@ -15,7 +15,7 @@ export default defineIncident({
     { type: 'removeRule', firewallId: SG.servidor2, ruleId: ruleIdFor(WHAT.echoRequest.id, FROM.sgServidor1.id) },
     { type: 'addRule', firewallId: SG.servidor2, rule: DAY_SHIFT_RULE },
   ],
-  report: 'Alguien cambió el {{security-group}} de servidor2: dice que «abrió la respuesta del {{ping}}». Ahora el {{ping}} de servidor1 vuelve a fallar.',
+  report: 'Alguien cambió el {{security-group}} de servidor2: quitó la {{inbound-rule}} que dejaba entrar el {{ping}} y puso otra, porque dice que «abrió la respuesta del {{ping}}». Ahora el {{ping}} de servidor1 vuelve a fallar.',
   tasks: [{ id: 'ping', text: 'Que servidor1 vuelva a hacer {{ping}} a servidor2.', flowIds: PING_TASK_FLOWS }],
   flows: [FLOWS.pingToServer2, FLOWS.attackerPing],
   chips: { what: [WHAT.echoRequest, WHAT.echoReply, WHAT.allIcmp], from: [FROM.sgServidor1, FROM.anywhere] },
