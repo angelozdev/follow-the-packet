@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, networkSchema, type Network } from '@/engine';
-import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, outboundFilterIncident } from '@/testing';
+import { applyAction, networkSchema, type Network, type NetworkAction } from '@/engine';
+import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, officeNet, outboundFilterIncident } from '@/testing';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
 import { ruleIdFor, type Incident, type PlayerMove, type SettingMove } from './contract/incident';
@@ -51,6 +51,39 @@ describe('the world that grows', () => {
         for (const rule of firewall.inbound) expect(chipsOfRule(incident(id), rule), `${firewall.id}/${rule.id}`).not.toBeNull();
       }
     }
+  });
+});
+
+describe('the world across chapters', () => {
+  const { floor1 } = OFFICE_FLOORS;
+  const withoutGateway = (deviceId: string): NetworkAction => ({ type: 'setGateway', deviceId });
+  const gatewayOf = (world: Network, deviceId: string) => world.devices.find((device) => device.id === deviceId)?.gateway;
+  const FIRST = gatewayIncident();
+  const LAST_OF_CHAPTER = { ...FIRST, id: '09-02', order: 2, base: undefined, changes: [withoutGateway('andres-laptop')] };
+  const AFTER_A_GAP = { ...FIRST, id: '11-01', chapter: 11, order: 1, base: undefined, changes: [withoutGateway('marta-laptop')] };
+  const CHAIN = [FIRST, LAST_OF_CHAPTER, AFTER_A_GAP];
+
+  it('an incident with changes and no previous incident in its chapter starts from the solved world of the last incident of the chapter before', () => {
+    const before = worldBeforeChanges(CHAIN, AFTER_A_GAP.id);
+    expect(before).toEqual(solvedWorld(CHAIN, LAST_OF_CHAPTER.id));
+    expect(before).not.toEqual(FIRST.base);
+    expect(gatewayOf(before, 'your-laptop')).toBe(floor1.gateway);
+    expect(gatewayOf(before, 'andres-laptop')).toBeUndefined();
+    const start = startWorld(CHAIN, AFTER_A_GAP.id);
+    expect(start).toEqual(AFTER_A_GAP.changes.reduce(applyAction, before));
+    expect(gatewayOf(start, 'marta-laptop')).toBeUndefined();
+  });
+
+  it('an incident with a base world still starts from its base', () => {
+    const opening = { ...AFTER_A_GAP, base: officeNet(), changes: undefined };
+    expect(worldBeforeChanges([FIRST, LAST_OF_CHAPTER, opening], opening.id)).toBe(opening.base);
+    expect(worldBeforeChanges(CHAIN, FIRST.id)).toBe(FIRST.base);
+  });
+
+  it('a first incident with changes and nothing before it still fails with a clear message', () => {
+    const message = `${AFTER_A_GAP.id} has changes but no previous incident`;
+    expect(() => worldBeforeChanges([AFTER_A_GAP], AFTER_A_GAP.id)).toThrow(message);
+    expect(() => worldBeforeChanges([AFTER_A_GAP, { ...FIRST, id: '12-01', chapter: 12 }], AFTER_A_GAP.id)).toThrow(message);
   });
 });
 

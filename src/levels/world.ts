@@ -31,16 +31,17 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove):
   return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule, direction });
 }
 
-/** Returns the world the changes of an incident are made on: the reference solution of the previous incident of its chapter, or, for the one that opens its chapter and has no changes, its base world. Incidents come in game order. */
+/** Returns the world the changes of an incident are made on: its base world, or the reference solution of the previous incident of its chapter, or, for the first incident of its chapter that has changes, the reference solution of the last incident of the chapters before it. Incidents come in game order. */
 export function worldBeforeChanges(incidents: Incident[], incidentId: string): Network {
   const incident = findIncident(incidents, incidentId);
   if (incident.base) return incident.base;
-  const previous = incidents.filter((i) => i.chapter === incident.chapter && i.order < incident.order).at(-1);
+  const inChapter = incidents.filter((i) => i.chapter === incident.chapter && i.order < incident.order);
+  const previous = inChapter.at(-1) ?? incidents.filter((i) => i.chapter < incident.chapter).at(-1);
   if (!previous) throw new Error(`${incidentId} has changes but no previous incident`);
   return solvedWorld(incidents, previous.id);
 }
 
-/** Returns the world an incident starts from: its base world, or the reference solution of the previous incident of its chapter plus its changes. Incidents come in game order. */
+/** Returns the world an incident starts from: its base world, or the reference solution of the incident before it (the previous one of its chapter or, for the first of its chapter, the last of the chapters before) plus its changes. Incidents come in game order. */
 export function startWorld(incidents: Incident[], incidentId: string): Network {
   return (findIncident(incidents, incidentId).changes ?? []).reduce(applyAction, worldBeforeChanges(incidents, incidentId));
 }

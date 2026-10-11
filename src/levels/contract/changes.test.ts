@@ -36,6 +36,14 @@ describe('changedNames', () => {
     expect(changedNames(world, applyAction(world, action))).toEqual(names);
   });
 
+  it('changedNames also lists a server of the internet whose configuration differs', () => {
+    const internetServer = world.actors.find((actor) => actor.kind === 'server');
+    for (const patch of [{ latencyMs: 50 }, { ip: '198.51.100.51' }]) {
+      const moved: Network = { ...world, actors: world.actors.map((actor) => (actor === internetServer ? { ...actor, ...patch } : actor)) };
+      expect(changedNames(world, moved), JSON.stringify(patch)).toEqual([internetServer?.name]);
+    }
+  });
+
   it('names nothing when an action changes nothing, because its target is not there or already is as asked', () => {
     const sameGateway: NetworkAction = { type: 'setGateway', deviceId: 'your-laptop', gateway: floor1.gateway };
     const ghost: NetworkAction = { type: 'connectDevice', deviceId: 'ghost' };
