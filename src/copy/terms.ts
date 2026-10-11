@@ -237,7 +237,7 @@ export const TERMS = {
   },
   'domain-name': {
     name: 'nombre de dominio',
-    definition: 'Un nombre legible, como example.com, escrito por niveles separados por puntos. Se lee de derecha a izquierda.',
+    definition: 'Un nombre legible, como lucia.example, escrito por niveles separados por puntos. Se lee de derecha a izquierda.',
   },
   'dns-query': { name: 'consulta DNS', definition: 'Una pregunta por un nombre. La respuesta trae su IP o dice que no existe. Suele viajar por UDP.' },
   resolver: { name: 'resolver', definition: 'El servidor DNS al que pregunta un dispositivo. Si no conoce la respuesta, la busca por él.' },

@@ -171,6 +171,13 @@ describe('term registry', () => {
     expect(TERMS.port.definition).not.toMatch(/0 a 65535/);
   });
 
+  it('the definition of domain name gives its example under .example and not example.com', () => {
+    expect(TERMS['domain-name'].definition).toBe(
+      'Un nombre legible, como lucia.example, escrito por niveles separados por puntos. Se lee de derecha a izquierda.',
+    );
+    expect(TERMS['domain-name'].definition).not.toMatch(/example\.(com|org)/);
+  });
+
   it('no term of chapter 2 names an entity of the map or has a short form', () => {
     const named = Object.values(ENTITY_TERMS).flatMap((variants) => Object.values(variants));
     for (const id of IDS_OF_CHAPTER_2) {
