@@ -98,11 +98,19 @@ export function sameDestination(a: string, b: string): boolean {
   return destinationKey(a) === destinationKey(b);
 }
 
+export const forwardSchema = z.object({
+  protocol: serviceSchema.shape.protocol,
+  publicPort: realPort,
+  toDeviceId: nonEmpty,
+  toPort: realPort,
+});
+
 export const routerSchema = z.object({
   id: nonEmpty,
   name: nonEmpty,
   interfaces: z.array(routerInterfaceSchema),
   routes: z.array(routeSchema),
+  forwards: z.array(forwardSchema).optional(),
   latencyMs,
   sendsUnreachable: z.boolean(),
 });
@@ -226,6 +234,9 @@ function checkRouters(net: NetworkShape, fail: Fail): void {
       if (!routerIds.has(route.next)) fail(`${router.id}: the route to ${route.to} goes through ${route.next}, which is not a router`);
     }
     checkDestinations(router, fail);
+    for (const forward of router.forwards ?? []) {
+      if (!net.devices.some((device) => device.id === forward.toDeviceId)) fail(`${router.id}: the forward of ${forward.protocol} ${forward.publicPort} goes to ${forward.toDeviceId}, which is not a device`);
+    }
   }
 }
 

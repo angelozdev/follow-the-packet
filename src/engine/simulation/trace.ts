@@ -1,6 +1,6 @@
 import type { Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
-import type { FirewallKind, IcmpType } from '@/engine/network/types';
+import type { FirewallKind, IcmpType, Service } from '@/engine/network/types';
 
 export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
@@ -51,6 +51,8 @@ export type Reason =
   | { code: 'forward-no-host'; routerId: string; ip: string; warns: boolean }
   | { code: 'forward-private-dropped'; routerId: string; ip: string }
   | { code: 'forward-router-replies'; routerId: string; ip: string }
+  | { code: 'nat-no-translation'; routerId: string; protocol: Service['protocol']; ip: string; port: number }
+  | { code: 'nat-forwarded'; routerId: string; deviceId: string; protocol: Service['protocol']; ip: string; port: number; toPort: number; fixed: boolean }
   | { code: 'firewall-out-pass'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-out-drop'; deviceId: string; firewallKind: FirewallKind }
   | { code: 'firewall-in-pass'; deviceId: string; firewallKind: FirewallKind }

@@ -64,6 +64,14 @@ function refusedAtArrival(net: Network, deviceId: string): TermText {
   return `Llega, pero ${deviceName(net, deviceId)} lo rechaza.`;
 }
 
+function arrivedAt(net: Network, deviceId: string): TermText {
+  return `Llega a ${deviceName(net, deviceId)}.`;
+}
+
+function protocolWord(known: ReadonlySet<TermId>, protocol: 'tcp' | 'udp'): TermText {
+  return word(known, protocol, protocol.toUpperCase());
+}
+
 const SENDER_WARNS: TermText = 'El propio {{device|dispositivo}} avisa que no pudo entregar el {{packet|paquete}}.';
 
 function routerDrops(known: ReadonlySet<TermId>): TermText {
@@ -130,7 +138,7 @@ function warning(term: TermId): HiddenCause {
   return { term, text: NOT_DELIVERED };
 }
 
-/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected. */
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected; a packet from outside that no row or forward takes says that nothing came back, and one that a forward or a row delivers says only that it arrived at the device. */
 function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
   switch (reason.code) {
     case 'forward-no-owner':
@@ -146,6 +154,10 @@ function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
       return { term: 'listen-address', text: refusedAtArrival(net, reason.deviceId) };
     case 'host-udp-closed':
       return { term: 'port-unreachable', text: refusedAtArrival(net, reason.deviceId) };
+    case 'nat-no-translation':
+      return { term: 'translation-table', text: NOTHING_CAME_BACK };
+    case 'nat-forwarded':
+      return { term: reason.fixed ? 'port-forwarding' : 'translation-table', text: arrivedAt(net, reason.deviceId) };
     default:
       return null;
   }
@@ -206,6 +218,15 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'forward-router-replies': {
       const owner = placeOf(reason.routerId) === 'named' ? `${router(reason.routerId)}, un {{router}}` : router(reason.routerId);
       return `La IP ${reason.ip} es de ${owner}: el {{packet|paquete}} llega a él, no sigue de largo, y contesta.`;
+    }
+    case 'nat-no-translation':
+      return `${router(reason.routerId, { start: true })} no tiene ninguna fila en su {{translation-table|tabla de traducciones}} para el ${word(known, 'port', 'puerto')} ${reason.port} de ${reason.ip} (${protocolWord(known, reason.protocol)}). No sabe a qué ${word(known, 'device', 'dispositivo')} entregar el ${word(known, 'packet', 'paquete')}: no lo entrega a nadie.`;
+    case 'nat-forwarded': {
+      const where = `${word(known, 'port', 'puerto')} ${reason.port} de ${reason.ip} (${protocolWord(known, reason.protocol)})`;
+      const to = `${deviceName(net, reason.deviceId)}, al ${word(known, 'port', 'puerto')} ${reason.toPort}`;
+      return reason.fixed
+        ? `${router(reason.routerId, { start: true })} tiene un {{port-forwarding|reenvío de puertos}}: lo que llega al ${where} va a ${to}.`
+        : `En la {{translation-table|tabla de traducciones}} de ${router(reason.routerId)} hay una fila para el ${where}: lleva el ${word(known, 'packet', 'paquete')} a ${to}.`;
     }
     case 'firewall-out-pass':
     case 'firewall-out-drop':

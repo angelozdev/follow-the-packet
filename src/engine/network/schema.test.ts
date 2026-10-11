@@ -208,6 +208,31 @@ describe('networkSchema with floors, routers and servers of the internet', () =>
   });
 });
 
+describe('networkSchema with port forwards', () => {
+  const forward = { protocol: 'tcp', publicPort: 3000, toDeviceId: 'andres-laptop', toPort: 3000 } as const;
+
+  it('accepts a forward to a device of the office, whatever its ports', () => {
+    expect(problems(withRouter(officeTwoFloorsNet(), officeRouter.id, { forwards: [forward] }))).toEqual([]);
+    expect(problems(withRouter(officeTwoFloorsNet(), officeRouter.id, { forwards: [{ ...forward, protocol: 'udp', publicPort: 8080, toPort: 53 }] }))).toEqual([]);
+    expect(problems(withRouter(officeTwoFloorsNet(), officeRouter.id, { forwards: [] }))).toEqual([]);
+  });
+
+  it('rejects a forward to a device that does not exist', () => {
+    const toGhost = withRouter(officeTwoFloorsNet(), officeRouter.id, { forwards: [{ ...forward, toDeviceId: 'ghost-laptop' }] });
+    expect(problems(toGhost)).toContain(`${officeRouter.id}: the forward of tcp 3000 goes to ghost-laptop, which is not a device`);
+    const toRouter = withRouter(officeTwoFloorsNet(), officeRouter.id, { forwards: [{ ...forward, toDeviceId: provider.id }] });
+    expect(problems(toRouter)).toContain(`${officeRouter.id}: the forward of tcp 3000 goes to ${provider.id}, which is not a device`);
+  });
+
+  it('rejects a forward whose protocol is not TCP or UDP or whose port is not from 1 to 65535', () => {
+    const net = officeTwoFloorsNet();
+    const withForwards = (forwards: unknown[]) => ({ ...net, routers: net.routers?.map((router) => (router.id === officeRouter.id ? { ...router, forwards } : router)) });
+    for (const patch of [{ protocol: 'icmp' }, { publicPort: 0 }, { publicPort: 65536 }, { toPort: 0 }, { toPort: 65536 }, { toPort: 1.5 }]) {
+      expect(problems(withForwards([{ ...forward, ...patch }])), JSON.stringify(patch)).not.toEqual([]);
+    }
+  });
+});
+
 describe('packetSchema', () => {
   it('requires icmpType for ICMP and port for TCP', () => {
     const from = { kind: 'device', id: 'servidor1' } as const;

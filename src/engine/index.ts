@@ -8,6 +8,7 @@ export type {
   Endpoint,
   Firewall,
   FirewallKind,
+  Forward,
   Lan,
   Network,
   PacketSpec,

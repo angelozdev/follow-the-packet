@@ -1,6 +1,7 @@
 import { ipInCidr, isLoopbackIpv4, isPrivateIpv4 } from '@/engine/network/addressing/cidr';
+import { ownsIp } from '@/engine/network/addressing/routing';
 import { chooseRoute, type RouteDecision } from '@/engine/network/addressing/routing-table';
-import { isConnected } from '@/engine/network/addressing/topology';
+import { isClientActor, isConnected } from '@/engine/network/addressing/topology';
 import { CONTINUE, recordRoute, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
 import type { Reason } from '@/engine/simulation/trace';
 import type { Device } from '@/engine/network/types';
@@ -62,6 +63,25 @@ function routeInsideNetwork(ctx: SimContext): StageResult | undefined {
   return CONTINUE;
 }
 
+/** True when a client actor of the internet sends the packet to an office that has routers: the packet comes in by the router that owns the public IP it is for, and the road from the actor to that router is not modelled. */
+function arrivesFromTheInternet(ctx: SimContext): boolean {
+  const { net, source } = ctx;
+  return !source.device && net.kind === 'office' && (net.routers ?? []).length > 0 && net.actors.some((actor) => actor.id === source.id && isClientActor(actor));
+}
+
+/** Takes a packet from the internet to the router of the office that owns the public IP, which `forward` then enters (`ctx.entry`). No router owns the IP: the packet is for nobody in this network and is lost. A private IP from outside never gets here: `routeInsideNetwork` already lost it. */
+function enterOffice(ctx: SimContext): StageResult {
+  const destIp = ctx.destIp!;
+  const router = (ctx.net.routers ?? []).find((candidate) => ownsIp(candidate, destIp));
+  if (!router) {
+    ctx.steps.push({ stage: 'route', at: ctx.net.kind, verdict: 'drop', reason: { code: 'route-no-device', ip: destIp } });
+    return stop('lost');
+  }
+  ctx.entry = router;
+  ctx.effectiveSource = ctx.source.ip;
+  return CONTINUE;
+}
+
 export const routeStage: Stage = (ctx) => {
   const { net, source } = ctx;
   const destIp = ctx.destIp!;
@@ -76,6 +96,7 @@ export const routeStage: Stage = (ctx) => {
 
   const decided = source.device && net.kind === 'office' ? routeFromOffice(ctx, source.device) : routeInsideNetwork(ctx);
   if (decided) return decided;
+  if (arrivesFromTheInternet(ctx)) return enterOffice(ctx);
 
   const dest = net.devices.find((d) => d.publicIp === destIp);
   if (!dest) {

@@ -32,8 +32,9 @@ function handOver(ctx: SimContext, next: Neighbour, delivery: Delivery): StageRe
   return delivery.viaGateway ? dropAtGateway(ctx, next.device) : arriveAt(ctx, next.device);
 }
 
-/** Delivers what `route` handed over, inside the sender's LAN: it looks for a connected owner of the IP and, when nobody has it, the sender's own device warns that the host is unreachable. The sender's LAN is the first leg of the trip, recorded once someone in it takes the packet. A router in that LAN, the gateway or the owner of the IP, takes the packet from there (`routers.ts`), and a gateway that is any other device drops it in silence. A packet whose destination `route` already settled (a VPC, the same device, a public IP) goes through untouched. */
+/** Delivers what `route` handed over, inside the sender's LAN: it looks for a connected owner of the IP and, when nobody has it, the sender's own device warns that the host is unreachable. The sender's LAN is the first leg of the trip, recorded once someone in it takes the packet. A router in that LAN, the gateway or the owner of the IP, takes the packet from there (`routers.ts`), and a gateway that is any other device drops it in silence. A packet whose destination `route` already settled (a VPC, the same device, a public IP) goes through untouched. A packet that comes from the internet to an office with routers has no LAN of its own: `route` names the router that owns the IP (`ctx.entry`) and this stage takes the packet into it. */
 export const forwardStage: Stage = (ctx) => {
+  if (ctx.entry) return enterRouter(ctx, ctx.entry, ctx.destIp!);
   const { delivery, source, net } = ctx;
   const sender = source.device;
   if (!delivery || !sender) return CONTINUE;

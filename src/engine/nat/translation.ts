@@ -1,6 +1,6 @@
 import { isPrivateIpv4 } from '@/engine/network/addressing/cidr';
 import { facesALan, interfaceTowards } from '@/engine/network/addressing/routing';
-import type { Network, PacketSpec, Router } from '@/engine/network/types';
+import type { Device, Network, PacketSpec, Router } from '@/engine/network/types';
 
 /** The first public port the table hands out. It is a number of the game: other NAT choose other numbers, and the example of RFC 3022 §2 also changes the port (3017 to 1024). */
 export const FIRST_PUBLIC_PORT = 40001;
@@ -45,8 +45,8 @@ export function publicIpOf(net: Network, router: Router, faces: string): string 
   return ip !== undefined && facesALan(net, router) && !isPrivateIpv4(ip) ? ip : undefined;
 }
 
-function nextFreePort(table: NatTable): number {
-  const used = new Set(table.map((row) => row.outside.port));
+function nextFreePort(table: NatTable, reserved: readonly number[]): number {
+  const used = new Set([...table.map((row) => row.outside.port), ...reserved]);
   let port = FIRST_PUBLIC_PORT;
   while (used.has(port)) port += 1;
   return port;
@@ -56,11 +56,42 @@ function rowOf(table: NatTable, { protocol, ip, port }: TranslatedSource, public
   return table.find((row) => row.protocol === protocol && row.inside.ip === ip && row.inside.port === port && row.outside.ip === publicIp);
 }
 
-/** Translates the source of a packet that leaves the office by an interface with the IP `publicIp`. An ICMP message is translated to the public IP with no ports and no row. For TCP and UDP the same private IP and port reuse their row whatever the destination (an endpoint-independent mapping, RFC 5382 REQ-1 and RFC 4787 REQ-1); a new one gets the next free public port from `FIRST_PUBLIC_PORT`, whatever the protocol. Returns the translation and the table after it, which is the same table when the row already existed or the packet was ICMP; the table it receives is never changed. */
-export function translateSource(table: NatTable, source: TranslatedSource, publicIp: string): { translation: Translation; table: NatTable } {
+/** Translates the source of a packet that leaves the office by an interface with the IP `publicIp`. An ICMP message is translated to the public IP with no ports and no row. For TCP and UDP the same private IP and port reuse their row whatever the destination (an endpoint-independent mapping, RFC 5382 REQ-1 and RFC 4787 REQ-1); a new one gets the next free public port from `FIRST_PUBLIC_PORT`, whatever the protocol, and never one of the `reserved` ports, which a port forward of the router already uses. Returns the translation and the table after it, which is the same table when the row already existed or the packet was ICMP; the table it receives is never changed. */
+export function translateSource(table: NatTable, source: TranslatedSource, publicIp: string, reserved: readonly number[] = []): { translation: Translation; table: NatTable } {
   const { protocol, ip, port } = source;
   if (protocol === 'icmp') return { table, translation: { protocol, inside: { ip }, outside: { ip: publicIp }, isNew: false, fixed: false } };
   const known = rowOf(table, source, publicIp);
-  const row: NatRow = known ?? { protocol, inside: { ip, port }, outside: { ip: publicIp, port: nextFreePort(table) } };
+  const row: NatRow = known ?? { protocol, inside: { ip, port }, outside: { ip: publicIp, port: nextFreePort(table, reserved) } };
   return { table: known ? table : [...table, row], translation: { protocol, inside: { ...row.inside }, outside: { ...row.outside }, isNew: known === undefined, fixed: false } };
+}
+
+/** The public end a packet from outside is for: the protocol, the IP of the router and the port it was sent to. */
+export interface PublicEnd {
+  protocol: Transport;
+  ip: string;
+  port: number;
+}
+
+/** What the NAT delivers a packet from outside to: the device and the end of that device (its IP and the port its program listens on), and whether a fixed forward chose it. */
+export interface InboundTarget {
+  device: Device;
+  inside: Required<TranslatedEnd>;
+  fixed: boolean;
+}
+
+/** True when `ip` is a public IP of the NAT of this router: one of its own interfaces that `publicIpOf` would translate to. A packet from outside for any other IP of the router is for the router itself. */
+export function isNatPublicIp(net: Network, router: Router, ip: string): boolean {
+  return router.interfaces.some(({ faces }) => publicIpOf(net, router, faces) === ip);
+}
+
+/** Finds where the NAT of a router delivers a TCP or UDP packet that came from outside for one of its public ports, or undefined when nothing says: the packet is then for nobody. A fixed forward of the router (a port forward) is looked up first, by protocol and public port; then a row of the table that an earlier send made, by protocol, public IP and public port. Neither looks at who sent the packet: a forward and a row take it from any IP. */
+export function translateDestination(net: Network, router: Router, table: NatTable, end: PublicEnd): InboundTarget | undefined {
+  const forward = (router.forwards ?? []).find(({ protocol, publicPort }) => protocol === end.protocol && publicPort === end.port);
+  if (forward) {
+    const device = net.devices.find(({ id }) => id === forward.toDeviceId);
+    return device && { device, inside: { ip: device.privateIp, port: forward.toPort }, fixed: true };
+  }
+  const row = table.find(({ protocol, outside }) => protocol === end.protocol && outside.ip === end.ip && outside.port === end.port);
+  const device = row && net.devices.find(({ privateIp }) => privateIp === row.inside.ip);
+  return row && device && { device, inside: { ...row.inside }, fixed: false };
 }

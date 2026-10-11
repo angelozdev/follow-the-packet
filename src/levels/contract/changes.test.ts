@@ -30,6 +30,7 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   updateRouter: { action: { type: 'updateRouter', routerId: officeRouter.id, sendsUnreachable: false }, names: [anyRouter.name] },
   addRoute: { action: { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: OFFICE_FLOORS.provider.id } }, names: [anyRouter.name] },
   removeRoute: { action: { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT }, names: [anyRouter.name] },
+  setForwards: { action: { type: 'setForwards', routerId: officeRouter.id, forwards: [{ protocol: 'tcp', publicPort: 8080, toDeviceId: 'andres-laptop', toPort: 3000 }] }, names: [anyRouter.name] },
   addActor: { action: { type: 'addActor', actor: { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' } }, names: [] },
   addLan: { action: { type: 'addLan', lan: FLOOR_3 }, names: [] },
   addDevice: { action: { type: 'addDevice', device: { ...anyDevice, id: 'new-laptop', name: 'laptop-nueva', privateIp: floor1.nobody } }, names: [] },

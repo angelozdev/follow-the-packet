@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, firewallSchema, forwardSchema, ipSchema, lanSchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Direction, Firewall, Lan, Network, Route, Router, Rule, ServerActor, Service } from './types';
+import type { Actor, Device, Direction, Firewall, Forward, Lan, Network, Route, Router, Rule, ServerActor, Service } from './types';
 
 const nonEmpty = z.string().min(1);
 
@@ -21,6 +21,7 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.shape }),
   z.object({ type: z.literal('addRoute'), routerId: nonEmpty, route: routeSchema }),
   z.object({ type: z.literal('removeRoute'), routerId: nonEmpty, to: routeSchema.shape.to }),
+  z.object({ type: z.literal('setForwards'), routerId: nonEmpty, forwards: z.array(forwardSchema) }),
   z.object({
     type: z.literal('updateRouter'),
     routerId: nonEmpty,
@@ -76,9 +77,17 @@ function withFirewall(net: Network, deviceId: string, firewall: Firewall): Netwo
   return guarded === net ? net : { ...guarded, firewalls: [...guarded.firewalls, firewall] };
 }
 
+function without<Value extends object>(value: Value, field: string): Value {
+  return Object.fromEntries(Object.entries(value).filter(([key]) => key !== field)) as Value;
+}
+
 function withGateway(device: Device, gateway: string | undefined): Device {
-  if (gateway !== undefined) return { ...device, gateway };
-  return Object.fromEntries(Object.entries(device).filter(([key]) => key !== 'gateway')) as Device;
+  return gateway !== undefined ? { ...device, gateway } : without(device, 'gateway');
+}
+
+/** Replaces the forwards of a router; an empty list takes the field away, so a router that had none is the same one as before. */
+function withForwards(router: Router, forwards: Forward[]): Router {
+  return forwards.length > 0 ? { ...router, forwards } : without(router, 'forwards');
 }
 
 /** Returns the services of a device or of a server of the internet, or undefined when the network has neither under that id. */
@@ -137,6 +146,8 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return withRoute(net, action.routerId, action.route);
     case 'removeRoute':
       return withoutRoute(net, action.routerId, action.to);
+    case 'setForwards':
+      return changeRouter(net, action.routerId, (r) => withForwards(r, action.forwards));
     case 'updateRouter':
       return changeRouter(net, action.routerId, (r) => ({
         ...r,

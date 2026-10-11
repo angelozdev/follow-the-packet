@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction } from '@/engine/network/actions';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
-import type { Network, PacketSpec, Router } from '@/engine/network/types';
+import type { Firewall, Forward, Network, PacketSpec, Router } from '@/engine/network/types';
 import { simulateSequence } from '@/engine/simulation/sequence';
 import { simulate } from '@/engine/simulation/simulate';
-import { OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService } from '@/testing';
+import { ATTACKER_IP, OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService } from '@/testing';
 import { FIRST_PUBLIC_PORT, publicIpOf, translateSource, type NatTable } from './translation';
 
 const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
@@ -216,5 +216,174 @@ describe('the translation of the source of what leaves the office', () => {
     const again = translateSource(table, { protocol: 'udp', ip: floor1.you, port: GIVEN_PORT }, officeRouter.uplink);
     expect(again.table).toBe(table);
     expect(again.translation.isNew).toBe(false);
+  });
+});
+
+const HOME = { id: 'casa-lucia', ip: '192.0.2.77' };
+const STRANGER = { id: 'visitor', ip: ATTACKER_IP };
+const APP_PORT = 3000;
+const PUBLIC_APP_PORT = 8080;
+const NO_ROW_PORT = 40009;
+const home = actor(HOME.id);
+const stranger = actor(STRANGER.id);
+const uplink = officeRouter.uplink;
+const toApp: Forward = { protocol: 'tcp', publicPort: PUBLIC_APP_PORT, toDeviceId: 'andres-laptop', toPort: APP_PORT };
+const toDns: Forward = { protocol: 'udp', publicPort: 5353, toDeviceId: 'andres-laptop', toPort: 53 };
+const FIREWALL_OF_ANDRES: Firewall = { id: 'fw-andres', name: 'laptop-andres', kind: 'host-firewall', inbound: [], outbound: [] };
+const allowFrom = (cidr: string, port: number) => ({ id: `allow-${port}`, what: { kind: 'tcp', fromPort: port, toPort: port } as const, peer: { kind: 'cidr', cidr } as const });
+
+function fromOutside(): Network {
+  const withClients = [HOME, STRANGER].reduce(
+    (net, { id, ip }) => applyAction(net, { type: 'addActor', actor: { id, name: id, ip, kind: id === HOME.id ? 'home' : 'attacker' } }),
+    officeTwoFloorsNet(),
+  );
+  return applyAction(withClients, { type: 'setServices', ownerId: 'andres-laptop', services: [tcpService(APP_PORT), { protocol: 'udp', port: 53, listen: 'all' }] });
+}
+
+const forwarding = (net: Network, ...forwards: Forward[]) => applyAction(net, { type: 'setForwards', routerId: officeRouter.id, forwards });
+const toUplink = (from: PacketSpec['from'], port: number, protocol: 'tcp' | 'udp' = 'tcp'): PacketSpec => ({ from, to: uplink, protocol, port });
+const codes = (trace: ReturnType<typeof simulate>) => trace.steps.map((step) => step.reason.code);
+
+describe('what comes from outside reaches a device only through a row or a forward', () => {
+  it('a packet from outside with no translation is not delivered to any device', () => {
+    const net = forwarding(fromOutside(), toApp);
+    for (const protocol of ['tcp', 'udp'] as const) {
+      const trace = simulate(net, toUplink(home, NO_ROW_PORT, protocol));
+      expect([trace.outcome, trace.destinationId, trace.resolvedIp]).toEqual(['timeout', null, uplink]);
+      expect(trace.steps).toEqual([{ stage: 'forward', at: officeRouter.id, verdict: 'drop', reason: { code: 'nat-no-translation', routerId: officeRouter.id, protocol, ip: uplink, port: NO_ROW_PORT } }]);
+      expect(trace.hops).toEqual([{ routerId: officeRouter.id, ip: uplink, ttlLeft: 63 }]);
+      for (const field of ['translation', 'notice', 'routes', 'rttMs'] as const) expect(trace, field).not.toHaveProperty(field);
+      expect(trace.tcpdump).toEqual([]);
+      expect(trace.exchange?.map((message) => message.kind)).toEqual([protocol === 'tcp' ? 'SYN' : 'query']);
+    }
+    const unknownPort = simulate(net, toUplink(home, PUBLIC_APP_PORT + 1));
+    expect([unknownPort.outcome, unknownPort.destinationId]).toEqual(['timeout', null]);
+    expect(simulate(net, toUplink(home, PUBLIC_APP_PORT, 'udp')).outcome).toBe('timeout');
+  });
+
+  it('a fixed forward delivers to the device it names and nothing filters it', () => {
+    const net = forwarding(fromOutside(), toApp, toDns);
+    const trace = simulate(net, toUplink(home, PUBLIC_APP_PORT));
+    expect([trace.outcome, trace.destinationId, trace.resolvedIp, trace.effectiveSource]).toEqual(['replied', 'andres-laptop', uplink, HOME.ip]);
+    expect(trace.translation).toEqual({ protocol: 'tcp', inside: { ip: floor2.andres, port: APP_PORT }, outside: { ip: uplink, port: PUBLIC_APP_PORT }, isNew: false, fixed: true });
+    expect(trace.steps.map((step) => [step.stage, step.reason.code])).toEqual([['forward', 'nat-forwarded'], ['forward', 'forward-hop'], ['host', 'host-accepts'], ['reply', 'reply-stateful']]);
+    expect(trace.steps[0].reason).toEqual({ code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'andres-laptop', protocol: 'tcp', ip: uplink, port: PUBLIC_APP_PORT, toPort: APP_PORT, fixed: true });
+    expect(trace.header).toEqual({
+      request: { source: HOME.ip, destination: uplink, ttl: 64, sourcePort: 51514, destinationPort: PUBLIC_APP_PORT },
+      reply: { source: uplink, destination: HOME.ip, sourcePort: PUBLIC_APP_PORT, destinationPort: 51514 },
+    });
+    expect(trace.exchange?.map((message) => message.kind)).toEqual(['SYN', 'SYN-ACK', 'ACK']);
+    expect(trace.tcpdump.map(({ deviceId, direction, src, dst, summary }) => [deviceId, direction, src, dst, summary])).toEqual([
+      ['andres-laptop', 'In', HOME.ip, floor2.andres, `TCP ${APP_PORT}`],
+      ['andres-laptop', 'Out', floor2.andres, HOME.ip, `TCP ${APP_PORT} reply`],
+    ]);
+    expect(trace.routes?.map(({ holderId, kind }) => [holderId, kind])).toEqual([[officeRouter.id, 'connected']]);
+
+    const datagram = simulate(net, toUplink(stranger, toDns.publicPort, 'udp'));
+    expect([datagram.outcome, datagram.destinationId, datagram.translation?.fixed]).toEqual(['replied', 'andres-laptop', true]);
+    expect(datagram.exchange?.map((message) => message.kind)).toEqual(['query', 'response']);
+    expect(simulate(net, toUplink(stranger, PUBLIC_APP_PORT)).outcome).toBe('replied');
+    expect(codes(simulate(net, toUplink(stranger, PUBLIC_APP_PORT)))).not.toContain('firewall-in-pass');
+  });
+
+  it('a forward to a device with a firewall is still stopped by that firewall', () => {
+    const guarded = applyAction(forwarding(fromOutside(), toApp), { type: 'addFirewall', deviceId: 'andres-laptop', firewall: FIREWALL_OF_ANDRES });
+    const attempt = (net: Network) => simulate(net, toUplink(home, PUBLIC_APP_PORT));
+    const stopped = attempt(guarded);
+    expect([stopped.outcome, stopped.destinationId, stopped.translation?.fixed]).toEqual(['timeout', 'andres-laptop', true]);
+    expect(stopped.steps.map((step) => [step.stage, step.reason.code, step.verdict])).toEqual([['forward', 'nat-forwarded', 'pass'], ['forward', 'forward-hop', 'pass'], ['firewall-in', 'firewall-in-drop', 'drop']]);
+
+    const onThePublicPort = applyAction(guarded, { type: 'addRule', firewallId: FIREWALL_OF_ANDRES.id, rule: allowFrom('0.0.0.0/0', PUBLIC_APP_PORT) });
+    expect(attempt(onThePublicPort).outcome).toBe('timeout');
+    const onTheDevicePort = applyAction(guarded, { type: 'addRule', firewallId: FIREWALL_OF_ANDRES.id, rule: allowFrom('0.0.0.0/0', APP_PORT) });
+    expect(attempt(onTheDevicePort).outcome).toBe('replied');
+    const fromElsewhere = applyAction(guarded, { type: 'addRule', firewallId: FIREWALL_OF_ANDRES.id, rule: allowFrom(`${STRANGER.ip}/32`, APP_PORT) });
+    expect(attempt(fromElsewhere).outcome).toBe('timeout');
+    expect(simulate(fromElsewhere, toUplink(stranger, PUBLIC_APP_PORT)).outcome).toBe('replied');
+  });
+
+  it('a packet from a client actor to a public IP that no router owns is lost', () => {
+    const net = forwarding(fromOutside(), toApp);
+    const packets: PacketSpec[] = [
+      { from: home, to: server.ip, protocol: 'tcp', port: 80 },
+      { from: home, to: '203.0.113.99', protocol: 'udp', port: 53 },
+      { from: stranger, to: '8.8.8.8', protocol: 'icmp', icmpType: 8 },
+    ];
+    for (const packet of packets) {
+      const trace = simulate(net, packet);
+      expect([trace.outcome, trace.destinationId], packet.to).toEqual(['lost', null]);
+      expect(trace.steps).toEqual([{ stage: 'route', at: 'office', verdict: 'drop', reason: { code: 'route-no-device', ip: packet.to } }]);
+      for (const field of ['hops', 'translation'] as const) expect(trace, field).not.toHaveProperty(field);
+    }
+  });
+
+  it('what a client actor sent before the new rule still behaves as it did: a private IP is lost, and an office with no routers keeps its old stop', () => {
+    const privateIp = simulate(fromOutside(), { from: home, to: floor1.you, protocol: 'tcp', port: APP_PORT });
+    expect([privateIp.outcome, privateIp.steps.map((step) => step.reason.code)]).toEqual(['lost', ['route-private-from-outside']]);
+    const routerless = simulate(officeNet(), { from: actor('attacker'), to: '203.0.113.5', protocol: 'tcp', port: 22 });
+    expect([routerless.outcome, routerless.steps.map((step) => step.reason.code)]).toEqual(['timeout', ['route-no-public-device']]);
+  });
+
+  it('a packet from outside finds the row that an earlier send of the sequence made', () => {
+    const net = applyAction(fromOutside(), { type: 'setServices', ownerId: 'your-laptop', services: [tcpService(51514)] });
+    const answered = simulateSequence(net, sends(tcp(you, server.ip, WEB_PORT), toUplink(home, FIRST_PUBLIC_PORT), toUplink(home, SECOND_PUBLIC_PORT)));
+    expect(answered.map((trace) => trace.outcome)).toEqual(['refused', 'replied', 'timeout']);
+    expect(answered[1].destinationId).toBe('your-laptop');
+    expect(answered[1].translation).toEqual({ protocol: 'tcp', inside: { ip: floor1.you, port: 51514 }, outside: { ip: uplink, port: FIRST_PUBLIC_PORT }, isNew: false, fixed: false });
+    expect(answered[1].steps.map((step) => step.reason)).toEqual([
+      { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'your-laptop', protocol: 'tcp', ip: uplink, port: FIRST_PUBLIC_PORT, toPort: 51514, fixed: false },
+      { code: 'forward-hop', routerId: officeRouter.id, ip: uplink, ttlLeft: 63 },
+      { code: 'host-accepts', deviceId: 'your-laptop', port: 51514 },
+      { code: 'reply-stateful', deviceId: 'your-laptop' },
+    ]);
+    expect(answered[1].tcpdump.map((line) => line.summary)).toEqual(['TCP 51514', 'TCP 51514 reply']);
+    expect(simulate(net, toUplink(home, FIRST_PUBLIC_PORT)).outcome).toBe('timeout');
+    expect(simulateSequence(net, sends(tcp(you, server.ip, WEB_PORT), toUplink(home, FIRST_PUBLIC_PORT, 'udp'))).map((trace) => trace.outcome)).toEqual(['refused', 'timeout']);
+  });
+
+  it('a row of the table sends the packet to a device that rejects it with the port the device has', () => {
+    const traces = simulateSequence(fromOutside(), sends(tcp(you, server.ip, WEB_PORT), toUplink(home, FIRST_PUBLIC_PORT)));
+    expect(traces.map((trace) => trace.outcome)).toEqual(['refused', 'refused']);
+    expect(traces[1].steps.at(-1)?.reason).toEqual({ code: 'host-refused', deviceId: 'your-laptop', port: 51514 });
+    expect(traces[1].tcpdump.map((line) => line.summary)).toEqual(['TCP 51514', 'TCP 51514 RST']);
+    expect(traces[1].header?.request).toMatchObject({ destination: uplink, destinationPort: FIRST_PUBLIC_PORT });
+  });
+
+  it('the ttl goes down once at the router, which discards a packet whose ttl ends there before it translates anything', () => {
+    const net = forwarding(fromOutside(), toApp);
+    const trace = simulate(net, { ...toUplink(home, PUBLIC_APP_PORT), ttl: 5 });
+    expect(trace.hops).toEqual([{ routerId: officeRouter.id, ip: uplink, ttlLeft: 4 }]);
+    expect(trace.steps.find((step) => step.reason.code === 'forward-hop')?.reason).toEqual({ code: 'forward-hop', routerId: officeRouter.id, ip: uplink, ttlLeft: 4 });
+    const ended = simulate(net, { ...toUplink(home, PUBLIC_APP_PORT), ttl: 1 });
+    expect([ended.outcome, ended.notice?.kind, ended.notice?.fromId, ended.destinationId]).toEqual(['ttl-exceeded', 'time-exceeded', officeRouter.id, null]);
+    expect(codes(ended)).toEqual(['forward-ttl-exceeded']);
+    expect(ended).not.toHaveProperty('translation');
+  });
+
+  it('a ping to the public IP of the router and a packet to a router that does not translate are answered as before', () => {
+    const net = forwarding(fromOutside(), toApp);
+    const echo = simulate(net, { from: home, to: uplink, protocol: 'icmp', icmpType: 8 });
+    expect([echo.outcome, echo.destinationId, codes(echo)]).toEqual(['replied', officeRouter.id, ['forward-router-replies', 'reply-stateful']]);
+    for (const field of ['hops', 'translation'] as const) expect(echo, field).not.toHaveProperty(field);
+    const toProvider = simulate(net, { from: home, to: provider.towardOffice, protocol: 'tcp', port: 22 });
+    expect([toProvider.outcome, toProvider.destinationId, codes(toProvider)]).toEqual(['refused', provider.id, ['host-refused']]);
+    expect(toProvider).not.toHaveProperty('translation');
+  });
+
+  it('a forward to a device with no cable ends at the router, which says nobody has that IP', () => {
+    const net = forwarding(fromOutside(), { ...toApp, toDeviceId: 'guest-laptop' });
+    const trace = simulate(net, toUplink(home, PUBLIC_APP_PORT));
+    expect([trace.outcome, trace.notice?.kind, trace.notice?.fromId, trace.destinationId]).toEqual(['unreachable', 'host-unreachable', officeRouter.id, null]);
+    expect(trace.translation).toMatchObject({ inside: { ip: floor1.guest, port: APP_PORT }, fixed: true });
+    expect(codes(trace)).toEqual(['nat-forwarded', 'forward-no-host']);
+  });
+
+  it('a public port that a forward uses is never handed to a row', () => {
+    const net = forwarding(fromOutside(), { ...toApp, publicPort: FIRST_PUBLIC_PORT });
+    const traces = simulateSequence(net, sends(tcp(you, server.ip, WEB_PORT), tcp(lucia, server.ip, WEB_PORT)));
+    expect(traces.map((trace) => trace.translation?.outside.port)).toEqual([SECOND_PUBLIC_PORT, THIRD_PUBLIC_PORT]);
+    const delivered = simulateSequence(net, sends(tcp(you, server.ip, WEB_PORT), toUplink(home, FIRST_PUBLIC_PORT), toUplink(home, SECOND_PUBLIC_PORT)));
+    expect([delivered[1].translation?.fixed, delivered[1].destinationId]).toEqual([true, 'andres-laptop']);
+    expect([delivered[2].translation?.fixed, delivered[2].destinationId]).toEqual([false, 'your-laptop']);
   });
 });

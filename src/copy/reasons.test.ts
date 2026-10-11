@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, type Firewall, type Reason } from '@/engine';
-import { EVERY_TERM, OFFICE, OFFICE_FLOORS, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
@@ -541,5 +541,55 @@ describe('the router of the office that has no route for the destination', () =>
     const text = describeReason(reason!, noRoutes, EVERY_TERM);
     expect(text).toBe('[[router-office]] no sabe a qué {{router}} mandar un {{packet|paquete}} para 198.51.100.50: lo {{drop|descarta}} y avisa a quien lo envió que no pudo entregarlo.');
     expect(termsIn(text)).toEqual(['router', 'packet', 'drop']);
+  });
+});
+
+describe('what comes from outside to the public IP of the router', () => {
+  const unsolicited: Reason = { code: 'nat-no-translation', routerId: officeRouter.id, protocol: 'tcp', ip: officeRouter.uplink, port: 40009 };
+  const byForward: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'andres-laptop', protocol: 'tcp', ip: officeRouter.uplink, port: 8080, toPort: 3000, fixed: true };
+  const byRow: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'your-laptop', protocol: 'udp', ip: officeRouter.uplink, port: 40001, toPort: 51514, fixed: false };
+  const withHome = applyAction(FLOORS, { type: 'addActor', actor: { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } });
+  const NONE = without(...EVERY_TERM);
+  const NO_ROW_TEXT = '[[router-office]] no tiene ninguna fila en su {{translation-table|tabla de traducciones}} para el {{port|puerto}} 40009 de 203.0.113.10 ({{tcp|TCP}}). No sabe a qué {{device|dispositivo}} entregar el {{packet|paquete}}: no lo entrega a nadie.';
+
+  it('the text of an unsolicited packet says it is not delivered and never that NAT blocks it', () => {
+    expect(describeReason(unsolicited, FLOORS, EVERY_TERM)).toBe(NO_ROW_TEXT);
+    const trace = simulate(withHome, { from: actor('casa-lucia'), to: officeRouter.uplink, protocol: 'tcp', port: 40009 });
+    expect(trace.steps.map((step) => step.reason)).toEqual([{ ...unsolicited }]);
+    const neverBlocks = /bloque|filtr|firewall|segur|protege|rechaz|nega|prohib|stateful/i;
+    for (const known of [EVERY_TERM, NONE, without('translation-table'), without('nat')]) {
+      const texts = [...trace.steps.map((step) => describeReason(step.reason, withHome, known)), OUTCOME_TEXT[trace.outcome]];
+      for (const text of texts) expect(toPlainText(text)).not.toMatch(neverBlocks);
+    }
+    expect(toPlainText(describeReason(unsolicited, FLOORS, EVERY_TERM))).toMatch(/no lo entrega a nadie/);
+    expect(toPlainText(describeReason({ ...unsolicited, protocol: 'udp' }, FLOORS, EVERY_TERM))).toMatch(/\(UDP\)/);
+  });
+
+  it('says only what the player saw while the table of translations is unknown', () => {
+    expect(describeReason(unsolicited, FLOORS, without('translation-table'))).toBe(NOTHING_CAME_BACK);
+    expect(describeReason(byRow, FLOORS, without('translation-table'))).toBe('Llega a [[tu-laptop]].');
+    expect(describeReason(byForward, FLOORS, without('port-forwarding'))).toBe('Llega a [[laptop-andres]].');
+    expect(describeReason(byForward, FLOORS, without('translation-table'))).toBe(describeReason(byForward, FLOORS, EVERY_TERM));
+  });
+
+  it('names the forward or the row, the device and both ports', () => {
+    expect(describeReason(byForward, FLOORS, EVERY_TERM)).toBe(
+      '[[router-office]] tiene un {{port-forwarding|reenvío de puertos}}: lo que llega al {{port|puerto}} 8080 de 203.0.113.10 ({{tcp|TCP}}) va a [[laptop-andres]], al {{port|puerto}} 3000.',
+    );
+    expect(describeReason(byRow, FLOORS, EVERY_TERM)).toBe(
+      'En la {{translation-table|tabla de traducciones}} de [[router-office]] hay una fila para el {{port|puerto}} 40001 de 203.0.113.10 ({{udp|UDP}}): lleva el {{packet|paquete}} a [[tu-laptop]], al {{port|puerto}} 51514.',
+    );
+  });
+
+  it('tags only the terms the player knows, whichever of its terms is missing, and names a router the map does not draw by its place only', () => {
+    for (const reason of [unsolicited, byForward, byRow]) {
+      for (const missing of ['translation-table', 'port-forwarding', 'port', 'tcp', 'udp', 'device', 'packet', 'router'] as const) {
+        const known = without(missing);
+        expect(termsIn(describeReason(reason, FLOORS, known)).filter((tagged) => !known.has(tagged)), `${reason.code} without ${missing}`).toEqual([]);
+      }
+      const unnamed = toPlainText(describeReason(reason, FLOORS, EVERY_TERM, (): RouterPlace => 'inside'));
+      expect(unnamed).not.toContain('router-office');
+    }
+    expect(toPlainText(describeReason(unsolicited, FLOORS, EVERY_TERM, (): RouterPlace => 'inside'))).toMatch(/^Un router de la oficina no tiene ninguna fila/);
   });
 });

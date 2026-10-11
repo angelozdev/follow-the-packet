@@ -1,7 +1,7 @@
 import type { NatTable, Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
-import type { Device, Endpoint, Network, PacketSpec, Service } from '@/engine/network/types';
+import type { Device, Endpoint, Network, PacketSpec, Router, Service } from '@/engine/network/types';
 import type { ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
 
 /** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
@@ -24,11 +24,19 @@ export interface Receiver extends Responder {
   device?: Device;
 }
 
+/** Where the NAT of a router delivered a packet from outside: the IP of the device and the port its program listens on. */
+export interface Delivered {
+  ip: string;
+  port: number;
+}
+
 export interface SimContext {
   net: Network;
   packet: PacketSpec;
   source: { endpoint: Endpoint; id: string; ip: string; inside: boolean; device?: Device };
   destIp?: string;
+  entry?: Router;
+  delivered?: Delivered;
   dest?: Device;
   path?: 'private' | 'public' | 'self';
   delivery?: Delivery;
@@ -53,6 +61,17 @@ export function receiverOf(ctx: SimContext): Receiver {
   const { dest, responder } = ctx;
   if (dest) return { id: dest.id, ip: dest.privateIp, replies: { code: 'host-replies', deviceId: dest.id }, host: dest.host, device: dest };
   return { ...responder!, host: { ignoreIcmpEcho: false, services: responder!.services ?? [] } };
+}
+
+/** The IP the packet is heading for on the road: the one the sender wrote, or the device's own once the NAT of a router translated the destination. */
+export function headingFor(ctx: SimContext): string {
+  return ctx.delivered?.ip ?? ctx.destIp!;
+}
+
+/** The IP and the packet as the receiver sees them. They are the ones the sender wrote, except after the NAT delivered the packet to a device: then the device sees its own IP and the port its program listens on, not the public port the sender used. */
+export function arrivalOf(ctx: SimContext): { ip: string; packet: PacketSpec } {
+  const { delivered, packet } = ctx;
+  return delivered ? { ip: delivered.ip, packet: { ...packet, port: delivered.port } } : { ip: ctx.destIp!, packet };
 }
 
 /** Records a tcpdump line at the receiver when it is a device: the player can read a device's tcpdump, not a router's or a server's. */

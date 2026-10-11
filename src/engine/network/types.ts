@@ -5,6 +5,7 @@ import type {
   directionSchema,
   endpointSchema,
   firewallSchema,
+  forwardSchema,
   icmpTypeSchema,
   lanSchema,
   networkSchema,
@@ -31,6 +32,7 @@ export type Direction = z.infer<typeof directionSchema>;
 export type Lan = z.infer<typeof lanSchema>;
 export type RouterInterface = z.infer<typeof routerInterfaceSchema>;
 export type Route = z.infer<typeof routeSchema>;
+export type Forward = z.infer<typeof forwardSchema>;
 export type Router = z.infer<typeof routerSchema>;
 export type Actor = z.infer<typeof actorSchema>;
 export type ServerActor = Extract<Actor, { kind: 'server' }>;

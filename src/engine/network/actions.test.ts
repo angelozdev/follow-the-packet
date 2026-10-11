@@ -3,7 +3,7 @@ import { ATTACKER_IP, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, offi
 import { applyAction, networkActionSchema, type NetworkAction } from './actions';
 import { ROUTE_DEFAULT, networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Firewall, Lan, Network, Router, ServerActor, Service } from './types';
+import type { Actor, Device, Firewall, Forward, Lan, Network, Router, ServerActor, Service } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
@@ -288,6 +288,45 @@ describe('applyAction on an office with floors', () => {
     expect(parses([{ ...APP, protocol: 'icmp' }])).toBe(false);
     expect(parses([{ ...APP, listen: '0.0.0.0' }])).toBe(false);
     expect(parses([{ protocol: 'tcp', port: 3000 }])).toBe(false);
+  });
+
+  it('setForwards replaces the forwards of a router and keeps the rest', () => {
+    const net = officeTwoFloorsNet();
+    const web: Forward = { protocol: 'tcp', publicPort: 8080, toDeviceId: 'andres-laptop', toPort: 3000 };
+    const dns: Forward = { protocol: 'udp', publicPort: 5353, toDeviceId: 'lucia-laptop', toPort: 53 };
+    const first = applyAction(net, { type: 'setForwards', routerId: officeRouter.id, forwards: [web, dns] });
+    const second = applyAction(first, { type: 'setForwards', routerId: officeRouter.id, forwards: [dns] });
+    expect(routerOf(first, officeRouter.id)).toEqual({ ...routerOf(net, officeRouter.id), forwards: [web, dns] });
+    expect(routerOf(second, officeRouter.id)?.forwards).toEqual([dns]);
+    expect(routerOf(first, provider.id)).toEqual(routerOf(net, provider.id));
+    expect(deviceOf(first, 'andres-laptop')).toEqual(deviceOf(net, 'andres-laptop'));
+    expect(validate(first)).toEqual([]);
+  });
+
+  it('setForwards with no forward leaves the router as it was before it had any', () => {
+    const net = officeTwoFloorsNet();
+    const forward: Forward = { protocol: 'tcp', publicPort: 3000, toDeviceId: 'andres-laptop', toPort: 3000 };
+    const cleared = applyAction(applyAction(net, { type: 'setForwards', routerId: officeRouter.id, forwards: [forward] }), { type: 'setForwards', routerId: officeRouter.id, forwards: [] });
+    expect(routerOf(cleared, officeRouter.id)).not.toHaveProperty('forwards');
+    expect(cleared).toEqual(net);
+    expect(applyAction(net, { type: 'setForwards', routerId: officeRouter.id, forwards: [] })).toEqual(net);
+  });
+
+  it('setForwards on a router that does not exist returns the same network', () => {
+    const forward: Forward = { protocol: 'tcp', publicPort: 3000, toDeviceId: 'andres-laptop', toPort: 3000 };
+    const action: NetworkAction = { type: 'setForwards', routerId: GHOST, forwards: [forward] };
+    for (const net of [officeTwoFloorsNet(), officeNet(), lab03Net()]) expect(applyAction(net, action)).toBe(net);
+  });
+
+  it('a forward is a protocol that is TCP or UDP, two ports from 1 to 65535 and a device', () => {
+    const forward = { protocol: 'tcp', publicPort: 3000, toDeviceId: 'andres-laptop', toPort: 3000 };
+    const parses = (forwards: unknown[]) => networkActionSchema.safeParse({ type: 'setForwards', routerId: officeRouter.id, forwards }).success;
+    expect(parses([forward, { ...forward, protocol: 'udp', publicPort: 65535 }])).toBe(true);
+    expect(parses([{ ...forward, protocol: 'icmp' }])).toBe(false);
+    expect(parses([{ ...forward, publicPort: 0 }])).toBe(false);
+    expect(parses([{ ...forward, toPort: 65536 }])).toBe(false);
+    expect(parses([{ ...forward, toDeviceId: '' }])).toBe(false);
+    expect(parses([{ protocol: 'tcp', publicPort: 3000 }])).toBe(false);
   });
 
   it('actions on unknown ids return the same network', () => {

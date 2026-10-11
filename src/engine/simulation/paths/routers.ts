@@ -3,8 +3,9 @@ import { chooseRoute } from '@/engine/network/addressing/routing-table';
 import { lanOf } from '@/engine/network/addressing/topology';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Device, Router, ServerActor, Service } from '@/engine/network/types';
-import { CONTINUE, addLeg, recordRoute, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
-import { translateOnExit } from '@/engine/simulation/stages/nat';
+import type { PublicEnd } from '@/engine/nat/translation';
+import { CONTINUE, addLeg, headingFor, recordRoute, stop, type SimContext, type StageResult } from '@/engine/simulation/context';
+import { entersNat, translateOnEntry, translateOnExit } from '@/engine/simulation/stages/nat';
 import type { NoticeKind, Notice, Reason } from '@/engine/simulation/trace';
 
 /** Hands the packet to a device of the network: the firewall of that device, its host and its reply come next. */
@@ -50,12 +51,12 @@ function crossed(ctx: SimContext, router: Router, from: string, ttlLeft: number)
 
 /** Records the route the router picked from its table for the destination, unless it picked none because it dropped the packet as private or had no route that could carry it. */
 function recordChoice(ctx: SimContext, router: Router): void {
-  const decision = chooseRoute(ctx.net, router, ctx.destIp!);
+  const decision = chooseRoute(ctx.net, router, headingFor(ctx));
   if (decision) recordRoute(ctx, decision);
 }
 
 function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: number): StageResult {
-  const ip = ctx.destIp!;
+  const ip = headingFor(ctx);
   const onward = onwardFrom(ctx.net, router, ip);
   if (onward.kind !== 'private' && onward.kind !== 'no-route') recordChoice(ctx, router);
   const failure = { routerId: router.id, ip, warns: router.sendsUnreachable };
@@ -87,19 +88,33 @@ function answerFromServer(ctx: SimContext, server: ServerActor): StageResult {
   return answerAs(ctx, server.id, server.ip, { code: 'host-replies', deviceId: server.id }, server.services);
 }
 
+/** The NAT of the router meets a packet that came from outside for its public IP: it does not answer for itself. It takes 1 from the TTL like any router, and then looks for a forward or a row that says which device the packet is for; with none, nobody gets it and it is not answered (a real NAT may answer an unsolicited SYN after at least 6 seconds, RFC 5382 REQ-4, but `nc -w 3` gives up before). */
+function deliverFromOutside(ctx: SimContext, router: Router, end: PublicEnd, from: string, ttlLeft: number): StageResult {
+  const { protocol, ip, port } = end;
+  const delivery = translateOnEntry(ctx, router, end);
+  if (!delivery) {
+    dropAt(ctx, router, { code: 'nat-no-translation', routerId: router.id, protocol, ip, port });
+    return stop('timeout');
+  }
+  const reason: Reason = { code: 'nat-forwarded', routerId: router.id, deviceId: delivery.device.id, protocol, ip, port, toPort: delivery.inside.port, fixed: delivery.fixed };
+  ctx.steps.push({ stage: 'forward', at: router.id, verdict: 'pass', reason });
+  return forwardOn(ctx, router, from, ttlLeft);
+}
+
 function pass(ctx: SimContext, router: Router, ttl: number, ingress: string): StageResult {
-  const ip = ctx.destIp!;
+  const ip = headingFor(ctx);
   addLeg(ctx, router.latencyMs);
-  if (ownsIp(router, ip)) return answerAs(ctx, router.id, ip, { code: 'forward-router-replies', routerId: router.id, ip });
+  const end = entersNat(ctx, router);
+  if (ownsIp(router, ip) && !end) return answerAs(ctx, router.id, ip, { code: 'forward-router-replies', routerId: router.id, ip });
   const ttlLeft = ttl - 1;
   const from = towardsSender(ctx, router, ingress);
   ctx.hops.push({ routerId: router.id, ip: from, ttlLeft });
-  if (ttlLeft > 0) return forwardOn(ctx, router, from, ttlLeft);
+  if (ttlLeft > 0) return end ? deliverFromOutside(ctx, router, end, from, ttlLeft) : forwardOn(ctx, router, from, ttlLeft);
   dropAt(ctx, router, { code: 'forward-ttl-exceeded', routerId: router.id, ip: from });
   return sendNotice(ctx, { kind: 'time-exceeded', fromId: router.id, fromIp: from });
 }
 
-/** Takes the packet into the first router, by the interface `ingress` that faces the sender's LAN. Each router the packet reaches answers it when the destination is one of its own interfaces; otherwise takes 1 from the TTL (RFC 1812, §5.3.1), discards the packet at 0 and warns the sender, and passes it on. The TTL runs out in at most 255 routers, so a loop between two routers ends. Every router the packet reaches adds its latency to the trip, the one that answers or warns included, and a server adds its own. */
+/** Takes the packet into the first router, by the interface `ingress` that faces the sender's LAN (for a packet from the internet, the interface that owns the IP it is for). Each router the packet reaches answers it when the destination is one of its own interfaces; otherwise takes 1 from the TTL (RFC 1812, §5.3.1), discards the packet at 0 and warns the sender, and passes it on. The TTL runs out in at most 255 routers, so a loop between two routers ends. Every router the packet reaches adds its latency to the trip, the one that answers or warns included, and a server adds its own. */
 export function enterRouter(ctx: SimContext, router: Router, ingress: string): StageResult {
   return pass(ctx, router, ctx.packet.ttl ?? DEFAULT_TTL, ingress);
 }
