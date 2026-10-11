@@ -10,8 +10,8 @@ const CARD_LAYERS: [number, number] = [30, 20];
 export function CardAnchor({ placement, children }: { placement: CardPlacement; children: ReactNode }) {
   const portal = useHtmlPortal();
   const card = useRef<HTMLDivElement>(null);
-  const { position, dock, room } = useCardSide(placement, card);
-  const size = { '--card-width': `${CARD_WIDTH}px`, '--card-gap': `${placement.gap}px`, '--card-x': `${dock[0]}px`, '--card-y': `${dock[1]}px`, '--card-room': roomLength(room) } as CSSProperties;
+  const { position, dock, top, room } = useCardSide(placement, card);
+  const size = { '--card-width': `${CARD_WIDTH}px`, '--card-gap': `${placement.gap}px`, '--card-x': `${dock[0]}px`, '--card-y': `${dock[1]}px`, '--card-top': `${top}px`, '--card-room': roomLength(room) } as CSSProperties;
   return (
     <Html portal={portal} position={placement.position} zIndexRange={CARD_LAYERS}>
       <div ref={card} className={`map-card map-card--${position}`} style={size}>

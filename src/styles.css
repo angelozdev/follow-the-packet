@@ -21,14 +21,16 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 
 .html-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
-.map-card { pointer-events: auto; width: var(--card-width); }
-.map-card--right { transform: translate(var(--card-gap), -50%); }
-.map-card--left { transform: translate(calc(-100% - var(--card-gap)), -50%); }
-.map-card--dock { display: flex; flex-direction: column; max-height: var(--card-room); transform: translate(var(--card-x), calc(var(--card-y) - 100%)); }
-.map-card--dock > .card { display: flex; flex-direction: column; min-height: 0; }
-.map-card--dock .card__body { display: flex; flex-direction: column; min-height: 0; }
-.map-card--dock .chip-card { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
-.map-card--dock .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); }
+.map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
+.map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
+.map-card--left { transform: translate(calc(-100% - var(--card-gap)), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
+.map-card--dock { transform: translate(var(--card-x), calc(var(--card-y) - 100%)); }
+.map-card > .card { display: flex; flex-direction: column; min-height: 0; }
+.map-card .card__body { display: flex; flex-direction: column; min-height: 0; }
+.map-card .chip-card { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
+.map-card .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); }
+.incident__inspection .card__body::-webkit-scrollbar, .map-card .chip-card__body::-webkit-scrollbar { width: var(--space-sm); }
+.incident__inspection .card__body::-webkit-scrollbar-thumb, .map-card .chip-card__body::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-surface); border-radius: var(--radius-pill); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: var(--weight-bold) var(--text-lg) var(--font-display); background: var(--color-surface); border: var(--stroke-heavy) solid currentColor; border-radius: var(--radius-round); transform: rotate(-8deg); }
 .stamp--arrived, .stamp--warned { color: var(--color-ink); }
 .stamp--blocked { color: var(--color-danger); }
@@ -71,6 +73,7 @@ button.stamp { cursor: help; }
 .incident__side { grid-area: 1 / 2; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
 .incident__inspection { grid-area: 1 / 1; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: 45%; pointer-events: none; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
+.incident__inspection[data-scrolls] > .card { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
 .inspection__fields { margin: 0; }

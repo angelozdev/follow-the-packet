@@ -12,6 +12,7 @@ import {
   cardAnchorPosition,
   cardPlacement,
   cardSpan,
+  cardTop,
   computeLayout,
   cumulativeLengths,
   dockOffset,
@@ -24,6 +25,7 @@ import {
   pointAt,
   roundTrip,
   sideForNdc,
+  sideHeight,
   spreadStamps,
   startsOnMap,
   terminalSide,
@@ -772,6 +774,16 @@ describe('where a card opens', () => {
 
   it('a docked card hangs its bottom left corner from the bottom left corner of the map, whatever the height of the card', () => {
     expect(dockOffset([400, 250], { width: 900, height: 800 })).toEqual([-394, 544]);
+  });
+
+  it('a card beside its anchor may rise up to the title bar of the map and no higher, whatever its height', () => {
+    expect(cardTop([400, 250])).toBe(-194);
+    expect(cardTop([400, 30])).toBe(26);
+  });
+
+  it('a card beside its anchor may be as tall as the map between its title bar and its bottom margin, and never less than a docked card may be', () => {
+    expect(sideHeight({ height: 800 })).toBe(800 - 56 - 6);
+    expect(sideHeight({ height: 120 })).toBe(200);
   });
 
   it('the card of a firewall keeps its wide gap and its width, and only the screen decides its side', () => {

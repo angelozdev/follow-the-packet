@@ -117,6 +117,7 @@ const FIREWALL_CARD_GAP = 110;
 const ORIGIN_CARD_GAP = 70;
 const CARD_MARGIN = 12;
 const DOCK_MARGIN = 6;
+const TITLE_BAR = 56;
 const GROUND_REACH = 16;
 const MIN_DOCK_ROOM = 200;
 const STAMP_SPREAD = 0.8;
@@ -352,7 +353,17 @@ export function dockOffset(anchor: Vec2, map: { width: number; height: number })
   return [DOCK_MARGIN - anchor[0], map.height - DOCK_MARGIN - anchor[1]];
 }
 
-/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it stays inside the map: the height of the map less the margin the dock keeps at its bottom and at its top, and never less than `MIN_DOCK_ROOM`. */
+/** Returns how far from its anchor, in pixels, the top of a card beside a piece may sit at the highest, so the card stays under the title bar that floats over the top of the map (`TITLE_BAR`: its single line and its paddings, with a margin): a distance upward, negative while the anchor is lower than that. The lowest its bottom may sit is the bottom of `dockOffset`. */
+export function cardTop(anchor: Vec2): number {
+  return TITLE_BAR - anchor[1];
+}
+
+/** Returns how tall a card beside a piece may be, in pixels, so that it fits between the title bar of the map and the margin at its bottom, and never less than `MIN_DOCK_ROOM`, so a window too short for the map keeps a card that can be used. Its body scrolls when it is taller. */
+export function sideHeight(map: { height: number }): number {
+  return Math.max(MIN_DOCK_ROOM, map.height - TITLE_BAR - DOCK_MARGIN);
+}
+
+/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it stays inside the map: the height of the map less the margin the dock keeps at its bottom and at its top, and never less than `MIN_DOCK_ROOM`. A docked card takes less when a piece stands above it (`dockRoom`). */
 export function dockHeight(map: { height: number }): number {
   return Math.max(MIN_DOCK_ROOM, map.height - 2 * DOCK_MARGIN);
 }
