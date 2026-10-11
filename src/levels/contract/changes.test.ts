@@ -33,6 +33,7 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   setForwards: { action: { type: 'setForwards', routerId: officeRouter.id, forwards: [{ protocol: 'tcp', publicPort: 8080, toDeviceId: 'andres-laptop', toPort: 3000 }] }, names: [anyRouter.name] },
   setDns: { action: { type: 'setDns', ownerId: NAME_SERVERS.resolver.id, dns: { role: 'resolver' } }, names: [NAME_SERVERS.resolver.id] },
   setDnsServer: { action: { type: 'setDnsServer', deviceId: 'your-laptop' }, names: [NAMES.you] },
+  setHosts: { action: { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `tienda.${NAME_SERVERS.zone}`, ip: NAME_SERVERS.site }] }, names: [NAMES.you] },
   addRecord: { action: { type: 'addRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `tienda.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, ttl: 300 } }, names: [NAME_SERVERS.authoritative.id] },
   removeRecord: { action: { type: 'removeRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site } }, names: [NAME_SERVERS.authoritative.id] },
   addActor: { action: { type: 'addActor', actor: { id: 'visitor', name: 'Visita', ip: ATTACKER_IP, kind: 'attacker' } }, names: [] },

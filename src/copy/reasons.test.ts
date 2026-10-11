@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROUTE_DEFAULT, applyAction, simulate, type Firewall, type Reason } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Firewall, type Reason } from '@/engine';
 import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
@@ -596,19 +596,24 @@ describe('what comes from outside to the public IP of the router', () => {
 
 describe('what a device is told when it asks its resolver for a name', () => {
   const NAMED = officeWithNames();
-  const { zone, downZone, resolver } = NAME_SERVERS;
-  const reasonOf = (world: typeof NAMED, name: string): Reason => simulate(world, ping(device('your-laptop'), name)).steps[0].reason;
+  const { zone, downZone, resolver, site } = NAME_SERVERS;
+  const you = device('your-laptop');
+  const reasonOf = (world: typeof NAMED, name: string): Reason => simulate(world, ping(you, name)).steps[0].reason;
   const answered = reasonOf(NAMED, `www.${zone}`);
   const alias = reasonOf(NAMED, `blog.${zone}`);
   const missing = reasonOf(NAMED, `noexiste.${zone}`);
   const failed = reasonOf(NAMED, `www.${downZone}`);
   const noAddress = reasonOf(NAMED, zone);
-  const silent = reasonOf(applyAction(NAMED, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.printer }), `www.${zone}`);
+  const silent = reasonOf(applyAction(NAMED, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.server.nobody }), `www.${zone}`);
+  const notResolver = reasonOf(applyAction(NAMED, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.printer }), `www.${zone}`);
+  const cached = simulateSequence(NAMED, [`www.${zone}`, `www.${zone}`].map((to, index) => ({ packet: ping(you, to), at: index * 100 })))[1].steps[0].reason;
+  const shop = `tienda.${zone}`;
+  const hosted = reasonOf(applyAction(NAMED, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: shop, ip: site }] }), shop);
   const NONE = without(...EVERY_TERM);
-  const every = [answered, alias, missing, failed, noAddress, silent];
+  const every = [answered, alias, missing, failed, noAddress, silent, notResolver, cached, hosted];
 
-  it('reads the five reasons from real traces', () => {
-    expect(every.map((reason) => reason.code)).toEqual(['dns-answered', 'dns-answered', 'dns-nxdomain', 'dns-servfail', 'dns-no-address', 'dns-no-resolver']);
+  it('reads the reasons from real traces', () => {
+    expect(every.map((reason) => reason.code)).toEqual(['dns-answered', 'dns-answered', 'dns-nxdomain', 'dns-servfail', 'dns-no-address', 'dns-resolver-silent', 'dns-no-resolver', 'dns-cached', 'dns-hosts-file']);
   });
 
   it('an answer names the question, the resolver and the IP, and an alias says it is one', () => {
@@ -620,6 +625,26 @@ describe('what a device is told when it asks its resolver for a name', () => {
     expect(describeReason(alias, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por blog.lucia.example a [[${resolver.id}]]: blog.lucia.example es un alias de www.lucia.example, que es ${NAME_SERVERS.site}.`);
   });
 
+  it('an answer from the cache is a hidden cause: while dns-cache is unknown it reads as any answer, and the seconds that are left come with dns-ttl', () => {
+    expect(cached).toMatchObject({ code: 'dns-cached', resolverId: resolver.id, ip: site, ttlLeft: 200 });
+    const question = `[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por www.lucia.example a [[${resolver.id}]], su {{resolver}}: la respuesta es ${site}.`;
+    const fromCache = `${question} Salió de la {{dns-cache|caché}} de [[${resolver.id}]].`;
+    expect(describeReason(cached, NAMED, EVERY_TERM)).toBe(`${fromCache} A la respuesta le quedan 200 segundos de {{dns-ttl|TTL}}.`);
+    expect(describeReason(cached, NAMED, without('dns-ttl'))).toBe(fromCache);
+    expect(describeReason(cached, NAMED, without('dns-cache'))).toBe(describeReason(answered, NAMED, without('dns-cache')));
+    expect(describeReason(cached, NAMED, NONE)).toBe(describeReason(answered, NAMED, NONE));
+    expect(describeReason({ ...(cached as Extract<Reason, { code: 'dns-cached' }>), ttlLeft: 1 }, NAMED, EVERY_TERM)).toContain('le queda 1 segundo de {{dns-ttl|TTL}}');
+    expect(describeReason({ ...(cached as Extract<Reason, { code: 'dns-cached' }>), canonical: 'www.lucia.example', name: 'blog.lucia.example' }, NAMED, without('dns-ttl'))).toBe(
+      `[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por blog.lucia.example a [[${resolver.id}]], su {{resolver}}: blog.lucia.example es un {{cname-record|alias}} de www.lucia.example, que es ${site}. Salió de la {{dns-cache|caché}} de [[${resolver.id}]].`,
+    );
+  });
+
+  it('a name the hosts file answered says the device asked nobody, and before the term is known it says only that the device already knew the IP', () => {
+    expect(describeReason(hosted, NAMED, EVERY_TERM)).toBe(`[[tu-laptop]] encontró ${shop} en su {{hosts-file|archivo hosts}}: es ${site}. No preguntó a nadie.`);
+    expect(describeReason(hosted, NAMED, without('hosts-file'))).toBe(`[[tu-laptop]] ya sabía que ${shop} es ${site}: no preguntó a nadie.`);
+    expect(toPlainText(describeReason(hosted, NAMED, NONE))).not.toMatch(/hosts|DNS|resolver/);
+  });
+
   it('NXDOMAIN and SERVFAIL are hidden causes: while the term is unknown the text says only that the name did not become an IP', () => {
     expect(describeReason(missing, NAMED, EVERY_TERM)).toBe(`[[${resolver.id}]] contestó {{nxdomain}}: el nombre noexiste.lucia.example no existe.`);
     expect(describeReason(failed, NAMED, EVERY_TERM)).toBe(`[[${resolver.id}]] contestó {{servfail}}: no pudo averiguar www.noticias.example. No dice si el nombre existe.`);
@@ -629,15 +654,17 @@ describe('what a device is told when it asks its resolver for a name', () => {
     for (const reason of [missing, failed]) expect(toPlainText(describeReason(reason, NAMED, NONE))).not.toMatch(/NXDOMAIN|SERVFAIL|servidor|resolver|DNS/);
   });
 
-  it('a name with no address and a resolver that gave no answer say what happened and no more', () => {
+  it('a name with no address, a question nobody answered and an address that is no resolver say what happened and no more', () => {
     expect(describeReason(noAddress, NAMED, EVERY_TERM)).toBe(`[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por lucia.example a [[${resolver.id}]], su {{resolver}}: el nombre existe, pero no tiene un {{a-record}}.`);
     expect(describeReason(noAddress, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por lucia.example a [[${resolver.id}]]: el nombre existe, pero no tiene ninguna IP asociada.`);
-    expect(describeReason(silent, NAMED, EVERY_TERM)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.21, su {{resolver}}, y no recibió respuesta a su pregunta.');
-    expect(describeReason(silent, NAMED, NONE)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.21, su servidor de nombres, y no recibió respuesta a su pregunta.');
+    expect(describeReason(silent, NAMED, EVERY_TERM)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 198.51.100.77, su {{resolver}}, y no recibió respuesta a su pregunta.');
+    expect(describeReason(silent, NAMED, NONE)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 198.51.100.77, su servidor de nombres, y no recibió respuesta a su pregunta.');
+    expect(describeReason(notResolver, NAMED, EVERY_TERM)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.21, y [[impresora]] no le contestó como un {{resolver}}.');
+    expect(describeReason(notResolver, NAMED, NONE)).toBe('[[tu-laptop]] preguntó por www.lucia.example a 192.168.1.21, y [[impresora]] no le contestó como un servidor de nombres.');
   });
 
   it('tags only the terms the player knows, whichever of its terms is missing', () => {
-    const terms = ['dns-query', 'resolver', 'cname-record', 'a-record', 'nxdomain', 'servfail'] as const;
+    const terms = ['dns-query', 'resolver', 'cname-record', 'a-record', 'nxdomain', 'servfail', 'dns-cache', 'dns-ttl', 'hosts-file'] as const;
     for (const reason of every) {
       for (const absent of terms) {
         const known = without(absent);
@@ -649,6 +676,6 @@ describe('what a device is told when it asks its resolver for a name', () => {
   it('gives no reason for an answer to come back, quotes no operating system and calls a name server by the name the map shows', () => {
     const forbidden = /stateful|conversación|recuerda|porque|linux|windows|macos|ubuntu|bloque|filtr/i;
     for (const known of [EVERY_TERM, NONE]) for (const reason of every) expect(toPlainText(describeReason(reason, NAMED, known)), reason.code).not.toMatch(forbidden);
-    for (const reason of [answered, alias, missing, failed, noAddress]) expect(toPlainText(describeReason(reason, NAMED, EVERY_TERM))).toContain(resolver.id);
+    for (const reason of [answered, alias, missing, failed, noAddress, cached]) expect(toPlainText(describeReason(reason, NAMED, EVERY_TERM))).toContain(resolver.id);
   });
 });

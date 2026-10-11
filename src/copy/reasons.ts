@@ -110,13 +110,39 @@ function replyText(net: Network, deviceId: string, known: ReadonlySet<TermId>): 
 
 const NO_IP_FOR = (name: string): TermText => `${name} no se convirtió en una IP.`;
 
-type DnsAsk = Extract<Reason, { code: 'dns-answered' | 'dns-nxdomain' | 'dns-servfail' | 'dns-no-address' }>;
+type DnsAsk = Extract<Reason, { code: 'dns-answered' | 'dns-cached' | 'dns-nxdomain' | 'dns-servfail' | 'dns-no-address' }>;
 
 /** Writes the question a device put to its resolver, with the terms the player knows tagged: `[[tu-laptop]] hizo una consulta DNS por www.lucia.example a [[servidor-dns]], su resolver`. */
 function dnsQuestion(net: Network, known: ReadonlySet<TermId>, reason: DnsAsk): TermText {
   const asked = known.has('dns-query') ? 'hizo una {{dns-query|consulta DNS}} por' : 'preguntó por';
   const resolver = known.has('resolver') ? ', su {{resolver}}' : '';
   return `${deviceName(net, reason.deviceId)} ${asked} ${reason.name} a ${deviceName(net, reason.resolverId)}${resolver}`;
+}
+
+/** Writes what a resolver answered with an address: the IP, or the alias and the IP it leads to. */
+function answerText(net: Network, known: ReadonlySet<TermId>, reason: Extract<DnsAsk, { ip: string }>): TermText {
+  const question = dnsQuestion(net, known, reason);
+  return reason.canonical ? `${question}: ${reason.name} es un ${word(known, 'cname-record', 'alias')} de ${reason.canonical}, que es ${reason.ip}.` : `${question}: la respuesta es ${reason.ip}.`;
+}
+
+function secondsLeft(seconds: number): string {
+  return seconds === 1 ? 'le queda 1 segundo' : `le quedan ${seconds} segundos`;
+}
+
+/** Writes an answer that came from the cache of the resolver. The cache is a hidden cause: while `dns-cache` is unknown the text is the one of any answer, because the player saw an IP come back and nothing more; the seconds that are left come with the term `dns-ttl`, and only once it is known. */
+function cachedText(net: Network, known: ReadonlySet<TermId>, reason: Extract<Reason, { code: 'dns-cached' }>): TermText {
+  const answer = answerText(net, known, reason);
+  if (!known.has('dns-cache')) return answer;
+  const from = `${answer} Salió de la {{dns-cache|caché}} de ${deviceName(net, reason.resolverId)}.`;
+  return known.has('dns-ttl') ? `${from} A la respuesta ${secondsLeft(reason.ttlLeft)} de {{dns-ttl|TTL}}.` : from;
+}
+
+/** Writes a name that the hosts file of the device answered. While `hosts-file` is unknown the text says what the player saw: the device already knew the IP and asked nobody. */
+function hostsFileText(net: Network, known: ReadonlySet<TermId>, reason: Extract<Reason, { code: 'dns-hosts-file' }>): TermText {
+  const device = deviceName(net, reason.deviceId);
+  return known.has('hosts-file')
+    ? `${device} encontró ${reason.name} en su {{hosts-file|archivo hosts}}: es ${reason.ip}. No preguntó a nadie.`
+    : `${device} ya sabía que ${reason.name} es ${reason.ip}: no preguntó a nadie.`;
 }
 
 function side(fromInside: boolean): string {
@@ -193,17 +219,21 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
     case 'dns-resolved':
       return `El {{dns}} convierte ${reason.name} en ${reason.ip} (se preguntó desde ${side(reason.fromInside)} de la {{vpc}}).`;
     case 'dns-answered':
-      return reason.canonical
-        ? `${dnsQuestion(net, known, reason)}: ${reason.name} es un ${word(known, 'cname-record', 'alias')} de ${reason.canonical}, que es ${reason.ip}.`
-        : `${dnsQuestion(net, known, reason)}: la respuesta es ${reason.ip}.`;
+      return answerText(net, known, reason);
+    case 'dns-cached':
+      return cachedText(net, known, reason);
+    case 'dns-hosts-file':
+      return hostsFileText(net, known, reason);
     case 'dns-nxdomain':
       return `${deviceName(net, reason.resolverId)} contestó {{nxdomain}}: el nombre ${reason.name} no existe.`;
     case 'dns-servfail':
       return `${deviceName(net, reason.resolverId)} contestó {{servfail}}: no pudo averiguar ${reason.name}. No dice si el nombre existe.`;
     case 'dns-no-address':
       return `${dnsQuestion(net, known, reason)}: el nombre existe, pero ${known.has('a-record') ? 'no tiene un {{a-record}}' : 'no tiene ninguna IP asociada'}.`;
-    case 'dns-no-resolver':
+    case 'dns-resolver-silent':
       return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, ${known.has('resolver') ? 'su {{resolver}}' : 'su servidor de nombres'}, y no recibió respuesta a su pregunta.`;
+    case 'dns-no-resolver':
+      return `${deviceName(net, reason.deviceId)} preguntó por ${reason.name} a ${reason.ip}, y ${deviceName(net, reason.hostId)} no le contestó como ${known.has('resolver') ? 'un {{resolver}}' : 'un servidor de nombres'}.`;
     case 'route-private-from-outside':
       return 'Internet no entrega paquetes a una {{private-ip}}: la misma IP se repite en muchas redes.';
     case 'route-no-device':

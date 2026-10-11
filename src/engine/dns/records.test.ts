@@ -195,5 +195,7 @@ describe('the DNS rules of the network schema', () => {
     expect(problems(withServer)).toEqual(['dns: a VPC has no DNS servers, its names are those of EC2']);
     const withSetting = applyAction(vpc, { type: 'setDnsServer', deviceId: 'servidor1', server: '198.51.100.8' });
     expect(problems(withSetting)).toEqual(['servidor1: a device in a VPC has no DNS server setting']);
+    const withFile = applyAction(vpc, { type: 'setHosts', deviceId: 'servidor1', hosts: [{ name: 'db.internal', ip: '172.31.38.97' }] });
+    expect(problems(withFile)).toEqual(['servidor1: a device in a VPC has no hosts file, its names are those of EC2']);
   });
 });

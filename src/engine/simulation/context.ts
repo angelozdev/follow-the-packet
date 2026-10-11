@@ -1,3 +1,4 @@
+import type { DnsCache } from '@/engine/dns/cache';
 import type { NatTable, Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
@@ -45,6 +46,12 @@ export interface SimContext {
   notice?: Notice;
   routes?: RouteDecision[];
   nat: NatTable;
+  /** What the resolvers remembered before this send; a lookup that a resolver answers puts the new entries here. */
+  dnsCache: DnsCache;
+  /** The second of the game clock this send leaves at; a loose `simulate` leaves at 0. */
+  now: number;
+  /** The name a `dig` asks about. A dig is the datagram to the resolver itself, so the `dns` stage only picks its destination and the answer is taken when the trip ends. */
+  asking?: string;
   translation?: Translation;
   dns?: DnsTrace;
   hops: Hop[];

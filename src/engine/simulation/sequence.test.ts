@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { probePackets, withProbeActor } from '@/engine/exposure/exposure';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
-import { OFFICE, actor, chapter4Worlds, device, officeNet, ping, tcp } from '@/testing';
+import { NAME_SERVERS, OFFICE, actor, chapter4Worlds, device, dig, officeNet, officeWithNames, ping, tcp } from '@/testing';
 import { simulateSequence, type Send } from './sequence';
 import { simulate } from './simulate';
 
@@ -108,5 +108,65 @@ describe('simulateSequence', () => {
     for (const { net, packets } of worlds) {
       expect(simulateSequence(net, sends(...packets))).toEqual(packets.map((packet) => simulate(net, packet)));
     }
+  });
+});
+
+describe('the cache of a resolver in a sequence', () => {
+  const { zone, site, resolver } = NAME_SERVERS;
+  const WWW = `www.${zone}`;
+  const BLOG = `blog.${zone}`;
+  const names = officeWithNames();
+  const secondsLeft = (list: Send[]) => simulateSequence(names, list).map((trace) => trace.dns?.ttlLeft);
+
+  it('the cache of the resolver is carried from one dig to the next', () => {
+    const traces = simulateSequence(names, [
+      { packet: dig(you, WWW), at: 0 },
+      { packet: dig(you, WWW), at: 60 },
+      { packet: dig(you, BLOG), at: 90 },
+      { packet: dig(you, BLOG), at: 100 },
+    ]);
+    expect(traces.map((trace) => trace.dns?.fromCache)).toEqual([false, true, false, true]);
+    expect(traces.map((trace) => trace.dns?.ttlLeft)).toEqual([undefined, 240, undefined, 290]);
+    expect(traces[1].dns?.answers).toEqual([{ name: WWW, type: 'A', value: site, ttl: 240 }]);
+  });
+
+  it('each dig is measured against the second it leaves at and not against its place in the list', () => {
+    expect(secondsLeft([{ packet: dig(you, WWW), at: 1000 }, { packet: dig(you, WWW), at: 1100 }, { packet: dig(you, WWW), at: 1299 }, { packet: dig(you, WWW), at: 1300 }])).toEqual([undefined, 200, 1, undefined]);
+  });
+
+  it('a lookup by name fills the cache of the resolver and uses neither a port of its sender nor a row of the table, while the dig that follows has both', () => {
+    const traces = simulateSequence(names, [
+      { packet: tcp(you, WWW, 80), at: 0 },
+      { packet: dig(you, WWW), at: 5 },
+      { packet: tcp(you, site, 80), at: 6 },
+    ]);
+    const [byName, asked, byIp] = traces;
+    expect(byName.dns?.fromCache).toBe(false);
+    expect(byName.header?.request.sourcePort).toBe(FIRST);
+    expect(byName.translation?.outside.port).toBe(40001);
+    expect(asked.dns).toMatchObject({ fromCache: true, ttlLeft: 295 });
+    expect(asked.header?.request).toMatchObject({ destination: resolver.ip, sourcePort: SECOND, destinationPort: DNS_PORT });
+    expect(asked.translation).toMatchObject({ protocol: 'udp', inside: { port: SECOND }, outside: { port: 40002 } });
+    expect(byIp.header?.request.sourcePort).toBe(THIRD);
+    expect(byIp.translation?.outside.port).toBe(40003);
+  });
+
+  it('an answer that holds no address and a send that asks nobody leave the cache as it was', () => {
+    const traces = simulateSequence(names, [
+      { packet: dig(you, `noexiste.${zone}`), at: 0 },
+      { packet: ping(you, OFFICE.lucia), at: 1 },
+      { packet: dig(you, `noexiste.${zone}`), at: 2 },
+      { packet: dig(you, WWW), at: 3 },
+    ]);
+    expect(traces.map((trace) => trace.dns?.fromCache)).toEqual([false, undefined, false, false]);
+  });
+
+  it('gives the same traces for the same sends, and a send that came before the sequence leaves nothing in it', () => {
+    const list: Send[] = [{ packet: dig(you, WWW), at: 0 }, { packet: ping(you, BLOG), at: 30 }, { packet: dig(you, BLOG), at: 31 }];
+    const first = simulateSequence(names, list);
+    simulateSequence(names, [{ packet: dig(you, WWW), at: 0 }]);
+    expect(simulateSequence(names, list)).toEqual(first);
+    expect(first.map((trace) => trace.dns?.fromCache)).toEqual([false, false, true]);
+    expect(simulate(names, dig(you, WWW)).dns?.fromCache).toBe(false);
   });
 });

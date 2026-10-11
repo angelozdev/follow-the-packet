@@ -1,3 +1,5 @@
+import { EMPTY_CACHE, type DnsCache } from '@/engine/dns/cache';
+import { answerFrom } from '@/engine/dns/resolve';
 import { openingOf, sourcePortOf, type SimContext, type Stage } from './context';
 import { addressStage } from './stages/address';
 import { createDnsStage } from './stages/dns';
@@ -83,9 +85,10 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
   };
 }
 
-/** What a send inherits from the sends before it and hands on to the next: the translation table of the NAT. */
+/** What a send inherits from the sends before it and hands on to the next: the translation table of the NAT and what the resolvers remembered. */
 export interface Carried {
   nat: NatTable;
+  dnsCache: DnsCache;
 }
 
 /** The trace of a packet and what it leaves for the next send. */
@@ -94,24 +97,35 @@ export interface Run {
   carried: Carried;
 }
 
-const NOTHING_CARRIED: Carried = { nat: [] };
+const NOTHING_CARRIED: Carried = { nat: [], dnsCache: EMPTY_CACHE };
+
+/** The second of the game clock that a packet sent on its own leaves at. */
+const GAME_START = 0;
 
 /** Sends the question of a name lookup through the network as a packet of its own. It starts from what no send carried: the question is not one of the player's sends, so it neither uses up a source port nor leaves a row in the translation table of the sequence. */
 function sendQuery(net: Network, packet: PacketSpec): Trace {
-  return run(net, packet, NOTHING_CARRIED).trace;
+  return run(net, packet, NOTHING_CARRIED, GAME_START).trace;
 }
 
-/** Runs the packet through every stage, starting from what the sends before it carried, and returns its trace with what it carries on. The same network, packet and carried state always give the same result, and the state it receives is never changed. */
-export function run(net: Network, packet: PacketSpec, carried: Carried): Run {
-  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nat: carried.nat, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet) };
+/** Builds the run of a packet that has ended. A `dig` is the datagram to the resolver, so its answer is taken once the trip is over: if it came back replied from a resolver, the resolver answers the name from its cache or by asking, as for any lookup, and the trace gains `dns`; if it did not, the trace says `NO-RESOLVER` and is the trace of the datagram that failed, with the warning of whoever rejected it. */
+function conclude(ctx: SimContext, outcome: Outcome): Run {
+  const trace = finish(ctx, outcome);
+  if (ctx.asking === undefined) return { trace, carried: { nat: ctx.nat, dnsCache: ctx.dnsCache } };
+  const resolution = answerFrom(ctx.net, trace, ctx.asking, 'dig', { now: ctx.now, cache: ctx.dnsCache });
+  return { trace: { ...trace, dns: resolution.dns }, carried: { nat: ctx.nat, dnsCache: resolution.answered ? resolution.cache : ctx.dnsCache } };
+}
+
+/** Runs the packet through every stage, starting from what the sends before it carried and measured against second `at` of the game clock, and returns its trace with what it carries on. The same network, packet, carried state and second always give the same result, and the state it receives is never changed. */
+export function run(net: Network, packet: PacketSpec, carried: Carried, at: number): Run {
+  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nat: carried.nat, dnsCache: carried.dnsCache, now: at, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet) };
   for (const stage of PIPELINE) {
     const result = stage(ctx);
-    if (result.done) return { trace: finish(ctx, result.outcome), carried: { nat: ctx.nat } };
+    if (result.done) return conclude(ctx, result.outcome);
   }
   throw new Error('the simulation ended without an outcome');
 }
 
-/** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. It knows nothing of the sends before it, so a packet that leaves the office is translated against an empty table. */
+/** Runs the packet through every stage and returns its trace; the same network and packet always give the same trace. It knows nothing of the sends before it, so a packet that leaves the office is translated against an empty table and a resolver answers from no cache but its own initial one, measured at second 0. */
 export function simulate(net: Network, packet: PacketSpec): Trace {
-  return run(net, packet, NOTHING_CARRIED).trace;
+  return run(net, packet, NOTHING_CARRIED, GAME_START).trace;
 }

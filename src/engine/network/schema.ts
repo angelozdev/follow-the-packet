@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ipInCidr, isIpv4, isPrivateCidr, networkOf, parseCidr } from '@/engine/network/addressing/cidr';
 import { lanOf, lansOf } from '@/engine/network/addressing/topology';
 import { holdsAliasAndMore, isWithin, normalizeName, sameName } from '@/engine/dns/records';
+import { DNS_PORT } from '@/engine/dns/resolve';
 
 export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;
@@ -101,6 +102,9 @@ export const dnsSchema = z.object({
   failing: z.boolean().optional(),
 });
 
+/** One line of the hosts file of a device: a name and the IP it stands for. */
+export const hostLineSchema = z.object({ name: nonEmpty, ip: ipSchema });
+
 export const deviceSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -115,6 +119,7 @@ export const deviceSchema = z.object({
   gateway: ipSchema.optional(),
   connected: z.boolean().optional(),
   dnsServer: ipSchema.optional(),
+  hosts: z.array(hostLineSchema).optional(),
 });
 
 export const subnetSchema = z.object({ id: z.string().min(1), az: z.string().min(1), cidr });
@@ -296,6 +301,7 @@ function checkDns(net: NetworkShape, fail: Fail): void {
   if (net.kind === 'vpc') {
     for (const server of servers) if (server.dns) fail(`${server.id}: a VPC has no DNS servers, its names are those of EC2`);
     for (const device of net.devices) if (device.dnsServer !== undefined) fail(`${device.id}: a device in a VPC has no DNS server setting`);
+    for (const device of net.devices) if (device.hosts !== undefined) fail(`${device.id}: a device in a VPC has no hosts file, its names are those of EC2`);
   }
   for (const server of servers) {
     for (const { zone, serverId } of server.dns?.upstreams ?? []) {
@@ -339,6 +345,9 @@ export const endpointSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('actor'), id: z.string().min(1) }),
 ]);
 
+/** How a packet that is for a name looks the name up: `system` is what `ping` and `nc` do (the hosts file first, then the resolver) and `dig` is the question itself, a datagram to the resolver that reads no hosts file. A packet that does not say is `system`. */
+export const lookupSchema = z.enum(['system', 'dig']);
+
 export const packetSchema = z
   .object({
     from: endpointSchema,
@@ -348,7 +357,11 @@ export const packetSchema = z
     sourcePort: realPort.optional(),
     icmpType: icmpTypeSchema.optional(),
     ttl: z.number().int().min(1).max(TTL_MAX).optional(),
+    lookup: lookupSchema.optional(),
   })
   .refine((p) => (p.protocol === 'icmp' ? p.icmpType !== undefined : p.port !== undefined), {
     message: 'ICMP needs icmpType; TCP and UDP need port',
+  })
+  .refine((p) => p.lookup !== 'dig' || (p.protocol === 'udp' && p.port === DNS_PORT), {
+    message: 'a dig is a UDP datagram to port 53',
   });

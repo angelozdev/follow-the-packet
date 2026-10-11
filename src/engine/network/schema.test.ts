@@ -247,4 +247,14 @@ describe('packetSchema', () => {
     for (const ttl of [1, 64, 255]) expect(packetSchema.safeParse({ ...ping, ttl }).success, String(ttl)).toBe(true);
     for (const ttl of [0, 256, 1.5, -1]) expect(packetSchema.safeParse({ ...ping, ttl }).success, String(ttl)).toBe(false);
   });
+
+  it('takes a lookup of the system or of dig, and a dig is a UDP datagram to port 53', () => {
+    const datagram = { from: { kind: 'device', id: 'your-laptop' }, to: 'www.lucia.example', protocol: 'udp', port: 53 } as const;
+    for (const lookup of ['system', 'dig']) expect(packetSchema.safeParse({ ...datagram, lookup }).success, lookup).toBe(true);
+    expect(packetSchema.safeParse({ ...datagram, lookup: 'hosts' }).success).toBe(false);
+    expect(packetSchema.safeParse({ ...datagram, port: 5353, lookup: 'dig' }).success).toBe(false);
+    expect(packetSchema.safeParse({ ...datagram, protocol: 'tcp', lookup: 'dig' }).success).toBe(false);
+    expect(packetSchema.safeParse({ ...datagram, protocol: 'tcp', port: 80, lookup: 'system' }).success).toBe(true);
+    expect(packetSchema.safeParse({ ...datagram, port: 5353 }).success).toBe(true);
+  });
 });

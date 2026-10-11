@@ -37,6 +37,7 @@ const UNKNOWN_IDS: [string, NetworkAction][] = [
   ['setServices on an actor that is not a server', { type: 'setServices', ownerId: 'you', services: [APP] }],
   ['setListenAddress on a device or server', { type: 'setListenAddress', ownerId: GHOST, protocol: 'tcp', port: 22, listen: 'loopback' }],
   ['setListenAddress on a port the owner does not serve', { type: 'setListenAddress', ownerId: 'servidor1', protocol: 'tcp', port: 80, listen: 'loopback' }],
+  ['setHosts on a device', { type: 'setHosts', deviceId: GHOST, hosts: [{ name: 'tienda.lucia.example', ip: floor1.printer }] }],
   ['setListenAddress on a protocol the owner does not serve', { type: 'setListenAddress', ownerId: 'servidor1', protocol: 'udp', port: 22, listen: 'loopback' }],
 ];
 
@@ -352,6 +353,25 @@ describe('applyAction for the DNS', () => {
     expect(deviceOf(cleared, 'your-laptop')).not.toHaveProperty('dnsServer');
     expect(validate(set)).toEqual([]);
     expect(networkActionSchema.safeParse({ type: 'setDnsServer', deviceId: 'your-laptop', server: 'not-an-ip' }).success).toBe(false);
+  });
+
+  it('setHosts replaces the hosts file of a device and takes the field away when it gives no line', () => {
+    const net = officeTwoFloorsNet();
+    const shop = { name: `tienda.${NAME_SERVERS.zone}`, ip: NAME_SERVERS.site };
+    const blog = { name: `blog.${NAME_SERVERS.zone}`, ip: floor1.printer };
+    const set = applyAction(net, { type: 'setHosts', deviceId: 'your-laptop', hosts: [shop] });
+    expect(deviceOf(set, 'your-laptop')?.hosts).toEqual([shop]);
+    expect(deviceOf(set, 'printer')).toEqual(deviceOf(net, 'printer'));
+    expect(deviceOf(applyAction(set, { type: 'setHosts', deviceId: 'your-laptop', hosts: [blog, shop] }), 'your-laptop')?.hosts).toEqual([blog, shop]);
+    const cleared = applyAction(set, { type: 'setHosts', deviceId: 'your-laptop', hosts: [] });
+    expect(cleared).toEqual(net);
+    expect(deviceOf(cleared, 'your-laptop')).not.toHaveProperty('hosts');
+    expect(validate(set)).toEqual([]);
+    const parses = (hosts: unknown[]) => networkActionSchema.safeParse({ type: 'setHosts', deviceId: 'your-laptop', hosts }).success;
+    expect(parses([shop])).toBe(true);
+    expect(parses([{ ...shop, ip: 'not-an-ip' }])).toBe(false);
+    expect(parses([{ ...shop, name: '' }])).toBe(false);
+    expect(parses([{ name: shop.name }])).toBe(false);
   });
 
   it('setDns replaces the DNS of a server of the internet and takes it away when it gives none', () => {

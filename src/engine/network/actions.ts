@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, ipSchema, lanSchema, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, hostLineSchema, ipSchema, lanSchema, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
 import { recordProblem, sameName, zoneHeldBy } from '@/engine/dns/records';
-import type { Actor, AnswerRecord, Device, Direction, DnsRecord, Firewall, Forward, Lan, Network, Route, Router, Rule, ServerActor, ServerDns, Service } from './types';
+import type { Actor, AnswerRecord, Device, Direction, DnsRecord, Firewall, Forward, HostLine, Lan, Network, Route, Router, Rule, ServerActor, ServerDns, Service } from './types';
 
 const nonEmpty = z.string().min(1);
 
@@ -25,6 +25,7 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setForwards'), routerId: nonEmpty, forwards: z.array(forwardSchema) }),
   z.object({ type: z.literal('setDns'), ownerId: nonEmpty, dns: dnsSchema.optional() }),
   z.object({ type: z.literal('setDnsServer'), deviceId: nonEmpty, server: ipSchema.optional() }),
+  z.object({ type: z.literal('setHosts'), deviceId: nonEmpty, hosts: z.array(hostLineSchema) }),
   z.object({ type: z.literal('addRecord'), serverId: nonEmpty, record: editableRecordSchema }),
   z.object({ type: z.literal('removeRecord'), serverId: nonEmpty, record: recordKeySchema }),
   z.object({
@@ -88,6 +89,11 @@ function without<Value extends object>(value: Value, field: string): Value {
 
 function withSetting(device: Device, setting: 'gateway' | 'dnsServer', value: string | undefined): Device {
   return value !== undefined ? { ...device, [setting]: value } : without(device, setting);
+}
+
+/** Replaces the hosts file of a device; an empty list takes the field away, so a device that had none is the same one as before. */
+function withHosts(device: Device, hosts: HostLine[]): Device {
+  return hosts.length > 0 ? { ...device, hosts } : without(device, 'hosts');
 }
 
 /** Replaces the DNS setup of a server of the internet; with none, the server stops being a DNS server and the field goes away. */
@@ -164,6 +170,8 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return changeDevice(net, action.deviceId, (d) => withSetting(d, 'gateway', action.gateway));
     case 'setDnsServer':
       return changeDevice(net, action.deviceId, (d) => withSetting(d, 'dnsServer', action.server));
+    case 'setHosts':
+      return changeDevice(net, action.deviceId, (d) => withHosts(d, action.hosts));
     case 'setDns':
       return withDns(net, action.ownerId, action.dns);
     case 'addRecord':

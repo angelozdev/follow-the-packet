@@ -1,5 +1,5 @@
 import { TERMS, type TermId } from '@/copy';
-import { ROUTE_DEFAULT, zoneOf, type Device, type Endpoint, type Network, type PacketSpec, type Router, type Rule, type ServerActor, type ServerDns, type Service } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, zoneOf, type Device, type DnsCacheEntry, type Endpoint, type Network, type PacketSpec, type Router, type Rule, type ServerActor, type ServerDns, type Service } from '@/engine';
 
 /** Every registered term, for the tests that do not care what the player knows yet. */
 export const EVERY_TERM: ReadonlySet<TermId> = new Set(Object.keys(TERMS) as TermId[]);
@@ -23,6 +23,8 @@ export const device = (id: string): Endpoint => ({ kind: 'device', id });
 export const actor = (id: string): Endpoint => ({ kind: 'actor', id });
 export const ping = (from: Endpoint, to: string): PacketSpec => ({ from, to, protocol: 'icmp', icmpType: 8 });
 export const tcp = (from: Endpoint, to: string, port: number): PacketSpec => ({ from, to, protocol: 'tcp', port });
+/** The `dig` of a name: a UDP datagram to port 53 that reads no hosts file, with the name as its destination. */
+export const dig = (from: Endpoint, name: string): PacketSpec => ({ from, to: name, protocol: 'udp', port: 53, lookup: 'dig' });
 export const tcpService = (port: number, listen: Service['listen'] = 'all'): Service => ({ protocol: 'tcp', port, listen });
 
 /** Returns the lab 03 network: two EC2 instances in different availability zones, SSH only from your Mac. */
@@ -175,6 +177,12 @@ export function officeWithNames(): Network {
     ],
     routers: (base.routers ?? []).map(wired),
   };
+}
+
+/** Returns the network with an initial cache in the resolver of `officeWithNames`: data of the world, measured against the clock of the game, whose seconds are the `expiresAt` of its entries. */
+export function withResolverCache(net: Network, cache: DnsCacheEntry[]): Network {
+  const server = net.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === NAME_SERVERS.resolver.id);
+  return applyAction(net, { type: 'setDns', ownerId: NAME_SERVERS.resolver.id, dns: { ...server!.dns!, cache } });
 }
 
 export function withInbound(net: Network, firewallId: string, ...rules: Rule[]): Network {

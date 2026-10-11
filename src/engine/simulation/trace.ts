@@ -32,10 +32,13 @@ export type Reason =
   | { code: 'dns-unresolved'; name: string; fromInside: boolean }
   | { code: 'dns-resolved'; name: string; ip: string; fromInside: boolean }
   | { code: 'dns-answered'; deviceId: string; resolverId: string; name: string; ip: string; canonical?: string }
+  | { code: 'dns-cached'; deviceId: string; resolverId: string; name: string; ip: string; ttlLeft: number; canonical?: string }
+  | { code: 'dns-hosts-file'; deviceId: string; name: string; ip: string }
   | { code: 'dns-nxdomain'; deviceId: string; resolverId: string; name: string }
   | { code: 'dns-servfail'; deviceId: string; resolverId: string; name: string; serverId?: string }
   | { code: 'dns-no-address'; deviceId: string; resolverId: string; name: string }
-  | { code: 'dns-no-resolver'; deviceId: string; name: string; ip: string }
+  | { code: 'dns-no-resolver'; deviceId: string; name: string; ip: string; hostId: string }
+  | { code: 'dns-resolver-silent'; deviceId: string; name: string; ip: string }
   | { code: 'route-private-from-outside'; ip: string }
   | { code: 'route-no-device'; ip: string }
   | { code: 'route-private' }
@@ -116,13 +119,14 @@ export const DNS_STATUSES = ['NOERROR', 'NXDOMAIN', 'SERVFAIL', 'NO-RESOLVER'] a
 /** What came back for a name: the status of the answer (`NOERROR` also covers a name that exists and has no address, whose `answers` hold no A record) or `NO-RESOLVER` when nobody answered the question. */
 export type DnsStatus = (typeof DNS_STATUSES)[number];
 
-/** What happened to a name a packet was sent to. `answers` are the records of the answer in order, the aliases first and the addresses after them; `soa` is the SOA of the zone that gave a negative answer (a name that does not exist, or one that exists and holds no address), with the TTL of that answer, the smaller of the SOA's own and its MINIMUM (RFC 2308 §3), and is absent from every other status. */
+/** What happened to a name a packet was sent to. `answers` are the records of the answer in order, the aliases first and the addresses after them, each with its TTL (the seconds it has left, when the answer came from the cache); `fromCache` says the resolver answered from its cache and then `ttlLeft` is the seconds the answer has left, those of the record that expires first, and it is absent from every other trace; `usedHostsFile` says the hosts file of the device answered and nothing was asked, so `answers` is empty and the address is the `resolvedIp` of the trace; `viaDig` says the lookup was a `dig`. `soa` is the SOA of the zone that gave a negative answer (a name that does not exist, or one that exists and holds no address), with the TTL of that answer, the smaller of the SOA's own and its MINIMUM (RFC 2308 §3), and is absent from every other status. */
 export interface DnsTrace {
   name: string;
   status: DnsStatus;
   answers: AnswerRecord[];
   soa?: SoaRecord;
   fromCache: boolean;
+  ttlLeft?: number;
   usedHostsFile: boolean;
   viaDig: boolean;
 }

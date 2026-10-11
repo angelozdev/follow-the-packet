@@ -9,8 +9,10 @@ import type {
   endpointSchema,
   firewallSchema,
   forwardSchema,
+  hostLineSchema,
   icmpTypeSchema,
   lanSchema,
+  lookupSchema,
   networkSchema,
   packetSchema,
   routeSchema,
@@ -31,6 +33,8 @@ export type Rule = z.infer<typeof ruleSchema>;
 export type Firewall = z.infer<typeof firewallSchema>;
 export type FirewallKind = Firewall['kind'];
 export type Service = z.infer<typeof serviceSchema>;
+export type HostLine = z.infer<typeof hostLineSchema>;
+export type LookupMode = z.infer<typeof lookupSchema>;
 export type Device = z.infer<typeof deviceSchema>;
 export type DnsRecord = z.infer<typeof dnsRecordSchema>;
 export type SoaRecord = Extract<DnsRecord, { type: 'SOA' }>;

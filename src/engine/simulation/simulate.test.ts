@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from '@/engine/simulation/paths/checkpoints';
-import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
+import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { applyAction, type NetworkAction } from '@/engine/network/actions';
@@ -926,5 +926,80 @@ describe('names in a VPC and in an office', () => {
     expect(trace.outcome).toBe('unresolved');
     expect(codes(trace)).toEqual(['dns-unresolved']);
     expect(trace).not.toHaveProperty('dns');
+  });
+});
+
+describe('a dig and a resolver that cannot answer', () => {
+  const { zone, downZone, resolver } = NAME_SERVERS;
+  const WWW = `www.${zone}`;
+  const you = device('your-laptop');
+  const names = officeWithNames();
+  const withoutServices = applyAction(names, { type: 'setServices', ownerId: resolver.id, services: [] });
+  const toPrinter = applyAction(names, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.printer });
+
+  it('a resolver with no service on port 53 answers Port Unreachable', () => {
+    const trace = simulate(withoutServices, dig(you, WWW));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual({ kind: 'port-unreachable', fromId: resolver.id, fromIp: resolver.ip });
+    expect(trace.steps.at(-1)).toEqual({ stage: 'host', at: resolver.id, verdict: 'reject', reason: { code: 'host-udp-closed', deviceId: resolver.id, port: 53 } });
+    expect(trace.dns).toEqual({ name: WWW, status: 'NO-RESOLVER', answers: [], fromCache: false, usedHostsFile: false, viaDig: true });
+    expect(trace.exchange).toEqual([{ from: 'client', kind: 'query' }]);
+    expect(trace.rttMs).toBeGreaterThan(0);
+    const pinged = simulate(withoutServices, ping(you, WWW));
+    expect(pinged.outcome).toBe('unresolved');
+    expect(pinged.steps).toEqual([{ stage: 'dns', at: 'your-laptop', verdict: 'drop', reason: { code: 'dns-no-resolver', deviceId: 'your-laptop', name: WWW, ip: resolver.ip, hostId: resolver.id } }]);
+  });
+
+  it('a dig to a device that is not a resolver ends in a warning from that device', () => {
+    const trace = simulate(toPrinter, dig(you, WWW));
+    expect(trace.outcome).toBe('unreachable');
+    expect(trace.notice).toEqual({ kind: 'port-unreachable', fromId: 'printer', fromIp: OFFICE_FLOORS.floor1.printer });
+    expect(trace.destinationId).toBe('printer');
+    expect(trace.tcpdump.map((line) => `${line.deviceId} ${line.direction} ${line.summary}`)).toEqual(['printer In UDP 53', 'printer Out ICMP udp port 53 unreachable']);
+    expect(trace.dns).toMatchObject({ status: 'NO-RESOLVER', answers: [], viaDig: true });
+    expect(trace.steps.at(-1)?.reason).toEqual({ code: 'host-udp-closed', deviceId: 'printer', port: 53 });
+  });
+
+  it('a dig is the datagram to the resolver: it goes there, takes the answer from it and writes no step of its own', () => {
+    const trace = simulate(names, dig(you, WWW));
+    expect(trace.outcome).toBe('replied');
+    expect(trace.resolvedIp).toBe(resolver.ip);
+    expect(trace.destinationId).toBe(resolver.id);
+    expect(trace.header?.request).toEqual({ source: OFFICE.you, destination: resolver.ip, ttl: 64, sourcePort: 51514, destinationPort: 53 });
+    expect(trace.header?.reply).toEqual({ source: resolver.ip, destination: OFFICE.you, sourcePort: 53, destinationPort: 51514 });
+    expect(trace.exchange).toEqual([{ from: 'client', kind: 'query' }, { from: 'server', kind: 'response' }]);
+    expect(trace.hops?.map((hop) => hop.routerId)).toEqual([OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.provider.id, OFFICE_FLOORS.backbone.id]);
+    expect(trace.steps.filter((step) => step.stage === 'dns' || step.stage === 'address')).toEqual([]);
+    expect(trace.dns).toMatchObject({ name: WWW, status: 'NOERROR', answers: [{ type: 'A', value: NAME_SERVERS.site, ttl: 300 }], fromCache: false, viaDig: true });
+  });
+
+  it('NXDOMAIN and SERVFAIL are answers: the datagram comes back replied and the status is in the answer', () => {
+    for (const [name, status] of [[`noexiste.${zone}`, 'NXDOMAIN'], [`www.${downZone}`, 'SERVFAIL']]) {
+      const trace = simulate(names, dig(you, name));
+      expect(trace.outcome, name).toBe('replied');
+      expect(trace.dns?.status, name).toBe(status);
+    }
+  });
+
+  it('a dig from a device with no resolver sends nothing, one that has no cable never leaves it, and one to an IP has no name to answer', () => {
+    const none = simulate(applyAction(names, { type: 'setDnsServer', deviceId: 'your-laptop' }), dig(you, WWW));
+    expect(none.outcome).toBe('unresolved');
+    expect(codes(none)).toEqual(['dns-unresolved']);
+    expect(none.dns).toEqual({ name: WWW, status: 'NO-RESOLVER', answers: [], fromCache: false, usedHostsFile: false, viaDig: true });
+    const unplugged = simulate(applyAction(names, { type: 'setDnsServer', deviceId: 'guest-laptop', server: resolver.ip }), dig(device('guest-laptop'), WWW));
+    expect(unplugged.outcome).toBe('no-route');
+    expect(unplugged.dns?.status).toBe('NO-RESOLVER');
+    expect(unplugged).not.toHaveProperty('header');
+    const toIp = simulate(names, dig(you, resolver.ip));
+    expect(toIp.outcome).toBe('replied');
+    expect(toIp).not.toHaveProperty('dns');
+  });
+
+  it('a lookup of the system and a dig give the same answer to the same name', () => {
+    for (const name of [WWW, `blog.${zone}`, `noexiste.${zone}`, `www.${downZone}`]) {
+      const asked = simulate(names, dig(you, name)).dns!;
+      const looked = simulate(names, ping(you, name)).dns!;
+      expect({ ...asked, viaDig: false }, name).toEqual(looked);
+    }
   });
 });

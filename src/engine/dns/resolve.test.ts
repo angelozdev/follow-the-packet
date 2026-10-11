@@ -3,7 +3,7 @@ import { applyAction } from '@/engine/network/actions';
 import type { AnswerRecord, Device, Network, ServerActor, ServerDns, SoaRecord, Zone } from '@/engine/network/types';
 import { simulate } from '@/engine/simulation/simulate';
 import { simulateSequence } from '@/engine/simulation/sequence';
-import { NAME_SERVERS, OFFICE_FLOORS, allOut, device, officeWithNames, ping, tcpService } from '@/testing';
+import { NAME_SERVERS, OFFICE_FLOORS, allOut, device, dig, officeWithNames, ping, tcpService } from '@/testing';
 import { DNS_PORT, MAX_ALIAS_STEPS, resolve, type LookupMode } from './resolve';
 import { RECORD_TTL, nsOf, soaOf, zoneOf } from './records';
 
@@ -172,9 +172,13 @@ describe('the question travels as a UDP datagram to port 53', () => {
     expect(found.answered).toBe(false);
     expect(found.dns).toMatchObject({ status: 'NO-RESOLVER', answers: [] });
     expect(found.query?.outcome).toBe('timeout');
+    expect(found).not.toHaveProperty('notAResolver');
     const trace = simulate(closed, ping(you, WWW));
     expect(trace.outcome).toBe('unresolved');
-    expect(trace.steps).toEqual([{ stage: 'dns', at: 'your-laptop', verdict: 'drop', reason: { code: 'dns-no-resolver', deviceId: 'your-laptop', name: WWW, ip: resolver.ip } }]);
+    expect(trace.steps).toEqual([{ stage: 'dns', at: 'your-laptop', verdict: 'drop', reason: { code: 'dns-resolver-silent', deviceId: 'your-laptop', name: WWW, ip: resolver.ip } }]);
+    const dug = simulate(closed, dig(you, WWW));
+    expect(dug.outcome).toBe('timeout');
+    expect(dug.dns).toMatchObject({ status: 'NO-RESOLVER', viaDig: true });
     const open = applyAction(closed, { type: 'addRule', firewallId: 'fw-you', rule: allOut('everything'), direction: 'outbound' });
     expect(ask(WWW, open).dns.status).toBe('NOERROR');
   });
@@ -184,9 +188,12 @@ describe('the question travels as a UDP datagram to port 53', () => {
     const found = ask(WWW, toPrinter);
     expect(found.dns.status).toBe('NO-RESOLVER');
     expect(found.query).toMatchObject({ outcome: 'unreachable', notice: { kind: 'port-unreachable', fromId: 'printer' } });
+    expect(found).toMatchObject({ answered: false, notAResolver: 'printer' });
     const noSuchHost = applyAction(net, { type: 'setDnsServer', deviceId: 'your-laptop', server: '198.51.100.77' });
     expect(ask(WWW, noSuchHost).query?.outcome).toBe('unreachable');
     expect(ask(WWW, noSuchHost).dns.status).toBe('NO-RESOLVER');
+    expect(ask(WWW, noSuchHost)).not.toHaveProperty('notAResolver');
+    expect(codes(noSuchHost, WWW)).toEqual(['dns-resolver-silent']);
   });
 
   it('a server that listens on port 53 but is no resolver does not answer a name', () => {
@@ -195,13 +202,15 @@ describe('the question travels as a UDP datagram to port 53', () => {
     const found = ask(WWW, toServer);
     expect(found.query?.outcome).toBe('replied');
     expect(found.dns.status).toBe('NO-RESOLVER');
+    expect(found).toMatchObject({ answered: false, notAResolver: OFFICE_FLOORS.server.id });
     const authoritativeAsResolver = applyAction(net, { type: 'setDnsServer', deviceId: 'your-laptop', server: NAME_SERVERS.authoritative.ip });
-    expect(ask(WWW, authoritativeAsResolver).dns.status).toBe('NO-RESOLVER');
+    expect(ask(WWW, authoritativeAsResolver)).toMatchObject({ answered: false, notAResolver: NAME_SERVERS.authoritative.id });
   });
 
   it('a resolver whose listening address is the loopback one does not take the question', () => {
     const hidden = applyAction(net, { type: 'setListenAddress', ownerId: resolver.id, protocol: 'udp', port: DNS_PORT, listen: 'loopback' });
     expect(ask(WWW, hidden).dns.status).toBe('NO-RESOLVER');
+    expect(ask(WWW, hidden)).toMatchObject({ answered: false, notAResolver: resolver.id });
   });
 });
 

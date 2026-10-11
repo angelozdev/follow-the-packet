@@ -96,6 +96,8 @@ describe('the source port and the exchange of a trace', () => {
       dest: net.devices[1],
       effectiveSource: sender.privateIp,
       nat: [],
+      dnsCache: {},
+      now: 0,
       hops: [],
       legsMs: [],
       steps: [],
