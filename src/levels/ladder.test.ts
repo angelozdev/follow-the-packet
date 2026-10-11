@@ -57,6 +57,24 @@ const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
 const LATER_TOPICS = /\b(puertos?|TCP|UDP|CIDR|m[aá]scaras?|NAT|DNS|ARP|MAC|switch(?:es)?|IPv6|HTTPS?|clientes?|stateful|stateless)\b/;
 const CHAPTER_1_BUILT = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13', '01-14'];
 const BEFORE_THE_RULES = CHAPTER_1_BUILT.slice(0, 11);
+const TERMS_OF_CHAPTER_2: TermId[][] = [
+  ['service', 'port', 'listen', 'ip-port', 'destination-port', 'nc'],
+  ['client-server', 'tcp', 'connection', 'handshake', 'source-port', 'ephemeral-port'],
+  ['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address'],
+  ['bit', 'prefix', 'cidr', 'subnet-mask'],
+  ['port-range', 'ssh', 'well-known-ports'],
+  ['route', 'routing-table', 'connected-route', 'default-route'],
+  ['next-hop', 'net-unreachable', 'most-specific-route'],
+  ['nat', 'napt', 'translation-table'],
+  ['port-forwarding'],
+  ['domain-name', 'dns', 'dns-query', 'resolver', 'udp', 'dig', 'dhcp'],
+  ['authoritative-server', 'dns-record', 'a-record', 'cname-record'],
+  ['dns-cache', 'dns-ttl'],
+  ['nxdomain', 'servfail', 'port-unreachable', 'hosts-file'],
+];
+const SIZES_OF_CHAPTER_2 = [6, 6, 5, 4, 3, 4, 3, 3, 1, 7, 4, 2, 4];
+const SUBCHAPTER_OF = { cidr: 4, nat: 8, dns: 10 };
+const TERMS_OF_CHAPTER_1 = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces);
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
@@ -215,6 +233,40 @@ describe('term ladder', () => {
       }
       expect(termsIn(TASK_CARD_TEXT.tabs[kind].outbound)).toEqual([RULES_TERM.outbound[kind]]);
     }
+  });
+});
+
+describe('the term ladder of chapter 2', () => {
+  const ids = TERMS_OF_CHAPTER_2.flat();
+
+  const subchapterName = (index: number) => String(index + 1).padStart(2, '0');
+
+  /** Returns, for each definition of the table, the terms it names that are not known yet at its subchapter: the terms of chapter 1 and those of the table up to it, against the whole registry. */
+  const laterTermsNamed = (definitionOf: (id: TermId) => string): string[] =>
+    TERMS_OF_CHAPTER_2.flatMap((subchapter, index) => {
+      const known = new Set<TermId>([...TERMS_OF_CHAPTER_1, ...TERMS_OF_CHAPTER_2.slice(0, index + 1).flat()]);
+      const unknown = ALL_TERMS.filter((term) => !known.has(term));
+      return subchapter.flatMap((id) => namedTerms(definitionOf(id), unknown).map((other) => `${id} (${subchapterName(index)}) → ${other}`));
+    });
+
+  it('the table has the 52 terms of the approved design, in 13 subchapters, and puts cidr, nat and dns where they are presented', () => {
+    expect(TERMS_OF_CHAPTER_1).toHaveLength(38);
+    expect(new Set(TERMS_OF_CHAPTER_1).size).toBe(TERMS_OF_CHAPTER_1.length);
+    expect(TERMS_OF_CHAPTER_2.map((subchapter) => subchapter.length)).toEqual(SIZES_OF_CHAPTER_2);
+    expect(ids).toHaveLength(52);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.filter((id) => !ALL_TERMS.includes(id))).toEqual([]);
+    expect(ids.filter((id) => TERMS_OF_CHAPTER_1.includes(id))).toEqual([]);
+    for (const [id, subchapter] of Object.entries(SUBCHAPTER_OF)) expect(TERMS_OF_CHAPTER_2[subchapter - 1], id).toContain(id);
+  });
+
+  it('every definition of chapter 2 names only terms that are known at its incident, in the approved order', () => {
+    expect(laterTermsNamed((id) => TERMS[id].definition)).toEqual([]);
+  });
+
+  it('catches a definition of chapter 2 that names a term of a later subchapter', () => {
+    const early = (id: TermId) => (id === 'nc' ? 'Prueba un servicio por TCP.' : TERMS[id].definition);
+    expect(laterTermsNamed(early)).toEqual(['nc (01) → tcp']);
   });
 });
 

@@ -19,6 +19,11 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['ttl', 'TTL'],
   ['time-exceeded', 'Time Exceeded'],
   ['host-unreachable', 'Destination Host Unreachable'],
+  ['net-unreachable', 'Destination Net Unreachable'],
+  ['port-unreachable', 'Port Unreachable'],
+  ['connection-refused', 'Connection refused'],
+  ['nxdomain', 'NXDOMAIN'],
+  ['servfail', 'SERVFAIL'],
 ];
 const RETIRED_IDS = ['server', 'linux-ignore-ping', 'request', 'response'];
 const PING_TERMS: TermId[] = ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'];
@@ -44,6 +49,19 @@ const TERMS_OF_THE_FOURTEEN: TermId[] = [
   'default-deny',
   'inbound',
   'outbound',
+];
+const TERMS_BEFORE_CHAPTER_2 = 56;
+const IDS_OF_CHAPTER_2: TermId[] = [
+  'service', 'port', 'listen', 'ip-port', 'destination-port', 'nc', 'client-server', 'tcp', 'connection', 'handshake', 'source-port', 'ephemeral-port',
+  'closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address', 'bit', 'prefix', 'subnet-mask', 'port-range', 'ssh',
+  'well-known-ports', 'route', 'routing-table', 'connected-route', 'default-route', 'next-hop', 'net-unreachable', 'most-specific-route', 'napt',
+  'translation-table', 'port-forwarding', 'domain-name', 'dns-query', 'resolver', 'udp', 'dig', 'dhcp', 'authoritative-server', 'dns-record',
+  'a-record', 'cname-record', 'dns-cache', 'dns-ttl', 'nxdomain', 'servfail', 'port-unreachable', 'hosts-file',
+];
+const DEFINITIONS_BEFORE_CHAPTER_2: [TermId, string][] = [
+  ['cidr', 'Una notación para un rango de IPs, IP/número: /32 es una sola IP; /16, 65 536; 0.0.0.0/0, todas las IPv4.'],
+  ['dns', 'Domain Name System: el sistema que traduce un nombre a una IP.'],
+  ['nat', 'Network Address Translation: al salir por el Internet gateway, la IP privada del remitente se cambia por su IP pública.'],
 ];
 
 describe('term registry', () => {
@@ -119,6 +137,35 @@ describe('term registry', () => {
     const securityGroup: Term = TERMS['security-group'];
     expect(securityGroup.definition).toMatch(/^Un firewall virtual de una instancia EC2/);
     expect(securityGroup.short).toBe('SG');
+  });
+
+  it('registers the 49 new ids of chapter 2 and rewrites cidr, dns and nat', () => {
+    expect(IDS_OF_CHAPTER_2).toHaveLength(49);
+    expect(new Set(IDS_OF_CHAPTER_2).size).toBe(IDS_OF_CHAPTER_2.length);
+    expect(IDS_OF_CHAPTER_2.filter((id) => !isTermId(id))).toEqual([]);
+    expect(Object.keys(TERMS)).toHaveLength(TERMS_BEFORE_CHAPTER_2 + IDS_OF_CHAPTER_2.length);
+    for (const [id, before] of DEFINITIONS_BEFORE_CHAPTER_2) expect(TERMS[id].definition, id).not.toBe(before);
+    expect(TERMS.cidr.definition).toContain('IP/prefijo');
+    expect(TERMS.dns.definition).toContain('Usa el puerto 53');
+  });
+
+  it('the NAT is defined for the one who changes the private source IP, a router or the Internet gateway, so it names neither', () => {
+    expect(TERMS.nat.definition).toMatch(/^Network Address Translation: cambia la IP privada de origen por una pública al salir de la red/);
+    expect(TERMS.nat.definition).not.toMatch(/router|Internet gateway/i);
+  });
+
+  it('the glossary says a port goes from 1 to 65535', () => {
+    expect(TERMS.port.definition).toContain('de 1 a 65535');
+    expect(TERMS.port.definition).not.toMatch(/0 a 65535/);
+  });
+
+  it('no term of chapter 2 names an entity of the map or has a short form', () => {
+    const named = Object.values(ENTITY_TERMS).flatMap((variants) => Object.values(variants));
+    for (const id of IDS_OF_CHAPTER_2) {
+      expect(named, id).not.toContain(id);
+      expect(TERM_ENTITY[id], id).toBeUndefined();
+      expect(TERMS[id], id).not.toHaveProperty('short');
+    }
   });
 
   it('only the IP address and the Security Group have a short form', () => {
