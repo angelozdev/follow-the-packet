@@ -79,7 +79,28 @@ El estudiante aprobó los catorce subcapítulos, sus términos y el reparto en b
 | **El 53 se lista con DNS.** | La definición de `well-known-ports` lista 22, 80, 443, 3306 y 5432; `dns` dice «Usa el puerto 53» |
 | **Pruebas humanas: una al final de cada bloque.** | Siete pruebas (el bloque 5 se parte en dos); D-15 |
 
+### Decisiones abiertas ya contestadas (2026-10-11)
+
+El estudiante aprobó el 2026-10-11 la recomendación del plan en estas decisiones; las otras siguen abiertas.
+
+| Decisión | Elección | Nota |
+|----------|----------|------|
+| D-1 | A, no regenerar | Verificado el 2026-10-11: las 81 trazas de `src/levels/04-iaas/golden-traces.json` son ICMP. Si una tarea lo rompe, se detiene y se pregunta. |
+| D-2 | A, movimientos nuevos dentro de `send` (`placeEntry`, `removeEntry`, `wait` y `setSetting` generalizado) | Ninguna mecánica nueva. |
+| D-4 | A, la tarjeta «Salida» que generaliza la de traceroute | Su aspecto (V11) sigue pendiente. |
+| D-7 | A, reescribir las definiciones sin mover términos; `nat` con la definición amplia | — |
+| D-10 | A, los servidores DNS son piezas del mapa (variante `internet-server`) | Su prototipo (V14) sigue pendiente. |
+| D-11 | A, un reloj explícito con el movimiento `wait` | Dónde van las fichas «Esperar» (V16) sigue pendiente. |
+| D-12 | A, el caso 5 del 14 trae `fix` | Decidida antes del 2026-10-11. |
+| D-14 | A en las dos partes: el paquete sin fila no se entrega (timeout) y la fila fija la da el mundo del 09 | — |
+| D-16 | A, `traceroute -I` se queda | B queda como seguimiento en el backlog. |
+| D-17 | A, construir los catorce como están y separar solo si la prueba humana lo pide | Decidida antes del 2026-10-11. |
+
+Siguen abiertas: D-3 (V10), D-5, D-6, D-8, D-9 (V12), D-13 y D-15, y las visuales V11 y V13 a V17.
+
 ## Decisiones abiertas
+
+Contestadas el 2026-10-11: D-1, D-2, D-4, D-7, D-10, D-11, D-12, D-14, D-16 y D-17 (ver «Decisiones abiertas ya contestadas»). Las opciones siguen abajo como registro.
 
 Diecisiete decisiones esperan al estudiante. Cada una trae sus opciones, una recomendación que sigue la regla de rigor («entre una opción más simple y otra que modela la realidad, la segunda») y el porqué; una opción inexacta se marca como tal. Las que son visuales (D-3, D-4, D-9 y D-10) se las lleva la Tarea 0 con prototipos renderizados. Ninguna tarea de motor espera una decisión visual; las tareas que dependen de una decisión lo dicen en su encabezado.
 
