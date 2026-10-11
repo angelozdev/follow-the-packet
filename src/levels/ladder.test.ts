@@ -36,7 +36,7 @@ const CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN = [
   'traffic',
   'rule',
 ];
-const BRIDGE_AFTER_13: string[] = [];
+const EMPTY_BRIDGE: string[] = [];
 const PRIVATE_RANGE_OF_OTHER_OFFICE = '10.0.0.0/8';
 const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   ['network', 'device', 'ip-address', 'ipv4'],
@@ -55,7 +55,7 @@ const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   [],
 ];
 const LATER_TOPICS = /\b(puertos?|TCP|UDP|CIDR|m[aá]scaras?|NAT|DNS|ARP|MAC|switch(?:es)?|IPv6|HTTPS?|clientes?|stateful|stateless)\b/;
-const CHAPTER_1_BUILT = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13'];
+const CHAPTER_1_BUILT = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13', '01-14'];
 const BEFORE_THE_RULES = CHAPTER_1_BUILT.slice(0, 11);
 
 describe('term ladder', () => {
@@ -118,8 +118,8 @@ describe('term ladder', () => {
   it('04-01 bridges exactly the chapter 1 terms that no chapter 1 incident introduces yet', () => {
     const introduced = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces as string[]);
     const bridge = (INCIDENTS.find((incident) => incident.id === '04-01')?.introduces as string[]).filter((term) => !OWN_TERMS_OF_04_01.includes(term));
-    expect([...BRIDGE_AFTER_13].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
-    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_13].sort());
+    expect([...EMPTY_BRIDGE].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
+    expect([...bridge].sort()).toEqual([...EMPTY_BRIDGE].sort());
   });
 
   it('names no topic of the chapters that come later, in any text of chapter 1', () => {
@@ -170,6 +170,7 @@ describe('term ladder', () => {
       ...Object.fromEntries(BEFORE_THE_RULES.map((id) => [id, NOTHING])),
       '01-12': HOST_RULES,
       '01-13': HOST_RULES_IN_AND_OUT,
+      '01-14': HOST_RULES_IN_AND_OUT,
       '04-01': INBOUND_RULES,
       '04-02': INBOUND_RULES,
     });

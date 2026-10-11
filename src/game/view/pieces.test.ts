@@ -3,7 +3,7 @@ import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
-import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
+import { canConfigure, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { settingsCard } from './cards/settings-card';
 import { terminalCard } from './cards/terminal-card';
 import { PIECE_ID } from './piece-id';
@@ -67,6 +67,21 @@ describe('pieceViews', () => {
     expect(opening(atThird)).toEqual([PIECE_ID.device('andres-laptop')]);
     expect(terminalCard(atThird, PIECE_ID.device('andres-laptop'))?.fromId).toBe('origin');
     expect(terminalCard(atThird, PIECE_ID.device('your-laptop'))).toBeNull();
+  });
+
+  it('in a diagnose incident no firewall is configurable, so firewalls show the lock and open no card, while the origin of the case still opens its terminal', () => {
+    const diagnosing = diagnoseIncident();
+    const { cases } = diagnosing.diagnose;
+    const closeCase = (index: number): SessionAction[] => [{ type: 'nameCause', index: cases[index].cause.options.findIndex((option) => option.correct) }, { type: 'nextCase' }];
+    const atCase = (index: number): Session => Array.from({ length: index }, (_, offset) => closeCase(offset)).flat().reduce(sessionReducer, startSession([diagnosing], diagnosing.id));
+    for (const index of [5, 6]) {
+      const session = atCase(index);
+      const firewalls = pieceViews(session).filter((piece) => piece.kind === 'firewall');
+      expect(firewalls.length, `case ${index + 1}`).toBeGreaterThan(0);
+      expect(firewalls.map(({ locked, configurable }) => ({ locked, configurable })), `case ${index + 1}`).toEqual(firewalls.map(() => ({ locked: true, configurable: false })));
+      expect(session.world.firewalls.map((firewall) => canConfigure(session, firewall.id)), `case ${index + 1}`).toEqual(session.world.firewalls.map(() => false));
+      expect(pieceViews(session).filter((piece) => piece.configurable).map((piece) => piece.id)).toEqual([PIECE_ID.device('your-laptop')]);
+    }
   });
 
   it('in an identify incident the devices with a card open it and have no lock', () => {

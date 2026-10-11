@@ -1,5 +1,5 @@
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router } from '@/engine';
+import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router, type Rule } from '@/engine';
 import type { AddressChip, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, SendMove, SendTask, ToChip, WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
@@ -23,6 +23,7 @@ export const IP = {
   printer: '192.168.1.21',
   visitor: '192.168.1.30',
   nobody: '192.168.1.50',
+  typo: '192.168.1.22',
   note: '192.168.1.300',
   loopback: '127.0.0.1',
   andres: '192.168.2.15',
@@ -59,7 +60,7 @@ export const ROUTER = {
 
 export const SERVER = { id: 'internet-server', name: 'servidor-internet' } as const;
 
-export const FIREWALL = { marta: 'marta-firewall', you: 'your-firewall' } as const;
+export const FIREWALL = { marta: 'marta-firewall', you: 'your-firewall', lucia: 'lucia-firewall' } as const;
 
 export const CARD = {
   network: { tray: 'in-network', yes: 'yes', no: 'no' },
@@ -126,6 +127,7 @@ export const BASE_WORLD: Network = {
 
 export const ORIGIN = {
   you: { id: 'you', endpoint: { kind: 'device', id: DEVICE.you.id } },
+  andres: { id: 'andres', endpoint: { kind: 'device', id: DEVICE.andres.id } },
 } satisfies Record<string, OriginChip>;
 
 export const ADDRESS = {
@@ -138,6 +140,10 @@ export const ADDRESS = {
   localhost: { id: 'ip-localhost', address: LOCALHOST },
   server: { id: 'ip-server', address: IP.server },
   otherOffice: { id: 'ip-other-office', address: IP.otherOfficePrinter },
+  you: { id: 'ip-you', address: IP.you },
+  gateway: { id: 'ip-gateway', address: IP.router },
+  typo: { id: 'ip-typo', address: IP.typo },
+  secondFloorRouter: { id: 'ip-second-floor-router', address: IP.routerSecondFloor },
 } satisfies Record<string, AddressChip>;
 
 export const MESSAGE = {
@@ -153,18 +159,21 @@ function pingWithTtl(ttl: number): MessageChip {
 
 export const PING_WITH_TTL = { 1: pingWithTtl(1), 2: pingWithTtl(2), 3: pingWithTtl(3), 5: pingWithTtl(5), 64: pingWithTtl(64) } as const;
 
+/** Returns the rule that lets everything out, whatever the destination. */
+export function letEverythingOut(id: string): Rule {
+  return { id, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANY_IPV4 } };
+}
+
+/** Returns the action that gives a laptop a firewall that lets nothing in and everything out. */
+function firewallThatLetsNothingIn({ id, name }: { id: string; name: string }, firewallId: string): NetworkAction {
+  return { type: 'addFirewall', deviceId: id, firewall: { id: firewallId, name, kind: 'host-firewall', inbound: [], outbound: [letEverythingOut(`${firewallId}-out`)] } };
+}
+
 /** The firewall laptop-marta gets in 01-05: nothing may come in and everything may go out. The player does not know the term firewall until 01-11, so no piece, stamp or text shows it before. */
-export const HIDDEN_FIREWALL: NetworkAction = {
-  type: 'addFirewall',
-  deviceId: DEVICE.marta.id,
-  firewall: {
-    id: FIREWALL.marta,
-    name: DEVICE.marta.name,
-    kind: 'host-firewall',
-    inbound: [],
-    outbound: [{ id: `${FIREWALL.marta}-out`, what: { kind: 'all' }, peer: { kind: 'cidr', cidr: ANY_IPV4 } }],
-  },
-};
+export const HIDDEN_FIREWALL: NetworkAction = firewallThatLetsNothingIn(DEVICE.marta, FIREWALL.marta);
+
+/** The firewall laptop-lucia gets in case 6 of 01-14, made as the one laptop-marta has: nothing may come in and everything may go out. */
+export const LUCIA_FIREWALL: NetworkAction = firewallThatLetsNothingIn(DEVICE.lucia, FIREWALL.lucia);
 
 /** The ids of the pieces 01-06 and 01-07 draw: the three devices of floor 1 they use, the one on floor 2 and the router between them. Laptop-marta and laptop-visita stay in the world and are not drawn, and neither is anything outside the office. */
 export const OFFICE_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.printer.id, DEVICE.andres.id, ROUTER.office.id];
@@ -183,6 +192,9 @@ export const GUARD_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.ma
 
 /** The ids of the pieces 01-12 draws: the laptop that must get in, the visitor's laptop that must not, and laptop-marta, whose firewall is drawn with it. Your laptop, the printer and the routers stay in the world and are not used, so they are not drawn. */
 export const RULE_PIECES: string[] = [DEVICE.lucia.id, DEVICE.visitor.id, DEVICE.marta.id];
+
+/** The ids of the pieces 01-14 draws, the widest map of the chapter: what the seven cases use. The two floors keep the devices that send or answer (your laptop, laptop-lucia and the printer on floor 1, laptop-andres on floor 2), the office router and the two routers of the provider are the road to the server, which a ping crosses when it reaches the server, and the server closes it. The visitor's laptop and laptop-marta are in the world and no case uses them, so they are not drawn. */
+export const WATCH_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.printer.id, DEVICE.andres.id, ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id, SERVER.id];
 
 const OFFICE_FACES: Router['interfaces'] = [
   { ip: IP.router, faces: FLOOR.first.id },

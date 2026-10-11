@@ -5,7 +5,7 @@ import type { Flow, FromChip, WhatChip } from '@/levels/contract/incident';
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
 
-/** The terms of chapter 1 that no incident of chapter 1 introduces yet. 04-01 introduces them for now, so chapter 4 keeps its ladder while the fourteen incidents of chapter 1 are built: each block takes out of this list the terms it presents, and the last one leaves it empty. */
+/** The terms of chapter 1 that no incident of chapter 1 introduces, which 04-01 introduces for it. The fourteen incidents of chapter 1 introduce all of them, so the list is empty; `ladder.test.ts` keeps it so. */
 export const CHAPTER_1_BRIDGE: TermId[] = [];
 
 const REGION = 'eu-west-1';

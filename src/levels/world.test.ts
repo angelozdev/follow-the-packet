@@ -18,6 +18,7 @@ function inbound(world: Network, firewallId: string) {
 }
 
 const IDS = INCIDENTS.map((i) => [i.id]);
+const FILTER_IDS = INCIDENTS.filter((i) => i.mechanic === 'filter').map((i) => [i.id]);
 
 describe('the world that grows', () => {
   it('04-01 starts from the base world: Security Groups with no inbound rules', () => {
@@ -38,7 +39,7 @@ describe('the world that grows', () => {
     for (const world of [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id), ...cases]) expect(networkSchema.safeParse(world).success).toBe(true);
   });
 
-  it.each(IDS)('%s can name every rule of its Security Groups with its chips', (id) => {
+  it.each(FILTER_IDS)('%s can name every rule of its firewalls with its chips', (id) => {
     for (const world of [startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)]) {
       for (const firewall of world.firewalls) {
         for (const rule of firewall.inbound) expect(chipsOfRule(incident(id), rule), `${firewall.id}/${rule.id}`).not.toBeNull();

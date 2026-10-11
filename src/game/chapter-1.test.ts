@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
 import { extraOpenings, networkSchema, stopStep } from '@/engine';
-import { INCIDENTS, isGuided, solvedWorld, startWorld, type Flow, type Incident } from '@/levels';
+import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
+import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, FIREWALL, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
+import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WATCH_PIECES, WHAT } from '@/levels/01-first-day/shared';
 import type { FlowRun, SentPacket } from './flow-runs';
 import { firewallCard } from './view/cards/firewall-card';
 import { identifyCard } from './view/cards/identify-card';
@@ -13,8 +14,9 @@ import { inspect } from './view/inspection';
 import { PIECE_ID } from './view/piece-id';
 import { drawsRouter, pieceViews } from './view/pieces';
 import { routerPlace } from './view/router-place';
+import { caseCard, caseSummary } from './view/cards/case-card';
 import { tracerouteLines } from './view/cards/traceroute-lines';
-import { canConfigure, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
+import { canConfigure, currentCase, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { isTight } from './stars';
 import { taskHolds } from './tasks';
 
@@ -89,6 +91,26 @@ const GENERAL_RULE_OF_FIREWALLS = /\b(un|el|todo) firewall (cierra|bloquea|desca
 const A_RULE_THAT_DENIES = /regla[^.]*(?<!no )(prohíbe|prohíben|deniega|deniegan|niega|bloquea)/i;
 const NO_INBOUND_RULES = 'Este firewall no tiene reglas.';
 const SENDER_LOOKED = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50 y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
+
+const FINAL_WATCH = '01-14';
+const WATCH_CASES = 7;
+const OUTBOUND_LABEL = 'Salida';
+const CHAPTER_1_INCIDENTS = 14;
+const TESTS_OF_THE_SEQUENCE = [IP.loopback, IP.you, IP.router, IP.server].map((address) => `ping ${address}`);
+const NO_GATEWAY_TO_SERVER = NO_GATEWAY_TEXT.replace(IP.andres, IP.server);
+const NO_GATEWAY_TO_PRINTER = NO_GATEWAY_TEXT.replace(IP.andres, IP.printer).replaceAll(DEVICE.you.name, DEVICE.andres.name);
+const WATCH_ROUTES_BY_CASE = [2, 2, 2, 2, 1, 2, 2];
+const LETS_EVERYTHING_OUT = 'deja salir todo el tráfico';
+const NO_RULE_AT_ALL = 'Ninguna.';
+const ECHO_REQUEST_TO_LUCIA = `${ECHO_REQUEST_LABEL} → ${DEVICE.lucia.name}`;
+const YOUR_OUTBOUND_RULES_BY_CASE = [1, 1, 1, 1, 1, 1, 0];
+const YOUR_OUTBOUND_BY_CASE = [LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, ECHO_REQUEST_TO_LUCIA, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, LETS_EVERYTHING_OUT, NO_RULE_AT_ALL];
+const RIGHT_PLACES_OF_THE_WATCH = [1, 2, 0, 2, 0, 1, 2];
+const WEB_VERBS = /\b(abr\w+|entr\w+|carg\w+|naveg\w+|visit\w+|ingres\w+|acced\w+)\b/i;
+const A_PING_THAT_DOES_NOT_COME_BACK = [/\bpings?\b.*\bno vuelv/i, /\bning[uú]n ping\b.*\bvuelv/i];
+const SWITCHED_OFF_OR_DOWN = /apagad|ca[ií]d[oa]|encendid|prendid/i;
+const FEEDBACK_ECHO = /^(No\.|No es eso\.|Eso es\.|Correcto\.)/;
+const LONGEST_OVER_SHORTEST = 1.4;
 
 function guidedOf(id: string) {
   const incident = INCIDENTS.find((candidate) => candidate.id === id);
@@ -1302,5 +1324,294 @@ describe('the thirteen incidents of blocks 1 to 4', () => {
       const session = startSession(INCIDENTS, id);
       expect(pieceViews({ ...session, known: new Set([...session.known, 'internet']) }).some((piece) => piece.kind === 'internet'), id).toBe(false);
     }
+  });
+});
+
+function watchOf(): DiagnoseIncident {
+  const found = INCIDENTS.find((candidate) => candidate.id === FINAL_WATCH);
+  if (found?.mechanic !== 'diagnose') throw new Error(`${FINAL_WATCH} is not a diagnose incident`);
+  return found;
+}
+
+function caseOf(session: Session) {
+  const spec = currentCase(session);
+  if (!spec) throw new Error('the session is not on a case');
+  return spec;
+}
+
+function closeCase(session: Session): Session {
+  const right = caseOf(session).cause.options.findIndex((option) => option.correct);
+  return sessionReducer(sessionReducer(session, { type: 'nameCause', index: right }), { type: 'nextCase' });
+}
+
+function atCase(number: number): Session {
+  return Array.from({ length: number - 1 }).reduce<Session>(closeCase, startSession(INCIDENTS, FINAL_WATCH));
+}
+
+function sendFrom(session: Session, fromId: string, toId: string, messageId: string = MESSAGE.ping.id): Session {
+  return sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
+}
+
+function pingsFrom(session: Session, fromId: string, ...toIds: string[]): Session {
+  return toIds.reduce((current, toId) => sendFrom(current, fromId, toId), session);
+}
+
+function allTests(session: Session): Session {
+  return sendCombinations(caseOf(session)).reduce((current, { fromId, toId, messageId }) => sendFrom(current, fromId, toId, messageId), session);
+}
+
+function outcomesOf(session: Session): string[] {
+  return session.sent.map((packet) => packet.trace.outcome);
+}
+
+function stopCodesOf(session: Session): string {
+  const codes = session.sent.flatMap((packet) => (packet.replied ? [] : [stopStep(packet.trace)?.reason.code ?? 'no-stop']));
+  return [...new Set(codes)].sort().join(',');
+}
+
+function caseWorlds(): Session['world'][] {
+  const before = solvedWorld(INCIDENTS, IN_AND_OUT);
+  return watchOf().diagnose.cases.map((spec) => caseWorld(before, spec));
+}
+
+function yourDevice(world: Session['world']) {
+  return world.devices.find((device) => device.id === DEVICE.you.id);
+}
+
+function watchTexts(): string[] {
+  return incidentTexts(watchOf()).map((text) => toPlainText(text));
+}
+
+describe('01-14, the final watch', () => {
+  it('01-14: case 1 shows the four tests and the fourth does not leave the laptop', () => {
+    const start = atCase(1);
+    expect(caseCard(start)?.origins.flatMap((origin) => origin.tests.map((test) => toPlainText(test.line)))).toEqual(TESTS_OF_THE_SEQUENCE);
+    const tested = pingsFrom(start, ORIGIN.you.id, ADDRESS.loopback.id, ADDRESS.you.id, ADDRESS.gateway.id, ADDRESS.server.id);
+    expect(outcomesOf(tested)).toEqual(['replied', 'replied', 'replied', 'no-route']);
+    const [, , gateway, server] = tested.sent;
+    expect(gateway.trace.destinationId).toBe(ROUTER.office.id);
+    expect(server).toMatchObject({ replied: false, reached: false, blocked: false, warning: null, by: [DEVICE.you.id] });
+    expect(stopStep(server.trace)).toMatchObject({ stage: 'route', at: DEVICE.you.id, reason: { code: 'route-no-gateway' } });
+    expect(server.trace.hops).toBeUndefined();
+    expect(fieldLines(tested, server.pieceId, STOPPED_LABEL)).toEqual([NO_GATEWAY_TO_SERVER]);
+    expect(caseCard(tested)?.origins.every((origin) => origin.tests.every((test) => test.sent))).toBe(true);
+    expect(toPlainText(caseOf(start).hints[1])).toContain(STOPPED_LABEL);
+  });
+
+  it('01-14: case 2 warns from your own laptop for 192.168.1.22', () => {
+    const tested = pingsFrom(atCase(2), ORIGIN.you.id, ADDRESS.typo.id, ADDRESS.printer.id);
+    const [typo, printer] = tested.sent;
+    expect(deviceNameAt(tested, IP.typo)).toBeUndefined();
+    expect(typo).toMatchObject({ replied: false, reached: false, blocked: false, by: [DEVICE.you.id] });
+    expect(typo.trace).toMatchObject({ outcome: 'unreachable', notice: { kind: 'host-unreachable', fromId: DEVICE.you.id, fromIp: IP.you } });
+    expect(typo.warning).not.toBeNull();
+    expect(typo.trace.rttMs).toBeUndefined();
+    expect(fieldLines(tested, typo.pieceId, STOPPED_LABEL)).toEqual([SENDER_LOOKED.replace(IP.nobody, IP.typo)]);
+    expect(printer).toMatchObject({ replied: true, blocked: false, trace: { destinationId: DEVICE.printer.id } });
+    expect(boxLines(tested, DEVICE.printer.id).some((line) => line.includes(IP.printer))).toBe(true);
+  });
+
+  it('01-14: case 3 fails from the second floor and the router answers', () => {
+    const start = atCase(3);
+    expect(caseOf(start).send.from).toEqual([ORIGIN.andres]);
+    expect(start.world.devices.find((device) => device.id === DEVICE.andres.id)?.gateway).toBeUndefined();
+    const tested = pingsFrom(start, ORIGIN.andres.id, ADDRESS.loopback.id, ADDRESS.andres.id, ADDRESS.secondFloorRouter.id, ADDRESS.printer.id);
+    expect(outcomesOf(tested)).toEqual(['replied', 'replied', 'replied', 'no-route']);
+    const [, , router, printer] = tested.sent;
+    expect(router.trace.destinationId).toBe(ROUTER.office.id);
+    expect(printer).toMatchObject({ replied: false, reached: false, blocked: false, warning: null, by: [DEVICE.andres.id] });
+    expect(stopStep(printer.trace)).toMatchObject({ stage: 'route', at: DEVICE.andres.id, reason: { code: 'route-no-gateway' } });
+    expect(printer.trace.hops).toBeUndefined();
+    expect(fieldLines(tested, printer.pieceId, STOPPED_LABEL)).toEqual([NO_GATEWAY_TO_PRINTER]);
+  });
+
+  it('01-14: case 4 reaches the server and is silent towards 10.0.0.10', () => {
+    const start = atCase(4);
+    const tested = pingsFrom(start, ORIGIN.you.id, ADDRESS.server.id, ADDRESS.otherOffice.id);
+    const [server, branch] = tested.sent;
+    expect(server).toMatchObject({ replied: true, trace: { destinationId: SERVER.id } });
+    expect(hopIds(server)).toEqual([ROUTER.office.id, ROUTER.provider.id, ROUTER.destination.id]);
+    expect(branch).toMatchObject({ replied: false, reached: false, blocked: false, hiddenStop: false, warning: null, by: [ROUTER.provider.id], trace: { outcome: 'timeout' } });
+    expect(branch.trace.notice).toBeUndefined();
+    expect(hopIds(branch)).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(stopStep(branch.trace)).toMatchObject({ stage: 'forward', at: ROUTER.provider.id, reason: { code: 'forward-private-dropped' } });
+    expect(drawsRouter(start, ROUTER.provider.id)).toBe(true);
+    expect(everythingShown(tested).filter((text) => NAT_WORDS.test(text))).toEqual([]);
+  });
+
+  it('01-14: case 5 alternates two routers in its Time Exceeded', () => {
+    const start = atCase(5);
+    const byTtl = ([1, 2, 3] as const).map((ttl) => sendWith(start, PING_WITH_TTL[ttl].id, ADDRESS.server.id).sent[0]);
+    expect(byTtl.map((run) => run.trace.notice)).toEqual([
+      { kind: 'time-exceeded', fromId: ROUTER.office.id, fromIp: IP.router },
+      { kind: 'time-exceeded', fromId: ROUTER.provider.id, fromIp: IP.provider },
+      { kind: 'time-exceeded', fromId: ROUTER.office.id, fromIp: IP.router },
+    ]);
+    expect(byTtl.every((run) => run.trace.outcome === 'ttl-exceeded' && run.warning !== null && !run.replied && !run.reached)).toBe(true);
+    expect(plainBox(start, PIECE_ID.actor(SERVER.id))).toContain(IP.server);
+    const plain = sendWith(start, MESSAGE.ping.id, ADDRESS.server.id).sent[0];
+    expect(plain).toMatchObject({ replied: false, reached: false, trace: { outcome: 'ttl-exceeded' } });
+    const traced = sendWith(start, MESSAGE.traceroute.id, ADDRESS.server.id).sent[0];
+    const ips = traced.route?.lines.map((line) => line.ip);
+    expect(ips).toEqual(Array.from({ length: TRACEROUTE_LINES }, (_, index) => (index % 2 === 0 ? IP.router : IP.provider)));
+    expect(new Set(ips).size).toBe(2);
+    expect([ROUTER.office.id, ROUTER.provider.id].map((id) => drawsRouter(start, id))).toEqual([true, true]);
+  });
+
+  it('01-14: case 6 is silent towards one laptop only, and its firewall is visible', () => {
+    const start = atCase(6);
+    const tested = pingsFrom(start, ORIGIN.you.id, ADDRESS.lucia.id, ADDRESS.printer.id, ADDRESS.gateway.id, ADDRESS.server.id);
+    expect(outcomesOf(tested)).toEqual(['timeout', 'replied', 'replied', 'replied']);
+    const [lucia] = tested.sent;
+    expect(lucia).toMatchObject({ replied: false, reached: false, blocked: true, warning: null, by: [FIREWALL.lucia] });
+    expect(stopStep(lucia.trace)).toMatchObject({ stage: 'firewall-in', at: DEVICE.lucia.id, verdict: 'drop' });
+    expect(lucia.trace.hops).toBeUndefined();
+    expect([DEVICE.you, DEVICE.lucia].map(({ id }) => start.world.devices.find((device) => device.id === id)?.lanId)).toEqual([FLOOR.first.id, FLOOR.first.id]);
+    expect(drawnLabels(start)).toContain(`firewall:firewall ${DEVICE.lucia.name}`);
+    expect(inspect(start, PIECE_ID.firewall(FIREWALL.lucia))).not.toBeNull();
+    expect(drawnLabels(atCase(5))).not.toContain(`firewall:firewall ${DEVICE.lucia.name}`);
+    expect(fieldLines(tested, PIECE_ID.firewall(FIREWALL.you), OUTBOUND_LABEL)).toEqual([LETS_EVERYTHING_OUT]);
+  });
+
+  it('01-14: case 7 stops everything at your own laptop, even the ping to the gateway', () => {
+    const tested = pingsFrom(atCase(7), ORIGIN.you.id, ADDRESS.loopback.id, ADDRESS.you.id, ADDRESS.gateway.id, ADDRESS.server.id);
+    expect(outcomesOf(tested)).toEqual(['replied', 'replied', 'timeout', 'timeout']);
+    const [, , gateway, server] = tested.sent;
+    for (const run of [gateway, server]) {
+      expect(run).toMatchObject({ replied: false, blocked: true, warning: null, by: [FIREWALL.you] });
+      expect(run.trace.destinationId).toBeNull();
+      expect(run.trace.hops).toBeUndefined();
+      expect(stopStep(run.trace)).toMatchObject({ stage: 'firewall-out', at: DEVICE.you.id, verdict: 'drop' });
+      expect(fieldLines(tested, run.pieceId, STOPPED_LABEL)).toEqual([CLOSED_BY_SOMEONE]);
+    }
+    expect(tested.world.routers?.find((router) => router.id === ROUTER.office.id)?.interfaces).toContainEqual({ ip: IP.router, faces: yourDevice(tested.world)?.lanId });
+    expect(firewallCard(tested, PIECE_ID.firewall(FIREWALL.you))).toMatchObject({ rules: [] });
+    expect(firewallCard(tested, PIECE_ID.firewall(FIREWALL.you))?.outbound).toBeUndefined();
+  });
+
+  it('01-14: naming the right cause of the seven cases earns three stars', () => {
+    const finished = Array.from({ length: WATCH_CASES }).reduce<Session>(closeCase, startSession(INCIDENTS, FINAL_WATCH));
+    expect(finished.phase).toBe('explaining');
+    expect(finished.caseResults).toHaveLength(WATCH_CASES);
+    expect(starsOf(finished)).toEqual({ closed: true, middle: true, explained: true });
+    expect(caseSummary(finished)).toEqual({ total: WATCH_CASES, missed: [] });
+    expect(sessionReducer(finished, { type: 'showResult' }).phase).toBe('result');
+  });
+
+  it('01-14: a wrong name first costs the explained star, and a hint costs the middle one, but neither stops the close', () => {
+    const wrongFirst = (session: Session) => sessionReducer(session, { type: 'nameCause', index: caseOf(session).cause.options.findIndex((option) => !option.correct) });
+    const slipped = Array.from({ length: WATCH_CASES }).reduce<Session>((session, _, index) => closeCase(index === 2 ? wrongFirst(session) : session), startSession(INCIDENTS, FINAL_WATCH));
+    expect(starsOf(slipped)).toEqual({ closed: true, middle: true, explained: false });
+    expect(caseSummary(slipped)?.missed).toEqual([3]);
+    const hinted = Array.from({ length: WATCH_CASES }).reduce<Session>((session, _, index) => closeCase(index === 4 ? sessionReducer(session, { type: 'showHint' }) : session), startSession(INCIDENTS, FINAL_WATCH));
+    expect(starsOf(hinted)).toEqual({ closed: true, middle: false, explained: true });
+  });
+
+  it('01-14: each case has a different cause or is the declared repeat of case 1', () => {
+    const causes = Array.from({ length: WATCH_CASES }, (_, index) => stopCodesOf(allTests(atCase(index + 1))));
+    expect(causes.filter((cause) => cause === '')).toEqual([]);
+    const repeats = causes.flatMap((cause, index) => causes.slice(index + 1).flatMap((other, offset) => (other === cause ? [[index + 1, index + offset + 2]] : [])));
+    expect(repeats).toEqual([[1, 3]]);
+  });
+
+  it('01-14: no report and no correct option names a switched-off device as the cause', () => {
+    const { cases } = watchOf().diagnose;
+    const options = cases.flatMap((spec) => spec.cause.options);
+    const spoken = [...cases.map((spec) => spec.report), ...options.filter((option) => option.correct).flatMap((option) => [option.text, option.feedback])].map((text) => toPlainText(text));
+    expect(spoken.filter((text) => SWITCHED_OFF_OR_DOWN.test(text))).toEqual([]);
+    expect(options.filter((option) => !option.correct).some((option) => SWITCHED_OFF_OR_DOWN.test(toPlainText(option.text)))).toBe(true);
+    expect(Array.from({ length: WATCH_CASES }, (_, index) => everythingShown(allTests(atCase(index + 1))).filter((text) => SWITCHED_OFF.test(text)))).toEqual(Array.from({ length: WATCH_CASES }, () => []));
+  });
+
+  it('01-14: every case report names a ping that does not come back and none uses a verb of the web', () => {
+    const reports = watchOf().diagnose.cases.map((spec) => toPlainText(spec.report));
+    expect(reports).toHaveLength(WATCH_CASES);
+    expect(reports.filter((report) => !A_PING_THAT_DOES_NOT_COME_BACK.some((pattern) => pattern.test(report)))).toEqual([]);
+    expect(reports.filter((report) => WEB_VERBS.test(report))).toEqual([]);
+  });
+
+  it('01-14: each case asks one question, and no feedback repeats the No es eso. or the Correcto. that the card already says', () => {
+    for (const spec of watchOf().diagnose.cases) {
+      expect(toPlainText(spec.cause.question).match(/\?/g), spec.id).toHaveLength(1);
+      expect(spec.cause.options.map((option) => FEEDBACK_ECHO.test(toPlainText(option.feedback))), spec.id).toEqual([false, false, false]);
+    }
+  });
+
+  it('01-14: in no case is the right option the longest by far, and it is the longest in at most half of the cases', () => {
+    const lengths = watchOf().diagnose.cases.map((spec) => spec.cause.options.map((option) => toPlainText(option.text).length));
+    expect(lengths.filter((sizes) => Math.max(...sizes) > Math.min(...sizes) * LONGEST_OVER_SHORTEST)).toEqual([]);
+    const places = watchOf().diagnose.cases.map((spec) => spec.cause.options.findIndex((option) => option.correct));
+    const longestIsRight = lengths.filter((sizes, index) => sizes[places[index]] === Math.max(...sizes));
+    expect(longestIsRight.length).toBeLessThanOrEqual(Math.floor(WATCH_CASES / 2));
+  });
+
+  it('01-14: puts the right cause in more than one place, never twice in a row, and not in the place of 01-13', () => {
+    const places = watchOf().diagnose.cases.map((spec) => spec.cause.options.findIndex((option) => option.correct));
+    expect(places).toEqual(RIGHT_PLACES_OF_THE_WATCH);
+    expect(new Set(places).size).toBe(3);
+    expect(places.filter((place, index) => index > 0 && place === places[index - 1])).toEqual([]);
+    expect(places[0]).not.toBe(IN_AND_OUT_PLACE);
+  });
+
+  it('01-14: starts from the world of 01-13 solved, and each case adds only its own changes to it, never to the case before', () => {
+    const worlds = caseWorlds();
+    expect(startWorld(INCIDENTS, FINAL_WATCH)).toEqual(solvedWorld(INCIDENTS, IN_AND_OUT));
+    expect(solvedWorld(INCIDENTS, FINAL_WATCH)).toEqual(startWorld(INCIDENTS, FINAL_WATCH));
+    expect(worlds.map((world) => yourDevice(world)?.gateway)).toEqual([undefined, ...Array.from({ length: WATCH_CASES - 1 }, () => IP.router)]);
+    expect(worlds.map((world) => world.firewalls.find((firewall) => firewall.id === FIREWALL.you)?.outbound.length)).toEqual(YOUR_OUTBOUND_RULES_BY_CASE);
+    expect(worlds.map((world) => world.firewalls.some((firewall) => firewall.id === FIREWALL.lucia))).toEqual([false, false, false, false, false, true, false]);
+    expect(worlds.map((world) => world.routers?.find((router) => router.id === ROUTER.provider.id)?.routes.length)).toEqual(WATCH_ROUTES_BY_CASE);
+    expect(worlds.map((world) => world.devices.find((device) => device.id === DEVICE.andres.id)?.gateway === undefined)).toEqual([false, false, true, false, false, false, false]);
+    expect(worlds.flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
+  });
+
+  it('01-14: draws what the seven cases use and the whole road to the server, and not laptop-marta or laptop-visita', () => {
+    const start = startSession(INCIDENTS, FINAL_WATCH);
+    expect(watchOf().shown).toEqual(WATCH_PIECES);
+    const drawn = drawnLabels(start);
+    expect(drawn).toEqual(
+      [
+        `device:${DEVICE.you.name}`,
+        `device:${DEVICE.lucia.name}`,
+        `device:${DEVICE.printer.name}`,
+        `device:${DEVICE.andres.name}`,
+        `device:${SERVER.name}`,
+        `edge:${ROUTER.office.name}`,
+        `edge:${ROUTER.provider.name}`,
+        `edge:${ROUTER.destination.name}`,
+        `firewall:firewall ${DEVICE.you.name}`,
+        'internet:internet',
+      ].sort(),
+    );
+    expect(drawn.filter((label) => label.includes(DEVICE.marta.name) || label.includes(DEVICE.visitor.name))).toEqual([]);
+  });
+
+  it('01-14: the firewall of your laptop reads in each case as the case needs it: everything out, only the ping to laptop-lucia in case 3, and no rule in case 7', () => {
+    const outbound = (session: Session) => fieldLines(session, PIECE_ID.firewall(FIREWALL.you), OUTBOUND_LABEL);
+    expect(Array.from({ length: WATCH_CASES }, (_, index) => outbound(atCase(index + 1)))).toEqual(YOUR_OUTBOUND_BY_CASE.map((line) => [line]));
+  });
+
+  it('01-14: the routers the traceroute of case 5 crosses are in the list of shown pieces, and case 5 is the only case that offers a traceroute', () => {
+    const incident = watchOf();
+    const { cases } = incident.diagnose;
+    const shown = incident.shown ?? [];
+    const crossed = routersCrossedByTraceroutes(cases[4], caseWorlds()[4]);
+    expect(crossed).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(crossed.filter((id) => !shown.includes(id))).toEqual([]);
+    expect(cases.filter((spec) => spec.send.message.some((chip) => chip.command === 'traceroute')).map((spec) => spec.id)).toEqual(['case-5']);
+  });
+
+  it('01-14: introduces no term, uses none that is later, and says nothing of a firewall closing its outbound side by default', () => {
+    expect(watchOf().introduces).toEqual([]);
+    expect(watchTexts().filter((text) => BY_DEFAULT.test(text) || GENERAL_RULE_OF_FIREWALLS.test(text))).toEqual([]);
+    const shown = Array.from({ length: WATCH_CASES }, (_, index) => everythingShown(allTests(atCase(index + 1)))).flat();
+    expect(shown.filter((text) => BY_DEFAULT.test(text) || GENERAL_RULE_OF_FIREWALLS.test(text) || NOT_NETWORK_JARGON.test(text) || NAT_WORDS.test(text))).toEqual([]);
+  });
+
+  it('01-14: only chapter 4 comes after it, and the bridge of 04-01 is empty now that the fourteen introduce every term of the chapter', () => {
+    const ids = INCIDENTS.map((incident) => incident.id);
+    expect(ids.indexOf(FINAL_WATCH)).toBe(ids.indexOf(IN_AND_OUT) + 1);
+    expect(ids.slice(ids.indexOf(FINAL_WATCH) + 1)).toEqual(['04-01', '04-02']);
+    expect(INCIDENTS.filter((incident) => incident.chapter === 1)).toHaveLength(CHAPTER_1_INCIDENTS);
   });
 });

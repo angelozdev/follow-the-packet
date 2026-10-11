@@ -126,10 +126,10 @@ export function canAskHint(session: Session): boolean {
   return session.hintsShown < hintsOf(session).length && !caseClosed(session);
 }
 
-/** True when a device has this firewall, so it is on the map, and the ladder lets the player change the rules of its kind in this direction, or in either direction when none is given. */
+/** True when a device has this firewall, so it is on the map, and the ladder lets the player change the rules of its kind in this direction, or in either direction when none is given. Never in a diagnose, where the player changes nothing in the world: its firewalls are inspected, not configured. */
 export function canConfigure(session: Session, firewallId: string, direction?: Direction): boolean {
   const firewall = session.world.firewalls.find((candidate) => candidate.id === firewallId);
-  if (firewall === undefined || !session.world.devices.some((device) => device.firewallIds.includes(firewallId))) return false;
+  if (session.incident.mechanic === 'diagnose' || firewall === undefined || !session.world.devices.some((device) => device.firewallIds.includes(firewallId))) return false;
   const { inboundRules, outboundRules } = session.parts;
   if (direction === undefined) return inboundRules[firewall.kind] || outboundRules[firewall.kind];
   return (direction === 'outbound' ? outboundRules : inboundRules)[firewall.kind];
