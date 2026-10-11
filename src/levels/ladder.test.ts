@@ -12,7 +12,8 @@ import { startWorld } from './world';
 const CLOSED = { 'host-firewall': false, 'security-group': false };
 const NOTHING = { inboundRules: CLOSED, outboundRules: CLOSED, hostSettings: false };
 const HOST_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': false } };
-const INBOUND_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': true } };
+const HOST_RULES_IN_AND_OUT = { ...HOST_RULES, outboundRules: { 'host-firewall': true, 'security-group': false } };
+const INBOUND_RULES = { ...NOTHING, inboundRules: { 'host-firewall': true, 'security-group': true }, outboundRules: { 'host-firewall': true, 'security-group': false } };
 const DECLARED_LEAKS = ['icmp → internet'];
 const ALL_TERMS = Object.keys(TERMS) as TermId[];
 const BY_INCIDENT = INCIDENTS.map((i): [string, Incident] => [i.id, i]);
@@ -35,7 +36,7 @@ const CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN = [
   'traffic',
   'rule',
 ];
-const BRIDGE_AFTER_11 = ['rule'];
+const BRIDGE_AFTER_13: string[] = [];
 const PRIVATE_RANGE_OF_OTHER_OFFICE = '10.0.0.0/8';
 const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   ['network', 'device', 'ip-address', 'ipv4'],
@@ -54,12 +55,21 @@ const TERMS_OF_THE_APPROVED_DESIGN: string[][] = [
   [],
 ];
 const LATER_TOPICS = /\b(puertos?|TCP|UDP|CIDR|m[aá]scaras?|NAT|DNS|ARP|MAC|switch(?:es)?|IPv6|HTTPS?|clientes?|stateful|stateless)\b/;
-const CHAPTER_1_BUILT = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11'];
+const CHAPTER_1_BUILT = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13'];
+const BEFORE_THE_RULES = CHAPTER_1_BUILT.slice(0, 11);
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
     const introduced = INCIDENTS.flatMap((i) => i.introduces);
     expect(introduced.filter((term, index) => introduced.indexOf(term) !== index)).toEqual([]);
+    expect(INCIDENTS.filter((incident) => incident.introduces.includes('least-privilege')).map((incident) => incident.id)).toEqual(['01-12']);
+  });
+
+  it('04-02 no longer introduces least-privilege, which 01-12 presents, and still knows it', () => {
+    const second = INCIDENTS.find((incident) => incident.id === '04-02');
+    expect(second?.introduces).toEqual([]);
+    expect(knownTerms(INCIDENTS, '04-02').has('least-privilege')).toBe(true);
+    expect(knownTerms(INCIDENTS, '04-01').has('least-privilege')).toBe(true);
   });
 
   it.each(BY_INCIDENT)('%s only uses terms introduced in it or before', (id, incident) => {
@@ -108,8 +118,8 @@ describe('term ladder', () => {
   it('04-01 bridges exactly the chapter 1 terms that no chapter 1 incident introduces yet', () => {
     const introduced = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces as string[]);
     const bridge = (INCIDENTS.find((incident) => incident.id === '04-01')?.introduces as string[]).filter((term) => !OWN_TERMS_OF_04_01.includes(term));
-    expect([...BRIDGE_AFTER_11].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
-    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_11].sort());
+    expect([...BRIDGE_AFTER_13].sort()).toEqual(CHAPTER_1_TERMS_BEFORE_THE_FOURTEEN.filter((term) => !introduced.includes(term)).sort());
+    expect([...bridge].sort()).toEqual([...BRIDGE_AFTER_13].sort());
   });
 
   it('names no topic of the chapters that come later, in any text of chapter 1', () => {
@@ -132,6 +142,14 @@ describe('term ladder', () => {
     expect(unofficialNames(labels)).toEqual([]);
   });
 
+  it('the Destination chips of an outbound filter are chips the ladder checks, like the Type and Source ones', () => {
+    const outbound = filterIncident('01-13');
+    const destinations = (outbound.chips.to ?? []).map((chip) => chip.label);
+    expect(destinations).toHaveLength(2);
+    expect(chipLabels(outbound)).toEqual([...outbound.chips.what, ...outbound.chips.from, ...(outbound.chips.to ?? [])].map((chip) => chip.label));
+    expect(incidentTexts(outbound)).toEqual(expect.arrayContaining(destinations));
+  });
+
   it('marks the resource name in the Security Group chip, apart from its term', () => {
     expect(FROM.sgServidor1.label).toBe('{{security-group|SG}} [[servidor1]]');
   });
@@ -149,7 +167,9 @@ describe('term ladder', () => {
   it('the rules of a host firewall open with the term rule (01-12), and those of a Security Group with inbound rule (chapter 4)', () => {
     const parts = Object.fromEntries(INCIDENTS.map((incident) => [incident.id, configurableParts(knownTerms(INCIDENTS, incident.id))]));
     expect(parts).toEqual({
-      ...Object.fromEntries(CHAPTER_1_BUILT.map((id) => [id, NOTHING])),
+      ...Object.fromEntries(BEFORE_THE_RULES.map((id) => [id, NOTHING])),
+      '01-12': HOST_RULES,
+      '01-13': HOST_RULES_IN_AND_OUT,
       '04-01': INBOUND_RULES,
       '04-02': INBOUND_RULES,
     });

@@ -76,7 +76,7 @@ describe('piece label', () => {
 
   it('a device under attack carries its alert inside its label, read as text, so it never covers the label', () => {
     renderLabel({ ...SERVER, state: 'intruded' });
-    const label = screen.getByRole('button', { name: 'servidor2 con candado con alerta: entra algo prohibido' });
+    const label = screen.getByRole('button', { name: 'servidor2 con candado con alerta: entra algo que no debe' });
     expect(label).toContainElement(screen.getByText('!'));
   });
 

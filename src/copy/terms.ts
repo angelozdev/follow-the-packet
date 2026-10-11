@@ -83,20 +83,20 @@ export const TERMS = {
     name: 'descartar',
     definition: 'Tirar un paquete sin entregarlo ni reenviarlo. Quien lo tira puede avisar a quien lo envió o callar.',
   },
-  rule: { name: 'regla', definition: 'Un permiso del firewall: dice qué tráfico puede pasar (Type) y desde dónde (Source).' },
+  rule: { name: 'regla', definition: 'Un permiso del firewall: dice qué tipo de tráfico deja pasar (Type) y de qué IP de origen (Source).' },
   allow: { name: 'permitir', definition: 'Dejar pasar un paquete por el firewall, porque una de sus reglas lo autoriza.' },
-  deny: { name: 'denegar', definition: 'No dejar pasar un paquete por el firewall, ya sea descartándolo sin avisar o contestando con un error.' },
+  deny: { name: 'denegar', definition: 'No dejar pasar un paquete por el firewall.' },
   'default-deny': {
     name: 'denegación por defecto',
-    definition: 'Denegar todo lo que ninguna regla permite expresamente: lo único que pasa es lo que una regla permite.',
+    definition: 'Todo lo que ninguna regla permite queda denegado, sin que haga falta otra regla.',
   },
   inbound: {
     name: 'entrada',
-    definition: 'El sentido del tráfico que llega a un dispositivo. Un firewall puede tener reglas distintas para cada sentido.',
+    definition: 'El sentido del tráfico que llega a un dispositivo. Sus reglas dicen de qué IP de origen puede llegar (Source).',
   },
   outbound: {
     name: 'salida',
-    definition: 'El sentido del tráfico que sale de un dispositivo. Un firewall puede tener reglas distintas para cada sentido.',
+    definition: 'El sentido del tráfico que sale de un dispositivo. Sus reglas dicen a qué IP de destino puede ir (Destination).',
   },
   'ec2-instance': {
     name: 'instancia EC2',

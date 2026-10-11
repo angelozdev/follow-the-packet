@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type Route, type Router } from '@/engine';
-import type { AddressChip, ExpectedOutcome, MessageChip, OriginChip, SendMove, SendTask } from '@/levels/contract/incident';
+import { ROUTE_DEFAULT, type Device, type Lan, type Network, type NetworkAction, type PacketSpec, type Route, type Router } from '@/engine';
+import type { AddressChip, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, SendMove, SendTask, ToChip, WhatChip } from '@/levels/contract/incident';
 
 export const LESSON = 'Lab: Comprobación de Conectividad entre Instancias EC2 usando PING';
 export const CONCEPT = 'concepts/security-groups.md';
@@ -13,6 +13,8 @@ const DESTINATION_MS = 12;
 const SERVER_MS = 20;
 const SERVER_RANGE = '198.51.100.0/24';
 const LOCALHOST = 'localhost';
+const SINGLE_ADDRESS = '/32';
+const ECHO_REQUEST = 8;
 
 export const IP = {
   you: '192.168.1.10',
@@ -57,7 +59,7 @@ export const ROUTER = {
 
 export const SERVER = { id: 'internet-server', name: 'servidor-internet' } as const;
 
-export const FIREWALL = { marta: 'marta-firewall' } as const;
+export const FIREWALL = { marta: 'marta-firewall', you: 'your-firewall' } as const;
 
 export const CARD = {
   network: { tray: 'in-network', yes: 'yes', no: 'no' },
@@ -72,6 +74,7 @@ export const NAME = {
   marta: nameTag(DEVICE.marta.name),
   printer: nameTag(DEVICE.printer.name),
   andres: nameTag(DEVICE.andres.name),
+  visitor: nameTag(DEVICE.visitor.name),
   router: nameTag(ROUTER.office.name),
   provider: nameTag(ROUTER.provider.name),
   destination: nameTag(ROUTER.destination.name),
@@ -95,6 +98,8 @@ export const TASK = {
   traceroute: 'traceroute-to-server',
   guard: 'firewall-drops-ping',
   lucia: 'ping-to-lucia',
+  rule: 'support-ping-only',
+  leave: 'ping-leaves',
 } as const;
 
 /** Returns a device of the office on floor 1, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
@@ -173,8 +178,11 @@ export const LOOP_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.pr
 /** The ids of the pieces 01-10 draws: your laptop, the two routers a traceroute to the server crosses, the router behind the broken stretch, which none crosses, and the server. The rest of the office is not used. */
 export const PATH_PIECES: string[] = [...LOOP_PIECES, ROUTER.destination.id];
 
-/** The ids of the pieces 01-11 draws: the sender, the laptop that answers and laptop-marta, whose firewall is drawn with it. The printer and the routers stay in the world and are not used, so they are not drawn. */
+/** The ids of the pieces 01-11 and 01-13 draw: the sender, the laptop that answers and laptop-marta, whose firewall is drawn with it (in 01-13 because the rule of 01-12 goes on working in the background). The printer and the routers stay in the world and are not used, so they are not drawn. */
 export const GUARD_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.marta.id];
+
+/** The ids of the pieces 01-12 draws: the laptop that must get in, the visitor's laptop that must not, and laptop-marta, whose firewall is drawn with it. Your laptop, the printer and the routers stay in the world and are not used, so they are not drawn. */
+export const RULE_PIECES: string[] = [DEVICE.lucia.id, DEVICE.visitor.id, DEVICE.marta.id];
 
 const OFFICE_FACES: Router['interfaces'] = [
   { ip: IP.router, faces: FLOOR.first.id },
@@ -239,6 +247,48 @@ export const BROKEN_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId
 
 /** What 01-11 changes: the provider fixed the broken stretch, so its router has its way to the server again and warns when it has none, as it did in 01-08. */
 export const REPAIRED_STRETCH: NetworkAction[] = [{ type: 'updateRouter', routerId: ROUTER.provider.id, routes: PROVIDER_ROUTES, sendsUnreachable: true }];
+
+export const WHAT = {
+  echoRequest: { id: 'echo-request', label: '{{icmp}} · {{echo-request}}', what: { kind: 'icmp', icmpType: ECHO_REQUEST } },
+} satisfies Record<string, WhatChip>;
+
+/** Returns the chip that names the one address of a device in a rule, such as `laptop-lucia (IP 192.168.1.11)`: the Source of an inbound rule (`from`) or the Destination of an outbound one (`to`). The chip is named after the device and its IP, so a Source chip and a Destination chip of one device never share an id. */
+function addressChip(side: 'from' | 'to', key: string, name: string, ip: string): FromChip & ToChip {
+  return { id: `${side}-${key}`, label: `${nameTag(name)} ({{ip-address|IP}} ${ip})`, peer: { kind: 'cidr', cidr: `${ip}${SINGLE_ADDRESS}` } };
+}
+
+export const FROM = {
+  anyone: { id: 'any-source', label: 'Cualquier {{source-ip}}', peer: { kind: 'cidr', cidr: ANY_IPV4 } },
+  lucia: addressChip('from', 'lucia', DEVICE.lucia.name, IP.lucia),
+  printer: addressChip('from', 'printer', DEVICE.printer.name, IP.printer),
+} satisfies Record<string, FromChip>;
+
+export const TO = {
+  lucia: addressChip('to', 'lucia', DEVICE.lucia.name, IP.lucia),
+  printer: addressChip('to', 'printer', DEVICE.printer.name, IP.printer),
+} satisfies Record<string, ToChip>;
+
+/** Returns a flow: an Echo Request that a device of the office sends to an address, which the incident expects to come back (`required`), to be kept out (`forbidden`) or to go on as it is while the player works (`ambient`). */
+function pingFlow(id: string, kind: FlowKind, fromId: string, to: string): Flow {
+  const packet: PacketSpec = { from: { kind: 'device', id: fromId }, to, protocol: 'icmp', icmpType: ECHO_REQUEST };
+  return { id, kind, packet };
+}
+
+const SUPPORT_PING = pingFlow('support-ping', 'required', DEVICE.lucia.id, IP.marta);
+
+export const FLOW = {
+  support: SUPPORT_PING,
+  visitor: pingFlow('visitor-ping', 'forbidden', DEVICE.visitor.id, IP.marta),
+  leave: pingFlow('ping-leaves', 'required', DEVICE.you.id, IP.lucia),
+  background: { ...SUPPORT_PING, kind: 'ambient' },
+} satisfies Record<string, Flow>;
+
+/** What 01-13 adds to the world: a firewall on your laptop with no rule in either direction. Someone set your laptop up so: no rule allows anything, in or out, until the player writes one. */
+export const YOUR_FIREWALL: NetworkAction = {
+  type: 'addFirewall',
+  deviceId: DEVICE.you.id,
+  firewall: { id: FIREWALL.you, name: DEVICE.you.name, kind: 'host-firewall', inbound: [], outbound: [] },
+};
 
 /** Returns the task of a send incident that expects what a message sent from your laptop to an address ends in, and, when `by` is given, who answered, warned or dropped it. */
 export function sendTask(id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {

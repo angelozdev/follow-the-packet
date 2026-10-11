@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { simulate, type Reason } from '@/engine';
-import { EVERY_TERM, OFFICE_FLOORS, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
+import { simulate, type Firewall, type Reason } from '@/engine';
+import { EVERY_TERM, OFFICE_FLOORS, allOut, device, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
@@ -251,6 +251,24 @@ describe('describeReason with what the player knows', () => {
     expect(describeReason(sgOut, NET, without('security-group'))).toBe(NOTHING_CAME_BACK);
     expect(describeReason(sgOut, NET, without('outbound-rule'))).toBe('El {{security-group}} de [[servidor2]] {{drop|descartó}} el {{packet|paquete}} sin avisar.');
     expect(describeReason(sgOut, NET, EVERY_TERM)).toBe('Se queda en el {{security-group}} de [[servidor2]]: ninguna {{outbound-rule}} lo deja salir.');
+  });
+
+  it('a host firewall with no outbound rule says its outbound side was set closed, and one with a rule that does not match says that no rule lets the packet out', () => {
+    const closed: Firewall = { id: 'fw-you', name: 'your-laptop', kind: 'host-firewall', inbound: [], outbound: [] };
+    const guarding = (firewall: Firewall) => withDevice({ ...officeNet(), firewalls: [firewall] }, 'your-laptop', { firewallIds: [firewall.id] });
+    const drop: Reason = { code: 'firewall-out-drop', deviceId: 'your-laptop', firewallKind: 'host-firewall' };
+    const noRuleLetsItOut = 'Se queda en el {{firewall}} de [[your-laptop]]: ninguna {{rule|regla}} lo deja salir.';
+    const setClosed = describeReason(drop, guarding(closed), EVERY_TERM);
+    expect(setClosed).toBe('Se queda en el {{firewall}} de [[your-laptop]]: su {{outbound|salida}} está cerrada, alguien la configuró así.');
+    expect(toPlainText(setClosed)).not.toMatch(/por defecto|de fábrica|normalmente|siempre|todos los firewalls|un firewall (cierra|bloquea)/i);
+    expect(describeReason(drop, guarding({ ...closed, outbound: [allOut('fw-you-out')] }), EVERY_TERM)).toBe(noRuleLetsItOut);
+    expect(describeReason(drop, guarding(closed), without('outbound'))).toBe(noRuleLetsItOut);
+    expect(describeReason(drop, guarding(closed), without('firewall'))).toBe(NOTHING_CAME_BACK);
+  });
+
+  it('says nothing of a closed side for a Security Group, whose outbound drop keeps its own sentence', () => {
+    const sgOut: Reason = { code: 'firewall-out-drop', deviceId: 'servidor1', firewallKind: 'security-group' };
+    expect(describeReason(sgOut, NET, EVERY_TERM)).toBe('Se queda en el {{security-group}} de [[servidor1]]: ninguna {{outbound-rule}} lo deja salir.');
   });
 
   it.each(HIDDEN_CAUSES)('says only what the player saw while the term of the cause is unknown: %o', (reason, term, text) => {

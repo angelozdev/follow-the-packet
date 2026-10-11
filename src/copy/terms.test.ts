@@ -119,6 +119,43 @@ describe('term registry', () => {
   });
 });
 
+describe('the terms of the firewall rules', () => {
+  const RULE_TERMS: TermId[] = ['rule', 'allow', 'deny', 'default-deny', 'least-privilege', 'inbound', 'outbound'];
+  const NAMES_THE_COLUMNS_OF_A_LATER_ONE = /entrada|salida/i;
+  const SAYS_A_SIDE_CLOSES_BY_ITSELF = /por defecto|de fábrica|normalmente|siempre|cierra su|cierra la/i;
+  const OFFERS_A_RULE_THAT_DENIES = /regla (de|que) (deneg|prohib|bloque|rechaz)/i;
+
+  it('the rule is a permission with a Type and a Source, and says nothing of the two directions that 01-13 presents', () => {
+    expect(TERMS.rule.definition).toContain('(Type)');
+    expect(TERMS.rule.definition).toContain('(Source)');
+    expect(TERMS.rule.definition).toContain(TERMS['source-ip'].name);
+    expect(TERMS.rule.definition).not.toMatch(NAMES_THE_COLUMNS_OF_A_LATER_ONE);
+    expect(TERMS.rule.definition).not.toMatch(/desde dónde/);
+  });
+
+  it('the entrada tells what its rules name, a Source, and the salida what its rules name, a Destination', () => {
+    expect(TERMS.inbound.definition).toContain('(Source)');
+    expect(TERMS.outbound.definition).toContain('(Destination)');
+    expect(TERMS.outbound.definition).toContain(TERMS['destination-ip'].name);
+  });
+
+  it('what no rule allows is denied: the denegación por defecto needs no rule of its own', () => {
+    expect(TERMS['default-deny'].definition).toMatch(/^Todo lo que ninguna regla permite queda denegado/);
+    expect(TERMS['default-deny'].definition).not.toMatch(OFFERS_A_RULE_THAT_DENIES);
+  });
+
+  it('no definition offers a rule that denies, and none says that a side of a firewall closes by itself', () => {
+    for (const id of RULE_TERMS) {
+      expect(TERMS[id].definition, id).not.toMatch(OFFERS_A_RULE_THAT_DENIES);
+      expect(TERMS[id].definition, id).not.toMatch(SAYS_A_SIDE_CLOSES_BY_ITSELF);
+    }
+  });
+
+  it('the least privilege is giving only what a task needs', () => {
+    expect(TERMS['least-privilege'].definition).toMatch(/^Dar solo los permisos necesarios para una tarea/);
+  });
+});
+
 describe('entity terms', () => {
   it('names each variant by its term: the office ones by the general terms of chapter 1, the AWS ones by their official names', () => {
     expect(entityTerm({ kind: 'device', variant: 'ec2-instance' })).toBe('ec2-instance');

@@ -52,7 +52,7 @@ describe('the stamp of a packet the game computed', () => {
     expect(run).toMatchObject({ intruder: true, blocked: false, reached: true });
     const { look, name } = drawn(run);
     expect(look).toMatchObject({ intruder: true, stamp: 'intruder' });
-    expect(name).toMatch(/Entró sin permiso\.$/);
+    expect(name).toMatch(/Entró y no debía\.$/);
   });
 
   it('a ping to an address no device has is lost, not blocked, and its stamp says so', () => {

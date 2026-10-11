@@ -80,10 +80,12 @@ describe("Lucía's card", () => {
     expect(termRow(TERMS['least-privilege'].name).querySelector('svg')).toBeNull();
   });
 
-  it('the glossary of 04-01 keeps the terms of chapter 1 and has none from a later incident', () => {
+  it('the glossary of 04-01 keeps the terms of chapter 1, least-privilege among them, and has none from a later incident', () => {
     render(<Harness />);
     expect(glossaryNames()).toContain(TERMS['ip-address'].name);
-    expect(glossary()).not.toHaveTextContent(TERMS['least-privilege'].name);
+    expect(glossaryNames()).toContain(TERMS['least-privilege'].name);
+    expect(glossaryNames()).not.toContain(TERMS.stateful.name);
+    expect(glossaryNames()).not.toContain(TERMS['outbound-rule'].name);
   });
 
   it('sending with the task failing: Lucía says which one, and the game goes on', async () => {

@@ -42,7 +42,7 @@ describe('firewallCard', () => {
       empty: TASK_CARD_TEXT.noRules['host-firewall'],
       slot: TASK_CARD_TEXT.slot['host-firewall'],
     });
-    expect(card && toPlainText(card.empty)).toBe('No tiene reglas: no deja entrar nada.');
+    expect(card && toPlainText(card.empty)).toBe('Este firewall no tiene reglas.');
     expect(card?.slot).toBe('Regla nueva');
   });
 
@@ -87,6 +87,18 @@ describe('the outbound list of the card of a firewall', () => {
     expect(card).toMatchObject({ firewallId: 'fw-you', kind: 'host-firewall', rules: [], empty: TASK_CARD_TEXT.noRules['host-firewall'], slot: TASK_CARD_TEXT.slot['host-firewall'] });
     expect(card?.outbound?.rules).toEqual([]);
     expect(card?.outbound?.slot).toBe('Regla nueva');
+  });
+
+  it('the empty inbound list of a host firewall makes no claim that the reply would contradict', () => {
+    const hostCard = firewallCard(host, HOST_FIREWALL);
+    const outboundCard = firewallCard(start, FIREWALL);
+    for (const card of [hostCard, outboundCard]) {
+      expect(card && toPlainText(card.empty)).toBe('Este firewall no tiene reglas.');
+      expect(card && toPlainText(card.empty)).not.toMatch(/nada|ningún|no deja entrar|no entra/i);
+      expect(card && termsIn(card.empty)).toEqual(['firewall', 'rule']);
+    }
+    const securityGroup = firewallCard(first, PIECE_ID.firewall(SG.servidor2));
+    expect(securityGroup && toPlainText(securityGroup.empty)).toBe('No tiene reglas de entrada: no deja entrar nada.');
   });
 
   it('words the empty outbound list of a host firewall', () => {

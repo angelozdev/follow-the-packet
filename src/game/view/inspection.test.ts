@@ -194,10 +194,21 @@ describe('inspect', () => {
   });
 
   it('a host firewall says what a firewall is and lists its rules, named after its device and without the name of the later inbound rule', () => {
-    expect(plain(inspect(office, PIECE_ID.firewall('fw-lucia')))).toEqual({
+    const beforeInAndOut: Session = {
+      ...office,
+      known: new Set([...office.known].filter((term) => term !== 'inbound' && term !== 'outbound')),
+      parts: { ...office.parts, outboundRules: { 'host-firewall': false, 'security-group': false } },
+    };
+    expect(plain(inspect(beforeInAndOut, PIECE_ID.firewall('fw-lucia')))).toEqual({
       title: 'firewall lucia-laptop',
-      fields: [whatIs('firewall'), ['Reglas', 'Ninguna: no deja entrar nada.']],
+      fields: [whatIs('firewall'), ['Reglas para lo que llega', 'Ninguna.']],
     });
+  });
+
+  it('the empty inbound line of a host firewall claims nothing about what comes in, while a Security Group keeps its own wording', () => {
+    const empty = (session: Session, firewallId: string) => plain(inspect(session, PIECE_ID.firewall(firewallId)))?.fields.find(([label]) => /^(Reglas para lo que llega|Entrada|Reglas de entrada)$/.test(label))?.slice(1);
+    expect(empty(office, 'fw-lucia')).toEqual(['Ninguna.']);
+    expect(empty(first, SG.servidor2)).toEqual(['Ninguna: no deja entrar nada.']);
   });
 
   it('a host firewall with its outbound rules open lists the rules of each direction, named by the chips of each', () => {
@@ -206,7 +217,7 @@ describe('inspect', () => {
     const firewall = PIECE_ID.firewall('fw-you');
     expect(plain(inspect(start, firewall))).toEqual({
       title: 'firewall tu-laptop',
-      fields: [whatIs('firewall'), ['Entrada', 'Ninguna: no deja entrar nada.'], ['Salida', 'Ninguna.']],
+      fields: [whatIs('firewall'), ['Entrada', 'Ninguna.'], ['Salida', 'Ninguna.']],
     });
     const placed = [
       { type: 'placeRule', firewallId: 'fw-you', whatId: 'echo-request', fromId: 'from-printer' },
@@ -232,7 +243,7 @@ describe('inspect', () => {
       const session = withRules(KNOWN);
       expect(plain(inspect(session, FIREWALL))).toEqual({
         title: 'firewall lucia-laptop',
-        fields: [whatIs('firewall'), ['Entrada', 'Ninguna: no deja entrar nada.'], ['Salida', 'deja salir todo el tráfico']],
+        fields: [whatIs('firewall'), ['Entrada', 'Ninguna.'], ['Salida', 'deja salir todo el tráfico']],
       });
       expect(firewallCard(session, FIREWALL)).toMatchObject({ rules: [], kind: 'host-firewall' });
       expect(firewallCard(session, FIREWALL)).not.toHaveProperty('outbound');
@@ -242,7 +253,7 @@ describe('inspect', () => {
       const withoutTraffic = withRules(['firewall', 'rule', 'inbound', 'outbound']);
       expect(plain(inspect(withoutTraffic, FIREWALL))?.fields.at(-1)).toEqual(['Salida', 'deja salir todo']);
       const withoutOutbound = withRules(['firewall', 'traffic', 'rule']);
-      expect(plain(inspect(withoutOutbound, FIREWALL))?.fields).toEqual([whatIs('firewall'), ['Reglas', 'Ninguna: no deja entrar nada.']]);
+      expect(plain(inspect(withoutOutbound, FIREWALL))?.fields).toEqual([whatIs('firewall'), ['Reglas para lo que llega', 'Ninguna.']]);
     });
 
     it('writes an inbound rule that no Source chip names from the rule itself', () => {

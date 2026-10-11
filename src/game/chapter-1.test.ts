@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
-import { networkSchema } from '@/engine';
-import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
+import { extraOpenings, networkSchema, stopStep } from '@/engine';
+import { INCIDENTS, isGuided, solvedWorld, startWorld, type Flow, type Incident } from '@/levels';
 import { incidentTexts } from '@/levels/ladder';
-import { ADDRESS, CARD, DEVICE, FIREWALL, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, SERVER, TASK } from '@/levels/01-first-day/shared';
-import type { SentPacket } from './flow-runs';
+import { ADDRESS, CARD, DEVICE, FIREWALL, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
+import type { FlowRun, SentPacket } from './flow-runs';
+import { firewallCard } from './view/cards/firewall-card';
 import { identifyCard } from './view/cards/identify-card';
 import { settingsCard } from './view/cards/settings-card';
 import { terminalCard, terminalLine } from './view/cards/terminal-card';
@@ -13,7 +14,8 @@ import { PIECE_ID } from './view/piece-id';
 import { drawsRouter, pieceViews } from './view/pieces';
 import { routerPlace } from './view/router-place';
 import { tracerouteLines } from './view/cards/traceroute-lines';
-import { sessionReducer, startSession, starsOf, type Session } from './session';
+import { canConfigure, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
+import { isTight } from './stars';
 import { taskHolds } from './tasks';
 
 const THE_OFFICE = '01-01';
@@ -27,6 +29,8 @@ const THE_NETWORK_OF_NETWORKS = '01-08';
 const COUNTING_HOPS = '01-09';
 const SEEING_THE_PATH = '01-10';
 const THE_GUARD = '01-11';
+const YOUR_FIRST_RULE = '01-12';
+const IN_AND_OUT = '01-13';
 const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const NOTE_RULE = 'La nota de Lucía estaba mal: 192.168.1.300 no es IPv4, porque cada uno de los cuatro números va de 0 a 255.';
 const RIGHT_FEEDBACK = 'Correcto.';
@@ -72,6 +76,18 @@ const DROPPED_TEXT = 'El firewall de laptop-marta descartó el paquete sin avisa
 const GUARD_PLACE = 1;
 const NO_REASON_GIVEN = /revel|stateful|stateless|recuerda|mismo camino|esconde|oculta/i;
 const ABOUT_RULES = /regla|entrada|salida|permit|deneg|privilegio/i;
+const FIRST_RULE_PLACE = 0;
+const IN_AND_OUT_PLACE = 2;
+const BY_DEFAULT = /por defecto|de fábrica|normalmente/i;
+const CLOSED_BY_SOMEONE = 'Se queda en el firewall de tu-laptop: su salida está cerrada, alguien la configuró así.';
+const NO_RULE_LETS_IT_OUT = 'Se queda en el firewall de tu-laptop: ninguna regla lo deja salir.';
+const ANY_SOURCE_LABEL = 'Cualquier IP de origen';
+const LUCIA_CHIP_LABEL = 'laptop-lucia (IP 192.168.1.11)';
+const PRINTER_CHIP_LABEL = 'impresora (IP 192.168.1.21)';
+const ECHO_REQUEST_LABEL = 'ICMP · Echo Request';
+const GENERAL_RULE_OF_FIREWALLS = /\b(un|el|todo) firewall (cierra|bloquea|descarta|deniega)|los firewalls|todos los firewalls|siempre/i;
+const A_RULE_THAT_DENIES = /regla[^.]*(?<!no )(prohíbe|prohíben|deniega|deniegan|niega|bloquea)/i;
+const NO_INBOUND_RULES = 'Este firewall no tiene reglas.';
 const SENDER_LOOKED = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50 y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
 
 function guidedOf(id: string) {
@@ -981,5 +997,310 @@ describe('the globe of the internet in blocks 3 and 4', () => {
 
   it('is not drawn in 01-06, 01-07 or 01-11 even when the term internet is known, because no piece they list is outside the office', () => {
     expect([YOUR_NETWORK, WHO_GETS_WHAT_IS_OUTSIDE, THE_GUARD].map((id) => globeIn(knowingTheInternet(id)))).toEqual([false, false, false]);
+  });
+});
+
+function runOf(session: Session, flow: Flow): FlowRun {
+  const found = session.runs.find((candidate) => candidate.id === flow.id);
+  if (!found) throw new Error(`no run for ${flow.id}`);
+  return found;
+}
+
+function allowFrom(session: Session, fromId: string, firewallId: string = FIREWALL.marta): Session {
+  return sessionReducer(session, { type: 'placeRule', firewallId, whatId: WHAT.echoRequest.id, fromId });
+}
+
+function allowTo(session: Session, toId: string): Session {
+  return sessionReducer(session, { type: 'placeRule', firewallId: FIREWALL.you, whatId: WHAT.echoRequest.id, toId, direction: 'outbound' });
+}
+
+function expectedPackets(session: Session) {
+  return session.incident.flows.filter((flow) => flow.kind !== 'forbidden').map((flow) => flow.packet);
+}
+
+describe('01-12, your first rule', () => {
+  const start = startSession(INCIDENTS, YOUR_FIRST_RULE);
+  const support = allowFrom(start, FROM.lucia.id);
+  const open = allowFrom(start, FROM.anyone.id);
+  const marta = PIECE_ID.firewall(FIREWALL.marta);
+
+  it('01-12: Echo Request from laptop-lucia lets her ping in and keeps the visitor out, with the middle star', () => {
+    expect(runOf(support, FLOW.support)).toMatchObject({ replied: true, blocked: false });
+    expect(runOf(support, FLOW.visitor)).toMatchObject({ reached: false, blocked: true, by: [FIREWALL.marta] });
+    expect(isIntruding(support)).toBe(false);
+    expect(support.alerts).toBe(0);
+    expectClosed(support);
+  });
+
+  it('01-12: any source lets the visitor in and raises the alert', () => {
+    expect(runOf(open, FLOW.support)).toMatchObject({ replied: true });
+    expect(runOf(open, FLOW.visitor)).toMatchObject({ reached: true, intruder: true });
+    expect(isIntruding(open)).toBe(true);
+    expect(open.alerts).toBe(1);
+    expect(sessionReducer(open, { type: 'submit' }).rejection).toMatchObject({ intruding: true, failingTaskIds: [TASK.rule] });
+  });
+
+  it('01-12: the probe battery finds the extra opening of any source and none of laptop-lucia', () => {
+    const extra = extraOpenings(open.world, expectedPackets(open));
+    expect(extra.length).toBeGreaterThan(0);
+    expect(extra.map((packet) => packet.from.id)).toContain(DEVICE.visitor.id);
+    expect(isTight(open.world, open.incident.flows)).toBe(false);
+    expect(extraOpenings(support.world, expectedPackets(support))).toEqual([]);
+    expect(isTight(support.world, support.incident.flows)).toBe(true);
+  });
+
+  it('01-12: starts with the firewall of laptop-marta open to rules, with none, and both pings stopped by it', () => {
+    expect(canConfigure(start, FIREWALL.marta)).toBe(true);
+    expect(start.world.firewalls.find((firewall) => firewall.id === FIREWALL.marta)?.inbound).toEqual([]);
+    expect([runOf(start, FLOW.support), runOf(start, FLOW.visitor)].map((run) => [run.blocked, run.replied, run.by])).toEqual([
+      [true, false, [FIREWALL.marta]],
+      [true, false, [FIREWALL.marta]],
+    ]);
+    expect(openTasks(start)).toEqual([TASK.rule]);
+    const card = firewallCard(start, marta);
+    expect(card?.outbound).toBeUndefined();
+    expect(card && toPlainText(card.empty)).toBe(NO_INBOUND_RULES);
+  });
+
+  it('01-12: the Type is Echo Request and the Source is Cualquier IP de origen or laptop-lucia with its IP, each chip naming a term by its official name', () => {
+    const incident = INCIDENTS.find((candidate) => candidate.id === YOUR_FIRST_RULE);
+    if (incident?.mechanic !== 'filter') throw new Error('01-12 is a filter incident');
+    expect(incident.chips.what.map((chip) => toPlainText(chip.label))).toEqual([ECHO_REQUEST_LABEL]);
+    expect(incident.chips.from.map((chip) => toPlainText(chip.label))).toEqual([ANY_SOURCE_LABEL, LUCIA_CHIP_LABEL]);
+    expect(termsIn(incident.chips.from[0].label)).toEqual(['source-ip']);
+    expect(termsIn(incident.chips.from[1].label)).toEqual(['ip-address']);
+    expect(incident.chips.to).toBeUndefined();
+  });
+
+  it('01-12: draws laptop-lucia, laptop-visita and laptop-marta with its firewall, and no globe, router or sender of its own', () => {
+    expect(drawnLabels(start)).toEqual(['device:laptop-lucia', 'device:laptop-marta', 'device:laptop-visita', `firewall:firewall ${DEVICE.marta.name}`].sort());
+    expect(guidedOf(YOUR_FIRST_RULE).shown).toEqual(RULE_PIECES);
+    expect(pieceViews(start).filter((piece) => piece.kind === 'edge' || piece.kind === 'internet')).toEqual([]);
+  });
+
+  it('01-12: a rule only allows: no chip, task, hint or option offers a rule that denies, and the visitor is refused by what no rule allows', () => {
+    const incident = guidedOf(YOUR_FIRST_RULE);
+    const wrong = incident.explanation.filter((option) => !option.correct).map((option) => option.text);
+    const texts = incidentTexts(incident).filter((text) => !wrong.includes(text));
+    expect(texts.map((text) => toPlainText(text)).filter((text) => A_RULE_THAT_DENIES.test(text))).toEqual([]);
+    expect(incident.solution.every((move) => move.type === 'placeRule')).toBe(true);
+  });
+
+  it('01-12: introduces the five terms and uses each one in a text the player reads', () => {
+    const incident = guidedOf(YOUR_FIRST_RULE);
+    expect([...incident.introduces].sort()).toEqual(['allow', 'default-deny', 'deny', 'least-privilege', 'rule']);
+    const used = new Set(incidentTexts(incident).flatMap((text) => termsIn(text)));
+    expect(incident.introduces.filter((term) => !used.has(term))).toEqual([]);
+  });
+
+  it('01-12: the question has three options, the right one is the default deny and each wrong one is a mistake its feedback refutes', () => {
+    const { explanation } = guidedOf(YOUR_FIRST_RULE);
+    expect(explanation).toHaveLength(3);
+    const [right] = explanation.filter((option) => option.correct);
+    expect(termsIn(right.feedback)).toEqual(expect.arrayContaining(['default-deny']));
+    expect(termsIn(right.text)).toEqual(expect.arrayContaining(['rule', 'allow', 'deny']));
+    for (const wrong of explanation.filter((option) => !option.correct)) expect(toPlainText(wrong.feedback)).toMatch(/^No\./);
+  });
+
+  it('01-12: the hints name the chips of the card and the second ones names the least privilege', () => {
+    const [first, second] = guidedOf(YOUR_FIRST_RULE).hints;
+    expect(termsIn(first)).toEqual(expect.arrayContaining(['firewall', 'rule', 'allow']));
+    expect(termsIn(second)).toEqual(expect.arrayContaining(['echo-request', 'least-privilege']));
+    expect(toPlainText(second)).toContain(DEVICE.lucia.name);
+  });
+
+  it('01-12: starts from the world of 01-11 solved, with the visitor connected, and the schema accepts its two worlds', () => {
+    expect(start.world).toEqual(solvedWorld(INCIDENTS, THE_GUARD));
+    expect(start.world.devices.find((device) => device.id === DEVICE.visitor.id)?.connected).not.toBe(false);
+    expect([start.world, solvedWorld(INCIDENTS, YOUR_FIRST_RULE)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
+  });
+
+  it('01-12: none of its texts uses the words entrada and salida, which 01-13 introduces', () => {
+    const texts = [...incidentTexts(guidedOf(YOUR_FIRST_RULE)), ...everythingShown(support), ...everythingShown(start)].map((text) => toPlainText(text));
+    expect(texts.filter((text) => /\b(entrada|salida)\b/i.test(text))).toEqual([]);
+  });
+});
+
+describe('01-13, in and out', () => {
+  const start = startSession(INCIDENTS, IN_AND_OUT);
+  const outbound = allowTo(start, TO.lucia.id);
+  const inbound = allowFrom(start, FROM.lucia.id, FIREWALL.you);
+  const yours = PIECE_ID.firewall(FIREWALL.you);
+  const stoppedAt = (session: Session) => stopStep(runOf(session, FLOW.leave).trace);
+
+  it('01-13: an outbound rule for laptop-lucia lets the ping leave and come back', () => {
+    expect(runOf(outbound, FLOW.leave)).toMatchObject({ replied: true, blocked: false, by: [DEVICE.lucia.id] });
+    expect(runOf(start, FLOW.leave)).toMatchObject({ replied: false, blocked: true });
+    expectClosed(outbound);
+  });
+
+  it('01-13: an inbound rule does not let the ping leave', () => {
+    expect(runOf(inbound, FLOW.leave)).toMatchObject({ replied: false, reached: false, blocked: true, by: [FIREWALL.you] });
+    expect(openTasks(inbound)).toEqual([TASK.leave]);
+    expect(sessionReducer(inbound, { type: 'submit' }).phase).toBe('playing');
+    expect(sessionReducer(inbound, { type: 'submit' }).rejection).toMatchObject({ failingTaskIds: [TASK.leave] });
+  });
+
+  it('01-13: the stamp stays on your own laptop until the rule is outbound', () => {
+    for (const session of [start, inbound]) {
+      expect(stoppedAt(session)).toMatchObject({ stage: 'firewall-out', at: DEVICE.you.id, verdict: 'drop' });
+      expect(runOf(session, FLOW.leave)).toMatchObject({ blocked: true, by: [FIREWALL.you] });
+    }
+    expect(stoppedAt(outbound)?.stage).not.toBe('firewall-out');
+    expect(runOf(outbound, FLOW.leave).blocked).toBe(false);
+  });
+
+  it('01-13: the firewall card of your laptop shows the tabs Entrada and Salida, and a rule placed in Entrada leaves the ping stopped', () => {
+    const card = firewallCard(start, yours);
+    expect(card?.outbound && Object.values(card.outbound.tabs).map((tab) => toPlainText(tab))).toEqual(['entrada', 'salida']);
+    expect(card?.rules).toEqual([]);
+    expect(card?.outbound?.rules).toEqual([]);
+    expect(canConfigure(start, FIREWALL.you, 'inbound')).toBe(true);
+    expect(canConfigure(start, FIREWALL.you, 'outbound')).toBe(true);
+    const placed = firewallCard(inbound, yours);
+    expect(placed?.rules).toHaveLength(1);
+    expect(placed?.outbound?.rules).toEqual([]);
+    expect(runOf(inbound, FLOW.leave)).toMatchObject({ replied: false, blocked: true });
+    expect(firewallCard(outbound, yours)?.outbound?.rules).toHaveLength(1);
+  });
+
+  it('01-13: no text of the incident says or suggests that a firewall closes its outbound side by default', () => {
+    const card = firewallCard(start, yours);
+    const words = [card?.title, card?.empty, card?.outbound?.empty, card?.slot, card?.outbound?.slot, ...Object.values(card?.outbound?.tabs ?? {})].filter((text): text is string => text !== undefined);
+    const texts = [...incidentTexts(guidedOf(IN_AND_OUT)), ...words, ...everythingShown(start), ...everythingShown(inbound), ...everythingShown(outbound)].map((text) => toPlainText(text));
+    expect(texts.filter((text) => BY_DEFAULT.test(text))).toEqual([]);
+    expect(texts.filter((text) => GENERAL_RULE_OF_FIREWALLS.test(text))).toEqual([]);
+    expect(card?.outbound && toPlainText(card.outbound.empty)).toBe('Este firewall tiene la salida cerrada: alguien lo configuró así.');
+    expect(termsIn(guidedOf(IN_AND_OUT).explanation.map((option) => option.text).join(' '))).not.toContain('default-deny');
+  });
+
+  it('01-13: the reason of the drop on your own laptop says that its outbound side was set closed, and states no general rule about firewalls', () => {
+    for (const session of [start, inbound]) {
+      const reason = fieldLines(session, runOf(session, FLOW.leave).pieceId, STOPPED_LABEL);
+      expect(reason).toEqual([CLOSED_BY_SOMEONE]);
+      expect(reason?.filter((text) => GENERAL_RULE_OF_FIREWALLS.test(text) || BY_DEFAULT.test(text))).toEqual([]);
+    }
+  });
+
+  it('01-13: with an outbound rule for another destination the reason no longer says the side is closed, but that no rule lets the ping out', () => {
+    const elsewhere = allowTo(start, TO.printer.id);
+    expect(runOf(elsewhere, FLOW.leave)).toMatchObject({ blocked: true, replied: false });
+    expect(fieldLines(elsewhere, runOf(elsewhere, FLOW.leave).pieceId, STOPPED_LABEL)).toEqual([NO_RULE_LETS_IT_OUT]);
+  });
+
+  it('01-13: the reply comes back through a firewall with no inbound rule, and no text says why', () => {
+    expect(firewallCard(outbound, yours)?.rules).toEqual([]);
+    expect(outbound.world.firewalls.find((firewall) => firewall.id === FIREWALL.you)?.inbound).toEqual([]);
+    const reply = outbound.runs.find((run) => run.id === FLOW.leave.id)?.trace.steps.find((step) => step.stage === 'reply');
+    expect(reply).toMatchObject({ verdict: 'pass' });
+    const shown = everythingShown(outbound);
+    expect(shown.filter((text) => NO_REASON_GIVEN.test(text))).toEqual([]);
+    const card = firewallCard(outbound, yours);
+    expect(card && toPlainText(card.empty)).toBe(NO_INBOUND_RULES);
+    expect(boxLines(outbound, DEVICE.you.id).concat(plainBox(outbound, yours)).filter((text) => /nada|no deja entrar/i.test(text))).toEqual([]);
+    expect(shown.filter((text) => SWITCHED_OFF.test(text))).toEqual([]);
+  });
+
+  it('01-13: opening the inbound side too is more than the incident needs, so it keeps the stars but the middle one', () => {
+    const both = allowFrom(outbound, FROM.lucia.id, FIREWALL.you);
+    expect(isTight(outbound.world, outbound.incident.flows)).toBe(true);
+    expect(isTight(both.world, both.incident.flows)).toBe(false);
+    expect(starsOf(sessionReducer(both, { type: 'submit' }))).toMatchObject({ closed: true, middle: false });
+  });
+
+  it('01-13: keeps the rule of 01-12 working in the background, as an ambient flow that counts for the battery and closes no task', () => {
+    const incident = guidedOf(IN_AND_OUT);
+    expect(incident.flows.map((flow) => [flow.id, flow.kind])).toEqual([[FLOW.leave.id, 'required'], [FLOW.support.id, 'ambient']]);
+    expect(runOf(start, FLOW.support)).toMatchObject({ replied: true });
+    expect(incident.tasks.flatMap((task) => ('flowIds' in task ? task.flowIds : []))).toEqual([FLOW.leave.id]);
+    expect(isTight(outbound.world, [FLOW.leave])).toBe(false);
+    expect(isTight(outbound.world, incident.flows)).toBe(true);
+  });
+
+  it('01-13: draws tu-laptop, laptop-lucia and laptop-marta with their firewalls and no globe', () => {
+    expect(guidedOf(IN_AND_OUT).shown).toEqual(GUARD_PIECES);
+    expect(drawnLabels(start)).toEqual(
+      ['device:laptop-lucia', 'device:laptop-marta', 'device:tu-laptop', `firewall:firewall ${DEVICE.marta.name}`, `firewall:firewall ${DEVICE.you.name}`].sort(),
+    );
+    expect(pieceViews(start).filter((piece) => piece.kind === 'edge' || piece.kind === 'internet')).toEqual([]);
+  });
+
+  it('01-13: the Type is Echo Request, and the Source and the Destination are laptop-lucia or the printer, each with its IP', () => {
+    const incident = INCIDENTS.find((candidate) => candidate.id === IN_AND_OUT);
+    if (incident?.mechanic !== 'filter') throw new Error('01-13 is a filter incident');
+    expect(incident.chips.what.map((chip) => toPlainText(chip.label))).toEqual([ECHO_REQUEST_LABEL]);
+    expect(incident.chips.from.map((chip) => toPlainText(chip.label))).toEqual([LUCIA_CHIP_LABEL, PRINTER_CHIP_LABEL]);
+    expect((incident.chips.to ?? []).map((chip) => toPlainText(chip.label))).toEqual([LUCIA_CHIP_LABEL, PRINTER_CHIP_LABEL]);
+    for (const chip of [...incident.chips.from, ...(incident.chips.to ?? [])]) expect(termsIn(chip.label)).toEqual(['ip-address']);
+  });
+
+  it('01-13: introduces entrada and salida, and no text says a regla de entrada or a regla de salida, which are the names of the terms of chapter 4', () => {
+    const incident = guidedOf(IN_AND_OUT);
+    expect([...incident.introduces].sort()).toEqual(['inbound', 'outbound']);
+    const texts = [...incidentTexts(incident), ...everythingShown(start)].map((text) => toPlainText(text));
+    expect(texts.filter((text) => /regla de (entrada|salida)/i.test(text))).toEqual([]);
+  });
+
+  it('01-13: starts from the world of 01-12 solved plus the firewall of your laptop with nothing in either direction, and the schema accepts its two worlds', () => {
+    const before = solvedWorld(INCIDENTS, YOUR_FIRST_RULE);
+    expect(start.world.firewalls).toEqual([...before.firewalls, { id: FIREWALL.you, name: DEVICE.you.name, kind: 'host-firewall', inbound: [], outbound: [] }]);
+    expect(start.world.devices.find((device) => device.id === DEVICE.you.id)?.firewallIds).toEqual([FIREWALL.you]);
+    expect([start.world, solvedWorld(INCIDENTS, IN_AND_OUT)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
+  });
+});
+
+describe('the rules of 01-12 and 01-13', () => {
+  it('01-12 and 01-13: no text names a switched-off device as the cause of anything', () => {
+    for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
+      const session = startSession(INCIDENTS, id);
+      expect(incidentTexts(guidedOf(id)).filter((text) => SWITCHED_OFF.test(toPlainText(text))), id).toEqual([]);
+      expect(everythingShown(session).filter((text) => SWITCHED_OFF.test(text)), id).toEqual([]);
+    }
+  });
+
+  it('01-12 and 01-13: the question is one question and each wrong option is refuted by its own feedback, which starts with No', () => {
+    for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
+      const { question, explanation } = guidedOf(id);
+      expect(toPlainText(question ?? '').match(/\?/g), id).toHaveLength(1);
+      expect(explanation.filter((option) => !option.correct).map((option) => toPlainText(option.feedback).startsWith('No.')), id).toEqual([true, true]);
+      expect(toPlainText(explanation.find((option) => option.correct)?.feedback ?? '').startsWith('Eso es.'), id).toBe(true);
+    }
+  });
+});
+
+describe('the thirteen incidents of blocks 1 to 4', () => {
+  const places = [
+    THE_OFFICE,
+    THE_ENVELOPE,
+    ARE_YOU_THERE,
+    PING_YOURSELF,
+    WHEN_IT_DOES_NOT_COME_BACK,
+    YOUR_NETWORK,
+    WHO_GETS_WHAT_IS_OUTSIDE,
+    THE_NETWORK_OF_NETWORKS,
+    COUNTING_HOPS,
+    SEEING_THE_PATH,
+    THE_GUARD,
+    YOUR_FIRST_RULE,
+    IN_AND_OUT,
+  ].map((id) => guidedOf(id).explanation.findIndex((option) => option.correct));
+
+  it('01-12 and 01-13: put the right explanation in places of their own, neither the second nor the one of the incident before', () => {
+    expect(places.slice(-2)).toEqual([FIRST_RULE_PLACE, IN_AND_OUT_PLACE]);
+    expect(places.filter((place, index) => index > 0 && place === places[index - 1])).toEqual([]);
+    expect(places.at(-2)).not.toBe(GUARD_PLACE);
+  });
+
+  it('01-12 and 01-13: start and end in a world the network schema accepts', () => {
+    for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
+      expect([startWorld(INCIDENTS, id), solvedWorld(INCIDENTS, id)].flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? []), id).toEqual([]);
+    }
+  });
+
+  it('01-12 and 01-13: draw no globe of the internet even when the term internet is known, because no piece they list is outside the office', () => {
+    for (const id of [YOUR_FIRST_RULE, IN_AND_OUT]) {
+      const session = startSession(INCIDENTS, id);
+      expect(pieceViews({ ...session, known: new Set([...session.known, 'internet']) }).some((piece) => piece.kind === 'internet'), id).toBe(false);
+    }
   });
 });

@@ -11,7 +11,7 @@ const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const SUBMIT = 'Enviar solución';
 const INTRUDING = 'algo prohibido está entrando';
 const INSPECTED_SERVER = 'servidor2 con candado';
-const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo prohibido';
+const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo que no debe';
 const INSPECTION_TITLE = 'servidor2';
 const QUESTION = /¿Qué pasó\?/;
 

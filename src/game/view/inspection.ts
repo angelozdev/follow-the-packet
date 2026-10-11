@@ -97,7 +97,7 @@ function device(session: Session, own: Device): Inspection {
 
 function rulesFields(session: Session, own: Firewall): FieldSpec[] {
   const lines = (rows: TermText[], none: TermText) => () => (rows.length > 0 ? rows : [none]);
-  const inbound = lines(ruleRows(session, own).map(rowText), INSPECTION_TEXT.noRules);
+  const inbound = lines(ruleRows(session, own).map(rowText), INSPECTION_TEXT.noRules[own.kind]);
   if (!session.parts.outboundRules[own.kind]) return [{ term: RULES_TERM.inbound[own.kind], label: INSPECTION_TEXT.inbound[own.kind], lines: inbound }];
   return [
     { term: RULES_TERM.inbound[own.kind], label: INSPECTION_TEXT.directions[own.kind].inbound, lines: inbound },

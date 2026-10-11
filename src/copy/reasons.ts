@@ -49,6 +49,8 @@ const FIREWALL_TEXT: Record<FirewallKind, { term: TermId; rules: Record<Way, Ter
   },
 };
 
+const CLOSED_OUTBOUND: FirewallSentence = (device) => `Se queda en el {{firewall}} de ${device}: su {{outbound|salida}} está cerrada, alguien la configuró así.`;
+
 const NOTHING_CAME_BACK: TermText = 'No volvió ninguna respuesta.';
 const KEEPS_GOING: TermText = 'Sigue su camino.';
 const REPLY_ARRIVES: TermText = 'Llega la respuesta.';
@@ -98,11 +100,19 @@ function side(fromInside: boolean): string {
   return fromInside ? 'dentro' : 'fuera';
 }
 
+/** True when the device has a firewall of its own kind and every one of them has no rule to let anything out: the outbound side was set closed. */
+function hasClosedOutbound(net: Network, deviceId: string): boolean {
+  const owner = net.devices.find((device) => device.id === deviceId);
+  const firewalls = net.firewalls.filter((firewall) => firewall.kind === 'host-firewall' && owner?.firewallIds.includes(firewall.id));
+  return firewalls.length > 0 && firewalls.every((firewall) => firewall.outbound.length === 0);
+}
+
 function firewallReason(reason: FirewallReason, net: Network, known: ReadonlySet<TermId>): TermText {
   const { way, verdict } = FIREWALL_STEP[reason.code];
   const text = FIREWALL_TEXT[reason.firewallKind];
   const device = deviceName(net, reason.deviceId);
   if (!known.has(text.term)) return verdict === 'pass' ? KEEPS_GOING : NOTHING_CAME_BACK;
+  if (way === 'out' && verdict === 'drop' && reason.firewallKind === 'host-firewall' && known.has('outbound') && hasClosedOutbound(net, reason.deviceId)) return CLOSED_OUTBOUND(device);
   if (verdict === 'drop' && !known.has(text.rules[way])) return `El {{${text.term}}} de ${device} ${word(known, 'drop', 'descartó')} el ${word(known, 'packet', 'paquete')} sin avisar.`;
   return text[verdict][way](device);
 }

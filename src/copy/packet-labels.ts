@@ -58,7 +58,7 @@ export function tracerouteLabel(packet: PacketSpec, trace: Trace, net: Network, 
 
 export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder' | 'warned';
 
-const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró sin permiso.', warned: 'Apareció un aviso.' };
+const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró y no debía.', warned: 'Apareció un aviso.' };
 
 export type WarnedBy = 'router' | 'sender';
 export type WarningTerm = Extract<TermId, 'host-unreachable' | 'time-exceeded'>;

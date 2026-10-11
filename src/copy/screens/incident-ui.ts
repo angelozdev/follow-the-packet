@@ -18,7 +18,7 @@ export const MAP_TEXT = {
   edge: EDGE_LABEL,
   internet: '{{internet}}',
   locked: 'con candado',
-  alert: 'con alerta: entra algo prohibido',
+  alert: 'con alerta: entra algo que no debe',
 } as const;
 
 export const INSPECTION_TEXT = {
@@ -32,12 +32,12 @@ export const INSPECTION_TEXT = {
   answersPing: '0: contesta el {{ping}}',
   ignoresPing: '1: no contesta el {{ping}}',
   firewalls: { 'security-group': '{{security-group|Security Groups}}', 'host-firewall': '{{firewall}}' } satisfies Record<FirewallKind, TermText>,
-  inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': '{{rule|Reglas}}' } satisfies Record<FirewallKind, TermText>,
+  inbound: { 'security-group': '{{inbound-rule|Reglas de entrada}}', 'host-firewall': '{{rule|Reglas}} para lo que llega' } satisfies Record<FirewallKind, TermText>,
   directions: {
     'security-group': { inbound: '{{inbound-rule|Reglas de entrada}}', outbound: '{{outbound-rule|Reglas de salida}}' },
     'host-firewall': { inbound: '{{inbound|Entrada}}', outbound: '{{outbound|Salida}}' },
   } satisfies Record<FirewallKind, Record<Direction, TermText>>,
-  noRules: 'Ninguna: no deja entrar nada.',
+  noRules: { 'security-group': 'Ninguna: no deja entrar nada.', 'host-firewall': 'Ninguna.' } satisfies Record<FirewallKind, TermText>,
   noOutboundRules: 'Ninguna.',
   ruleRow: (what: TermText, from: TermText): TermText => `${what} ← ${from}`,
   outboundRuleRow: (what: TermText, to: TermText): TermText => `${what} → ${to}`,
@@ -99,7 +99,7 @@ export const LUCIA_TEXT = {
 export const TASK_CARD_TEXT = {
   noRules: {
     'security-group': 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',
-    'host-firewall': 'No tiene {{rule|reglas}}: no deja entrar nada.',
+    'host-firewall': 'Este {{firewall}} no tiene {{rule|reglas}}.',
   } satisfies Record<FirewallKind, TermText>,
   noOutboundRules: {
     'security-group': 'Este {{security-group}} no tiene {{outbound-rule|reglas de salida}}: su salida está cerrada.',

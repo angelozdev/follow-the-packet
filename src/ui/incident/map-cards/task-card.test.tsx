@@ -45,7 +45,7 @@ describe('task card', () => {
     const host = hostFirewallIncident();
     renderIncidentCard(host, startSession([host], host.id), 'fw-lucia');
     expect(screen.getByRole('heading', { name: 'firewall laptop-lucia' })).toHaveFocus();
-    expect(screen.getByRole('dialog', { name: 'firewall laptop-lucia' })).toHaveTextContent('No tiene reglas: no deja entrar nada.');
+    expect(screen.getByRole('dialog', { name: 'firewall laptop-lucia' })).toHaveTextContent('Este firewall no tiene reglas.');
     expect(screen.getByRole('group', { name: 'Regla nueva' })).toBeInTheDocument();
     expect(screen.queryByText(/de entrada/)).toBeNull();
   });
