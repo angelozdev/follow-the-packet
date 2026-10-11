@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, applyAction, type Firewall, type NetworkAction } from '@/engine';
-import { INCIDENTS, type CaseSpec, type DiagnoseIncident, type ExplanationOption, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
+import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction, type PacketSpec } from '@/engine';
+import { INCIDENTS, applyMove, solvedWorld, startWorld, type CaseSpec, type DiagnoseIncident, type ExplanationOption, type FilterIncident, type IdentifyIncident, type SendIncident } from '@/levels';
 import { EVERY_TERM, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, ping, withDevice } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
@@ -8,6 +8,21 @@ export function filterIncident(id: string): FilterIncident {
   const found = INCIDENTS.find((incident) => incident.id === id);
   if (found?.mechanic !== 'filter') throw new Error(`${id} is not a filter incident`);
   return found;
+}
+
+const CHAPTER_4_INCIDENTS = ['04-01', '04-02'];
+
+/** Returns the VPC worlds chapter 4 records golden traces for: 04-01 and 04-02 each at its start, once solved and with each one-chip rule placed in each firewall of its start world, with the packets of that incident's flows. */
+export function chapter4Worlds(): { world: Network; flows: PacketSpec[] }[] {
+  return CHAPTER_4_INCIDENTS.flatMap((id) => {
+    const incident = filterIncident(id);
+    const start = startWorld(INCIDENTS, id);
+    const oneRule = start.firewalls.flatMap(({ id: firewallId }) =>
+      incident.chips.what.flatMap(({ id: whatId }) => incident.chips.from.map(({ id: fromId }) => applyMove(start, incident, { type: 'placeRule', firewallId, whatId, fromId }))),
+    );
+    const flows = incident.flows.map(({ packet }) => packet);
+    return [start, solvedWorld(INCIDENTS, id), ...oneRule].map((world) => ({ world, flows }));
+  });
 }
 
 const PEER_CHIPS = [

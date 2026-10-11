@@ -81,10 +81,24 @@ export interface Hop {
   ttlLeft: number;
 }
 
-/** The addresses a packet carries: who sent it, who it is for and the TTL it left with. The reply swaps source and destination (RFC 792). */
+/** The ports a TCP or UDP packet carries; ICMP has none. */
+export interface PortPair {
+  sourcePort: number;
+  destinationPort: number;
+}
+
+/** The addresses a packet carries: who sent it, who it is for and the TTL it left with; a TCP or UDP packet also carries its two ports. The reply swaps source and destination (RFC 792), and with them the ports. */
 export interface PacketHeader {
-  request: { source: string; destination: string; ttl: number };
-  reply?: { source: string; destination: string };
+  request: { source: string; destination: string; ttl: number } & Partial<PortPair>;
+  reply?: { source: string; destination: string } & Partial<PortPair>;
+}
+
+export type ExchangeKind = 'SYN' | 'SYN-ACK' | 'ACK' | 'RST' | 'query' | 'response';
+
+/** One thing an end of a TCP or UDP exchange said to the other: the client is who sent the packet and the server is who it was for. */
+export interface ExchangeMessage {
+  from: 'client' | 'server';
+  kind: ExchangeKind;
 }
 
 export interface TcpdumpLine {
@@ -105,5 +119,6 @@ export interface Trace {
   notice?: Notice;
   hops?: Hop[];
   header?: PacketHeader;
+  exchange?: ExchangeMessage[];
   rttMs?: number;
 }

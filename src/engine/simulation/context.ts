@@ -1,5 +1,5 @@
 import type { Device, Endpoint, Network, PacketSpec } from '@/engine/network/types';
-import type { Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
+import type { ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
 
 /** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
 export interface Delivery {
@@ -35,6 +35,7 @@ export interface SimContext {
   legsMs: number[];
   steps: Step[];
   tcpdump: TcpdumpLine[];
+  exchange: ExchangeMessage[];
 }
 
 export type StageResult = { done: false } | { done: true; outcome: Outcome };
@@ -57,6 +58,32 @@ export function logAt(ctx: SimContext, receiver: Receiver, direction: TcpdumpLin
 /** Records the latency of one more leg the packet travelled (a LAN, a router or a server). The round trip time adds them up, so nothing past the one who answered or warned is ever recorded. */
 export function addLeg(ctx: SimContext, latencyMs: number): void {
   ctx.legsMs.push(latencyMs);
+}
+
+type Transport = Exclude<PacketSpec['protocol'], 'icmp'>;
+
+const SPEAKER: Record<ExchangeKind, ExchangeMessage['from']> = { SYN: 'client', 'SYN-ACK': 'server', ACK: 'client', RST: 'server', query: 'client', response: 'server' };
+const OPENING: Record<Transport, ExchangeKind> = { tcp: 'SYN', udp: 'query' };
+const ANSWER: Record<Transport, ExchangeKind[]> = { tcp: ['SYN-ACK', 'ACK'], udp: ['response'] };
+
+function messageOf(kind: ExchangeKind): ExchangeMessage {
+  return { from: SPEAKER[kind], kind };
+}
+
+/** What the sender of a packet says first: the SYN of a TCP connection or the query of a UDP datagram. ICMP is not an exchange of this kind and says nothing. */
+export function openingOf({ protocol }: Pick<PacketSpec, 'protocol'>): ExchangeMessage[] {
+  return protocol === 'icmp' ? [] : [messageOf(OPENING[protocol])];
+}
+
+/** Records that the server refused the connection: it answers the SYN with an RST. */
+export function sayRefusal(ctx: SimContext): void {
+  ctx.exchange.push(messageOf('RST'));
+}
+
+/** Records the answer that came back to the sender of a TCP or UDP packet: a connection is accepted with a SYN-ACK and completed with the client's ACK, and a datagram is answered with a response. ICMP has none of this. */
+export function sayAnswer(ctx: SimContext): void {
+  const { protocol } = ctx.packet;
+  if (protocol !== 'icmp') ctx.exchange.push(...ANSWER[protocol].map(messageOf));
 }
 
 export const CONTINUE: StageResult = { done: false };

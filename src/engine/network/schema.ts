@@ -6,6 +6,8 @@ export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;
 /** The TTL a packet leaves with when nobody sets one: 64, which IANA recommends and Linux uses. */
 export const DEFAULT_TTL = 64;
+/** The source port a TCP or UDP packet leaves with when nobody sets one: 51514, inside the range IANA recommends for dynamic ports (49152 to 65535, RFC 6335 §6) and the default of the Linux kernel (32768 to 60999, `ip_local_port_range`); both read in the chapter 2 research on 2026-10-10. */
+export const DEFAULT_SOURCE_PORT = 51514;
 
 export const ipSchema = z.string().refine(isIpv4, 'invalid IPv4');
 function isCidr(value: string): boolean {
@@ -18,7 +20,9 @@ function isCidr(value: string): boolean {
 }
 
 const cidr = z.string().refine(isCidr, 'invalid CIDR');
-const port = z.number().int().min(0).max(65535);
+const PORT_MAX = 65535;
+const port = z.number().int().min(0).max(PORT_MAX);
+const sourcePort = z.number().int().min(1).max(PORT_MAX);
 const nonEmpty = z.string().min(1);
 const latencyMs = z.number().nonnegative();
 
@@ -239,6 +243,7 @@ export const packetSchema = z
     to: z.string().min(1),
     protocol: z.enum(['tcp', 'udp', 'icmp']),
     port: port.optional(),
+    sourcePort: sourcePort.optional(),
     icmpType: icmpTypeSchema.optional(),
     ttl: z.number().int().min(1).max(TTL_MAX).optional(),
   })

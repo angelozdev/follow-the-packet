@@ -1,4 +1,4 @@
-import { CONTINUE, describePacket, logAt, receiverOf, stop, type Stage } from '@/engine/simulation/context';
+import { CONTINUE, describePacket, logAt, receiverOf, sayRefusal, stop, type Stage } from '@/engine/simulation/context';
 
 export const hostStage: Stage = (ctx) => {
   const receiver = receiverOf(ctx);
@@ -23,6 +23,7 @@ export const hostStage: Stage = (ctx) => {
   if (p.protocol === 'tcp') {
     if (!host.listeningTcpPorts.includes(p.port!)) {
       logAt(ctx, receiver, 'Out', ip, src, `TCP ${p.port} RST`);
+      sayRefusal(ctx);
       ctx.steps.push({ stage: 'host', at: id, verdict: 'reject', reason: { code: 'host-refused', deviceId: id, port: p.port! } });
       return stop('refused');
     }
