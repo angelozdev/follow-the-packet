@@ -62,7 +62,7 @@ const TERMS_OF_CHAPTER_2: TermId[][] = [
   ['client-server', 'tcp', 'connection', 'handshake', 'source-port', 'ephemeral-port'],
   ['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address'],
   ['bit', 'prefix', 'cidr', 'subnet-mask'],
-  ['port-range', 'ssh', 'well-known-ports'],
+  ['port-range', 'ssh', 'default-port', 'well-known-ports'],
   ['route', 'routing-table', 'connected-route', 'default-route'],
   ['next-hop', 'net-unreachable', 'most-specific-route'],
   ['nat', 'napt', 'translation-table'],
@@ -72,7 +72,7 @@ const TERMS_OF_CHAPTER_2: TermId[][] = [
   ['dns-cache', 'dns-ttl'],
   ['nxdomain', 'servfail', 'port-unreachable', 'hosts-file'],
 ];
-const SIZES_OF_CHAPTER_2 = [6, 6, 5, 4, 3, 4, 3, 3, 1, 7, 4, 2, 4];
+const SIZES_OF_CHAPTER_2 = [6, 6, 5, 4, 4, 4, 3, 3, 1, 7, 4, 2, 4];
 const SUBCHAPTER_OF = { cidr: 4, nat: 8, dns: 10 };
 const TERMS_OF_CHAPTER_1 = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces);
 
@@ -249,11 +249,11 @@ describe('the term ladder of chapter 2', () => {
       return subchapter.flatMap((id) => namedTerms(definitionOf(id), unknown).map((other) => `${id} (${subchapterName(index)}) → ${other}`));
     });
 
-  it('the table has the 52 terms of the approved design, in 13 subchapters, and puts cidr, nat and dns where they are presented', () => {
+  it('the table has the 53 terms of the approved design, in 13 subchapters, and puts cidr, nat and dns where they are presented', () => {
     expect(TERMS_OF_CHAPTER_1).toHaveLength(38);
     expect(new Set(TERMS_OF_CHAPTER_1).size).toBe(TERMS_OF_CHAPTER_1.length);
     expect(TERMS_OF_CHAPTER_2.map((subchapter) => subchapter.length)).toEqual(SIZES_OF_CHAPTER_2);
-    expect(ids).toHaveLength(52);
+    expect(ids).toHaveLength(53);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.filter((id) => !ALL_TERMS.includes(id))).toEqual([]);
     expect(ids.filter((id) => TERMS_OF_CHAPTER_1.includes(id))).toEqual([]);

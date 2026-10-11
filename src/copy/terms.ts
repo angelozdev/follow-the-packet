@@ -195,9 +195,14 @@ export const TERMS = {
     definition: 'El puerto o los puertos que permite una regla: uno solo (22) o un rango (7000-8000). Va junto al protocolo.',
   },
   ssh: { name: 'SSH', definition: 'Secure Shell: el servicio para manejar un servidor desde una consola remota. Escucha por costumbre en el puerto 22.' },
+  'default-port': {
+    name: 'puerto por defecto',
+    definition: 'El puerto que usa un servicio si nadie lo cambia: 22 para SSH, 80, 443, 3306, 5432. Es costumbre: nada obliga a usarlo.',
+  },
+  /** The System Ports, 0 to 1023, as IANA assigns them. Source: RFC 6335 §6, «System Ports, also known as the Well Known Ports» (consulted 2026-10-11). */
   'well-known-ports': {
     name: 'puertos conocidos',
-    definition: 'Números que cada servicio usa por costumbre, como el 22 de SSH. Es una convención: nada obliga a respetarla.',
+    definition: 'Los puertos del 0 al 1023, que IANA reserva para servicios comunes, como el 22 de SSH.',
   },
   route: { name: 'ruta', definition: 'Una instrucción de reenvío: los paquetes para un bloque de IPs van directo o a un router concreto.' },
   'routing-table': { name: 'tabla de rutas', definition: 'La lista de rutas de un dispositivo o router. Cada paquete que sale se compara con ella.' },

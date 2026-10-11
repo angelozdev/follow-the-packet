@@ -54,7 +54,7 @@ const TERMS_BEFORE_CHAPTER_2 = 56;
 const IDS_OF_CHAPTER_2: TermId[] = [
   'service', 'port', 'listen', 'ip-port', 'destination-port', 'nc', 'client-server', 'tcp', 'connection', 'handshake', 'source-port', 'ephemeral-port',
   'closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address', 'bit', 'prefix', 'subnet-mask', 'port-range', 'ssh',
-  'well-known-ports', 'route', 'routing-table', 'connected-route', 'default-route', 'next-hop', 'net-unreachable', 'most-specific-route', 'napt',
+  'default-port', 'well-known-ports', 'route', 'routing-table', 'connected-route', 'default-route', 'next-hop', 'net-unreachable', 'most-specific-route', 'napt',
   'translation-table', 'port-forwarding', 'domain-name', 'dns-query', 'resolver', 'udp', 'dig', 'dhcp', 'authoritative-server', 'dns-record',
   'a-record', 'cname-record', 'dns-cache', 'dns-ttl', 'nxdomain', 'servfail', 'port-unreachable', 'hosts-file',
 ];
@@ -139,8 +139,8 @@ describe('term registry', () => {
     expect(securityGroup.short).toBe('SG');
   });
 
-  it('registers the 49 new ids of chapter 2 and rewrites cidr, dns and nat', () => {
-    expect(IDS_OF_CHAPTER_2).toHaveLength(49);
+  it('registers the 50 new ids of chapter 2 and rewrites cidr, dns and nat', () => {
+    expect(IDS_OF_CHAPTER_2).toHaveLength(50);
     expect(new Set(IDS_OF_CHAPTER_2).size).toBe(IDS_OF_CHAPTER_2.length);
     expect(IDS_OF_CHAPTER_2.filter((id) => !isTermId(id))).toEqual([]);
     expect(Object.keys(TERMS)).toHaveLength(TERMS_BEFORE_CHAPTER_2 + IDS_OF_CHAPTER_2.length);
@@ -152,6 +152,18 @@ describe('term registry', () => {
   it('the NAT is defined for the one who changes the private source IP, a router or the Internet gateway, so it names neither', () => {
     expect(TERMS.nat.definition).toMatch(/^Network Address Translation: cambia la IP privada de origen por una pública al salir de la red/);
     expect(TERMS.nat.definition).not.toMatch(/router|Internet gateway/i);
+  });
+
+  it('the well-known ports go from 0 to 1023 and the definition names neither 3306 nor 5432', () => {
+    expect(TERMS['well-known-ports'].name).toBe('puertos conocidos');
+    expect(TERMS['well-known-ports'].definition).toBe('Los puertos del 0 al 1023, que IANA reserva para servicios comunes, como el 22 de SSH.');
+    expect(TERMS['well-known-ports'].definition).not.toMatch(/3306|5432/);
+  });
+
+  it('the default port lists 22, 80, 443, 3306 and 5432 and says it is a custom', () => {
+    expect(TERMS['default-port'].name).toBe('puerto por defecto');
+    for (const port of ['22', '80', '443', '3306', '5432']) expect(TERMS['default-port'].definition).toMatch(new RegExp(`\\b${port}\\b`));
+    expect(TERMS['default-port'].definition).toContain('Es costumbre: nada obliga a usarlo.');
   });
 
   it('the glossary says a port goes from 1 to 65535', () => {
