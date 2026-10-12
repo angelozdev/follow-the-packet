@@ -1,21 +1,25 @@
 import { nameTag } from '@/copy';
-import type { NetworkAction, Service } from '@/engine';
-import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, SendMove, SendTask, SettingSpec, WhatChip } from '@/levels/contract/incident';
+import { ROUTE_DEFAULT, type Lan, type NetworkAction, type Service } from '@/engine';
+import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WhatChip } from '@/levels/contract/incident';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
   FLOOR as CHAPTER_1_FLOOR,
   FLOW as CHAPTER_1_FLOW,
   FROM as CHAPTER_1_FROM,
+  HOP_MS,
   IP as CHAPTER_1_IP,
   LUCIA_FIREWALL,
   MESSAGE as CHAPTER_1_MESSAGE,
   NAME as CHAPTER_1_NAME,
+  OFFICE_INTERFACES,
   ORIGIN as CHAPTER_1_ORIGIN,
   ROUTER as CHAPTER_1_ROUTER,
   SERVER as CHAPTER_1_SERVER,
   WHAT as CHAPTER_1_WHAT,
   addressChip,
+  backToOffice,
+  officeDevice,
 } from '@/levels/01-first-day/shared';
 
 export { CONCEPT, FIREWALL, LESSON, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
@@ -114,8 +118,8 @@ export const NAME = {
 /** The terminals chapter 2 sends from: those of chapter 1 and the one of laptop-lucia, which 02-03 uses to test her own app from her own laptop. */
 export const ORIGIN = { ...CHAPTER_1_ORIGIN, lucia: { id: 'lucia', endpoint: { kind: 'device', id: DEVICE.lucia.id } } } satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each. */
-export const ADDRESS = { ...CHAPTER_1_ADDRESS } as const;
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, and the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1). */
+export const ADDRESS = { ...CHAPTER_1_ADDRESS, otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop } } as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
 function ncMessage(port: number): MessageChip {
@@ -144,6 +148,11 @@ export const TASK = {
   printerInside: 'printer-inside-the-block',
   andresOutside: 'laptop-andres-outside-the-block',
   sshOnlyYou: 'ssh-only-from-your-laptop',
+  printerPing: 'ping-to-printer',
+  andresPing: 'ping-to-andres',
+  serverPing: 'ping-to-server',
+  branchPrinterPing: 'ping-to-branch-printer',
+  branchLaptopPing: 'ping-to-branch-laptop',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -236,6 +245,58 @@ export const APP_LISTEN_ADDRESS: SettingSpec = {
 /** What 02-05 changes on laptop-lucia: SSH (port 22) is on, beside her app and her database, and a firewall of the laptop lets nothing in and everything out. `setServices` replaces the list, so it holds all three. */
 export const SSH_AND_FIREWALL: NetworkAction[] = [{ type: 'setServices', ownerId: DEVICE.lucia.id, services: [APP, DATABASE, SSH] }, LUCIA_FIREWALL];
 
+/** The local network of the other office: a block of its own, outside the 192.168.0.0/16 of the office, behind router-sucursal. Its name is the one the map writes on its floor. */
+export const BRANCH_LAN = { id: 'branch-lan', name: 'Sucursal', cidr: '10.0.0.0/16', latencyMs: HOP_MS } as const satisfies Lan;
+
+/** What 02-07 adds to the world: the other office, with its local network, its printer and its laptop, and router-sucursal, which is the gateway of both and faces router-oficina by a private link (172.16.0.2). Its only route sends what is for the office (192.168.0.0/16) back to router-oficina, so the replies have a way home and anything else has no route there. The pieces are new, so the text does not have to name them. */
+export const OTHER_OFFICE: NetworkAction[] = [
+  { type: 'addLan', lan: BRANCH_LAN },
+  { type: 'addDevice', device: officeDevice(DEVICE.branchPrinter, 'printer', IP.otherOfficePrinter, { lanId: BRANCH_LAN.id, gateway: IP.branchRouter }) },
+  { type: 'addDevice', device: officeDevice(DEVICE.branchLaptop, 'laptop', IP.otherOfficeLaptop, { lanId: BRANCH_LAN.id, gateway: IP.branchRouter }) },
+  {
+    type: 'addRouter',
+    router: {
+      id: ROUTER.branch.id,
+      name: ROUTER.branch.name,
+      interfaces: [
+        { ip: IP.branchRouter, faces: BRANCH_LAN.id },
+        { ip: IP.branchLink, faces: ROUTER.office.id },
+      ],
+      routes: [backToOffice(ROUTER.office.id)],
+      latencyMs: HOP_MS,
+      sendsUnreachable: true,
+    },
+  },
+];
+
+/** What 02-07 changes on a router that already existed: router-oficina lost every route, so it no longer knows where to send what is not for the office, and gained the interface of the private link to router-sucursal (172.16.0.1). An update replaces the list of interfaces, so the update restates the two floors and the way out to the provider. It keeps `sendsUnreachable`: with no route that covers a destination it warns Destination Net Unreachable. */
+export const ROUTES_LOST: NetworkAction = { type: 'updateRouter', routerId: ROUTER.office.id, interfaces: [...OFFICE_INTERFACES, { ip: IP.officeLink, faces: ROUTER.branch.id }], routes: [] };
+
+/** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
+export const OFFICE_ROUTES = {
+  table: 'office-routes',
+  to: { anywhere: 'to-anywhere', otherOffice: 'to-other-office', printer: 'to-branch-printer' },
+  via: { provider: 'via-provider', branch: 'via-branch' },
+} as const;
+
+/** The table of routes of router-oficina that 02-07 lets the player edit. A destination is written as the table shows it (`0.0.0.0/0` for the default route, which the engine calls `default`) and a next hop as the IP of the router it is handed to, with its name. */
+export const OFFICE_ROUTES_TABLE: TableSpec = {
+  id: OFFICE_ROUTES.table,
+  kind: 'routes',
+  ownerId: ROUTER.office.id,
+  trays: {
+    destination: [
+      { id: OFFICE_ROUTES.to.anywhere, label: '0.0.0.0/0', value: ROUTE_DEFAULT },
+      { id: OFFICE_ROUTES.to.otherOffice, label: BRANCH_LAN.cidr, value: BRANCH_LAN.cidr },
+      { id: OFFICE_ROUTES.to.printer, label: `${IP.otherOfficePrinter}/32`, value: `${IP.otherOfficePrinter}/32` },
+    ],
+    nextHop: [
+      { id: OFFICE_ROUTES.via.provider, label: `${IP.provider} ${nameTag(ROUTER.provider.name)}`, value: ROUTER.provider.id },
+      { id: OFFICE_ROUTES.via.branch, label: `${IP.branchLink} ${nameTag(ROUTER.branch.name)}`, value: ROUTER.branch.id },
+    ],
+  },
+};
+
 /** The ids of the pieces 02-01 and 02-02 draw: your laptop and the laptop that has the services. The rest of the office stays in the world and is not used. */
 export const SERVICES_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id];
 
@@ -268,3 +329,8 @@ export const CACHE_PIECES: string[] = [...RECORDS_PIECES, SERVER.fresh.id];
 
 /** The ids of the pieces 02-13 draws: your laptop, laptop-andres and the printer that is its resolver, the resolver, both authoritative servers and the server of the internet. */
 export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVICE.printer.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.news.id, SERVER.internet.id];
+
+/** Returns the move that writes a route in the table of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
+export function routeMove(destinationId: string, nextHopId: string): PlaceEntryMove {
+  return { type: 'placeEntry', tableId: OFFICE_ROUTES.table, picks: { destination: destinationId, nextHop: nextHopId } };
+}

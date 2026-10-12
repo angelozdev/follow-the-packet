@@ -2,6 +2,7 @@ import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { applyAction, type Firewall } from '@/engine';
+import { INCIDENTS, solvedWorld, startWorld } from '@/levels';
 import { packetPortLabels } from '@/copy';
 import type { MapPieceKind } from './overlay/piece-label';
 import { simulate } from '@/engine/simulation/simulate';
@@ -1186,5 +1187,60 @@ describe('the labels of packets and the floor names', () => {
     expect(placed[2].x0).toBeGreaterThan(spread[2].x0);
     for (const [a, b] of [[0, 1], [1, 2], [0, 2]]) expect(hits(placed[a], placed[b]), `${a} / ${b}`).toBe(false);
     expect(hits(placed[1], nameBox(nameAtLabel(-30)))).toBe(false);
+  });
+});
+
+describe('computeLayout of a map with the gateway of another office', () => {
+  const world = startWorld(INCIDENTS, '02-07');
+  const [office, provider02, branch] = ['office-router', 'provider-router', 'branch-router'];
+  const piece = (anchorId: string, inOffice = false): LayoutPiece => ({ kind: 'edge', anchorId, inOffice });
+  const devices = ['your-laptop', 'branch-printer', 'branch-laptop'].map(placedDevice);
+  const internetServer = placedDevice('internet-server');
+  const withBranch = [...devices, piece(office, true), piece(branch, true), piece(provider02), GLOBE, internetServer];
+  const withoutBranch = withBranch.filter(({ anchorId }) => anchorId !== branch);
+  const [joined, without] = [withBranch, withoutBranch].map((pieces) => computeLayout(world, pieces));
+
+  it('a router after the first that faces a slab the map draws stands past the right end of the sheet, on the road', () => {
+    expect(joined.routers[branch][0]).toBeGreaterThan(joined.sheet.width / 2);
+    expect(joined.routers[branch][1]).toBe(joined.roadZ);
+    expect(joined.routers[office]).toEqual(joined.edge);
+    expect(joined.routers[provider02][0]).toBeLessThan(joined.edge[0]);
+  });
+
+  it('the road reaches the gateway at the right end, and it does not reach farther on the left than without it', () => {
+    expect(joined.roadToX).toBe(joined.routers[branch][0]);
+    expect(joined.roadFromX).toBe(without.roadFromX);
+    expect(without.roadToX).toBe(without.sheet.width / 2 - 0.5);
+  });
+
+  it('the gateway takes no place on the road to the left: the routers, the internet and the server stand where they would without it', () => {
+    expect(joined.routers[office]).toEqual(without.routers[office]);
+    expect(joined.routers[provider02]).toEqual(without.routers[provider02]);
+    expect(joined.internet).toEqual(without.internet);
+    expect(joined.servers).toEqual(without.servers);
+    expect(joined.stops).toEqual(without.stops);
+    expect(joined.bounds).toEqual(without.bounds);
+  });
+
+  it('a router that faces a slab but comes first stays on the left, as the router of the office does', () => {
+    const alone = computeLayout(world, [...devices, piece(branch, true), GLOBE]);
+    expect(alone.routers[branch]).toEqual(alone.edge);
+    expect(alone.roadToX).toBe(alone.sheet.width / 2 - 0.5);
+  });
+
+  it('a router that faces no slab the map draws stays on the road to the left, whatever the pieces', () => {
+    const noSlab = computeLayout(world, [placedDevice('your-laptop'), piece(office, true), piece(branch, true), piece(provider02), GLOBE]);
+    expect(noSlab.routers[branch][0]).toBeLessThan(noSlab.edge[0]);
+    expect(noSlab.roadToX).toBe(noSlab.sheet.width / 2 - 0.5);
+  });
+
+  it('the path of a packet to the other office goes to the gateway at the right end and back to the device', () => {
+    const solved = solvedWorld(INCIDENTS, '02-07');
+    const packet = ping(device('your-laptop'), '10.0.0.10');
+    const trace = simulate(solved, packet);
+    expect(trace.hops?.map(({ routerId }) => routerId)).toEqual([office, branch]);
+    const path = pathFor(trace, packet, computeLayout(solved, withBranch));
+    expect(path).toContainEqual(joined.routers[branch]);
+    expect(path.at(-1)).toEqual(joined.devices['branch-printer'].door);
   });
 });

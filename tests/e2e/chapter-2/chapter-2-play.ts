@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { confirm, openCard, openTerminal, sendMessage } from '@e2e/cards';
+import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
 import { submitAndFinish } from '@e2e/closing';
 import { IP, type PlayedIncident } from '@e2e/chapter-1/chapter-1-play';
 
@@ -19,6 +19,18 @@ export const OUTSIDE_THE_BLOCK = 'Fuera';
 export const PRINTER = 'impresora';
 export const ANDRES = 'laptop-andres';
 const LUCIA_FIREWALL = 'firewall laptop-lucia';
+export const ROUTES_TAB = 'Tabla de rutas';
+export const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
+export const OFFICE_ROUTER = 'router-oficina';
+export const OFFICE_ROUTES_CARD = 'Tabla de rutas de router-oficina';
+export const ANYWHERE = '0.0.0.0/0';
+export const OTHER_OFFICE_BLOCK = '10.0.0.0/16';
+export const OTHER_OFFICE_LAPTOP = '10.0.0.20';
+export const PROVIDER_HOP = '203.0.113.1 router-proveedor';
+export const BRANCH_HOP = '172.16.0.2 router-sucursal';
+const ADD_ROUTE = 'Agregar ruta';
+const IN_USE = 'en uso';
+const DEFAULT_ROW = /0\.0\.0\.0\/0/;
 const SSH_CHIP = 'TCP · 22';
 const YOUR_LAPTOP_CHIP = 'tu-laptop (IP 192.168.1.10)';
 
@@ -109,6 +121,47 @@ async function playTheWholeRule(page: Page) {
   await submitAndFinish(page, /Porque 0\.0\.0\.0\/0 quiere decir cualquier origen/);
 }
 
+async function playYourRoutingTable(page: Page) {
+  const terminal = await openTerminal(page);
+  await sendTo(terminal, IP.printer);
+  await sendTo(terminal, IP.andres);
+  await page.getByRole('tab', { name: ROUTES_TAB, exact: true }).click();
+  const routes = card(page, YOUR_ROUTES_CARD);
+  await expect(routes.getByRole('row', { name: DEFAULT_ROW })).toContainText(IN_USE);
+  await confirm(routes);
+  await expect(routes).toBeHidden();
+  await submitAndFinish(page, /Porque ninguna otra fila cubre 192\.168\.2\.15/);
+}
+
+/** Picks a destination and a next hop in the table of routes that is open, and presses «Agregar ruta». */
+export async function addRoute(routes: Locator, destination: string, nextHop: string) {
+  await routes.getByRole('button', { name: destination, exact: true }).click();
+  await routes.getByRole('button', { name: nextHop, exact: true }).click();
+  await routes.getByRole('button', { name: ADD_ROUTE, exact: true }).click();
+}
+
+/** Writes the two routes that give router-oficina a way out and a way to the other office, in the table of its card. */
+export async function giveRouterOficinaItsWays(page: Page) {
+  const routes = await openCard(page, OFFICE_ROUTER);
+  await addRoute(routes, ANYWHERE, PROVIDER_HOP);
+  await addRoute(routes, OTHER_OFFICE_BLOCK, BRANCH_HOP);
+  await confirm(routes);
+  await expect(routes).toBeHidden();
+}
+
+async function playAWayToTheOtherOffice(page: Page) {
+  const first = await openTerminal(page);
+  await sendTo(first, IP.server);
+  await confirm(first);
+  await expect(first).toBeHidden();
+  await giveRouterOficinaItsWays(page);
+  const terminal = await openTerminal(page);
+  for (const ip of [IP.server, IP.otherOffice, OTHER_OFFICE_LAPTOP]) await sendTo(terminal, ip);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await submitAndFinish(page, /tiene el prefijo más largo/);
+}
+
 /** How each incident of chapter 2 is played with the mouse, in game order. Each content task adds the incident it builds: its title as the roadmap shows it and the moves that earn the stars. */
 export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-01', title: 'Un equipo, muchos servicios', play: playOneMachineManyServices },
@@ -116,6 +169,8 @@ export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-03', title: 'Rechazo o silencio', play: playRefusedOrSilent },
   { id: '02-04', title: '¿Está en mi bloque?', play: playIsItInMyBlock },
   { id: '02-05', title: 'La regla completa', play: playTheWholeRule },
+  { id: '02-06', title: 'Tu tabla de rutas', play: playYourRoutingTable },
+  { id: '02-07', title: 'Un camino a la otra oficina', play: playAWayToTheOtherOffice },
 ];
 
 /** The id of the last incident of chapter 2 that is built: while chapter 2 is incomplete it is the one right before 04-01 in game order, so the one whose star opens 04-01. */

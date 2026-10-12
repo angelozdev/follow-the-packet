@@ -4,7 +4,40 @@ import { applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSc
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
-import { ADDRESS, APP_LISTEN, APP_ON_LOOPBACK, BLOCK, BLOCK_CARD, CLIENT, DEVICE, DOMAIN, FIREWALL, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_FLOW, SSH_FROM, SSH_PIECES, SSH_WHAT, TASK } from '@/levels/02-ports-and-names/shared';
+import {
+  ADDRESS,
+  APP_LISTEN,
+  APP_ON_LOOPBACK,
+  BLOCK,
+  BLOCK_CARD,
+  BRANCH_LAN,
+  CLIENT,
+  DEVICE,
+  DOMAIN,
+  FIREWALL,
+  FLOORS_PIECES,
+  HOSTNAME,
+  IP,
+  LUCIA_SERVICES,
+  MESSAGE,
+  OFFICE_ROUTES,
+  ORIGIN,
+  OTHER_OFFICE,
+  PORT,
+  REFUSAL_PIECES,
+  ROUTER,
+  ROUTES_LOST,
+  ROUTES_PIECES,
+  SERVER,
+  SERVICES_PIECES,
+  SSH_AND_FIREWALL,
+  SSH_FLOW,
+  SSH_FROM,
+  SSH_PIECES,
+  SSH_WHAT,
+  TASK,
+  routeMove,
+} from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
@@ -13,6 +46,7 @@ import { identifyCard } from './view/cards/identify-card';
 import { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
 import { pieceCard } from './view/cards/piece-card';
 import { servicesCard } from './view/cards/settings-card';
+import type { TableCard } from './view/cards/table-card';
 import { toolOutput } from './view/cards/terminal/output-card';
 import { inspect } from './view/inspection';
 import { PIECE_ID } from './view/piece-id';
@@ -155,6 +189,16 @@ function rightOptionIsTheLongest(incident: Incident): boolean {
   const right = lengths[rightOptionPlace(incident)];
   return lengths.every((length, index) => index === rightOptionPlace(incident) || length < right);
 }
+
+/** Expects an incident to have three options, the right one at this place (counted from 0) and not the longest, so its length gives nothing away. */
+function expectRightOptionAt(incident: Incident, place: number): void {
+  expect(optionsOf(incident)).toHaveLength(3);
+  expect(rightOptionPlace(incident)).toBe(place);
+  expect(rightOptionIsTheLongest(incident)).toBe(false);
+}
+
+/** Returns, sorted, the kind and the plain label of every piece the map draws, such as `device:tu-laptop`. */
+const drawnLabels = (session: Session): string[] => pieceViews(session).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort();
 
 describe('the term ladder of chapter 2 in its incidents', () => {
   it('the table of the approved design holds the 53 terms in 14 incidents, each term once, all registered and none of chapter 1', () => {
@@ -802,6 +846,235 @@ describe('02-05, the whole rule', () => {
     expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[WHOLE_RULE]));
     expect(sorted(introduces)).toEqual(sorted(['port-range', 'ssh', 'default-port', 'well-known-ports']));
     expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, WHOLE_RULE))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-06, your routing table', () => {
+  const YOUR_ROUTES = '02-06';
+  const ROUTE_USED = 'Ruta que usó';
+  const ANYWHERE = '0.0.0.0/0';
+  const SENTENCES = /(?<=[.!?])\s+/;
+  const start = startSession(INCIDENTS, YOUR_ROUTES);
+  const pinging = (session: Session, toId: string): Session => sendingFrom(session, ORIGIN.you.id, toId, MESSAGE.ping.id);
+  const toPrinter = pinging(start, ADDRESS.printer.id);
+  const toAndres = pinging(start, ADDRESS.andres.id);
+  const both = pinging(toPrinter, ADDRESS.andres.id);
+  const routesOf = (session: Session, pieceId: string): TableCard | undefined => pieceCard(session, pieceId)?.tabs.find((tab) => tab.id === 'routes')?.card as TableCard | undefined;
+  const yourRoutes = (session: Session) => routesOf(session, PIECE_ID.device(DEVICE.you.id));
+  const rowsOf = (card: TableCard | undefined) => (card?.rows ?? []).map((row) => ({ destination: plain(row.cells[0].text), outlet: plain(row.cells[1].text), inUse: row.inUse }));
+  it('02-06: a ping to the printer uses the connected route and a ping to laptop-andres uses the default route', () => {
+    expect(toPrinter.sent[0].trace.routes?.[0]).toMatchObject({ holderId: DEVICE.you.id, kind: 'connected', route: { to: BLOCK.cidr } });
+    expect(toAndres.sent[0].trace.routes?.[0]).toMatchObject({ holderId: DEVICE.you.id, kind: 'default', route: { to: 'default', via: IP.router } });
+    expect(toAndres.sent[0].trace.routes?.[1]).toMatchObject({ holderId: ROUTER.office.id, kind: 'connected' });
+    expect(rowsOf(yourRoutes(start))).toEqual([
+      { destination: BLOCK.cidr, outlet: 'directo', inUse: false },
+      { destination: ANYWHERE, outlet: `${IP.router} ${ROUTER.office.name}`, inUse: false },
+    ]);
+    expect(rowsOf(yourRoutes(toPrinter)).map(({ inUse }) => inUse)).toEqual([true, false]);
+    expect(rowsOf(yourRoutes(toAndres)).map(({ inUse }) => inUse)).toEqual([false, true]);
+    expect(stillOpen(start)).toEqual([TASK.printerPing, TASK.andresPing]);
+    expect(stillOpen(toPrinter)).toEqual([TASK.andresPing]);
+    expect(stillOpen(toAndres)).toEqual([TASK.printerPing]);
+    expectClosed(both);
+  });
+
+  it('02-06: the box says which route the ping used', () => {
+    expect(lastBox(toPrinter)[ROUTE_USED]).toEqual([`${DEVICE.you.name}: ${BLOCK.cidr} · ruta de red conectada · directo`]);
+    expect(lastBox(toAndres)[ROUTE_USED]).toEqual([
+      `${DEVICE.you.name}: ${ANYWHERE} · ruta por defecto · sale por ${IP.router}`,
+      `${ROUTER.office.name}: ${IP.andres.replace(/\d+$/, '0')}/24 · ruta de red conectada · directo`,
+    ]);
+    expect(Object.values(lastBox(toAndres)).flat().filter((line) => /siguiente salto|más específica/i.test(line))).toEqual([]);
+  });
+
+  it('02-06: the routes card of tu-laptop is read only', () => {
+    const yours = pieceCard(start, PIECE_ID.device(DEVICE.you.id));
+    expect(yours).toMatchObject({ tabbed: true, first: 'terminal' });
+    expect(yours?.tabs.map(({ id }) => id)).toEqual(['terminal', 'routes']);
+    for (const session of [start, toAndres]) {
+      const card = yourRoutes(session);
+      expect(plain(card?.title ?? '')).toBe(`Tabla de rutas de ${DEVICE.you.name}`);
+      expect(card).toMatchObject({ kind: 'routes', tableId: null, trays: null, add: null, problem: null });
+      expect(card?.rows.map(({ entryId }) => entryId)).toEqual([null, null]);
+    }
+    const router = routesOf(start, PIECE_ID.router(ROUTER.office.id));
+    expect([router?.tableId, router?.trays, router?.add]).toEqual([null, null, null]);
+    const refused = sessionReducer(start, routeMove(OFFICE_ROUTES.to.anywhere, OFFICE_ROUTES.via.provider));
+    expect(refused.world).toEqual(start.world);
+  });
+
+  it('02-06: the text of 0.0.0.0/0 in a route says it is what no other route covers', () => {
+    const sentences = incidentTexts(start.incident).map(plain).flatMap((text) => text.split(SENTENCES)).filter((sentence) => sentence.includes(ANYWHERE));
+    expect(sentences.length).toBeGreaterThan(1);
+    const inARoute = sentences.filter((sentence) => !/regla|firewall/i.test(sentence));
+    expect(inARoute.length).toBeGreaterThan(0);
+    expect(inARoute.filter((sentence) => !/ninguna otra ruta cubre/i.test(sentence))).toEqual([]);
+    expect(sentences.filter((sentence) => /regla|firewall/i.test(sentence)).filter((sentence) => !/cualquier origen/i.test(sentence))).toEqual([]);
+    expect(incidentTexts(start.incident).map(plain).filter((text) => /cualquier origen/i.test(text) && !/regla|firewall/i.test(text))).toEqual([]);
+  });
+
+  it('02-06: the world does not change and the incident draws tu-laptop, the printer, laptop-andres and router-oficina', () => {
+    expect(startWorld(INCIDENTS, YOUR_ROUTES)).toEqual(solvedWorld(INCIDENTS, '02-05'));
+    expect(drawnLabels(start)).toEqual([`device:${DEVICE.printer.name}`, `device:${DEVICE.andres.name}`, `device:${DEVICE.you.name}`, `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`]);
+    expect(start.incident.shown).toEqual(FLOORS_PIECES);
+  });
+
+  it('02-06: the right option is the third and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 2);
+  });
+
+  it('02-06: introduces route, routing table, connected route and default route, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[YOUR_ROUTES]));
+    expect(sorted(introduces)).toEqual(sorted(['route', 'routing-table', 'connected-route', 'default-route']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, YOUR_ROUTES))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-07, a way to the other office', () => {
+  const WAY = '02-07';
+  const WHERE_IT_STOPPED = 'Dónde y por qué se detuvo';
+  const ROUTE_USED = 'Ruta que usó';
+  const ANYWHERE_ROW = '0.0.0.0/0';
+  const start = startSession(INCIDENTS, WAY);
+  const pinging = (session: Session, address: { id: string }): Session => sendingFrom(session, ORIGIN.you.id, address.id, MESSAGE.ping.id);
+  const onlyDefault = sessionReducer(start, routeMove(OFFICE_ROUTES.to.anywhere, OFFICE_ROUTES.via.provider));
+  const wayToTheOffice = sessionReducer(onlyDefault, routeMove(OFFICE_ROUTES.to.otherOffice, OFFICE_ROUTES.via.branch));
+  const everyAddress = [ADDRESS.server, ADDRESS.otherOffice, ADDRESS.otherLaptop];
+  const solved = everyAddress.reduce(pinging, wayToTheOffice);
+  const lastRun = (session: Session) => session.sent.at(-1)!;
+  const stopOf = (session: Session) => lastRun(session).trace.steps.find((step) => step.verdict === 'drop')?.reason;
+  const tableOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'routes')?.card as TableCard | undefined;
+  const ownRows = (session: Session) => (tableOf(session)?.rows ?? []).filter((row) => row.entryId !== null).map((row) => `${plain(row.cells[0].text)} → ${plain(row.cells[1].text)}`);
+  const outcomes = (session: Session) => session.sent.map((run) => [run.trace.outcome, run.warning?.term ?? null, run.by]);
+
+  it('02-07: with no routes router-oficina warns Destination Net Unreachable', () => {
+    for (const address of everyAddress) {
+      const run = lastRun(pinging(start, address));
+      expect(run.trace.outcome, address.id).toBe('unreachable');
+      expect(run.trace.notice, address.id).toMatchObject({ kind: 'net-unreachable', fromId: ROUTER.office.id, fromIp: IP.router });
+      expect(run.warning, address.id).toEqual({ term: 'net-unreachable', by: 'router' });
+      expect(run.by, address.id).toEqual([ROUTER.office.id]);
+    }
+    expect(lastBox(pinging(start, ADDRESS.server))[WHERE_IT_STOPPED]).toEqual([`${ROUTER.office.name} no sabe a qué router mandar un paquete para ${IP.server}: lo descarta y avisa a quien lo envió que no pudo entregarlo.`]);
+    expect(stillOpen(everyAddress.reduce(pinging, start))).toEqual([TASK.serverPing, TASK.branchPrinterPing, TASK.branchLaptopPing]);
+    expect(ownRows(start)).toEqual([]);
+  });
+
+  it('02-07: with only the default route the ping to 10.0.0.10 dies in silence at router-proveedor, as in 01-08', () => {
+    const toTheOffice = pinging(onlyDefault, ADDRESS.otherOffice);
+    const run = lastRun(toTheOffice);
+    expect([run.trace.outcome, run.trace.notice, run.warning, run.reached]).toEqual(['timeout', undefined, null, false]);
+    expect(stopOf(toTheOffice)).toMatchObject({ code: 'forward-private-dropped', routerId: ROUTER.provider.id, ip: IP.otherOfficePrinter });
+    expect(lastBox(toTheOffice)[WHERE_IT_STOPPED]).toEqual([`${IP.otherOfficePrinter} es una IP privada: se repite en muchas redes y internet no la entrega. ${ROUTER.provider.name}, ya fuera de la oficina, descartó el paquete y no avisó.`]);
+    expect(stopOf(pinging(onlyDefault, ADDRESS.otherLaptop))).toMatchObject({ code: 'forward-private-dropped', routerId: ROUTER.provider.id });
+    expect(lastRun(pinging(onlyDefault, ADDRESS.server)).trace.outcome).toBe('replied');
+    expect(ownRows(onlyDefault)).toEqual([`${ANYWHERE_ROW} → ${IP.provider} ${ROUTER.provider.name}`]);
+  });
+
+  it('02-07: 10.0.0.0/16 to router-sucursal and 0.0.0.0/0 to router-proveedor close the incident', () => {
+    expect(ownRows(wayToTheOffice)).toEqual([`${ANYWHERE_ROW} → ${IP.provider} ${ROUTER.provider.name}`, `${BRANCH_LAN.cidr} → ${IP.branchLink} ${ROUTER.branch.name}`]);
+    expect(outcomes(solved)).toEqual([['replied', null, [SERVER.internet.id]], ['replied', null, [DEVICE.branchPrinter.id]], ['replied', null, [DEVICE.branchLaptop.id]]]);
+    expectClosed(solved);
+    expect(lastBox(pinging(wayToTheOffice, ADDRESS.otherOffice))[ROUTE_USED]).toEqual([
+      `${DEVICE.you.name}: ${ANYWHERE_ROW} · ruta por defecto · siguiente salto ${IP.router}`,
+      `${ROUTER.office.name}: ${BRANCH_LAN.cidr} · ruta · siguiente salto ${IP.branchLink} · es la más específica: también cubría ${ANYWHERE_ROW}`,
+      `${ROUTER.branch.name}: ${BRANCH_LAN.cidr} · ruta de red conectada · directo`,
+    ]);
+    expect(pinging(wayToTheOffice, ADDRESS.otherOffice).sent[0].trace.routes?.[1]).toMatchObject({ holderId: ROUTER.office.id, route: { to: BRANCH_LAN.cidr }, kind: 'static', alsoCovered: [{ to: 'default', kind: 'default' }] });
+  });
+
+  it('02-07: 10.0.0.10/32 leaves 10.0.0.20 without a way and 0.0.0.0/0 to router-sucursal leaves the server without a way', () => {
+    const justThePrinter = sessionReducer(onlyDefault, routeMove(OFFICE_ROUTES.to.printer, OFFICE_ROUTES.via.branch));
+    const [toPrinter, toLaptop] = [ADDRESS.otherOffice, ADDRESS.otherLaptop].map((address) => pinging(justThePrinter, address));
+    expect(lastRun(toPrinter).trace.outcome).toBe('replied');
+    expect([lastRun(toLaptop).trace.outcome, lastRun(toLaptop).warning, stopOf(toLaptop)?.code]).toEqual(['timeout', null, 'forward-private-dropped']);
+    expect(stillOpen(everyAddress.reduce(pinging, justThePrinter))).toEqual([TASK.branchLaptopPing]);
+    const everythingToTheBranch = sessionReducer(start, routeMove(OFFICE_ROUTES.to.anywhere, OFFICE_ROUTES.via.branch));
+    const toTheServer = pinging(everythingToTheBranch, ADDRESS.server);
+    expect(lastRun(toTheServer).trace.notice).toMatchObject({ kind: 'net-unreachable', fromId: ROUTER.branch.id });
+    expect(lastRun(toTheServer).warning).toEqual({ term: 'net-unreachable', by: 'router' });
+    expect(stillOpen(everyAddress.reduce(pinging, everythingToTheBranch))).toEqual([TASK.serverPing]);
+    expect(lastRun(pinging(everythingToTheBranch, ADDRESS.otherOffice)).trace.outcome).toBe('replied');
+  });
+
+  it('02-07: the report names router-oficina and no router of the provider that the map does not draw', () => {
+    const { report } = start.incident;
+    expect(report).toContain(`[[${ROUTER.office.name}]]`);
+    expect(plain(report)).toMatch(new RegExp(`^Alguien reinició ${ROUTER.office.name} y perdió sus rutas`));
+    expect(changedNames(solvedWorld(INCIDENTS, '02-06'), startWorld(INCIDENTS, WAY))).toEqual([ROUTER.office.name]);
+    const undrawn = Object.values(ROUTER).filter(({ id }) => !ROUTES_PIECES.includes(id));
+    expect(undrawn.map(({ name }) => name)).toEqual([ROUTER.destination.name]);
+    expect(everythingRead(solved).filter((text) => undrawn.some(({ name }) => text.includes(name)))).toEqual([]);
+    expect(everythingRead(pinging(onlyDefault, ADDRESS.server)).filter((text) => text.includes(ROUTER.destination.name))).toEqual([]);
+  });
+
+  it('02-07: no router that stayed silent in 01-08 warns now', () => {
+    const wasSilentInChapter1 = startSession(INCIDENTS, '01-08');
+    for (const address of [ADDRESS.server, ADDRESS.otherOffice]) {
+      const before = lastRun(sendingFrom(wasSilentInChapter1, ORIGIN.you.id, address.id, MESSAGE.ping.id));
+      const now = lastRun(pinging(onlyDefault, address));
+      expect([now.trace.outcome, now.warning, now.by, now.trace.notice]).toEqual([before.trace.outcome, before.warning, before.by, before.trace.notice]);
+      expect(now.trace.steps.find((step) => step.verdict === 'drop')?.reason.code).toBe(before.trace.steps.find((step) => step.verdict === 'drop')?.reason.code);
+    }
+    const everyRun = [...solved.sent, ...everyAddress.map((address) => lastRun(pinging(onlyDefault, address)))];
+    expect(everyRun.filter((run) => run.warning !== null)).toEqual([]);
+    expect(startWorld(INCIDENTS, WAY).routers?.find((router) => router.id === ROUTER.provider.id)).toEqual(startWorld(INCIDENTS, '01-14').routers?.find((router) => router.id === ROUTER.provider.id));
+  });
+
+  it('02-07: the table of router-oficina accepts one route per destination', () => {
+    const again = sessionReducer(onlyDefault, routeMove(OFFICE_ROUTES.to.anywhere, OFFICE_ROUTES.via.branch));
+    expect(again.world).toEqual(onlyDefault.world);
+    expect(again.entryProblem).toMatchObject({ tableId: OFFICE_ROUTES.table, code: 'destination-has-route' });
+    expect(plain(tableOf(again)?.problem ?? '')).toContain('una sola ruta por destino');
+    expect(ownRows(again)).toEqual(ownRows(onlyDefault));
+    const card = tableOf(start);
+    expect(card).toMatchObject({ tableId: OFFICE_ROUTES.table });
+    expect(card?.trays?.map(({ name }) => name)).toEqual(['destination', 'nextHop']);
+    expect(card?.columns.map(({ label }) => plain(label))).toEqual(['Destino', 'Siguiente salto']);
+    expect(pieceCard(start, PIECE_ID.router(ROUTER.office.id))).toMatchObject({ tabbed: false, first: 'routes' });
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.you.id))?.tabs.map(({ id }) => id)).toEqual(['terminal', 'routes']);
+  });
+
+  it('02-07: the other office, its router and the lost routes make a valid world and nothing else changes', () => {
+    const before = solvedWorld(INCIDENTS, '02-06');
+    const after = startWorld(INCIDENTS, WAY);
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+    expect(OTHER_OFFICE.map(({ type }) => type)).toEqual(['addLan', 'addDevice', 'addDevice', 'addRouter']);
+    expect(ROUTES_LOST).toMatchObject({ type: 'updateRouter', routerId: ROUTER.office.id, routes: [] });
+    const router = (id: string) => after.routers?.find((candidate) => candidate.id === id);
+    expect(router(ROUTER.office.id)?.routes).toEqual([]);
+    expect(router(ROUTER.office.id)?.interfaces.map(({ ip, faces }) => `${ip}>${faces}`)).toEqual([`${IP.router}>floor-1`, `${IP.routerSecondFloor}>floor-2`, `${IP.officeUplink}>${ROUTER.provider.id}`, `${IP.officeLink}>${ROUTER.branch.id}`]);
+    expect(router(ROUTER.branch.id)?.interfaces.map(({ ip, faces }) => `${ip}>${faces}`)).toEqual([`${IP.branchRouter}>${BRANCH_LAN.id}`, `${IP.branchLink}>${ROUTER.office.id}`]);
+    expect(router(ROUTER.branch.id)?.routes).toEqual([{ to: '192.168.0.0/16', next: ROUTER.office.id }]);
+    expect(after.devices.filter((device) => device.lanId === BRANCH_LAN.id).map(({ name, privateIp, gateway }) => [name, privateIp, gateway])).toEqual([
+      [DEVICE.branchPrinter.name, IP.otherOfficePrinter, IP.branchRouter],
+      [DEVICE.branchLaptop.name, IP.otherOfficeLaptop, IP.branchRouter],
+    ]);
+    expect({ ...after, devices: before.devices, lans: before.lans, routers: before.routers }).toEqual(before);
+    expect(router(ROUTER.provider.id)).toEqual(before.routers?.find((candidate) => candidate.id === ROUTER.provider.id));
+  });
+
+  it('02-07: draws the eight pieces of the way and no other', () => {
+    const names = [DEVICE.you.name, DEVICE.branchPrinter.name, DEVICE.branchLaptop.name, SERVER.internet.name];
+    const routers = [ROUTER.office.name, ROUTER.provider.name, ROUTER.branch.name];
+    expect(drawnLabels(start)).toEqual([...names.map((name) => `device:${name}`), ...routers.map((name) => `edge:${name}`), `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'].sort());
+    expect(start.incident.shown).toEqual(ROUTES_PIECES);
+    const ids = [...startWorld(INCIDENTS, WAY).devices.map(({ id }) => id), ...(startWorld(INCIDENTS, WAY).routers ?? []).map(({ id }) => id), ...startWorld(INCIDENTS, WAY).actors.map(({ id }) => id)];
+    expect(ROUTES_PIECES.filter((id) => !ids.includes(id))).toEqual([]);
+  });
+
+  it('02-07: the right option is the second and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 1);
+  });
+
+  it('02-07: introduces next hop, Destination Net Unreachable and most specific route, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[WAY]));
+    expect(sorted(introduces)).toEqual(sorted(['next-hop', 'net-unreachable', 'most-specific-route']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, WAY))).toEqual([]);
     expect(laterTermLeaks([start.incident])).toEqual([]);
   });
 });

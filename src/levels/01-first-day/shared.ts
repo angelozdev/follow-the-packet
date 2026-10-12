@@ -7,7 +7,7 @@ export const CONCEPT = 'concepts/security-groups.md';
 
 const OFFICE_RANGE = '192.168.0.0/16';
 const ANY_IPV4 = '0.0.0.0/0';
-const HOP_MS = 1;
+export const HOP_MS = 1;
 const PROVIDER_MS = 8;
 const DESTINATION_MS = 12;
 const SERVER_MS = 20;
@@ -102,7 +102,7 @@ export const TASK = {
 } as const;
 
 /** Returns a device of the office on floor 1, without a firewall and with the host that answers by default; `patch` changes what the world of an incident needs of it. */
-function officeDevice({ id, name }: { id: string; name: string }, kind: Device['kind'], privateIp: string, patch: Partial<Device> = {}): Device {
+export function officeDevice({ id, name }: { id: string; name: string }, kind: Device['kind'], privateIp: string, patch: Partial<Device> = {}): Device {
   return { id, name, kind, privateIp, firewallIds: [], host: { ignoreIcmpEcho: false, services: [] }, lanId: FLOOR.first.id, ...patch };
 }
 
@@ -208,6 +208,9 @@ const OFFICE_FACES: Router['interfaces'] = [
   { ip: IP.routerSecondFloor, faces: FLOOR.second.id },
 ];
 
+/** The interfaces of the office router once it is connected to the provider (01-08): the two floors and the uplink. A later incident that changes the router restates them all, because an update replaces the list. */
+export const OFFICE_INTERFACES: Router['interfaces'] = [...OFFICE_FACES, { ip: IP.officeUplink, faces: ROUTER.provider.id }];
+
 /** What 01-06 adds to the world: the second floor with laptop-andres on it, the office router between the two floors, and the default gateway of every device (the router's interface on its own floor). */
 export const TWO_FLOORS: NetworkAction[] = [
   { type: 'addLan', lan: FLOOR.second },
@@ -217,7 +220,7 @@ export const TWO_FLOORS: NetworkAction[] = [
 ];
 
 /** Returns the route that sends what is for the office, whatever floor it is on, to this router. */
-function backToOffice(next: string): Route {
+export function backToOffice(next: string): Route {
   return { to: OFFICE_RANGE, next };
 }
 
@@ -255,7 +258,7 @@ export const INTERNET: NetworkAction[] = [
       sendsUnreachable: true,
     },
   },
-  { type: 'updateRouter', routerId: ROUTER.office.id, interfaces: [...OFFICE_FACES, { ip: IP.officeUplink, faces: ROUTER.provider.id }], routes: [{ to: ROUTE_DEFAULT, next: ROUTER.provider.id }] },
+  { type: 'updateRouter', routerId: ROUTER.office.id, interfaces: OFFICE_INTERFACES, routes: [{ to: ROUTE_DEFAULT, next: ROUTER.provider.id }] },
 ];
 
 /** What 01-09 changes: the router of the provider sends everything it does not know back to the office router, and the office router sends it to the provider again, so a packet to the server goes back and forth between the two. The player does not configure routes: the loop is given. */

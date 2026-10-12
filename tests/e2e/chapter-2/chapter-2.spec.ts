@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { confirm, openTerminal, sendMessage } from '@e2e/cards';
+import { confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
 import { FULL_STARS } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
-import { isInside, mapArea, packetBoxes, pairsThatOverlap } from '@e2e/map-boxes';
+import { isInside, mapArea, mapBoxes, outsideTheArea, packetBoxes, pairsThatOverlap } from '@e2e/map-boxes';
 import { reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
 import { standStill } from '@e2e/still-scene';
 import { IP } from '@e2e/chapter-1/chapter-1-play';
-import { ANDRES, BLOCK, CHAPTER_2, INSIDE_THE_BLOCK, LUCIA, NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT, NC_TO_THE_DATABASE, OUTSIDE_THE_BLOCK, PRINTER, YOUR_LAPTOP, classify, sendNc } from './chapter-2-play';
+import { ANDRES, ANYWHERE, BLOCK, BRANCH_HOP, CHAPTER_2, INSIDE_THE_BLOCK, LUCIA, NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT, NC_TO_THE_DATABASE, OFFICE_ROUTER, OTHER_OFFICE_BLOCK, OTHER_OFFICE_LAPTOP, OUTSIDE_THE_BLOCK, PRINTER, PROVIDER_HOP, YOUR_LAPTOP, addRoute, classify, sendNc } from './chapter-2-play';
 
 const LOCKED = '(bloqueado)';
 const [ONE_MACHINE] = CHAPTER_2;
@@ -19,11 +19,19 @@ const IN_MY_BLOCK = CHAPTER_2[3];
 const FOURTH_LINK = `4. ${IN_MY_BLOCK.title}`;
 const WHOLE_RULE = CHAPTER_2[4];
 const FIFTH_LINK = `5. ${WHOLE_RULE.title}`;
+const YOUR_TABLE = CHAPTER_2[5];
+const SIXTH_LINK = `6. ${YOUR_TABLE.title}`;
+const OTHER_OFFICE_WAY = CHAPTER_2[6];
+const SEVENTH_LINK = `7. ${OTHER_OFFICE_WAY.title}`;
 const NAME_OF_THE_BLOCK = '.packet-tag';
 const HALF_A_PIXEL = 0;
 const TAG_OF_THE_APP = 'paquete al puerto 3000';
 const TAG_OF_THE_DATABASE = 'paquete al puerto 5432';
 const STAMP_OF_THE_APP = /^Paquete: paquete al puerto 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+const FULL_SIZE_DEVICE_DISTANCE_PX = 99.3;
+const ROUTE_STAMPS = 3;
+const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
+const WARNING_OF_THE_BRANCH_ROUTER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
 const WINDOWS = [
   { width: 1280, height: 800 },
   { width: 1440, height: 900 },
@@ -41,6 +49,8 @@ const TAGS_OF_THE_FOUR_TESTS = ['TCP 51514 → 3306', 'TCP 51515 → 3000', 'TCP
 const PROGRESS_BEFORE_03 = { '01-14': 1, [ONE_MACHINE.id]: 1, [OPENING.id]: 1 };
 const PROGRESS_BEFORE_04 = { ...PROGRESS_BEFORE_03, [REFUSED_OR_SILENT.id]: 1 };
 const PROGRESS_BEFORE_05 = { ...PROGRESS_BEFORE_04, [IN_MY_BLOCK.id]: 1 };
+const PROGRESS_BEFORE_06 = { ...PROGRESS_BEFORE_05, [WHOLE_RULE.id]: 1 };
+const PROGRESS_BEFORE_07 = { ...PROGRESS_BEFORE_06, [YOUR_TABLE.id]: 1 };
 
 /** Expects no box of the still map (piece labels, floor names, stamps and packet labels) to overlap another, and every one to lie inside the area of the map. */
 async function expectClear(page: Page): Promise<void> {
@@ -121,6 +131,30 @@ test('02-05 is played with the mouse after 02-04 and earns 3 stars', async ({ pa
   expect(errors).toEqual([]);
 });
 
+test('02-06 is played with the mouse after 02-05 and earns 3 stars', async ({ page }) => {
+  const errors = collectErrors(page);
+  await startWithProgress(page, PROGRESS_BEFORE_06);
+  await page.goto('/');
+  await page.getByRole('link', { name: SIXTH_LINK }).click();
+  await expect(page.getByRole('heading', { level: 1, name: YOUR_TABLE.title })).toBeVisible();
+  await YOUR_TABLE.play(page);
+  await page.goto('/#/');
+  await expect(page.locator(`li[data-level-id="${YOUR_TABLE.id}"]`)).toContainText(FULL_STARS);
+  expect(errors).toEqual([]);
+});
+
+test('02-07 is played with the mouse after 02-06 and earns 3 stars', async ({ page }) => {
+  const errors = collectErrors(page);
+  await startWithProgress(page, PROGRESS_BEFORE_07);
+  await page.goto('/');
+  await page.getByRole('link', { name: SEVENTH_LINK }).click();
+  await expect(page.getByRole('heading', { level: 1, name: OTHER_OFFICE_WAY.title })).toBeVisible();
+  await OTHER_OFFICE_WAY.play(page);
+  await page.goto('/#/');
+  await expect(page.locator(`li[data-level-id="${OTHER_OFFICE_WAY.id}"]`)).toContainText(FULL_STARS);
+  expect(errors).toEqual([]);
+});
+
 /** Returns the middle of the box of a locator on the screen. */
 async function middleOf(locator: Locator): Promise<{ x: number; y: number }> {
   const box = await locator.boundingBox();
@@ -142,6 +176,28 @@ async function sendTheFourTests(page: Page) {
   await expect(hers).toBeHidden();
   await expect(page.getByRole('button', { name: STAMP_OF_HER_OWN_APP })).toBeVisible();
 }
+
+/** Sends the three pings of 02-07 from your laptop, to the server and to the printer and the laptop of the other office, closes the terminal and waits for the three stamps and for the scene to stand still. */
+async function sendTheThreePings(page: Page) {
+  const terminal = await openTerminal(page);
+  for (const ip of [IP.server, IP.otherOffice, OTHER_OFFICE_LAPTOP]) await sendTo(terminal, ip);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await expect(page.locator('button.stamp')).toHaveCount(ROUTE_STAMPS);
+  await standStill(page);
+}
+
+/** Writes routes in the table of router-oficina, one after the other, and closes its card. Writing a route clears the stamps of before. */
+async function writeRoutes(page: Page, routes: { destination: string; nextHop: string }[]) {
+  const table = await openCard(page, OFFICE_ROUTER);
+  for (const { destination, nextHop } of routes) await addRoute(table, destination, nextHop);
+  await confirm(table);
+  await expect(table).toBeHidden();
+  await expect(page.locator('button.stamp')).toHaveCount(0);
+}
+
+const OUT_ROUTE = { destination: ANYWHERE, nextHop: PROVIDER_HOP };
+const OFFICE_ROUTE = { destination: OTHER_OFFICE_BLOCK, nextHop: BRANCH_HOP };
 
 test.describe('Sin animaciones', () => {
   test.use({ contextOptions: { reducedMotion: 'reduce' } });
@@ -240,6 +296,53 @@ test.describe('Sin animaciones', () => {
         await expect(page.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
         await standStill(page);
         await expect(page.locator('.packet-tag')).toHaveCount(2);
+        await expectClear(page);
+      });
+
+      test('in 02-07 the map and its labels fit the area at full size', async ({ page }) => {
+        await startWithProgress(page, PROGRESS_BEFORE_07);
+        await page.goto(`/#/level/${OTHER_OFFICE_WAY.id}`);
+        await standStill(page);
+        const fits = async (when: string) => {
+          await standStill(page);
+          expect(await outsideTheArea(page, await mapArea(page)), when).toEqual([]);
+        };
+        await fits('with nothing sent');
+        const boxes = await mapBoxes(page);
+        const [printer, laptop] = [/^impresora-sucursal/, /^laptop-sucursal/].map((name) => boxes.find((box) => name.test(box.name.trim())));
+        if (printer === undefined || laptop === undefined) throw new Error('the two devices of the other office are not on the map');
+        const apart = Math.hypot(laptop.x + laptop.width / 2 - (printer.x + printer.width / 2), laptop.y + laptop.height / 2 - (printer.y + printer.height / 2));
+        expect(apart, 'the devices of the other office stand as far apart as those of any floor').toBeCloseTo(FULL_SIZE_DEVICE_DISTANCE_PX, 0);
+        await sendTheThreePings(page);
+        await fits('with the three warnings of the router with no routes');
+        await writeRoutes(page, [OUT_ROUTE]);
+        await sendTheThreePings(page);
+        await fits('with only the default route');
+        await writeRoutes(page, [OFFICE_ROUTE]);
+        await sendTheThreePings(page);
+        await fits('with both routes');
+      });
+
+      test('after the pings of 02-07, no label or stamp overlaps', async ({ page }) => {
+        await startWithProgress(page, PROGRESS_BEFORE_07);
+        await page.goto(`/#/level/${OTHER_OFFICE_WAY.id}`);
+        await standStill(page);
+        await expectClear(page);
+        await sendTheThreePings(page);
+        await expectClear(page);
+        await writeRoutes(page, [OUT_ROUTE]);
+        await sendTheThreePings(page);
+        await expectClear(page);
+        await writeRoutes(page, [OFFICE_ROUTE]);
+        await sendTheThreePings(page);
+        await expectClear(page);
+        const table = await openCard(page, OFFICE_ROUTER);
+        await table.getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }).click();
+        await addRoute(table, ANYWHERE, BRANCH_HOP);
+        await confirm(table);
+        await expect(page.locator('button.stamp')).toHaveCount(0);
+        await sendTheThreePings(page);
+        await expect(page.getByRole('button', { name: WARNING_OF_THE_BRANCH_ROUTER })).toBeVisible();
         await expectClear(page);
       });
 

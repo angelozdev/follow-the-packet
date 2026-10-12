@@ -114,6 +114,7 @@ const BLOCK_FRONT = FIREWALL_Z + 0.55;
 const DOOR_Z = -0.2;
 const DOORSTEP_Z = 0.25;
 const EDGE_MARGIN = 1.5;
+const GATEWAY_MARGIN = 2.4;
 const INTERNET_GAP = 3.6;
 const ACTOR_GAP = 3;
 const ACTOR_SPACING = 2.5;
@@ -266,14 +267,25 @@ function blocksOf(devices: Record<string, DeviceSpot>, inside: ReadonlySet<strin
   });
 }
 
-/** Lays out the way out to the left of the office, along the road: the drawn routers (or the lone edge) one after another, then the internet, then the servers and the actors. A router, a server or an actor that is not drawn takes no place. */
-function layOutOutside(drawn: Drawn, sheetWidth: number): Pick<Layout, 'edge' | 'internet' | 'actors' | 'routers' | 'servers' | 'stops'> {
+/** Splits the drawn routers in two: the ones that stand along the road to the left, on the way to the internet, and the gateways of another site, which stand past the right end of the sheet. The first router of the road is the one of the office and stays on the left whatever it faces; a later one that faces a slab the map draws is the gateway of that slab's network (the private link to another office), which is not on the way to the internet. */
+function splitRouters(routers: Router[], slabs: ReadonlySet<string>): { west: Router[]; east: Router[] } {
+  const [first, ...later] = routers;
+  const gateways = later.filter((router) => router.interfaces.some((face) => slabs.has(face.faces)));
+  return { west: first ? [first, ...later.filter((router) => !gateways.includes(router))] : [], east: gateways };
+}
+
+/** Lays out the way out to the left of the office, along the road: the drawn routers (or the lone edge) one after another, then the internet, then the servers and the actors. A router, a server or an actor that is not drawn takes no place. A router that is the gateway of another site stands past the right end of the sheet, as the edge stands past the left, and `eastEnd` is where the last of them stands (null when there is none). */
+function layOutOutside(drawn: Drawn, sheetWidth: number, slabs: ReadonlySet<string>): Pick<Layout, 'edge' | 'internet' | 'actors' | 'routers' | 'servers' | 'stops'> & { eastEnd: number | null } {
   const edge: Vec2 = [-sheetWidth / 2 - EDGE_MARGIN, ROAD_Z];
+  const { west, east } = splitRouters(drawn.routers, slabs);
   const routers: Record<string, Vec2> = {};
-  drawn.routers.forEach((router, k) => {
+  west.forEach((router, k) => {
     routers[router.id] = [edge[0] - k * ROUTER_GAP, ROAD_Z];
   });
-  const lastX = edge[0] - Math.max(drawn.routers.length - 1, 0) * ROUTER_GAP;
+  east.forEach((router, k) => {
+    routers[router.id] = [sheetWidth / 2 + GATEWAY_MARGIN + k * ROUTER_GAP, ROAD_Z];
+  });
+  const lastX = edge[0] - Math.max(west.length - 1, 0) * ROUTER_GAP;
   const internet: Vec2 = [lastX - INTERNET_GAP, ROAD_Z];
   const beyond = (k: number) => internet[0] - ACTOR_GAP - k * ACTOR_SPACING;
   const servers: Record<string, Vec2> = {};
@@ -284,8 +296,8 @@ function layOutOutside(drawn: Drawn, sheetWidth: number): Pick<Layout, 'edge' | 
   drawn.clients.forEach((client, k) => {
     actors[client.id] = [beyond(drawn.servers.length + k), ROAD_Z + (k % 2 === 0 ? 0 : ACTOR_STAGGER_Z)];
   });
-  const stops = [...(drawn.edge ? [edge] : []), ...Object.values(routers), ...(drawn.internet ? [internet] : []), ...Object.values(servers)];
-  return { edge, internet, actors, routers, servers, stops };
+  const stops = [...(drawn.edge ? [edge] : []), ...west.map((router) => routers[router.id]), ...(drawn.internet ? [internet] : []), ...Object.values(servers)];
+  return { edge, internet, actors, routers, servers, stops, eastEnd: east.length > 0 ? Math.max(...east.map((router) => routers[router.id][0])) : null };
 }
 
 /** Lays out the pieces it is given and no others: one column per subnet or floor that has a drawn device, the devices of each column in a row and, when the map shows anything outside the office, the way out to the left. Pass `true` or `false` instead of pieces for the whole world with or without the outside. The size of the office never depends on what is drawn: only where it stands on the map. */
@@ -293,7 +305,7 @@ export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boo
   const drawn = drawnOf(net, typeof pieces === 'boolean' ? wholeMap(net, pieces) : pieces);
   const office = layOutOffice(net, columnsOf(net, drawn.devices));
   const insideIds = new Set(typeof pieces === 'boolean' ? [] : pieces.filter((piece) => piece.kind === 'device' && piece.insideBlock).map((piece) => piece.anchorId));
-  const way = layOutOutside(drawn, office.sheetWidth);
+  const { eastEnd, ...way } = layOutOutside(drawn, office.sheetWidth, new Set(Object.keys(office.floors)));
   const outside = drawn.edge || drawn.internet || drawn.routers.length > 0 || drawn.servers.length > 0 || drawn.clients.length > 0;
   const waystations = [...(drawn.edge ? [way.edge[0]] : []), ...Object.values(way.routers).map(([x]) => x)];
   const overhanging = Object.values(way.servers).map(([x]) => x - SERVER_LABEL_OVERHANG);
@@ -307,7 +319,7 @@ export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boo
     blocks: blocksOf(office.devices, insideIds),
     roadZ: ROAD_Z,
     roadFromX: outside ? roadStart : -office.sheetWidth / 2 + ROAD_INSET,
-    roadToX: office.sheetWidth / 2 - ROAD_INSET,
+    roadToX: Math.max(office.sheetWidth / 2 - ROAD_INSET, eastEnd ?? Number.NEGATIVE_INFINITY),
     outside,
     bounds: { left: Math.min(-office.sheetWidth / 2, ...reached), right: Math.max(office.right, ...Object.values(office.devices).map((spot) => spot.x + 1)) },
     ...way,

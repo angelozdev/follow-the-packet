@@ -3,7 +3,25 @@ import { cardProblems, cardsOutsideTheMap, isReachable, reachWithWheel } from '.
 import { card, openCard, openTerminal, sendTo } from './cards';
 import { IP, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
-import { ANDRES, CLASSIFY_TAB, INSIDE_THE_BLOCK, OUTSIDE_THE_BLOCK, SERVICES_CARD, SERVICES_TAB, YOUR_LAPTOP, placeInBin } from '@e2e/chapter-2/chapter-2-play';
+import {
+  ANDRES,
+  ANYWHERE,
+  BRANCH_HOP,
+  CLASSIFY_TAB,
+  INSIDE_THE_BLOCK,
+  OFFICE_ROUTER,
+  OFFICE_ROUTES_CARD,
+  OTHER_OFFICE_BLOCK,
+  OUTSIDE_THE_BLOCK,
+  PROVIDER_HOP,
+  ROUTES_TAB,
+  SERVICES_CARD,
+  SERVICES_TAB,
+  YOUR_LAPTOP,
+  YOUR_ROUTES_CARD,
+  addRoute,
+  placeInBin,
+} from '@e2e/chapter-2/chapter-2-play';
 import { collectErrors } from './console-errors';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 import { freezeTime, standStill, stepFrame } from './still-scene';
@@ -131,6 +149,18 @@ async function placeBothItems(page: Page) {
   await placeInBin(classify, ANDRES, OUTSIDE_THE_BLOCK);
 }
 
+async function reachYourRoutes(page: Page) {
+  await openTheLaptopByKeyboard(page);
+  await page.getByRole('tab', { name: ROUTES_TAB, exact: true }).click();
+}
+
+async function reachTheOfficeRoutes(page: Page) {
+  await openTheLaptopByKeyboard(page, OFFICE_ROUTER);
+  const table = card(page, OFFICE_ROUTES_CARD);
+  await addRoute(table, ANYWHERE, PROVIDER_HOP);
+  await addRoute(table, OTHER_OFFICE_BLOCK, BRANCH_HOP);
+}
+
 async function sendFromTheTabbedTerminal(page: Page) {
   await openTheLaptopByKeyboard(page);
   await sendTo(card(page, TERMINAL), IP.andres);
@@ -161,6 +191,13 @@ const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the c
 const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: doneOf(SERVICES_CARD) };
 const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing placed yet', level: '02-04', reach: reachTheClassifyCard, last: doneOf(YOUR_LAPTOP) };
 const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: doneOf(YOUR_LAPTOP) };
+const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, a tab of its card', level: '02-06', reach: reachYourRoutes, last: doneOf(YOUR_ROUTES_CARD) };
+const THE_EDITABLE_ROUTES: Scene = {
+  name: 'the routing table of router-oficina, with its two routes written and its trays',
+  level: '02-07',
+  reach: reachTheOfficeRoutes,
+  last: doneOf(OFFICE_ROUTES_CARD),
+};
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendAPingAndATraceroute, last: doneOf(TERMINAL) };
 
@@ -177,10 +214,12 @@ const SCENES: Scene[] = [
   THE_SETTINGS,
   THE_TABBED_TERMINAL,
   THE_SERVICES,
+  THE_ROUTES,
+  THE_EDITABLE_ROUTES,
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function passTheGrace(page: Page) {
   await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);
