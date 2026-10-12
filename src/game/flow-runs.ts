@@ -1,5 +1,5 @@
-import { entityTerm, packetLabel, tracerouteLabel, warningOf, type TermId, type TermText, type Warning } from '@/copy';
-import { TRACEROUTE_MAX_HOPS, reachesHost, simulate, simulateSequence, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
+import { entityTerm, packetLabel, packetPortLabels, tracerouteLabel, warningOf, type PacketPorts, type TermId, type TermText, type Warning } from '@/copy';
+import { TRACEROUTE_MAX_HOPS, facesALan, reachesHost, simulate, simulateSequence, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
 import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
 
@@ -16,6 +16,7 @@ export interface PacketRun {
   by: string[];
   intruder: boolean;
   label: TermText;
+  ports?: PacketPorts;
 }
 
 export interface FlowRun extends PacketRun {
@@ -98,6 +99,20 @@ function stoppedBy(world: Network, packet: PacketSpec, trace: Trace): string[] {
   }
 }
 
+/** Returns the router where a translated packet changes its ports: the first router it crossed that faces a local network, the one of the office that translates it. */
+function translatingRouter(world: Network, trace: Trace): string | undefined {
+  const routers = world.routers ?? [];
+  return (trace.hops ?? []).find((hop) => routers.some((router) => router.id === hop.routerId && facesALan(world, router)))?.routerId;
+}
+
+/** Returns the labels the map draws beside a packet with ports, leg by leg, and the router that changes them when there are two. Nothing for a packet with no ports. */
+function portsOf(world: Network, known: ReadonlySet<TermId>, packet: PacketSpec, trace: Trace): { ports: PacketPorts } | undefined {
+  const legs = packetPortLabels(packet, trace, known);
+  if (!legs) return undefined;
+  const changesAt = legs.length > 1 ? translatingRouter(world, trace) : undefined;
+  return { ports: { legs, ...(changesAt !== undefined && { changesAt }) } };
+}
+
 function runOf(world: Network, known: ReadonlySet<TermId>, id: string, packet: PacketSpec, intruder: boolean, trace: Trace): PacketRun {
   const stops = firewallStops(trace);
   const blocked = stops.some((step) => firewallKnown(step, known));
@@ -114,6 +129,7 @@ function runOf(world: Network, known: ReadonlySet<TermId>, id: string, packet: P
     by: stoppedBy(world, packet, trace),
     intruder,
     label: packetLabel(packet, trace, world, known),
+    ...portsOf(world, known, packet, trace),
   };
 }
 

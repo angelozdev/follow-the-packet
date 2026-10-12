@@ -267,11 +267,17 @@ export function isTermId(value: string): value is TermId {
 
 export type PacketMessage = 'echo-request' | 'echo-reply';
 
-/** What a packet is drawn as: one of the messages a sender sends, or the warning that comes back to it. Every kind of warning (Destination Host Unreachable, Time Exceeded) is one look, named by its own term in the trace and by none here. */
-export type PacketVariant = PacketMessage | 'warning';
+/** The shapes of a TCP and a UDP packet: each protocol has its own, filled when it asks and a ring when it answers. */
+export type TransportMessage = 'tcp-request' | 'tcp-reply' | 'udp-request' | 'udp-reply';
+
+/** The shape of a packet a sender sends or that answers it, whatever its protocol. */
+export type PacketShape = PacketMessage | TransportMessage;
+
+/** What a packet is drawn as: the shape of its protocol, or the warning that comes back to it. Every kind of warning (Destination Host Unreachable, Time Exceeded, Port Unreachable) is one look, named by its own term in the trace and by none here. */
+export type PacketVariant = PacketShape | 'warning';
 
 export interface EntityVariants {
-  network: Network['kind'];
+  network: Network['kind'] | 'block';
   device: Device['kind'] | 'internet-server';
   firewall: FirewallKind;
   edge: Network['edge'];
@@ -284,23 +290,23 @@ export type EntityKind = keyof EntityVariants;
 
 type VariantOf<Kind extends EntityKind> = { kind: Kind; variant: EntityVariants[Kind] };
 
-type PacketRef = { kind: 'packet'; variant: PacketMessage; intruder?: boolean } | { kind: 'packet'; variant: 'warning' };
+type PacketRef = { kind: 'packet'; variant: PacketShape; intruder?: boolean } | { kind: 'packet'; variant: 'warning' };
 
-/** One entity of the map in one of its variants, as the entity catalog draws it; a message a sender sends can also be an intruder's, and a warning never is: it comes from the network, not from the sender. */
+/** One entity of the map in one of its variants, as the entity catalog draws it; a packet a sender sends, in any protocol, can also be an intruder's, and a warning never is: it comes from the network, not from the sender. The `block` of a network is the outline of the block that the player is classifying in. */
 export type EntityRef = { [Kind in Exclude<EntityKind, 'packet'>]: VariantOf<Kind> }[Exclude<EntityKind, 'packet'>] | PacketRef;
 
 /** The term that names each variant of each entity, or null while the ladder has no term for it. */
 export const ENTITY_TERMS: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermId | null> } = {
-  network: { office: 'network', vpc: 'vpc' },
+  network: { office: 'network', vpc: 'vpc', block: null },
   device: { laptop: 'device', printer: 'device', 'ec2-instance': 'ec2-instance', 'internet-server': 'device' },
   firewall: { 'host-firewall': 'firewall', 'security-group': 'security-group' },
   edge: { router: 'router', 'internet-gateway': 'internet-gateway' },
   internet: { internet: 'internet' },
   actor: { you: null, attacker: null, home: null },
-  packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', warning: null },
+  packet: { 'echo-request': 'echo-request', 'echo-reply': 'echo-reply', 'tcp-request': 'tcp', 'tcp-reply': 'tcp', 'udp-request': 'udp', 'udp-reply': 'udp', warning: null },
 };
 
-/** The entity whose icon goes with each term that names one: a term that names several variants (device) shows the first one, `packet`, which names every packet, shows an Echo Request, and the terms of the two warnings, which name no variant of their own, show the warning. A term left out, like least-privilege, has no icon. */
+/** The entity whose icon goes with each term that names one: a term that names several variants (device) shows the first one, `packet`, which names every packet, shows an Echo Request, `tcp` and `udp` show the shape their packet has when it asks, and the terms of the warnings, which name no variant of their own, show the warning. A term left out, like least-privilege, has no icon. */
 export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
   network: { kind: 'network', variant: 'office' },
   device: { kind: 'device', variant: 'laptop' },
@@ -316,6 +322,8 @@ export const TERM_ENTITY: Partial<Record<TermId, EntityRef>> = {
   'echo-reply': { kind: 'packet', variant: 'echo-reply' },
   'host-unreachable': { kind: 'packet', variant: 'warning' },
   'time-exceeded': { kind: 'packet', variant: 'warning' },
+  tcp: { kind: 'packet', variant: 'tcp-request' },
+  udp: { kind: 'packet', variant: 'udp-request' },
 };
 
 /** Returns the term that names an entity in this variant, or null when it has none yet. */
@@ -328,7 +336,7 @@ function variantsOf<Kind extends EntityKind>(kind: Kind): EntityVariants[Kind][]
   return Object.keys(ENTITY_TERMS[kind]) as EntityVariants[Kind][];
 }
 
-/** Every entity in every variant, in the order of ENTITY_TERMS, with each message a sender sends also as an intruder's. */
+/** Every entity in every variant, in the order of ENTITY_TERMS, with each packet a sender sends, in any protocol, also as an intruder's. */
 export const ENTITY_REFS: EntityRef[] = [
   ...variantsOf('network').map((variant) => ({ kind: 'network', variant }) as const),
   ...variantsOf('device').map((variant) => ({ kind: 'device', variant }) as const),

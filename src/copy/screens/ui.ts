@@ -23,13 +23,13 @@ export const NOTICE_TEXT = {
 } as const;
 
 const ENTITY_NAMES: { [Kind in EntityKind]: Record<EntityVariants[Kind], TermText> } = {
-  network: { office: 'red de la oficina', vpc: 'VPC' },
+  network: { office: 'red de la oficina', vpc: 'VPC', block: 'contorno del bloque' },
   device: { laptop: 'laptop', printer: 'impresora', 'ec2-instance': 'instancia EC2', 'internet-server': 'servidor de internet' },
   firewall: { 'host-firewall': 'firewall de la laptop', 'security-group': 'Security Group' },
   edge: { router: 'router', 'internet-gateway': 'Internet gateway' },
   internet: { internet: 'internet' },
   actor: { attacker: nameTag('Atacante'), you: nameTag('Tu Mac'), home: nameTag('Casa de Lucía') },
-  packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply', warning: 'aviso' },
+  packet: { 'echo-request': 'Echo Request', 'echo-reply': 'Echo Reply', 'tcp-request': 'TCP pide', 'tcp-reply': 'TCP contesta', 'udp-request': 'UDP pide', 'udp-reply': 'UDP contesta', warning: 'aviso' },
 };
 
 export const CATALOG_TEXT = {

@@ -1,7 +1,8 @@
 import { OrthographicCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
-import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, withDevice, withInbound } from '@/testing';
-import type { Firewall } from '@/engine';
+import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
+import { applyAction, type Firewall } from '@/engine';
+import { packetPortLabels } from '@/copy';
 import type { MapPieceKind } from './overlay/piece-label';
 import { simulate } from '@/engine/simulation/simulate';
 import {
@@ -28,7 +29,9 @@ import {
   sideHeight,
   spreadStamps,
   startsOnMap,
+  tagAt,
   terminalSide,
+  translationDistance,
   type CardPosition,
   type Layout,
   type LayoutPiece,
@@ -861,5 +864,190 @@ describe('paths and stamps', () => {
     expect(screenX(firewallStamp)).toBeLessThan(screenX(doorStamp));
     expect(Math.hypot(doorStamp[0] - door[0], doorStamp[1] - door[1])).toBeLessThan(0.45);
     expect(Math.hypot(firewallStamp[0] - firewall[0], firewallStamp[1] - firewall[1])).toBeLessThan(0.45);
+  });
+});
+
+const MONO_CHAR_PX = 7.2;
+const NAME_TAG_PADDING_PX = 16;
+const halfLabel = (name: string) => (name.length * MONO_CHAR_PX + NAME_TAG_PADDING_PX) / 2;
+
+describe('the outside of an office with names', () => {
+  const NAMED = officeWithNames();
+  const { resolver, authoritative, down } = NAME_SERVERS;
+  const nameServers = [resolver, authoritative, down].map((named) => placedDevice(named.id));
+  const named = (...pieces: LayoutPiece[]) => computeLayout(NAMED, pieces);
+  const everything = [...FLOOR_1_DEVICES, placedRouter(officeRouter.id), GLOBE, ...nameServers, SERVER_PIECE];
+
+  it('places the servers of names on the road behind the globe without covering a label', () => {
+    const layout = named(...everything);
+    const servers = [resolver, authoritative, down, server].map((own) => own.id);
+    for (const id of servers) {
+      expect(layout.servers[id][0], id).toBeLessThan(layout.internet[0]);
+      expect(layout.servers[id][1], id).toBe(layout.roadZ);
+      expect(layout.devices[id], id).toBeUndefined();
+    }
+    const { pixel } = projection(layout, MAPS[0]);
+    const labels = [...servers.map((id) => ({ id, half: halfLabel(id === server.id ? 'servidor-internet' : id), piece: placedDevice(id) })), { id: 'internet', half: halfLabel('internet'), piece: GLOBE }];
+    const boxes = labels.map(({ id, half, piece }) => boxAround(id, pixel(labelPosition(piece, layout)), half, LABEL_HALF_HEIGHT));
+    for (const [index, box] of boxes.entries()) {
+      for (const other of boxes.slice(index + 1)) expect(hits(box, other), `${box.name} and ${other.name}`).toBe(false);
+    }
+  });
+
+  it('draws a server of names only where the world has it: with fewer pieces the others take no place', () => {
+    const layout = named(...FLOOR_1_DEVICES, placedRouter(officeRouter.id), GLOBE, placedDevice(resolver.id));
+    expect(Object.keys(layout.servers)).toEqual([resolver.id]);
+    expect(layout.servers[resolver.id][0]).toBeLessThan(layout.internet[0]);
+  });
+
+  it('places a client of the internet outside the office', () => {
+    const home = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
+    const world = applyAction(NAMED, { type: 'addActor', actor: home });
+    const layout = computeLayout(world, [...everything, { kind: 'actor', anchorId: home.id }]);
+    const [x, z] = layout.actors[home.id];
+    expect(x).toBeLessThan(-layout.sheet.width / 2);
+    expect(x).toBeLessThan(layout.internet[0]);
+    expect(z).toBeGreaterThanOrEqual(layout.roadZ);
+    expect(Object.keys(layout.servers)).not.toContain(home.id);
+    const servers = Object.values(layout.servers).map(([serverX]) => serverX);
+    expect(servers).not.toContain(x);
+  });
+});
+
+describe('a packet that dies at the NAT of the office', () => {
+  const home = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
+  const world = applyAction(applyAction(FLOORS, { type: 'addActor', actor: home }), { type: 'setServices', ownerId: 'andres-laptop', services: [tcpService(3000)] });
+  const layout = computeLayout(world, [...FLOOR_1_DEVICES, placedDevice('andres-laptop'), ...ALL_ROUTERS, GLOBE, SERVER_PIECE, { kind: 'actor', anchorId: home.id }]);
+  const toOffice = { from: actor(home.id), to: officeRouter.uplink, protocol: 'tcp', port: 40009 } as const;
+
+  it('with no row to deliver it, ends at the router of the office, where the NAT dropped it', () => {
+    const trace = simulate(world, toOffice);
+    expect(trace.steps.at(-1)?.reason.code).toBe('nat-no-translation');
+    expect(pathFor(trace, toOffice, layout).at(-1)).toEqual(layout.routers[officeRouter.id]);
+  });
+
+  it('with no row to deliver it and its router out of sight, ends past the last drawn piece it crossed, as any router that drops a packet does', () => {
+    const hidden = computeLayout(world, [...FLOOR_1_DEVICES, placedRouter(provider.id), GLOBE, { kind: 'actor', anchorId: home.id }]);
+    const trace = simulate(world, toOffice);
+    const [x, z] = pathFor(trace, toOffice, hidden).at(-1)!;
+    expect(z).toBe(hidden.roadZ);
+    expect(x).toBeLessThan(hidden.internet[0]);
+    expect(x).toBeGreaterThanOrEqual(hidden.bounds.left);
+  });
+});
+
+describe('the outline of the block', () => {
+  const marked = (id: string): LayoutPiece => ({ kind: 'device', anchorId: id, insideBlock: true });
+  const inside = (spot: { x: number; z: number }, block: { x: number; z: number; width: number; depth: number }) => Math.abs(spot.x - block.x) <= block.width / 2 && Math.abs(spot.z - block.z) <= block.depth / 2;
+  const row = (...ids: [string, boolean][]) => layoutOf(...ids.map(([id, isInside]) => (isInside ? marked(id) : placedDevice(id))));
+
+  it('the outline of the block surrounds exactly the pieces marked inside and no other piece', () => {
+    const layout = row(['your-laptop', true], ['lucia-laptop', false], ['marta-laptop', true], ['printer', false]);
+    const surrounded = Object.entries(layout.devices).filter(([, spot]) => layout.blocks.some((block) => inside(spot, block))).map(([id]) => id);
+    expect(surrounded).toEqual(['your-laptop', 'marta-laptop']);
+    expect(layout.blocks).toHaveLength(2);
+    for (const block of layout.blocks) {
+      expect(block.width).toBeGreaterThanOrEqual(2.1);
+      expect(Math.abs(block.z - layout.devices['your-laptop'].z)).toBeLessThan(block.depth / 2);
+      expect(inside({ x: block.x, z: layout.devices['your-laptop'].firewall[1] }, block)).toBe(true);
+      expect(block.z + block.depth / 2).toBeLessThan(layout.roadZ - 0.35);
+    }
+    expect(layoutOf(placedDevice('your-laptop')).blocks).toEqual([]);
+  });
+
+  it('the pieces marked next to each other share one outline', () => {
+    const layout = row(['your-laptop', true], ['lucia-laptop', true], ['marta-laptop', false], ['printer', false]);
+    expect(layout.blocks).toHaveLength(1);
+    const [block] = layout.blocks;
+    for (const id of ['your-laptop', 'lucia-laptop']) expect(inside(layout.devices[id], block), id).toBe(true);
+    for (const id of ['marta-laptop', 'printer']) expect(inside(layout.devices[id], block), id).toBe(false);
+  });
+
+  it('the outline grows when a piece is marked inside and shrinks when it is not', () => {
+    const widthOf = (...flags: boolean[]) => {
+      const layout = row(['your-laptop', flags[0]], ['lucia-laptop', flags[1]], ['marta-laptop', false]);
+      return layout.blocks.reduce((total, block) => total + block.width, 0);
+    };
+    const one = widthOf(true, false);
+    const two = widthOf(true, true);
+    expect(two).toBeGreaterThan(one);
+    expect(widthOf(true, false)).toBe(one);
+    expect(widthOf(false, false)).toBe(0);
+  });
+
+  it('draws no outline for a world drawn whole, and keeps the size and the place of everything else', () => {
+    expect(computeLayout(FLOORS, true).blocks).toEqual([]);
+    const plain = layoutOf(...FLOOR_1_DEVICES);
+    const outlined = layoutOf(marked('your-laptop'), ...FLOOR_1_DEVICES.slice(1));
+    expect({ ...outlined, blocks: [] }).toEqual(plain);
+  });
+});
+
+describe('the label of a packet with ports along its path', () => {
+  const layout = computeLayout(officeWithNames(), [...FLOOR_1_DEVICES, placedDevice('andres-laptop'), ...ALL_ROUTERS, GLOBE, SERVER_PIECE]);
+  const toServer = tcp(device('your-laptop'), server.ip, 80);
+  const trace = simulate(officeWithNames(), toServer);
+  const path = pathFor(trace, toServer, layout);
+  const legs = packetPortLabels(toServer, trace)!;
+  const router = layout.routers[officeRouter.id];
+  const tags = { legs, changesAt: translationDistance(path, officeRouter.id, layout) };
+
+  it('a packet with ports is labelled with its protocol and ports along its whole path', () => {
+    expect(legs).toHaveLength(2);
+    expect(tagAt({ legs: legs.slice(0, 1) }, 0, false)).toBe('TCP 51514 → 80');
+    expect(tagAt({ legs: legs.slice(0, 1) }, pathLength(path), false)).toBe('TCP 51514 → 80');
+  });
+
+  it('finds the router that translates it on the path, where the distance from the start is that of the router', () => {
+    const index = path.findIndex(([x, z]) => x === router[0] && z === router[1]);
+    expect(index).toBeGreaterThan(0);
+    expect(tags.changesAt).toBeCloseTo(cumulativeLengths(path)[index]);
+    const inside = tcp(device('your-laptop'), OFFICE_FLOORS.floor1.lucia, 3000);
+    expect(translationDistance(pathFor(simulate(officeWithNames(), inside), inside, layout), officeRouter.id, layout)).toBeUndefined();
+  });
+
+  it('a translated packet changes its label at the router, from the private source port to the public one', () => {
+    const before = tags.changesAt! - 0.01;
+    const after = tags.changesAt! + 0.01;
+    expect([tagAt(tags, 0, false), tagAt(tags, before, false)]).toEqual(['TCP 51514 → 80', 'TCP 51514 → 80']);
+    expect([tagAt(tags, after, false), tagAt(tags, pathLength(path), false)]).toEqual(['TCP 40001 → 80', 'TCP 40001 → 80']);
+  });
+
+  it('the reply wears the ports swapped in each leg, so it changes back at the router on its way home', () => {
+    expect(tagAt(tags, pathLength(path), true)).toBe('TCP 80 → 40001');
+    expect(tagAt(tags, tags.changesAt! - 0.01, true)).toBe('TCP 80 → 51514');
+  });
+
+  it('the still drawing of a translated packet shows the label of the leg where the packet stands', () => {
+    const middle = pathLength(path) / 2;
+    expect(middle).toBeGreaterThan(tags.changesAt!);
+    expect(tagAt(tags, middle, false)).toBe('TCP 40001 → 80');
+    const early = { legs, changesAt: pathLength(path) * 0.9 };
+    expect(tagAt(early, middle, false)).toBe('TCP 51514 → 80');
+  });
+
+  it('when the router that translates is not drawn, the label changes where the path leaves the office', () => {
+    const hidden = computeLayout(officeWithNames(), [...FLOOR_1_DEVICES, placedRouter(provider.id), placedRouter(backbone.id), GLOBE, SERVER_PIECE]);
+    const outPath = pathFor(trace, toServer, hidden);
+    const changes = translationDistance(outPath, officeRouter.id, hidden)!;
+    expect(changes).toBeGreaterThan(0);
+    expect(changes).toBeLessThan(pathLength(outPath));
+    const lengths = cumulativeLengths(outPath);
+    const leaving = outPath.findIndex(([x]) => x < -hidden.sheet.width / 2);
+    expect(changes).toBeGreaterThan(lengths[leaving - 1]);
+    expect(changes).toBeLessThanOrEqual(lengths[leaving]);
+  });
+});
+
+describe('pathFor of a datagram that gets a Port Unreachable', () => {
+  const world = withDevice(officeWithNames(), 'andres-laptop', { dnsServer: floor1.printer });
+  const layout = computeLayout(world, [...FLOOR_1_DEVICES, placedDevice('andres-laptop'), placedRouter(officeRouter.id), GLOBE]);
+  const question = dig(device('andres-laptop'), `www.${NAME_SERVERS.zone}`);
+  const trace = simulate(world, question);
+
+  it('runs to the door of the equipment that returns the warning, since the datagram does arrive there', () => {
+    expect(trace.notice).toMatchObject({ kind: 'port-unreachable', fromId: 'printer' });
+    const [andres, printer] = [layout.devices['andres-laptop'], layout.devices.printer];
+    expect(pathFor(trace, question, layout)).toEqual([andres.door, andres.firewall, andres.road, layout.routers[officeRouter.id], printer.road, printer.firewall, printer.door]);
   });
 });

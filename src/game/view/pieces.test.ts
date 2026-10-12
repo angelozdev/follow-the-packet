@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { CHAPTER_1_TERMS, OFFICE_FLOORS, classifyIncident, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, diagnoseIncident, gatewayIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { canConfigure, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { classifyCard } from './cards/identify/classify-card';
 import { pieceCard } from './cards/piece-card';
 import { settingsCard } from './cards/settings-card';
 import { terminalCard } from '@/game/view/cards/terminal/terminal-card';
 import { PIECE_ID } from './piece-id';
+import { applyAction } from '@/engine';
 import { drawsRouter } from './drawn';
+import { inspect } from './inspection';
 import { pieceViews } from './pieces';
 
 const first = startSession(INCIDENTS, '04-01');
@@ -310,5 +312,43 @@ describe('pieceViews of an incident that lists what it draws', () => {
       [provider.id, false],
       [backbone.id, false],
     ]);
+  });
+});
+
+describe('pieceViews of the servers of names and the clients of the internet', () => {
+  const NAMES = namesSendIncident();
+  const names = startSession([NAMES], NAMES.id);
+  const { resolver, authoritative, down } = NAME_SERVERS;
+  const namesOnly = (known: Session['known'], shown?: string[]): Session => ({ ...names, known, incident: { ...names.incident, shown } });
+  const everything = new Set<TermId>([...names.known, 'resolver', 'authoritative-server']);
+  const server = (session: Session, id: string) => pieceViews(session).find((piece) => piece.id === PIECE_ID.actor(id));
+
+  it('a server of names is drawn as a device piece of the variant internet-server once its term is known', () => {
+    const drawn = namesOnly(everything);
+    for (const { id } of [resolver, authoritative, down]) {
+      expect(server(drawn, id), id).toMatchObject({ kind: 'device', variant: 'internet-server', anchorId: id, term: 'device', label: nameTag(id), state: 'normal' });
+    }
+    const early = namesOnly(new Set([...everything].filter((term) => term !== 'resolver' && term !== 'authoritative-server')));
+    expect([resolver, authoritative, down].map(({ id }) => server(early, id))).toEqual([undefined, undefined, undefined]);
+    expect(server(early, OFFICE_FLOORS.server.id)).toMatchObject({ variant: 'internet-server' });
+    const resolving = namesOnly(new Set([...everything].filter((term) => term !== 'authoritative-server')));
+    expect([resolver, authoritative, down].map(({ id }) => server(resolving, id) !== undefined)).toEqual([true, false, false]);
+  });
+
+  it('a server of names is drawn only when the list of its incident includes it, and what is not drawn is not inspected', () => {
+    const listed = namesOnly(everything, ['your-laptop', resolver.id]);
+    expect(pieceViews(listed).filter((piece) => piece.kind === 'device' && piece.variant === 'internet-server').map((piece) => piece.anchorId)).toEqual([resolver.id]);
+    expect(inspect(listed, PIECE_ID.actor(resolver.id))).not.toBeNull();
+    expect(inspect(listed, PIECE_ID.actor(authoritative.id))).toBeNull();
+    const early = namesOnly(new Set([...everything].filter((term) => term !== 'resolver')));
+    expect(inspect(early, PIECE_ID.actor(resolver.id))).toBeNull();
+    expect(inspect(early, PIECE_ID.actor(authoritative.id))).not.toBeNull();
+  });
+
+  it('a client of the internet is drawn as an actor piece', () => {
+    const home = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
+    const drawn = { ...namesOnly(everything), world: applyAction(names.world, { type: 'addActor', actor: home }) };
+    expect(pieceViews(drawn).find((piece) => piece.anchorId === home.id)).toMatchObject({ kind: 'actor', variant: 'home', id: PIECE_ID.actor(home.id), term: null, label: nameTag(home.name) });
+    expect(pieceViews(drawn).filter((piece) => piece.kind === 'device' && piece.variant === 'internet-server').map((piece) => piece.anchorId)).not.toContain(home.id);
   });
 });

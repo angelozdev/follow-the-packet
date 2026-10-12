@@ -56,6 +56,9 @@ export function GameScene({ world, pieces, flows, sent, still, activePieceId, ov
       {floors.map(([id, floor]) => (
         <FloorLabel key={id} position={floor.label} name={world.lans?.find((lan) => lan.id === id)?.name ?? id} />
       ))}
+      {layout.blocks.map((block) => (
+        <NetworkPiece key={`${block.x}`} variant="block" x={block.x} z={block.z} width={block.width} depth={block.depth} />
+      ))}
       <Road layout={layout} />
       {pieces.map((piece) => (
         <PieceShape key={piece.id} piece={piece} layout={layout} selected={piece.id === activePieceId} still={still} />

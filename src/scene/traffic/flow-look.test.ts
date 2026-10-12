@@ -1,9 +1,26 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { PacketSpec } from '@/engine';
+import { replyShape } from '@/copy';
 import { flowLook, type FlowResult } from './flow-look';
 
 const PING: PacketSpec = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.20', protocol: 'icmp', icmpType: 8 };
 const ECHO_REPLY: PacketSpec = { ...PING, icmpType: 0 };
+const SRC = fileURLToPath(new URL('../../', import.meta.url));
+const RHOMBUS = /rombo|rhombus/i;
+
+function sourcesUnder(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return sourcesUnder(path);
+    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
+
+const TCP: PacketSpec = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.11', protocol: 'tcp', port: 3000 };
+const UDP: PacketSpec = { ...TCP, protocol: 'udp', port: 53 };
 const flow = (result: Partial<FlowResult>): FlowResult => ({ packet: PING, intruder: false, reached: false, replied: false, blocked: false, warning: null, ...result });
 
 describe('flowLook', () => {
@@ -47,5 +64,36 @@ describe('flowLook', () => {
 
   it('the packet of an intruder keeps its shape on the way out, and the warning that comes back is not an intruder', () => {
     expect(flowLook(flow({ intruder: true, warning: { term: 'time-exceeded', by: 'router' } }))).toMatchObject({ intruder: true, end: 'warned', stamp: 'warned' });
+  });
+
+  it('a tcp request is drawn with the filled shape of tcp and its reply with the ring, and a udp datagram with the shapes of udp', () => {
+    const tcp = flowLook(flow({ packet: TCP, reached: true, replied: true }));
+    const udp = flowLook(flow({ packet: UDP, reached: true, replied: true }));
+    expect([tcp.message, replyShape(tcp.message)]).toEqual(['tcp-request', 'tcp-reply']);
+    expect([udp.message, replyShape(udp.message)]).toEqual(['udp-request', 'udp-reply']);
+    expect(flowLook(flow({ reached: true, replied: true })).message).toBe('echo-request');
+    expect(replyShape('echo-request')).toBe('echo-reply');
+  });
+
+  it('the packet of an intruder has the shape of its protocol and the intruder border', () => {
+    expect(flowLook(flow({ packet: TCP, intruder: true, reached: true }))).toEqual({ message: 'tcp-request', intruder: true, end: 'arrived', stamp: 'intruder' });
+    expect(flowLook(flow({ packet: UDP, intruder: true, blocked: true }))).toMatchObject({ message: 'udp-request', intruder: true, end: 'blocked' });
+    expect(flowLook(flow({ intruder: true, reached: true }))).toMatchObject({ message: 'echo-request', intruder: true });
+  });
+
+  it('no text of the game calls the intruder a rhombus', () => {
+    const files = sourcesUnder(SRC);
+    expect(files.length).toBeGreaterThan(100);
+    expect(files.filter((file) => RHOMBUS.test(readFileSync(file, 'utf8')))).toEqual([]);
+  });
+
+  it('a datagram that reached its host and got a Port Unreachable is not an arrival: the warning comes back from the host and leaves the stamp of a warning', () => {
+    const closed = flow({ packet: UDP, reached: true, warning: { term: 'port-unreachable', by: 'host' } });
+    expect(flowLook(closed)).toEqual({ message: 'udp-request', intruder: false, end: 'warned', stamp: 'warned' });
+    expect(flowLook({ ...closed, intruder: true })).toMatchObject({ intruder: true, end: 'warned', stamp: 'warned' });
+  });
+
+  it('a datagram that got a Port Unreachable the player cannot name yet keeps looking as it reached the host', () => {
+    expect(flowLook(flow({ packet: UDP, reached: true, warning: null }))).toMatchObject({ end: 'arrived', stamp: 'arrived' });
   });
 });

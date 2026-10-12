@@ -33,6 +33,9 @@ const OUTPUT_KEY_LINES = [/status: NOERROR/, ';; ANSWER SECTION:', /^www\.lucia\
 const OUTPUT_FIRST_FOLDED = '; <<>> DiG 9.18.50 <<>> www.lucia.example';
 const OUTPUT_LAST_FOLDED = /MSG SIZE/;
 const OUTPUT_LINES_ON_VIEW = 3;
+const BLOCK_CAPTION = 'contorno del bloque';
+const SHAPE_CAPTIONS = ['TCP pide', 'TCP contesta', 'UDP pide', 'UDP contesta'];
+const INTRUDER_CAPTIONS = ['Echo Request · intruso', 'Echo Reply · intruso', ...SHAPE_CAPTIONS.map((caption) => `${caption} · intruso`)];
 const MESSAGE_VARIANTS = ['note', 'success', 'warning', 'error'] as const;
 const MESSAGES_DRAWN = { note: 1, success: 2, warning: 1, error: 4 };
 const MESSAGE_TABS = { note: 'Nota', success: '✓ Correcto', warning: '! Aviso', error: '✕ Error' };
@@ -296,6 +299,19 @@ test.describe('Sin animaciones', () => {
     expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
     expect(shown.y + shown.height, 'the output ends above the foot').toBeLessThanOrEqual(finalFoot.y);
     expect(finalFoot.y + finalFoot.height, 'the foot is still inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
+  });
+
+  test('the specimens of the outline of the block and of the intruders are part of the capture', async ({ page }) => {
+    const pieces = await openCatalog(page);
+    const region = await pieces.boundingBox();
+    if (region === null) throw new Error('the pieces section is not on the page');
+    for (const caption of [BLOCK_CAPTION, ...SHAPE_CAPTIONS, ...INTRUDER_CAPTIONS]) {
+      const drawn = pieces.getByText(caption, { exact: true });
+      await expect(drawn, caption).toHaveCount(1);
+      const box = await drawn.boundingBox();
+      if (box === null) throw new Error(`the caption ${caption} is not drawn`);
+      expect(isInside(box, region), `${caption} is inside the captured region`).toBe(true);
+    }
   });
 
   test('the interface specimens of Message are part of the capture', async ({ page }) => {

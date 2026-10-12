@@ -6,8 +6,8 @@ function PacketRuns({ look, sends }: { look: PacketLook; sends: SendsBetween }) 
   const runs = usePacketRuns(look, sends);
   return (
     <>
-      {runs.map((run) => (
-        <PacketRun key={run.key} path={run.path} message={run.message} intruder={run.intruder} end={run.end} />
+      {runs.map(({ key, ...run }) => (
+        <PacketRun key={key} {...run} />
       ))}
     </>
   );

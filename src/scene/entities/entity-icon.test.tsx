@@ -2,9 +2,10 @@
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
-import { ENTITY_TERMS, type EntityKind, type EntityRef, type EntityVariants, type StampState } from '@/copy';
+import { ENTITY_REFS, ENTITY_TERMS, type EntityKind, type EntityRef, type EntityVariants, type StampState } from '@/copy';
 import { CATALOG_ROWS } from '@/scene/catalog/catalog-cells';
 import { EntityIcon } from './entity-icon';
+import { PACKET_SHAPES } from './packet';
 import { StampIcon } from './stamp';
 
 const STAMP_STATES: StampState[] = ['arrived', 'blocked', 'lost', 'intruder', 'warned'];
@@ -75,6 +76,56 @@ describe('the packet icon', () => {
 
   it('draws the warning as a triangle, apart from the dot of an Echo Request and the ring of an Echo Reply', () => {
     expect([iconOf('echo-request'), iconOf('echo-reply')]).not.toContain(iconOf('warning'));
+  });
+});
+
+describe('the shapes of the packets', () => {
+  const SQUARE_TURN = Math.PI / 4;
+  const RHOMBUS_PATH = 'M12 5l7 7-7 7-7-7z';
+  const packets = ENTITY_REFS.filter((entity) => entity.kind === 'packet' && entity.variant !== 'warning');
+
+  it('no packet is drawn as a rhombus', () => {
+    for (const [variant, shape] of Object.entries(PACKET_SHAPES)) {
+      if (shape.sides === 4) expect(shape.turn, variant).toBeCloseTo(SQUARE_TURN);
+    }
+    for (const entity of packets) expect(drawn(<EntityIcon entity={entity} />).innerHTML, JSON.stringify(entity)).not.toContain(RHOMBUS_PATH);
+  });
+
+  it('draws every protocol with a shape of its own, filled when it asks and a ring when it answers', () => {
+    expect(Object.keys(PACKET_SHAPES).sort()).toEqual(['echo-reply', 'echo-request', 'tcp-reply', 'tcp-request', 'udp-reply', 'udp-request']);
+    expect(Object.entries(PACKET_SHAPES).map(([variant, shape]) => [variant, shape.hollow])).toEqual([
+      ['echo-request', false],
+      ['echo-reply', true],
+      ['tcp-request', false],
+      ['tcp-reply', true],
+      ['udp-request', false],
+      ['udp-reply', true],
+    ]);
+    const sides = (protocol: string) => new Set(Object.entries(PACKET_SHAPES).filter(([variant]) => variant.startsWith(protocol)).map(([, shape]) => shape.sides));
+    expect([sides('echo'), sides('tcp'), sides('udp')].map((set) => [...set])).toEqual([[24], [4], [6]]);
+  });
+
+  it('draws the intruder of every protocol with a border the packet of that protocol has not', () => {
+    for (const variant of Object.keys(PACKET_SHAPES)) {
+      const plain = drawn(<EntityIcon entity={{ kind: 'packet', variant, intruder: false } as EntityRef} />);
+      const intruder = drawn(<EntityIcon entity={{ kind: 'packet', variant, intruder: true } as EntityRef} />);
+      expect(intruder.querySelectorAll('path').length, variant).toBe(plain.querySelectorAll('path').length + 1);
+      expect(intruder.innerHTML, variant).toContain(plain.innerHTML);
+    }
+  });
+});
+
+describe('every entity of the catalog', () => {
+  const cellsOf = (prefix: string) => CATALOG_ROWS.flat().filter((cell) => cell.id === prefix || cell.id.startsWith(`${prefix}-`));
+
+  it('every entity and every variant of the catalog has an icon', () => {
+    for (const entity of ENTITY_REFS) {
+      const svg = drawn(<EntityIcon entity={entity} />);
+      expect(svg.innerHTML, JSON.stringify(entity)).not.toBe('');
+      const intruder = 'intruder' in entity && entity.intruder === true;
+      const prefix = entity.kind === 'packet' ? (entity.variant === 'warning' ? 'trace-warned' : `packet-${entity.variant}-${intruder}`) : entity.kind === 'internet' ? 'internet' : `${entity.kind}-${entity.variant}`;
+      expect(cellsOf(prefix).length, JSON.stringify(entity)).toBeGreaterThan(0);
+    }
   });
 });
 

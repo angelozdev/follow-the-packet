@@ -13,6 +13,7 @@ export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   locked: boolean;
   state: 'normal' | 'intruded' | 'blocking';
   inOffice?: boolean;
+  insideBlock?: true;
 };
 
 /** Returns the DOM id of a piece's label, so the focus can come back to it. */

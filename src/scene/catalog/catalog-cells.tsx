@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { CATALOG_TEXT, entityName, type EntityRef, type PacketMessage, type StampState } from '@/copy';
-import type { ClientActor, FirewallKind, Network } from '@/engine';
+import { CATALOG_TEXT, entityName, type EntityRef, type EntityVariants, type PacketShape, type StampState } from '@/copy';
+import type { ClientActor, FirewallKind } from '@/engine';
 import {
   ActorPiece,
   DevicePiece,
@@ -8,6 +8,7 @@ import {
   FirewallPiece,
   InternetPiece,
   NetworkPiece,
+  type NetworkVariant,
   PACKET_Y,
   PacketGlyph,
   PacketTrace,
@@ -30,7 +31,7 @@ export interface CatalogCell {
 type PieceEntity = Extract<EntityRef, { kind: MapPieceKind }>;
 interface TraceEnd {
   end: Extract<PacketEnd, keyof typeof CATALOG_TEXT.state>;
-  message: PacketMessage;
+  message: PacketShape;
   intruder: boolean;
   stamp: StampState;
 }
@@ -49,6 +50,7 @@ const TRACE_ENDS: TraceEnd[] = [
   { end: 'arrived', message: 'echo-request', intruder: true, stamp: 'intruder' },
 ];
 const WARNED_END: TraceEnd = { end: 'warned', message: 'echo-request', intruder: false, stamp: 'warned' };
+const TRANSPORT_ROWS: [PacketShape, PacketShape][] = [['tcp-request', 'tcp-reply'], ['udp-request', 'udp-reply']];
 const ignore = () => {};
 
 function Label({ id, entity, locked, state }: { id: string; entity: PieceEntity; locked: boolean; state: MapPiece['state'] }) {
@@ -90,11 +92,11 @@ function firewallRow(variant: FirewallKind): CatalogCell[] {
   });
 }
 
-function networkCell(variant: Network['kind']): CatalogCell {
+function networkCell(variant: NetworkVariant): CatalogCell {
   return { id: `network-${variant}`, caption: entityName({ kind: 'network', variant }), draw: () => <NetworkPiece variant={variant} {...NETWORK_SIZE} /> };
 }
 
-function edgeCell(variant: Network['edge']): CatalogCell {
+function edgeCell(variant: EntityVariants['edge']): CatalogCell {
   const id = `edge-${variant}`;
   return {
     id,
@@ -133,7 +135,7 @@ function actorCell(variant: ClientActor['kind']): CatalogCell {
   };
 }
 
-function packetCell(message: PacketMessage, intruder: boolean): CatalogCell {
+function packetCell(message: PacketShape, intruder: boolean): CatalogCell {
   return {
     id: `packet-${message}-${intruder}`,
     caption: entityName({ kind: 'packet', variant: message, intruder }),
@@ -143,6 +145,10 @@ function packetCell(message: PacketMessage, intruder: boolean): CatalogCell {
       </group>
     ),
   };
+}
+
+function transportRow([request, reply]: [PacketShape, PacketShape]): CatalogCell[] {
+  return [packetCell(request, false), packetCell(reply, false), packetCell(request, true), packetCell(reply, true)];
 }
 
 function traceCell({ end, message, intruder, stamp }: TraceEnd, index: number): CatalogCell {
@@ -161,9 +167,9 @@ function traceCell({ end, message, intruder, stamp }: TraceEnd, index: number): 
   };
 }
 
-/** Every entity of the map in every variant and state, one row per entity or variant, in the order of the catalog in the chapter 1 design. */
+/** Every entity of the map in every variant and state, one row per entity or variant, in the order of the catalog in the chapter 1 design; the packets of TCP and UDP, each with its intruder's version, come last, so the cells of the rows above keep their place. */
 export const CATALOG_ROWS: CatalogCell[][] = [
-  [networkCell('office'), networkCell('vpc')],
+  [networkCell('office'), networkCell('vpc'), networkCell('block')],
   deviceRow('laptop'),
   deviceRow('printer'),
   [...deviceRow('ec2-instance'), deviceCell('internet-server', 'normal')],
@@ -173,4 +179,5 @@ export const CATALOG_ROWS: CatalogCell[][] = [
   [actorCell('attacker'), actorCell('you'), actorCell('home')],
   [packetCell('echo-request', false), packetCell('echo-reply', false), packetCell('echo-request', true), packetCell('echo-reply', true), traceCell(WARNED_END, TRACE_ENDS.length)],
   TRACE_ENDS.map(traceCell),
+  ...TRANSPORT_ROWS.map(transportRow),
 ];

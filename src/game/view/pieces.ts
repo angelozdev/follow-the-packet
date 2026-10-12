@@ -5,7 +5,7 @@ import { canConfigure, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
 import { insideBlockPieces } from './cards/identify/classify-card';
 import { pieceCard } from './cards/piece-card';
-import { ROUTER_ENTITY, drawsRouter, isDrawn, isShown, shownIds, waitsForTraceroute } from './drawn';
+import { ROUTER_ENTITY, drawsActor, drawsRouter, isDrawn, isShown, shownIds, waitsForTraceroute } from './drawn';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
 export type PieceState = 'normal' | 'intruded' | 'blocking';
@@ -87,7 +87,7 @@ function outside(session: Session): PieceView[] {
   return [...way, ...(outsideDrawn && isDrawn(known, internet) ? [piece(internet, { id: PIECE_ID.internet, anchorId: INTERNET_ANCHOR, label: MAP_TEXT.internet, locked: false, configurable: false, state: 'normal' })] : [])];
 }
 
-/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`, which in a case of a diagnose is the list of that case when it has one) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; every other piece opens one card with a tab for each card it has (`pieceCard`): a device or an actor that is an origin of a send incident its terminal, a device the incident offers settings or services for those, a router its tables, a server of names its records and its cache, and a device with a card in an identify incident that card. A piece with no card is locked. A world with routers draws them in place of the lone edge, each under its own name. With a list, the lone edge and the internet are drawn only when the list holds something outside the office (an actor, or a router with no interface facing a local network). A piece has one button on the map and no second entry. A device is `insideBlock` while it is inside the block of the card that classifies (its owner from the start, and each item the player placed in the bin of what fits); the mark is absent otherwise. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor. */
+/** Returns every piece the map shows, in the variant of its model, with its term, its label by official name, whether the player may open it and its state. An incident that lists what it draws (`shown`, which in a case of a diagnose is the list of that case when it has one) draws only those devices, routers and actors, and a firewall with its device; with no list it draws the whole world. A firewall, a router and the internet wait for their terms. A firewall opens its rules; every other piece opens one card with a tab for each card it has (`pieceCard`): a device or an actor that is an origin of a send incident its terminal, a device the incident offers settings or services for those, a router its tables, a server of names its records and its cache, and a device with a card in an identify incident that card. A piece with no card is locked. A world with routers draws them in place of the lone edge, each under its own name. With a list, the lone edge and the internet are drawn only when the list holds something outside the office (an actor, or a router with no interface facing a local network). A piece has one button on the map and no second entry. A device is `insideBlock` while it is inside the block of the card that classifies (its owner from the start, and each item the player placed in the bin of what fits); the mark is absent otherwise. A server of the internet is not an actor piece: it is a device of the variant `internet-server`, under the id of its actor, and a server of names (one with a `dns` role) waits for the term of its role, `resolver` or `authoritative-server`, like a router waits for `router`. */
 export function pieceViews(session: Session): PieceView[] {
   const { world, parts } = session;
   const intruded = intrudedDeviceIds(session.runs);
@@ -106,7 +106,7 @@ export function pieceViews(session: Session): PieceView[] {
       }),
     ...firewalls(session),
     ...world.actors
-      .filter((actor) => isShown(session, actor.id))
+      .filter((actor) => drawsActor(session, actor))
       .flatMap((actor): PieceView[] => {
         const id = PIECE_ID.actor(actor.id);
         const opening = opens(session, id);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Network } from '@/engine';
 import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetLabelOutside, packetMessage, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetLabelOutside, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -44,6 +44,14 @@ describe('packet labels', () => {
     expect(packetMessage({ protocol: 'icmp', icmpType: 0 })).toBe('echo-reply');
     expect(packetMessage({ protocol: 'icmp', icmpType: 8 })).toBe('echo-request');
     expect(packetMessage({ protocol: 'tcp' })).toBe('echo-request');
+  });
+
+  it('draw every protocol with its own shape, and the answer to a request with the shape of its protocol', () => {
+    expect(packetShape({ protocol: 'icmp', icmpType: 8 })).toBe('echo-request');
+    expect(packetShape({ protocol: 'icmp', icmpType: 0 })).toBe('echo-reply');
+    expect(packetShape({ protocol: 'tcp' })).toBe('tcp-request');
+    expect(packetShape({ protocol: 'udp' })).toBe('udp-request');
+    expect((['echo-request', 'tcp-request', 'udp-request', 'echo-reply'] as const).map(replyShape)).toEqual(['echo-reply', 'tcp-reply', 'udp-reply', 'echo-reply']);
   });
 
   it('name a stamp by its packet and by how it ended, so a screen reader tells ✓, ✕ and ? apart', () => {
@@ -321,5 +329,66 @@ describe('the warning of a trace', () => {
     const noHost = simulate(officeTwoFloorsNet(), ping(you, OFFICE_FLOORS.server.nobody));
     expect(noHost.notice?.kind).toBe('host-unreachable');
     expect(warningOf(noHost.notice!, { from }, EVERY_TERM).term).toBe('host-unreachable');
+  });
+});
+
+describe('the labels of a packet with ports along its legs', () => {
+  const floors = officeTwoFloorsNet();
+  const { server, officeRouter, floor2 } = OFFICE_FLOORS;
+  const toServer = tcp(device('your-laptop'), server.ip, WEB_PORT);
+  const toLucia = tcp(device('your-laptop'), OFFICE_FLOORS.floor1.lucia, APP_PORT);
+  const labelsOf = (packet: typeof toServer, net: Network, known?: ReadonlySet<TermId>) => packetPortLabels(packet, simulate(net, packet), known);
+
+  it('a packet that stays in the office has one leg: its ports as it left, and the reply with the ports swapped', () => {
+    expect(labelsOf(toLucia, serving())).toEqual([{ request: '{{tcp}} 51514 → 3000', reply: '{{tcp}} 3000 → 51514' }]);
+  });
+
+  it('a question to a resolver outside the office is translated like any other packet that leaves it', () => {
+    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    expect(labelsOf(question, officeWithNames())).toEqual([
+      { request: '{{udp}} 51514 → 53', reply: '{{udp}} 53 → 51514' },
+      { request: '{{udp}} 40001 → 53', reply: '{{udp}} 53 → 40001' },
+    ]);
+  });
+
+  it('a packet that the NAT of the office translates has a second leg with the public source port, and the reply in each leg swaps that leg\'s ports', () => {
+    expect(labelsOf(toServer, floors)).toEqual([
+      { request: '{{tcp}} 51514 → 80', reply: '{{tcp}} 80 → 51514' },
+      { request: '{{tcp}} 40001 → 80', reply: '{{tcp}} 80 → 40001' },
+    ]);
+    const second = simulateSequence(floors, [{ packet: toServer, at: 0 }, { packet: { ...toServer, from: device('lucia-laptop') }, at: 0 }])[1];
+    expect(packetPortLabels({ ...toServer, from: device('lucia-laptop') }, second)?.[1].request).toBe('{{tcp}} 40002 → 80');
+  });
+
+  it('a packet from outside has its public port before the router and the port of the device after it', () => {
+    const outside = [{ id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' }] as const;
+    const forwarded = applyAction(
+      applyAction(applyAction(floors, { type: 'addActor', actor: outside[0] }), { type: 'setServices', ownerId: 'andres-laptop', services: [tcpService(APP_PORT)] }),
+      { type: 'setForwards', routerId: officeRouter.id, forwards: [{ protocol: 'tcp', publicPort: 8080, toDeviceId: 'andres-laptop', toPort: APP_PORT }] },
+    );
+    const packet = { from: actor('casa-lucia'), to: officeRouter.uplink, protocol: 'tcp', port: 8080 } as const;
+    const trace = simulate(forwarded, packet);
+    expect(trace.translation?.inside).toEqual({ ip: floor2.andres, port: APP_PORT });
+    expect(packetPortLabels(packet, trace)).toEqual([
+      { request: '{{tcp}} 51514 → 8080', reply: '{{tcp}} 8080 → 51514' },
+      { request: '{{tcp}} 51514 → 3000', reply: '{{tcp}} 3000 → 51514' },
+    ]);
+  });
+
+  it('a packet whose translation changes no port has one leg, and one with no ports at all has none, an ICMP translation included', () => {
+    const pinged = ping(device('your-laptop'), server.ip);
+    expect(simulate(floors, pinged).translation?.protocol).toBe('icmp');
+    expect(packetPortLabels(pinged, simulate(floors, pinged))).toBeNull();
+    const vpc = lab03Net();
+    const ssh = tcp(device('servidor1'), '172.31.38.97', 22);
+    expect(packetPortLabels(ssh, simulate(vpc, ssh))).toBeNull();
+  });
+
+  it('the legs follow what the player knows, and the reply keeps the port of the service until the source port is known', () => {
+    expect(labelsOf(toServer, floors, withoutTerms('source-port'))).toEqual([
+      { request: '{{tcp}} 80', reply: '{{tcp}} 80' },
+    ]);
+    expect(labelsOf(toServer, floors, withoutTerms('tcp'))?.[0].request).toBe('{{packet}} al {{port|puerto}} 80');
+    expect(labelsOf(toServer, floors, withoutTerms('tcp', 'port'))?.[0].request).toBe('{{packet}}');
   });
 });

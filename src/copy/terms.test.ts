@@ -25,6 +25,7 @@ const OFFICIAL_NAMES: [TermId, string][] = [
   ['nxdomain', 'NXDOMAIN'],
   ['servfail', 'SERVFAIL'],
 ];
+const SHAPE_TERMS: TermId[] = ['tcp', 'udp'];
 const RETIRED_IDS = ['server', 'linux-ignore-ping', 'request', 'response'];
 const PING_TERMS: TermId[] = ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'];
 const RETIRED_WORDS = /solicitud|respuesta/i;
@@ -178,13 +179,31 @@ describe('term registry', () => {
     expect(TERMS['domain-name'].definition).not.toMatch(/example\.(com|org)/);
   });
 
-  it('no term of chapter 2 names an entity of the map or has a short form', () => {
+  it('no term of chapter 2 names an entity of the map or has a short form, except tcp and udp, which name the shapes of their packets', () => {
     const named = Object.values(ENTITY_TERMS).flatMap((variants) => Object.values(variants));
-    for (const id of IDS_OF_CHAPTER_2) {
+    for (const id of IDS_OF_CHAPTER_2.filter((candidate) => !SHAPE_TERMS.includes(candidate))) {
       expect(named, id).not.toContain(id);
       expect(TERM_ENTITY[id], id).toBeUndefined();
-      expect(TERMS[id], id).not.toHaveProperty('short');
     }
+    for (const id of IDS_OF_CHAPTER_2) expect(TERMS[id], id).not.toHaveProperty('short');
+  });
+
+  it('tcp and udp name the four packet entities and are the only terms of chapter 2 that name an entity', () => {
+    const naming = Object.entries(ENTITY_TERMS).flatMap(([kind, variants]) => Object.entries(variants).flatMap(([variant, term]) => (term === null ? [] : [{ kind, variant, term }])));
+    const ofChapter2 = naming.filter(({ term }) => IDS_OF_CHAPTER_2.includes(term));
+    expect(ofChapter2.map(({ kind, variant, term }) => [kind, variant, term])).toEqual([
+      ['packet', 'tcp-request', 'tcp'],
+      ['packet', 'tcp-reply', 'tcp'],
+      ['packet', 'udp-request', 'udp'],
+      ['packet', 'udp-reply', 'udp'],
+    ]);
+    expect(Object.keys(TERM_ENTITY).filter((id) => IDS_OF_CHAPTER_2.includes(id as TermId)).sort()).toEqual(['tcp', 'udp']);
+  });
+
+  it('the icon of tcp and of udp is the request shape of its protocol', () => {
+    expect(TERM_ENTITY.tcp).toEqual({ kind: 'packet', variant: 'tcp-request' });
+    expect(TERM_ENTITY.udp).toEqual({ kind: 'packet', variant: 'udp-request' });
+    expect(TERM_ENTITY.packet).toEqual({ kind: 'packet', variant: 'echo-request' });
   });
 
   it('only the IP address and the Security Group have a short form', () => {
@@ -249,7 +268,7 @@ describe('entity terms', () => {
   });
 
   it('every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded', () => {
-    expect(Object.keys(ENTITY_TERMS.packet).sort()).toEqual(['echo-reply', 'echo-request', 'warning']);
+    expect(Object.keys(ENTITY_TERMS.packet).sort()).toEqual(['echo-reply', 'echo-request', 'tcp-reply', 'tcp-request', 'udp-reply', 'udp-request', 'warning']);
     for (const term of Object.values(ENTITY_TERMS.packet)) expect(term === null || isTermId(term)).toBe(true);
     expect(entityTerm({ kind: 'packet', variant: 'warning' })).toBeNull();
     const from = { kind: 'device', id: 'your-laptop' } as const;
@@ -260,8 +279,18 @@ describe('entity terms', () => {
 
   it('a warning is never an intruder: only the messages a sender sends are listed as an intruder too', () => {
     const packets = ENTITY_REFS.filter((entity) => entity.kind === 'packet');
-    expect(packets.filter((entity) => 'intruder' in entity && entity.intruder).map((entity) => entity.variant).sort()).toEqual(['echo-reply', 'echo-request']);
+    expect(packets.filter((entity) => 'intruder' in entity && entity.intruder).map((entity) => entity.variant).sort()).toEqual(['echo-reply', 'echo-request', 'tcp-reply', 'tcp-request', 'udp-reply', 'udp-request']);
     expect(packets.filter((entity) => entity.variant === 'warning')).toEqual([{ kind: 'packet', variant: 'warning' }]);
+  });
+
+  it('every protocol has an intruder version with the intruder border', () => {
+    const packets = ENTITY_REFS.filter((entity) => entity.kind === 'packet' && entity.variant !== 'warning');
+    const intruderOf = (variant: string) => packets.some((entity) => entity.variant === variant && 'intruder' in entity && entity.intruder === true);
+    const plainOf = (variant: string) => packets.some((entity) => entity.variant === variant && !('intruder' in entity && entity.intruder));
+    for (const variant of ['echo-request', 'echo-reply', 'tcp-request', 'tcp-reply', 'udp-request', 'udp-reply']) {
+      expect(plainOf(variant), variant).toBe(true);
+      expect(intruderOf(variant), variant).toBe(true);
+    }
   });
 
   it('gives a character no term: an actor is a person, not a piece of the network', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulateSequence } from '@/engine';
 import { packetFromChips, startWorld } from '@/levels';
 import type { TermId } from '@/copy';
-import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident } from '@/testing';
+import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
 import { lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch } from './flow-runs';
 
 const FIRST_PORT = 51514;
@@ -80,5 +80,38 @@ describe('the warning a run shows', () => {
     expect(toServer(EVERY_TERM)?.warning).toEqual({ term: 'net-unreachable', by: 'router' });
     expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable')))?.warning).toEqual({ term: 'host-unreachable', by: 'router' });
     expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable' && term !== 'host-unreachable')))?.warning).toBeNull();
+  });
+});
+
+describe('the labels a run carries on the map', () => {
+  const sent = (messageId: string, toId: string, known: ReadonlySet<TermId> = EVERY_TERM) => sendPacket(WORLD, NAMES, { type: 'sendPacket', fromId: 'you', toId, messageId }, 1, known)!;
+  const without = (...terms: TermId[]): ReadonlySet<TermId> => new Set([...EVERY_TERM].filter((term) => !terms.includes(term)));
+
+  it('a packet with ports is labelled with its protocol and ports', () => {
+    expect(sent('nc', 'lucia').ports).toEqual({ legs: [{ request: '{{tcp}} 51514 → 3000', reply: '{{tcp}} 3000 → 51514' }] });
+    expect(sent('nc', 'lucia', without('tcp')).ports?.legs[0].request).toBe('{{packet}} al {{port|puerto}} 3000');
+  });
+
+  it('a packet the NAT translates carries a second label with the public source port, and says which router changes it', () => {
+    expect(sent('dig', 'www').ports).toEqual({
+      legs: [
+        { request: '{{udp}} 51514 → 53', reply: '{{udp}} 53 → 51514' },
+        { request: '{{udp}} 40001 → 53', reply: '{{udp}} 53 → 40001' },
+      ],
+      changesAt: OFFICE_FLOORS.officeRouter.id,
+    });
+  });
+
+  it('a packet with no ports carries no labels, so a ping and the packets of a VPC look as they did', () => {
+    expect(sent('ping', 'lucia')).not.toHaveProperty('ports');
+    expect(sent('ping', 'server')).not.toHaveProperty('ports');
+  });
+});
+
+describe('a datagram that got a Port Unreachable', () => {
+  it('is a run that reached the host and got a warning from it, which the map draws as a warning and not as an arrival', () => {
+    const toPrinter = withDevice(WORLD, 'your-laptop', { dnsServer: OFFICE_FLOORS.floor1.printer });
+    const run = sendPacket(toPrinter, NAMES, { type: 'sendPacket', fromId: 'you', toId: 'www', messageId: 'dig' }, 1, EVERY_TERM)!;
+    expect([run.trace.outcome, run.reached, run.warning]).toEqual(['unreachable', true, { term: 'port-unreachable', by: 'host' }]);
   });
 });

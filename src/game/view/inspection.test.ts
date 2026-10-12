@@ -631,6 +631,13 @@ describe('the box of a packet with ports and names', () => {
   const field = (session: Session, label: string) => fields(session).find(([name]) => name === label);
   const yourFirewall = (outbound: Rule[]): NetworkAction => ({ type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound } });
 
+  it('the box of a packet draws the icon of its protocol: the filled shape of tcp or udp, and the dot of a ping', () => {
+    const entity = (session: Session) => inspect(session, session.sent.at(-1)!.pieceId)?.entity;
+    expect(entity(sentTo(served, 'lucia', 'nc'))).toEqual({ kind: 'packet', variant: 'tcp-request', intruder: false });
+    expect(entity(sentTo(base, 'www', 'dig'))).toEqual({ kind: 'packet', variant: 'udp-request', intruder: false });
+    expect(entity(sentTo(served, 'lucia', 'ping'))).toEqual({ kind: 'packet', variant: 'echo-request', intruder: false });
+  });
+
   it('a tcp packet shows its ports in the header behind the term port', () => {
     const nc = sentTo(served, 'lucia', 'nc');
     expect(nc.sent[0].replied).toBe(true);

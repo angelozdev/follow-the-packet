@@ -47,6 +47,14 @@ describe('usePacketRuns', () => {
     expect(firstRun('self-warned').endsAt - FRAME_S).toBeCloseTo(pathLength(PATH) / PACKET_SPEED + PACKET_END_S);
   });
 
+  it('a run keeps the labels of the packet, which the packet shows along its trip', () => {
+    const tags = { legs: [{ request: '{{tcp}} 51514 → 80', reply: '{{tcp}} 80 → 51514' }], changesAt: 1 };
+    const look: PacketLook = { path: PATH, message: 'tcp-request', intruder: false, end: 'replied', tags };
+    const { result } = renderHook(() => usePacketRuns(look, () => true));
+    act(() => frame.run?.({}, FRAME_S));
+    expect(result.current[0]).toMatchObject({ message: 'tcp-request', tags });
+  });
+
   it('a reply and a warning take the same trip, and a packet that is lost or blocked only goes out', () => {
     expect(travelPath(PATH, 'replied')).toEqual(travelPath(PATH, 'warned'));
     expect(travelPath(PATH, 'lost')).toEqual(PATH);

@@ -1,3 +1,4 @@
+import { toPlainText, type PortLabels } from '@/copy';
 import type { Actor, ClientActor, Device, Network, PacketSpec, Reason, Router, ServerActor, Trace } from '@/engine';
 import type { MapPieceKind } from './overlay/piece-label';
 
@@ -49,11 +50,20 @@ export interface FloorSpot {
   label: Vec3;
 }
 
+/** The outline of the block on the ground: the rectangle that surrounds a run of pieces the player placed inside it. */
+export interface BlockSpot {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+}
+
 export interface Layout {
   sheet: { width: number; depth: number };
   subnets: Record<string, SubnetSpot>;
   floors: Record<string, FloorSpot>;
   devices: Record<string, DeviceSpot>;
+  blocks: BlockSpot[];
   roadZ: number;
   roadFromX: number;
   roadToX: number;
@@ -67,11 +77,12 @@ export interface Layout {
   bounds: { left: number; right: number };
 }
 
-/** A piece the map draws, as the layout sees it: its kind and what it stands for. A device piece whose anchor is a server of the internet stands for that server, and an edge piece whose anchor is a router of the world stands for that router and says, with `inOffice`, whether that router faces a local network: the road lists the routers from the office outward, and what faces the office is something the engine knows and the layout does not decide. */
+/** A piece the map draws, as the layout sees it: its kind and what it stands for, and, for a device, whether the player placed it inside the block of the card that classifies (`insideBlock`: the outline surrounds the pieces marked). A device piece whose anchor is a server of the internet stands for that server, and an edge piece whose anchor is a router of the world stands for that router and says, with `inOffice`, whether that router faces a local network: the road lists the routers from the office outward, and what faces the office is something the engine knows and the layout does not decide. */
 export interface LayoutPiece {
   kind: MapPieceKind;
   anchorId: string;
   inOffice?: boolean;
+  insideBlock?: boolean;
 }
 
 interface Column {
@@ -96,6 +107,9 @@ const ROAD_Z = 1.9;
 const ROAD_INSET = 0.5;
 const DEVICE_Z = -0.9;
 const FIREWALL_Z = 0.7;
+const BLOCK_HALF_WIDTH = 1.45;
+const BLOCK_BACK = DEVICE_Z - 1;
+const BLOCK_FRONT = FIREWALL_Z + 0.55;
 const DOOR_Z = -0.2;
 const DOORSTEP_Z = 0.25;
 const EDGE_MARGIN = 1.5;
@@ -226,6 +240,22 @@ function layOutOffice(net: Network, columns: Column[]): Office {
   return office;
 }
 
+/** Returns the outline of the block: one rectangle around each run of device spots, side by side in the row, that the player placed inside it. A device that is not marked splits the run, so no outline ever surrounds a piece that is not inside; a run grows by a device on its side as the player marks one, and a rectangle disappears when its last piece is unmarked. */
+function blocksOf(devices: Record<string, DeviceSpot>, inside: ReadonlySet<string>): BlockSpot[] {
+  const ordered = Object.entries(devices).sort(([, a], [, b]) => a.x - b.x);
+  const runs = ordered.reduce<number[][]>((found, [id, spot], index) => {
+    if (!inside.has(id)) return found;
+    const last = found.at(-1);
+    if (last && index > 0 && inside.has(ordered[index - 1][0])) last.push(spot.x);
+    else found.push([spot.x]);
+    return found;
+  }, []);
+  return runs.map((run) => {
+    const [left, right] = [Math.min(...run) - BLOCK_HALF_WIDTH, Math.max(...run) + BLOCK_HALF_WIDTH];
+    return { x: (left + right) / 2, z: (BLOCK_BACK + BLOCK_FRONT) / 2, width: right - left, depth: BLOCK_FRONT - BLOCK_BACK };
+  });
+}
+
 /** Lays out the way out to the left of the office, along the road: the drawn routers (or the lone edge) one after another, then the internet, then the servers and the actors. A router, a server or an actor that is not drawn takes no place. */
 function layOutOutside(drawn: Drawn, sheetWidth: number): Pick<Layout, 'edge' | 'internet' | 'actors' | 'routers' | 'servers' | 'stops'> {
   const edge: Vec2 = [-sheetWidth / 2 - EDGE_MARGIN, ROAD_Z];
@@ -252,6 +282,7 @@ function layOutOutside(drawn: Drawn, sheetWidth: number): Pick<Layout, 'edge' | 
 export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boolean): Layout {
   const drawn = drawnOf(net, typeof pieces === 'boolean' ? wholeMap(net, pieces) : pieces);
   const office = layOutOffice(net, columnsOf(net, drawn.devices));
+  const insideIds = new Set(typeof pieces === 'boolean' ? [] : pieces.filter((piece) => piece.kind === 'device' && piece.insideBlock).map((piece) => piece.anchorId));
   const way = layOutOutside(drawn, office.sheetWidth);
   const outside = drawn.edge || drawn.internet || drawn.routers.length > 0 || drawn.servers.length > 0 || drawn.clients.length > 0;
   const waystations = [...(drawn.edge ? [way.edge[0]] : []), ...Object.values(way.routers).map(([x]) => x)];
@@ -263,6 +294,7 @@ export function computeLayout(net: Network, pieces: readonly LayoutPiece[] | boo
     subnets: office.subnets,
     floors: office.floors,
     devices: office.devices,
+    blocks: blocksOf(office.devices, insideIds),
     roadZ: ROAD_Z,
     roadFromX: outside ? roadStart : -office.sheetWidth / 2 + ROAD_INSET,
     roadToX: office.sheetWidth / 2 - ROAD_INSET,
@@ -386,7 +418,7 @@ export function terminalSide(anchorX: number, avoidXs: number[], room: number, g
 
 const STAYS_IN_DEVICE: Reason['code'][] = ['route-self', 'route-loopback', 'address-invalid', 'route-no-gateway', 'route-not-connected', 'forward-no-owner'];
 const NOT_A_ROUTER: Reason['code'] = 'route-gateway-not-a-router';
-const DROPPED_BY_A_ROUTER: Reason['code'][] = ['forward-ttl-exceeded', 'forward-no-route', 'forward-no-host', 'forward-private-dropped'];
+const DROPPED_BY_A_ROUTER: Reason['code'][] = ['forward-ttl-exceeded', 'forward-no-route', 'forward-no-host', 'forward-private-dropped', 'nat-no-translation'];
 
 function spotOfActor(layout: Layout, id: string): Vec2 | undefined {
   return layout.actors[id] ?? layout.servers[id];
@@ -541,4 +573,29 @@ export function spreadStamps(points: Vec2[]): Vec2[] {
     if (!pair) return stamps;
     merge(groups, groups[pair[0]], groups[pair[1]]);
   }
+}
+
+/** What a packet with ports wears beside it on the map: its labels leg by leg and, when it has two, how far along its path it is when it changes from the first to the second (`translationDistance`). */
+export interface PacketTags {
+  legs: PortLabels[];
+  changesAt?: number;
+}
+
+/** Returns how far along the path the ports of a packet change: where the router that translates them stands on it when the map draws that router, and, when it does not, where the path leaves the office, which is where the NAT acts. Undefined when the path never leaves the office or the router. */
+export function translationDistance(path: Vec2[], routerId: string | undefined, layout: Layout): number | undefined {
+  const lengths = cumulativeLengths(path);
+  const router = routerId === undefined ? undefined : layout.routers[routerId];
+  const at = router ? path.findIndex(([x, z]) => x === router[0] && z === router[1]) : -1;
+  if (at >= 0) return lengths[at];
+  const edge = -layout.sheet.width / 2;
+  const crossing = path.findIndex((point, index) => index > 0 && (path[index - 1][0] - edge) * (point[0] - edge) < 0);
+  if (crossing < 0) return undefined;
+  const [from, to] = [path[crossing - 1], path[crossing]];
+  return lengths[crossing - 1] + (lengths[crossing] - lengths[crossing - 1]) * ((edge - from[0]) / (to[0] - from[0]));
+}
+
+/** Returns the text of the label a packet wears `distance` along its path, in plain text: the one of the leg it is in, and, for the answer coming back (`back`), the one with the ports swapped. A packet with one leg wears it all along. */
+export function tagAt({ legs, changesAt }: PacketTags, distance: number, back: boolean): string {
+  const leg = legs[changesAt !== undefined && distance >= changesAt ? legs.length - 1 : 0];
+  return toPlainText(back ? leg.reply : leg.request);
 }

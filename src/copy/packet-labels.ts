@@ -1,6 +1,6 @@
 import { stopStep, type Endpoint, type Network, type Notice, type Outcome, type PacketSpec, type Trace } from '@/engine';
 import { nameTag, word, type TermText } from './term-text';
-import type { PacketMessage, TermId } from './terms';
+import type { PacketMessage, PacketShape, TermId } from './terms';
 
 const INTERNET_NAME = 'Internet';
 const SIGNIFICANT_DIGITS = 12;
@@ -33,6 +33,26 @@ export function serviceLabel(packet: Pick<PacketSpec, 'protocol' | 'port' | 'icm
 /** Returns the message a packet is drawn as: an Echo Reply answers, and every other packet (an Echo Request, or TCP and UDP, which no flow sends yet) asks. */
 export function packetMessage(packet: Pick<PacketSpec, 'protocol' | 'icmpType'>): PacketMessage {
   return packet.protocol === 'icmp' && packet.icmpType === 0 ? 'echo-reply' : 'echo-request';
+}
+
+const ASKS: Record<PacketSpec['protocol'], PacketShape> = { icmp: 'echo-request', tcp: 'tcp-request', udp: 'udp-request' };
+const ANSWER: Record<PacketShape, PacketShape> = {
+  'echo-request': 'echo-reply',
+  'echo-reply': 'echo-reply',
+  'tcp-request': 'tcp-reply',
+  'tcp-reply': 'tcp-reply',
+  'udp-request': 'udp-reply',
+  'udp-reply': 'udp-reply',
+} satisfies Record<PacketShape, PacketShape>;
+
+/** Returns the shape a packet is drawn with: the one of its protocol, which asks (an Echo Reply, which answers, is the only packet a flow can send that does not). The map and the box of a packet draw this; `packetMessage` stays the ICMP message that names its term. */
+export function packetShape(packet: Pick<PacketSpec, 'protocol' | 'icmpType'>): PacketShape {
+  return packet.protocol === 'icmp' && packet.icmpType === 0 ? 'echo-reply' : ASKS[packet.protocol];
+}
+
+/** Returns the shape of the answer to a packet drawn with this shape: the ring of its own protocol. A packet that already answers has the same one, since nobody answers an answer. */
+export function replyShape(shape: PacketShape): PacketShape {
+  return ANSWER[shape];
 }
 
 /** Names an ICMP message by its protocol and its type, with both terms tagged. */
@@ -68,6 +88,47 @@ export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, know
 /** The label of a packet once the NAT of the office has changed its source: the same as `packetLabel`, with the public source port of `Trace.translation` («TCP 40001 → 80»). A packet that was not translated, or whose translation has no port (an ICMP message has none), keeps its one label. */
 export function packetLabelOutside(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
   return `${packetService(packet, trace, known, trace.translation?.outside.port)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
+}
+
+/** The label a packet carries along one leg of its path: its protocol and ports as it asks, and as its answer comes back, with the ports swapped. */
+export interface PortLabels {
+  request: TermText;
+  reply: TermText;
+}
+
+/** What a packet with ports wears on the map: its labels leg by leg, and, when it has two, the router at which it changes from the first to the second (the one that translates its ports). */
+export interface PacketPorts {
+  legs: PortLabels[];
+  changesAt?: string;
+}
+
+interface Ports {
+  source: number;
+  destination: number;
+}
+
+function legLabels(protocol: 'tcp' | 'udp', ports: Ports, known: ReadonlySet<TermId> | undefined): PortLabels {
+  const request = transportLabel(protocol, ports, known);
+  const knowsSource = known === undefined || known.has('source-port');
+  return { request, reply: knowsSource ? transportLabel(protocol, { source: ports.destination, destination: ports.source }, known) : request };
+}
+
+function translatedPorts(packet: PacketSpec, trace: Trace, ports: Ports): Ports | undefined {
+  const { translation } = trace;
+  if (!translation) return undefined;
+  if (packet.from.kind === 'device') return translation.outside.port === undefined ? undefined : { ...ports, source: translation.outside.port };
+  return translation.inside.port === undefined ? undefined : { ...ports, destination: translation.inside.port };
+}
+
+/** Returns the labels that a TCP or UDP packet wears along its path, in the order its request travels it: one for the leg where it left, and a second for the leg after the router that translated it, when the NAT changed a port and the label says so. The packet of an office device leaves with its own source port and goes on with the public one; a packet from outside is for the public port of the router and goes on, inside, for the port of the device. The answer wears the same legs with the ports swapped. Null for a packet with no ports (an ICMP message, or a packet of a VPC, whose trace has none) and for one that never left its sender, so the map draws no label for them. Each part waits for its term, as `packetLabel` does; with no `known`, every term is known. */
+export function packetPortLabels(packet: PacketSpec, trace: Trace, known?: ReadonlySet<TermId>): PortLabels[] | null {
+  const request = trace.header?.request;
+  if (packet.protocol === 'icmp' || request?.sourcePort === undefined || request.destinationPort === undefined) return null;
+  const ports = { source: request.sourcePort, destination: request.destinationPort };
+  const first = legLabels(packet.protocol, ports, known);
+  const changed = translatedPorts(packet, trace, ports);
+  const second = changed && legLabels(packet.protocol, changed, known);
+  return second && (second.request !== first.request || second.reply !== first.reply) ? [first, second] : [first];
 }
 
 /** Describes a traceroute the way `packetLabel` describes a packet, as what, from whom and to whom: it is called traceroute (and packet while that term is unknown), whatever probe it ended with. */

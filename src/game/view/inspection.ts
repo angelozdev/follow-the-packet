@@ -1,4 +1,4 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, packetShape, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketSpec, type Router, type ServerActor, type Service } from '@/engine';
 import { routerOutOfSight, type PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
@@ -6,7 +6,7 @@ import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { dnsField, exchangeField, headerFields, routeField, translationField, type InspectionField } from './packet-fields';
-import { drawsRouter, isDrawn, isShown } from './drawn';
+import { drawsActor, drawsRouter, isDrawn, isShown } from './drawn';
 import { placesOf, routerPlace } from './router-place';
 
 export type { InspectionField } from './packet-fields';
@@ -210,7 +210,7 @@ function packet(session: Session, run: PacketRun): Inspection {
   const knowsTheRoute = routerOutOfSight(session.incident, run) === undefined;
   const path = knowsTheRoute && !traced;
   return {
-    entity: { kind: 'packet', variant: packetMessage(run.packet), intruder: run.intruder },
+    entity: { kind: 'packet', variant: packetShape(run.packet), intruder: run.intruder },
     title: run.label,
     fields: [
       ...visible([...definition(traced ? 'traceroute' : packetTerm(run.packet, session.known)), ...messageField(run.packet)], session.known),
@@ -247,7 +247,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
     }
     case 'actor': {
       const found = world.actors.find((candidate) => candidate.id === ref.id);
-      if (!found || !isShown(session, found.id)) return null;
+      if (!found || !drawsActor(session, found)) return null;
       return isClientActor(found) ? actor(session, found) : internetServer(session, found);
     }
     case 'router': {

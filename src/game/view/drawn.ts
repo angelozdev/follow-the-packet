@@ -1,9 +1,12 @@
 import { entityTerm, type EntityRef, type TermId } from '@/copy';
+import type { Actor, ServerActor } from '@/engine';
 import { revealsRoutersByTraceroute, shownOf } from '@/levels';
 import { currentCase, type Session } from '@/game/session';
 import { revealedRouterIds } from './revealed-routers';
 
 export const ROUTER_ENTITY = { kind: 'edge', variant: 'router' } as const;
+
+const NAME_SERVER_TERM = { resolver: 'resolver', authoritative: 'authoritative-server' } as const satisfies Record<NonNullable<ServerActor['dns']>['role'], TermId>;
 
 /** True when the map draws a piece of this entity: its term is known, or it has none. A device and an actor are the base of every map and are always drawn; the firewall, the edge and the internet wait for their terms. */
 export function isDrawn(known: ReadonlySet<TermId>, entity: EntityRef): boolean {
@@ -30,4 +33,11 @@ export function waitsForTraceroute(session: Session, routerId: string): boolean 
 /** True when the map draws the router with this id: the incident shows it, the term router is known and, in an incident whose routers wait for a traceroute, a traceroute the player sent names it. A text that names a router must agree with this. */
 export function drawsRouter(session: Session, routerId: string): boolean {
   return isShown(session, routerId) && isDrawn(session.known, ROUTER_ENTITY) && !waitsForTraceroute(session, routerId);
+}
+
+/** True when the map draws this actor: the incident shows it and, for a server of names, the term of its role is known (`resolver` for a resolver, `authoritative-server` for an authoritative server), so the map draws what the text names and no more. A server with no DNS and a client of the internet are drawn whenever the incident shows them. */
+export function drawsActor(session: Session, actor: Actor): boolean {
+  if (!isShown(session, actor.id)) return false;
+  const role = actor.kind === 'server' ? actor.dns?.role : undefined;
+  return role === undefined || session.known.has(NAME_SERVER_TERM[role]);
 }
