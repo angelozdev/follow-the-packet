@@ -50,11 +50,11 @@ export function travelPath(path: Vec2[], end: PacketEnd): Vec2[] {
   return COMES_BACK.includes(end) ? roundTrip(path) : path;
 }
 
-/** The label of a packet with ports, beside it on the HTML layer: its protocol and ports as they are in the leg where the packet is. It takes no pointer and no screen reader, because the stamp of the packet already tells it. */
-function PacketTag({ text }: { text: string }) {
+/** The label of a packet with ports, beside it on the HTML layer: its protocol and ports as they are in the leg where the packet is, `apart` from the packet on the ground when it has a neighbour at its place. It takes no pointer and no screen reader, because the stamp of the packet already tells it. */
+function PacketTag({ text, apart = [0, 0] }: { text: string; apart?: Vec2 }) {
   const portal = useHtmlPortal();
   return (
-    <Html portal={portal} center zIndexRange={TAG_LAYERS}>
+    <Html portal={portal} position={[apart[0], 0, apart[1]]} center zIndexRange={TAG_LAYERS}>
       <span className="packet-tag" aria-hidden="true">
         {text}
       </span>
@@ -233,7 +233,7 @@ export function PacketTrace({ path, message, intruder, end, tags }: PacketLook) 
       {end !== 'self-warned' && (
         <group position={markAt(path, length / 2)}>
           <PacketGlyph message={message} intruder={intruder} />
-          {tags && <PacketTag text={tagAt(tags, length / 2, false)} />}
+          {tags && <PacketTag text={tagAt(tags, length / 2, false)} apart={tags.apart} />}
         </group>
       )}
       {COMES_BACK.includes(end) && (

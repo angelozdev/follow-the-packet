@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { confirm, openTerminal, sendMessage } from '@e2e/cards';
 import { FULL_STARS } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
+import { packetBoxes, pairsThatOverlap } from '@e2e/map-boxes';
 import { reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
 import { standStill } from '@e2e/still-scene';
 import { CHAPTER_2, NC_TO_THE_APP, NC_TO_THE_DATABASE } from './chapter-2-play';
@@ -12,6 +13,10 @@ const FIRST_LINK = `1. ${ONE_MACHINE.title}`;
 const TAG_OF_THE_APP = 'paquete al puerto 3000';
 const TAG_OF_THE_DATABASE = 'paquete al puerto 5432';
 const STAMP_OF_THE_APP = /^Paquete: paquete al puerto 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+const WINDOWS = [
+  { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
+];
 const STAMP_OF_THE_DATABASE = /^Paquete: paquete al puerto 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
 
 test('chapter 2 opens at 02-01 once 01-14 has a star and 04-01 stays closed', async ({ page }) => {
@@ -56,4 +61,28 @@ test.describe('Sin animaciones', () => {
     await standStill(page);
     await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_APP, TAG_OF_THE_DATABASE]);
   });
+
+  for (const size of WINDOWS) {
+    test.describe(`${size.width}x${size.height}`, () => {
+      test.use({ viewport: size });
+
+      test('in 02-01 no piece label, stamp or packet label of the still map overlaps another', async ({ page }) => {
+        await startWithProgress(page, { '01-14': 1 });
+        await page.goto(`/#/level/${ONE_MACHINE.id}`);
+        const first = await openTerminal(page);
+        await sendMessage(first, 'ping');
+        await sendMessage(first, NC_TO_THE_APP);
+        await confirm(first);
+        await expect(first).toBeHidden();
+        const second = await openTerminal(page);
+        await sendMessage(second, NC_TO_THE_DATABASE);
+        await confirm(second);
+        await expect(second).toBeHidden();
+        await expect(page.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
+        await standStill(page);
+        await expect(page.locator('.packet-tag')).toHaveCount(2);
+        expect(pairsThatOverlap(await packetBoxes(page))).toEqual([]);
+      });
+    });
+  }
 });

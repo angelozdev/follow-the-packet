@@ -137,8 +137,13 @@ const MIN_DOCK_ROOM = 200;
 const STAMP_SPREAD = 0.8;
 const STAMP_NEAR = 1;
 const STAMP_PX = 32;
+const TAG_PX_X = 176;
+const TAG_PX_Y = 20;
+const TAG_GAP_PX = 8;
 const UNIT_PX_X = CAMERA_ZOOM / Math.SQRT2;
 const UNIT_PX_Y = CAMERA_ZOOM / Math.sqrt(6);
+const STAMP_FOOTPRINT: Footprint = { width: STAMP_PX, height: STAMP_PX, near: STAMP_NEAR, spread: STAMP_SPREAD };
+const TAG_FOOTPRINT: Footprint = { width: TAG_PX_X, height: TAG_PX_Y, near: 0, spread: (TAG_PX_X + TAG_GAP_PX) / (2 * UNIT_PX_X) };
 const EDGE_PLACES: string[] = ['internet-gateway', 'router'] satisfies Network['edge'][];
 const NOBODY_HAS_IT: Reason['code'][] = ['route-no-device'];
 
@@ -518,19 +523,27 @@ function distance(a: Vec2, b: Vec2): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
-/** True when two stamps would touch: they stand closer than `STAMP_NEAR` on the ground, or their circles overlap on the screen, which a pair that is a little farther apart can do along the diagonals of the isometric view. */
-function areNear(a: Vec2, b: Vec2): boolean {
-  const apart = [a[0] - b[0], a[1] - b[1]];
-  const onScreen = [Math.abs(apart[0] - apart[1]) * UNIT_PX_X, Math.abs(apart[0] + apart[1]) * UNIT_PX_Y];
-  return distance(a, b) < STAMP_NEAR || (onScreen[0] < STAMP_PX && onScreen[1] < STAMP_PX);
+/** What decides how close two things of one kind that float over the map may stand: their size on the screen in pixels (`width`, `height`), the least distance between their points on the ground (`near`) and how far apart, on the ground, a group places them (`spread`). A stamp and the label of a packet are the two kinds. */
+interface Footprint {
+  width: number;
+  height: number;
+  near: number;
+  spread: number;
 }
 
-/** Returns the group of each point: points chained by gaps shorter than `STAMP_NEAR`, or whose stamps would overlap, share one (A near B and B near C make one group). */
-function nearGroups(points: Vec2[]): number[] {
+/** True when two things would touch: they stand closer than `near` on the ground, or their boxes overlap on the screen, which a pair that is a little farther apart can do along the diagonals of the isometric view. */
+function areNear(a: Vec2, b: Vec2, kind: Footprint): boolean {
+  const apart = [a[0] - b[0], a[1] - b[1]];
+  const onScreen = [Math.abs(apart[0] - apart[1]) * UNIT_PX_X, Math.abs(apart[0] + apart[1]) * UNIT_PX_Y];
+  return distance(a, b) < kind.near || (onScreen[0] < kind.width && onScreen[1] < kind.height);
+}
+
+/** Returns the group of each point: points chained by gaps shorter than `near`, or whose boxes would overlap, share one (A near B and B near C make one group). */
+function nearGroups(points: Vec2[], kind: Footprint): number[] {
   const groups = points.map((_, index) => index);
   points.forEach((point, index) => {
     points.forEach((other, otherIndex) => {
-      if (groups[otherIndex] !== groups[index] && areNear(point, other)) merge(groups, groups[index], groups[otherIndex]);
+      if (groups[otherIndex] !== groups[index] && areNear(point, other, kind)) merge(groups, groups[index], groups[otherIndex]);
     });
   });
   return groups;
@@ -542,43 +555,54 @@ function merge(groups: number[], keep: number, drop: number): void {
   });
 }
 
-/** Places each group's stamps along the screen's horizontal (x up, z down), STAMP_SPREAD apart and centered on the average of its points, in the order of the points' screen x (x - z), ties by input index. */
-function placeGroups(points: Vec2[], groups: number[]): Vec2[] {
+/** Places each group's things along the screen's horizontal (x up, z down), `spread` apart and centered on the average of its points, in the order of the points' screen x (x - z), ties by input index. */
+function placeGroups(points: Vec2[], groups: number[], kind: Footprint): Vec2[] {
   const screenX = (member: number) => points[member][0] - points[member][1];
   return points.map((_, index): Vec2 => {
     const group = points.flatMap((__, member) => (groups[member] === groups[index] ? [member] : []));
     const average = (axis: 0 | 1) => group.reduce((sum, member) => sum + points[member][axis], 0) / group.length;
     const slots = [...group].sort((a, b) => screenX(a) - screenX(b) || a - b);
-    const shift = (slots.indexOf(index) - (slots.length - 1) / 2) * STAMP_SPREAD;
+    const shift = (slots.indexOf(index) - (slots.length - 1) / 2) * kind.spread;
     return [average(0) + shift, average(1) - shift];
   });
 }
 
-/** Returns two stamps of different groups that ended up near each other (`areNear`), or null when there are none. */
-function closePair(stamps: Vec2[], groups: number[]): [number, number] | null {
-  for (let a = 0; a < stamps.length; a++) {
-    for (let b = a + 1; b < stamps.length; b++) {
-      if (groups[a] !== groups[b] && areNear(stamps[a], stamps[b])) return [a, b];
+/** Returns two things of different groups that ended up near each other (`areNear`), or null when there are none. */
+function closePair(placed: Vec2[], groups: number[], kind: Footprint): [number, number] | null {
+  for (let a = 0; a < placed.length; a++) {
+    for (let b = a + 1; b < placed.length; b++) {
+      if (groups[a] !== groups[b] && areNear(placed[a], placed[b], kind)) return [a, b];
     }
   }
   return null;
 }
 
-/** Moves stamps that are close together apart along the screen's horizontal, so no two end up near each other (`areNear`): points chained by near gaps form a group spread around its average, and two groups whose spread stamps come too close join into one. Each stamp keeps its side of the screen within its group; a stamp with no close neighbour stays where it is. */
-export function spreadStamps(points: Vec2[]): Vec2[] {
-  const groups = nearGroups(points);
+function spreadApart(points: Vec2[], kind: Footprint): Vec2[] {
+  const groups = nearGroups(points, kind);
   for (;;) {
-    const stamps = placeGroups(points, groups);
-    const pair = closePair(stamps, groups);
-    if (!pair) return stamps;
+    const placed = placeGroups(points, groups, kind);
+    const pair = closePair(placed, groups, kind);
+    if (!pair) return placed;
     merge(groups, groups[pair[0]], groups[pair[1]]);
   }
 }
 
-/** What a packet with ports wears beside it on the map: its labels leg by leg and, when it has two, how far along its path it is when it changes from the first to the second (`translationDistance`). */
+/** Moves stamps that are close together apart along the screen's horizontal, so no two end up near each other (`areNear`): points chained by near gaps form a group spread around its average, and two groups whose spread stamps come too close join into one. Each stamp keeps its side of the screen within its group; a stamp with no close neighbour stays where it is. */
+export function spreadStamps(points: Vec2[]): Vec2[] {
+  return spreadApart(points, STAMP_FOOTPRINT);
+}
+
+/** Returns, for the path of each packet that wears a label, how far on the ground its label stands from the middle of the path in a still scene, so the labels of packets that share a place (two `nc` to one machine follow one path) do not overlap. It is the spread of the stamps (`spreadStamps`) with the size of a label: a label is `TAG_PX_X` wide, so the labels of one group stand that far apart plus a gap. A label with no close neighbour does not move. */
+export function spreadTags(paths: Vec2[][]): Vec2[] {
+  const middles = paths.map((path) => pointAt(path, cumulativeLengths(path), pathLength(path) / 2));
+  return spreadApart(middles, TAG_FOOTPRINT).map(([x, z], index): Vec2 => [x - middles[index][0], z - middles[index][1]]);
+}
+
+/** What a packet with ports wears beside it on the map: its labels leg by leg, when it has two, how far along its path it is when it changes from the first to the second (`translationDistance`), and, in a still scene, how far on the ground the label stands from the middle of the path (`spreadTags`). */
 export interface PacketTags {
   legs: PortLabels[];
   changesAt?: number;
+  apart?: Vec2;
 }
 
 /** Returns how far along the path the ports of a packet change: where the router that translates them stands on it when the map draws that router, and, when it does not, where the path leaves the office, which is where the NAT acts. Undefined when the path never leaves the office or the router. */

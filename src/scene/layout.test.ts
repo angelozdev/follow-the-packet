@@ -28,6 +28,7 @@ import {
   sideForNdc,
   sideHeight,
   spreadStamps,
+  spreadTags,
   startsOnMap,
   tagAt,
   terminalSide,
@@ -1049,5 +1050,52 @@ describe('pathFor of a datagram that gets a Port Unreachable', () => {
     expect(trace.notice).toMatchObject({ kind: 'port-unreachable', fromId: 'printer' });
     const [andres, printer] = [layout.devices['andres-laptop'], layout.devices.printer];
     expect(pathFor(trace, question, layout)).toEqual([andres.door, andres.firewall, andres.road, layout.routers[officeRouter.id], printer.road, printer.firewall, printer.door]);
+  });
+});
+
+describe('the labels of packets that share a place', () => {
+  const TAG_WIDTH_PX = 172;
+  const TAG_HEIGHT_PX = 19;
+  const HERE: Vec2[] = [[0, 0], [4, 0]];
+  const FAR: Vec2[] = [[20, 0], [24, 0]];
+  const middleOf = ([from, to]: Vec2[]): Vec2 => [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+  const labelsOf = (paths: Vec2[][]) => {
+    const { pixel } = projection(layoutOf(placedDevice('your-laptop')), MAPS[0]);
+    return spreadTags(paths).map(([dx, dz], index) => {
+      const [x, z] = middleOf(paths[index]);
+      return pixel([x + dx, 0, z + dz]);
+    });
+  };
+
+  it('two labels on one path stand a label apart along the screen and at the same height', () => {
+    const [left, right] = labelsOf([HERE, HERE]);
+    expect(right[0] - left[0]).toBeGreaterThanOrEqual(TAG_WIDTH_PX);
+    expect(Math.abs(right[1] - left[1])).toBeLessThan(1);
+  });
+
+  it('keeps the first label on the left and the second on the right, and the pair centered on the middle of the path', () => {
+    const [left, right] = labelsOf([HERE, HERE]);
+    const { pixel } = projection(layoutOf(placedDevice('your-laptop')), MAPS[0]);
+    const [x, z] = middleOf(HERE);
+    expect((left[0] + right[0]) / 2).toBeCloseTo(pixel([x, 0, z])[0], 3);
+  });
+
+  it('three labels on one path stand a label from each other', () => {
+    const [a, b, c] = labelsOf([HERE, HERE, HERE]);
+    expect(b[0] - a[0]).toBeGreaterThanOrEqual(TAG_WIDTH_PX);
+    expect(c[0] - b[0]).toBeGreaterThanOrEqual(TAG_WIDTH_PX);
+  });
+
+  it('a label with no neighbour does not move, and a pair far from it does not take it in', () => {
+    expect(spreadTags([HERE, FAR])).toEqual([[0, 0], [0, 0]]);
+    const [near, , alone] = spreadTags([HERE, HERE, FAR]);
+    expect(near).not.toEqual([0, 0]);
+    expect(alone).toEqual([0, 0]);
+  });
+
+  it('two labels whose paths differ but whose middles are close, so they would overlap on the screen, are moved apart', () => {
+    const SLIGHTLY_APART: Vec2[] = [[0, 1], [4, 1]];
+    const [a, b] = labelsOf([HERE, SLIGHTLY_APART]);
+    expect(Math.abs(b[0] - a[0]) >= TAG_WIDTH_PX || Math.abs(b[1] - a[1]) >= TAG_HEIGHT_PX).toBe(true);
   });
 });

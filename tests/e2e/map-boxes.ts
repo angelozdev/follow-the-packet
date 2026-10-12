@@ -11,6 +11,7 @@ export interface Box {
 export type Area = Omit<Box, 'name'>;
 
 const PIECE_LABELS = '.map-button';
+const PACKET_BOXES = `${PIECE_LABELS}, button.stamp, .packet-tag`;
 const LABELS = `${PIECE_LABELS}, button.stamp, .html-layer .caption:not(.caption--soft)`;
 const MAP = '.incident__map';
 const BAR = '.incident__bar';
@@ -67,10 +68,19 @@ export async function recordedLabels(page: Page): Promise<Box[][]> {
   return page.evaluate((key) => Reflect.get(window, key), RECORDED_LABELS);
 }
 
+/** Returns the box of every piece label, every stamp and every label that a packet with ports wears on the map, named as a screen reader reads them (a packet label is hidden from it, so it is named by its text): what the drawing of a packet puts next to each other. The floor names are not in it, and `mapBoxes` does not hold the packet labels, so the tests written before them keep checking what they checked. */
+export async function packetBoxes(page: Page): Promise<Box[]> {
+  return boxesOf(page, PACKET_BOXES);
+}
+
+/** Returns every pair of the boxes that overlap, as "a / b". */
+export function pairsThatOverlap(boxes: Box[]): string[] {
+  return boxes.flatMap((a, index) => boxes.slice(index + 1).filter((b) => overlaps(a, b)).map((b) => `${a.name} / ${b.name}`));
+}
+
 /** Returns every pair of labels, stamps or floor names of the map that overlap, as "a / b". */
 export async function overlappingPairs(page: Page): Promise<string[]> {
-  const boxes = await mapBoxes(page);
-  return boxes.flatMap((a, index) => boxes.slice(index + 1).filter((b) => overlaps(a, b)).map((b) => `${a.name} / ${b.name}`));
+  return pairsThatOverlap(await mapBoxes(page));
 }
 
 /** Returns the box of the piece that hangs from a label: a label floats above the piece it names, which stands under its middle. */
