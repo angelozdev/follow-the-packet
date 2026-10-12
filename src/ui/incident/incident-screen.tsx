@@ -1,7 +1,7 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { caseCard, caseSummary, clockSteps, countStars, firewallCard, inspect, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { caseCard, caseSummary, classifiedBlock, clockSteps, countStars, firewallCard, inspect, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -71,6 +71,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           flows={session.runs}
           sent={session.sent}
           still={still}
+          blockName={classifiedBlock(session)}
           activePieceId={card || piece ? cardPieceId : null}
           overlay={
             (card && chips && (

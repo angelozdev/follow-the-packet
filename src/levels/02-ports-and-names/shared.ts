@@ -1,9 +1,12 @@
 import { nameTag } from '@/copy';
 import type { NetworkAction, Service } from '@/engine';
-import type { ExpectedOutcome, MessageChip, OriginChip, SendMove, SendTask, SettingSpec } from '@/levels/contract/incident';
+import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, SendMove, SendTask, SettingSpec, WhatChip } from '@/levels/contract/incident';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
+  FLOOR as CHAPTER_1_FLOOR,
+  FLOW as CHAPTER_1_FLOW,
+  FROM as CHAPTER_1_FROM,
   IP as CHAPTER_1_IP,
   LUCIA_FIREWALL,
   MESSAGE as CHAPTER_1_MESSAGE,
@@ -11,6 +14,8 @@ import {
   ORIGIN as CHAPTER_1_ORIGIN,
   ROUTER as CHAPTER_1_ROUTER,
   SERVER as CHAPTER_1_SERVER,
+  WHAT as CHAPTER_1_WHAT,
+  addressChip,
 } from '@/levels/01-first-day/shared';
 
 export { CONCEPT, FIREWALL, LESSON, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
@@ -134,7 +139,59 @@ export const TASK = {
   filteredPort: 'nc-to-filtered-port',
   ownMachine: 'nc-to-own-machine',
   fromTheNetwork: 'nc-to-app-from-the-network',
+  block: 'block-of-your-laptop',
+  mask: 'mask-of-your-block',
+  printerInside: 'printer-inside-the-block',
+  andresOutside: 'laptop-andres-outside-the-block',
+  sshOnlyYou: 'ssh-only-from-your-laptop',
 } as const;
+
+/** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
+export const BLOCK = { cidr: CHAPTER_1_FLOOR.first.cidr, mask: '255.255.255.0' } as const;
+
+/** The ids of the card of your laptop in 02-04: the tray of the block and the tray of the mask, each with its chips, and the tray and the two bins of the items it classifies. The first bin is the one of what fits in the block (a convention of the card that classifies). */
+export const BLOCK_CARD = {
+  block: { tray: 'block', right: 'block-24', small: 'block-28', single: 'block-32' },
+  mask: { tray: 'mask', right: 'mask-24', wide: 'mask-16', single: 'mask-32' },
+  bin: { tray: 'bin', inside: 'inside', outside: 'outside' },
+} as const;
+
+const LOW_PORTS = { first: 1, last: 1023 } as const;
+const EVERY_PORT = { first: 0, last: 65535 } as const;
+
+/** Returns the Type chip of a TCP rule for a range of ports, written as the console writes it: `TCP · 22` for one port and `TCP · 1-1023` for a range. The chips of 02-05 all contain a port the probe battery tries (22, 80, 443, 3306 or 5432), so any of them that opens more than the 22 is found; none is UDP, which is presented in 02-10. */
+function tcpChip(fromPort: number, toPort: number): WhatChip {
+  const range = fromPort === toPort ? `${fromPort}` : `${fromPort}-${toPort}`;
+  return { id: `tcp-${range}`, label: `{{tcp}} · ${range}`, what: { kind: 'tcp', fromPort, toPort } };
+}
+
+export const SSH_WHAT = {
+  ssh: tcpChip(PORT.ssh, PORT.ssh),
+  web: tcpChip(PORT.web, PORT.web),
+  wellKnown: tcpChip(LOW_PORTS.first, LOW_PORTS.last),
+  everything: tcpChip(EVERY_PORT.first, EVERY_PORT.last),
+  echoRequest: CHAPTER_1_WHAT.echoRequest,
+} satisfies Record<string, WhatChip>;
+
+/** The Source chips of 02-05: only your laptop (a /32), anybody, the whole block of the first floor, which holds the visitor's laptop too, and laptop-lucia, which the card needs to name the rule of 01-12 that laptop-marta keeps (every rule of a firewall of the world must be nameable by the chips of the incident). */
+export const SSH_FROM = {
+  you: addressChip('from', 'you', DEVICE.you.name, IP.you),
+  anyone: CHAPTER_1_FROM.anyone,
+  floor: { id: 'from-floor-1', label: `{{cidr}} ${CHAPTER_1_FLOOR.first.cidr} (el bloque del piso 1)`, peer: { kind: 'cidr', cidr: CHAPTER_1_FLOOR.first.cidr } },
+  lucia: CHAPTER_1_FROM.lucia,
+} satisfies Record<string, FromChip>;
+
+/** Returns a flow of 02-05: a TCP packet from a device of the office to the SSH port of laptop-lucia, which the incident requires to get in or forbids. */
+function sshFlow(id: string, kind: FlowKind, fromId: string): Flow {
+  return { id, kind, packet: { from: { kind: 'device', id: fromId }, to: IP.lucia, protocol: 'tcp', port: PORT.ssh } };
+}
+
+/** The flows of 02-05: your laptop must get into SSH and the visitor's must not, and the ping of laptop-lucia to laptop-marta goes on as it did in 01-13 because the rule that lets it in is still in the firewall of laptop-marta (an ambient flow is expected, so it is no extra opening for the middle star). */
+export const SSH_FLOW = {
+  you: sshFlow('ssh-from-your-laptop', 'required', DEVICE.you.id),
+  visitor: sshFlow('ssh-from-the-visitor', 'forbidden', DEVICE.visitor.id),
+  background: CHAPTER_1_FLOW.background,
+} satisfies Record<string, Flow>;
 
 /** Returns the task of a send incident that expects what a message sent from this terminal to an address ends in, and, when `by` is given, who answered, warned or dropped it. `sendTask` of chapter 1 is this one for your laptop. */
 export function sendTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {
@@ -188,8 +245,8 @@ export const REFUSAL_PIECES: string[] = [...SERVICES_PIECES, DEVICE.marta.id];
 /** The ids of the pieces 02-04 and 02-06 draw: your laptop, the printer and laptop-andres, which are on the two floors, and the router between them. */
 export const FLOORS_PIECES: string[] = [DEVICE.you.id, DEVICE.printer.id, DEVICE.andres.id, ROUTER.office.id];
 
-/** The ids of the pieces 02-05 draws: your laptop, which must get into SSH, laptop-lucia, which has it, and the visitor's laptop, which must not. */
-export const SSH_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.visitor.id];
+/** The ids of the pieces 02-05 draws: your laptop, which must get into SSH, laptop-lucia, which has it, the visitor's laptop, which must not, and laptop-marta, whose firewall still holds the rule 01-12 wrote for the ping of laptop-lucia: that rule goes on working in the background, as in 01-13, and the probe battery would count it as an opening if the incident did not expect its ping. */
+export const SSH_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id, DEVICE.marta.id, DEVICE.visitor.id];
 
 /** The ids of the pieces 02-07 draws: your laptop, the two routers of the way out and the one of the other office, its printer and laptop, and the server of the internet. The router in front of the server is in the world and is not drawn. */
 export const ROUTES_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.provider.id, ROUTER.branch.id, DEVICE.branchPrinter.id, DEVICE.branchLaptop.id, SERVER.internet.id];

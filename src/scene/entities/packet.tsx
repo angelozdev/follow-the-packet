@@ -50,11 +50,11 @@ export function travelPath(path: Vec2[], end: PacketEnd): Vec2[] {
   return COMES_BACK.includes(end) ? roundTrip(path) : path;
 }
 
-/** The label of a packet with ports, beside it on the HTML layer: its protocol and ports as they are in the leg where the packet is, `apart` from the packet on the ground when it has a neighbour at its place. It takes no pointer and no screen reader, because the stamp of the packet already tells it. */
-function PacketTag({ text, apart = [0, 0] }: { text: string; apart?: Vec2 }) {
+/** A short label in the mono face on the HTML layer, at a point of the ground (`apart` from the origin of the piece it belongs to). It is the label of a packet with ports, beside it: its protocol and ports as they are in the leg where the packet is, `apart` from the packet when it has a neighbour at its place; and the name of the outline of a block, at the point its layout gives it. It takes no pointer and no screen reader, because what it says is also in the stamp of the packet or in the card of the block. */
+export function MapTag({ text, apart = [0, 0], beside = false }: { text: string; apart?: Vec2; beside?: boolean }) {
   const portal = useHtmlPortal();
   return (
-    <Html portal={portal} position={[apart[0], 0, apart[1]]} center zIndexRange={TAG_LAYERS}>
+    <Html portal={portal} position={[apart[0], 0, apart[1]]} center={!beside} zIndexRange={TAG_LAYERS}>
       <span className="packet-tag" aria-hidden="true">
         {text}
       </span>
@@ -205,7 +205,7 @@ export function PacketRun({ path, message, intruder, end, tags }: PacketLook) {
       )}
       {tags && (
         <group ref={tagged} position={[startX, PACKET_Y, startZ]}>
-          {tag !== null && <PacketTag text={tag} />}
+          {tag !== null && <MapTag text={tag} />}
         </group>
       )}
       <group ref={burst} position={[endX, PACKET_Y, endZ]} visible={false}>
@@ -233,7 +233,7 @@ export function PacketTrace({ path, message, intruder, end, tags }: PacketLook) 
       {end !== 'self-warned' && (
         <group position={markAt(path, length / 2)}>
           <PacketGlyph message={message} intruder={intruder} />
-          {tags && <PacketTag text={tagAt(tags, length / 2, false)} apart={tags.apart} />}
+          {tags && <MapTag text={tagAt(tags, length / 2, false)} apart={tags.apart} />}
         </group>
       )}
       {COMES_BACK.includes(end) && (

@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, toPlainText, type TermId } from '@/copy';
-import { applyAction, ipInCidr, isLoopbackIpv4, networkSchema, type Network } from '@/engine';
+import { applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
-import { ADDRESS, APP_LISTEN, APP_ON_LOOPBACK, CLIENT, DEVICE, DOMAIN, FIREWALL, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_PIECES, TASK } from '@/levels/02-ports-and-names/shared';
+import { ADDRESS, APP_LISTEN, APP_ON_LOOPBACK, BLOCK, BLOCK_CARD, CLIENT, DEVICE, DOMAIN, FIREWALL, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_FLOW, SSH_FROM, SSH_PIECES, SSH_WHAT, TASK } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
-import { sessionReducer, startSession, starsOf, type Session } from './session';
+import { isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
 import { terminalLine } from './view/cards/terminal/terminal-card';
+import { identifyCard } from './view/cards/identify-card';
+import { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
 import { pieceCard } from './view/cards/piece-card';
 import { servicesCard } from './view/cards/settings-card';
 import { toolOutput } from './view/cards/terminal/output-card';
@@ -569,6 +571,237 @@ describe('02-03, refused or silent', () => {
     expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[REFUSED_OR_SILENT]));
     expect(sorted(introduces)).toEqual(sorted(['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address']));
     expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, REFUSED_OR_SILENT))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-04, is it in my block', () => {
+  const IN_MY_BLOCK = '02-04';
+  const SMALL_BLOCK = '192.168.1.0/28';
+  const SINGLE_IP_BLOCK = '192.168.1.0/32';
+  const YOUR_IP_BITS = [192, 168, 1, 10];
+  const start = startSession(INCIDENTS, IN_MY_BLOCK);
+  const answering = (session: Session, deviceId: string, picks: Record<string, string>): Session => sessionReducer(session, { type: 'answerCard', deviceId, picks });
+  const youAnswer = (session: Session, block: string, mask: string): Session => answering(session, DEVICE.you.id, { [BLOCK_CARD.block.tray]: block, [BLOCK_CARD.mask.tray]: mask });
+  const placing = (session: Session, deviceId: string, bin: string): Session => answering(session, deviceId, { [BLOCK_CARD.bin.tray]: bin });
+  const youRight = youAnswer(start, BLOCK_CARD.block.right, BLOCK_CARD.mask.right);
+  const printerInside = placing(youRight, DEVICE.printer.id, BLOCK_CARD.bin.inside);
+  const solved = placing(printerInside, DEVICE.andres.id, BLOCK_CARD.bin.outside);
+  const classify = (session: Session) => classifyCard(session, PIECE_ID.device(DEVICE.you.id));
+  const insideBlock = (session: Session): string[] => pieceViews(session).filter((piece) => piece.insideBlock).map((piece) => piece.id);
+  const linesOfChip = (trayId: string, chipId: string): string[] =>
+    (identifyCard(start, PIECE_ID.device(DEVICE.you.id))?.trays.find((tray) => tray.id === trayId)?.chips.find((chip) => chip.id === chipId)?.lines ?? []).map(plain);
+  const itemLine = (session: Session, deviceId: string) => {
+    const card = classify(session);
+    return [...(card?.bins ?? []).flatMap((bin) => bin.items), ...(card?.waiting ?? [])].find((item) => item.deviceId === deviceId)?.line ?? null;
+  };
+
+  it('02-04: the four answers close the incident', () => {
+    expect(stillOpen(start)).toEqual([TASK.block, TASK.mask, TASK.printerInside, TASK.andresOutside]);
+    expect(stillOpen(youAnswer(start, BLOCK_CARD.block.small, BLOCK_CARD.mask.wide))).toEqual([TASK.block, TASK.mask, TASK.printerInside, TASK.andresOutside]);
+    expect(stillOpen(youRight)).toEqual([TASK.printerInside, TASK.andresOutside]);
+    expect(stillOpen(printerInside)).toEqual([TASK.andresOutside]);
+    expect(stillOpen(placing(youRight, DEVICE.andres.id, BLOCK_CARD.bin.outside))).toEqual([TASK.printerInside]);
+    expectClosed(solved);
+  });
+
+  it('02-04: 192.168.1.0/28 says the printer does not fit and 192.168.1.0/32 says it is one IP', () => {
+    const [small, single] = [BLOCK_CARD.block.small, BLOCK_CARD.block.single].map((chip) => linesOfChip(BLOCK_CARD.block.tray, chip).join(' '));
+    expect(small).toContain(`hasta ${SMALL_BLOCK.replace('0/28', '15')}`);
+    expect(small).toContain(`${DEVICE.printer.name}, ${IP.printer}`);
+    expect(small).toMatch(/no cabe/);
+    expect(single).toMatch(/una sola IP/);
+    expect(single).toContain(SINGLE_IP_BLOCK.slice(0, -3));
+    expect(linesOfChip(BLOCK_CARD.mask.tray, BLOCK_CARD.mask.wide).join(' ')).toContain('/16');
+    expect(linesOfChip(BLOCK_CARD.mask.tray, BLOCK_CARD.mask.single).join(' ')).toContain('/32');
+    const trays = identifyCard(start, PIECE_ID.device(DEVICE.you.id))?.trays ?? [];
+    expect(trays.find((tray) => tray.id === BLOCK_CARD.block.tray)?.chips.map((chip) => plain(chip.label))).toEqual([BLOCK.cidr, SMALL_BLOCK, SINGLE_IP_BLOCK]);
+    expect(trays.find((tray) => tray.id === BLOCK_CARD.mask.tray)?.chips.map((chip) => plain(chip.label))).toEqual([BLOCK.mask, '255.255.0.0', '255.255.255.255']);
+  });
+
+  it('02-04: nothing travels and the incident has no flows', () => {
+    expect(start.incident.mechanic).toBe('identify');
+    expect(start.incident.flows).toEqual([]);
+    expect([start.runs, start.sent, solved.runs, solved.sent]).toEqual([[], [], [], []]);
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.you.id))?.tabs.map(({ id }) => id)).toEqual(['identify', 'classify']);
+    expect(startWorld(INCIDENTS, IN_MY_BLOCK)).toEqual(solvedWorld(INCIDENTS, '02-03'));
+  });
+
+  it('02-04: the card of tu-laptop shows its IP in 32 bits with the first 24 marked as the block', () => {
+    const card = classify(start);
+    expect([card?.block, card?.mask, card?.prefix, card?.ownerIp]).toEqual([BLOCK.cidr, BLOCK.mask, 24, IP.you]);
+    expect(card?.mask).toBe(maskOf(24));
+    expect(card?.numbers.map(({ decimal }) => decimal)).toEqual(YOUR_IP_BITS);
+    expect(card?.numbers.flatMap(({ bits }) => bits)).toHaveLength(32);
+    expect(card?.numbers.flatMap(({ bits }) => bits).map(({ fixed }) => fixed)).toEqual([...Array(24).fill(true), ...Array(8).fill(false)]);
+    expect(card?.waiting.map((item) => [item.name, item.ip, item.split])).toEqual([
+      [`[[${DEVICE.printer.name}]]`, IP.printer, { block: '192.168.1.', device: '21' }],
+      [`[[${DEVICE.andres.name}]]`, IP.andres, { block: '192.168.2.', device: '15' }],
+    ]);
+    expect(card?.bins.map((bin) => [bin.name, bin.items])).toEqual([[`Dentro de ${BLOCK.cidr}`, []], ['Fuera', []]]);
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.printer.id))).toBeNull();
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.andres.id))).toBeNull();
+  });
+
+  it('02-04: the printer placed inside and laptop-andres placed outside close the incident, and placed the other way each line says why', () => {
+    expect([itemLine(printerInside, DEVICE.printer.id)?.fits, itemLine(printerInside, DEVICE.printer.id)?.right]).toEqual([true, true]);
+    expect(plain(itemLine(printerInside, DEVICE.printer.id)?.text ?? '')).toBe('Sus tres primeros números, 192.168.1, son los del bloque: cabe.');
+    expect([itemLine(solved, DEVICE.andres.id)?.fits, itemLine(solved, DEVICE.andres.id)?.right]).toEqual([false, true]);
+    expect(plain(itemLine(solved, DEVICE.andres.id)?.text ?? '')).toBe('Sus tres primeros números, 192.168.2, no son 192.168.1: no cabe.');
+    const wrong = placing(placing(youRight, DEVICE.printer.id, BLOCK_CARD.bin.outside), DEVICE.andres.id, BLOCK_CARD.bin.inside);
+    expect([itemLine(wrong, DEVICE.printer.id)?.fits, itemLine(wrong, DEVICE.printer.id)?.right]).toEqual([true, false]);
+    expect(plain(itemLine(wrong, DEVICE.printer.id)?.text ?? '')).toContain('cabe');
+    expect([itemLine(wrong, DEVICE.andres.id)?.fits, itemLine(wrong, DEVICE.andres.id)?.right]).toEqual([false, false]);
+    expect(stillOpen(wrong)).toEqual([TASK.printerInside, TASK.andresOutside]);
+    expect(placing(solved, DEVICE.printer.id, BLOCK_CARD.bin.outside).answers[DEVICE.printer.id]).toEqual({ [BLOCK_CARD.bin.tray]: BLOCK_CARD.bin.outside });
+  });
+
+  it('02-04: the outline of the block surrounds tu-laptop at the start and the printer once it is placed inside', () => {
+    expect(insideBlock(start)).toEqual([PIECE_ID.device(DEVICE.you.id)]);
+    expect(insideBlock(printerInside)).toEqual([PIECE_ID.device(DEVICE.you.id), PIECE_ID.device(DEVICE.printer.id)]);
+    expect(insideBlock(solved)).toEqual(insideBlock(printerInside));
+    expect(insideBlock(placing(solved, DEVICE.printer.id, BLOCK_CARD.bin.outside))).toEqual([PIECE_ID.device(DEVICE.you.id)]);
+    expect(insideBlock(placing(youRight, DEVICE.andres.id, BLOCK_CARD.bin.inside))).toEqual([PIECE_ID.device(DEVICE.you.id), PIECE_ID.device(DEVICE.andres.id)]);
+  });
+
+  it('02-04: the map writes the block beside the outline, and only an incident with a card that classifies has one', () => {
+    expect(classifiedBlock(start)).toBe(BLOCK.cidr);
+    expect(classifiedBlock(solved)).toBe(BLOCK.cidr);
+    expect(classifiedBlock(startSession(INCIDENTS, '02-03'))).toBeNull();
+    expect(classifiedBlock(startSession(INCIDENTS, '02-05'))).toBeNull();
+  });
+
+  it('02-04: draws tu-laptop, the printer, laptop-andres and router-oficina', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    expect(drawn.sort()).toEqual([`device:${DEVICE.printer.name}`, `device:${DEVICE.andres.name}`, `device:${DEVICE.you.name}`, `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`].sort());
+    expect(start.incident.shown).toEqual(FLOORS_PIECES);
+  });
+
+  it('02-04: the right option is the second and is not the longest of the three', () => {
+    expect(optionsOf(start.incident)).toHaveLength(3);
+    expect(rightOptionPlace(start.incident)).toBe(1);
+    expect(rightOptionIsTheLongest(start.incident)).toBe(false);
+  });
+
+  it('02-04: introduces bit, prefix, CIDR and subnet mask, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[IN_MY_BLOCK]));
+    expect(sorted(introduces)).toEqual(sorted(['bit', 'prefix', 'cidr', 'subnet-mask']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, IN_MY_BLOCK))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-05, the whole rule', () => {
+  const WHOLE_RULE = '02-05';
+  const WELL_KNOWN_RANGE = '1-1023';
+  const BATTERY_PORTS = [PORT.ssh, PORT.web, PORT.secureWeb, PORT.mysql, PORT.database];
+  const ABOUT_PORT_ZERO = /puerto 0\b|\bcero\b|\b0-1023\b|\b0 al 1023\b|del 0\b|reservado/i;
+  const A_WELL_KNOWN_PORT = /conocid/i;
+  const start = startSession(INCIDENTS, WHOLE_RULE);
+  const filterChips = (): { what: { id: string; what: { kind: string; fromPort?: number; toPort?: number }; label: string }[] } => {
+    const { incident } = start;
+    if (incident.mechanic !== 'filter') throw new Error('02-05 is a filter incident');
+    return { what: incident.chips.what };
+  };
+  const placing = (session: Session, whatId: string, fromId: string): Session => sessionReducer(session, { type: 'placeRule', firewallId: FIREWALL.lucia, whatId, fromId });
+  const expectedFlows = [SSH_FLOW.you.packet, SSH_FLOW.background.packet];
+  const prose = (incident: Incident): string[] => [
+    incident.report,
+    ...(isGuided(incident) ? [...incident.tasks.map(({ text }) => text), ...incident.hints, ...(incident.question ? [incident.question] : []), ...incident.explanation.flatMap(({ text, feedback }) => [text, feedback])] : []),
+    incident.takeaway,
+  ].map(plain);
+  const callsItWellKnown = (text: string): boolean => text.split(/(?<=[.!?])\s+/).some((sentence) => /\b(?:3306|5432)\b/.test(sentence) && A_WELL_KNOWN_PORT.test(sentence));
+  const onlyYouOnSsh = placing(start, SSH_WHAT.ssh.id, SSH_FROM.you.id);
+
+  it('02-05: TCP 22 from tu-laptop closes the incident and earns the middle star', () => {
+    expect(stillOpen(start)).toEqual([TASK.sshOnlyYou]);
+    expect(isIntruding(start)).toBe(false);
+    expectClosed(onlyYouOnSsh);
+    expect(isIntruding(onlyYouOnSsh)).toBe(false);
+    expect(onlyYouOnSsh.world.firewalls.find(({ id }) => id === FIREWALL.lucia)?.inbound).toHaveLength(1);
+  });
+
+  it('02-05: Cualquier IP de origen lets the visit in and raises the intruder alert', () => {
+    for (const from of [SSH_FROM.anyone, SSH_FROM.floor]) {
+      const letsItIn = placing(start, SSH_WHAT.ssh.id, from.id);
+      expect(isIntruding(letsItIn), plain(from.label)).toBe(true);
+      expect(stillOpen(letsItIn), plain(from.label)).toEqual([TASK.sshOnlyYou]);
+      expect(sessionReducer(letsItIn, { type: 'submit' }).rejection).toMatchObject({ failingTaskIds: [TASK.sshOnlyYou], intruding: true });
+      expect(pieceViews(letsItIn).filter((piece) => piece.state === 'intruded').map((piece) => plain(piece.label))).toEqual([DEVICE.lucia.name]);
+    }
+  });
+
+  it('02-05: every port range chip that opens more than 22 is caught by the probe battery', () => {
+    const ranges = filterChips().what.filter((chip) => chip.what.kind === 'tcp');
+    expect(ranges.map((chip) => plain(chip.label))).toEqual(['TCP · 22', 'TCP · 80', 'TCP · 1-1023', 'TCP · 0-65535']);
+    for (const chip of ranges) {
+      const { fromPort = 0, toPort = 0 } = chip.what;
+      expect(BATTERY_PORTS.filter((port) => port >= fromPort && port <= toPort).length, plain(chip.label)).toBeGreaterThan(0);
+      const opened = extraOpenings(placing(start, chip.id, SSH_FROM.you.id).world, expectedFlows);
+      const exact = chip.id === SSH_WHAT.ssh.id;
+      expect(opened.length === 0, plain(chip.label)).toBe(exact);
+      if (!exact) expect(starsOf(sessionReducer(placing(start, chip.id, SSH_FROM.you.id), { type: 'submit' })).middle, plain(chip.label)).toBe(false);
+    }
+    expect(extraOpenings(placing(start, SSH_WHAT.wellKnown.id, SSH_FROM.you.id).world, expectedFlows).map((probe) => probe.port)).toEqual([PORT.web, PORT.secureWeb]);
+  });
+
+  it('02-05: the chips offer no udp and no port 53', () => {
+    const { what } = filterChips();
+    expect(what.map((chip) => chip.what.kind).filter((kind) => kind === 'udp')).toEqual([]);
+    expect(what.filter((chip) => chip.what.fromPort === PORT.dns && chip.what.toPort === PORT.dns)).toEqual([]);
+    expect(what.map((chip) => plain(chip.label)).filter((label) => /udp|\b53\b/i.test(label))).toEqual([]);
+    expect(prose(start.incident).filter((text) => /udp|\b53\b|dns/i.test(text))).toEqual([]);
+  });
+
+  it('02-05: the text that names the range 1-1023 calls it the well-known ports and says nothing about port 0', () => {
+    const naming = prose(start.incident).filter((text) => text.includes(WELL_KNOWN_RANGE));
+    expect(naming.length).toBeGreaterThan(0);
+    expect(naming.filter((text) => !/puertos conocidos/i.test(text))).toEqual([]);
+    expect(prose(start.incident).filter((text) => ABOUT_PORT_ZERO.test(text))).toEqual([]);
+    expect(['El rango 1-1023 son los puertos conocidos.', 'El rango 1-1023 es amplio.'].filter((text) => text.includes(WELL_KNOWN_RANGE) && !/puertos conocidos/i.test(text))).toEqual(['El rango 1-1023 es amplio.']);
+    expect(['Los puertos conocidos van del 0 al 1023.', 'El puerto 0 está reservado.'].filter((text) => ABOUT_PORT_ZERO.test(text))).toHaveLength(2);
+  });
+
+  it('02-05: no text calls the port 3306 or the port 5432 a well-known port', () => {
+    expect(['El 3306 es un puerto conocido.', 'El 22, el 80 y el 5432 son puertos conocidos.'].filter(callsItWellKnown)).toHaveLength(2);
+    expect(['El 3306 y el 5432 son puertos por defecto.', 'El 22 es un puerto conocido.'].filter(callsItWellKnown)).toEqual([]);
+    expect(everythingRead(onlyYouOnSsh).filter(callsItWellKnown)).toEqual([]);
+    expect(prose(start.incident).filter(callsItWellKnown)).toEqual([]);
+  });
+
+  it('02-05: the report names laptop-lucia', () => {
+    const { report } = start.incident;
+    expect(report).toContain(`[[${DEVICE.lucia.name}]]`);
+    expect(plain(report)).toMatch(new RegExp(`^Lucía activó SSH en ${DEVICE.lucia.name} y puso un firewall que no deja entrar nada\\.`));
+    expect(changedNames(solvedWorld(INCIDENTS, '02-04'), startWorld(INCIDENTS, WHOLE_RULE))).toEqual([DEVICE.lucia.name]);
+  });
+
+  it('02-05: draws tu-laptop, laptop-lucia, laptop-marta and laptop-visita, with the firewalls of the three that have one', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    const names = [DEVICE.you.name, DEVICE.lucia.name, DEVICE.marta.name, DEVICE.visitor.name];
+    expect(drawn.sort()).toEqual([...names.map((name) => `device:${name}`), ...names.slice(0, 3).map((name) => `firewall:firewall ${name}`)].sort());
+    expect(start.incident.shown).toEqual(SSH_PIECES);
+  });
+
+  it('02-05: the flows are the SSH of your laptop, which is required, the SSH of the visitor, which is forbidden, and the ping of the rule of 01-12, which goes on in the background', () => {
+    expect(start.incident.flows.map((flow) => [flow.kind, flow.packet.protocol, flow.packet.port])).toEqual([['required', 'tcp', PORT.ssh], ['forbidden', 'tcp', PORT.ssh], ['ambient', 'icmp', undefined]]);
+    expect(start.incident.flows[2].packet).toMatchObject({ from: { id: DEVICE.lucia.id }, to: IP.marta });
+    expect(isGuided(start.incident) && start.incident.tasks.flatMap((task) => ('flowIds' in task ? task.flowIds : []))).toEqual([SSH_FLOW.you.id, SSH_FLOW.visitor.id]);
+    expect(pieceViews(start).filter((piece) => piece.state === 'intruded')).toEqual([]);
+  });
+
+  it('02-05: the right option is the first and is not the longest of the three', () => {
+    expect(optionsOf(start.incident)).toHaveLength(3);
+    expect(rightOptionPlace(start.incident)).toBe(0);
+    expect(rightOptionIsTheLongest(start.incident)).toBe(false);
+  });
+
+  it('02-05: introduces port range, SSH, default port and well-known ports, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[WHOLE_RULE]));
+    expect(sorted(introduces)).toEqual(sorted(['port-range', 'ssh', 'default-port', 'well-known-ports']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, WHOLE_RULE))).toEqual([]);
     expect(laterTermLeaks([start.incident])).toEqual([]);
   });
 });

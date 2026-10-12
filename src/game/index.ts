@@ -9,7 +9,7 @@ export { caseCard, caseSummary } from './view/cards/case-card';
 export type { CaseCard, CaseRepair, CaseSummary } from './view/cards/case-card';
 export { identifyCard } from './view/cards/identify-card';
 export type { IdentifyCard } from './view/cards/identify-card';
-export { classifyCard } from './view/cards/identify/classify-card';
+export { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
 export type { ClassifyBin, ClassifyCard, ClassifyItem, ClassifyNumber } from './view/cards/identify/classify-card';
 export { pieceCard } from './view/cards/piece-card';
 export type { PieceCard, PieceTab, PieceTabId } from './view/cards/piece-card';

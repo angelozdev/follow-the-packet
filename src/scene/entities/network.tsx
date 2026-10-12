@@ -1,8 +1,9 @@
 import { Line } from '@react-three/drei';
 import type { EntityVariants } from '@/copy';
 import { InkBox, InkIcon } from '@/scene/ink';
-import type { Vec3 } from '@/scene/layout';
+import type { Vec2, Vec3 } from '@/scene/layout';
 import { INK, LINE, PAPER_SHADE } from '@/scene/theme';
+import { MapTag } from './packet';
 
 const WALL_HEIGHT = 0.5;
 const WALL_DEPTH = 0.12;
@@ -17,9 +18,22 @@ function outlinePoints(x: number, z: number, width: number, depth: number): Vec3
   return [[left, OUTLINE_Y, back], [right, OUTLINE_Y, back], [right, OUTLINE_Y, front], [left, OUTLINE_Y, front], [left, OUTLINE_Y, back]];
 }
 
-/** The network's slab, the floor its devices stand on, centered on the origin or, for one floor of an office, on `x`: an office adds a low wall along its back edge. The `block` variant is the same slab drawn as a dashed outline on the ground, with no fill, around the pieces the player placed inside a block of IPs; it is centered on `x` and `z`. */
-export function NetworkPiece({ variant, width, depth, x = 0, z = 0 }: { variant: NetworkVariant; width: number; depth: number; x?: number; z?: number }) {
-  if (variant === 'block') return <Line points={outlinePoints(x, z, width, depth)} color={INK} lineWidth={LINE.regular} dashed {...OUTLINE_DASH} />;
+/** The name of an outline: the block in CIDR notation, drawn as a map label at a point of the ground. */
+export interface OutlineName {
+  text: string;
+  at: Vec2;
+}
+
+/** The network's slab, the floor its devices stand on, centered on the origin or, for one floor of an office, on `x`: an office adds a low wall along its back edge. The `block` variant is the same slab drawn as a dashed outline on the ground, with no fill, around the pieces the player placed inside a block of IPs; it is centered on `x` and `z` and wears its `name` (the block, such as 192.168.1.0/24) as a map label when it has one. */
+export function NetworkPiece({ variant, width, depth, x = 0, z = 0, name }: { variant: NetworkVariant; width: number; depth: number; x?: number; z?: number; name?: OutlineName }) {
+  if (variant === 'block') {
+    return (
+      <group>
+        <Line points={outlinePoints(x, z, width, depth)} color={INK} lineWidth={LINE.regular} dashed {...OUTLINE_DASH} />
+        {name && <MapTag text={name.text} apart={name.at} beside />}
+      </group>
+    );
+  }
   return (
     <group>
       <InkBox size={[width, 0.2, depth]} position={[x, -0.1, 0]} lineWidth={LINE.bold} />

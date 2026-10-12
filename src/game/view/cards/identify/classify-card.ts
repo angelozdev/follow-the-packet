@@ -132,6 +132,11 @@ export function classifyCard(session: Session, pieceId: string): ClassifyCard | 
   };
 }
 
+/** Returns the block of the card that classifies, such as 192.168.1.0/24, which the map writes beside the outline; null when the incident has no such card. */
+export function classifiedBlock(session: Session): string | null {
+  return classifySpec(session)?.spec.cidr ?? null;
+}
+
 /** Returns the piece ids of the devices that are inside the block: the owner of the card, from the start, and each item the player placed in the bin of what fits. Empty when the incident has no card that classifies. */
 export function insideBlockPieces(session: Session): ReadonlySet<string> {
   const found = classifySpec(session);

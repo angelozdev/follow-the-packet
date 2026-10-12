@@ -274,7 +274,7 @@ export const WHAT = {
 } satisfies Record<string, WhatChip>;
 
 /** Returns the chip that names the one address of a device in a rule, such as `laptop-lucia (IP 192.168.1.11)`: the Source of an inbound rule (`from`) or the Destination of an outbound one (`to`). The chip is named after the device and its IP, so a Source chip and a Destination chip of one device never share an id. */
-function addressChip(side: 'from' | 'to', key: string, name: string, ip: string): FromChip & ToChip {
+export function addressChip(side: 'from' | 'to', key: string, name: string, ip: string): FromChip & ToChip {
   return { id: `${side}-${key}`, label: `${nameTag(name)} ({{ip-address|IP}} ${ip})`, peer: { kind: 'cidr', cidr: `${ip}${SINGLE_ADDRESS}` } };
 }
 

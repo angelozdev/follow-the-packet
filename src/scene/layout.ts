@@ -56,6 +56,7 @@ export interface BlockSpot {
   z: number;
   width: number;
   depth: number;
+  label: Vec2;
 }
 
 export interface Layout {
@@ -260,7 +261,8 @@ function blocksOf(devices: Record<string, DeviceSpot>, inside: ReadonlySet<strin
   }, []);
   return runs.map((run) => {
     const [left, right] = [Math.min(...run) - BLOCK_HALF_WIDTH, Math.max(...run) + BLOCK_HALF_WIDTH];
-    return { x: (left + right) / 2, z: (BLOCK_BACK + BLOCK_FRONT) / 2, width: right - left, depth: BLOCK_FRONT - BLOCK_BACK };
+    const x = (left + right) / 2;
+    return { x, z: (BLOCK_BACK + BLOCK_FRONT) / 2, width: right - left, depth: BLOCK_FRONT - BLOCK_BACK, label: [right, BLOCK_FRONT] };
   });
 }
 

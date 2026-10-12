@@ -3,7 +3,7 @@ import { cardProblems, cardsOutsideTheMap, isReachable, reachWithWheel } from '.
 import { card, openCard, openTerminal, sendTo } from './cards';
 import { IP, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
-import { SERVICES_CARD, SERVICES_TAB } from '@e2e/chapter-2/chapter-2-play';
+import { ANDRES, CLASSIFY_TAB, INSIDE_THE_BLOCK, OUTSIDE_THE_BLOCK, SERVICES_CARD, SERVICES_TAB, YOUR_LAPTOP, placeInBin } from '@e2e/chapter-2/chapter-2-play';
 import { collectErrors } from './console-errors';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 import { freezeTime, standStill, stepFrame } from './still-scene';
@@ -119,6 +119,18 @@ async function reachTheServices(page: Page) {
   await page.getByRole('tab', { name: SERVICES_TAB, exact: true }).click();
 }
 
+async function reachTheClassifyCard(page: Page) {
+  await openTheLaptopByKeyboard(page);
+  await page.getByRole('tab', { name: CLASSIFY_TAB, exact: true }).click();
+}
+
+async function placeBothItems(page: Page) {
+  await reachTheClassifyCard(page);
+  const classify = card(page, YOUR_LAPTOP);
+  await placeInBin(classify, PRINTER, INSIDE_THE_BLOCK);
+  await placeInBin(classify, ANDRES, OUTSIDE_THE_BLOCK);
+}
+
 async function sendFromTheTabbedTerminal(page: Page) {
   await openTheLaptopByKeyboard(page);
   await sendTo(card(page, TERMINAL), IP.andres);
@@ -147,6 +159,8 @@ const THE_PRINTER: Scene = { name: 'the card of the printer', level: '01-01', re
 const THE_SETTINGS: Scene = { name: 'the network settings', level: '01-07', reach: reachTheSettings, last: doneOf(SETTINGS_CARD) };
 const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the card of the laptop', level: '01-07', reach: sendFromTheTabbedTerminal, last: doneOf(TERMINAL) };
 const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: doneOf(SERVICES_CARD) };
+const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing placed yet', level: '02-04', reach: reachTheClassifyCard, last: doneOf(YOUR_LAPTOP) };
+const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: doneOf(YOUR_LAPTOP) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendAPingAndATraceroute, last: doneOf(TERMINAL) };
 
@@ -166,7 +180,7 @@ const SCENES: Scene[] = [
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function passTheGrace(page: Page) {
   await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);
@@ -368,6 +382,23 @@ test('an inspection box that does not fit scrolls under the mouse to its last li
     expect(band.y, `${name}: the band stays in the window`).toBeGreaterThanOrEqual(0);
     expect(band.y + band.height, `${name}: the band stays above the body`).toBeLessThanOrEqual(within.y + 1);
     expect(text.y + text.height, `${name}: the last line ends inside the body`).toBeLessThanOrEqual(within.y + within.height + 1);
+  }
+});
+
+test('the body of the card that classifies scrolls to its last bin, under the mouse, and its foot stays in view', async ({ page }) => {
+  test.slow();
+  for (const { name, size } of [...LOW_WINDOWS, ...LOW_MAP_WINDOWS]) {
+    await page.setViewportSize(size);
+    await play(page, THE_PLACED_CLASSIFY);
+    await standStill(page);
+    const classify = card(page, YOUR_LAPTOP);
+    const body = classify.locator('.chip-card__body');
+    const lastBin = classify.getByRole('button', { name: `Poner aquí en ${OUTSIDE_THE_BLOCK}`, exact: true });
+    expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight), `${name}: the body does not fit, so it scrolls`).toBe(true);
+    expect(await isReachable(page, lastBin), `${name}: the last bin starts out of reach`).toBe(false);
+    expect(await reachWithWheel(page, lastBin, { within: body, wheelPx: GENTLE_WHEEL_PX }), `${name}: the wheel brings the last bin into view`).toBe(true);
+    expect(await isReachable(page, THE_PLACED_CLASSIFY.last(page)), `${name}: the foot stays in reach`).toBe(true);
+    expect(await cardsOutsideTheMap(page), `${name}: the card stays inside the map`).toEqual([]);
   }
 });
 

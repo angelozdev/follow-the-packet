@@ -976,6 +976,20 @@ describe('the outline of the block', () => {
     expect(widthOf(false, false)).toBe(0);
   });
 
+  it('the name of the outline stands at the front corner where the outline ends, so it follows the outline when it grows and when it shrinks', () => {
+    const labelOf = (...flags: boolean[]) => row(['your-laptop', flags[0]], ['lucia-laptop', flags[1]]).blocks.map((block) => block.label);
+    const [alone] = row(['your-laptop', true], ['lucia-laptop', false]).blocks;
+    const corner = (block: { x: number; z: number; width: number; depth: number }) => [block.x + block.width / 2, block.z + block.depth / 2];
+    corner(alone).forEach((value, axis) => expect(alone.label[axis]).toBeCloseTo(value));
+    const [together] = row(['your-laptop', true], ['lucia-laptop', true]).blocks;
+    corner(together).forEach((value, axis) => expect(together.label[axis]).toBeCloseTo(value));
+    expect(together.label[0]).toBeGreaterThan(alone.label[0]);
+    expect(together.label[1]).toBe(alone.label[1]);
+    expect(labelOf(true, true)).toEqual([together.label]);
+    expect(labelOf(true, false)).toEqual([alone.label]);
+    expect(labelOf(false, false)).toEqual([]);
+  });
+
   it('draws no outline for a world drawn whole, and keeps the size and the place of everything else', () => {
     expect(computeLayout(FLOORS, true).blocks).toEqual([]);
     const plain = layoutOf(...FLOOR_1_DEVICES);

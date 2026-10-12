@@ -18,6 +18,7 @@ export interface GameSceneProps {
   flows: MapFlow[];
   sent: MapSent[];
   still: boolean;
+  blockName?: string | null;
   activePieceId: string | null;
   overlay: ReactNode;
   onInspect: OnInspect;
@@ -40,7 +41,7 @@ function PieceShape({ piece, layout, selected, still }: { piece: MapPiece; layou
   }
 }
 
-export function GameScene({ world, pieces, flows, sent, still, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, sent, still, blockName = null, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
   const layout = computeLayout(world, pieces);
   const floors = Object.entries(layout.floors);
   const [cx, cz] = layoutCenter(layout);
@@ -57,7 +58,7 @@ export function GameScene({ world, pieces, flows, sent, still, activePieceId, ov
         <FloorLabel key={id} position={floor.label} name={world.lans?.find((lan) => lan.id === id)?.name ?? id} />
       ))}
       {layout.blocks.map((block) => (
-        <NetworkPiece key={`${block.x}`} variant="block" x={block.x} z={block.z} width={block.width} depth={block.depth} />
+        <NetworkPiece key={`${block.x}`} variant="block" x={block.x} z={block.z} width={block.width} depth={block.depth} name={blockName === null ? undefined : { text: blockName, at: block.label }} />
       ))}
       <Road layout={layout} />
       {pieces.map((piece) => (
