@@ -127,9 +127,9 @@ No queda ninguna decisión abierta (2026-10-11): ni las dieciocho (D-1 a D-18), 
 
 ## Decisiones abiertas de la noche del 2026-10-11
 
-Estas tres decisiones se abrieron la noche del 2026-10-11, después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. Ninguna está decidida. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
+Estas cuatro decisiones (O-1 a O-4) se abrieron la noche del 2026-10-11 (O-4, pasada la medianoche, ya el 2026-10-12), después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. Ninguna está decidida. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
 
-Los prototipos renderizados de O-1 y O-2 están en una página publicada el 2026-10-11: https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST. Los dibujos no son capturas: se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el arte de las piezas, porque nadie arrancó la app esa noche. O-3 se decide con el texto.
+Los prototipos renderizados de O-1 y O-2 están en una página publicada el 2026-10-11: https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST. Los dibujos no son capturas: se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el arte de las piezas, porque nadie arrancó la app esa noche. O-3 se decide con el texto. Los de O-4 están en otra página, que se enlazará aquí cuando esté publicada (el archivo local, temporal, es `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/chapter-2-decision-o4.html`); esos dibujos se calcularon con un port de las funciones de `layout.ts`, ver «Lo que no se pudo verificar» de O-4.
 
 ### O-1. La caja de inspección tapa la tarjeta recién abierta
 
@@ -325,6 +325,91 @@ La caja del paquete lo cuenta en su campo «DNS»: que el equipo preguntó antes
 - Qué imprime un `ping` real de Linux o de macOS para el código 0 no se probó: el juego dice el nombre del mensaje ICMP, no la salida de una herramienta.
 - Que hoy ningún incidente del capítulo 1 lo muestre sale de leer las listas `send.to` y los routers de `shared.ts`; no se jugó cada combinación ni se corrió el motor sobre ellas.
 - RFC 1812 y RFC 792, leídos con `curl` y `grep` el 2026-10-11.
+
+**Decidida:** pendiente del estudiante.
+
+### O-4. Los sellos de un mismo lugar no caben entre las etiquetas vecinas
+
+**Pregunta.** En el 02-03, ¿cómo se hace sitio a los tres sellos de `laptop-lucia`, que hoy pisan la etiqueta de `laptop-marta`?
+
+**Recomendación: C.** Los sellos de un lugar se montan en abanico (paso de 25 px en vez de 43), con el arreglo común de las etiquetas de paquete (abajo). El signo de cada sello queda entero, cada sello sigue a la altura de su lugar, cada etiqueta sobre su pieza, y no cambia el tamaño de ningún mapa. Lo que cuesta: tapa 7 px del anillo del sello de al lado y obliga a reescribir qué cuenta como solape (Review Focus 14). Con el `GAP` de hoy (3,2) aguanta 3 sellos en un lugar, con 6 px de holgura; con 3,65, 4. A (más espacio entre equipos) no tapa nada, pero solo cabe hasta `GAP` ≈ 3,65, que deja 0,5 px, porque el 01-08 deja de caber a 1280×800 con más (estimado). B es la que engaña.
+
+**Qué pasa hoy en `feat/chapter-2`.**
+
+A 1280×800 y a 1440×900 (el mismo dibujo corrido 80×50 px), con los cuatro envíos del 02-03, el mapa quieto tiene dos pares que se pisan y el animado, uno. Tienen causas distintas.
+
+- **Los sellos no caben.** Los tres sellos de `laptop-lucia` miden 36 px y están a 43 px uno de otro (`STAMP_SPREAD`, 0,8): ocupan 122 px. Quedan encerrados entre la etiqueta del firewall de `tu-laptop` (termina en x 387) y la de `laptop-marta` (empieza en x 501): un pasillo de 114 px. El tercer sello pisa esa etiqueta 11 px. Aun pegados del todo (paso de 36 px) ocuparían 108 px y sobrarían 6 px para cuatro holguras de 8 px. Pasa con y sin animaciones. Los sellos solo se mueven en horizontal porque su altura dice dónde ocurrió: en `laptop-lucia`, a 1280×800, la puerta está en y 369, el firewall en 383 y el camino en 402.
+- **Una etiqueta pisa su sello.** Solo sin animaciones: la etiqueta «TCP 51515 → 3000» pisa su propio sello, el ✕ de `laptop-marta`. Las etiquetas de paquete se apartan de los nombres de piso (`clearOfNames`) y no miran los sellos. Su paso (184 px) no depende de `GAP`.
+
+**El arreglo común a las cuatro opciones.** Ninguna opción arregla sola el segundo par: con A sola, la etiqueta y su sello dejan de pisarse con `GAP` ≈ 5,9 (calculado), y antes la etiqueta de otro envío pisa a `laptop-marta`. Por eso las cuatro llevan lo mismo: la etiqueta de paquete se aparta de los sellos como ya se aparta de los nombres de piso (`clearOfNames` pasa a mirar también los sellos). Con ese arreglo solo queda el primer par. Es una propuesta calculada, no probada en el juego.
+
+**Lo que aguanta cada opción.** El pasillo de `laptop-lucia` en el 02-03, con 8 px de holgura. «Sellos» son los que terminan en un mismo lugar. `GAP` no puede pasar de ≈3,65 (ver A).
+
+| Opción | 3 sellos | 4 sellos | 5 sellos | Capítulos 1 y 4 | Costo |
+|--------|----------|----------|----------|-----------------|-------|
+| A | `GAP` 3,9 · fuera del tope | `GAP` 4,7 · fuera del tope | `GAP` 5,5 · fuera del tope | Cambian: todo mapa de oficina más ancho, y el 01-08 casi no cabe | Alto para lo que da |
+| B | 2 filas | 2 filas | 3 filas | Sin cambio donde caben | Medio |
+| C | `GAP` 3,3 · cabe | `GAP` 3,7 · con 3,65 caben con 6 px | `GAP` 4,2 · fuera del tope | Cambian solo los grupos de 2 sellos o más | Medio |
+| D | 20 px (y 5) | 41 px (y 26) | 63 px (y 48) | Sin cambio donde no hay solape | Alto |
+
+En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, entre paréntesis, la de la izquierda (la del firewall de `tu-laptop`). Con A cada sello de más pide 43 px de pasillo, es decir, 0,8 de `GAP`; con C, 25 px.
+
+**Las opciones.**
+
+- **A. Más espacio entre equipos.** `GAP` pasa de 3,2 a 3,65 como máximo: los equipos de una fila quedan 12 px más lejos en horizontal y 7 en vertical (19 y 11 con 3,9).
+  - Qué ve el jugador: Los tres sellos caben (122 px en un pasillo de 138) y dejan 0,5 px a `laptop-marta` y 15 a la etiqueta del firewall. Los sellos y las etiquetas son los de siempre. 3,65 es lo mínimo que pasa la prueba y su holgura cambia con la fuente; con 7 px de holgura hay que llegar a 3,9.
+  - Cómo crece: Cada sello de más pide 0,8 de `GAP`: 4 piden 4,7 y 5 piden 5,5 (con 8 px). El tamaño de la oficina no depende de lo que se dibuja (regla de `layout.ts`), así que A no se adapta: se fija para 3. Con mapas de 8 piezas, la losa de un piso de 8 equipos mide 876, 973 y 1026 px con `GAP` 3,2, 3,65 y 3,9; a 1280×800 (mapa de 900 px) solo cabe con 3,2. El camino de afuera (routers, internet, servidores) no usa `GAP`.
+  - Capítulos 1 y 4: Cambian todos los mapas de oficina con 2 o más equipos en un piso. El más ancho de hoy es el 01-08 (3 equipos en el piso 1 y 1 en el 2, router y servidor; `INTERNET_PIECES`). Por `layOutOffice`, `layOutOutside` y `bounds` mide ≈ 826 px con 3,2, 863 con 3,65 y 883 con 3,9, y la cámara lo centra en sus límites: el vértice derecho de la losa queda a +428, +446 y +456 px del centro, contra +450 que da un mapa de 900 px. Con 3,9 se corta y con 3,65 sobran ≈ 4 px (estimado, ±15 px: hay que medirlo). Las pruebas que lo guardan son las de `tests/e2e/chapter-1/chapter-1.spec.ts` (01-06, 01-08, 01-10 y los siete casos del 01-14) y las del 02-07, a 1280×800 y a 1440×900. `src/levels/04-iaas/golden-traces.json` no cambia: guarda trazas del motor y `layout.ts` no está en ellas.
+  - Costo: Alto para lo que da: cambia el tamaño de los mapas ya aprobados, deja casi sin margen al más ancho y aguanta 3 sellos. Pide también una regla de contenido (como mucho 3 envíos que terminen en un mismo lugar) y el arreglo común.
+- **B. Una segunda fila para los sellos.** **Engaña al jugador.** Los sellos de un lugar que no caben en una fila bajan a otra.
+  - Engaña: La altura de un sello dice dónde ocurrió: puerta, firewall o camino. El tercer sello, que llegó a la puerta, bajaría 43 px (y 414) y quedaría por debajo del camino de `laptop-lucia` (y 402). Con una fila de 36 px la segunda no puede quedar más cerca sin pisar a la primera.
+  - Cómo crece: Con 3 sellos, 2 filas; con 5, 3 (a 86 px de la puerta). Si `laptop-lucia` tuviera dibujada la etiqueta de su firewall, la segunda fila caería encima de ella (x 337–483, y 412–432, calculado). En el mapa quieto la fila cae sobre la franja de las etiquetas de paquete y las empuja. Con mapas de 8 piezas actúa por grupo de sellos y no cambia el tamaño del mapa, pero cada grupo baja por su cuenta y su segunda fila puede caer sobre la etiqueta de su firewall o sobre las de otras piezas.
+  - Capítulos 1 y 4: Sin cambio donde caben los sellos. Necesita el ancho de las etiquetas vecinas: `layout.ts` solo conoce `LABEL_REACH` (64 px de medio ancho) y la etiqueta del firewall de `laptop-marta` mide 146.
+  - Costo: Medio: filas dentro de `spreadStamps`, con el ancho de las etiquetas, y una regla nueva sobre qué significa la altura de un sello.
+- **C. Los sellos de un lugar se montan en abanico.** **Recomendada.** Paso de 25 px en vez de 43: cada sello tapa 7 px del anterior y el de más a la derecha queda encima.
+  - Qué ve el jugador: Los tres ocupan 86 px y dejan 6 px a `laptop-marta` y 21 a la etiqueta del firewall. El signo (✓, ✕, ? o !) queda entero (mide unos 14 px, estimado); se tapa un trozo del anillo, así que un sello perdido (anillo de rayas) o intruso (anillo doble) se ve con el anillo cortado, pero se sigue leyendo. No engaña, pero tapa información.
+  - Qué tapa: La parte del botón que se puede tocar mide 25×32 px. Cumple los 24×24 de WCAG 2.2, criterio 2.5.8 (nivel AA), con poco margen. Si el apilado siguiera el orden de los envíos y no el del abanico, un sello del medio quedaría tapado por los dos lados y mediría 18 px.
+  - Cómo crece: 25 px por sello: con `GAP` 3,2 caben 3; 4 piden 3,4 sin holgura y 3,7 con 8 px; 5 piden 3,9 y 4,2. Como `GAP` no puede pasar de ≈3,65, C aguanta 3 con el de hoy (6 px) y 4 con 3,65 (6 px). Con mapas de 8 piezas el abanico es local a cada lugar: el mapa no cambia y, en la variante «siempre», no necesita el ancho de las etiquetas vecinas.
+  - Capítulos 1 y 4: Con la variante «siempre» (todo grupo de 2 sellos o más se monta) cambian solo esos grupos: el 01-09 ofrece cinco TTL a un mismo servidor y los más altos terminan juntos. Los mapas no cambian de tamaño. La variante «solo cuando no cabe» deja los capítulos 1 y 4 como están, pero son dos disposiciones para el mismo sello y necesita el ancho de las etiquetas vecinas, como B.
+  - Costo: Medio: el paso y el orden de apilado en `spreadStamps`; subir el sello al frente al pasar el mouse o enfocarlo (si no, el foco de uno tapado se ve cortado); y cambiar qué cuenta como solape en las pruebas: `pairsThatOverlap` tendría que dejar pasar sello con sello hasta 7 px y seguir fallando sello con etiqueta. Cambia la letra del Review Focus 14.
+- **D. La etiqueta de la pieza vecina se aparta.** La etiqueta de `laptop-marta` se corre 20 px a la derecha y deja 8 px a los sellos, como ya se apartan las etiquetas de paquete de los nombres de piso.
+  - Qué ve el jugador: Los sellos no cambian. Con 3 sellos no engaña (20 px); con 5 la etiqueta queda a 63 px de su pieza y, con 119 px de ancho, cuelga junto al sello y no sobre su pieza.
+  - Cómo crece: Con 3 sellos, 20 px a la derecha (y 5 a la izquierda); con 4, 41 y 26; con 5, 63 y 48. Con mapas de 8 piezas, cada grupo de sellos empuja a sus dos vecinas.
+  - Capítulos 1 y 4: Sin cambio donde no hay solape.
+  - Costo: Alto. Hoy la posición de una etiqueta es una función del mapa (`labelPosition`) y la de los sellos sale del tráfico (`Traffic`): hay que llevar los sellos hasta las etiquetas. Las usan también la tarjeta (`cardPlacement`: `avoid`, `labels`, `dockRoom`) y la prueba `pieceUnder` de `tests/e2e/map-boxes.ts`, que supone la etiqueta centrada sobre su pieza.
+
+**Las que se descartaron.**
+
+- Subir las etiquetas de los equipos: la etiqueta de la pieza siguiente de la fila queda 50 px más abajo y 86 px a la derecha; subirla lo bastante para librar los sellos la deja a la altura de la anterior, y las etiquetas (de 100 a 119 px) se pisarían entre sí.
+- Un paso de 36 px sin más (sellos pegados): caben 3 en el pasillo de hoy (108 de 114 px) solo si el grupo se corre 7 px a la izquierda de su lugar y queda con 3 px por lado; con 4 no cabe y depende del texto de las etiquetas vecinas.
+- Un solo sello con una cuenta (×3): quita la caja de inspección de cada envío, porque cada sello es un botón con la suya, y es un elemento nuevo.
+
+**Por qué C.**
+
+- **Rigor.** C no muestra nada falso: cada sello sigue a la altura de su lugar, cada etiqueta sobre su pieza y el signo de cada sello se ve entero. Pierde un trozo del anillo. A no tapa nada, pero con 3,65 deja 0,5 px y depende de la fuente, y con 3,9 el 01-08 deja de caber. B afirma un lugar falso. D separa la etiqueta de su pieza.
+- **Un estándar por elemento.** C es una sola regla para todo grupo de sellos: se montan en abanico (la variante «siempre»). El arreglo común reúsa lo que ya hacen las etiquetas con los nombres de piso. La variante «solo cuando no cabe» serían dos disposiciones para un mismo sello.
+- **Causas a la vista.** Con C la altura de un sello sigue diciendo dónde ocurrió y cada sello se puede señalar con el mouse: al pasarlo sube al frente. Con B no.
+- **Deciden dos números.** El incidente más lleno que existe pone 3 sellos en un lugar (el 02-03); los demás no están escritos y no se pueden contar. Con O-2 = A cada envío por nombre suma un sello de consulta en el resolver, y eso cuenta. Y A pide 3,9 para tener holgura, que deja al 01-08 sin margen (estimado). C aguanta los 3 sin tocar ningún mapa.
+- **Si no aceptas** que un sello tape un trozo del anillo del de al lado, la única que queda es A, hasta 3,65 y con 0,5 px.
+
+**Qué depende de esta decisión.**
+
+- `src/scene/layout.ts` y `layout.test.ts` (`spreadStamps`, `spreadTags` y `clearOfNames`; `GAP` con A). La Tarea 21 ya los toca: el arreglo puede ir en ella o en un commit propio antes de las Tareas 26 en adelante.
+- **La prueba de solapes del 02-03**, guardada en un parche: `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/02-03-overlap-test.patch` (suma a `tests/e2e/chapter-2/chapter-2.spec.ts` `in 02-03 no piece label, floor name, stamp or packet label of the still map overlaps another after the four tests`, sin animaciones, y `in 02-03 no piece label, floor name or stamp of the map overlaps another after the four tests`, con ellas, a 1280×800 y a 1440×900) y la medida que la acompaña, `zz-measure.spec.ts` en la misma carpeta. Esa ruta es temporal: si se borra, la prueba se rehace con los cuatro envíos del 02-03. Hoy falla: 2 pares medidos sin animaciones y 1 con ellas. Debe pasar con la opción que se elija más el arreglo común (con C, tras cambiar qué cuenta como solape: sello con sello puede montarse hasta 7 px, sello con etiqueta nunca).
+- **La prueba equivalente del 02-13**, si tiene más envíos (hasta cinco, según el encargo de esta decisión), y las de la Tarea 34 (`in 02-09 and 02-10 no label or stamp overlaps` y `after the pings of 02-07, no label or stamp overlaps`, Review Focus 14).
+- Con A: las pruebas de que el mapa cabe (capítulo 1 y 02-07), a 1280×800 y a 1440×900.
+- O-2: si se elige A, la consulta DNS suma sellos de consulta en el resolver y cuenta para el techo de 3 sellos por lugar.
+- La página de prototipos de O-4 se enlazará aquí cuando esté publicada.
+
+**Lo que no se pudo verificar.**
+
+- Los dibujos de las opciones no son capturas: se calcularon con un port a Python de las funciones de `layout.ts` (`spreadStamps`, `spreadTags`, `clearOfNames`) y de la proyección del mapa, calibrado con las cajas que midió Playwright en `before.txt`: reproduce las de hoy con 2 px de diferencia como mucho. El arreglo común es una propuesta y también está calculado, no probado en el juego. El arte de las piezas es simbólico y el dibujo de «hoy» usa las cajas medidas.
+- El ancho del 01-08 sale de portar `layOutOffice`, `layOutOutside` y `bounds` y de suponer ±65 px de etiqueta en routers e internet: no se midió, y el error puede ser de ±15 px. Mientras no se mida, «el 01-08 deja de caber con 3,9» es una estimación.
+- El ancho de las etiquetas (79, 100, 119, 127 y 146 px) es el medido con las fuentes de esa máquina; con otras, el pasillo cambia.
+- No se corrió ninguna prueba ni se arrancó la app.
+- Los incidentes 02-04 a 02-14 no están escritos: no se contó cuántos sellos terminan en un mismo lugar. Una combinación igual de fichas reemplaza a la anterior (`lastOfEach` en `src/game/flow-runs.ts`, que `src/game/session.ts` usa para `sent`), así que los sellos por lugar no pasan de las combinaciones distintas que terminan ahí. En los incidentes `send` del capítulo 1, el mayor grupo que se ve en las listas de fichas es el de los TTL altos del 01-09; no se jugó, y no se contaron los flujos de los incidentes `filter` (01-12, 01-13 y el capítulo 4).
+- El corredor de los servidores de la calle, con sus etiquetas altas, es otro que el de una fila de equipos: no se calculó. Tampoco el 02-07 completo.
+- El tamaño del signo de un sello (unos 14 px) es una estimación. WCAG 2.2, 2.5.8, leído en `https://www.w3.org/TR/WCAG22/` con `curl` el 2026-10-12.
 
 **Decidida:** pendiente del estudiante.
 
