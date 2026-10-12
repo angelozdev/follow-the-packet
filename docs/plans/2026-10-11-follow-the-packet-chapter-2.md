@@ -55,11 +55,11 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Lo que falta y de qué depende
 
-- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó. Son 14 conflictos, no 8. D va en commits propios después del merge, que queda con un rojo conocido en una sola prueba. Se hace en un worktree temporal que se borra al terminar. Tras D toma las capturas reales del residuo del 04-01, que comprueban la medida y deciden entre B y A en la decidida 52 (O-5).
+- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. **Pasos 0 a 5 hechos el 2026-10-12:** el merge es `5110bad`, en la rama `merge/28bis` del worktree temporal, y todavía no está en `feat/chapter-2`; faltan los pasos 6 a 12. Eran 14 conflictos, no 8. D va en commits propios después del merge, que quedó con un rojo conocido en dos pruebas del mismo tipo. Se hace en un worktree temporal que se borra al terminar. Tras D toma las capturas reales del residuo del 04-01, que comprueban la medida y deciden entre B y A en la decidida 52 (O-5).
 - **Tarea 28 ter (el aviso de un router sin ruta, en palabras llanas en el capítulo 1, O-3 = A1):** no bloquea nada. No se empezó.
-- **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó. O-6 bloquea solo el paso de la marca de la fila (la vista).
+- **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó. O-6 se decidió (A): la marca de la fila entra con el paso de la vista.
 - **Tarea 28 quinquies (los sellos en abanico hasta lo que cabe, más «+N», O-4 = G):** escrita; no se empezó. Va después de la 28 quater. Destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Con O-2 = A, cuenta también los sellos de las consultas DNS.
-- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan las Tareas 28 quater y 28 quinquies. No se empezaron. La 31 (02-12) no cambia con la 28 quater, pero va después de la 29 y la 30 por la cadena del mundo. La 32 (02-13) espera además la respuesta a O-7.
+- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan las Tareas 28 quater y 28 quinquies. No se empezaron. La 31 (02-12) no cambia con la 28 quater, pero va después de la 29 y la 30 por la cadena del mundo. O-7 se decidió (A): la ficha del 02-13 no suma un `ping` por DNS.
 - **Tarea 34:** parte ya existe, adelantada por las tareas de contenido:
   - el mapa del 02-07 cabe y no hay solapes tras sus pings;
   - el contorno del 02-04;
@@ -73,7 +73,7 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Decisiones abiertas
 
-Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2, O-3 y O-4. Las abiertas son O-6 y O-7, en la sección «Decisiones abiertas del 2026-10-12». O-5, O-8, O-9 y O-10 se decidieron con la regla del umbral (ver «Reglas de trabajo vigentes que no estaban escritas») y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
+Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2, O-3, O-4, O-6 y O-7 (las dos últimas en la sección «Decisiones abiertas del 2026-10-12»); no queda ninguna abierta. O-5, O-8, O-9 y O-10 se decidieron con la regla del umbral (ver «Reglas de trabajo vigentes que no estaban escritas») y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
 
 | Decisión | Página | Estado | Qué ejecuta o espera |
 |---|---|---|---|
@@ -82,13 +82,13 @@ Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este
 | O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | **Decidida el 2026-10-12: A1** (palabras llanas hasta conocer el término) | La Tarea 28 ter, la copia del capítulo 1. No bloquea nada |
 | O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | **Decidida el 2026-10-12: G** (estudiante; opción nueva: abanico hasta lo que cabe y un sello «+N») | La Tarea 28 quinquies, escrita: destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
 | O-5 · ¿una etiqueta o un sello decide el lugar de la caja de inspección? | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 52): B si la medición lo permite; si no, A** | Nada: no bloquea. El paso 11 de la Tarea 28 bis toma las capturas reales y la medida que deciden entre B y A |
-| O-6 · cómo se marca la fila de una consulta DNS en la tabla de traducciones | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Abierta.** Recomendación: A (la palabra «consulta DNS») | Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater |
-| O-7 · ¿el 02-13 suma un `ping` por DNS? | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Abierta.** Recomendación: A (no) | Solo la ficha del 02-13 (Tarea 32) |
+| O-6 · cómo se marca la fila de una consulta DNS en la tabla de traducciones | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Decidida el 2026-10-12: A** (estudiante; la palabra «consulta DNS») | La marca de la fila, en el paso de la vista de la Tarea 28 quater; ya no la bloquea nada |
+| O-7 · ¿el 02-13 suma un `ping` por DNS? | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Decidida el 2026-10-12: A** (estudiante; no se suma) | La ficha del 02-13 (Tarea 32), que no cambia; ya no la bloquea nada |
 | O-8 · ¿qué pasa con la etiqueta de un paquete cuyo sello se esconde en un «+N»? | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 53): A** (la etiqueta sigue a su sello y no se dibuja; se aparta de la página de O-4) | Nada: no bloquea. La Tarea 28 quinquies la implementa desde el principio |
 | O-9 · la altura de los sellos de un grupo | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 54): B** (cada sello conserva la altura de su punto) | Nada: no bloquea. La Tarea 28 quinquies la implementa en sus commits 2 y 3, con una salvaguarda |
 | O-10 · si la etiqueta de un paquete no cabe moviéndola solo en horizontal | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 55): A** (sube o baja lo justo, con tope) | Nada: no bloquea. La Tarea 28 quinquies ya no se detiene en el paso 2 |
 
-El estudiante contesta de a una, a través de la sesión principal. Faltan O-6 y O-7 (sección «Decisiones abiertas del 2026-10-12»).
+El estudiante contestó de a una, a través de la sesión principal. No queda ninguna abierta: O-6 y O-7 se decidieron el 2026-10-12 (sección «Decisiones abiertas del 2026-10-12»).
 
 ### Lo que vive fuera de la rama
 
@@ -128,7 +128,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Una decisión se abre al estudiante solo si ninguna opción pasa sus tres criterios (rigurosa, visual y entendible), o si dos o más los pasan y cambian de forma importante lo que el jugador aprende o ve.
   - Todo lo demás se decide con la recomendación y va a «Decididas sin el estudiante (para revisar)», con su «por qué no se abre».
   - Al final del capítulo, antes de que el estudiante lo juegue, todas las «para revisar» se juntan en una sola página para que las revise de una vez (Tarea 33).
-  - Con esta regla se decidieron O-5, O-8, O-9 y O-10 (decididas 52 a 55). O-6 y O-7 siguen abiertas: la sesión principal se las pregunta al estudiante.
+  - Con esta regla se decidieron O-5, O-8, O-9 y O-10 (decididas 52 a 55). O-6 y O-7 pasaron el criterio de apertura: la sesión principal se las preguntó al estudiante, que las decidió el 2026-10-12 (A en las dos).
 - **Subagentes:** siempre con `model` explícito: `sonnet` para implementar, revisar e investigar, `haiku` solo para correr un comando. Nunca `opus`.
 - **Lo que una prueba no puede hacer:** prohibidos `waitForTimeout`, `retries`, `skip`, `fixme`, `test.fail` y los filtros que saltan un fallo.
 - **Las pruebas nombradas en el plan:** no se quitan. Las pruebas existentes de los capítulos 1 y 4 no se editan, salvo las que el plan lista o una decisión aprueba, y cada edición va en el cuerpo del commit.
@@ -601,7 +601,7 @@ En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, 
 
 ## Decisiones abiertas del 2026-10-12
 
-Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28 quater y la Tarea 32). Ninguna bloquea una tarea entera: O-6 bloquea un paso de la Tarea 28 quater y O-7 bloquea una ficha de la Tarea 32. Cada una trae su recomendación y, por opción, qué arregla, qué pierde y cómo crece; la inexacta, si la hay, va marcada. El estudiante contesta de a una, a través de la sesión principal. Su criterio es «rigurosa, visual y entendible». Las otras cuatro que salieron de la misma replanificación (O-5, O-8, O-9 y O-10) no pasaron el umbral para abrirse y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
+**Las dos están decididas (estudiante, 2026-10-12): O-6 = A y O-7 = A. Ninguna bloquea ya nada.** Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28 quater y la Tarea 32). Ninguna bloqueaba una tarea entera: O-6 afectaba un paso de la Tarea 28 quater y O-7 una ficha de la Tarea 32. Cada una trae su recomendación y, por opción, qué arregla, qué pierde y cómo crece; la inexacta, si la hay, va marcada. El estudiante contesta de a una, a través de la sesión principal. Su criterio es «rigurosa, visual y entendible». Las otras cuatro que salieron de la misma replanificación (O-5, O-8, O-9 y O-10) no pasaron el umbral para abrirse y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
 
 ### O-6. La tabla de traducciones: cómo se marca la fila de una consulta DNS
 
@@ -609,7 +609,7 @@ Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28
 
 **Recomendación: A.** Es una palabra, no un color.
 
-**Qué bloquea.** Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater (y la prueba `a row made by a datagram to port 53 wears the words consulta DNS once dns-query is known`). El orden de las filas y la fila «en uso» no dependen de ella.
+**Qué afecta (ya no bloquea nada).** Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater (y la prueba `a row made by a datagram to port 53 wears the words consulta DNS once dns-query is known`). El orden de las filas y la fila «en uso» no dependen de ella.
 
 **Las opciones.**
 
@@ -630,7 +630,7 @@ Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28
 
 **Prototipo:** https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap (una sola página para O-6 y O-7; fuente local, temporal: `chapter-2-decisions-o6-o7.html` en el scratchpad). Los dibujos son SVG calculados, no capturas.
 
-**Decidida:** pendiente del estudiante.
+**Decidida el 2026-10-12: A (estudiante).** La fila hecha por un datagrama al puerto 53 lleva «consulta DNS», también la de un `dig`. Porqué: la recomendación pasó sus criterios («rigurosa, visual y entendible»). Sin marca, las filas UDP no se distinguen, y una columna «Destino» sería inexacta, porque la fila no depende del destino (RFC 4787 REQ-1, RFC 5382 REQ-1).
 
 ### O-7. ¿El 02-13 suma un `ping` por DNS para ver el contraste?
 
@@ -638,7 +638,7 @@ Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28
 
 **Recomendación: A.** No sumarlo.
 
-**Qué bloquea.** Solo la ficha del 02-13 (Tarea 32).
+**Qué afecta (ya no bloquea nada).** Solo la ficha del 02-13 (Tarea 32).
 
 **Las opciones.** Ninguna es inexacta.
 
@@ -655,7 +655,7 @@ Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28
 
 **Prototipo:** https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap (una sola página para O-6 y O-7; fuente local, temporal: `chapter-2-decisions-o6-o7.html` en el scratchpad). Los dibujos son SVG calculados, no capturas.
 
-**Decidida:** pendiente del estudiante.
+**Decidida el 2026-10-12: A (estudiante).** El 02-13 no suma un `ping` por DNS. Porqué: el contraste ya se ve, porque `dig tienda` dibuja una consulta y `ping tienda` no; además el 02-13 ya es denso.
 
 ## Decisiones abiertas
 
@@ -913,8 +913,8 @@ Cada una tiene una razón técnica y una sola respuesta razonable; si el estudia
 50. **El título de la lista de un «+N» es «N sellos juntos».** Tarea 28 quinquies (O-4 = G). Autorizada por la sesión principal el 2026-10-12: decisión técnica o de copia que no cambia lo que se aprende. Se aparta del texto de la página de O-4 («4 sellos en la puerta de `laptop-lucia`»): un grupo se forma por cercanía en pantalla y puede juntar lugares distintos, y ese texto sería falso. Cada línea de la lista ya dice dónde terminó su paquete. Al estudiante se le avisa antes de su prueba humana.
 51. **La leyenda de los sellos no nombra «+N».** Tarea 28 quinquies (O-4 = G). Autorizada por la sesión principal el 2026-10-12: decisión técnica o de copia que no cambia lo que se aprende. `SCREEN_TEXT.stampLegend` («Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso.…») queda como está: el «+N» dice su cuenta, la ayuda gris ya dice «Pasa el mouse o el foco por una pieza o un sello», y la caja que abre se explica sola con su título. Si la prueba humana muestra que se pierde, nombrarlo es una línea de copia.
 52. **O-5 · el lugar de la caja de inspección también lo decide una etiqueta o un sello: B si la medición lo permite; si no, A.** Tarea 28 bis (O-1 = D). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. B: sin tarjeta abierta, la caja va a la derecha, salvo que ahí quede en su mínimo (120 px) y la izquierda tenga más sala. Porqué: el residuo del 04-01 a 1280×500 tapa «Security Group servidor2» con una marca, y B lo arregla sin quitarle información al jugador. Solo cuenta si la sala a la izquierda llega a 120 px o más; si no, queda A (D tal como se aprobó). Por qué no se abre: A deja la caja sobre una etiqueta y C quita la caja, que a veces es lo que el jugador necesita. El paso 11 de la Tarea 28 bis deja de abrir una decisión: sus capturas reales del 04-01 a 1280×500 comprueban la medida y deciden entre B y A. Si la medida dice B, hace falta una tarea nueva después de la 28 bis (el lugar cuenta las marcas) y la prueba del residuo en `tests/e2e/incidents.spec.ts`.
-53. **O-8 · la etiqueta de un paquete cuyo sello se esconde en un «+N» no se dibuja (A).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. La etiqueta sigue a su sello: la del paquete escondido no se dibuja en el mapa quieto, su texto (por ejemplo «TCP 51517 → 3000») va en la lista del «+N» y la línea de su camino sigue dibujada y termina en el «+N». Porqué: nada se pierde, porque el texto está en la lista, y el mapa no se desborda. **Se aparta de la página de O-4**, que dice que en F «cada envío escondido sigue con la suya en el mapa quieto»: el estudiante lo ve al revisar. Por qué no se abre: B crece claramente peor (con 10 envíos son 10 etiquetas de 184 px y salen del mapa) y C es un elemento nuevo que repite el «+N». La Tarea 28 quinquies la implementa desde el principio.
-54. **O-9 · cada sello de un grupo conserva la altura de su punto (B).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. Los sellos de un grupo forman una escalera de unos 14 px (más si el grupo junta el camino y la puerta de dispositivos distintos), `placeGroups` deja de colapsarlos a la media y el «+N» se dibuja a la altura media de los sellos que esconde. Porqué: es la opción exacta (la altura dice dónde terminó el paquete, como dice la página de O-4) y sostiene el argumento de rigor con que se eligió G. Por qué no se abre: A y B pasan los tres criterios, pero la diferencia (unos 14 px) no cambia de forma importante lo que se ve ni lo que se aprende, y la lista ya dice dónde terminó cada sello. **Salvaguarda:** si las pruebas de solapes muestran que la escalera choca con etiquetas vecinas donde A no choca, se queda A (la altura media del grupo), con la frase de la página corregida en `DESIGN.md`, y se informa. La Tarea 28 quinquies implementa B en sus commits 2 y 3.
+53. **O-8 · la etiqueta de un paquete cuyo sello se esconde en un «+N» no se dibuja (A).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. La etiqueta sigue a su sello: la del paquete escondido no se dibuja en el mapa quieto, su texto (por ejemplo «TCP 51517 → 3000») va en la lista del «+N» y la línea de su camino sigue dibujada y termina en el «+N». Porqué: nada se pierde, porque el texto está en la lista, y el mapa no se desborda. **Se aparta de la página de O-4**, que dice que en F «cada envío escondido sigue con la suya en el mapa quieto»: el estudiante lo ve al revisar. Por qué no se abre: B crece claramente peor (con 10 envíos son 10 etiquetas de 184 px y salen del mapa) y C es un elemento nuevo que repite el «+N». La Tarea 28 quinquies la implementa desde el principio. Sus dibujos calculados están en https://claude.ai/artifact/FM7oxAKEnGksRfw8BJFLKz (fuente `scratchpad/chapter-2-decisions-o8-o9.html`); esa página las presenta como abiertas y ahora sirve para la revisión final.
+54. **O-9 · cada sello de un grupo conserva la altura de su punto (B).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. Los sellos de un grupo forman una escalera de unos 14 px (más si el grupo junta el camino y la puerta de dispositivos distintos), `placeGroups` deja de colapsarlos a la media y el «+N» se dibuja a la altura media de los sellos que esconde. Porqué: es la opción exacta (la altura dice dónde terminó el paquete, como dice la página de O-4) y sostiene el argumento de rigor con que se eligió G. Por qué no se abre: A y B pasan los tres criterios, pero la diferencia (unos 14 px) no cambia de forma importante lo que se ve ni lo que se aprende, y la lista ya dice dónde terminó cada sello. **Salvaguarda:** si las pruebas de solapes muestran que la escalera choca con etiquetas vecinas donde A no choca, se queda A (la altura media del grupo), con la frase de la página corregida en `DESIGN.md`, y se informa. La Tarea 28 quinquies implementa B en sus commits 2 y 3. Sus dibujos calculados están en https://claude.ai/artifact/FM7oxAKEnGksRfw8BJFLKz (fuente `scratchpad/chapter-2-decisions-o8-o9.html`); esa página las presenta como abiertas y ahora sirve para la revisión final.
 55. **O-10 · si mover la etiqueta de un paquete en horizontal no alcanza, sube o baja lo justo (A).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. La etiqueta se mueve en vertical lo que haga falta, con tope, y sigue pegada a su camino. Porqué: una etiqueta de paquete es un rótulo de lo que viaja y su altura no dice dónde ocurrió nada (la del sello sí). Solo hace falta si el paso 2 de la tarea muestra que moverla a un lado no la libra de la etiqueta de pieza (las etiquetas miden de 115 a 176 px y el pasillo, unos 114; no está medido). Por qué no se abre: C (acortar el texto) es inexacta, porque pierde el protocolo o un puerto, y B (cambiarla de lugar a lo largo del camino) crece peor con la traducción del NAT. La tarea ya no se detiene en ese paso.
 
 ## Inventario de mecánicas
@@ -2508,7 +2508,8 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 
 **Por qué D va en commits propios, después del merge.** D necesita `release()` y el pin que trae `main`: no puede ir antes. Y si fuera dentro del commit de merge, 14 resoluciones quedarían enterradas bajo una función nueva y D no se podría revertir sola. El costo: el commit de merge queda con un rojo conocido (el pin sin D) y no pasa `pnpm check` por sí solo. La sesión principal autorizó ese commit el 2026-10-12, con el rojo limitado a una sola prueba conocida (paso 4) y D en commits propios después. La alternativa es un commit de merge más grande que ya incluya D, verde pero sin ese historial.
 
-- [ ] **0. Preparar, sin cambiar nada.**
+- [x] **0. Preparar, sin cambiar nada.**
+  - **Hecho el 2026-10-12.** `feat/chapter-2` estaba en `a4f6e1f` y el `merge-tree` dio los mismos 14 conflictos. El worktree `/Users/angelozdev/me/aws-commit-academy-28bis` (rama `merge/28bis`) y `pnpm install --frozen-lockfile` tardaron 1.3 s. El puerto de Playwright del worktree es el 4190.
   - `git status` solo muestra `concepts/ami.md` (no se toca, no se agrega, no se commitea). Repetir el `merge-tree`: si la lista de conflictos cambió, se relee la tabla de abajo.
   - **Worktree temporal** (autorizado por la sesión principal el 2026-10-12): `git worktree add -b merge/28bis /Users/angelozdev/me/aws-commit-academy-28bis feat/chapter-2` y `pnpm install --frozen-lockfile` allí (el tiempo no se midió). Todo el trabajo de la tarea se hace allí.
     - **Para qué sirve.** Solo para no romper la página del 5180, que sirve el árbol principal y recarga sola (14 archivos con marcas de conflicto la romperían; las mutaciones rompen código a propósito), y para no arriesgar `concepts/ami.md` con un merge a medias.
@@ -2517,16 +2518,20 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
     - El puerto de Playwright sale de la ruta del worktree; si choca con el del árbol principal, `--strictPort` avisa y se cambia el nombre de la carpeta.
   - **Esta sección ya está commiteada en el plan.** Desde ese commit no se hacen más commits en `feat/chapter-2` hasta que la tarea aterrice. Si la rama se mueve igual, esos commits se traen a `merge/28bis` con un merge normal antes del paso 12: el avance rápido ya no valdría y las reglas prohíben reescribir la historia.
 - [x] **1. La base de la regla C (hecha el 2026-10-12).** `pnpm check` completo sobre `11587fc` pasó en verde: Vitest 2938 tests en 98 archivos, Playwright 126, jscpd 0 y `golden-traces.json` sin cambios (log: `baseline-11587fc-check.log`, en el scratchpad). Desde entonces solo hubo commits de documentos. **La base B0 de la regla C es `11587fc`** y reemplaza a `dcfc04c`. Cada rojo de los pasos siguientes se compara con B0.
-- [ ] **2. Merge sin commit.** `git merge --no-ff --no-commit main`.
+- [x] **2. Merge sin commit.** `git merge --no-ff --no-commit main`.
+  - **Hecho el 2026-10-12.** Los 14 conflictos de la tabla, más lo que git no marcaba: `piece-card.test.tsx` (`trigger`), `opensCard` sin `piece.settings`, `LOST_TO_OTHER_OFFICE` (llegó solo) y `catalog-cells.tsx` (se unió solo y pasa `typecheck`). Sin marcas de conflicto; `onInspect|OnInspect|inspect-handlers|inspectHandlers|SETTINGS_BUTTON|settings\?\.id|term-tip` solo lista `floating-box/term-tip`, su clase CSS y su importación.
   - Git rechaza `git commit -- <rutas>` a mitad de un merge. **Esta es la excepción a la regla de las rutas explícitas:** se agrega cada archivo con `git add <ruta>`, se comprueba que `git diff --cached --name-only` no lista `concepts/ami.md` ni nada de `labs/`, y se hace `git commit` sin rutas. Para salir de un merge malo: `git merge --abort` (`reset` sigue prohibido).
   - Resolver los 14 conflictos (tabla de abajo) y los arreglos que git no marca, de una pasada.
   - Comprobar: `git grep -nE "<<<<<<<|>>>>>>>" -- .` vacío; `git grep -nE "onInspect|OnInspect|inspect-handlers|inspectHandlers|SETTINGS_BUTTON|settings\?\.id|term-tip" -- src tests` solo lista `floating-box/term-tip` y nada más; `pnpm typecheck`.
-- [ ] **3. Reescribir con `page.clock` las e2e de `main`.** Va dentro del merge: el lint prohíbe `waitForTimeout`, y las de `main` lo usan.
+- [x] **3. Reescribir con `page.clock` las e2e de `main`.** Va dentro del merge: el lint prohíbe `waitForTimeout`, y las de `main` lo usan.
   - Las pruebas conservan su nombre. Instalar el reloj antes de cargar la página; esperar a que la escena quede quieta (`standStill`) y congelar el tiempo (`freezeTime`) antes del clic.
   - El viaje del ratón (30 pasos de 30 ms, unos 900 ms) mueve el reloj con `page.clock.runFor(30)` tras cada paso, para que los 900 ms sean de la página y no del equipo. La gracia (400 ms) se pasa con `passTheGrace`, que ya existe en el archivo.
   - Son seis: `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view` (01-05: `main` la cambió para fijar con un clic y esperar con `waitForTimeout`; la rama ya usa el reloj; queda con el clic y con `passTheGrace`), `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` (1440×900, 1280×800 y 1000×700), `with the keyboard, Enter pins the box and PageDown scrolls it; Escape gives the focus back`, `with touch, a tap pins the box and a tap outside releases it`, `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box` y `a term definition can be reached with the mouse, and Escape closes it`.
   - `merge/build_spec.py` muestra cómo se reescribió cada una en el merge viejo (`holdTheClock`, `travel` con `runFor`, `passTheGrace`). Se usa de guía, no se corre.
-- [ ] **4. Cerrar el merge.**
+  - **Hecho el 2026-10-12.** Las seis, con sus nombres y sin `waitForTimeout`. Qué reloj usa cada una está en el cuerpo de `5110bad`. Cuatro adaptaciones a la rama en «Lo que el plan no previó».
+- [x] **4. Cerrar el merge.**
+  - **Hecho el 2026-10-12: `5110bad`** (`Merge branch 'main' into feat/chapter-2`). `pnpm check:fast` verde: Vitest 2970 tests en 100 archivos (B0: 2938 en 98), jscpd 0. Playwright 133 tests: 131 pasan y 2 fallan (B0: 126). `golden-traces.json` sin cambios; `entities.spec.ts` pasa sin regrabar. Las seis pruebas reescritas y la del 01-05: 80 de 80 en 10 repeticiones.
+  - **Los dos rojos del commit, aceptados por la sesión principal el 2026-10-12** (el mismo mecanismo: una caja fijada que tapa «Listo» de una tarjeta abierta; los dos pasan en B0, líneas 169 y 233 de `baseline-11587fc-check.log`; los arregla D). Cada uno con una sola entrada: `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window` (`1280×360, the firewall with its tabs: its foot is out of reach`) y `the last element of every card can be reached by scrolling on a low screen` (`1280×720, the firewall with its tabs`: la caja, de 352×254 en 532,450, tapa «Listo» en 473,441). La segunda no la preveía el plan.
   - `pnpm check:fast` verde.
   - `pnpm e2e` completo. Cada rojo se compara con B0 (`11587fc`).
   - **Rojo conocido y autorizado en este commit: una sola prueba.** `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window`, a 1280×360, porque una caja fijada tapa «Listo» o un botón de una tarjeta abierta, y eso pasa en B0. El caso seguro es «the firewall with its tabs: its foot is out of reach» (falló en las 5 corridas del merge viejo). Esa prueba recorre muchas escenas y ventanas: puede fallar en más de una (las escenas del capítulo 2 no estaban en el merge viejo), siempre por ese motivo.
@@ -2534,14 +2539,21 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
   - `entities.spec.ts` pasa **sin regrabar** las capturas. Si una cambia, se para y se informa.
   - `git diff --exit-code src/levels/04-iaas/golden-traces.json`.
   - Commit de merge (mensaje en «Commits»), con el rojo conocido en el cuerpo, para que quien haga `bisect` lo reconozca.
-- [ ] **5. Mutaciones del pin, sobre el commit de merge.** En el worktree, una por una: aplicar, correr la prueba nombrada, ver que falla, `git checkout -- <archivo>` y comprobar que `git status` queda limpio. Se definen contra `src/ui/floating-box/use-floating-box.ts` de `main`:
+- [x] **5. Mutaciones del pin, sobre el commit de merge.** En el worktree, una por una: aplicar, correr la prueba nombrada, ver que falla, `git checkout -- <archivo>` y comprobar que `git status` queda limpio. Se definen contra `src/ui/floating-box/use-floating-box.ts` de `main`:
   - **M1:** `pin` no deja `pinned: true`. Debe fallar `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` al clic, y el Vitest `clicking a stamp pins its box with «Fijada» and «Cerrar», and hovering another piece leaves it`.
   - **M2:** `preview` ya no ignora a un disparador nuevo cuando la caja está fijada (se quita su guardia de `pinned`). Debe fallar la prueba del viaje, después del recorrido.
   - **M3:** el temporizador de la gracia ya no respeta `pinned` (se quita la condición). Debe fallar la prueba del viaje: el recorrido dura más que la gracia.
   - Si una mutación no hace fallar su prueba, la reescritura con el reloj perdió lo que probaba: se arregla la prueba, no la mutación. El resultado va en `tests/e2e/CLAUDE.md`, con fecha.
+  - **Hecho el 2026-10-12**, en el árbol que quedó en `5110bad` (corridas antes de commitearlo, con el índice idéntico al commit), una por una, con `git checkout -- src/ui/floating-box/use-floating-box.ts` después y `git status` limpio. La línea que muta cada una: M1, la 62 (`commit({ key, pinned: true, … })` de `pin`); M2, la 54 (`if (latest.current.pinned) return;` de `preview`); M3, la 50 (`&& !latest.current.pinned` del temporizador). Las tres fallan donde se esperaba. Resultados en `tests/e2e/CLAUDE.md`.
+
+    | Mutación | Resultado esperado | Resultado real |
+    |---|---|---|
+    | M1: `pin` no deja `pinned: true` | falla al clic | las 3 pruebas del viaje fallan en el clic (`toContainText(PINNED)`, línea 633 de `card-layout.spec.ts`); Vitest (`incident-screen.test.tsx` y `src/ui/floating-box`): 18 fallos en 3 archivos, entre ellos `clicking a stamp pins its box with «Fijada» and «Cerrar», and hovering another piece leaves it` |
+    | M2: `preview` no ignora a un disparador nuevo con la caja fijada | falla tras el viaje | las 3 fallan después del recorrido (línea 647); no se corrió Vitest |
+    | M3: el temporizador de la gracia no respeta `pinned` | falla tras el viaje | las 3 fallan después del recorrido (línea 647); Vitest (los mismos archivos): 3 fallos en 3 archivos |
 - [ ] **6. El oráculo, en rojo.** Antes de escribir D, agregar a `card-layout.spec.ts` la prueba del oráculo y las de D que no dependen del motivo (lista en «Tests»). Deben fallar; se anota cuántas escenas × ventanas fallan. Es la medida que dice cuántas quedan sin sitio.
 - [ ] **7. D, con TDD.** (a) `inspectionPlace` y su prueba. (b) El gancho y la pantalla. (c) El CSS. (d) El resto de las pruebas. Los detalles están en «El diseño de D».
-- [ ] **8. El oráculo, en verde.** `card-layout.spec.ts --repeat-each=10` pasa entera. Las pruebas de `main` que cambian a propósito se ajustan ahora (lista en «Tests»).
+- [ ] **8. El oráculo, en verde.** `card-layout.spec.ts --repeat-each=10` pasa entera, y con ella `the last element of every card can be reached by scrolling on a low screen` a 1280×720 (el segundo rojo del commit de merge). Las pruebas de `main` que cambian a propósito se ajustan ahora (lista en «Tests»).
 - [ ] **9. Mutaciones de D.** Igual que el paso 5, ahora con el código de D:
   - **D1:** `inspectionPlace` siempre devuelve `right`. Fallan el oráculo y `with a card open and room beside it, the box of another piece takes the side the card leaves free`.
   - **D2:** la pantalla no suelta la caja fijada cuando no hay lugar. Falla `with a card open and no room beside it, a hover shows no box and a pinned box is released`.
@@ -2550,6 +2562,15 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - [ ] **11. Las capturas del residuo (decidida 52, O-5).** Después de D, con el árbol fusionado: capturas reales de los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01, y la medida de «El residuo del 04-01 a 1280×500». Se guardan en el scratchpad y no se commitean. **La medida decide entre B y A** (decidida 52): si la sala a la izquierda llega a 120 px o más, vale B y el orquestador agenda la tarea que le sigue; si no, vale A y el residuo queda anotado en el backlog. **La tarea no cambia el lugar de la caja por ello.**
   - El lugar derecho es el de siempre. Para ver el izquierdo sin tarjeta, en una captura de prueba fuera del repo se fuerza `data-place='left'` en el contenedor de la caja, o se usa una ventana que lo elija.
 - [ ] **12. Cierre y traer la rama.** `pnpm check` completo en el worktree; luego, en el árbol principal, comprobar que `feat/chapter-2` no se movió (ver el paso 0) y hacer `git merge --ff-only merge/28bis`; `git worktree remove` y `git branch -d merge/28bis`.
+
+**Lo que el plan no previó (2026-10-12, al ejecutar los pasos 2 a 5).**
+- **Un segundo rojo**, del mismo tipo que el aceptado (ver el paso 4): `the last element of every card can be reached by scrolling on a low screen` a 1280×720. El paso 8 lo pone en verde con D.
+- **La caja del ping perdido queda capada a 141 px** a 1280×800 y 1000×700 cuando ya se conocen los términos del capítulo 2 (el tope de `118d9b0`, con el mínimo de 120 px). Su último campo mide 96 px y el cuerpo, 92. Por eso `isInside` de `tests/e2e/card-boxes.ts` acepta un elemento más alto que su scroller cuando su final se ve; `reachWithWheel` sigue igual.
+- **A 1440×900 el camino recto del viaje no cruza ninguna etiqueta de este mapa** (el sello cayó junto a `router-oficina`): `crosses` nombra `router-oficina`, la etiqueta por la que pasa la ruta, y no `impresora`. Lo que el plan dice de «cruza `impresora` a 1440×900» ya no vale en esta rama.
+- **El viaje reanuda el reloj antes de la rueda**, porque `reachWithWheel` espera dos cuadros de la página y una página pausada no los dibuja (la prueba se colgaba hasta el límite de tiempo).
+- **La prueba del teclado instala el reloj justo antes de Escape**, no antes de cargar: con el reloj instalado desde el inicio, el scroll suave de PageDown no arrancó en 8 de 16 corridas con la máquina cargada (0 de 16 sin reloj, 16 de 16 con la instalación tardía; 2026-10-12). El único temporizador que necesita es la gracia que empieza Escape.
+- **`LUCIA` de `main` (el título de la tarjeta de Lucía) pasa a `LUCIA_CARD`** en `card-layout.spec.ts`, porque la rama ya tiene `LUCIA` (`laptop-lucia`).
+- **`a pinned box whose piece is gone is released`** (`incident-screen.test.tsx`) llega a los ajustes por la pestaña «Ajustes de red», con el teclado (`ArrowRight` desde la pestaña «Terminal»): ya no hay segunda entrada en la etiqueta (V15 = B). Y `piece-card.test.tsx` pasa `trigger` a `PieceLabel`.
 
 **Cómo se resuelve cada conflicto.** Regla general: lo que la rama cambió se queda como está y se le suma lo que `main` agregó.
 
@@ -2798,7 +2819,7 @@ Commit 4, documentos:
 - `inspect(session, pieceId)` encuentra la consulta por su id. Su caja es la de un datagrama UDP al 53: definición del paquete, campo «DNS» como el de un `dig` (los registros, si salió de la caché, el TTL), encabezado con puertos, traducción con su fila, «Consulta y respuesta», resultado y causa.
 - El campo «DNS» del paquete que preguntó conserva sus dos frases (el encabezado «Antes de mandar el paquete, … averigua la IP de …» y la frase del motivo). Todas siguen siendo ciertas. Suma una tercera línea que dice de qué puerto salió la consulta y que se ve en el mapa; y, si el paquete tiene puerto propio, por qué no es el primero. Cada parte espera a su término (`port`, `source-port`). Si la consulta falló, la causa sigue en la línea donde el paquete se detuvo.
 - La tabla de traducciones lista las filas de las consultas junto con las de los paquetes, en orden de tiempo: primero la de la consulta, después la del paquete que la pidió. La fila «en uso» es la que tocó el último envío al final: la del paquete si la tiene, si no la de su consulta.
-- Una fila hecha por un datagrama al puerto 53 (de una consulta o de un `dig`) lleva la marca «consulta DNS» en la columna del protocolo cuando `dns-query` ya se conoce, igual que una fila fija lleva «fija». Es una palabra y no solo un color. **Esta marca espera O-6** (abierta; recomendación A): sin la respuesta del estudiante no se hace.
+- Una fila hecha por un datagrama al puerto 53 (de una consulta o de un `dig`) lleva la marca «consulta DNS» en la columna del protocolo cuando `dns-query` ya se conoce, igual que una fila fija lleva «fija». Es una palabra y no solo un color. O-6 = A (decidida el 2026-10-12): la marca se hace.
 
 *Escena.*
 - `MapSent.after`, opcional: el id del paquete que este espera. El paquete que preguntó sale cuando la respuesta de la consulta vuelve a su emisor (`travelSeconds` de la consulta, sin su fin). `useSendOnce(send)` gana una espera en segundos desde que el número del envío se ve por primera vez. Sin animaciones (el dibujo quieto) se dibujan las dos trayectorias y las dos etiquetas a la vez, sin espera.
@@ -2835,7 +2856,7 @@ Commit 2, vista y textos:
 - [ ] `dnsField` elige el constructor de `dig` por `dns.viaDig`, así que la caja de la consulta lo usa sin una bandera aparte. Se actualiza su comentario («That question is not drawn and leaves no row…» deja de ser cierto).
 - [ ] La tercera línea del campo «DNS» (textos de abajo).
 - [ ] La tabla: filas de las consultas, orden y fila «en uso».
-- [ ] La marca de la fila (textos de abajo). **Espera la respuesta a O-6.** Si O-6 sigue abierta cuando llega este paso, se hace todo lo demás del commit 2 y la marca se agrega en un commit propio cuando el estudiante conteste.
+- [ ] La marca de la fila (textos de abajo). O-6 = A (decidida el 2026-10-12): ya no espera nada.
 
 Commit 3, escena:
 - [ ] Pruebas primero.
@@ -3359,9 +3380,9 @@ El cuerpo del commit 3 lista las pruebas existentes que cambió, el caso de capt
 
 ### Tarea 32: Bloque 5 · 13
 
-**Presenta:** NXDOMAIN, SERVFAIL, Port Unreachable, archivo hosts (ficha 02-13). Si la prueba humana del capítulo entero lo siente pesado, se parte en «tres fallas» y «la trampa de hosts». **Depende de:** la Tarea 28 quater (O-2 = A) y la respuesta a O-7.
+**Presenta:** NXDOMAIN, SERVFAIL, Port Unreachable, archivo hosts (ficha 02-13). Si la prueba humana del capítulo entero lo siente pesado, se parte en «tres fallas» y «la trampa de hosts». **Depende de:** la Tarea 28 quater (O-2 = A).
 
-**O-2 = A.** Nada de lo que se manda en este incidente cambia de número: todo lo que va por DNS es un `dig`, que ya es la consulta. El contraste se ve así: `dig tienda.lucia.example` dibuja un datagrama al resolver y su respuesta NXDOMAIN, y `ping tienda.lucia.example` no dibuja ninguna consulta, porque contestó el archivo hosts. La opción A de O-2 decía que el contraste sería con «un `ping` por DNS»; no vale para este incidente, cuya ficha no tiene un `ping` por DNS. Sumarlo es la decisión O-7, abierta: bloquea solo la ficha de esta tarea, y esta nota vale con la recomendación (A).
+**O-2 = A.** Nada de lo que se manda en este incidente cambia de número: todo lo que va por DNS es un `dig`, que ya es la consulta. El contraste se ve así: `dig tienda.lucia.example` dibuja un datagrama al resolver y su respuesta NXDOMAIN, y `ping tienda.lucia.example` no dibuja ninguna consulta, porque contestó el archivo hosts. La opción A de O-2 decía que el contraste sería con «un `ping` por DNS»; no vale para este incidente, cuya ficha no tiene un `ping` por DNS. Sumarlo era la decisión O-7, que el estudiante decidió el 2026-10-12 en A: no se suma. Porqué: el contraste ya se ve, porque `dig tienda` dibuja una consulta y `ping tienda` no; además el 02-13 ya es denso.
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/names/13-it-does-not-resolve.ts`.
