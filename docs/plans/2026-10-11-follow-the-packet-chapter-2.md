@@ -12,7 +12,7 @@
 **Architecture:**
 1. **Decisiones, estructura y términos (Tareas 0 a 3, con la 2 bis).** Los prototipos y las decisiones visuales (Tarea 0). Cuatro carpetas están en el tope de 12 archivos (`src/ui/`, `src/game/view/cards/`, `src/engine/simulation/` y `tests/e2e/`): una mudanza sin cambio de comportamiento les da espacio (Tarea 1). Los 50 términos nuevos se registran antes de que nada los etiquete (Tareas 2 y 2 bis). El mundo del capítulo 2 parte del final del 01-14 (Tarea 3).
 2. **Motor (Tareas 4 a 13).** Un solo motor. Los campos nuevos de la traza son opcionales y ninguna etapa nueva escribe un paso en un mundo del capítulo 1 o del 4: las trazas de la VPC no cambian ni en un campo, y las del capítulo 1 solo ganan campos aparte, nunca pasos.
-3. **Contrato, sesión, vista y sistema de diseño (Tareas 14 a 20, con la 18 bis).** Se amplía el contrato `send`; la sesión lleva el reloj y la secuencia; la vista aprende los puertos, las rutas, la traducción y el DNS; llegan la tarjeta «Salida» (con la salida de `dig` plegable), un solo estándar para los avisos y los errores, las tarjetas de tablas, la tarjeta con pestañas de cada pieza, el reloj del juego y los casos con reparación.
+3. **Contrato, sesión, vista y sistema de diseño (Tareas 14 a 20, con la 18 bis y la 19 bis).** Se amplía el contrato `send`; la sesión lleva el reloj y la secuencia; la vista aprende los puertos, las rutas, la traducción y el DNS; llegan la tarjeta «Salida» (con la salida de `dig` plegable), un solo estándar para los avisos y los errores, las tarjetas de tablas, la tarjeta con pestañas de cada pieza, el reloj del juego y los casos con reparación. La 19 bis no cambia el juego: cambia cómo se prueba (e2e deterministas, un puerto por worktree) y cómo se chequea cada tarea (`pnpm check:fast`).
 4. **Escena (Tarea 21).** Servidores de nombres, el cliente de internet, el puerto en el paquete y la traducción a la vista. El estudiante eligió una forma propia para TCP y otra para UDP (D-9 B).
 5. **La cadena y el contenido (Tareas 22 a 33).** La Tarea 22 prepara el desbloqueo y los ayudantes; las 23 a 33 traen los catorce incidentes por bloques, cada bloque con la revisión de sus textos por un revisor `sonnet`; la prueba humana es una sola, al final de la Tarea 33.
 6. **Cierre (Tareas 34 y 35).** Playwright del capítulo entero y los documentos.
@@ -30,7 +30,7 @@
 ## Formato de este plan
 
 - **Sin bloques de código y sin ensayo.** Hay identificadores en línea, tablas y prosa. Los contratos nuevos se describen con nombre, tipo y significado; la forma exacta de cada función la decide quien implementa.
-- **Sin totales de tests por tarea.** Nadie ensayó el plan, así que no hay números esperados. El criterio de cierre de cada tarea es `pnpm check` verde y que existan los tests nombrados. Los totales reales se miden al cerrar el plan y se anotan en la Tarea 35.
+- **Sin totales de tests por tarea.** Nadie ensayó el plan, así que no hay números esperados. El criterio de cierre de cada tarea es el chequeo de «Listo» (Global Constraints) en verde y que existan los tests nombrados. Los totales reales se miden al cerrar el plan y se anotan en la Tarea 35.
 - **Los nombres de tests están en inglés y son exactos.** Cada uno dice qué asierta. Quien implementa puede agregar más; no puede cambiar ni quitar estos.
 - **Las fichas de los 14 son ideas, no texto final.** La redacción en español (con tildes y ñ) se escribe al ejecutar cada bloque, en lenguaje llano y con una idea por mensaje, y sin nombrar un término que el jugador aún no conoce.
 - **Las definiciones de los 53 términos están en el spec** y son propuestas: la prueba `ladder.test.ts` decide.
@@ -47,7 +47,7 @@
   - `dry` con `jscpd` en umbral 0 (`minLines` 5, `minTokens` 50): los incidentes de un bloque comparten constructores en su `shared.ts`. `pnpm dup` corre en cada tarea.
   - Un estándar por elemento (`DESIGN.md`): toda interfaz nueva reutiliza `Button`, `Choice`, `ChipTray`, `Card`, `NameTag`, `Tabs` y la leyenda. Una apariencia nueva es una variante de su primitiva; una primitiva nueva se justifica por escrito: `Table` en D-3 y la de avisos y errores en la Tarea 18 bis.
 - **Rigor siempre.** «Mantengamos la rigurosidad SIEMPRE» (estudiante, 2026-10-10). Ninguna opción, recomendada o no, enseña algo inexacto aunque sea más simple: ni un texto, ni una opción de pregunta, ni una ficha, ni una decisión de diseño. Una opción inexacta se marca como tal. Lo que no se pudo verificar se dice o no se afirma (spec, «Sin verificar»).
-- **Dependencias.** Ninguna nueva. `package.json` y `pnpm-lock.yaml` no cambian en ninguna tarea.
+- **Dependencias.** Ninguna nueva. `pnpm-lock.yaml` no cambia en ninguna tarea, y `package.json` tampoco, salvo la Tarea 19 bis, que toca solo su campo `scripts`.
 - **Los capítulos 1 y 4 no cambian lo que calculan ni lo que muestran, salvo lo que este plan lista.**
   - `src/levels/04-iaas/golden-traces.json` no se edita nunca: prohibidos `vitest -u`, `--update` y editarlo a mano. Cada tarea de motor lo comprueba con `git diff --exit-code src/levels/04-iaas/golden-traces.json`. Si una tarea lo rompe, la tarea se detiene y se le pregunta al estudiante (D-1); no se regenera por cuenta propia.
   - Las pruebas del capítulo 1 y del 4 corren sin editarse en cada tarea. Las únicas que cambian a propósito: la del texto de `host-udp-no-service` (`reasons.test.ts`, Tarea 7), las que leen `listeningTcpPorts` (cambio mecánico, Tarea 6), las que citan el campo «Conexión» (D-8 = A, Tarea 16) y la aserción del caso `host-refused` de `reasons.test.ts` (Tarea 16). Cada una se lista en su tarea. Por decisiones del estudiante del 2026-10-11 cambian además, a propósito:
@@ -60,11 +60,16 @@
   - **Ninguna etapa nueva escribe un paso en una traza del capítulo 1 ni del 4.** Los datos nuevos de esas trazas van en campos aparte. Hay pruebas de steps con `toEqual` en `simulate.test.ts`; un paso nuevo las rompería. Si una prueba existente falla por un campo nuevo de la traza, la tarea se detiene y se le pregunta al estudiante: no se edita la prueba por cuenta propia.
 - **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 17 (suma el especimen de `Table` a la de la interfaz), la 18 (suma el de la tarjeta «Salida», plegada, a la de la interfaz), la 18 bis (regraba la de la interfaz, con el aspecto «Pestaña» de V18: los especímenes de avisos y errores pasan a la primitiva y se suma uno por variante) y la 21 (suma a la de piezas los cuatro especímenes de paquete de TCP y UDP, V12 = B, el del contorno del bloque del 02-04, D-6, y los del intruso con el borde nuevo, V19 = B, que se ven en los capítulos 1, 2 y 4). Si en la Tarea 21 esos especímenes no caben en celdas libres del catálogo y este gana una fila, la sección de la interfaz baja y la 21 regraba también la de la interfaz, comprobando que el diff sea solo ese desplazamiento (`DESIGN.md`, «Adding a variant instead of a new element», paso 3). Ninguna otra tarea las toca.
 - **Fuentes y fechas.** Toda cifra, límite o texto de una herramienta que el juego muestre lleva su fuente y su fecha en el test que lo fija o en la guía de la carpeta. Lo del spec se consultó el 2026-10-10 y el 2026-10-11.
-- **"Listo"** = `pnpm check` pasa entero (tipos, lint, estructura, jscpd, Vitest y Playwright). Cada tarea cierra con eso; lo que su sección llama «Cierre» es lo que se suma. Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
+- **"Listo"** (regla del 2026-10-11, Tarea 19 bis; vale desde la Tarea 19, y las Tareas 0 a 18 bis se cerraron con el `pnpm check` completo de antes). `pnpm check:fast` corre tipos, lint, estructura, jscpd y Vitest, sin Playwright; `pnpm check` es `pnpm check:fast` y después toda la suite de Playwright.
+  - **En cada tarea:** `pnpm check:fast`, más las specs e2e que nombra la tarea o que cubren lo que tocó (`pnpm e2e <archivo>`; la guía de `tests/e2e/` explica cómo). Lo que su sección llama «Cierre» es lo que se suma.
+  - **Al cerrar un bloque de contenido (Tareas 24, 26, 27, 28, 32 y 33), en las Tareas 34 y 35 y antes de cada merge:** `pnpm check` completo.
+  - **Una e2e que falla también en HEAD sin los cambios de la tarea** no es de la tarea: se anota en el backlog (`../../docs/plans/2026-10-08-follow-the-packet-followups.md`) y se avisa, sin perseguirla dentro de la tarea.
+  - **Nunca dos suites e2e a la vez en la misma carpeta.** Dos worktrees sí pueden: cada uno usa su puerto (Tarea 19 bis).
+  - Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
 - **Commits.** Uno por tarea, cuando el estudiante lo aprueba (regla del repo), con `git add` de las rutas que la tarea lista, nunca `git add .`. El mensaje termina con una línea en blanco y `Claude-Session: https://claude.ai/code/session_01Ce4XnAt6WDkNZzoR4QRWgh` (segundo `-m`). **Nunca se agrega nada de `labs/`.** Sin `git push`.
-- **Servidores y procesos.** No se arranca nada en los puertos 5173 y 5180 (los del estudiante): son intocables. Playwright levanta el suyo en el 4183 con su configuración. Si una tarea deja un proceso, se mata solo ese PID; **prohibido matar procesos por patrón** (`pkill`, `killall`). Para la prueba humana el estudiante usa su propio servidor.
-- **Ejecución.** La sesión principal orquesta y cada tarea la hace un subagente con `model` explícito: `sonnet` para explorar, implementar, revisar e investigar en la web, y `haiku` solo para correr un comando y contar su salida; nunca `opus`. Cada subagente recibe solo lo que necesita (el plan, las rutas y la tarea), no la historia. La ejecución ligera es la de siempre: un implementador por tarea, gobernado por los comandos de verificación de la propia tarea, y, para los textos, un revisor `sonnet` por bloque que los lee antes de pasar al siguiente (D-15 = B, 2026-10-11: no hay prueba humana entre bloques): lenguaje llano, escalera de términos, rigor y la causa de cada cambio de comportamiento. Al cerrar un bloque se sugiere `/clear`.
-- **Antes de empezar cualquier tarea de contenido** se confirma que la anterior dejó `pnpm check` verde y que el revisor de los textos del bloque anterior terminó y sus correcciones se aplicaron. La prueba humana no se espera entre bloques: es una sola, al final de la Tarea 33.
+- **Servidores y procesos.** No se arranca nada en los puertos 5173 y 5180 (los del estudiante): son intocables. Playwright levanta el suyo con su configuración: hasta la Tarea 19 bis en el 4183 y, desde ella, en un puerto de 4183 a 4282 derivado de la ruta del repo (nunca el 5173 ni el 5180; sigue `--strictPort`), para que dos worktrees corran e2e a la vez. Si una tarea deja un proceso, se mata solo ese PID; **prohibido matar procesos por patrón** (`pkill`, `killall`). Para la prueba humana el estudiante usa su propio servidor.
+- **Ejecución.** La sesión principal orquesta y cada tarea la hace un subagente con `model` explícito: `sonnet` para explorar, implementar, revisar e investigar en la web, y `haiku` solo para correr un comando y contar su salida; nunca `opus`. Cada subagente recibe solo lo que necesita (el plan, las rutas y la tarea), no la historia. La ejecución ligera es la de siempre: un implementador por tarea, gobernado por los comandos de verificación de la propia tarea (el chequeo de «Listo», regla del 2026-10-11: `pnpm check:fast` y las specs de la tarea; el `pnpm check` completo solo donde ahí se pide), y, para los textos, un revisor `sonnet` por bloque que los lee antes de pasar al siguiente (D-15 = B, 2026-10-11: no hay prueba humana entre bloques): lenguaje llano, escalera de términos, rigor y la causa de cada cambio de comportamiento. Al cerrar un bloque se sugiere `/clear`. Un subagente no corre e2e mientras otro corre las suyas en la misma carpeta.
+- **Antes de empezar cualquier tarea de contenido** se confirma que la anterior dejó en verde su chequeo de «Listo» (`pnpm check:fast` y sus specs, o el `pnpm check` completo si cerró un bloque) y que el revisor de los textos del bloque anterior terminó y sus correcciones se aplicaron. La prueba humana no se espera entre bloques: es una sola, al final de la Tarea 33.
 - Ningún comando `aws`.
 
 ## Decisiones del estudiante (ya tomadas)
@@ -86,6 +91,7 @@ El estudiante aprobó los catorce subcapítulos, sus términos y el reparto en b
 | **IPs de RFC 5737 y nombres reservados por RFC 2606:** todos los nombres del juego van bajo `.example` (D-13 = B, 2026-10-11; antes, `example.com`). | Spec, «El mapa que crece» (D-13); Review Focus 19 |
 | **El 53 se lista con DNS.** (Reformulada el 2026-10-11 a pedido del estudiante, con D-18.) | `default-port` («puerto por defecto») lista 22, 80, 443, 3306 y 5432, y `well-known-ports` pasó a ser el rango de IANA de 0 a 1023, que no incluye el 3306 ni el 5432; ninguna de las dos lista el 53; `dns` dice «Usa el puerto 53» |
 | **Una sola prueba humana, al final del capítulo** (D-15 = B, 2026-10-11, como en el capítulo 1). | La hace el estudiante con su servidor al terminar la Tarea 33 (sección al final de esa tarea); entre bloques, un revisor `sonnet` lee los textos (Global Constraints, «Ejecución»; «Contenido») |
+| **Mismo rigor, con menos espera** (2026-10-11): pruebas e2e deterministas y un chequeo rápido por tarea. | Tarea 19 bis: un puerto por worktree, `pnpm check:fast`, ninguna espera fija ni `retries`; la regla de «Listo» en «Global Constraints» y en el Cierre de las Tareas 20 a 35 |
 
 ### Decisiones abiertas ya contestadas (2026-10-11)
 
@@ -650,6 +656,7 @@ Cada riesgo, con la prueba que lo guarda.
 22. **Una pieza, un botón, una tarjeta con pestañas.** Tests: `a label draws one button however many cards its piece has` (el 01-07 incluido), `a piece with one card opens it with no tabs` y `switching tabs keeps what was picked in the terminal and the lines unfolded in its output` (Tarea 19).
 23. **Una regla para todo paquete (V19).** La forma dice el protocolo y un borde rojo de intruso dice el papel. Tests: `every protocol has an intruder version with the intruder border`, `no packet is drawn as a rhombus` y `the packet of an intruder has the shape of its protocol and the intruder border` (Tarea 21).
 24. **El 04 sin que viaje nada se dibuja y se contesta (D-6).** Tests: los de la tarjeta de clasificar y del contorno, repartidos en las Tareas 14, 15, 19, 21 y 26 (lista en la Tarea 26, «Lo que el 04 pide al código»).
+25. **Pruebas deterministas y chequeo rápido (Tarea 19 bis).** Una prueba de layout o de tiempos da el mismo resultado en cada corrida, y el chequeo de cada tarea es corto sin perder rigor. Tests: `no e2e test waits a fixed time`, `a box is measured only once the scene stands still`, `the port of the e2e server is derived from the path of the repo and stays in 4183-4282` y `check runs check:fast and then the e2e suite, and check:fast runs every step check had except the e2e suite`; y la aceptación con `--repeat-each`. Sin `retries`, sin esperas fijas y sin `skip` ni `fixme` para tapar un fallo.
 
 ## Árbol al terminar (solo lo cambiado)
 
@@ -685,13 +692,14 @@ Cada riesgo, con la prueba que lo guarda.
 - `src/ui/catalog/interface-section.tsx` (los especímenes de `Table`, de «Salida» y de avisos y errores)
 - `src/ui/notice-page.tsx` y `src/styles.css` (los avisos y errores pasan a la primitiva: salen `.feedback`, `.feedback--wrong`, `.lucia__alert` y la regla `.lucia__reply p`)
 - `src/testing/`: `fixtures.ts`, `incidents.ts`
-- `tests/e2e/`: `chapter-1/` (nueva: `chapter-1.spec.ts` y `chapter-1-play.ts`, mudados), `chapter-2/` (nueva: `chapter-2.spec.ts` y `chapter-2-play.ts`), `saved-progress.ts`, `entities.spec.ts`, `card-layout.spec.ts` (si hace falta), `snapshots/` (dos capturas, regrabadas en las Tareas 17, 18, 18 bis y 21)
+- `tests/e2e/`: `chapter-1/` (nueva: `chapter-1.spec.ts` y `chapter-1-play.ts`, mudados), `chapter-2/` (nueva: `chapter-2.spec.ts` y `chapter-2-play.ts`), `saved-progress.ts`, `entities.spec.ts`, `card-layout.spec.ts` (si hace falta), `snapshots/` (dos capturas, regrabadas en las Tareas 17, 18, 18 bis y 21); el ayudante de la escena quieta (Tarea 19 bis)
+- `playwright.config.ts` (el puerto por worktree) · `package.json` (solo `scripts`: `check:fast`) · `eslint.config.js` (sin esperas fijas en `tests/**`) · `scripts/` (`e2e-port.ts`, `e2e-port.test.ts` y `package-scripts.test.ts`; Tarea 19 bis)
 
 ---
 
 ## Tareas
 
-Treinta y ocho tareas (0 a 35, más la 2 bis, que va entre la 2 y la 3, y la 18 bis, que va entre la 18 y la 19). Cada una: propósito, archivos, interfaces, tests con nombre, Review Focus, cierre y commit. El orden es el de ejecución. Una tarea de contenido no empieza hasta que la anterior dejó `pnpm check` verde y, al cerrar un bloque, su revisor terminó y sus correcciones se aplicaron.
+Treinta y nueve tareas (0 a 35, más la 2 bis, que va entre la 2 y la 3, la 18 bis, que va entre la 18 y la 19, y la 19 bis, que va entre la 19 y la 20). Cada una: propósito, archivos, interfaces, tests con nombre, Review Focus, cierre y commit. El orden es el de ejecución, salvo que la 19 bis se ejecuta antes de retomar la 19, que quedó en pausa. Una tarea de contenido no empieza hasta que la anterior dejó en verde su chequeo de «Listo» y, al cerrar un bloque, su revisor terminó y sus correcciones se aplicaron.
 
 ### Tarea 0: Prototipos y decisiones del estudiante (sin código del juego)
 
@@ -1460,6 +1468,108 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 
 ---
 
+### Tarea 19 bis: Pruebas e2e deterministas y chequeo rápido por tarea
+
+**Propósito:** que una prueba de layout o de tiempos dé el mismo resultado en cada corrida, y que cada tarea se cierre con un chequeo corto, sin perder rigor: el mismo rigor, con menos espera. La aprobó el estudiante el 2026-10-11. Está escrita después de la 19 porque nace de ella, pero **se ejecuta antes de retomarla**. **Depende de:** la mudanza `875c27d`, que ya está en `feat/chapter-2`; ninguna decisión pendiente la bloquea.
+
+**Por qué (medido en los registros de los agentes).**
+- Las tareas del motor tardan de 5 a 30 min.
+- Las de pantalla tardan de 30 a 150 min.
+- Casi todo ese tiempo es esperar las e2e.
+- La Tarea 19 llevaba unas 2,5 h, unas 70 corridas de e2e y unos 91 min en shell, persiguiendo un fallo que solo aparecía a veces.
+- La suite completa tarda unos 1,8 min, más `pnpm build` en cada corrida.
+- Objetivo: el mismo rigor, con menos espera.
+
+**Estado de la Tarea 19 al abrirse esta.**
+- Quedó en pausa, sin commit de tarea.
+- Su trabajo está guardado en la rama temporal `wip/task-19` (commit `8c97014`). La mudanza `875c27d` ya está en `feat/chapter-2`.
+- Esta tarea se hace sobre `875c27d`. La 19 se retoma encima, con el fallo ya reproducible y con la regla C (más abajo): se cierra con `pnpm check:fast` y las specs que ella nombra o que cubren lo que toca (`tests/e2e/chapter-1/chapter-1.spec.ts`, `tests/e2e/card-layout.spec.ts` e `tests/e2e/incidents.spec.ts`, que miran la etiqueta y las tarjetas de las piezas).
+- **El fallo:** `tests/e2e/card-layout.spec.ts`, prueba «a card beside a piece stays inside the map, with its foot in view, in a low or narrow window».
+  - A 1280×360, en la tarjeta del firewall con pestañas, la caja de inspección aparece sobre «Listo» justo después del clic.
+  - La prueba mide entre 10 y 30 ms después del clic y pasa solo si lo hace antes de que la caja tome el puntero.
+  - Con el árbol de la 19 falló 8 de unas 27 corridas completas.
+  - HEAD sin sus cambios pasó 11 de 11.
+
+**A. Pruebas deterministas.**
+- **Meta:** una prueba de layout o de tiempos da el mismo resultado en cada corrida. Si el defecto existe, falla siempre; si no existe, pasa siempre.
+- **Fuentes de tiempo que se controlan:**
+  - los temporizadores de la interfaz (por ejemplo, la gracia `LONGER_THAN_THE_GRACE_MS` de `tests/e2e/card-layout.spec.ts`, que hoy usa `waitForTimeout`);
+  - las transiciones CSS;
+  - el bucle de frames de la escena (React Three Fiber, `requestAnimationFrame`);
+  - el viaje del paquete.
+- **Candidatos (ninguno está verificado todavía).** Cada uno se verifica contra la documentación de Playwright 1.64 antes de usarlo; la fuente y la fecha quedan en `tests/e2e/CLAUDE.md`:
+  - `page.clock`;
+  - `use.reducedMotion`. `src/ui/use-still-mode.ts` ya existe: devuelve la elección del jugador y, mientras no haya una, la preferencia de movimiento reducido del sistema; y varias specs ya abren la página con `contextOptions: { reducedMotion: 'reduce' }`. Se revisa qué deja vivo (las transiciones CSS, el bucle de frames, el viaje del paquete) y si basta;
+  - un ayudante compartido que espere a que la escena esté quieta antes de medir cajas: sin animaciones vivas, y con una señal de la escena si hace falta.
+- **Cambio de producto:** si para esto cambia el comportamiento del juego para el jugador, va en `DESIGN.md` con su causa.
+- **Prohibido:**
+  - `retries`;
+  - esperas fijas: una regla de ESLint en `tests/**` prohíbe `waitForTimeout`, y la que hay (hoy una sola, en `card-layout.spec.ts`, se contó el 2026-10-11) pasa a una espera de estado o a `page.clock`;
+  - `skip` o `fixme` para tapar un fallo.
+
+**B. Velocidad.**
+- **`pnpm check:fast`:** corre typecheck, lint, structure, dup y test, sin e2e. La guía de `tests/e2e/` explica cómo correr solo algunas specs.
+- **`--only-changed` de Playwright:** solo sigue los archivos que importan los tests. Las e2e abren el juego en el navegador y casi no importan su código, así que no sirve como único filtro. Se verifica y, si es así, no se usa.
+- **`pnpm build`:** se mide cuánto tarda dentro de cada corrida e2e. Nunca se reutiliza un servidor con una compilación vieja (`reuseExistingServer` sigue en `false`), porque daría un resultado falso. Se optimiza solo lo que mantiene la compilación fresca.
+- **`workers` y `fullyParallel`:** hoy `fullyParallel` es `false` y `workers` no está fijado. Se miden cuando las pruebas ya son deterministas, y se suben solo si `--repeat-each=3` sigue en verde.
+- **Un puerto por worktree:**
+  - el config deriva el puerto de forma estable a partir de la ruta del repo, en el rango 4183–4282;
+  - nunca 5173 ni 5180, y se mantiene `--strictPort`;
+  - así `feat/chapter-2` y el árbol principal corren e2e a la vez;
+  - se actualizan las guías que dicen 4183, como `tests/e2e/CLAUDE.md`;
+  - se comprueba que las rutas de esos dos árboles dan puertos distintos; si chocaran, se avisa antes de seguir.
+
+**C. La nueva regla de chequeo.** Va en este plan (Global Constraints, punto «"Listo"», y el Cierre de las Tareas 20 a 35) y en `tests/e2e/CLAUDE.md`.
+- **En cada tarea:** `pnpm check:fast`, más las specs e2e que nombra la tarea o que cubren lo que tocó.
+- **Al cerrar un bloque y antes de cada merge:** `pnpm check` completo.
+- **Una e2e que falla también en HEAD sin los cambios de la tarea** no es de la tarea: se anota en el backlog y se avisa, sin perseguirla dentro de la tarea.
+- **Nunca dos suites e2e a la vez en la misma carpeta.**
+
+**Aceptación.**
+- `pnpm e2e --repeat-each=3` pasa entero.
+- `card-layout.spec.ts --repeat-each=10` pasa.
+- El fallo de la Tarea 19 se reproduce siempre mientras exista. Se comprueba en un worktree aparte (nunca en el árbol principal), con el árbol de `wip/task-19` y los cambios de esta tarea: `card-layout.spec.ts --repeat-each=10` falla las 10 veces en la prueba de arriba. Sobre `875c27d` más esta tarea, las 10 pasan.
+
+**Informe al cerrar.**
+- Los tiempos antes y después de `pnpm check`, `pnpm check:fast` y la suite e2e (antes de la tarea `check:fast` no existe: su tiempo de antes es el de los cinco primeros pasos de `pnpm check`).
+- Los resultados de las corridas `--repeat-each`.
+
+**Pasos.**
+- [ ] Medir antes: los tiempos de `pnpm check`, de sus cinco pasos sin e2e y de la suite e2e.
+- [ ] Reproducir el fallo en un worktree aparte con el árbol de `wip/task-19`.
+- [ ] La regla de lint y su prueba (falla mientras `card-layout.spec.ts` espere un tiempo fijo).
+- [ ] Verificar los candidatos de A contra la documentación de Playwright 1.64, con fuente y fecha.
+- [ ] El ayudante de la escena quieta y la espera de `card-layout.spec.ts`.
+- [ ] El puerto por worktree y su prueba.
+- [ ] `check:fast`, la prueba de la forma de `check` y las guías.
+- [ ] Medir `workers` y `fullyParallel`, y la aceptación.
+- [ ] Medir después y escribir el informe.
+
+**Archivos:**
+- Create: `scripts/e2e-port.ts` y `scripts/e2e-port.test.ts` (el puerto; está en `scripts/` porque Vitest solo corre `src/**` y `scripts/**`, y `playwright.config.ts` lo importa); `scripts/package-scripts.test.ts`; el ayudante de la escena quieta (por ejemplo `tests/e2e/still-scene.ts`; con él `tests/e2e/` queda en 11 de 12 archivos planos).
+- Modify: `playwright.config.ts` (el puerto, y lo que resulte de medir `workers` y `fullyParallel`), `package.json` (solo `scripts`: `check:fast` y `check`; ninguna dependencia, y `pnpm-lock.yaml` no cambia), `eslint.config.js` (el bloque de `tests/**` con la espera fija prohibida) y `scripts/eslint-config.test.ts`, `tests/e2e/card-layout.spec.ts` (el ayudante y la espera de estado en lugar de `waitForTimeout`), `tests/e2e/CLAUDE.md` (la regla C, el puerto, cómo correr solo algunas specs, el ayudante y las fuentes con fecha), `README.md` (la línea de comandos suma `pnpm check:fast`), `DESIGN.md` solo si cambia algo que el jugador ve, y este plan.
+
+**Interfaces:**
+- `scripts/e2e-port.ts` exporta una función pura que recibe la ruta de la raíz del repo y devuelve un entero de 4183 a 4282, el mismo para la misma ruta. `playwright.config.ts` la llama una vez y usa el resultado en `baseURL`, en el comando de `webServer` (con `--strictPort`) y en su `url`.
+- `check:fast` es `pnpm typecheck && pnpm lint && pnpm structure && pnpm dup && pnpm test`; `check` es `pnpm check:fast && pnpm e2e`: los mismos pasos y en el mismo orden que hoy.
+- La regla de lint cubre `tests/**/*.{ts,tsx}` y dice por qué: la espera es de estado o de `page.clock`, no de tiempo.
+
+**Tests:**
+- `e2e-port.test.ts`, `the port of the e2e server is derived from the path of the repo and stays in 4183-4282`.
+- `the same path always gives the same port`.
+- `the port is never 5173 or 5180`.
+- `eslint-config.test.ts`, `no e2e test waits a fixed time` (una espera fija en `tests/e2e/` se rechaza y una espera de estado pasa).
+- `package-scripts.test.ts`, `check runs check:fast and then the e2e suite, and check:fast runs every step check had except the e2e suite`.
+- Playwright `card-layout.spec.ts`, `a box is measured only once the scene stands still`.
+- `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window` (el de hoy, sin cambiar su nombre ni lo que asierta; pasa 10 de 10 sin el defecto).
+- Cierre: `pnpm check` completo (esta tarea cambia el chequeo mismo) y la aceptación; las guías vivas ya no dicen que Playwright usa el 4183: solo nombran el rango 4183–4282 (`git grep -n 4183 -- src tests DESIGN.md README.md`); ninguna captura cambia; `git diff --stat` solo lista los archivos de arriba.
+
+**Review Focus:** 25.
+
+**Commit:** `test(e2e): make the layout tests deterministic and add a fast check`.
+
+---
+
 ### Tarea 20: Los casos con reparación
 
 **Propósito:** que el caso 5 del 14 se cierre solo cuando la causa está nombrada y el ping al servidor vuelve (D-12).
@@ -1476,7 +1586,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `the reference solution of a case with a fix repairs the world of that case`.
 - `session.test.ts`, `the repair of a case does not carry over to the next case`.
 - `the middle star is no hint asked in any case` y `the explained star needs every cause right at the first try` (los de hoy, sobre un incidente con un caso reparable).
-- Cierre: los casos del 14 del capítulo 1 sin cambiar de contenido.
+- Cierre: `pnpm check:fast` y las specs que juegan los casos del 14 del capítulo 1 (`tests/e2e/chapter-1/chapter-1.spec.ts` y `tests/e2e/card-layout.spec.ts`) y la que juega las estrellas del capítulo 4 (`tests/e2e/incidents.spec.ts`); los casos del 14 del capítulo 1 sin cambiar de contenido.
 
 **Review Focus:** 17.
 
@@ -1522,7 +1632,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `the icon of tcp and of udp is the request shape of its protocol`.
 - `entity-icon.test.tsx`, `every entity and every variant of the catalog has an icon` (y, sin editarse, `tells every variant apart by its shape`, que obliga a que las cuatro formas se distingan entre sí y de las de ICMP).
 - Playwright `entities.spec.ts`: la captura de piezas cambia solo por los cuatro especímenes nuevos (y los de los servidores de nombres y el cliente, si ocupan celdas nuevas), por los intrusos con el borde nuevo (V19) y por el contorno del bloque (D-6).
-- Cierre: la captura de la interfaz no cambia, salvo en el caso 2 de arriba, donde cambia solo por el desplazamiento.
+- Cierre: `pnpm check:fast` y las specs que miran el mapa y las capturas (`tests/e2e/entities.spec.ts`, que regraba la de piezas, y `tests/e2e/chapter-1/chapter-1.spec.ts` e `tests/e2e/incidents.spec.ts`, por el borde del intruso en los capítulos 1 y 4); la captura de la interfaz no cambia, salvo en el caso 2 de arriba, donde cambia solo por el desplazamiento.
 
 **Review Focus:** 14, 15 y 23.
 
@@ -1546,7 +1656,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `chapter-2.test.ts`, `introduces, incident by incident, the terms of the approved design` (vacío hasta el 02-01; crece por bloque).
 - `a text of an incident names no term that a later incident of chapter 2 introduces`: repite `namedTerms` sobre los textos de cada incidente del capítulo con los términos que presentan los incidentes de después, para que un texto de 02-03 no diga `ruta` antes del 06 con palabras corrientes. Lista corta de excepciones, escrita en la prueba y con su razón: «resolver» como verbo, y «conexión» en el campo de la caja si D-8 es B.
 - Playwright (humo, sin incidentes aún): `CHAPTER_2_DONE opens 04-01 once chapter 2 exists` se activa en la Tarea 33.
-- Cierre: `pnpm check` verde; golden sin cambios.
+- Cierre: `pnpm check:fast` y las specs que importan `saved-progress.ts` (`tests/e2e/chapter-1/chapter-1.spec.ts`, `tests/e2e/incidents.spec.ts` y `tests/e2e/card-layout.spec.ts`); golden sin cambios.
 
 **Review Focus:** 3 y 16.
 
@@ -1559,6 +1669,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - **Cada incidente** es un archivo `NN-<slug>.ts` en la carpeta de su bloque, con `defineIncident`, `chapter: 2`, `role: 'defender'`, su `introduces` (los términos de su fila del spec), sus `changes` (acciones nombradas en `shared.ts`), su lista `shown` (decidida 28), `report`, `tasks`, `hints`, `question`, `explanation` (tres opciones, una correcta en la posición de la ficha), `solution` y `takeaway`. Cita `LESSON` y `CONCEPT` como el capítulo 1 (el choque con la regla de lecciones es el pendiente I1 del backlog).
 - **El texto** lo escribe quien ejecuta, en español llano, con una idea por frase, con los términos conocidos etiquetados (`{{puerto}}` y compañía) y con el nombre de cada dispositivo, router o servidor tomado del registro de `shared.ts` (`DEVICE`, `ROUTER`, `SERVER`, `NAME`), nunca como literal.
 - **Cada tarea de contenido** suma sus pruebas a `src/game/chapter-2.test.ts`, extiende `tests/e2e/chapter-2/chapter-2-play.ts` con cómo se juega ese incidente con el ratón (un humo por bloque, no un recorrido completo) y deja pasar los genéricos de `incidents.test.ts` y de la escalera de las vistas (`starts with a task to fix`, `its reference solution fixes every task and earns every star but the explanation`, `only uses terms introduced in it or before`, `names each chip after a term, by its official name`).
+- **El cierre de cada tarea de contenido** es el de «Listo»: `pnpm check:fast`, la spec de `tests/e2e/chapter-2/` que juega ese incidente (o la que la tarea nombra) y `tests/e2e/roadmap.spec.ts`. El `pnpm check` completo lo llevan solo las que cierran un bloque (24, 26, 27, 28, 32 y 33) y, después, la 34 y la 35.
 - **Antes de empezar un bloque,** el implementador relee las fichas de ese bloque, la lista de «Simplificaciones declaradas» del spec y la guía de la carpeta del motor que le toca.
 - **Al cerrar un bloque,** un revisor (`sonnet`) lee los textos de ese bloque antes de que empiece el siguiente: lenguaje llano (frases cortas, una idea por frase), escalera de términos (ningún término que el jugador aún no conoce), rigor (cifras, límites y comportamientos con su fuente, y lo no verificado, dicho) y la causa de cada cambio de comportamiento (el report, la explicación correcta o el takeaway nombran lo que cambió). Sus correcciones se aplican antes del bloque siguiente. No hay prueba humana entre bloques: es una sola, al final de la Tarea 33 (D-15 = B). Se sugiere `/clear`.
 
@@ -1583,7 +1694,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `02-01: the ping to laptop-lucia comes back and does not complete the nc tasks`.
 - `registry.test.ts`, `registers the prototype incidents in game order` (suma el `02-01`).
 - Playwright (humo): `chapter 2 opens at 02-01 once 01-14 has a star and 04-01 stays closed`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check:fast`, el humo de Playwright que nombra la tarea y las specs que abren el 04-01 con el progreso guardado o listan los capítulos (`tests/e2e/chapter-1/chapter-1.spec.ts`, `tests/e2e/incidents.spec.ts` y `tests/e2e/roadmap.spec.ts`); golden sin cambios.
 
 **Review Focus:** 3, 4, 6 y 13.
 
@@ -1608,7 +1719,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `02-02: no text gives a range of ephemeral ports as a number`.
 - `02-02: no text says why the reply is let through`.
 - `02-02: introduces client and server, tcp, connection, greeting, source port and ephemeral port, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check` completo (cierra el bloque 1); golden sin cambios.
 
 **Review Focus:** 3, 5, 8 y 18.
 
@@ -1639,7 +1750,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - `02-03: no text says that a closed port and a service on another address are the same`.
 - `02-03: the services card opens from the label of laptop-lucia`.
 - `02-03: introduces closed port, RST, Connection refused, filtered port and listen address, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 6, 7 y 18.
 
@@ -1687,7 +1798,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-05: no text calls the port 3306 or the port 5432 a well-known port`.
 - `02-05: the report names laptop-lucia`.
 - `02-05: introduces port range, SSH, default port and well-known ports, and uses no later term`.
-- Cierre: golden sin cambios; las pruebas de `filter` del capítulo 1 y del 4 sin editar.
+- Cierre: `pnpm check` completo (cierra el bloque 2); golden sin cambios; las pruebas de `filter` del capítulo 1 y del 4 sin editar.
 
 **Review Focus:** 3, 6, 18 y 24.
 
@@ -1719,7 +1830,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-07: no router that stayed silent in 01-08 warns now`.
 - `02-07: the table of router-oficina accepts one route per destination`.
 - `02-07: introduces next hop, Destination Net Unreachable and most specific route, and uses no later term`.
-- Cierre: golden sin cambios; `a private address is dropped by the first router outside the office, with no warning` sin editar.
+- Cierre: `pnpm check` completo (cierra el bloque 3); golden sin cambios; `a private address is dropped by the first router outside the office, with no warning` sin editar.
 
 **Review Focus:** 3, 6, 7 y 9.
 
@@ -1750,7 +1861,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-09: the report names router-oficina and laptop-andres`.
 - `02-09: introduces port forwarding and uses no later term`.
 - `01-08 still says the header changes outside the office and does not name NAT` (el de hoy del capítulo 1, sin editar).
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check` completo (cierra el bloque 4); golden sin cambios.
 
 **Review Focus:** 2, 5, 6, 10 y 18.
 
@@ -1777,7 +1888,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-10: draws the resolver and not the authoritative server`.
 - `02-10: every address of the chapter is in a documentation block and every name is under .example`.
 - `02-10: introduces domain name, DNS, DNS query, resolver, UDP, dig and DHCP, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 4, 11, 13 y 19.
 
@@ -1802,7 +1913,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-11: draws the authoritative server only now`.
 - `02-11: the records of the zone itself are hidden under one line`.
 - `02-11: introduces authoritative server, DNS record, A record and CNAME record, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 6, 11 y 18.
 
@@ -1825,7 +1936,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-12: the text separates the ttl of dns, in seconds, from the ttl of ip, which counts hops`.
 - `02-12: the report names servidor-autoritativo and servidor-dns`.
 - `02-12: introduces DNS cache and DNS TTL, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 6, 11, 12 y 18.
 
@@ -1850,7 +1961,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `02-13: the report names tu-laptop, laptop-andres, servidor-dns and servidor-autoritativo-noticias`.
 - `02-13: the NXDOMAIN demo uses a subdomain that does not exist and not a name under .invalid`.
 - `02-13: introduces NXDOMAIN, SERVFAIL, Port Unreachable and hosts file, and uses no later term`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check` completo (cierra el bloque 5); golden sin cambios.
 
 **Review Focus:** 3, 6, 7, 11 y 18.
 
@@ -1890,7 +2001,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `names no topic of the chapters that come later, in any text of chapter 2`.
 - `every public address of chapter 2 is in 192.0.2.0/24, 198.51.100.0/24 or 203.0.113.0/24, and every name is under .example`.
 - Playwright: `04-01 opens once 02-14 has a star`.
-- Cierre: golden sin cambios.
+- Cierre: `pnpm check` completo (cierra el bloque 6); golden sin cambios.
 
 **Review Focus:** 3, 4, 6, 17 y 19.
 
@@ -1926,7 +2037,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - `in 02-04 placing a device inside the block draws it inside the outline and moving it out takes it out`.
 - `in 02-14 case 5 can be repaired from the routes card`.
 - Cada prueba de geometría corre a 1280×800 y a 1440×900, con el mapa a tamaño completo.
-- Cierre: `pnpm check` completo.
+- Cierre: `pnpm check` completo (regla de «Listo»: cierra el capítulo).
 
 **Review Focus:** 14.
 
@@ -1942,7 +2053,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 
 **Tests:** `chapters.test.ts`, `match the chapter map of the chapters doc, in game order` sigue verde (la tabla no cambia).
 
-**Cierre:** `pnpm check` verde. **Commit:** `docs: record chapter 2 in fourteen subchapters`. Al cerrar el plan se sugiere `/clear`.
+**Cierre:** `pnpm check` completo en verde (regla de «Listo»: cierra el plan). **Commit:** `docs: record chapter 2 in fourteen subchapters`. Al cerrar el plan se sugiere `/clear`.
 
 ---
 
@@ -1985,6 +2096,7 @@ El plan prueba que no falta ninguno de dos maneras: esta tabla, hecha del spec, 
 | Una sola primitiva de UI por familia; tarjetas nuevas en estilo B | D-3, D-4; Tareas 17, 18, 18 bis y 19; Review Focus 16 |
 | Un solo estándar para los avisos y los errores de todo el juego (2026-10-11) | Tarea 18 bis; V17 y V18 (`Message`, aspecto «Pestaña», `success` en verde); Review Focus 21 |
 | Una sola entrada por pieza, con pestañas, y un reloj del juego aparte (2026-10-11) | Decidida 22; Tarea 19; V15 y V16; Review Focus 22 |
+| Pruebas e2e deterministas y un chequeo rápido por tarea, con el mismo rigor (2026-10-11) | Tarea 19 bis; «Global Constraints» («"Listo"»); Review Focus 25 |
 | Elecciones visuales con prototipos renderizados; Tarea 0 | Tarea 0; «Decisiones visuales» |
 | Sintaxis de Linux en la terminal | Tarea 18; D-5 (`ncat` 7.93 y BIND 9.18) |
 | El progreso guardado se puede resetear; sin migraciones | Decidida 18 |
