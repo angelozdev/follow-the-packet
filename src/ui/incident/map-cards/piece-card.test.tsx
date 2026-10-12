@@ -116,7 +116,7 @@ describe('piece card', () => {
       const piece = { id: LAPTOP, kind: 'device', variant: 'laptop', anchorId: 'your-laptop', label: '[[tu-laptop]]', locked: false, state: 'normal' } as const;
       return (
         <>
-          <PieceLabel piece={piece} onInspect={vi.fn()} onActivate={() => setOpen(true)} />
+          <PieceLabel piece={piece} trigger={{}} onActivate={() => setOpen(true)} />
           {open && (
             <Hosted
               pieceId={LAPTOP}

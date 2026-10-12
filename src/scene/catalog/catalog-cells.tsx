@@ -17,6 +17,7 @@ import {
   type PacketEnd,
 } from '@/scene/entities';
 import { labelOffset, type Vec2 } from '@/scene/layout';
+import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import { PieceAnchor } from '@/scene/overlay/piece-anchor';
 import type { MapPiece, MapPieceKind } from '@/scene/overlay/piece-label';
 import { FlowTraffic } from '@/scene/traffic/flow-traffic';
@@ -52,10 +53,11 @@ const TRACE_ENDS: TraceEnd[] = [
 const WARNED_END: TraceEnd = { end: 'warned', message: 'echo-request', intruder: false, stamp: 'warned' };
 const TRANSPORT_ROWS: [PacketShape, PacketShape][] = [['tcp-request', 'tcp-reply'], ['udp-request', 'udp-reply']];
 const ignore = () => {};
+const inertTrigger: InspectTrigger = () => ({});
 
 function Label({ id, entity, locked, state }: { id: string; entity: PieceEntity; locked: boolean; state: MapPiece['state'] }) {
   const piece: MapPiece = { ...entity, id, anchorId: id, label: entityName(entity), locked, state };
-  return <PieceAnchor piece={piece} position={labelOffset(entity.kind)} onInspect={ignore} onActivate={ignore} />;
+  return <PieceAnchor piece={piece} position={labelOffset(entity.kind)} inspectTrigger={inertTrigger} onActivate={ignore} />;
 }
 
 function deviceCell(variant: DeviceVariant, state: (typeof DEVICE_STATES)[number]): CatalogCell {
@@ -161,7 +163,7 @@ function traceCell({ end, message, intruder, stamp }: TraceEnd, index: number): 
     draw: (still) => (
       <>
         {still ? <PacketTrace {...look} /> : <FlowTraffic look={look} index={index} />}
-        <StampPiece position={TRACE[1]} state={stamp} name={caption} pieceId={id} onInspect={ignore} />
+        <StampPiece position={TRACE[1]} state={stamp} name={caption} trigger={inertTrigger(id)} />
       </>
     ),
   };

@@ -6,7 +6,7 @@ import { CAMERA_ZOOM, cameraPosition, cardPlacement, computeLayout, labelPositio
 import { MapCanvas } from './map-canvas';
 import { CardAnchor } from './overlay/card-anchor';
 import { FloorLabel } from './overlay/floor-label';
-import type { OnInspect } from './overlay/inspect-handlers';
+import type { InspectTrigger } from './overlay/inspect-trigger';
 import { PieceAnchor } from './overlay/piece-anchor';
 import type { MapPiece } from './overlay/piece-label';
 import { Road } from './road';
@@ -21,7 +21,7 @@ export interface GameSceneProps {
   blockName?: string | null;
   activePieceId: string | null;
   overlay: ReactNode;
-  onInspect: OnInspect;
+  inspectTrigger: InspectTrigger;
   onActivate: (pieceId: string) => void;
 }
 
@@ -41,7 +41,7 @@ function PieceShape({ piece, layout, selected, still }: { piece: MapPiece; layou
   }
 }
 
-export function GameScene({ world, pieces, flows, sent, still, blockName = null, activePieceId, overlay, onInspect, onActivate }: GameSceneProps) {
+export function GameScene({ world, pieces, flows, sent, still, blockName = null, activePieceId, overlay, inspectTrigger, onActivate }: GameSceneProps) {
   const layout = computeLayout(world, pieces);
   const floors = Object.entries(layout.floors);
   const [cx, cz] = layoutCenter(layout);
@@ -65,9 +65,9 @@ export function GameScene({ world, pieces, flows, sent, still, blockName = null,
         <PieceShape key={piece.id} piece={piece} layout={layout} selected={piece.id === activePieceId} still={still} />
       ))}
       {pieces.map((piece) => (
-        <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} onInspect={onInspect} onActivate={onActivate} />
+        <PieceAnchor key={piece.id} piece={piece} position={labelPosition(piece, layout)} inspectTrigger={inspectTrigger} onActivate={onActivate} />
       ))}
-      <Traffic flows={flows} sent={sent} layout={layout} still={still} onInspect={onInspect} />
+      <Traffic flows={flows} sent={sent} layout={layout} still={still} inspectTrigger={inspectTrigger} />
       {placement && overlay && <CardAnchor placement={placement}>{overlay}</CardAnchor>}
       <ContactShadows position={[0, 0.005, 0]} opacity={0.22} scale={60} blur={2.5} far={4} />
     </MapCanvas>

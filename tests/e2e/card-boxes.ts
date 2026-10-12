@@ -174,7 +174,9 @@ export async function isReachable(page: Page, target: Locator): Promise<boolean>
 
 async function isInside(target: Locator, scroller: Locator): Promise<boolean> {
   const [box, frame] = await Promise.all([target.boundingBox(), scroller.boundingBox()]);
-  return box !== null && frame !== null && box.y >= frame.y - 1 && box.y + box.height <= frame.y + frame.height + 1;
+  if (box === null || frame === null) return false;
+  const endsInside = box.y + box.height <= frame.y + frame.height + 1;
+  return endsInside && (box.y >= frame.y - 1 || box.height > frame.height);
 }
 
 interface WheelOptions {
@@ -182,7 +184,7 @@ interface WheelOptions {
   wheelPx?: number;
 }
 
-/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it; and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. */
+/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it (an element taller than the scroller, such as the last field of an inspection box that the marks of the map cap, never can: its end in view is what counts); and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. */
 export async function reachWithWheel(page: Page, target: Locator, { within, wheelPx = WHEEL_PX }: WheelOptions = {}): Promise<boolean> {
   const [panel, viewport] = await Promise.all([(within ?? page.locator(SIDE_PANEL)).boundingBox(), page.viewportSize()]);
   if (panel === null || viewport === null) throw new Error('the scroller is not on the page');

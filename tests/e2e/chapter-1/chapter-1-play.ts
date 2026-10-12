@@ -32,7 +32,7 @@ const TRACEROUTE_MESSAGES = [PING_MESSAGE, 'traceroute'];
 const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/;
 const LOST_TO_ANDRES = /^Paquete: ping de tu-laptop a 192\.168\.2\.15\. Perdido\.$/;
 const ARRIVED_AT_SERVER = /^Paquete: ping de tu-laptop a servidor-internet\. Llegó\.$/;
-const LOST_TO_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
+export const LOST_TO_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
 export const LOST_TO_SERVER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/;
 const WARNED_BY_ROUTER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
 

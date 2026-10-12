@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { LUCIA_TEXT, TERMS, type TermId } from '@/copy';
@@ -35,7 +35,7 @@ describe('TaggedText', () => {
     expect(container.querySelectorAll('.term__new')).toHaveLength(2);
   });
 
-  it('hovering a term shows its definition in document.body, out of any clipping box, and leaving hides it', async () => {
+  it('hovering a term shows its definition in document.body, out of any clipping box, and leaving hides it after the grace', async () => {
     const user = userEvent.setup();
     render(
       <div data-testid="clipping-box" style={{ overflow: 'hidden' }}>
@@ -49,7 +49,7 @@ describe('TaggedText', () => {
     expect(tooltip.parentElement).toBe(document.body);
     expect(screen.getByTestId('clipping-box')).not.toContainElement(tooltip);
     await user.unhover(term);
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull());
   });
 
   it('shows one definition at a time when the same term appears twice', async () => {

@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { LUCIA_TEXT, parseTermText, type TermId, type TermSegment, type TermText } from '@/copy';
 import { NameTag } from '@/design';
-import { TermTip } from './term-tip';
+import { TermTip } from './floating-box/term-tip';
 
 interface TaggedTextProps {
   text: TermText;

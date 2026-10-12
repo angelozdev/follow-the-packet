@@ -34,10 +34,15 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: var(--weight-bold) var(--text-lg) var(--font-display); background: var(--color-surface); border: var(--stroke-heavy) solid currentColor; border-radius: var(--radius-round); transform: rotate(-8deg); }
 .stamp--arrived, .stamp--warned { color: var(--color-ink); }
 .stamp--blocked { color: var(--color-danger); }
+.stamp[data-pinned], .map-button[data-pinned] { box-shadow: 0 0 0 var(--stroke-bold) var(--color-surface), 0 0 0 calc(2 * var(--stroke-bold)) var(--color-ink); }
+.stamp[data-pinned]:focus-visible, .map-button[data-pinned]:focus-visible { outline-offset: calc(2 * var(--stroke-bold) + var(--focus-offset)); }
+@media (forced-colors: active) {
+  .stamp[data-pinned], .map-button[data-pinned] { outline: var(--stroke-bold) solid CanvasText; outline-offset: var(--stroke-bold); }
+}
 
 .term { font-weight: var(--weight-bold); }
 .term--tip { text-decoration: underline dotted; text-underline-offset: var(--underline-offset); cursor: help; }
-.term-tip { z-index: 100; width: max-content; max-width: min(18rem, calc(100vw - 16px)); padding: var(--space-xs); font: var(--weight-regular) var(--text-md)/1.4 var(--font-body); color: var(--color-on-fill); background: var(--color-ink); border-radius: var(--radius); box-shadow: var(--shadow-tip); pointer-events: none; text-align: left; text-transform: none; letter-spacing: normal; }
+.term-tip { z-index: 100; width: max-content; max-width: min(18rem, calc(100vw - 16px)); padding: var(--space-xs); font: var(--weight-regular) var(--text-md)/1.4 var(--font-body); color: var(--color-on-fill); background: var(--color-ink); border-radius: var(--radius); box-shadow: var(--shadow-tip); text-align: left; text-transform: none; letter-spacing: normal; }
 .term__new { margin-left: var(--space-2xs); font: var(--weight-bold) var(--text-2xs) var(--font-body); color: var(--color-emphasis); text-transform: uppercase; letter-spacing: var(--tracking-caps); vertical-align: super; }
 .lucia__reply { margin: var(--space-xs) 0 var(--space-sm); }
 .tasks { list-style: none; padding: 0; margin: 0 0 var(--space-sm); display: grid; gap: var(--space-xs); }
@@ -102,7 +107,7 @@ button.stamp { cursor: help; }
 .incident__side { grid-area: 1 / 2; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
 .incident__inspection { grid-area: 1 / 1; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: min(45%, var(--inspection-room, 45%)); pointer-events: none; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
-.incident__inspection[data-scrolls] > .card { pointer-events: auto; }
+.incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
 .inspection__fields { margin: 0; }

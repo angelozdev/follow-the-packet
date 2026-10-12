@@ -175,7 +175,7 @@ Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.m
 | J4 | Una intermitencia, vista una sola vez, en la prueba e2e `in 06 and 08 the map is at full size: two laptops of a floor stand as far apart as at any window` (1280×800). Pasó al repetirla y en las corridas siguientes. No se halló la causa y no se afirma ninguna | Pendiente: si vuelve a verse, anotar la corrida y el mensaje antes de tocar nada |
 | J5 | El ícono `settings` de `CardIcon` (la tarjeta «Ajustes de red») no tiene especimen en `#/entidades`. Tampoco lo tienen `question`, `inspection` y `case`: el catálogo solo muestra `lucia`, `result`, `chapter` y `terminal` (revisado con `grep` sobre `src/ui/catalog/interface-section.tsx`) | Decidido en la Tarea 28: van en la sección «Elementos de la interfaz», junto al especimen del terminal, y se hacen en la primera tarea que regrabe `tests/e2e/snapshots/interface-darwin.png` a propósito. La Tarea 28 es solo de documentos y no las toca. Pendiente |
 | J6 | A 390 px, la tarjeta de `laptop-visita` queda 76 px fuera del borde izquierdo. Ya pasaba antes del arreglo de las cajas (`b2f5a0d`) | Pendiente |
-| J7 | Con el teclado no se puede hacer scroll dentro de la caja de inspección (accesibilidad). Se vio al arreglar las cajas que se desplazan (`b2f5a0d`) | Pendiente |
+| J7 | Con el teclado no se puede hacer scroll dentro de la caja de inspección (accesibilidad). Se vio al arreglar las cajas que se desplazan (`b2f5a0d`) | Resuelta por `46c4074`: una caja fijada con un clic o con Enter lleva el foco a su título y se desplaza con el teclado |
 | J8 | A 1280×360, el texto de ayuda pisa las tarjetas | Pendiente |
 | J9 | A 1000×700, la caja de inspección pisa la terminal | Pendiente |
 | J10 | En el 01-07, a 900×500, el título intercepta clics. Es más amplio que eso: el `h1` del título tapa la etiqueta de `tu-laptop` a 1280×360, 900×500, 844×460 y 700×600. Pasa también en `940f07a`, antes de la Tarea 19 del capítulo 2 | Pendiente |
@@ -183,6 +183,7 @@ Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.m
 | J12 | En el 01-07, `router-oficina` queda fuera de la ventana a 1280×360, 900×500, 844×460 y 700×600. Pasa también en `940f07a`, antes de la Tarea 19 del capítulo 2 | Pendiente |
 | J13 | Un lector de pantalla oye la palabra dos veces en la retroalimentación de una opción: «Correcto: Correcto.» y «Error: No es eso.». La pestaña de `Message` dice el tipo y el texto empieza con la misma palabra (Tarea 18 bis del capítulo 2) | Pendiente |
 | J14 | La caja de inspección tapa «Listo» de una tarjeta recién abierta durante la gracia, unos 400 ms, a 1280×360. Lo midió la Tarea 19 bis del capítulo 2 con el reloj pausado | Pendiente: está abierta como decisión O-1 en [el plan del capítulo 2](2026-10-11-follow-the-packet-chapter-2.md) |
+| J15 | En el 01-08, a 390×844, el sello «?» del ping perdido de tu-laptop a 10.0.0.10 queda en x = −45…−9 px, fuera de la ventana: no se puede pasar el mouse ni tocar. Medido el 2026-10-11 con Playwright sobre el build de producción, al investigar las cajas flotantes (`docs/plans/2026-10-11-follow-the-packet-floating-box-hover.md`) | Pendiente. `46c4074` y el plan de `main` la llaman J12; aquí J12 ya era otra fila |
 
 ## Fuera de este backlog (decide el estudiante)
 
