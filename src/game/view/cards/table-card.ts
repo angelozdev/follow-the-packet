@@ -1,5 +1,5 @@
 import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
-import { ROUTE_DEFAULT, cacheAfter, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute } from '@/engine';
+import { ROUTE_DEFAULT, cacheAfter, forwardRows, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute, type Translation } from '@/engine';
 import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
 import type { SentPacket } from '@/game/flow-runs';
 import { canEdit, currentCase, type Session } from '@/game/session';
@@ -153,7 +153,9 @@ export function routesCard(session: Session, pieceId: string): TableCard | null 
   };
 }
 
-function translationKey({ protocol, inside, outside }: { protocol: string; inside: { ip: string; port?: number }; outside: { ip: string; port?: number } }): string {
+type TranslationEnds = Pick<Translation, 'protocol' | 'inside' | 'outside'>;
+
+function translationKey({ protocol, inside, outside }: TranslationEnds): string {
   return `${protocol}|${inside.ip}:${inside.port}|${outside.ip}:${outside.port}`;
 }
 
@@ -162,24 +164,24 @@ function makesRow(run: SentPacket): boolean {
   return run.route === undefined && translation !== undefined && translation.protocol !== 'icmp' && translation.isNew && !translation.fixed;
 }
 
-function translationRow(session: Session, run: SentPacket, usedKey: string | undefined): TableRowView {
-  const { translation } = run.trace;
-  const { protocol, inside, outside } = translation!;
-  const key = translationKey(translation!);
-  return {
-    id: key,
-    entryId: null,
-    cells: [code(word(session.known, protocol, protocol.toUpperCase())), code(`${inside.ip}:${inside.port}`), code(`${outside.ip}:${outside.port}`)],
-    inUse: key === usedKey,
-  };
+/** One row of the table of translations. A fixed one (a port forward) wears the word «fija» after its protocol, so what makes it different from the rows packets made is a word and not only its place in the list. */
+function translationRow(session: Session, id: string, { protocol, inside, outside }: TranslationEnds, inUse: boolean, fixed: boolean): TableRowView {
+  const name = word(session.known, protocol, protocol.toUpperCase());
+  const first = fixed ? `${name} · ${word(session.known, 'port-forwarding', TABLE_TEXT.translations.fixed)}` : name;
+  return { id, entryId: null, cells: [code(first), code(`${inside.ip}:${inside.port}`), code(`${outside.ip}:${outside.port}`)], inUse };
 }
 
-/** Returns the «Tabla de traducciones» card of the router of the office, read only and shown once `translation-table` is known: one row for each TCP or UDP packet the player sent since the world last changed that made one (`Session.history`, in the order they were made, because `sent` keeps only the last send of each combination of chips and would lose rows), with the private IP:port, the public IP:port, and the row the last packet sent used marked. A ping makes no row (ICMP has no ports) and neither does a packet a fixed forward delivered. Null for a piece that is no router, a router that does not translate, and an incident that is not a send. */
+/** The fixed rows of the router, the ones its port forwards give (`forwardRows`), in the order of the forwards. The id starts with `fixed|`, so a fixed row and a row that a packet made never share a key. */
+function fixedRows(session: Session, router: Router, usedKey: string | undefined): TableRowView[] {
+  return forwardRows(session.world, router).map((row) => translationRow(session, `fixed|${translationKey(row)}`, row, translationKey(row) === usedKey, true));
+}
+
+/** Returns the «Tabla de traducciones» card of the router of the office, read only and shown once `translation-table` is known. It lists first the fixed rows of the router, one for each port forward of the world (`forwardRows`), marked «fija»: the world gave them, no packet made them. Then, one row for each TCP or UDP packet the player sent since the world last changed that made one (`Session.history`, in the order they were made, because `sent` keeps only the last send of each combination of chips and would lose rows), with the private IP:port, the public IP:port, and the row the last packet sent used marked, a fixed one too when a forward delivered the packet. A ping makes no row (ICMP has no ports) and neither does a packet a fixed forward delivered: the forward was there before it. Null for a piece that is no router, a router that does not translate, and an incident that is not a send. */
 export function translationsCard(session: Session, pieceId: string): TableCard | null {
   const holder = holderOf(session, pieceId);
   if (!holder || !('interfaces' in holder) || sendIncident(session) === null || !session.known.has('translation-table') || !translates(session.world, holder)) return null;
   const last = lastRun(session);
-  const used = last?.trace.translation && last.trace.translation.protocol !== 'icmp' && !last.trace.translation.fixed ? translationKey(last.trace.translation) : undefined;
+  const used = last?.trace.translation && last.trace.translation.protocol !== 'icmp' ? translationKey(last.trace.translation) : undefined;
   const ownRows = session.history.filter((run) => makesRow(run) && holder.interfaces.some((face) => face.ip === run.trace.translation?.outside.ip));
   return {
     kind: 'translations',
@@ -192,7 +194,13 @@ export function translationsCard(session: Session, pieceId: string): TableCard |
       { id: 'inside', label: TABLE_TEXT.translations.inside },
       { id: 'outside', label: TABLE_TEXT.translations.outside },
     ],
-    rows: ownRows.map((run) => translationRow(session, run, used)),
+    rows: [
+      ...fixedRows(session, holder, used),
+      ...ownRows.map(({ trace }) => {
+        const key = translationKey(trace.translation!);
+        return translationRow(session, key, trace.translation!, key === used, false);
+      }),
+    ],
     empty: TABLE_TEXT.translations.empty,
     note: null,
     trays: null,

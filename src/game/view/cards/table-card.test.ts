@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { TABLE_TEXT, toPlainText } from '@/copy';
 import type { TermId } from '@/copy';
 import { RECORD_PROBLEMS, ROUTE_PROBLEMS, applyAction } from '@/engine';
-import { CHIP_PROBLEMS } from '@/levels';
+import { CHIP_PROBLEMS, INCIDENTS } from '@/levels';
+import { ADDRESS, FORWARDED_APP, IP, MESSAGE, ORIGIN, PORT, ROUTER } from '@/levels/02-ports-and-names/shared';
 import { NAME_SERVERS, OFFICE_FLOORS, filterIncident, namesSendIncident, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
@@ -147,6 +148,69 @@ describe('translationsCard', () => {
     expect(translationsCard(sent, PROVIDER)).toBeNull();
     expect(translationsCard(sent, YOU)).toBeNull();
     expect(translationsCard(without(sent, 'translation-table'), OFFICE_ROUTER)).toBeNull();
+  });
+});
+
+describe('translationsCard with a port forward', () => {
+  const FIXED_ROW = ['TCP · fija', `${IP.andres}:${PORT.app}`, `${IP.officeUplink}:${PORT.app}`];
+  const ROUTER_PIECE = PIECE_ID.router(ROUTER.office.id);
+  const outside = startSession(INCIDENTS, '02-09');
+  const fromHome = (session: Session, messageId: string): Session => play(session, { type: 'sendPacket', fromId: ORIGIN.home.id, toId: ADDRESS.officePublic.id, messageId });
+  const toTheServer = (session: Session, from: { id: string }): Session => play(session, { type: 'sendPacket', fromId: from.id, toId: ADDRESS.server.id, messageId: MESSAGE.ncWeb.id });
+  const office: Session = (() => {
+    const base = startSession(INCIDENTS, '02-08');
+    return { ...base, world: FORWARDED_APP.reduce((net, action) => applyAction(net, action), base.world) };
+  })();
+
+  it('lists the fixed row of a port forward before anything is sent, and says it is fixed with a word', () => {
+    const card = translationsCard(outside, ROUTER_PIECE);
+    expect(card?.columns.map((column) => toPlainText(column.label))).toEqual(['Protocolo', 'IP:puerto privado', 'IP:puerto público']);
+    expect(plain(card)).toEqual([FIXED_ROW]);
+    expect(card?.rows.map((row) => [row.entryId, row.inUse])).toEqual([[null, false]]);
+    expect(card?.rows[0].cells.every((cell) => cell.code)).toBe(true);
+    expect(card).toMatchObject({ kind: 'translations', tableId: null, trays: null, add: null });
+  });
+
+  it('writes the mark as the term of the forward once it is known and as the plain word before, so it never depends on a colour or a term', () => {
+    expect(translationsCard(outside, ROUTER_PIECE)?.rows[0].cells[0].text).toBe('{{tcp|TCP}} · {{port-forwarding|fija}}');
+    const unaware = translationsCard(without(outside, 'port-forwarding'), ROUTER_PIECE);
+    expect(unaware?.rows[0].cells[0].text).toBe('{{tcp|TCP}} · fija');
+    expect(plain(unaware)).toEqual([FIXED_ROW]);
+    expect(TABLE_TEXT.translations.fixed).toBe('fija');
+  });
+
+  it('shows the fixed row as the ends the engine delivered to, in use for the packet a forward delivered and for no other', () => {
+    const delivered = fromHome(outside, MESSAGE.ncApp.id);
+    const { translation } = delivered.history.at(-1)!.trace;
+    expect(translation).toMatchObject({ protocol: 'tcp', fixed: true, isNew: false });
+    expect(plain(translationsCard(delivered, ROUTER_PIECE))).toEqual([[FIXED_ROW[0], `${translation?.inside.ip}:${translation?.inside.port}`, `${translation?.outside.ip}:${translation?.outside.port}`]]);
+    expect(used(translationsCard(delivered, ROUTER_PIECE))).toHaveLength(1);
+    const missed = fromHome(outside, MESSAGE.ncUnmapped.id);
+    expect(missed.history.at(-1)!.trace.translation).toBeUndefined();
+    expect(plain(translationsCard(missed, ROUTER_PIECE))).toEqual([FIXED_ROW]);
+    expect(used(translationsCard(missed, ROUTER_PIECE))).toEqual([]);
+    expect(used(translationsCard(fromHome(delivered, MESSAGE.ncUnmapped.id), ROUTER_PIECE))).toEqual([]);
+  });
+
+  it('puts the fixed rows first and the rows packets made after them, each with a key of its own and the mark only on the fixed ones', () => {
+    const sent = toTheServer(toTheServer(office, ORIGIN.you), ORIGIN.lucia);
+    const card = translationsCard(sent, ROUTER_PIECE);
+    expect(plain(card)).toEqual([
+      FIXED_ROW,
+      ['TCP', `${IP.you}:51514`, `${IP.officeUplink}:40001`],
+      ['TCP', `${IP.lucia}:51514`, `${IP.officeUplink}:40002`],
+    ]);
+    expect(new Set(card?.rows.map((row) => row.id)).size).toBe(3);
+    expect(card?.rows.map((row) => row.inUse)).toEqual([false, false, true]);
+    expect(plain(card)?.filter((row) => row[0].includes('fija'))).toHaveLength(1);
+    expect(plain(translationsCard(office, ROUTER_PIECE))).toEqual([FIXED_ROW]);
+  });
+
+  it('has no fixed row when the world has no forward, and the router of the provider has no card', () => {
+    const plainOffice = startSession(INCIDENTS, '02-08');
+    expect(translationsCard(plainOffice, ROUTER_PIECE)?.rows).toEqual([]);
+    expect(translationsCard(outside, PIECE_ID.router(ROUTER.provider.id))).toBeNull();
+    expect(translationsCard(without(outside, 'translation-table'), ROUTER_PIECE)).toBeNull();
   });
 });
 

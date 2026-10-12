@@ -1261,6 +1261,9 @@ describe('02-09, from outside', () => {
   const both = fromHome(unmapped, MESSAGE.ncApp.id);
   const lastRun = (session: Session) => session.sent.at(-1)!;
   const translationsOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined;
+  const FIXED_ROW = ['TCP · fija', `${IP.andres}:${PORT.app}`, `${IP.officeUplink}:${PORT.app}`];
+  const tableOf = (session: Session) => (translationsOf(session)?.rows ?? []).map((row) => row.cells.map((cell) => plain(cell.text)));
+  const rowsInUse = (session: Session) => (translationsOf(session)?.rows ?? []).map(({ inUse }) => inUse);
   const prose = (incident: Incident): string[] => incidentTexts(incident).map(plain);
   const declaredWrong = (incident: Incident): string[] => optionsOf(incident).filter(({ correct }) => !correct).map(({ text }) => plain(text));
   const sayingNatActs = (texts: string[]): string[] => texts.flatMap((text) => text.split(SENTENCES)).filter((sentence) => NAT_ACTS.test(sentence));
@@ -1276,7 +1279,8 @@ describe('02-09, from outside', () => {
     expect(printedFrom(unmapped, ORIGIN.home.id, ADDRESS.officePublic.id, MESSAGE.ncUnmapped.id)).toEqual([NCAT_BANNER, 'Ncat: TIMEOUT.']);
     expect(stillOpen(start)).toEqual([TASK.unsolicited, TASK.forwarded]);
     expect(stillOpen(unmapped)).toEqual([TASK.forwarded]);
-    expect(translationsOf(unmapped)?.rows).toEqual([]);
+    expect(tableOf(unmapped)).toEqual([FIXED_ROW]);
+    expect(rowsInUse(unmapped)).toEqual([false]);
   });
 
   it('02-09: the forward delivers to laptop-andres and nothing stops it', () => {
@@ -1288,7 +1292,8 @@ describe('02-09, from outside', () => {
     expect(run.trace.steps.filter((step) => step.verdict === 'drop')).toEqual([]);
     expect(startWorld(INCIDENTS, FROM_OUTSIDE).devices.find((device) => device.id === DEVICE.andres.id)?.firewallIds).toEqual([]);
     expect(lastBox(forwarded)[TRANSLATION]).toEqual([`${IP.officeUplink}:${PORT.app} → ${IP.andres}:${PORT.app}`, 'Un reenvío de puertos lo entregó a ese dispositivo.']);
-    expect(translationsOf(forwarded)?.rows).toEqual([]);
+    expect(tableOf(forwarded)).toEqual([FIXED_ROW]);
+    expect(rowsInUse(forwarded)).toEqual([true]);
     expect(stillOpen(forwarded)).toEqual([TASK.unsolicited]);
     expect(printedFrom(forwarded, ORIGIN.home.id, ADDRESS.officePublic.id, MESSAGE.ncApp.id)[1]).toBe(`Ncat: Connected to ${IP.officeUplink}:${PORT.app}.`);
     expectClosed(both);

@@ -5,7 +5,7 @@ import type { Firewall, Forward, Network, PacketSpec, Router } from '@/engine/ne
 import { simulateSequence } from '@/engine/simulation/sequence';
 import { simulate } from '@/engine/simulation/simulate';
 import { ATTACKER_IP, OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService } from '@/testing';
-import { FIRST_PUBLIC_PORT, publicIpOf, translateSource, translates, type NatTable } from './translation';
+import { FIRST_PUBLIC_PORT, forwardRows, publicIpOf, translateDestination, translateSource, translates, type NatTable } from './translation';
 
 const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
 const WEB_PORT = 80;
@@ -394,5 +394,34 @@ describe('translates', () => {
     expect(translates(net, routerOf(net, officeRouter.id))).toBe(true);
     expect(translates(net, routerOf(net, provider.id))).toBe(false);
     expect(translates(net, routerOf(net, backbone.id))).toBe(false);
+  });
+});
+
+describe('forwardRows', () => {
+  const net = forwarding(fromOutside(), toApp, toDns);
+  const office = routerOf(net, officeRouter.id);
+
+  it('lists a fixed row for each forward, with the device end and the public end, in the order of the forwards', () => {
+    expect(forwardRows(net, office)).toEqual([
+      { protocol: 'tcp', inside: { ip: floor2.andres, port: APP_PORT }, outside: { ip: uplink, port: PUBLIC_APP_PORT } },
+      { protocol: 'udp', inside: { ip: floor2.andres, port: 53 }, outside: { ip: uplink, port: 5353 } },
+    ]);
+  });
+
+  it('gives a row only to a router that translates, and only for a forward to a device that is in the network', () => {
+    expect(forwardRows(fromOutside(), routerOf(fromOutside(), officeRouter.id))).toEqual([]);
+    expect(forwardRows(net, routerOf(net, provider.id))).toEqual([]);
+    const aimedAtNobody = { ...office, forwards: [...(office.forwards ?? []), { ...toApp, publicPort: 9090, toDeviceId: 'nobody' }] };
+    expect(forwardRows(net, aimedAtNobody)).toEqual(forwardRows(net, office));
+    const elsewhere = { ...office, forwards: [toApp], interfaces: office.interfaces.filter(({ ip }) => ip !== uplink) };
+    expect(forwardRows(net, elsewhere)).toEqual([]);
+  });
+
+  it('is the end that translateDestination delivers to, row by row', () => {
+    for (const row of forwardRows(net, office)) {
+      const delivered = translateDestination(net, office, [], { protocol: row.protocol, ip: row.outside.ip, port: row.outside.port });
+      expect(delivered).toMatchObject({ fixed: true, inside: row.inside });
+      expect(delivered?.device.privateIp).toBe(row.inside.ip);
+    }
   });
 });

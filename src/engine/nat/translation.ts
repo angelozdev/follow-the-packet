@@ -100,3 +100,12 @@ export function translateDestination(net: Network, router: Router, table: NatTab
   const device = row && net.devices.find(({ privateIp }) => privateIp === row.inside.ip);
   return row && device && { device, inside: { ...row.inside }, fixed: false };
 }
+
+/** Returns the fixed rows of the NAT of a router, one for each port forward and each public IP of the router, in the order of its forwards: the protocol, the device end (the private IP of the device and the port its program listens on) and the public end (the public IP and the public port). They are the ends `translateDestination` finds first for a packet from outside, so a table that lists them lists what delivers. A forward to a device that is not in the network gives no row, as it delivers to no one, and a router that does not translate has no public IP and so gives none. */
+export function forwardRows(net: Network, router: Router): NatRow[] {
+  const publicIps = new Set(router.interfaces.flatMap(({ faces }) => publicIpOf(net, router, faces) ?? []));
+  return (router.forwards ?? []).flatMap(({ protocol, publicPort, toDeviceId, toPort }) => {
+    const device = net.devices.find(({ id }) => id === toDeviceId);
+    return device ? [...publicIps].map((ip) => ({ protocol, inside: { ip: device.privateIp, port: toPort }, outside: { ip, port: publicPort } })) : [];
+  });
+}

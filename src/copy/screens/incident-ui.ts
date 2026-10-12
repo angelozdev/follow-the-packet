@@ -257,6 +257,7 @@ export const TABLE_TEXT = {
     protocol: 'Protocolo',
     inside: '{{ip-port|IP:puerto}} privado',
     outside: '{{ip-port|IP:puerto}} público',
+    fixed: 'fija',
     empty: 'Todavía no hay filas. Aparece una cuando un {{packet|paquete}} con {{port|puertos}} sale hacia {{internet}}. Un {{ping}} no usa {{port|puertos}}: en esta tabla no deja fila.',
   },
   records: {
