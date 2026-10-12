@@ -123,6 +123,8 @@ export const TASK = {
   ping: 'ping-to-lucia',
   app: 'nc-to-app',
   database: 'nc-to-database',
+  openApp: 'open-connection-to-app',
+  openDatabase: 'open-connection-to-database',
 } as const;
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */

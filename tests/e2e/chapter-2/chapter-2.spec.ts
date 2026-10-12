@@ -10,6 +10,8 @@ import { CHAPTER_2, NC_TO_THE_APP, NC_TO_THE_DATABASE } from './chapter-2-play';
 const LOCKED = '(bloqueado)';
 const [ONE_MACHINE] = CHAPTER_2;
 const FIRST_LINK = `1. ${ONE_MACHINE.title}`;
+const OPENING = CHAPTER_2[1];
+const SECOND_LINK = `2. ${OPENING.title}`;
 const TAG_OF_THE_APP = 'paquete al puerto 3000';
 const TAG_OF_THE_DATABASE = 'paquete al puerto 5432';
 const STAMP_OF_THE_APP = /^Paquete: paquete al puerto 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
@@ -18,6 +20,10 @@ const WINDOWS = [
   { width: 1440, height: 900 },
 ];
 const STAMP_OF_THE_DATABASE = /^Paquete: paquete al puerto 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
+const TAG_OF_THE_FIRST_CONNECTION = 'TCP 51514 → 3000';
+const TAG_OF_THE_SECOND_CONNECTION = 'TCP 51515 → 5432';
+const STAMP_OF_THE_FIRST_CONNECTION = /^Paquete: TCP 51514 → 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+const STAMP_OF_THE_SECOND_CONNECTION = /^Paquete: TCP 51515 → 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
 
 /** Expects no box of the still map (piece labels, floor names, stamps and packet labels) to overlap another, and every one to lie inside the area of the map. */
 async function expectClear(page: Page): Promise<void> {
@@ -50,6 +56,18 @@ test('02-01 is played with the mouse from the roadmap and earns 3 stars', async 
   expect(errors).toEqual([]);
 });
 
+test('02-02 is played with the mouse after 02-01 and earns 3 stars', async ({ page }) => {
+  const errors = collectErrors(page);
+  await startWithProgress(page, { '01-14': 1, [ONE_MACHINE.id]: 1 });
+  await page.goto('/');
+  await page.getByRole('link', { name: SECOND_LINK }).click();
+  await expect(page.getByRole('heading', { level: 1, name: OPENING.title })).toBeVisible();
+  await OPENING.play(page);
+  await page.goto('/#/');
+  await expect(page.locator(`li[data-level-id="${OPENING.id}"]`)).toContainText(FULL_STARS);
+  expect(errors).toEqual([]);
+});
+
 test.describe('Sin animaciones', () => {
   test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
@@ -68,6 +86,22 @@ test.describe('Sin animaciones', () => {
     await expect(page.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
     await standStill(page);
     await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_APP, TAG_OF_THE_DATABASE]);
+  });
+
+  test('in 02-02 the packet of an nc wears TCP and both ports on the map, and the second connection leaves from the next port', async ({ page }) => {
+    await startWithProgress(page, { '01-14': 1, [ONE_MACHINE.id]: 1 });
+    await page.goto(`/#/level/${OPENING.id}`);
+    const first = await openTerminal(page);
+    await sendMessage(first, NC_TO_THE_APP);
+    await confirm(first);
+    await expect(first).toBeHidden();
+    await expect(page.getByRole('button', { name: STAMP_OF_THE_FIRST_CONNECTION })).toBeVisible();
+    await standStill(page);
+    await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_FIRST_CONNECTION]);
+    await sendMessage(await openTerminal(page), NC_TO_THE_DATABASE);
+    await expect(page.getByRole('button', { name: STAMP_OF_THE_SECOND_CONNECTION })).toBeVisible();
+    await standStill(page);
+    await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_FIRST_CONNECTION, TAG_OF_THE_SECOND_CONNECTION]);
   });
 
   for (const size of WINDOWS) {
@@ -93,6 +127,20 @@ test.describe('Sin animaciones', () => {
         await expect(page.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
         await standStill(page);
         await expect(page.locator('.packet-tag')).toHaveCount(2);
+        await expectClear(page);
+      });
+
+      test('in 02-02 no piece label, floor name, stamp or packet label of the still map overlaps another once the labels say TCP and both ports', async ({ page }) => {
+        await startWithProgress(page, { '01-14': 1, [ONE_MACHINE.id]: 1 });
+        await page.goto(`/#/level/${OPENING.id}`);
+        const terminal = await openTerminal(page);
+        await sendMessage(terminal, NC_TO_THE_APP);
+        await sendMessage(terminal, NC_TO_THE_DATABASE);
+        await confirm(terminal);
+        await expect(terminal).toBeHidden();
+        await expect(page.getByRole('button', { name: STAMP_OF_THE_SECOND_CONNECTION })).toBeVisible();
+        await standStill(page);
+        await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_FIRST_CONNECTION, TAG_OF_THE_SECOND_CONNECTION]);
         await expectClear(page);
       });
     });

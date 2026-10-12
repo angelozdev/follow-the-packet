@@ -651,10 +651,10 @@ describe('the box of a packet with ports and names', () => {
     expect(field(sentTo(without(served, 'ip-port'), 'lucia', 'nc'), 'Encabezado de ida')).toEqual(ipsOnly);
     const beforeSourcePort = sentTo(without(served, 'source-port'), 'lucia', 'nc');
     expect(field(beforeSourcePort, 'Encabezado de ida')).toEqual(['Encabezado de ida', '192.168.1.10 → 192.168.1.11:3000', 'TTL al salir: 64']);
-    expect(field(beforeSourcePort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11 → 192.168.1.10:51514']);
+    expect(field(beforeSourcePort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11:3000 → 192.168.1.10']);
     const beforeDestinationPort = sentTo(without(served, 'destination-port'), 'lucia', 'nc');
     expect(field(beforeDestinationPort, 'Encabezado de ida')).toEqual(['Encabezado de ida', '192.168.1.10:51514 → 192.168.1.11', 'TTL al salir: 64']);
-    expect(field(beforeDestinationPort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11:3000 → 192.168.1.10']);
+    expect(field(beforeDestinationPort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11 → 192.168.1.10:51514']);
     const refused = sentTo(base, 'lucia', 'nc');
     expect(field(refused, 'Encabezado')?.slice(1, 2)).toEqual(['192.168.1.10:51514 → 192.168.1.11:3000']);
     const ping = sentTo(served, 'lucia', 'ping');

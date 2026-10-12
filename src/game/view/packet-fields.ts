@@ -23,12 +23,13 @@ function leavesTheOffice(trace: Trace): boolean {
   return trace.steps.some((step) => step.reason.code === 'route-leaves-office');
 }
 
-/** The lines with the addresses a header carries. A TCP or UDP header, once `port` and `ip-port` are known, is one line as the sheets write it, `IP:puerto → IP:puerto`: each end carries its port once the term of its role in that header is known (`source-port` for the source, `destination-port` for the destination) and shows only its IP before. Any other header, an ICMP one or one without those terms, has a line for each IP. */
-function sideLines(side: Side, known: Known): TermText[] {
+/** The lines with the addresses a header carries. A TCP or UDP header, once `port` and `ip-port` are known, is one line as the sheets write it, `IP:puerto → IP:puerto`: each end carries its port once the term of its role in the exchange is known and shows only its IP before. The role is the one the end has in the connection, so it does not change with the direction: the client's port needs `source-port` and the service's port needs `destination-port`, in the header of the request and in the one of the answer (where the source end is the service and the destination end is the client). The label of the packet on the map follows the same rule. Any other header, an ICMP one or one without those terms, has a line for each IP. */
+function sideLines(side: Side, known: Known, answer = false): TermText[] {
   const { sourcePort, destinationPort } = side;
   if (!known.has('port') || !known.has('ip-port') || sourcePort === undefined || destinationPort === undefined) return [INSPECTION_TEXT.source(side.source, known), INSPECTION_TEXT.destination(side.destination, known)];
-  const from = INSPECTION_TEXT.end(side.source, known.has('source-port') ? sourcePort : undefined);
-  const to = INSPECTION_TEXT.end(side.destination, known.has('destination-port') ? destinationPort : undefined);
+  const [sourceTerm, destinationTerm]: [TermId, TermId] = answer ? ['destination-port', 'source-port'] : ['source-port', 'destination-port'];
+  const from = INSPECTION_TEXT.end(side.source, known.has(sourceTerm) ? sourcePort : undefined);
+  const to = INSPECTION_TEXT.end(side.destination, known.has(destinationTerm) ? destinationPort : undefined);
   return [INSPECTION_TEXT.ends(from, to)];
 }
 
@@ -58,7 +59,7 @@ export function headerFields(run: PacketRun, known: Known, ttl: boolean): Inspec
   const asked = requestLabel(protocol, answered, known);
   const back = protocol === 'icmp' ? INSPECTION_TEXT.replyHeader : INSPECTION_TEXT.backHeader;
   const own = [field(named(asked), [...sideLines(request, known), ...(ttl && known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])])];
-  const answer = reply && answered ? [field(named(back), sideLines(reply, known))] : [];
+  const answer = reply && answered ? [field(named(back), sideLines(reply, known, true))] : [];
   const fields = [...own, ...answer];
   const explained = known.has('nat');
   const noted = local && !explained ? [...fields.slice(0, -1), { ...fields[fields.length - 1], notes: [INSPECTION_TEXT.headerChanges] }] : fields;

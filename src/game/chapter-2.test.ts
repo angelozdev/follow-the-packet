@@ -96,6 +96,24 @@ function outsideDocumentationTld(names: string[]): string[] {
   return names.filter((name) => !name.endsWith(DOCUMENTATION_TLD));
 }
 
+/** Sends this message from your laptop to laptop-lucia. */
+const sending = (session: Session, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId });
+
+/** Returns the ids of the tasks of a guided incident that do not hold yet. */
+const stillOpen = ({ incident, runs, sent, answers }: Session): string[] => (isGuided(incident) ? incident.tasks.filter((task) => !taskHolds(task, runs, sent, answers)).map(({ id }) => id) : []);
+
+/** Returns the box of the last packet sent, by the plain text of each field label, with the plain text of its lines. */
+const lastBox = (session: Session): Record<string, string[]> => {
+  const box = inspect(session, session.sent.at(-1)!.pieceId);
+  return Object.fromEntries((box?.fields ?? []).map(({ label, lines }) => [toPlainText(label), lines.map((line) => toPlainText(line))]));
+};
+
+/** Returns the lines the output card prints for the message sent from your laptop to laptop-lucia. */
+const printedBy = (session: Session, messageId: string): string[] =>
+  (toolOutput(session, { from: ORIGIN.you.id, to: ADDRESS.lucia.id, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+
+const plain = (text: string): string => toPlainText(text);
+
 describe('the term ladder of chapter 2 in its incidents', () => {
   it('the table of the approved design holds the 53 terms in 14 incidents, each term once, all registered and none of chapter 1', () => {
     expect(Object.keys(TERMS_OF_THE_APPROVED_DESIGN)).toHaveLength(APPROVED_INCIDENT_COUNT);
@@ -215,15 +233,6 @@ describe('02-01, one machine and many services', () => {
   const INSTALL_NC = 'sudo dnf install nmap-ncat';
   const OUT_HEADER = 'Encabezado de ida';
   const start = startSession(INCIDENTS, ONE_MACHINE);
-  const sending = (session: Session, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId });
-  const stillOpen = ({ incident, runs, sent, answers }: Session): string[] => (isGuided(incident) ? incident.tasks.filter((task) => !taskHolds(task, runs, sent, answers)).map(({ id }) => id) : []);
-  const lastBox = (session: Session): Record<string, string[]> => {
-    const box = inspect(session, session.sent.at(-1)!.pieceId);
-    return Object.fromEntries((box?.fields ?? []).map(({ label, lines }) => [toPlainText(label), lines.map((line) => toPlainText(line))]));
-  };
-  const printedBy = (session: Session, messageId: string): string[] =>
-    (toolOutput(session, { from: ORIGIN.you.id, to: ADDRESS.lucia.id, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
-  const plain = (text: string): string => toPlainText(text);
 
   it('02-01: the ping, the nc to port 3000 and the nc to port 5432 each complete their task', () => {
     expect(stillOpen(start)).toEqual([TASK.ping, TASK.app, TASK.database]);
@@ -290,5 +299,89 @@ describe('02-01, one machine and many services', () => {
     expect(printedBy(pinged, MESSAGE.ping.id)).toEqual([]);
     const box = lastBox(pinged);
     expect([...Object.keys(box), ...Object.values(box).flat()].join(' ')).not.toMatch(/puerto/i);
+  });
+});
+
+describe('02-02, opening a connection', () => {
+  const OPENING = '02-02';
+  const OUT_HEADER = 'Encabezado de ida';
+  const BACK_HEADER = 'Encabezado de vuelta';
+  const GREETING = 'Saludo de tres pasos';
+  const FIRST_PORT = 51514;
+  const SECOND_PORT = 51515;
+  const MENTIONS_A_REASON = /stateful|stateless|recuerda|conversación|mismo camino|porque|ya que|por eso|permit|deja(?:n)? (?:pasar|entrar)|autoriz|revel|esconde|oculta/i;
+  const RANGES_OF_PORTS = [/\d{4,5}\s*(?:-|–|—|a|al|hasta)\s*\d{4,5}/i, /entre\s+(?:el\s+)?\d{4,5}\s+y\s+(?:el\s+)?\d{4,5}/i, /\b(?:32768|49152|60999|61000|65535)\b/];
+  const start = startSession(INCIDENTS, OPENING);
+  const app = sending(start, MESSAGE.ncApp.id);
+  const both = sending(app, MESSAGE.ncDatabase.id);
+  const givesARange = (text: string): boolean => RANGES_OF_PORTS.some((range) => range.test(text));
+  const boxTexts = (session: Session): string[] =>
+    session.sent.flatMap((run) => inspect(session, run.pieceId)?.fields ?? []).flatMap((field) => [field.label, ...field.lines, ...(field.notes ?? [])]).map(plain);
+  const everythingRead = (session: Session): string[] => [
+    ...incidentTexts(session.incident).map(plain),
+    ...boxTexts(session),
+    ...session.sent.flatMap((run) => printedBy(session, run.messageId)),
+    ...session.incident.introduces.map((term) => TERMS[term].definition),
+  ];
+
+  it('02-02: the header of the nc shows the source port 51514 and the destination port 3000', () => {
+    expect(app.sent[0].trace.header?.request).toMatchObject({ sourcePort: FIRST_PORT, destinationPort: PORT.app });
+    expect(lastBox(app)[OUT_HEADER]).toEqual([`${IP.you}:${FIRST_PORT} → ${IP.lucia}:${PORT.app}`, 'TTL al salir: 64']);
+    expect(Object.keys(lastBox(app))).not.toContain('Puerto de origen');
+  });
+
+  it('02-02: the second nc leaves from 51515', () => {
+    expect(both.sent.map(({ trace }) => trace.header?.request.sourcePort)).toEqual([FIRST_PORT, SECOND_PORT]);
+    expect(lastBox(both)[OUT_HEADER]).toEqual([`${IP.you}:${SECOND_PORT} → ${IP.lucia}:${PORT.database}`, 'TTL al salir: 64']);
+  });
+
+  it('02-02: the reply header swaps the ports', () => {
+    expect(app.sent[0].trace.header?.reply).toMatchObject({ sourcePort: PORT.app, destinationPort: FIRST_PORT });
+    expect(lastBox(app)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.app} → ${IP.you}:${FIRST_PORT}`]);
+    expect(lastBox(both)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.database} → ${IP.you}:${SECOND_PORT}`]);
+  });
+
+  it('02-02: the box lists the greeting in three steps', () => {
+    const [you, lucia] = [DEVICE.you.name, DEVICE.lucia.name];
+    expect(lastBox(app)[GREETING]).toEqual([`1. SYN, de ${you} a ${lucia}`, `2. SYN-ACK, de ${lucia} a ${you}`, `3. ACK, de ${you} a ${lucia}`]);
+    expect(lastBox(both)[GREETING]).toHaveLength(3);
+  });
+
+  it('02-02: both connections must open to close the incident', () => {
+    expect(stillOpen(start)).toEqual([TASK.openApp, TASK.openDatabase]);
+    expect(stillOpen(app)).toEqual([TASK.openDatabase]);
+    expect(stillOpen(sending(app, MESSAGE.ncApp.id))).toEqual([TASK.openDatabase]);
+    expect(stillOpen(sending(start, MESSAGE.ncDatabase.id))).toEqual([TASK.openApp]);
+    expect(stillOpen(both)).toEqual([]);
+    expect(starsOf(sessionReducer(both, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('02-02: no text gives a range of ephemeral ports as a number', () => {
+    expect(['de 49152 a 65535', 'entre 32768 y 60999', '32768-60999', 'del 49152 al 65535', 'hasta el 65535'].filter((text) => !givesARange(text))).toEqual([]);
+    expect(['TCP 51514 → 3000', `${IP.you}:${FIRST_PORT} → ${IP.lucia}:${PORT.app}`, 'el 3000 y el 5432', 'el 51514 y el 51515'].filter(givesARange)).toEqual([]);
+    expect(everythingRead(both).filter(givesARange)).toEqual([]);
+    expect(everythingRead(both).filter((text) => /rango|intervalo/i.test(text) && /\d{4,5}/.test(text))).toEqual([]);
+  });
+
+  it('02-02: no text says why the reply is let through', () => {
+    expect(['La respuesta vuelve porque el firewall recuerda la conversación.', 'Es stateful.', 'Vuelve por el mismo camino.'].filter((text) => !MENTIONS_A_REASON.test(text))).toEqual([]);
+    expect(everythingRead(both).filter((text) => MENTIONS_A_REASON.test(text))).toEqual([]);
+    expect(everythingRead(both).filter((text) => /firewall/i.test(text))).toEqual([]);
+  });
+
+  it('02-02: introduces client and server, tcp, connection, greeting, source port and ephemeral port, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[OPENING]));
+    expect(sorted(introduces)).toEqual(sorted(['client-server', 'tcp', 'connection', 'handshake', 'source-port', 'ephemeral-port']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, OPENING))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+
+  it('02-02: the header of the answer shows the port of the service at 02-01 and waits for source-port to show the one of the client', () => {
+    const before = sending(startSession(INCIDENTS, '02-01'), MESSAGE.ncApp.id);
+    expect(before.known.has('source-port')).toBe(false);
+    expect(lastBox(before)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.app} → ${IP.you}`]);
+    expect(lastBox(before)['Encabezado de ida']).toEqual([`${IP.you} → ${IP.lucia}:${PORT.app}`, 'TTL al salir: 64']);
+    expect(lastBox(app)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.app} → ${IP.you}:${FIRST_PORT}`]);
   });
 });
