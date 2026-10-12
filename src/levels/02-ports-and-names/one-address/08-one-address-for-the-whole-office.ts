@@ -30,7 +30,7 @@ export default defineIncident({
   introduces: ['nat', 'napt', 'translation-table'],
   changes: [WEB_PORTS],
   shown: TRANSLATION_PIECES,
-  report: `Ahora ${NAME.server} tiene dos {{service|servicios}} que {{listen|escuchan}}: uno en el {{port|puerto}} ${PORT.web} y otro en el ${PORT.secureWeb}. Haz un {{nc}} al {{port|puerto}} ${PORT.web} del servidor desde ${NAME.you} y otro desde ${NAME.lucia}. Los dos salen con el mismo {{source-port|puerto de origen}}. Pero {{internet}} no ve ninguna {{private-ip|IP privada}}. ${NAME.router} cambia la {{ip-address|IP}} de origen de todo lo que sale de la oficina hacia {{internet}}, y la cambia por su {{public-ip|IP pública}}: ${IP.officeUplink}. Se llama {{nat}}. Lo hace desde que la oficina salió a {{internet}}: no es un cambio nuevo, solo que el mapa no lo mostraba. También cambia el {{source-port|puerto de origen}}: eso es {{napt|traducción de puertos}}. Cada cambio queda en una fila de su {{translation-table|tabla de traducciones}}. Para verla, abre ${NAME.router} y su pestaña «{{translation-table|Tabla de traducciones}}».`,
+  report: `Ahora ${NAME.server} tiene dos {{service|servicios}} que {{listen|escuchan}}: uno en el {{port|puerto}} ${PORT.web} y otro en el ${PORT.secureWeb}. Haz un {{nc}} al {{port|puerto}} ${PORT.web} del servidor desde ${NAME.you} y otro desde ${NAME.lucia}. Los dos salen del mismo {{source-port|puerto de origen}}. {{internet}} no ve ninguna {{private-ip|IP privada}}. ${NAME.router} cambia la {{ip-address|IP}} de origen de todo lo que sale de la oficina hacia {{internet}}, y pone su {{public-ip|IP pública}}: ${IP.officeUplink}. Eso es {{nat}}. Lo hace desde que la oficina salió a {{internet}}: no es un cambio nuevo, solo que el mapa no lo mostraba. También cambia el {{source-port|puerto de origen}}: eso es {{napt|traducción de puertos}}. Cada traducción queda como una fila en su {{translation-table|tabla de traducciones}}. Para ver la tabla, abre ${NAME.router} y su pestaña «{{translation-table|Tabla de traducciones}}».`,
   tasks: [
     sendTask(TASK.webFromYou, `Que vuelva tu {{nc}} al {{port|puerto}} ${PORT.web} de ${NAME.server}.`, MESSAGE.ncWeb.id, ADDRESS.server.id, 'replied', SERVER.internet.id),
     sendTaskFrom(ORIGIN.lucia, TASK.webFromLucia, `Que vuelva el {{nc}} de ${NAME.lucia} al {{port|puerto}} ${PORT.web} de ${NAME.server}.`, MESSAGE.ncWeb.id, ADDRESS.server.id, 'replied', SERVER.internet.id),
@@ -45,11 +45,11 @@ export default defineIncident({
   explanation: [
     {
       text: 'Por el {{port|puerto}}: cada {{connection|conexión}} tiene su fila con su puerto público.',
-      feedback: `Las dos salieron con la misma {{public-ip|IP pública}}, pero con {{port|puertos}} públicos distintos: 40001 y 40002. Cada respuesta vuelve a la fila de su {{port|puerto}}.`,
+      feedback: `Las dos salieron con la misma {{public-ip|IP pública}}, pero con {{port|puertos}} públicos distintos: 40001 y 40002. Cada respuesta llega a uno de esos {{port|puertos}}, y la fila de ese {{port|puerto}} dice a qué laptop va.`,
       correct: true,
     },
     {
-      text: 'Por la {{ip-address|IP}} del servidor, que es distinta para cada laptop, y las separa por esa {{ip-address|IP}}.',
+      text: 'Por la {{ip-address|IP}} del servidor, que es distinta para cada laptop.',
       feedback: `Las dos laptops hablaron con el mismo servidor, ${IP.server}. Esa {{ip-address|IP}} es igual para las dos. Lo que las separa es el {{port|puerto}} público de cada fila.`,
       correct: false,
     },
@@ -63,5 +63,5 @@ export default defineIncident({
     sendMove(ADDRESS.server.id, MESSAGE.ncWeb.id),
     sendMoveFrom(ORIGIN.lucia, ADDRESS.server.id, MESSAGE.ncWeb.id),
   ],
-  takeaway: `Muchas {{private-ip|IPs privadas}} comparten una sola {{public-ip|IP pública}}: la de ${NAME.router}. {{nat}} cambia la {{ip-address|IP}} de origen al salir de la oficina, y la {{napt|traducción de puertos}} cambia también el {{source-port|puerto de origen}}. Cada cambio queda en una fila de la {{translation-table|tabla de traducciones}}, y por esa fila vuelve la respuesta. Las dos laptops salieron del mismo {{port|puerto}} y quedaron con dos distintos. Los números 40001 y 40002 son de este juego: otros {{nat}} eligen otros. En un {{nat}} real, las filas caducan; aquí no. Un {{ping}} también sale con la {{ip-address|IP}} cambiada, pero no deja fila, porque {{icmp}} no usa {{port|puertos}}. Por eso el {{ping}} a ${NAME.server} de antes volvía: ya salía traducido.`,
+  takeaway: `Muchas {{private-ip|IPs privadas}} comparten una sola {{public-ip|IP pública}}: la de ${NAME.router}. {{nat}} cambia la {{ip-address|IP}} de origen de lo que sale de la oficina hacia {{internet}}, y la {{napt|traducción de puertos}} cambia también el {{source-port|puerto de origen}}. Cada traducción queda en una fila de la {{translation-table|tabla de traducciones}}, y por esa fila vuelve la respuesta. Las dos laptops salieron del mismo {{port|puerto}} y quedaron con dos {{port|puertos}} públicos distintos. Los números 40001 y 40002 son de este juego: otros {{nat}} eligen otros. En un {{nat}} real, las filas caducan; aquí no. Un {{ping}} también sale con la {{ip-address|IP}} cambiada. {{icmp}} no usa {{port|puertos}}, así que en esta tabla no deja fila. Un {{nat}} real traduce además el identificador del {{echo-request}}, un número del mensaje, y el juego no lo muestra. El {{ping}} a ${NAME.server} de antes también salía traducido.`,
 });

@@ -105,7 +105,7 @@ export const INSPECTION_TEXT = {
   translationLine: {
     out: (inside: string, outside: string): TermText => `${inside} → ${outside}`,
     portsChanged: (known: ReadonlySet<TermId>): TermText => `Cambió la IP y el puerto de origen${known.has('napt') ? ' ({{napt}})' : ''}.`,
-    icmp: (known: ReadonlySet<TermId>): TermText => `${word(known, 'icmp', 'ICMP')} no usa puertos: solo cambió la IP de origen.`,
+    icmp: (known: ReadonlySet<TermId>): TermText => `${word(known, 'icmp', 'ICMP')} no usa puertos: en el juego solo cambia la IP de origen.`,
     newRow: 'Es una fila nueva de la {{translation-table|tabla de traducciones}}.',
     sameRow: 'Usó la fila que la {{translation-table|tabla de traducciones}} ya tenía para ese origen.',
     forwarded: 'Un {{port-forwarding|reenvío de puertos}} lo entregó a ese dispositivo.',
@@ -257,7 +257,7 @@ export const TABLE_TEXT = {
     protocol: 'Protocolo',
     inside: '{{ip-port|IP:puerto}} privado',
     outside: '{{ip-port|IP:puerto}} público',
-    empty: 'Todavía no hay filas. Aparece una cuando sale de la oficina un paquete con {{port|puertos}}; un {{ping}} no deja ninguna, porque no usa puertos.',
+    empty: 'Todavía no hay filas. Aparece una cuando un {{packet|paquete}} con {{port|puertos}} sale hacia {{internet}}. Un {{ping}} no usa {{port|puertos}}: en esta tabla no deja fila.',
   },
   records: {
     title: (zone: TermText): TermText => `{{dns-record|Registros}} de ${zone}`,

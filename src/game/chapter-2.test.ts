@@ -1090,7 +1090,7 @@ describe('02-08, one address for the whole office', () => {
   const FIRST_PORT = 51514;
   const FIRST_PUBLIC_PORT = 40001;
   const SECOND_PUBLIC_PORT = 40002;
-  const A_REASON_FOR_THE_REPLY = /stateful|stateless|recuerda|conversación|mismo camino|deja(?:n)? (?:pasar|volver|entrar la respuesta)|porque la respuesta|por eso vuelve/i;
+  const A_REASON_FOR_THE_REPLY = /stateful|stateless|recuerda|conversación|mismo camino|deja(?:n)? (?:pasar|volver|entrar la respuesta)|porque la respuesta|por eso vuelve|por eso[^.]*\bvolv/i;
   const start = startSession(INCIDENTS, ONE_ADDRESS);
   const webFrom = (session: Session, origin: { id: string }): Session => sendingFrom(session, origin.id, ADDRESS.server.id, MESSAGE.ncWeb.id);
   const pinging = (session: Session): Session => sendingFrom(session, ORIGIN.you.id, ADDRESS.server.id, MESSAGE.ping.id);
@@ -1176,7 +1176,7 @@ describe('02-08, one address for the whole office', () => {
     expect(pinged.sent[0].trace.translation).toMatchObject({ protocol: 'icmp', outside: { ip: IP.officeUplink }, isNew: false });
     expect(pinged.sent[0].trace.translation?.outside.port).toBeUndefined();
     expect(rowsOf(pinged)).toEqual([]);
-    expect(lastBox(pinged)[TRANSLATION]).toEqual([`${IP.you} → ${IP.officeUplink}`, 'ICMP no usa puertos: solo cambió la IP de origen.']);
+    expect(lastBox(pinged)[TRANSLATION]).toEqual([`${IP.you} → ${IP.officeUplink}`, 'ICMP no usa puertos: en el juego solo cambia la IP de origen.']);
     expect(stillOpen(pinged)).toEqual([TASK.webFromYou, TASK.webFromLucia]);
     expect(rowsOf(pinging(both))).toEqual(rowsOf(both));
     expect(rowsOf(webFrom(pinged, ORIGIN.you))[0]).toEqual(['TCP', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`]);
@@ -1197,12 +1197,15 @@ describe('02-08, one address for the whole office', () => {
   });
 
   it('02-08: no text gives a reason for the reply to come back beyond its row, and the numbers are said to be the game\'s', () => {
-    expect(['La respuesta vuelve porque el router recuerda la conversación.', 'Es stateful.'].filter((text) => !A_REASON_FOR_THE_REPLY.test(text))).toEqual([]);
+    expect(['La respuesta vuelve porque el router recuerda la conversación.', 'Es stateful.', 'Por eso el ping a servidor-internet de antes volvía: ya salía traducido.'].filter((text) => !A_REASON_FOR_THE_REPLY.test(text))).toEqual([]);
     expect(everythingRead(both).filter((text) => A_REASON_FOR_THE_REPLY.test(text))).toEqual([]);
     const takeaway = plain(start.incident.takeaway);
     expect(takeaway).toMatch(/Los números 40001 y 40002 son de este juego: otros NAT eligen otros\./);
     expect(takeaway).toMatch(/En un NAT real, las filas caducan; aquí no\./);
-    expect(takeaway).toMatch(/no deja fila, porque ICMP no usa puertos/);
+    expect(takeaway).toMatch(/ICMP no usa puertos, así que en esta tabla no deja fila\./);
+    expect(takeaway).toMatch(/Un NAT real traduce además el identificador del Echo Request, un número del mensaje, y el juego no lo muestra\./);
+    expect(takeaway).toMatch(/El ping a servidor-internet de antes también salía traducido\./);
+    expect(takeaway).not.toMatch(/por eso/i);
   });
 
   it('02-08: names no router the map does not draw, in any text, box or table', () => {

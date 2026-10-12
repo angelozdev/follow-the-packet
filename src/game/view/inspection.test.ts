@@ -834,7 +834,7 @@ describe('the route a packet used and the translation the NAT made', () => {
     const ping = sent(start, 'you', 'server', 'ping');
     expect(ping.sent[0].trace.translation).toMatchObject({ protocol: 'icmp', outside: { ip: officeRouter.uplink } });
     expect(ping.sent[0].trace.translation?.outside).not.toHaveProperty('port');
-    expect(field(ping, 'Traducción')).toEqual(['Traducción', `192.168.1.10 → ${officeRouter.uplink}`, 'ICMP no usa puertos: solo cambió la IP de origen.']);
+    expect(field(ping, 'Traducción')).toEqual(['Traducción', `192.168.1.10 → ${officeRouter.uplink}`, 'ICMP no usa puertos: en el juego solo cambia la IP de origen.']);
     expect(field(ping, 'Encabezado del Echo Request (en internet)')).toEqual(['Encabezado del Echo Request (en internet)', `IP de origen: ${officeRouter.uplink}`, `IP de destino: ${server.ip}`]);
     expect(toPlainText(ping.sent[0].label)).toBe('ping de tu-laptop a servidor-internet');
     expect(fields(ping).flat().join(' ')).not.toMatch(/Puerto|40001|:\d{4,5}/);

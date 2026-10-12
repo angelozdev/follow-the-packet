@@ -29,7 +29,7 @@ export default defineIncident({
   introduces: ['port-forwarding'],
   changes: FORWARDED_APP,
   shown: OUTSIDE_PIECES,
-  report: `${NAME.home} es un cliente de {{internet}}: está fuera de la oficina, en ${IP.home}. Quiere llegar a la app de ${NAME.andres}, que ahora {{listen|escucha}} en el {{port|puerto}} ${PORT.app}. Lucía configuró ${NAME.router}: lo que llega a su {{public-ip|IP pública}}, ${IP.officeUplink}, en el {{port|puerto}} ${PORT.app} va al {{port|puerto}} ${PORT.app} de ${NAME.andres}. Eso es un {{port-forwarding|reenvío de puertos}}. Haz un {{nc}} desde ${NAME.home} al {{port|puerto}} ${PORT.unmapped} de ${IP.officeUplink} y otro al ${PORT.app}.`,
+  report: `${NAME.home} es un {{client-server|cliente}} de {{internet}}: está fuera de la oficina, en ${IP.home}. Quiere llegar a la app de ${NAME.andres}, que ahora {{listen|escucha}} en el {{port|puerto}} ${PORT.app}. Lucía configuró ${NAME.router}: lo que llega al {{port|puerto}} ${PORT.app} de su {{public-ip|IP pública}}, ${IP.officeUplink}, va al {{port|puerto}} ${PORT.app} de ${NAME.andres}. Eso es un {{port-forwarding|reenvío de puertos}}. Haz un {{nc}} desde ${NAME.home} al {{port|puerto}} ${PORT.unmapped} de ${IP.officeUplink} y otro al ${PORT.app}.`,
   tasks: [
     sendTaskFrom(
       ORIGIN.home,
@@ -53,27 +53,27 @@ export default defineIncident({
   flows: [],
   send: { from: [ORIGIN.home], to: [ADDRESS.officePublic], message: [MESSAGE.ncUnmapped, MESSAGE.ncApp] },
   hints: [
-    'Un {{packet|paquete}} que viene de afuera necesita una fila que diga a qué equipo ir.',
+    'Un {{packet|paquete}} que viene de afuera necesita una fila que diga a qué {{device|dispositivo}} ir.',
     `Compara el {{port|puerto}} ${PORT.app} con el ${PORT.unmapped}: abre la caja de cada uno y mira qué hizo ${NAME.router}.`,
   ],
-  question: `¿Por qué el {{packet|paquete}} al {{port|puerto}} ${PORT.unmapped} no llegó a ningún equipo?`,
+  question: `¿Por qué el {{packet|paquete}} al {{port|puerto}} ${PORT.unmapped} no llegó a ningún {{device|dispositivo}}?`,
   explanation: [
     {
-      text: 'Porque NAT es un firewall y bloquea todo lo que viene de afuera, y por eso no dejó pasar el {{packet|paquete}}.',
-      feedback: `NAT traduce, no filtra. El {{packet|paquete}} al {{port|puerto}} ${PORT.app} entró por el {{port-forwarding|reenvío de puertos}} y nada lo detuvo: ${NAME.andres} no tiene {{firewall}}. Lo que decide qué entra es un {{firewall}}.`,
+      text: 'Porque {{nat}} es un {{firewall}} y bloquea todo lo que viene de afuera, y por eso no dejó pasar el {{packet|paquete}}.',
+      feedback: `{{nat}} traduce, no filtra. El {{packet|paquete}} al {{port|puerto}} ${PORT.app} entró por el {{port-forwarding|reenvío de puertos}} y nada lo detuvo: ${NAME.andres} no tiene {{firewall}}. Lo que decide qué entra es un {{firewall}}.`,
       correct: false,
     },
     {
-      text: `Porque ningún equipo de la oficina tiene abierto el {{port|puerto}} ${PORT.unmapped}.`,
-      feedback: `El {{packet|paquete}} no llegó a ningún equipo. Si hubiera llegado a uno sin {{service|servicio}} en ese {{port|puerto}}, habría vuelto un {{rst|RST}} y {{nc}} mostraría {{connection-refused}}.`,
+      text: `Porque ningún {{device|dispositivo}} de la oficina tiene abierto el {{port|puerto}} ${PORT.unmapped}, y el {{packet|paquete}} se pierde.`,
+      feedback: `El {{packet|paquete}} no llegó a ningún {{device|dispositivo}}. Si hubiera llegado a un {{closed-port|puerto cerrado}}, el {{device|dispositivo}} habría contestado con un {{rst|RST}}, y {{nc}} mostraría {{connection-refused}}.`,
       correct: false,
     },
     {
-      text: `Porque no había ninguna fila para ese {{port|puerto}}, y ${NAME.router} no sabía a qué equipo entregarlo.`,
+      text: `Porque no había ninguna fila para ese {{port|puerto}}: ${NAME.router} no sabía a qué {{device|dispositivo}} entregarlo.`,
       feedback: `${NAME.router} recibió el {{packet|paquete}} en ${IP.officeUplink}, {{port|puerto}} ${PORT.unmapped}, y no tiene ninguna fila ni {{port-forwarding|reenvío de puertos}} para ese {{port|puerto}}. No lo entrega a nadie. ${NAME.home} solo espera, y {{nc}} ve un {{timeout}}.`,
       correct: true,
     },
   ],
   solution: [sendMoveFrom(ORIGIN.home, ADDRESS.officePublic.id, MESSAGE.ncUnmapped.id), sendMoveFrom(ORIGIN.home, ADDRESS.officePublic.id, MESSAGE.ncApp.id)],
-  takeaway: `Un {{packet|paquete}} que llega de afuera necesita una fila que diga a qué equipo ir. Sin fila, ${NAME.router} no lo entrega a nadie, y el cliente solo espera. Un {{port-forwarding|reenvío de puertos}} es una fila fija: un {{port|puerto}} de la {{public-ip|IP pública}} va a un {{port|puerto}} de un {{device|dispositivo}}. Con él, el {{packet|paquete}} llegó a ${NAME.andres} y nada lo detuvo, porque ${NAME.andres} no tiene {{firewall}}. {{nat}} traduce, no filtra: no da seguridad por sí solo. Lo que decide qué entra es un {{firewall}}.`,
+  takeaway: `Un {{packet|paquete}} que llega de afuera necesita una fila que diga a qué {{device|dispositivo}} ir. Sin fila, ${NAME.router} no lo entrega a nadie, y el {{client-server|cliente}} solo espera. Un {{port-forwarding|reenvío de puertos}} es una fila fija: un {{port|puerto}} de la {{public-ip|IP pública}} va a un {{port|puerto}} de un {{device|dispositivo}}. Con él, el {{packet|paquete}} llegó a ${NAME.andres}. Nada lo detuvo: ${NAME.andres} no tiene {{firewall}}. {{nat}} traduce, no filtra: no da seguridad por sí solo. Lo que decide qué entra es un {{firewall}}.`,
 });
