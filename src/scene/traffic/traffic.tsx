@@ -32,7 +32,7 @@ export function Traffic({ flows, sent, layout, still, onInspect }: { flows: MapF
   const paths = packets.map((packet) => pathFor(packet.trace, packet.packet, layout, packet.hiddenStop));
   const stamps = spreadStamps(paths.map((path) => path[path.length - 1]));
   const wearing = packets.flatMap((packet, index) => (packet.ports ? [index] : []));
-  const apart = spreadTags(wearing.map((index) => paths[index]));
+  const apart = spreadTags(wearing.map((index) => paths[index]), Object.values(layout.floors).map(({ label }): Vec2 => [label[0], label[2]]));
   return (
     <>
       {packets.map((packet, index) => {

@@ -1099,3 +1099,78 @@ describe('the labels of packets that share a place', () => {
     expect(Math.abs(b[0] - a[0]) >= TAG_WIDTH_PX || Math.abs(b[1] - a[1]) >= TAG_HEIGHT_PX).toBe(true);
   });
 });
+
+describe('the labels of packets and the floor names', () => {
+  const NAME = { width: 31, height: 39 };
+  const TAG = { width: 172, height: 19 };
+  const PACKET_HEIGHT = 0.3;
+  const LABEL_DROP_PX = 24;
+  const HERE: Vec2[] = [[0, 0], [4, 0]];
+  const middleOf = (path: Vec2[]): Vec2 => pointAt(path, cumulativeLengths(path), pathLength(path) / 2);
+  const layout = layoutOf(placedDevice('your-laptop'), placedDevice('lucia-laptop'));
+  const { pixel } = projection(layout, MAPS[0]);
+  const nameOf = (): Vec2 => [layout.floors[floor1.id].label[0], layout.floors[floor1.id].label[2]];
+  const tagBox = (path: Vec2[], [dx, dz]: Vec2): Hazard => {
+    const [x, z] = middleOf(path);
+    const [px, py] = pixel([x + dx, PACKET_HEIGHT, z + dz]);
+    return boxAround('label', [px, py + LABEL_DROP_PX], TAG.width / 2, TAG.height / 2);
+  };
+  const nameBox = (name: Vec2): Hazard => boxAround('floor name', pixel([name[0], 0, name[1]]), NAME.width / 2, NAME.height / 2);
+  const toLucia = () => {
+    const world = applyAction(FLOORS, { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000)] });
+    const packet = tcp(device('your-laptop'), floor1.lucia, 3000);
+    return pathFor(simulate(world, packet), packet, layout);
+  };
+
+  it('the label of an nc between two machines of a floor lies over the name of the floor until it is moved clear of it', () => {
+    const path = toLucia();
+    expect(hits(tagBox(path, [0, 0]), nameBox(nameOf()))).toBe(true);
+    const [apart] = spreadTags([path], [nameOf()]);
+    expect(hits(tagBox(path, apart), nameBox(nameOf()))).toBe(false);
+  });
+
+  it('a label moves along the screen only, to the side of the name where it stands, and only as far as it clears the name', () => {
+    const path = toLucia();
+    const [apart] = spreadTags([path], [nameOf()]);
+    const [before, after] = [tagBox(path, [0, 0]), tagBox(path, apart)];
+    const name = nameBox(nameOf());
+    expect(after.y0).toBeCloseTo(before.y0, 6);
+    expect(Math.sign(after.x0 - before.x0)).toBe(Math.sign(before.x0 + TAG.width / 2 - (name.x0 + NAME.width / 2)));
+    const gap = after.x0 >= name.x1 ? after.x0 - name.x1 : name.x0 - after.x1;
+    expect(gap).toBeGreaterThan(0);
+    expect(gap).toBeLessThan(16);
+  });
+
+  it('a label that is not over a name does not move, and a name far from a pair does not take it in', () => {
+    const far: Vec2 = [40, 0];
+    expect(spreadTags([HERE], [far])).toEqual([[0, 0]]);
+    expect(spreadTags([HERE, HERE], [far])).toEqual(spreadTags([HERE, HERE]));
+    expect(spreadTags([HERE])).toEqual([[0, 0]]);
+  });
+
+  const spots = (paths: Vec2[][], names: Vec2[]) => spreadTags(paths, names).map((apart, index) => tagBox(paths[index], apart));
+  const nameAtLabel = (shiftPx: number): Vec2 => {
+    const [x, z] = middleOf(HERE);
+    const along = shiftPx / (2 * (CAMERA_ZOOM / Math.SQRT2));
+    return [x + along, z - along];
+  };
+
+  it('of two labels of one path the one over the name moves clear of it and the other stays where it was', () => {
+    const spread = spots([HERE, HERE], []);
+    const [left, right] = spots([HERE, HERE], [nameAtLabel(-60)]);
+    expect(hits(left, nameBox(nameAtLabel(-60)))).toBe(false);
+    expect(left.x0).toBeLessThan(spread[0].x0);
+    expect(right).toEqual(spread[1]);
+    expect(hits(left, right)).toBe(false);
+  });
+
+  it('a label that a moved label touches moves on in the same direction, so no two labels overlap', () => {
+    const spread = spots([HERE, HERE, HERE], []);
+    const placed = spots([HERE, HERE, HERE], [nameAtLabel(-30)]);
+    expect(placed[0]).toEqual(spread[0]);
+    expect(placed[1].x0).toBeGreaterThan(spread[1].x0);
+    expect(placed[2].x0).toBeGreaterThan(spread[2].x0);
+    for (const [a, b] of [[0, 1], [1, 2], [0, 2]]) expect(hits(placed[a], placed[b]), `${a} / ${b}`).toBe(false);
+    expect(hits(placed[1], nameBox(nameAtLabel(-30)))).toBe(false);
+  });
+});

@@ -140,6 +140,9 @@ const STAMP_PX = 32;
 const TAG_PX_X = 176;
 const TAG_PX_Y = 20;
 const TAG_GAP_PX = 8;
+const TAG_DROP_PX = 15;
+const NAME_PX_X = 31;
+const NAME_PX_Y = 39;
 const UNIT_PX_X = CAMERA_ZOOM / Math.SQRT2;
 const UNIT_PX_Y = CAMERA_ZOOM / Math.sqrt(6);
 const STAMP_FOOTPRINT: Footprint = { width: STAMP_PX, height: STAMP_PX, near: STAMP_NEAR, spread: STAMP_SPREAD };
@@ -592,10 +595,55 @@ export function spreadStamps(points: Vec2[]): Vec2[] {
   return spreadApart(points, STAMP_FOOTPRINT);
 }
 
-/** Returns, for the path of each packet that wears a label, how far on the ground its label stands from the middle of the path in a still scene, so the labels of packets that share a place (two `nc` to one machine follow one path) do not overlap. It is the spread of the stamps (`spreadStamps`) with the size of a label: a label is `TAG_PX_X` wide, so the labels of one group stand that far apart plus a gap. A label with no close neighbour does not move. */
-export function spreadTags(paths: Vec2[][]): Vec2[] {
+/** A point of the screen in pixels from where the ground origin is drawn: along the screen's horizontal (`u`) and down its vertical (`v`). */
+interface Spot {
+  u: number;
+  v: number;
+}
+
+function onScreen([x, z]: Vec2): Spot {
+  return { u: (x - z) * UNIT_PX_X, v: (x + z) * UNIT_PX_Y };
+}
+
+/** True when the label at `tag` lies over the floor name at `name`. */
+function overName(tag: Spot, name: Spot): boolean {
+  return Math.abs(tag.u - name.u) < (TAG_PX_X + NAME_PX_X) / 2 && Math.abs(tag.v - name.v) < (TAG_PX_Y + NAME_PX_Y) / 2;
+}
+
+/** Moves the label at `index` to `u` and, outward in the same direction, every label that it then touches, a label's width and a gap further on, so what stood clear of the others stays clear. */
+function pushOut(tags: Spot[], index: number, u: number): void {
+  const way = Math.sign(u - tags[index].u);
+  tags[index].u = u;
+  tags.forEach((other, next) => {
+    const beyond = (other.u - u) * way;
+    if (next !== index && beyond > 0 && beyond < TAG_PX_X && Math.abs(other.v - tags[index].v) < TAG_PX_Y) pushOut(tags, next, u + way * (TAG_PX_X + TAG_GAP_PX));
+  });
+}
+
+/** Moves each label that lies over a floor name along the screen's horizontal to the side of the name where it stands, only as far as it takes to clear it and leave a gap, and moves outward the labels it then touches. A floor name stays where it is, so it is no member of a group of labels: this runs after `spreadApart`, which would pull the labels back to the middle of their group. A label that lies over no name does not move. */
+function clearOfNames(placed: Vec2[], names: Vec2[]): Vec2[] {
+  const marks = names.map(onScreen);
+  const tags = placed.map((point): Spot => {
+    const { u, v } = onScreen(point);
+    return { u, v: v + TAG_DROP_PX };
+  });
+  const home = tags.map(({ u }) => u);
+  for (let round = 0; round <= tags.length * marks.length; round++) {
+    const over = tags.flatMap((tag, index) => marks.filter((mark) => overName(tag, mark)).map((mark) => ({ index, mark })))[0];
+    if (!over) break;
+    const reach = (TAG_PX_X + NAME_PX_X) / 2 + TAG_GAP_PX;
+    pushOut(tags, over.index, over.mark.u + (tags[over.index].u < over.mark.u ? -reach : reach));
+  }
+  return placed.map(([x, z], index): Vec2 => {
+    const along = (tags[index].u - home[index]) / (2 * UNIT_PX_X);
+    return [x + along, z - along];
+  });
+}
+
+/** Returns, for the path of each packet that wears a label, how far on the ground its label stands from the middle of the path in a still scene, so the labels of packets that share a place (two `nc` to one machine follow one path) do not overlap each other (`spreadApart`, the spread of the stamps with the size of a label: a label is `TAG_PX_X` wide, so the labels of one group stand that far apart plus a gap) nor lie over the name of a floor (`names`, where the map draws each one: `clearOfNames`). A label that has no close neighbour and lies over no name does not move. */
+export function spreadTags(paths: Vec2[][], names: Vec2[] = []): Vec2[] {
   const middles = paths.map((path) => pointAt(path, cumulativeLengths(path), pathLength(path) / 2));
-  return spreadApart(middles, TAG_FOOTPRINT).map(([x, z], index): Vec2 => [x - middles[index][0], z - middles[index][1]]);
+  return clearOfNames(spreadApart(middles, TAG_FOOTPRINT), names).map(([x, z], index): Vec2 => [x - middles[index][0], z - middles[index][1]]);
 }
 
 /** What a packet with ports wears beside it on the map: its labels leg by leg, when it has two, how far along its path it is when it changes from the first to the second (`translationDistance`), and, in a still scene, how far on the ground the label stands from the middle of the path (`spreadTags`). */

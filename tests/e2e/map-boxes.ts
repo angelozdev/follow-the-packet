@@ -11,8 +11,8 @@ export interface Box {
 export type Area = Omit<Box, 'name'>;
 
 const PIECE_LABELS = '.map-button';
-const PACKET_BOXES = `${PIECE_LABELS}, button.stamp, .packet-tag`;
 const LABELS = `${PIECE_LABELS}, button.stamp, .html-layer .caption:not(.caption--soft)`;
+const PACKET_BOXES = `${LABELS}, .packet-tag`;
 const MAP = '.incident__map';
 const BAR = '.incident__bar';
 const PIECE_HALF_WIDTH = 40;
@@ -68,7 +68,7 @@ export async function recordedLabels(page: Page): Promise<Box[][]> {
   return page.evaluate((key) => Reflect.get(window, key), RECORDED_LABELS);
 }
 
-/** Returns the box of every piece label, every stamp and every label that a packet with ports wears on the map, named as a screen reader reads them (a packet label is hidden from it, so it is named by its text): what the drawing of a packet puts next to each other. The floor names are not in it, and `mapBoxes` does not hold the packet labels, so the tests written before them keep checking what they checked. */
+/** Returns the box of every piece label, every stamp, every floor name and every label that a packet with ports wears on the map, named as a screen reader reads them (a packet label is hidden from it, so it is named by its text): what the drawing of a packet puts next to each other. `mapBoxes` does not hold the packet labels, so the tests written before them keep checking what they checked. */
 export async function packetBoxes(page: Page): Promise<Box[]> {
   return boxesOf(page, PACKET_BOXES);
 }
