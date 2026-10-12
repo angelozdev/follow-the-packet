@@ -124,6 +124,209 @@ El estudiante contestó el 2026-10-11 las dieciocho decisiones abiertas. Aprobó
 
 No queda ninguna decisión abierta (2026-10-11): ni las dieciocho (D-1 a D-18), ni las visuales de la Tarea 0 (V10 a V17; están en «Decisiones visuales», al final), ni las que abrieron después las Tareas 18 bis y 21: V18 (la primitiva `Message`, el aspecto «Pestaña» y el verde de `success`) y V19 (la forma del intruso).
 
+## Decisiones abiertas de la noche del 2026-10-11
+
+Estas tres decisiones se abrieron la noche del 2026-10-11, después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. Ninguna está decidida. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
+
+Los prototipos renderizados de O-1 y O-2 están en una página que se enlazará aquí cuando esté publicada. Mientras tanto, su archivo fuente es `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/chapter-2-open-decisions.html` (ruta temporal). Los dibujos no son capturas: se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el arte de las piezas, porque nadie arrancó la app esa noche. O-3 se decide con el texto.
+
+### O-1. La caja de inspección tapa la tarjeta recién abierta
+
+**Pregunta.** Con una tarjeta abierta, ¿qué hace la caja de inspección de una pieza?
+
+**Recomendación: D.** La caja se aparta de la tarjeta abierta y solo se cierra si no hay sitio. Es la única que da una sola regla a todas las cajas y conserva J7. Para lo más barato hoy, A destraba el merge y deja S2 abierto.
+
+**Qué pasa hoy en `feat/chapter-2`.**
+
+Al pulsar una pieza se abre su tarjeta y el puntero sigue sobre la pieza, así que su caja también se abre, como vista previa del mouse. La caja va abajo a la derecha del mapa, en una capa por encima de las tarjetas, con 22 rem de ancho (352 px) y hasta el 45 % del alto del mapa. Toma el puntero solo cuando su texto no cabe, y se queda abierta mientras el puntero la cruza.
+
+A 1280×360 el mapa mide 900×360 (la ventana menos los 380 px del panel), la caja puede medir 352×162 y la tarjeta del firewall del 01-13 (300 px de ancho, a 110 px de su pieza) queda justo debajo de ella. La caja tapa «Listo». Como su texto no cabe a esa altura, toma el puntero: sigue abierta mientras el puntero está sobre ella y unos 400 ms (la gracia) después de que sale. Según el CSS, la ayuda gris de la esquina, que se dibuja cuando no hay caja, también queda sobre la tarjeta, sin tomar el puntero.
+
+**Qué pasa con el arreglo `46c4074` de la rama del capítulo 1.**
+
+El mismo clic que abre la tarjeta también fija la caja: su banda dice «Fijada» y ofrece «Cerrar». Se queda encima de «Listo» hasta «Cerrar», Escape o un clic fuera de la caja. Esa rama lo pidió por «una sola regla»: todo clic en una pieza fija su caja, tenga o no tarjeta, y dijo que si chocaba con abrir la tarjeta se parara y se informara.
+
+Chocó: a 1280×360 «Listo» queda fuera de alcance y una prueba del juego falla. Por eso el merge de `feat/chapter-1-fourteen` está en pausa.
+
+En el merge resuelto, la prueba `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window` de `tests/e2e/card-layout.spec.ts` falla con «1280×360, the firewall with its tabs: its foot is out of reach». Falló en las 5 corridas repetidas guardadas en `committed-x5.log`. El plan de esa rama es `docs/plans/2026-10-11-follow-the-packet-floating-box-hover.md`.
+
+**Tres momentos para probar cada opción.**
+
+- **S1.** La pieza cuya tarjeta acaba de abrirse (el clic).
+- **S2.** Cualquier otra pieza o sello al que se pasa el mouse con la tarjeta abierta. En el capítulo 2 es lo normal: la terminal no se cierra al enviar y el jugador pasa por los sellos para leer la caja de cada envío.
+- **S3.** Una caja que el jugador fijó antes de abrir la tarjeta.
+
+**Qué arregla cada opción.**
+
+| Opción | S1 · el clic | S2 · otra pieza | S3 · lo fijado | J7 · fijar y desplazar | Costo |
+|--------|--------------|-----------------|----------------|-----------------------|-------|
+| A | Sí | No | En parte | Sí | Pequeño |
+| B | Solo quita «Fijada» | No | Sí | Sí | Pequeño |
+| C | Solo el puntero | Solo el puntero | Solo el puntero | No donde se solapa | Pequeño |
+| D | Sí | Sí | Sí | Sí, donde hay sitio | Lógica nueva entre la caja y la escena |
+| E | Sí | Sí | Sí | Sí | El mapa pierde alto |
+
+**Las opciones.**
+
+- **A. Una pieza muestra su tarjeta o su caja, nunca las dos.** El clic que abre la tarjeta no fija la caja y la cierra. Mientras esa tarjeta está abierta, esa pieza no abre caja.
+  - Qué arregla: Resuelve S1. No resuelve S2: la caja de otra pieza vuelve a caer sobre «Listo». S3 ya lo cubre en parte el clic fuera de la caja de la rama del capítulo 1 (suelta lo fijado).
+  - Cómo crece: La regla es por pieza y no mira dónde está la tarjeta. Con tablas, pestañas, «Salida» y el reloj las tarjetas son más altas y la zona tapada crece. Con mapas de ocho piezas el camino a «Listo» cruza más etiquetas y cada una abre su caja: S2 pasa más veces.
+  - Qué pierde: Mientras la tarjeta está abierta no se puede leer la caja de esa pieza (IP, servicios, «En la red»). Hay que cerrar la tarjeta con «Listo».
+  - J7 (poder fijar una caja para leerla y hacer scroll): Se conserva: un sello o una pieza sin tarjeta se sigue fijando, leyendo y desplazando.
+- **B. Abrir cualquier tarjeta suelta toda caja fijada.** Al abrirse una tarjeta, por clic o por teclado, se liberan las cajas fijadas. La vista previa del mouse no cambia.
+  - Qué arregla: Resuelve S3 y quita el «Fijada» de S1. No resuelve la vista previa de S1 (el puntero sigue en la pieza, así que la caja sigue ahí, como hoy) ni S2. Arregla lo que el arreglo 46c4074 agregaría, no lo que pasa hoy.
+  - Cómo crece: Igual que hoy: nada mira dónde está la tarjeta. Cada tarjeta nueva y cada pieza nueva repite el problema de hoy.
+  - Qué pierde: Nada que hoy tenga. Tampoco arregla lo de hoy.
+  - J7 (poder fijar una caja para leerla y hacer scroll): Se conserva.
+- **C. Ninguna caja toma el puntero donde pisa una tarjeta abierta.** **Engaña al jugador.** La caja se sigue viendo encima y el clic y la rueda pasan a lo que hay debajo.
+  - Engaña: Sí engaña. El jugador ve una caja encima de un botón y un texto que no puede leer ni usar. El botón tapado responde, pero él no lo sabe. Si quiere leer o desplazar la caja en esa zona, el clic y la rueda caen en la tarjeta de abajo: puede elegir una ficha o quitar una regla sin querer, y eso cambia el mundo del incidente. Una caja fijada tendría su «Cerrar» sin respuesta donde la tarjeta la cubre. Y una vista previa que el puntero no puede recorrer incumple WCAG 2.2, 1.4.13 «Hoverable» (nivel AA), en esa zona.
+  - Qué arregla: Resuelve el puntero en S1, S2 y S3. No resuelve la vista: la caja sigue tapando «Listo», las fichas y las reglas.
+  - Cómo crece: Peor: cuanto más grande la tarjeta, más controles hay bajo la caja.
+  - Qué pierde: Leer lo tapado. J7 en la parte solapada: la rueda y el clic no llegan a la caja.
+  - J7 (poder fijar una caja para leerla y hacer scroll): Solo fuera de la zona solapada.
+- **D. La caja se aparta de la tarjeta abierta y solo se cierra si no hay sitio.** **Recomendada.** La caja tiene dos lugares: abajo a la derecha (el de hoy) y abajo a la izquierda. Se abre en el que no toca la tarjeta. Si ninguno está libre, no se abre y una caja fijada se suelta. Es una sola regla para todas las cajas: una caja nunca tapa una tarjeta abierta.
+  - Qué arregla: Resuelve S1, S2 y S3, también la vista.
+  - Cómo crece: La regla no depende de lo que tenga la tarjeta: mide la tarjeta que hay, así que sigue valiendo con tablas, pestañas, «Salida» y reloj, y con ocho piezas. Lo que crece es el caso «sin sitio», que depende de dónde esté la tarjeta y del tamaño de la ventana. A 1000×700 el mapa mide 620 px y la tarjeta (300) y la caja (352) no caben una al lado de la otra. Con la tarjeta acoplada abajo a la izquierda y la caja abajo a la derecha hacen falta 674 px de mapa, es decir, una ventana de unos 1054 px. A 900 px o menos la caja ya sale del mapa y no choca.
+  - Qué pierde: En ventanas de 901 a unos 1054 px, con una tarjeta acoplada abierta, no hay cajas: hay que cerrar la tarjeta. Cuesta lógica nueva: la caja es hermana de la escena y la tarjeta vive dentro del `Html` de drei y se mueve con la cámara (`useCardSide` escribe su posición en cada frame), así que alguien tiene que medirla y avisar a la caja. Y el sitio libre tiene que contar también las etiquetas de las piezas: `terminalSide` ya hace algo parecido con `avoid` para las tarjetas.
+  - J7 (poder fijar una caja para leerla y hacer scroll): Se conserva donde hay caja. Donde no hay sitio, no hay caja que fijar.
+- **E. La caja sale del mapa.** (opción agregada) De otra clase que las demás: la caja va siempre en un renglón bajo el mapa, a cualquier ancho, como ya hace el CSS a 900 px o menos. Nunca choca con una tarjeta.
+  - Qué arregla: Resuelve S1, S2 y S3 por construcción: la caja y la tarjeta no comparten espacio.
+  - Cómo crece: No depende de las tarjetas ni de las piezas. Depende del alto de la ventana.
+  - Qué pierde: El mapa pierde ese alto siempre. A 1280×360 la caja ocupa hasta 162 px y el mapa queda de 198 px, menos que la tarjeta más baja que admite el juego (200 px). Si el renglón no tiene alto fijo, el mapa cambia de tamaño con cada caja. Y es un rediseño de la ventana del juego.
+  - J7 (poder fijar una caja para leerla y hacer scroll): Se conserva.
+
+**Las que se descartaron.**
+
+- Anclar la caja junto a su pieza, como la tarjeta: ataca la causa de J7 (la caja estaba a 405–650 px de su sello), pero es un rediseño de la caja y puede tapar etiquetas vecinas. D es un primer paso hacia ella.
+- Que la tarjeta se aparte de la zona de la caja: cambia dónde abre cada tarjeta del juego y no cabe en ventanas de menos de unos 1054 px.
+- Poner la tarjeta por encima de la caja: la caja queda cortada y no se puede leer.
+
+**Por qué D.**
+
+- **Rigor.** D no muestra nada falso ni deja un botón que se ve y no responde (C). Tampoco recorta la caja. E tampoco, pero le quita alto al mapa.
+- **Un estándar por elemento.** D es una sola regla para todas las cajas y todas las tarjetas, las de hoy y las que vengan: «una caja nunca tapa una tarjeta abierta». A es una regla de una pieza, B de un clic y C una excepción del puntero.
+- **Causas a la vista.** Con D la caja está a la vista, en el otro lugar, o no hay caja y la tarjeta que ocupa el sitio es la causa. Cuando no hay sitio, el motivo debe estar escrito; la tarea decide dónde.
+- **J7.** La caja fijada sigue pudiéndose leer y desplazar donde la hay.
+- **Para lo más barato hoy:** A. Destraba el merge con un cambio pequeño y deja S2 abierto, que es el caso normal del capítulo 2. D puede llegar después sin deshacer A.
+
+**Qué depende de esta decisión.**
+
+- El merge de `feat/chapter-1-fourteen` en `feat/chapter-2`, en pausa. El merge resuelto está guardado en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/merge/` (`resolved-merge.patch` y `resolved-files/`, siete archivos: `docs/plans/2026-10-08-follow-the-packet-followups.md`, `projects/follow-the-packet/src/ui/CLAUDE.md`, `.../src/ui/incident/CLAUDE.md`, `.../src/ui/incident/incident-screen.tsx`, `.../src/ui/incident/incident-screen.test.tsx`, `.../tests/e2e/CLAUDE.md` y `.../tests/e2e/card-layout.spec.ts`). Esa ruta es temporal: si se borra, el merge se rehace con el commit `46c4074` como base.
+- `tests/e2e/card-layout.spec.ts`: la que falla hoy, `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window`, y la que fija la regla de la rama del capítulo 1, `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box` (A y D la cambian). También se corren `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view`, `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` (J7) y, en `tests/e2e/incidents.spec.ts`, `the inspection box floats inside the window and covers no label or stamp`.
+- Si se elige D: la Tarea 19 (su commit `af90924` ya abre las tarjetas de cada pieza con pestañas, y esas tarjetas son las que la caja tiene que esquivar) y la 21 (la escena, pendiente), porque la caja necesita saber dónde está la tarjeta que ancla `src/scene/overlay/`.
+
+**Lo que no se pudo verificar.**
+
+- Los dibujos no son capturas: nadie arranca la app esta noche. Se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el tamaño del arte de las piezas. La posición de las piezas y la altura natural de la tarjeta del firewall son aproximadas.
+- Lo medido por la prueba de la rama (que el centro de «Listo» queda fuera de alcance a 1280×360) se leyó en el log, no se volvió a correr.
+- WCAG 2.2, 1.4.13 «Hoverable», leído en `https://www.w3.org/TR/WCAG22/` con `curl` el 2026-10-11.
+
+**Decidida:** pendiente del estudiante.
+
+### O-2. La consulta DNS de un `ping` o un `nc` por nombre
+
+**Pregunta.** Cuando el jugador hace `ping` o `nc` a un nombre, ¿se dibuja la consulta que el equipo manda antes a su resolver?
+
+**Recomendación: A.** Dibujarla. Es la que modela la realidad y la que deja ver en el mapa la trampa del archivo hosts y un nombre que no existe. Cuesta motor (gasta un puerto y deja fila) y reabre la decidida 4.
+
+**Qué pasa hoy.**
+
+El motor ya calcula esa consulta como un paquete UDP al puerto 53 del resolver (`sendQuery` en `src/engine/simulation/simulate.ts`): pasa por los firewalls, las rutas y el NAT como cualquier datagrama. Pero la corre desde un estado vacío y la deja fuera del resultado: no se dibuja, no gasta un puerto del contador del emisor y no deja fila en la tabla de traducciones (decidida 4: la tabla muestra solo los envíos del jugador).
+
+La caja del paquete lo cuenta en su campo «DNS»: que el equipo preguntó antes a su resolver o que contestó el archivo hosts. En ninguna opción se dibuja la pregunta del resolver al servidor autoritativo (decidida 13).
+
+**Las opciones.**
+
+- **A. Dibujar la consulta.** **Recomendada.** Un paquete UDP del equipo al resolver y su respuesta, antes del `ping` o del `nc`, con su fila en la tabla de traducciones.
+  - Qué cambia:
+    - **02-10.** `ping www.lucia.example` muestra la consulta y después el ping. `dig` no cambia: ya es la consulta.
+    - **02-11.** El `nc` por nombre manda primero la consulta. La consulta gasta el puerto 51514 y deja la fila 51514 → 40001; el `nc` sale del 51515 y se traduce a 40002 (decididas 4 y 6). Los números que el jugador ya vio se mueven, y la caja tiene que decir por qué.
+    - **02-13.** `ping tienda.lucia.example` lee el archivo hosts y no dibuja ninguna consulta, mientras que un `ping` por DNS sí la dibuja. La trampa de hosts se ve en el mapa. `dig tienda.lucia.example` sí dibuja la consulta.
+    - **02-14, casos 1 a 3.** En el caso 1 cada prueba por nombre (`dig`, `ping`, `nc`) dibuja su consulta. En el caso 2, el `nc` a `wwww.lucia.example` hoy no mueve nada: con A se ve la consulta y su respuesta NXDOMAIN, y nada más sale. El caso 3 repite el par del 02-13.
+    - **02-12** no cambia: solo repite `dig`.
+  - Cómo crece: Cada envío por nombre suma dos paquetes y una fila, así que con ocho piezas y varios envíos hay más sellos en el mapa. No toca el capítulo 4: una VPC no tiene resolver dibujado ni `dnsServer`.
+  - Qué pierde: Más cosas en el mapa por cada envío. Reabre la decidida 4. Dibuja la mitad del intercambio (equipo y resolver), no la otra mitad (resolver y autoritativo), así que no es la red completa. No se verificó cuántas consultas manda un `ping` real ni en qué orden consulta Amazon Linux el archivo hosts y el DNS (la guía `src/engine/dns/CLAUDE.md` dice que no se verificó).
+- **B. Dejarla como hoy.** No se dibuja, no gasta puerto y no deja fila. La caja del paquete lo cuenta.
+  - Qué cambia:
+    - **02-10, 02-11, 02-12, 02-13 y 02-14.** Nada del motor ni de las fichas cambia.
+    - **02-13.** El `ping` por DNS y el `ping` con hosts se ven igual en el mapa. Solo la caja los distingue.
+    - **02-14, caso 2.** El `nc` a un nombre que no existe no mueve nada: el jugador ve un envío que no sale, y la causa está solo en la caja.
+  - Rigor: No es inexacta: la caja lo dice y nada de lo que muestra es falso. Omite tráfico.
+  - Cómo crece: Nada nuevo: no suma paquetes ni filas, con cualquier número de piezas.
+  - Qué pierde: El mapa no enseña la consulta cuando el jugador hace `ping` o `nc`, y la trampa de hosts queda en un texto.
+
+**Por qué A.**
+
+- **Rigor.** «Entre una opción más simple y otra que modela la realidad, la segunda.» Un equipo que usa un nombre le pregunta antes a su resolver. A lo dibuja; B lo cuenta en un campo.
+- **Causas a la vista.** Con A, un `nc` que no sale por un NXDOMAIN, o un `ping` que no sale porque un firewall descartó la consulta (`dns-resolver-silent`), se ven en el mapa. Con B el jugador ve un envío que no se mueve y tiene que abrir la caja para saber por qué.
+- **El par del 02-13** es la mejor lección del capítulo sobre nombres: dos `ping` que parecen iguales y solo uno pregunta al DNS. Con A los dos se ven distintos; con B, iguales.
+- **El costo es de motor y no de la lección:** la consulta tiene que gastar un puerto y dejar fila, y la traza de la consulta tiene que llegar a la vista. La guía del motor deja abierto si se mezcla con la del paquete que preguntó.
+
+**Qué depende de esta decisión.**
+
+- Tareas ya hechas que A reabre: 4 (el puerto de origen), 5 (la secuencia pura, `sequence.ts`), 12 y 13 (`sendQuery` y `Resolution.query`), 16 (los textos y el campo «DNS» de la caja, commit `3346501`). Los commits de las Tareas 4, 5, 12 y 13 son `3e8c58c`, `cdf0fe7`, `497b0c2` y `af7d831`.
+- Tareas pendientes: 21 (la escena dibuja la consulta y su respuesta, con la forma UDP y la etiqueta «UDP 51514 → 53» que cambia al cruzar el router), 29 (02-10), 30 (02-11), 32 (02-13) y 33 (02-14, casos 1 a 3). La 31 (02-12) no cambia.
+- La decidida 4 («La tabla muestra solo los envíos desde el último cambio de mundo») pasa a incluir las consultas.
+
+**Lo que no se pudo verificar.**
+
+- No se verificó cuántas consultas manda un `ping` real ni que lea el archivo hosts antes que el DNS en Amazon Linux. La guía del motor lo dice y esta decisión no lo resuelve.
+- Los dibujos no son capturas: la posición de las piezas del mapa es aproximada, los textos de las cajas son de ejemplo con la forma de los reales, y la tarjeta y la caja van a los lados del mapa (no es una ventana del juego) para que se vea el dibujo.
+- Que las Tareas 4, 5, 12, 13 y 16 están hechas sale de los mensajes de commit de la rama (`git log`), no de las casillas del plan.
+
+**Decidida:** pendiente del estudiante.
+
+### O-3. En el capítulo 1, un router sin ruta avisa «Destination Host Unreachable»
+
+**Pregunta.** ¿Se corrige el nombre del aviso de un router sin ruta en el capítulo 1?
+
+**Recomendación: A1.** Decirlo en palabras llanas hasta que se conozca el término. B es la inexacta. Hoy ningún incidente del capítulo 1 lo muestra, así que el cambio es pequeño, pero toca una decisión fijada a propósito y necesita tu visto bueno.
+
+**El hecho.**
+
+- Un router sin ninguna ruta al destino, ni siquiera la ruta por defecto, avisa con ICMP tipo 3, código 0: Network Unreachable. RFC 1812 §4.3.3.1: «If a router cannot forward a packet because it has no routes at all (including no default route) to the destination specified in the packet, then the router MUST generate a Destination Unreachable, Code 0 (Network Unreachable) ICMP message.»
+- RFC 1812 §5.2.7.1 define los dos códigos: «0 = Network Unreachable - generated by a router if a forwarding path (route) to the destination network is not available» y «1 = Host Unreachable - generated by a router if a forwarding path (route) to the destination host on a directly connected network is not available (does not respond to ARP)».
+- RFC 792 solo nombra los códigos («0 = net unreachable; 1 = host unreachable») y dice que el gateway «may send» el aviso cuando, según sus tablas, la red es inalcanzable. La regla que obliga es la de RFC 1812.
+- Consultados con `curl` y `grep` sobre `rfc-editor.org/rfc/rfc1812.txt` y `rfc792.txt` el 2026-10-11.
+
+**Qué muestra el juego.**
+
+- **Lo que muestra el capítulo 1.** `WARNING_TERM` en `src/copy/packet-labels.ts` convierte el aviso `net-unreachable` en el término `host-unreachable` mientras `net-unreachable` no se conoce, y `warningOf` lo aplica. El capítulo 1 lo decidió así: «un término para los dos». Dos pruebas lo fijan a propósito: `a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term` (`src/game/view/ladder.test.ts`) y la que espera `host-unreachable, host-unreachable, time-exceeded` para los tres avisos (`src/copy/terms.test.ts`).
+- **Lo que hace el capítulo 2.** Desde el 02-07 el término `net-unreachable` se conoce y el aviso se llama «Destination Net Unreachable». Un jugador que vuelve al capítulo 1 con ese término conocido ve el nombre correcto.
+- **Hoy no se ve.** Ningún incidente del capítulo 1, tal como está escrito, hace que un router sin ruta avise. Se revisaron las listas `send.to` de los incidentes 01-06 a 01-10 y de los casos del 01-14, y los routers de `src/levels/01-first-day/shared.ts`: los destinos son direcciones de la oficina (las atiende `router-oficina` o el propio equipo), la del servidor (que el proveedor y el router de destino saben alcanzar) y 10.0.0.10 (una IP privada, que el proveedor descarta sin avisar, decidida 11). Desde el 01-08 `router-oficina` tiene ruta por defecto, y el 01-10 le quita el aviso al proveedor (`sendsUnreachable: false`). Solo las pruebas le quitan la ruta a un router a mano.
+
+**Las opciones.**
+
+- **A1. Corregir el capítulo 1: palabras llanas hasta conocer el término.** **Recomendada.** Mientras `net-unreachable` no se conozca, el aviso de un router sin ruta se dice sin nombre de host: «un router avisó que no tiene ruta a esa red». Es lo que ya piden `rigorous-plain-copy` y `explained-behavior-changes`: si el término no llegó, se dice en palabras llanas.
+  - Costo: Toca `WARNING_TERM` y `warningOf` (el aviso admitiría «sin término»), los textos de `src/copy/reasons.ts` y `visibleIp` de `src/game/view/revealed-routers.ts`, y reescribe las dos pruebas de arriba. Choca con una decisión fijada a propósito: el Goal del plan («sin cambiar lo que el capítulo 1 muestra») y la prueba de `ladder.test.ts` dicen que el capítulo 1 muestra lo mismo después del capítulo 2. Aunque hoy ningún incidente lo muestre, necesita el visto bueno expreso del estudiante.
+- **A2. Corregir el capítulo 1: llamarlo «Destination Unreachable».** Un nombre genérico, el del mensaje ICMP tipo 3 (RFC 792: «Destination Unreachable Message»), hasta que se conozca el término.
+  - Costo: Es un término nuevo del registro, con su definición y su lugar en la escalera, o un cambio del nombre de `host-unreachable`, que el 01-05 enseña bien para el aviso del propio equipo. También choca con el Goal.
+- **A3. Corregir el capítulo 1: presentar `net-unreachable` antes.** El término se presenta en un incidente del capítulo 1, por ejemplo el 01-08.
+  - Costo: Mueve un término de la tabla aprobada de catorce subcapítulos. El precedente es D-7 B (mover términos), que se descartó.
+- **B. Dejarlo.** **Inexacta.** Un router sin ruta se llama «Destination Host Unreachable» en el capítulo 1.
+  - Costo: Cero hoy: nada cambia en el juego ni en las pruebas.
+  - Rigor: Es inexacta: llama «Host» a lo que el router avisa con el código 0, Network Unreachable. Hoy está latente porque ningún incidente lo muestra.
+
+**Por qué A1.**
+
+- **Rigor.** B afirma algo falso aunque hoy no se vea. A1 es la más barata de las tres que lo corrigen y no mueve ni agrega términos.
+- **No cambia lo que el jugador ya vio:** hoy ningún incidente lo muestra. A1 sería un commit propio: la Tarea 16 (los textos), que ya tocó estos archivos, está hecha.
+- **Hay que decidirla** porque choca con una decisión fijada a propósito (el Goal del plan y una prueba), aunque hoy no se vea.
+
+**Qué depende de esta decisión.**
+
+- El capítulo 1 y su copia: `src/copy/packet-labels.ts` (`WARNING_TERM`, `warningOf`), `src/copy/reasons.ts` (los casos que dicen `warning('host-unreachable')`) y `src/game/view/revealed-routers.ts` (`visibleIp` usa `host-unreachable` para los dos avisos del traceroute).
+- Las dos pruebas que cambiarían: `a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term` (`src/game/view/ladder.test.ts`) y `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded` (`src/copy/terms.test.ts`).
+- La Tarea 27 (02-06 y 02-07, donde se presenta `net-unreachable`) si se elige A3.
+
+**Lo que no se pudo verificar.**
+
+- Qué imprime un `ping` real de Linux o de macOS para el código 0 no se probó: el juego dice el nombre del mensaje ICMP, no la salida de una herramienta.
+- Que hoy ningún incidente del capítulo 1 lo muestre sale de leer las listas `send.to` y los routers de `shared.ts`; no se jugó cada combinación ni se corrió el motor sobre ellas.
+- RFC 1812 y RFC 792, leídos con `curl` y `grep` el 2026-10-11.
+
+**Decidida:** pendiente del estudiante.
+
 ## Decisiones abiertas
 
 Contestadas (ver «Decisiones abiertas ya contestadas»): las dieciocho, D-1 a D-18. D-12 y D-17 se habían decidido antes del 2026-10-11 y las demás se decidieron el 2026-10-11. Las opciones siguen abajo como registro y cada una cierra con su línea «Decidida».
