@@ -39,6 +39,7 @@ const removeEntrySchema = z.object({ type: z.literal('removeEntry'), tableId: id
 const waitSchema = z.object({ type: z.literal('wait'), seconds: z.number().int().positive() });
 const ruleMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema]);
 const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
+const fixMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, placeEntrySchema, removeEntrySchema]);
 
 export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
 
@@ -143,7 +144,7 @@ const caseSchema = z.object({
   shown: z.array(id).min(1).optional(),
   report: termText,
   send: z.object(sendChipsShape),
-  fix: z.object({ tables: z.array(tableSchema).min(1), tasks: z.array(sendTaskSchema).min(1) }).optional(),
+  fix: z.object({ tables: z.array(tableSchema).min(1), tasks: z.array(sendTaskSchema).min(1), solution: z.array(fixMoveSchema).min(1) }).optional(),
   hints: z.tuple([termText, termText]),
   cause: z.object({ question: termText, options: z.tuple([optionSchema, optionSchema, optionSchema]) }),
 });
@@ -280,9 +281,16 @@ function checkSettings({ send }: SendShape, fail: Fail): void {
   }
 }
 
-function offersPlacement(tables: TableShape[], { tableId, picks }: Extract<SendShape['solution'][number], { type: 'placeEntry' }>): boolean {
+type TableMoveShape = Extract<SendShape['solution'][number], { type: 'placeEntry' | 'removeEntry' }>;
+
+function offersPlacement(tables: TableShape[], { tableId, picks }: Extract<TableMoveShape, { type: 'placeEntry' }>): boolean {
   const trays = Object.entries<{ id: string }[]>(tables.find((table) => table.id === tableId)?.trays ?? {});
   return trays.length > 0 && Object.keys(picks).length === trays.length && trays.every(([name, chips]) => chips.some((chip) => chip.id === picks[name]));
+}
+
+function checkTableMove(move: TableMoveShape, tables: TableShape[], fail: Fail): void {
+  if (move.type === 'placeEntry' && !offersPlacement(tables, move)) fail(`the solution places an entry the incident does not offer: ${move.tableId}`);
+  if (move.type === 'removeEntry' && !tables.some((table) => table.id === move.tableId)) fail(`the solution removes an entry from a table the incident does not offer: ${move.tableId}`);
 }
 
 function checkTables(tables: TableShape[], where: string, fail: Fail): void {
@@ -331,8 +339,7 @@ function checkSend(incident: SendShape, fail: Fail): void {
   for (const move of incident.solution) {
     if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
     if (move.type === 'setSetting' && !offersSetting(move)) fail(`the solution uses a setting the incident does not offer: ${move.deviceId}/${move.settingId}/${move.chipId}`);
-    if (move.type === 'placeEntry' && !offersPlacement(tables, move)) fail(`the solution places an entry the incident does not offer: ${move.tableId}`);
-    if (move.type === 'removeEntry' && !tables.some((table) => table.id === move.tableId)) fail(`the solution removes an entry from a table the incident does not offer: ${move.tableId}`);
+    if (move.type === 'placeEntry' || move.type === 'removeEntry') checkTableMove(move, tables, fail);
     if (move.type === 'wait' && !(incident.send.clock?.steps ?? []).some((step) => step.seconds === move.seconds)) fail(`the solution waits ${move.seconds} seconds, which is no step of the clock`);
   }
 }
@@ -381,12 +388,17 @@ function checkIdentify(incident: IdentifyShape, fail: Fail): void {
   if (incident.flows.length > 0) fail('an identify incident sends nothing');
 }
 
-function checkFix({ tables, tasks }: NonNullable<CaseShape['fix']>, ids: ReturnType<typeof checkSendChips>, where: string, fail: Fail): void {
+function checkFix({ tables, tasks, solution }: NonNullable<CaseShape['fix']>, ids: ReturnType<typeof checkSendChips>, where: string, fail: Fail): void {
   checkTables(tables, `${where}: fix `, fail);
   uniqueIn(fail)(`${where}: fix task id`, tasks.map((task) => task.id));
   const offers = offeredBy(ids);
   for (const task of tasks) {
     if (!offers(task.expect)) fail(`${where}: ${task.id} expects chips the case does not offer`);
+  }
+  const failInFix: Fail = (message) => fail(`${where}: fix: ${message}`);
+  for (const move of solution) {
+    if (move.type !== 'sendPacket') checkTableMove(move, tables, failInFix);
+    else if (!offers(move)) failInFix(`the solution uses chips the case does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
   }
 }
 

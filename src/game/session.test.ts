@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
-import { applyAction, type ServerActor } from '@/engine';
-import { INCIDENTS } from '@/levels';
+import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor } from '@/engine';
+import { INCIDENTS, caseWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, sendIncident, tcpService, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
-import { canAskHint, caseClosed, clockSteps, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
+import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 import { taskHolds } from './tasks';
 
@@ -845,6 +845,131 @@ describe('a new case of a diagnose incident', () => {
   it('waits no time and edits no table, because a case offers neither', () => {
     const start = diagnosing();
     for (const move of [{ type: 'wait', seconds: 60 }, { type: 'placeEntry', tableId: 'routes', picks: {} }, { type: 'removeEntry', tableId: 'routes', entryId: 'x' }] as const) expect(sessionReducer(start, move), move.type).toBe(start);
+  });
+});
+
+describe('a case with a fix', () => {
+  const REPAIRABLE = repairableDiagnoseIncident();
+  const { cases } = REPAIRABLE.diagnose;
+  const fixed = cases.findIndex(({ fix }) => fix);
+  const { fix } = cases[fixed];
+  const { provider, officeRouter, backbone, server } = OFFICE_FLOORS;
+  const rightOf = (index: number) => cases[index].cause.options.findIndex((option) => option.correct);
+  const nameRight = (index: number): SessionAction => ({ type: 'nameCause', index: rightOf(index) });
+  const nameWrong = (index: number): SessionAction => ({ type: 'nameCause', index: cases[index].cause.options.findIndex((option) => !option.correct) });
+  const NEXT: SessionAction = { type: 'nextCase' };
+  const sendPing: SessionAction = { type: 'sendPacket', fromId: 'origin', toId: 'server', messageId: 'ping' };
+  const [removeDefault, placeServer] = fix!.solution;
+  const solution = fix!.solution;
+  const closing = (index: number): SessionAction[] => cases.slice(0, index).flatMap((spec, at) => [...(spec.fix?.solution ?? []), nameRight(at), NEXT]);
+  const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([REPAIRABLE], REPAIRABLE.id));
+  const atTheFix = (...actions: SessionAction[]): Session => playing(...closing(fixed), ...actions);
+  const routesIn = (world: Network) => world.routers?.find((router) => router.id === provider.id)?.routes;
+  const routesOf = (session: Session) => routesIn(session.world);
+  const all = [...cases.keys()];
+
+  it('the repair of a case does not carry over to the next case', () => {
+    const repaired = atTheFix(...solution, nameRight(fixed));
+    expect(caseClosed(repaired)).toBe(true);
+    expect(routesOf(repaired)).toEqual([{ to: server.range, next: backbone.id }]);
+    const next = sessionReducer(repaired, NEXT);
+    expect(next.caseIndex).toBe(fixed + 1);
+    expect(next.world).toEqual(caseWorld(next.start, cases[fixed + 1]));
+    expect(routesOf(next)).toEqual(routesIn(next.start));
+    expect(routesOf(next)).not.toEqual(routesOf(repaired));
+    expect([next.sent, next.history, next.entryProblem, next.named]).toEqual([[], [], null, []]);
+    expect(routesIn(caseWorld(next.start, cases[fixed]))).toEqual([{ to: ROUTE_DEFAULT, next: officeRouter.id }]);
+  });
+
+  it('changes the world with the moves on the tables of its fix, clears the sends and keeps the causes named, the hints and the send number', () => {
+    const sent = atTheFix({ type: 'showHint' }, nameWrong(fixed), sendPing);
+    expect(sent.sent).toHaveLength(1);
+    const edited = sessionReducer(sent, removeDefault);
+    expect(routesOf(edited)).toEqual([]);
+    expect([edited.sent, edited.history]).toEqual([[], []]);
+    expect([edited.named, edited.hintsShown, edited.sends]).toEqual([sent.named, 1, 1]);
+    expect(edited.caseIndex).toBe(fixed);
+  });
+
+  it('edits nothing in a case with no fix, in a case already closed, once the incident is closed and with a move that is no table move', () => {
+    const noFix = playing();
+    for (const move of [removeDefault, placeServer, { type: 'setSetting', deviceId: 'origin', settingId: 'gateway', chipId: 'none' }] as const) expect(sessionReducer(noFix, move), move.type).toBe(noFix);
+    const closed = atTheFix(...solution, nameRight(fixed));
+    expect(caseClosed(closed)).toBe(true);
+    for (const move of [removeDefault, { type: 'removeEntry', tableId: 'routes', entryId: server.range }, placeServer] as const) expect(sessionReducer(closed, move), move.type).toBe(closed);
+    const open = atTheFix();
+    expect(sessionReducer(open, { type: 'setSetting', deviceId: 'marta-laptop', settingId: 'gateway', chipId: 'none' })).toBe(open);
+    expect(sessionReducer(open, { type: 'placeEntry', tableId: 'ghost', picks: {} })).toBe(open);
+    expect(sessionReducer(open, { type: 'removeEntry', tableId: 'routes', entryId: 'ghost' })).toBe(open);
+    expect(sessionReducer(open, { type: 'wait', seconds: 60 })).toBe(open);
+  });
+
+  it('keeps the problem of an entry the engine refuses in the case, and drops it with the next change or the next case', () => {
+    const refused = atTheFix({ type: 'placeEntry', tableId: 'routes', picks: { destination: ROUTE_DEFAULT, nextHop: backbone.id } });
+    expect(refused.entryProblem).toEqual({ tableId: 'routes', code: 'destination-has-route' });
+    expect(routesOf(refused)).toEqual([{ to: ROUTE_DEFAULT, next: officeRouter.id }]);
+    expect(sessionReducer(refused, { type: 'placeEntry', tableId: 'routes', picks: { destination: ROUTE_DEFAULT, nextHop: backbone.id } })).toBe(refused);
+    expect(sessionReducer(refused, removeDefault).entryProblem).toBeNull();
+    const closed = sessionReducer(playing(...closing(fixed), ...solution, nameRight(fixed)), NEXT);
+    expect(closed.entryProblem).toBeNull();
+  });
+
+  it('keeps the right cause apart from the case closing: the case waits for its fix, the cause named stays the last one, and nothing else can be named', () => {
+    const waiting = atTheFix(nameWrong(fixed), nameRight(fixed));
+    expect(causeNamed(waiting)).toBe(true);
+    expect(caseClosed(waiting)).toBe(false);
+    expect(waiting.caseResults).toHaveLength(fixed);
+    expect(waiting.named).toEqual([cases[fixed].cause.options.findIndex((option) => !option.correct), rightOf(fixed)]);
+    expect(sessionReducer(waiting, nameWrong(fixed))).toBe(waiting);
+    expect(sessionReducer(waiting, NEXT)).toBe(waiting);
+    expect(failingFixTaskIds(waiting)).toEqual(['server']);
+    const closed = [...solution].reduce(sessionReducer, waiting);
+    expect(caseClosed(closed)).toBe(true);
+    expect(closed.caseResults.at(-1)).toEqual({ picks: waiting.named, hints: 0 });
+    expect(failingFixTaskIds(closed)).toEqual([]);
+  });
+
+  it('closes the case once, whichever of the cause and the fix comes last, and sending again in a closed case adds nothing', () => {
+    const repairedFirst = atTheFix(...solution);
+    expect(caseClosed(repairedFirst)).toBe(false);
+    const byCause = sessionReducer(repairedFirst, nameRight(fixed));
+    const byFix = atTheFix(nameRight(fixed), ...solution);
+    for (const closed of [byCause, byFix]) {
+      expect(caseClosed(closed)).toBe(true);
+      expect(closed.caseResults).toHaveLength(fixed + 1);
+      expect(closed.phase).toBe('playing');
+      const again = sessionReducer(closed, sendPing);
+      expect(again.caseResults).toEqual(closed.caseResults);
+      expect(again.phase).toBe('playing');
+      expect(sessionReducer(again, sendPing).caseResults).toHaveLength(fixed + 1);
+    }
+  });
+
+  it('closes the incident when the last case closes by its fix, and not before', () => {
+    const only = { ...REPAIRABLE, diagnose: { cases: [cases[fixed]] } };
+    const last = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([only], only.id));
+    const named = last(nameRight(fixed));
+    expect([named.phase, caseClosed(named)]).toEqual(['playing', false]);
+    const closed = last(nameRight(fixed), ...solution);
+    expect(closed.phase).toBe('explaining');
+    expect(closed.middle).toBe(true);
+    expect(starsOf(closed)).toEqual({ closed: true, middle: true, explained: true });
+    expect(sessionReducer(closed, sendPing)).toMatchObject({ phase: 'explaining', caseResults: closed.caseResults });
+    expect(sessionReducer(closed, removeDefault)).toBe(closed);
+  });
+
+  it('counts a hint asked while the fix is pending in the case it belongs to', () => {
+    const waiting = atTheFix(nameRight(fixed), { type: 'showHint' });
+    expect(waiting.hintsShown).toBe(1);
+    const closed = [...solution].reduce(sessionReducer, waiting);
+    expect(closed.caseResults.at(-1)).toEqual({ picks: [rightOf(fixed)], hints: 1 });
+    expect(canAskHint(closed)).toBe(false);
+  });
+
+  it('plays every case of the incident, the one with a fix included', () => {
+    const everything = playing(...all.flatMap((index) => [...(cases[index].fix?.solution ?? []), nameRight(index), ...(index < cases.length - 1 ? [NEXT] : [])]));
+    expect(everything.phase).toBe('explaining');
+    expect(everything.caseResults).toHaveLength(cases.length);
   });
 });
 

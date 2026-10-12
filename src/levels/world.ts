@@ -57,20 +57,20 @@ function applyRule(world: Network, incident: Incident, move: RuleMove): Network 
   return applyAction(world, { type: 'addRule', firewallId: move.firewallId, rule, direction });
 }
 
-function applyPlacement(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove): Network {
-  const table = tableOf(incident, tableId);
+function applyPlacement(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove, spec?: CaseSpec | null): Network {
+  const table = tableOf(incident, tableId, spec);
   const action = table && placementOf(table, picks);
   return action ? applyAction(world, action) : world;
 }
 
-function applyRemoval(world: Network, incident: Incident, { tableId, entryId }: RemoveEntryMove): Network {
-  const table = tableOf(incident, tableId);
+function applyRemoval(world: Network, incident: Incident, { tableId, entryId }: RemoveEntryMove, spec?: CaseSpec | null): Network {
+  const table = tableOf(incident, tableId, spec);
   const action = table && removalOf(world, table, entryId);
   return action ? applyAction(world, action) : world;
 }
 
-/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, waiting, an unknown firewall or chip, a rule that already exists in the list of its direction, a rule id that is not there, a setting the incident does not offer or whose chip is already in effect, an entry the table already has or the engine does not take, a table the incident does not offer, a row that is not there). A rule goes in the inbound list unless the move says outbound, and the same rule in the other list is not a duplicate. A setting move sets what its kind says: the default gateway of the device, its DNS server (the value of the chip, or none when the chip has none) or the listen address of the service it names. An entry move places a route or a record with the chips picked in the trays of a table, or removes the row of the table that has an id; a record gets the time to live of the game. */
-export function applyMove(world: Network, incident: Incident, move: PlayerMove): Network {
+/** Applies a player move; returns the same world when the move changes nothing (sending a packet, answering a card, waiting, an unknown firewall or chip, a rule that already exists in the list of its direction, a rule id that is not there, a setting the incident does not offer or whose chip is already in effect, an entry the table already has or the engine does not take, a table the incident does not offer, a row that is not there). A rule goes in the inbound list unless the move says outbound, and the same rule in the other list is not a duplicate. A setting move sets what its kind says: the default gateway of the device, its DNS server (the value of the chip, or none when the chip has none) or the listen address of the service it names. An entry move places a route or a record with the chips picked in the trays of a table, or removes the row of the table that has an id; a record gets the time to live of the game. The tables an entry move reads are those of the send incident or, given the case of a diagnose the player is on (`spec`), only those of the fix of that case: a diagnose changes the world with nothing else. */
+export function applyMove(world: Network, incident: Incident, move: PlayerMove, spec?: CaseSpec | null): Network {
   switch (move.type) {
     case 'sendPacket':
     case 'answerCard':
@@ -79,18 +79,18 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove):
     case 'setSetting':
       return applySetting(world, incident, move);
     case 'placeEntry':
-      return applyPlacement(world, incident, move);
+      return applyPlacement(world, incident, move, spec);
     case 'removeEntry':
-      return applyRemoval(world, incident, move);
+      return applyRemoval(world, incident, move, spec);
     case 'placeRule':
     case 'removeRule':
       return applyRule(world, incident, move);
   }
 }
 
-/** Says why a placement the incident offers does not go in: the code of the problem (`recordProblem` or `routeProblem` when the engine refuses it, or `chipProblem` when the chips make no record), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray), because then there is nothing to explain. */
-export function placementProblem(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove): EntryProblem | undefined {
-  const table = tableOf(incident, tableId);
+/** Says why a placement the incident (or the fix of the case `spec`) offers does not go in: the code of the problem (`recordProblem` or `routeProblem` when the engine refuses it, or `chipProblem` when the chips make no record), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray), because then there is nothing to explain. */
+export function placementProblem(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove, spec?: CaseSpec | null): EntryProblem | undefined {
+  const table = tableOf(incident, tableId, spec);
   if (!table) return undefined;
   const action = placementOf(table, picks);
   if (!action) return chipProblem(table, picks);

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { INCIDENTS, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, sendIncident } from '@/testing/incidents';
+import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
 vi.mock('@/scene/game-scene', async () => {
@@ -527,6 +527,67 @@ describe('incident screen of a diagnose incident', () => {
     }
     expect(onFinish).toHaveBeenCalledWith(1);
     expect(screen.getByText(`No acertaste a la primera el caso ${cases.length}.`)).toBeInTheDocument();
+  });
+});
+
+describe('incident screen of a diagnose incident with a case that has a fix', () => {
+  const REPAIRABLE = repairableDiagnoseIncident();
+  const { cases } = REPAIRABLE.diagnose;
+  const fixed = cases.findIndex(({ fix }) => fix);
+  const KNOW = CASE_TEXT.know;
+  const NEXT = CASE_TEXT.next;
+  const ROUTES = 'Tabla de rutas de router-provider';
+  const optionOf = (index: number) => toPlainText(cases[index].cause.options.find((option) => option.correct)?.text ?? '');
+  const caseCardOf = (index: number) => screen.getByRole('region', { name: CASE_TEXT.title(index + 1, cases.length) });
+  const ticks = () => Array.from(caseCardOf(fixed).querySelectorAll('.tasks li'), (item) => item.textContent?.charAt(0));
+
+  async function reachTheFix(user: User) {
+    for (const index of cases.slice(0, fixed).keys()) {
+      await user.click(screen.getByRole('button', { name: KNOW }));
+      await user.click(screen.getByRole('button', { name: optionOf(index) }));
+      await user.click(screen.getByRole('button', { name: NEXT }));
+    }
+  }
+
+  async function repairTheRoutes(user: User) {
+    await user.click(screen.getByRole('button', { name: 'router-provider' }));
+    const table = screen.getByRole('dialog', { name: ROUTES });
+    await user.click(within(table).getByRole('button', { name: /^Quitar 0\.0\.0\.0\/0/ }));
+    await user.click(within(table).getByRole('button', { name: '198.51.100.0/24' }));
+    await user.click(within(table).getByRole('button', { name: 'router-backbone' }));
+    await user.click(within(table).getByRole('button', { name: 'Agregar ruta' }));
+    await user.keyboard('{Escape}');
+  }
+
+  async function pingTheServer(user: User) {
+    await user.click(screen.getByRole('button', { name: 'laptop-marta' }));
+    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    expect(within(terminal).getByText('ping 198.51.100.50')).toBeInTheDocument();
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  it('closes the case with the cause and the routes of the provider edited from the card of its router, in any order', async () => {
+    const user = userEvent.setup();
+    render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'router-provider' })).toBeNull();
+    await reachTheFix(user);
+    expect(screen.getByRole('button', { name: 'router-provider' })).toBeInTheDocument();
+    await pingTheServer(user);
+    expect(ticks()).toEqual(['✓', '☐']);
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: optionOf(fixed) }));
+    expect(screen.getByText(CASE_TEXT.causeNamed)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: NEXT })).toBeNull();
+    await repairTheRoutes(user);
+    expect(screen.queryByRole('button', { name: NEXT })).toBeNull();
+    await pingTheServer(user);
+    expect(ticks()).toEqual(['✓', '✓']);
+    expect(screen.getByRole('button', { name: NEXT })).toBeInTheDocument();
+    expect(screen.queryByText(CASE_TEXT.causeNamed)).toBeNull();
+    await user.click(screen.getByRole('button', { name: NEXT }));
+    expect(screen.queryByRole('button', { name: 'router-provider' })).toBeNull();
+    expect(caseCardOf(fixed + 1)).toBeInTheDocument();
   });
 });
 

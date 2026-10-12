@@ -697,7 +697,7 @@ describe('tables and clock of chapter 2', () => {
     const world = caseWorld(officeTwoFloorsNet(), spec);
     expect(unknownTableOwnerIds(repairable, world, spec)).toEqual([]);
     expect(unknownTableOwnerIds(repairable, world)).toEqual([]);
-    expect(unknownTableOwnerIds(repairable, officeNet(), spec)).toEqual([OFFICE_FLOORS.backbone.id]);
+    expect(unknownTableOwnerIds(repairable, officeNet(), spec)).toEqual([OFFICE_FLOORS.provider.id]);
     expect(unknownTableOwnerIds(repairable, world, repairable.diagnose.cases[0])).toEqual([]);
   });
 
@@ -777,6 +777,9 @@ describe('a case with a fix', () => {
   const fix = fixed.fix!;
   const withFix = (patch: Record<string, unknown>) => ({ ...repairable, diagnose: { cases: repairable.diagnose.cases.map((spec, at) => (at === index ? { ...spec, fix: { ...fix, ...patch } } : spec)) } });
 
+  const moveOfFix = <Type extends (typeof fix.solution)[number]['type']>(type: Type) =>
+    fix.solution.find((candidate): candidate is Extract<(typeof fix.solution)[number], { type: Type }> => candidate.type === type)!;
+
   it('accepts a case with a fix and rejects a fix whose tasks name chips the case does not offer', () => {
     expect(accepts(repairable)).toBe(true);
     expect(accepts(diagnoseIncident())).toBe(true);
@@ -795,6 +798,27 @@ describe('a case with a fix', () => {
     expect(accepts(withFix({ tasks: [task, task] }))).toBe(false);
     expect(accepts(withFix({ tables: [{ ...table, kind: 'cache' }] }))).toBe(false);
     expect(accepts(withFix({ tasks: [{ ...task, text: 'La {{puerta}} falla.' }] }))).toBe(false);
+  });
+
+  it('needs the reference solution of the fix, made of sends and of moves on its own tables', () => {
+    expect(fix.solution.map(({ type }) => type)).toEqual(['removeEntry', 'placeEntry', 'sendPacket']);
+    expect(accepts(withFix({ solution: [] }))).toBe(false);
+    expect(accepts(withFix({ solution: undefined }))).toBe(false);
+  });
+
+  it('rejects a fix solution that sends chips the case does not offer or moves on a table, a tray or a chip the fix does not have', () => {
+    const [remove, place, send] = [moveOfFix('removeEntry'), moveOfFix('placeEntry'), moveOfFix('sendPacket')];
+    for (const patch of [{ toId: 'ghost' }, { fromId: 'ghost' }, { messageId: 'ghost' }]) expect(accepts(withFix({ solution: [{ ...send, ...patch }] })), JSON.stringify(patch)).toBe(false);
+    expect(accepts(withFix({ solution: [{ ...remove, tableId: 'ghost' }, send] }))).toBe(false);
+    expect(accepts(withFix({ solution: [{ ...place, tableId: 'ghost' }, send] }))).toBe(false);
+    expect(accepts(withFix({ solution: [{ ...place, picks: { ...place.picks, nextHop: 'ghost' } }, send] }))).toBe(false);
+    expect(accepts(withFix({ solution: [{ ...place, picks: { destination: place.picks.destination } }, send] }))).toBe(false);
+  });
+
+  it('rejects a fix solution that sets a setting or waits, which a fix does not offer', () => {
+    const send = moveOfFix('sendPacket');
+    expect(accepts(withFix({ solution: [{ type: 'setSetting', deviceId: 'origin', settingId: 'gateway', chipId: 'none' }, send] }))).toBe(false);
+    expect(accepts(withFix({ solution: [{ type: 'wait', seconds: 60 }, send] }))).toBe(false);
   });
 
   it('keeps the other cases, which have no fix, as they were', () => {
@@ -871,7 +895,7 @@ describe('what an incident of chapter 2 draws and says', () => {
     const repairable = repairableDiagnoseIncident();
     const [fixed] = repairable.diagnose.cases.filter(({ fix }) => fix);
     const only = { ...fixed, shown: ['marta-laptop', server.id] };
-    expect(missingShownIds(repairable, officeTwoFloorsNet(), only)).toEqual([OFFICE_FLOORS.backbone.id, OFFICE_FLOORS.provider.id]);
+    expect(missingShownIds(repairable, officeTwoFloorsNet(), only)).toEqual([OFFICE_FLOORS.provider.id, OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.backbone.id]);
     const classifying = classifyIncident();
     expect(missingShownIds({ ...classifying, shown: ['your-laptop'] }, officeTwoFloorsNet())).toEqual(['printer', 'andres-laptop']);
     expect(missingShownIds({ ...classifying, shown: ['your-laptop', 'printer', 'andres-laptop'] }, officeTwoFloorsNet())).toEqual([]);

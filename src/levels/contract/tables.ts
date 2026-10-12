@@ -1,5 +1,5 @@
 import { RECORD_TTL, isIpv4, type AnswerRecord, type Network, type NetworkAction, type Route, type ServerActor } from '@/engine';
-import type { Incident, TableSpec } from './incident';
+import type { CaseSpec, Incident, TableSpec } from './incident';
 
 type RecordKey = Pick<AnswerRecord, 'name' | 'type' | 'value'>;
 type Placement = Extract<NetworkAction, { type: 'addRoute' | 'addRecord' }>;
@@ -17,9 +17,15 @@ export function recordEntryId({ name, type, value }: RecordKey): string {
   return [name, type, value].join(ENTRY_ID_JOINER);
 }
 
-/** Returns the table the player edits that has this id in a send incident; none for any other incident or for an id it does not offer. */
-export function tableOf(incident: Incident, tableId: string): TableSpec | undefined {
-  return incident.mechanic === 'send' ? incident.send.tables?.find((table) => table.id === tableId) : undefined;
+/** Returns the tables the player edits: those a send incident offers or, given a case of a diagnose, those of its fix (a case is checked in its own world, so the tables of the cases are not part of the incident's). None for any other incident, and for a case with no fix. */
+export function tablesOf(incident: Incident, spec?: CaseSpec | null): TableSpec[] {
+  if (spec) return spec.fix?.tables ?? [];
+  return incident.mechanic === 'send' ? (incident.send.tables ?? []) : [];
+}
+
+/** Returns the table the player edits that has this id, among those `tablesOf` gives; none for an id it does not offer. */
+export function tableOf(incident: Incident, tableId: string, spec?: CaseSpec | null): TableSpec | undefined {
+  return tablesOf(incident, spec).find((table) => table.id === tableId);
 }
 
 function recordOf(name: string, type: AnswerRecord['type'], value: string): AnswerRecord | null {

@@ -1,8 +1,8 @@
 import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
 import { ROUTE_DEFAULT, cacheAfter, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute } from '@/engine';
-import { recordEntryId, routeEntryId, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
+import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
 import type { SentPacket } from '@/game/flow-runs';
-import type { Session } from '@/game/session';
+import { currentCase, type Session } from '@/game/session';
 import { PIECE_ID, parsePieceId } from '@/game/view/piece-id';
 import { routerWithIp } from '@/game/view/revealed-routers';
 import { routerPlace } from '@/game/view/router-place';
@@ -53,7 +53,7 @@ function sendIncident(session: Session): SendIncident | null {
 }
 
 function tableSpec(session: Session, ownerId: string, kind: TableSpec['kind']): TableSpec | undefined {
-  return sendIncident(session)?.send.tables?.find((table) => table.ownerId === ownerId && table.kind === kind);
+  return tablesOf(session.incident, currentCase(session)).find((table) => table.ownerId === ownerId && table.kind === kind);
 }
 
 function holderOf(session: Session, pieceId: string): Device | Router | undefined {

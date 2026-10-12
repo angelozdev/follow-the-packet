@@ -326,12 +326,19 @@ export const CLOCK_TEXT = {
   note: 'El tiempo pasa para todo el mapa.',
 } as const;
 
+const CASE_LIST = new Intl.ListFormat('es', { style: 'long', type: 'conjunction' });
+
 export const CASE_TEXT = {
   title: (number: number, total: number): string => `Caso ${number} de ${total}`,
   says: (report: TermText): TermText => `Lucía: «${report}»`,
   tests: (origin: TermText): TermText => `Pruebas que puedes enviar desde ${origin}`,
   sent: 'enviada',
   unsent: 'sin enviar',
+  repair: 'Arréglalo para cerrar el caso',
+  editIn: (tables: TermText[]): TermText => `Se arregla en: ${CASE_LIST.format(tables)}.`,
+  holds: 'cumplida',
+  pending: 'sin cumplir',
+  causeNamed: 'Ya nombraste la causa. El caso se cierra cuando también lo arreglas.',
   know: 'Ya sé la causa',
   next: 'Siguiente caso',
 } as const;
@@ -346,8 +353,6 @@ export const EXPLANATION_TEXT = {
 } as const;
 
 const WITHOUT_HINTS = 'Lo resolviste sin pistas';
-
-const CASE_LIST = new Intl.ListFormat('es', { style: 'long', type: 'conjunction' });
 
 export const RESULT_TEXT = {
   type: 'Resultado',

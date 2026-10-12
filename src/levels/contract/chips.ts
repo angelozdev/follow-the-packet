@@ -1,6 +1,7 @@
 import compare from 'just-compare';
 import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
 import { peerIdOf, ruleIdFor, type AddressChip, type CaseSpec, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
+import { tablesOf } from './tables';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
 type Combination = Omit<SendMove, 'type'>;
@@ -186,12 +187,6 @@ function classifiedDeviceIds(incident: Incident): string[] {
 export function unknownClassifiedDeviceIds(incident: Incident, world: Network): string[] {
   const devices = deviceIdsOf(world);
   return classifiedDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
-}
-
-/** Returns the tables the player edits: those a send incident offers, or, given a case of a diagnose, those of its fix. A case is checked in its own world, so the tables of the cases are not part of the incident's. */
-function tablesOf(incident: Incident, spec?: CaseSpec): TableSpec[] {
-  if (spec) return spec.fix?.tables ?? [];
-  return incident.mechanic === 'send' ? (incident.send.tables ?? []) : [];
 }
 
 /** Returns the owners of the tables the player edits that are not what the table needs in the world: a router for a table of routes and a server of the internet for a table of records. A case of a diagnose is given with its own world. */

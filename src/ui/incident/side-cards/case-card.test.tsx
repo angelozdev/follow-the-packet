@@ -5,7 +5,7 @@ import { useReducer } from 'react';
 import { describe, expect, it } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, RESULT_TEXT, toPlainText } from '@/copy';
 import { caseCard, caseSummary, sessionReducer, startSession, starsOf, type SessionAction } from '@/game';
-import { diagnoseIncident } from '@/testing/incidents';
+import { diagnoseIncident, repairableDiagnoseIncident } from '@/testing/incidents';
 import { CaseCard } from './case-card';
 import { ResultCard } from './result-card';
 
@@ -155,5 +155,64 @@ describe('the result card of a diagnose', () => {
     resultOf([6]);
     expect(screen.getByText(RESULT_TEXT.cases.stars.explained, { exact: false })).toHaveTextContent(RESULT_TEXT.missed);
     expect(screen.getByText(RESULT_TEXT.cases.stars.closed, { exact: false })).toHaveTextContent(RESULT_TEXT.earned);
+  });
+});
+
+describe('the case card of a case with a fix', () => {
+  const REPAIRABLE = repairableDiagnoseIncident();
+  const repairing = REPAIRABLE.diagnose.cases;
+  const fixed = repairing.findIndex(({ fix }) => fix);
+  const { fix } = repairing[fixed];
+  const rightOf = (index: number) => repairing[index].cause.options.findIndex((option) => option.correct);
+  const reaching: SessionAction[] = repairing.slice(0, fixed).flatMap((_, index) => [named(rightOf(index)), NEXT]);
+  const textOf = (text: string) => toPlainText(text);
+
+  function RepairHarness({ actions = [] }: { actions?: SessionAction[] }) {
+    const [session, dispatch] = useReducer(sessionReducer, actions, (initial) => [...reaching, ...initial].reduce(sessionReducer, startSession([REPAIRABLE], REPAIRABLE.id)));
+    const card = caseCard(session);
+    return card && <CaseCard key={card.number} card={card} onNameCause={(index) => dispatch(named(index))} onNext={() => dispatch(NEXT)} onShowResult={() => dispatch({ type: 'showResult' })} />;
+  }
+
+  const taskLine = (done: boolean) => `${done ? '✓' : '☐'} ${textOf(fix!.tasks[0].text)} (${done ? CASE_TEXT.holds : CASE_TEXT.pending})`;
+
+  it('shows where the case is fixed and its tasks, apart from the tests, and ticks a task once it holds', () => {
+    const { unmount } = render(<RepairHarness />);
+    const card = screen.getByRole('region', { name: CASE_TEXT.title(fixed + 1, repairing.length) });
+    expect(within(card).getByRole('heading', { name: CASE_TEXT.repair })).toBeInTheDocument();
+    expect(card).toHaveTextContent('Se arregla en: Tabla de rutas de router-provider.');
+    expect(within(card).getAllByRole('list')).toHaveLength(2);
+    expect(within(card).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['☐ ping 198.51.100.50 (sin enviar)', taskLine(false)]);
+    unmount();
+    render(<RepairHarness actions={fix!.solution} />);
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['✓ ping 198.51.100.50 (enviada)', taskLine(true)]);
+  });
+
+  it('a case with no fix shows no repair section', () => {
+    render(<Harness />);
+    expect(screen.queryByRole('heading', { name: CASE_TEXT.repair })).toBeNull();
+    expect(screen.queryByText(CASE_TEXT.causeNamed)).toBeNull();
+  });
+
+  it('the right cause with the fix missing says so and offers no next case, and the fix then closes the case', async () => {
+    const user = userEvent.setup();
+    render(<RepairHarness />);
+    expect(screen.queryByText(CASE_TEXT.causeNamed)).toBeNull();
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: textOf(repairing[fixed].cause.options[rightOf(fixed)].text) }));
+    expect(screen.getByText(EXPLANATION_TEXT.right)).toBeInTheDocument();
+    expect(screen.getByText(CASE_TEXT.causeNamed)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
+    expect(screen.getAllByRole('button').filter((button) => button.classList.contains('option')).every((button) => button.hasAttribute('disabled'))).toBe(true);
+  });
+
+  it('the fix done first and then the right cause closes the case and offers the next', async () => {
+    const user = userEvent.setup();
+    render(<RepairHarness actions={fix!.solution} />);
+    expect(screen.queryByText(CASE_TEXT.causeNamed)).toBeNull();
+    expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: textOf(repairing[fixed].cause.options[rightOf(fixed)].text) }));
+    expect(screen.queryByText(CASE_TEXT.causeNamed)).toBeNull();
+    expect(screen.getByRole('button', { name: CASE_TEXT.next })).toHaveFocus();
   });
 });

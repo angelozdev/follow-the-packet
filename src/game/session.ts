@@ -184,16 +184,22 @@ function withNewWorld(state: Session, world: Network): Session {
 /** Keeps the problem of an entry the engine refused, unless it is the one already kept. A refusal the incident gives nothing to explain leaves the session as it was. */
 function withProblem(state: Session, action: SettingMove | TableMove): Session {
   if (action.type !== 'placeEntry') return state;
-  const code = placementProblem(state.world, state.incident, action);
+  const code = placementProblem(state.world, state.incident, action, currentCase(state));
   const kept = state.entryProblem;
   if (code === undefined || (kept?.tableId === action.tableId && kept.code === code)) return state;
   return { ...state, entryProblem: { tableId: action.tableId, code } };
 }
 
-/** Changes the world with something the player sets or edits on a card of a piece: a setting, or an entry placed in or removed from a table. The flows are run again and the sends are gone, but the clock stays. A move that changes nothing returns the same session, though an entry the engine refuses keeps its problem for the table to show. */
+/** True when the player can change the world from the cards of the pieces: in a send incident, and in a diagnose only in a case that has a fix and is not closed yet, where the tables of the fix are all there is to edit. */
+function canEdit(state: Session): boolean {
+  if (state.phase !== 'playing') return false;
+  return state.incident.mechanic === 'send' || (currentCase(state)?.fix !== undefined && !caseClosed(state));
+}
+
+/** Changes the world with something the player sets or edits on a card of a piece: a setting, or an entry placed in or removed from a table (in a diagnose, a table of the fix of the case in play). The flows are run again and the sends are gone, but the clock stays. A move that changes nothing returns the same session, though an entry the engine refuses keeps its problem for the table to show. */
 function edit(state: Session, action: SettingMove | TableMove): Session {
-  if (state.phase !== 'playing' || state.incident.mechanic !== 'send') return state;
-  const world = applyMove(state.world, state.incident, action);
+  if (!canEdit(state)) return state;
+  const world = applyMove(state.world, state.incident, action, currentCase(state));
   return world === state.world ? withProblem(state, action) : withNewWorld(state, world);
 }
 
@@ -213,7 +219,7 @@ function send(state: Session, action: SendMove): Session {
   if (state.phase !== 'playing' || !offers || !offersSend(offers, action)) return state;
   const sends = state.sends + 1;
   const history = sendSequence(state.world, offers, [...state.history.map(dispatchOf), { move: action, send: sends, at: state.clock }], state.known);
-  return { ...state, history, sent: lastOfEach(history), sends, rejection: null };
+  return closeCaseIfDone({ ...state, history, sent: lastOfEach(history), sends, rejection: null });
 }
 
 function offeredPicks({ identify }: IdentifyIncident, { deviceId, picks }: AnswerMove): Record<string, string> {
@@ -249,16 +255,32 @@ function choose(state: Session, index: number): Session {
   return state.phase === 'explaining' && state.choice === null && valid ? { ...state, choice: index } : state;
 }
 
-/** Names an option as the cause of the case a diagnose is on. A wrong one is kept, to show its feedback, and the player tries again. The right one closes the case, with the options named and the hints asked in it; if it was the last case, the incident closes too. An option out of range, one already named, or any naming in a case already closed changes nothing. */
+/** True when the player named the right cause of the case a diagnose is on, whether or not the case is closed: a case with a fix stays open until the fix holds too. */
+export function causeNamed(session: Session): boolean {
+  const spec = currentCase(session);
+  return spec !== null && session.named.some((index) => spec.cause.options[index].correct);
+}
+
+/** Returns the tasks of the fix of the case a diagnose is on that do not hold in the last packets sent since the world last changed; none when every one holds, and none for a case with no fix. */
+export function failingFixTaskIds(session: Session): string[] {
+  return failingTaskIds(currentCase(session)?.fix?.tasks ?? [], session.runs, session.sent);
+}
+
+/** Closes the case a diagnose is on when it is ready: the right cause is named and every task of its fix holds (a case with no fix has none, so the cause alone closes it). It pushes `{ picks, hints }` onto `caseResults` once, whatever order the player did the two things in, and when it is the last case it closes the incident and settles the middle star. A case already closed, a case still missing the cause or the fix, and any other incident return the same session. */
+function closeCaseIfDone(state: Session): Session {
+  const { incident } = state;
+  if (state.phase !== 'playing' || incident.mechanic !== 'diagnose' || caseClosed(state) || !causeNamed(state) || failingFixTaskIds(state).length > 0) return state;
+  const caseResults = [...state.caseResults, { picks: state.named, hints: state.hintsShown }];
+  const last = caseResults.length === incident.diagnose.cases.length;
+  return last ? { ...state, caseResults, phase: 'explaining', middle: noHintInAnyCase(caseResults) } : { ...state, caseResults };
+}
+
+/** Names an option as the cause of the case a diagnose is on. A wrong one is kept, to show its feedback, and the player tries another. The right one is kept too, and the case closes when its fix holds as well (at once for a case with no fix); until then no other cause can be named, so the right one is always the last of the options named. An option out of range, one already named, any naming in a case already closed and any naming once the right cause is kept changes nothing. */
 function nameCause(state: Session, index: number): Session {
   const spec = currentCase(state);
   const offered = spec !== null && Number.isInteger(index) && index >= 0 && index < spec.cause.options.length;
-  if (state.phase !== 'playing' || !offered || caseClosed(state) || state.named.includes(index)) return state;
-  const named = [...state.named, index];
-  if (!spec.cause.options[index].correct) return { ...state, named };
-  const caseResults = [...state.caseResults, { picks: named, hints: state.hintsShown }];
-  const last = state.incident.mechanic === 'diagnose' && caseResults.length === state.incident.diagnose.cases.length;
-  return last ? { ...state, named, caseResults, phase: 'explaining', middle: noHintInAnyCase(caseResults) } : { ...state, named, caseResults };
+  if (state.phase !== 'playing' || !offered || caseClosed(state) || causeNamed(state) || state.named.includes(index)) return state;
+  return closeCaseIfDone({ ...state, named: [...state.named, index] });
 }
 
 /** Opens the next case of a diagnose once the one before is closed: its world is the one the incident started from plus its own changes, and the packets sent and the hints asked belong to the case before. The send number goes on counting. */

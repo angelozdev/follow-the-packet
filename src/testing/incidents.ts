@@ -439,13 +439,20 @@ export function classifyIncident(): IdentifyIncident {
   };
 }
 
-/** Returns a diagnose incident whose fifth case, a loop between two routers, has a fix: the table of routes of the backbone, with the default route and the range of the office as destinations and the provider as next hop, and the task that the ping to the server comes back. */
+/** Returns the diagnose incident with its fifth case rebuilt as the loop of the final watch of chapter 1: the router of the provider sends everything back to the office router, which sends it to the provider again, so the ping of laptop-marta to the server never gets there (Time Exceeded). That case has a fix: the table of routes of the provider, with the default route and the range of the server as destinations and the office router and the backbone as next hops, and the task that the ping to the server comes back. Its reference solution takes the default route away, places the range of the server through the backbone and sends the ping again, because every change of the world clears the sends. The other six cases have no fix. */
 export function repairableDiagnoseIncident(): DiagnoseIncident {
-  const { backbone, provider, range } = OFFICE_FLOORS;
+  const { backbone, officeRouter, provider, server } = OFFICE_FLOORS;
   const incident = diagnoseIncident();
+  const ping = { fromId: 'origin', toId: 'server', messageId: 'ping' } as const;
+  const loop: NetworkAction = { type: 'updateRouter', routerId: provider.id, routes: [{ to: ROUTE_DEFAULT, next: officeRouter.id }] };
   const fix: NonNullable<CaseSpec['fix']> = {
-    tables: [routesTable('routes', backbone.id, ['default', range], [provider.id])],
-    tasks: [{ id: 'server', text: 'Que vuelva el {{ping}} al servidor.', expect: { fromId: 'origin', toId: 'server', messageId: 'ping', outcome: 'replied' } }],
+    tables: [routesTable('routes', provider.id, [ROUTE_DEFAULT, server.range], [officeRouter.id, backbone.id])],
+    tasks: [{ id: 'server', text: 'Que vuelva el {{ping}} al servidor.', expect: { ...ping, outcome: 'replied' } }],
+    solution: [
+      { type: 'removeEntry', tableId: 'routes', entryId: ROUTE_DEFAULT },
+      { type: 'placeEntry', tableId: 'routes', picks: { destination: server.range, nextHop: backbone.id } },
+      { type: 'sendPacket', ...ping },
+    ],
   };
-  return { ...incident, diagnose: { cases: incident.diagnose.cases.map((spec) => (spec.id === 'case-5' ? { ...spec, fix } : spec)) } };
+  return { ...incident, diagnose: { cases: incident.diagnose.cases.map((spec) => (spec.id === 'case-5' ? { ...spec, changes: [loop], fix } : spec)) } };
 }

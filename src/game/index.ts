@@ -6,7 +6,7 @@ export type { Stars } from './stars';
 export { taskHolds } from './tasks';
 export { firewallCard, rowText } from './view/cards/firewall-card';
 export { caseCard, caseSummary } from './view/cards/case-card';
-export type { CaseCard, CaseSummary } from './view/cards/case-card';
+export type { CaseCard, CaseRepair, CaseSummary } from './view/cards/case-card';
 export { identifyCard } from './view/cards/identify-card';
 export type { IdentifyCard } from './view/cards/identify-card';
 export { classifyCard } from './view/cards/identify/classify-card';
