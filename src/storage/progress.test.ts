@@ -88,3 +88,22 @@ describe('progress', () => {
     expect(isUnlocked(COURSE[2], { '05-01': 1 }, COURSE)).toBe(true);
   });
 });
+
+describe('progress along the chapters of the game', () => {
+  const entry = (id: string): LevelEntry => ({ id, chapter: Number(id.slice(0, 2)), order: Number(id.slice(3)), title: id, role: 'defender' });
+  const [LAST_OF_CHAPTER_1, FIRST_OF_CHAPTER_2, LAST_OF_CHAPTER_2, FIRST_OF_CHAPTER_4] = ['01-14', '02-01', '02-14', '04-01'].map(entry);
+  const CHAIN = [LAST_OF_CHAPTER_1, FIRST_OF_CHAPTER_2, LAST_OF_CHAPTER_2, FIRST_OF_CHAPTER_4];
+
+  it('the first incident of a chapter opens with the last incident of the chapter before in game order', () => {
+    expect(isUnlocked(FIRST_OF_CHAPTER_2, {}, CHAIN)).toBe(false);
+    expect(isUnlocked(FIRST_OF_CHAPTER_2, { [LAST_OF_CHAPTER_1.id]: 1 }, CHAIN)).toBe(true);
+    expect(isUnlocked(FIRST_OF_CHAPTER_4, { [LAST_OF_CHAPTER_1.id]: 3 }, CHAIN)).toBe(false);
+    expect(isUnlocked(FIRST_OF_CHAPTER_4, { [LAST_OF_CHAPTER_2.id]: 1 }, CHAIN)).toBe(true);
+  });
+
+  it('an incident with a star stays open even when the one before it has none', () => {
+    expect(isUnlocked(FIRST_OF_CHAPTER_4, { [FIRST_OF_CHAPTER_4.id]: 1 }, CHAIN)).toBe(true);
+    expect(isUnlocked(LAST_OF_CHAPTER_2, { [LAST_OF_CHAPTER_2.id]: 1 }, CHAIN)).toBe(true);
+    expect(isUnlocked(LAST_OF_CHAPTER_2, { [FIRST_OF_CHAPTER_4.id]: 1 }, CHAIN)).toBe(false);
+  });
+});

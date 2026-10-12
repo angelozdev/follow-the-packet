@@ -1,11 +1,18 @@
 import type { Page } from '@playwright/test';
 import { MAX_STARS, PROGRESS_KEY } from '@/storage/progress';
 
-const CHAPTER_1_INCIDENTS = 14;
+const INCIDENTS_PER_CHAPTER = 14;
 
-export const CHAPTER_1_DONE: Record<string, number> = Object.fromEntries(
-  Array.from({ length: CHAPTER_1_INCIDENTS }, (_, index) => [`01-${String(index + 1).padStart(2, '0')}`, MAX_STARS]),
-);
+/** Returns the saved progress that gives three stars to the fourteen incidents of a chapter, from `NN-01` to `NN-14`. */
+function chapterDone(chapter: number): Record<string, number> {
+  const prefix = String(chapter).padStart(2, '0');
+  return Object.fromEntries(Array.from({ length: INCIDENTS_PER_CHAPTER }, (_, index) => [`${prefix}-${String(index + 1).padStart(2, '0')}`, MAX_STARS]));
+}
+
+export const CHAPTER_1_DONE: Record<string, number> = chapterDone(1);
+
+/** Chapter 1 and chapter 2 done, `01-01` to `02-14` with three stars: the progress that opens 04-01 once chapter 2 is registered, and still every incident of chapter 1. */
+export const CHAPTER_2_DONE: Record<string, number> = { ...CHAPTER_1_DONE, ...chapterDone(2) };
 
 /** Opens every page of the test with this saved progress, unless the game already saved its own, so a reload keeps what the test earned. */
 export async function startWithProgress(page: Page, progress: Record<string, number>): Promise<void> {
