@@ -12,9 +12,10 @@ Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live
 
 ## Check
 
+    pnpm check:fast
     pnpm check
 
-Runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector, unit tests and Playwright. "Done" means it passes entirely.
+`pnpm check:fast` runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector and unit tests, with no browser (about 10 seconds). `pnpm check` is `pnpm check:fast` and then Playwright. "Done" for a task means `pnpm check:fast` plus the end-to-end specs that cover what it touched; closing a block and merging need the whole `pnpm check` (see `tests/e2e/CLAUDE.md`).
 
 ## Layout
 

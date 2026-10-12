@@ -5,6 +5,7 @@ import { IP, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendThe
 import { submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
 import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';
+import { freezeTime, standStill, stepFrame } from './still-scene';
 
 const DONE = 'Listo';
 const SUBMIT = 'Enviar solución';
@@ -26,6 +27,7 @@ const [CASE_1] = WATCH_CASES;
 const WARNED_PING = 'Paquete: ping de tu-laptop a 192.168.1.50. Apareció un aviso.';
 const WARNED_PING_BOX = 'ping de tu-laptop a 192.168.1.50';
 const LONGER_THAN_THE_GRACE_MS = 800;
+const PIECE_LABEL = '.map-button';
 const GENTLE_WHEEL_PX = 60;
 const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
@@ -145,10 +147,29 @@ const SCENES: Scene[] = [
 
 const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_FIREWALL];
 
+async function passTheGrace(page: Page) {
+  await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);
+}
+
 async function play(page: Page, scene: Scene) {
   await page.goto(`/#/level/${scene.level}`);
   await page.reload();
   await scene.reach(page);
+}
+
+async function playWithTheClockPaused(page: Page, scene: Scene, eachFrame: (page: Page) => Promise<void>) {
+  await page.clock.resume();
+  await page.goto(`/#/level/${scene.level}`);
+  await page.reload();
+  await page.locator(PIECE_LABEL).first().waitFor();
+  await standStill(page);
+  await freezeTime(page);
+  await scene.reach(page);
+  await standStill(page, { eachFrame });
+}
+
+async function playUntilItRests(page: Page, scene: Scene) {
+  await playWithTheClockPaused(page, scene, passTheGrace);
 }
 
 async function wrongIpOfThePrinter(page: Page) {
@@ -181,8 +202,84 @@ const MESSAGE_SCENES: Scene[] = [
   { name: 'the intruder and the rejection of Lucía', level: '04-01', reach: intruderAndRejection, last: button(SUBMIT) },
 ];
 
+const MOVING_SCENE_LAST_FRAME = 40;
+const MOVING_SCENE = `
+<div class="card" id="box" style="position: absolute; left: 0; top: 0; width: 100px; height: 40px"></div>
+<script>
+  const box = document.getElementById('box');
+  const watcher = new ResizeObserver(() => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => box.setAttribute('data-scrolls', 'true');
+    channel.port2.postMessage(null);
+  });
+  let frame = 0;
+  const move = () => {
+    frame += 1;
+    box.style.left = frame + 'px';
+    if (frame < ${MOVING_SCENE_LAST_FRAME}) requestAnimationFrame(move);
+    else {
+      watcher.observe(box);
+      box.style.width = '160px';
+    }
+  };
+  requestAnimationFrame(move);
+</script>`;
+const RESTLESS_SCENE = `
+<div class="card" id="box" style="position: absolute; left: 0; top: 0; width: 100px; height: 40px"></div>
+<script>
+  let frame = 0;
+  const sway = () => {
+    frame += 1;
+    document.getElementById('box').style.left = frame + 'px';
+    requestAnimationFrame(sway);
+  };
+  requestAnimationFrame(sway);
+</script>`;
+const FRAME_BUDGET_OF_THE_RESTLESS_SCENE = 30;
+const SLOW_TIMER_MS = 600_000;
+const PAUSED_SCENE = `
+<div class="card" id="box" style="position: absolute; left: 0; top: 0; width: 100px; height: 40px"></div>
+<script>
+  const box = document.getElementById('box');
+  setTimeout(() => box.remove(), ${SLOW_TIMER_MS});
+  let frame = 0;
+  const move = () => {
+    frame += 1;
+    box.style.left = frame + 'px';
+    if (frame < ${MOVING_SCENE_LAST_FRAME}) requestAnimationFrame(move);
+  };
+  requestAnimationFrame(move);
+</script>`;
+
 test.beforeEach(async ({ page }) => {
   await startWithProgress(page, CHAPTER_1_DONE);
+});
+
+test('a box is measured only once the scene stands still', async ({ page }) => {
+  await page.setContent(MOVING_SCENE);
+  await standStill(page);
+  const measured = await page.evaluate(() => {
+    const box = document.getElementById('box');
+    return box === null ? null : { left: box.getBoundingClientRect().left, width: box.getBoundingClientRect().width, scrolls: box.getAttribute('data-scrolls') };
+  });
+  expect(measured).toEqual({ left: MOVING_SCENE_LAST_FRAME, width: 160, scrolls: 'true' });
+});
+
+test('a scene that never stands still is reported and not measured', async ({ page }) => {
+  await page.setContent(RESTLESS_SCENE);
+  await expect(standStill(page, { frameBudget: FRAME_BUDGET_OF_THE_RESTLESS_SCENE })).rejects.toThrow(`did not stand still in ${FRAME_BUDGET_OF_THE_RESTLESS_SCENE} frames`);
+});
+
+test('with the clock paused the scene still moves to its rest frame by frame, and a timer that is not due has not fired', async ({ page }) => {
+  await page.clock.install();
+  await page.setContent(PAUSED_SCENE);
+  await freezeTime(page);
+  await standStill(page, { eachFrame: stepFrame });
+  const left = () => page.evaluate(() => document.getElementById('box')?.getBoundingClientRect().left ?? null);
+  expect(await left()).toBe(MOVING_SCENE_LAST_FRAME);
+  await page.clock.fastForward(SLOW_TIMER_MS);
+  await standStill(page, { eachFrame: stepFrame });
+  expect(await left()).toBeNull();
 });
 
 test('the tab of a Message in the cards of the game covers nothing of the element above it', async ({ page }) => {
@@ -195,12 +292,13 @@ test('the tab of a Message in the cards of the game covers nothing of the elemen
 
 test('no card is clipped and cards never overlap, at 390 px and at desktop width', async ({ page }) => {
   test.slow();
+  await page.clock.install();
   const errors = collectErrors(page);
   const problems: string[] = [];
   for (const { name, size } of TALL_WINDOWS) {
     await page.setViewportSize(size);
     for (const scene of SCENES) {
-      await play(page, scene);
+      await playUntilItRests(page, scene);
       problems.push(...(await cardProblems(page)).map((problem) => `${name}, ${scene.name}: ${problem}`));
     }
   }
@@ -225,6 +323,7 @@ test('the last element of every card can be reached by scrolling on a low screen
 
 test('an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view', async ({ page }) => {
   test.slow();
+  await page.clock.install();
   for (const { name, size } of INSPECTION_WINDOWS) {
     await page.setViewportSize(size);
     await page.goto('/#/level/01-05');
@@ -238,7 +337,7 @@ test('an inspection box that does not fit scrolls under the mouse to its last li
     const shown = await body.boundingBox();
     if (shown === null) throw new Error('the inspection box is not on the page');
     await page.mouse.move(shown.x + shown.width / 2, shown.y + Math.min(shown.height, size.height - shown.y) / 2);
-    await page.waitForTimeout(LONGER_THAN_THE_GRACE_MS);
+    await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);
     await expect(box, `${name}: the box stays while the mouse is over it`).toBeVisible();
     expect(await body.evaluate((element) => getComputedStyle(element, '::-webkit-scrollbar').width), `${name}: the body draws its own scrollbar, so a scroller that hides it still shows there is more`).not.toBe('auto');
     const last = box.locator('dd').last();
@@ -253,11 +352,12 @@ test('an inspection box that does not fit scrolls under the mouse to its last li
 
 test('a card beside a piece stays inside the map, with its foot in view, in a low or narrow window', async ({ page }) => {
   test.slow();
+  await page.clock.install();
   const problems: string[] = [];
   for (const { name, size } of LOW_MAP_WINDOWS) {
     await page.setViewportSize(size);
     for (const scene of MAP_SCENES) {
-      await play(page, scene);
+      await playUntilItRests(page, scene);
       problems.push(...(await cardsOutsideTheMap(page)).map((problem) => `${name}, ${scene.name}: ${problem}`));
       if (!(await isReachable(page, scene.last(page)))) problems.push(`${name}, ${scene.name}: its foot is out of reach`);
     }

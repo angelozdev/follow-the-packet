@@ -14,7 +14,8 @@
     "e2e": "playwright test",
     "structure": "node scripts/check-structure.ts",
     "dup": "jscpd src tests scripts",
-    "check": "pnpm typecheck && pnpm lint && pnpm structure && pnpm dup && pnpm test && pnpm e2e"
+    "check:fast": "pnpm typecheck && pnpm lint && pnpm structure && pnpm dup && pnpm test",
+    "check": "pnpm check:fast && pnpm e2e"
   },
   "dependencies": {
     "@floating-ui/react-dom": "2.1.9",

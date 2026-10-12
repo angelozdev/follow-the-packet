@@ -125,6 +125,36 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
     });
   });
 
+  describe('fixed waits in e2e tests', () => {
+    const fixedWaits: [string, string, string][] = [
+      ['waitForTimeout in a spec', 'tests/e2e/probe.spec.ts', "import { test } from '@playwright/test';\ntest('waits', async ({ page }) => {\n  await page.waitForTimeout(800);\n});\n"],
+      ['waitForTimeout in a helper of a subfolder', 'tests/e2e/chapter-1/probe.ts', "import type { Page } from '@playwright/test';\nexport const settle = (page: Page) => page.waitForTimeout(100);\n"],
+      ['waitForTimeout on the page of a locator', 'tests/e2e/probe.spec.ts', "import type { Locator } from '@playwright/test';\nexport const settle = (box: Locator) => box.page().waitForTimeout(100);\n"],
+      ['a promise that sleeps with setTimeout', 'tests/e2e/probe.ts', 'export const sleep = () => new Promise((done) => setTimeout(done, 500));\n'],
+      ['setInterval', 'tests/e2e/probe.ts', 'export const poll = () => setInterval(() => undefined, 50);\n'],
+      ['window.setTimeout', 'tests/e2e/probe.ts', 'export const sleep = () => new Promise((done) => window.setTimeout(done, 500));\n'],
+    ];
+
+    it.each(fixedWaits)('rejects: %s', async (_name, filePath, code) => {
+      expect(await ruleIdsFor(filePath, code)).toContain('no-restricted-syntax');
+    });
+
+    const stateWaits: [string, string][] = [
+      ['a page.clock advance', "import type { Page } from '@playwright/test';\nexport const pass = (page: Page) => page.clock.runFor(800);\n"],
+      ['an expectation that waits for a state', "import { expect, type Locator } from '@playwright/test';\nexport const shown = (box: Locator) => expect(box).toBeVisible();\n"],
+    ];
+
+    it.each(stateWaits)('allows: %s', async (_name, code) => {
+      expect(await ruleIdsFor('tests/e2e/probe.ts', code)).toEqual([]);
+    });
+
+    it('no e2e test waits a fixed time', async () => {
+      const results = await eslint.lintFiles(['tests/**/*.{ts,tsx}']);
+      const waits = results.flatMap((result) => result.messages.filter((message) => message.ruleId === 'no-restricted-syntax').map((message) => `${result.filePath}:${message.line} ${message.message}`));
+      expect(waits).toEqual([]);
+    });
+  });
+
   describe('names', () => {
     const SOURCE = 'export const value = 1;\n';
 

@@ -34,6 +34,12 @@ const ENGINE_PACKAGES = { group: ['react', 'react-dom', 'three', '@react-three/*
 
 const NO_DYNAMIC_IMPORT = { selector: 'ImportExpression', message: 'Use static imports only, so the layer rules can check them.' };
 const NO_EFFECT_CALLS = { selector: 'MemberExpression[property.name=/^use(Layout)?Effect$/]', message: 'Effects live in use-*.ts hooks.' };
+const NO_FIXED_WAIT_MESSAGE = 'A test never waits a fixed time: wait for a state (an expectation, or the still scene helper), or advance page.clock.';
+const NO_FIXED_WAIT = [
+  { selector: "CallExpression[callee.property.name='waitForTimeout']", message: NO_FIXED_WAIT_MESSAGE },
+  { selector: "CallExpression[callee.name=/^(setTimeout|setInterval)$/]", message: NO_FIXED_WAIT_MESSAGE },
+  { selector: "CallExpression[callee.object.name=/^(window|globalThis)$/][callee.property.name=/^(setTimeout|setInterval)$/]", message: NO_FIXED_WAIT_MESSAGE },
+];
 const TIME_MESSAGE = 'Take the time as a parameter.';
 const RANDOM_MESSAGE = 'Take randomness as a parameter.';
 const ENGINE_SYNTAX = [
@@ -132,7 +138,10 @@ export default tseslint.config(
   },
   { files: ['src/*.{ts,tsx}'], ignores: TEST_FILES, rules: { 'no-restricted-imports': rootImports({ isTest: false }) } },
   { files: ['src/*.test.{ts,tsx}'], rules: { 'no-restricted-imports': rootImports({ isTest: true }) } },
-  { files: ['tests/**/*.{ts,tsx}'], rules: { 'no-restricted-imports': ['error', { paths: NO_FIRE_EVENT, patterns: [PARENT_IMPORT] }] } },
+  {
+    files: ['tests/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-imports': ['error', { paths: NO_FIRE_EVENT, patterns: [PARENT_IMPORT] }], 'no-restricted-syntax': ['error', ...NO_FIXED_WAIT] },
+  },
   { files: ['scripts/**/*.test.ts'], rules: { 'no-restricted-imports': ['error', { paths: NO_FIRE_EVENT }] } },
   ...layerBlocks,
   ...viewBlocks,

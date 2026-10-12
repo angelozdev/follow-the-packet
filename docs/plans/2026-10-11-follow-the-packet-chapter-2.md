@@ -63,7 +63,7 @@
 - **"Listo"** (regla del 2026-10-11, Tarea 19 bis; vale desde la Tarea 19, y las Tareas 0 a 18 bis se cerraron con el `pnpm check` completo de antes). `pnpm check:fast` corre tipos, lint, estructura, jscpd y Vitest, sin Playwright; `pnpm check` es `pnpm check:fast` y después toda la suite de Playwright.
   - **En cada tarea:** `pnpm check:fast`, más las specs e2e que nombra la tarea o que cubren lo que tocó (`pnpm e2e <archivo>`; la guía de `tests/e2e/` explica cómo). Lo que su sección llama «Cierre» es lo que se suma.
   - **Al cerrar un bloque de contenido (Tareas 24, 26, 27, 28, 32 y 33), en las Tareas 34 y 35 y antes de cada merge:** `pnpm check` completo.
-  - **Una e2e que falla también en HEAD sin los cambios de la tarea** no es de la tarea: se anota en el backlog (`../../docs/plans/2026-10-08-follow-the-packet-followups.md`) y se avisa, sin perseguirla dentro de la tarea.
+  - **Una e2e que falla se compara con la base: el último commit cuyo `pnpm check` completo pasó** (el cierre del bloque anterior, o el comienzo del plan). Si falla también en esa base, no es de la tarea ni del bloque: se anota en el backlog (`../../docs/plans/2026-10-08-follow-the-packet-followups.md`) y se avisa, sin perseguirla. Si pasa en esa base, la regresión es del bloque: alguna tarea se cerró con solo `pnpm check:fast` y la dejó pasar, y aparece en el siguiente `pnpm check` completo. Se arregla dentro del bloque. No se compara con «HEAD sin los cambios de la tarea»: la regresión ya está en ese HEAD, falla también ahí y se iría al backlog por error.
   - **Nunca dos suites e2e a la vez en la misma carpeta.** Dos worktrees sí pueden: cada uno usa su puerto (Tarea 19 bis).
   - Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
 - **Commits.** Uno por tarea, cuando el estudiante lo aprueba (regla del repo), con `git add` de las rutas que la tarea lista, nunca `git add .`. El mensaje termina con una línea en blanco y `Claude-Session: https://claude.ai/code/session_01Ce4XnAt6WDkNZzoR4QRWgh` (segundo `-m`). **Nunca se agrega nada de `labs/`.** Sin `git push`.
@@ -1522,7 +1522,10 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 **C. La nueva regla de chequeo.** Va en este plan (Global Constraints, punto «"Listo"», y el Cierre de las Tareas 20 a 35) y en `tests/e2e/CLAUDE.md`.
 - **En cada tarea:** `pnpm check:fast`, más las specs e2e que nombra la tarea o que cubren lo que tocó.
 - **Al cerrar un bloque y antes de cada merge:** `pnpm check` completo.
-- **Una e2e que falla también en HEAD sin los cambios de la tarea** no es de la tarea: se anota en el backlog y se avisa, sin perseguirla dentro de la tarea.
+- **Una e2e que falla se compara con la base: el último commit cuyo `pnpm check` completo pasó.**
+  - Si falla también en esa base, no es de la tarea ni del bloque: se anota en el backlog y se avisa, sin perseguirla dentro de la tarea.
+  - Si pasa en esa base, la regresión es del bloque y se arregla dentro de él.
+  - **El hueco que cierra:** una regresión que una tarea con solo `pnpm check:fast` dejó pasar aparece en el siguiente `pnpm check` de cierre de bloque. Ahí también falla «en HEAD sin los cambios de la tarea» (la regresión ya está en ese HEAD), y por esa regla antigua se habría ido al backlog por error.
 - **Nunca dos suites e2e a la vez en la misma carpeta.**
 
 **Aceptación.**
@@ -2120,7 +2123,7 @@ El plan prueba que no falta ninguno de dos maneras: esta tabla, hecha del spec, 
 | Subcapítulos densos (01, 02, 03 y 10) con tareas que repartan la carga, y cómo separarlos | Tareas 23, 24, 25 y 29; D-17 |
 | Una sola prueba humana, al final del capítulo (D-15 = B, 2026-10-11), con un revisor de textos por bloque | Final de la Tarea 33; «Contenido»; Global Constraints («Ejecución») |
 | Formato como el del capítulo 1: sin código, tareas con objetivo, archivos, tests con nombre, Review Focus, un commit propio y `pnpm check` | «Formato de este plan»; cada tarea |
-| Global Constraints: commits solo con las rutas de la tarea y el trailer, nada de `labs/`, sin push, puertos 5180 y 5173 intocables, Playwright en 4183, nada de matar por patrón | «Global Constraints» |
+| Global Constraints: commits solo con las rutas de la tarea y el trailer, nada de `labs/`, sin push, puertos 5180 y 5173 intocables, Playwright en el puerto de su worktree (de 4183 a 4282), nada de matar por patrón | «Global Constraints» |
 | «Decisiones abiertas» (D-1…) con opciones, recomendación y porqué; «Decididas sin el estudiante» | Las dos secciones |
 | Árbol al terminar, cobertura de requisitos | Las dos secciones |
 
