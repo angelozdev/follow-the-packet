@@ -14,6 +14,12 @@ export const CHAPTER_1_DONE: Record<string, number> = chapterDone(1);
 /** Chapter 1 and chapter 2 done, `01-01` to `02-14` with three stars: the progress that opens 04-01 once chapter 2 is registered, and still every incident of chapter 1. */
 export const CHAPTER_2_DONE: Record<string, number> = { ...CHAPTER_1_DONE, ...chapterDone(2) };
 
+/** Saves this progress in the page that is open and reloads it, which replaces what the game saved before. */
+export async function reloadWithProgress(page: Page, progress: Record<string, number>): Promise<void> {
+  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify(progress)]);
+  await page.reload();
+}
+
 /** Opens every page of the test with this saved progress, unless the game already saved its own, so a reload keeps what the test earned. */
 export async function startWithProgress(page: Page, progress: Record<string, number>): Promise<void> {
   await page.addInitScript(

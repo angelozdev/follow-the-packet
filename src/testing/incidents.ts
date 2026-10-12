@@ -29,6 +29,9 @@ export function filterIncident(id: string): FilterIncident {
 /** Returns the terms the incidents of chapter 1 introduce, which is what a player knows at the end of the chapter and nothing more: the set for a test of chapter 1 that must not see a term of a later chapter, which `EVERY_TERM` includes. */
 export const CHAPTER_1_TERMS: ReadonlySet<TermId> = new Set(INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces));
 
+/** Returns the terms the incidents of chapter 2 introduce, which a player of 04-01 knows because chapter 2 comes before it in game order: the set for a test that pins the fields of a box to the terms of chapters 1 and 4 only. */
+export const CHAPTER_2_TERMS: ReadonlySet<TermId> = new Set(INCIDENTS.filter((incident) => incident.chapter === 2).flatMap((incident) => incident.introduces));
+
 const CHAPTER_4_INCIDENTS = ['04-01', '04-02'];
 
 /** Returns the VPC worlds chapter 4 records golden traces for: 04-01 and 04-02 each at its start, once solved and with each one-chip rule placed in each firewall of its start world, with the packets of that incident's flows. */

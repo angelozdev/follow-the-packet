@@ -1854,10 +1854,11 @@ describe('01-14, the final watch', () => {
     expect(shown.filter((text) => BY_DEFAULT.test(text) || GENERAL_RULE_OF_FIREWALLS.test(text) || NOT_NETWORK_JARGON.test(text) || NAT_WORDS.test(text))).toEqual([]);
   });
 
-  it('01-14: only chapter 4 comes after it, and the bridge of 04-01 is empty now that the fourteen introduce every term of the chapter', () => {
+  it('01-14: only chapter 2 and chapter 4 come after it, and the bridge of 04-01 is empty now that the fourteen introduce every term of the chapter', () => {
     const ids = INCIDENTS.map((incident) => incident.id);
+    const chapter2 = INCIDENTS.filter((incident) => incident.chapter === 2).map((incident) => incident.id);
     expect(ids.indexOf(FINAL_WATCH)).toBe(ids.indexOf(IN_AND_OUT) + 1);
-    expect(ids.slice(ids.indexOf(FINAL_WATCH) + 1)).toEqual(['04-01', '04-02']);
+    expect(ids.slice(ids.indexOf(FINAL_WATCH) + 1)).toEqual([...chapter2, '04-01', '04-02']);
     expect(INCIDENTS.filter((incident) => incident.chapter === 1)).toHaveLength(CHAPTER_1_INCIDENTS);
   });
 });

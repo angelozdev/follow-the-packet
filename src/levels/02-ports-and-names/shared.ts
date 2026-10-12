@@ -1,8 +1,18 @@
 import { nameTag } from '@/copy';
 import type { NetworkAction, Service } from '@/engine';
-import { DEVICE as CHAPTER_1_DEVICE, IP as CHAPTER_1_IP, LUCIA_FIREWALL, NAME as CHAPTER_1_NAME, ROUTER as CHAPTER_1_ROUTER, SERVER as CHAPTER_1_SERVER } from '@/levels/01-first-day/shared';
+import type { MessageChip } from '@/levels/contract/incident';
+import {
+  ADDRESS as CHAPTER_1_ADDRESS,
+  DEVICE as CHAPTER_1_DEVICE,
+  IP as CHAPTER_1_IP,
+  LUCIA_FIREWALL,
+  MESSAGE as CHAPTER_1_MESSAGE,
+  NAME as CHAPTER_1_NAME,
+  ROUTER as CHAPTER_1_ROUTER,
+  SERVER as CHAPTER_1_SERVER,
+} from '@/levels/01-first-day/shared';
 
-export { CONCEPT, LESSON } from '@/levels/01-first-day/shared';
+export { CONCEPT, LESSON, ORIGIN, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
 
 export const PORT = {
   ssh: 22,
@@ -93,6 +103,20 @@ export const NAME = {
   authoritative: nameTag(SERVER.authoritative.name),
   newsAuthoritative: nameTag(SERVER.news.name),
   freshServer: nameTag(SERVER.fresh.name),
+} as const;
+
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each. */
+export const ADDRESS = { ...CHAPTER_1_ADDRESS } as const;
+
+/** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
+function ncMessage(port: number): MessageChip {
+  return { id: `nc-${port}`, label: `{{nc}} · {{port|puerto}} ${port}`, command: 'nc', port };
+}
+
+export const MESSAGE = {
+  ...CHAPTER_1_MESSAGE,
+  ncApp: ncMessage(PORT.app),
+  ncDatabase: ncMessage(PORT.database),
 } as const;
 
 export const TASK = {

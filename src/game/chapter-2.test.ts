@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { TERMS, toPlainText, type TermId } from '@/copy';
 import { applyAction, ipInCidr, isLoopbackIpv4, networkSchema, type Network } from '@/engine';
-import { INCIDENTS, solvedWorld, type Incident } from '@/levels';
-import { incidentTexts, namedTerms } from '@/levels/ladder';
-import { APP_ON_LOOPBACK, CLIENT, DEVICE, DOMAIN, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_PIECES } from '@/levels/02-ports-and-names/shared';
+import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
+import { changedNames } from '@/levels/contract/changes';
+import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
+import { ADDRESS, APP_ON_LOOPBACK, CLIENT, DEVICE, DOMAIN, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_PIECES, TASK } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
+import { sessionReducer, startSession, starsOf, type Session } from './session';
+import { taskHolds } from './tasks';
+import { terminalLine } from './view/cards/terminal/terminal-card';
+import { toolOutput } from './view/cards/terminal/output-card';
+import { inspect } from './view/inspection';
+import { pieceViews } from './view/pieces';
 
 const CHAPTER = 2;
 const LAST_INCIDENT = '02-14';
@@ -197,5 +204,91 @@ describe('the world of chapter 2 at its first block', () => {
   ])('%s lists only pieces the world 01-14 leaves has', (_name, pieces) => {
     const ids = [...start.devices.map(({ id }) => id), ...(start.routers ?? []).map(({ id }) => id), ...start.actors.map(({ id }) => id)];
     expect(pieces.filter((id) => !ids.includes(id))).toEqual([]);
+  });
+});
+
+describe('02-01, one machine and many services', () => {
+  const ONE_MACHINE = '02-01';
+  const NCAT_BANNER = 'Ncat: Version 7.93 ( https://nmap.org/ncat )';
+  const NCAT_BYTES = /^Ncat: 0 bytes sent, 0 bytes received in \d+\.\d{2} seconds\.$/;
+  const A_PROTOCOL_NAME = /\btcp\b/i;
+  const INSTALL_NC = 'sudo dnf install nmap-ncat';
+  const OUT_HEADER = 'Encabezado de ida';
+  const start = startSession(INCIDENTS, ONE_MACHINE);
+  const sending = (session: Session, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId });
+  const stillOpen = ({ incident, runs, sent, answers }: Session): string[] => (isGuided(incident) ? incident.tasks.filter((task) => !taskHolds(task, runs, sent, answers)).map(({ id }) => id) : []);
+  const lastBox = (session: Session): Record<string, string[]> => {
+    const box = inspect(session, session.sent.at(-1)!.pieceId);
+    return Object.fromEntries((box?.fields ?? []).map(({ label, lines }) => [toPlainText(label), lines.map((line) => toPlainText(line))]));
+  };
+  const printedBy = (session: Session, messageId: string): string[] =>
+    (toolOutput(session, { from: ORIGIN.you.id, to: ADDRESS.lucia.id, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+  const plain = (text: string): string => toPlainText(text);
+
+  it('02-01: the ping, the nc to port 3000 and the nc to port 5432 each complete their task', () => {
+    expect(stillOpen(start)).toEqual([TASK.ping, TASK.app, TASK.database]);
+    const pinged = sending(start, MESSAGE.ping.id);
+    expect(stillOpen(pinged)).toEqual([TASK.app, TASK.database]);
+    const reachedTheApp = sending(pinged, MESSAGE.ncApp.id);
+    expect(stillOpen(reachedTheApp)).toEqual([TASK.database]);
+    const done = sending(reachedTheApp, MESSAGE.ncDatabase.id);
+    expect(stillOpen(done)).toEqual([]);
+    expect(starsOf(sessionReducer(done, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('02-01: the box of the nc shows 192.168.1.11:3000 as the destination', () => {
+    const toTheApp = lastBox(sending(start, MESSAGE.ncApp.id));
+    expect(toTheApp[OUT_HEADER]).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.lucia}`, `Puerto de destino: ${PORT.app}`, 'TTL al salir: 64']);
+    expect(lastBox(sending(start, MESSAGE.ncDatabase.id))[OUT_HEADER]).toContain(`Puerto de destino: ${PORT.database}`);
+    expect([...Object.keys(toTheApp), ...Object.values(toTheApp).flat()].join(' ')).not.toMatch(/Puerto de origen|Saludo/);
+  });
+
+  it('02-01: the report names laptop-lucia and says what changed', () => {
+    const { report } = start.incident;
+    expect(plain(report)).toMatch(new RegExp(`^Lucía puso a funcionar dos programas en ${DEVICE.lucia.name}: su app y una base de datos de pruebas\\.`));
+    expect(report).toContain(`[[${DEVICE.lucia.name}]]`);
+    expect(changedNames(solvedWorld(INCIDENTS, '01-14'), startWorld(INCIDENTS, ONE_MACHINE))).toEqual([DEVICE.lucia.name]);
+  });
+
+  it('02-01: draws tu-laptop and laptop-lucia and no other piece', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    expect(drawn.sort()).toEqual([`device:${DEVICE.lucia.name}`, `device:${DEVICE.you.name}`, `firewall:firewall ${DEVICE.you.name}`]);
+    expect(start.incident.shown).toEqual(SERVICES_PIECES);
+  });
+
+  it('02-01: introduces service, port, destination port, IP:puerto, escuchar and nc, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[ONE_MACHINE]));
+    expect(sorted(introduces)).toEqual(sorted(['service', 'port', 'destination-port', 'ip-port', 'listen', 'nc']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, ONE_MACHINE))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+    expect(incidentTexts(start.incident).map(plain).filter((text) => A_PROTOCOL_NAME.test(text))).toEqual([]);
+  });
+
+  it('02-01: the takeaway says how to install nc on Amazon Linux 2023 and that macOS prints it differently', () => {
+    const takeaway = plain(start.incident.takeaway);
+    expect(takeaway).toContain(`En Amazon Linux 2023, nc se instala con ${INSTALL_NC}.`);
+    expect(takeaway).toMatch(/En macOS, nc es otro programa y su salida se ve distinta\./);
+    expect(takeaway.split(/(?<=\.)\s+/)).toHaveLength(3);
+  });
+
+  it('02-01: the output of nc is the one of ncat 7.93, with the Version, Connected and bytes lines and no tcp', () => {
+    const [banner, connected, bytes, ...rest] = printedBy(sending(start, MESSAGE.ncApp.id), MESSAGE.ncApp.id);
+    expect(banner).toBe(NCAT_BANNER);
+    expect(connected).toBe(`Ncat: Connected to ${IP.lucia}:${PORT.app}.`);
+    expect(bytes).toMatch(NCAT_BYTES);
+    expect(rest).toEqual([]);
+    expect([banner, connected, bytes].filter((line) => A_PROTOCOL_NAME.test(line) || line.includes('[tcp/'))).toEqual([]);
+    expect(printedBy(sending(start, MESSAGE.ncDatabase.id), MESSAGE.ncDatabase.id)[1]).toBe(`Ncat: Connected to ${IP.lucia}:${PORT.database}.`);
+    expect(terminalLine(start, { to: ADDRESS.lucia.id, message: MESSAGE.ncApp.id })).toBe(`nc -vz -w 3 ${IP.lucia} ${PORT.app}`);
+  });
+
+  it('02-01: the ping to laptop-lucia comes back and does not complete the nc tasks', () => {
+    const pinged = sending(start, MESSAGE.ping.id);
+    expect(pinged.sent[0].replied).toBe(true);
+    expect(stillOpen(pinged)).toEqual([TASK.app, TASK.database]);
+    expect(printedBy(pinged, MESSAGE.ping.id)).toEqual([]);
+    const box = lastBox(pinged);
+    expect([...Object.keys(box), ...Object.values(box).flat()].join(' ')).not.toMatch(/puerto/i);
   });
 });

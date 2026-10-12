@@ -7,5 +7,6 @@ Helpers for tests only: network fixtures (`fixtures.ts`: the lab 03 VPC and the 
 - `tcpService(port, listen)` builds a TCP `Service` (on all addresses unless told otherwise) for the tests that give a device or a server a program.
 - `EVERY_TERM` is every registered term, for the tests that do not care what the player knows yet; a test about what is hidden builds its own set or its own incident.
 - `CHAPTER_1_TERMS` is the terms the incidents of chapter 1 introduce: for a test of chapter 1 that sends packets and must not see a term of a later chapter (`EVERY_TERM` includes them, so the box of a trip would show a route or a translation). A test that needs a session with it builds the incident with `introduces: [...CHAPTER_1_TERMS]`.
+- `CHAPTER_2_TERMS` is the terms the incidents of chapter 2 introduce, which a player of 04-01 knows because chapter 2 comes before it in game order: for a test that pins what a box of the VPC shows to the terms of chapters 1 and 4 (`inspection.test.ts` removes them from the session of 04-01 it reads).
 - Production code never imports `@/testing`.
 - May import: `@/engine`, `@/copy`, `@/levels`.

@@ -1,15 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { PROGRESS_KEY } from '@/storage/progress';
 import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
 import { CHAPTER_1, IP, LOST_TO_SERVER, WATCH_CASES, fixTheGateway, openTheSettings, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
 import { FULL_STARS, closeCase } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
 import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps, recordLabels, recordedLabels, type Box } from '@e2e/map-boxes';
-import { CHAPTER_1_DONE, startWithProgress } from '@e2e/saved-progress';
+import { CHAPTER_1_DONE, reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
+import { CHAPTER_2, LAST_BUILT_OF_CHAPTER_2 } from '@e2e/chapter-2/chapter-2-play';
 
 const LOCKED = '(bloqueado)';
 const FIRST_PING_LINK = '1. El primer ping';
-const LAST_BUILT_OF_CHAPTER_1 = '01-14';
 const CHAPTER_1_TITLE = 'Tu primer día';
 const OFFICE_PIECES = ['laptop-lucia con candado', 'impresora con candado', 'laptop-andres con candado', 'router-oficina con candado'];
 const SECOND_FLOOR = /laptop-andres|Piso 2/;
@@ -33,11 +32,6 @@ const SENDING: Record<string, (terminal: Locator) => Promise<void>> = {
   '01-09': sendThePingsWithTtl,
   '01-10': sendThePingAndTheTraceroute,
 };
-
-async function reloadWithProgress(page: Page, progress: Record<string, number>) {
-  await page.evaluate(([key, saved]) => localStorage.setItem(key, saved), [PROGRESS_KEY, JSON.stringify(progress)]);
-  await page.reload();
-}
 
 async function expectFirstPingOpenWith(page: Page, progress: Record<string, number>) {
   await reloadWithProgress(page, progress);
@@ -116,7 +110,8 @@ test('chapter 1 is played from 01-01 to 01-14, each incident opening the next, w
     await page.getByRole('link', { name: last ? 'Volver al roadmap' : 'Siguiente incidente' }).click();
   }
   for (const { id } of CHAPTER_1) await expect(page.locator(`li[data-level-id="${id}"]`)).toContainText(FULL_STARS);
-  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
+  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
+  await expect(page.getByRole('link', { name: `1. ${CHAPTER_2[0].title}` })).toHaveAttribute('href', `#/level/${CHAPTER_2[0].id}`);
   expect(errors).toEqual([]);
 });
 
@@ -144,16 +139,18 @@ test('chapter 1 opens at 01-01 and 04-01 opens once the incident before it has a
   await expect(page.getByRole('link', { name: '1. La oficina' })).toHaveAttribute('href', '#/level/01-01');
   await expect(page.locator('li[data-level-id="01-02"]')).toContainText(LOCKED);
   await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_1]: 1 });
+  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_2]: 1 });
   expect(errors).toEqual([]);
 });
 
-test('04-01 opens after 01-14 has a star', async ({ page }) => {
+test('04-01 stays locked after 01-14 has a star and opens after the last built incident of chapter 2 has one', async ({ page }) => {
   const errors = collectErrors(page);
   await startWithProgress(page, { '01-13': 3 });
   await page.goto('/');
   await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_1]: 1 });
+  await reloadWithProgress(page, { '01-14': 1 });
+  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
+  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_2]: 1 });
   expect(errors).toEqual([]);
 });
 

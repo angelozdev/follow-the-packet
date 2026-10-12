@@ -4,7 +4,7 @@ import { card, openCard, openTerminal, sendTo } from './cards';
 import { IP, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
-import { CHAPTER_1_DONE, startWithProgress } from './saved-progress';
+import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 import { freezeTime, standStill, stepFrame } from './still-scene';
 
 const DONE = 'Listo';
@@ -265,7 +265,7 @@ const PAUSED_SCENE = `
 </script>`;
 
 test.beforeEach(async ({ page }) => {
-  await startWithProgress(page, CHAPTER_1_DONE);
+  await startWithProgress(page, CHAPTER_2_DONE);
 });
 
 test('a box is measured only once the scene stands still', async ({ page }) => {

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
 const SOON = 'Próximamente';
-const SOON_CHAPTER_COUNT = 31;
+const SOON_CHAPTER_COUNT = 30;
 const TIER_HEADINGS = ['Nivel 0 · Bases', 'Nivel 1 · Fundamentos', 'Nivel 2 · Asociado', 'Nivel 3 · Profesional', 'Nivel 4 · Especialista'];
 const PHONE = { width: 390, height: 844 };
 

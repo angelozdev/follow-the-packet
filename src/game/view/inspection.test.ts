@@ -4,7 +4,7 @@ import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from 
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { CHAPTER_1_TERMS, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { inspect, type Inspection } from './inspection';
@@ -21,7 +21,8 @@ const LOCAL_REQUEST_HEADER = 'Encabezado del Echo Request (en tu red local)';
 const LOCAL_REPLY_HEADER = 'Encabezado del Echo Reply (en tu red local)';
 const HEADER_CHANGES = 'Fuera de la oficina el encabezado cambia: lo verás en el capítulo 2.';
 const ATTACKER_PUBLIC_IP = '203.0.113.66';
-const first = startSession(INCIDENTS, '04-01');
+const startOf04 = startSession(INCIDENTS, '04-01');
+const first: Session = { ...startOf04, known: new Set([...startOf04.known].filter((term) => !CHAPTER_2_TERMS.has(term))) };
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
 const fixed = sessionReducer(first, { type: 'placeRule', firewallId: SG.servidor2, whatId: WHAT.echoRequest.id, fromId: FROM.sgServidor1.id });
 
@@ -597,7 +598,9 @@ describe('the box of a device', () => {
     expect(services(without(served, 'service'))).toBeUndefined();
     expect(services(without(served, 'service'), PIECE_ID.actor(server.id))).toBeUndefined();
     const vpc = startSession(INCIDENTS, '04-01');
-    expect(plain(inspect(vpc, PIECE_ID.device(S2.id)))?.fields.map(([label]) => label)).not.toContain('Servicios');
+    const labelsOfInstance = (session: Session) => plain(inspect(session, PIECE_ID.device(S2.id)))?.fields.map(([label]) => label);
+    expect(labelsOfInstance(vpc)).toContain('Servicios');
+    expect(labelsOfInstance(without(vpc, 'service'))).not.toContain('Servicios');
   });
 
   it('a service says its port and not tcp before tcp is known', () => {

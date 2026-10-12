@@ -10,7 +10,7 @@ import { incidentSchema, isGuided, type CaseSpec, type Incident } from './contra
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
 
-const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13', '01-14', '04-01', '04-02'];
+const PROTOTYPE_IDS = ['01-01', '01-02', '01-03', '01-04', '01-05', '01-06', '01-07', '01-08', '01-09', '01-10', '01-11', '01-12', '01-13', '01-14', '02-01', '04-01', '04-02'];
 const HINT_COUNT = 2;
 const WORDS_THE_CARD_WRITES = /^(No[.:]|No es eso\.|Eso es\b|Correcto\.)/;
 const lessons = syllabusLessons();
@@ -119,7 +119,8 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
   it('brings the base world only when it opens its chapter', () => {
     const opensChapter = INCIDENTS.find((i) => i.chapter === incident.chapter) === incident;
-    expect(incident.base !== undefined).toBe(opensChapter);
+    const continuesTheGame = opensChapter && incident.base === undefined && (incident.changes ?? []).length > 0 && INCIDENTS.some((i) => i.chapter < incident.chapter);
+    expect(incident.base !== undefined || continuesTheGame).toBe(opensChapter);
   });
 });
 
