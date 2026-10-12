@@ -13,7 +13,7 @@ export default defineIncident({
   introduces: ['service', 'port', 'listen', 'ip-port', 'destination-port', 'nc'],
   changes: [LUCIA_SERVICES],
   shown: SERVICES_PIECES,
-  report: `Lucía puso a funcionar dos programas en ${NAME.lucia}: su app y una base de datos de pruebas. Cada uno es un {{service|servicio}} y {{listen|escucha}} en un {{port|puerto}}: ahí espera los {{packet|paquetes}} de otros {{device|dispositivos}}. Un {{port|puerto}} es un número que, junto con la {{ip-address|IP}}, dice a cuál {{service|servicio}} va un {{packet|paquete}}. Haz un {{ping}} a ${NAME.lucia}. Después usa {{nc}} para probar el {{port|puerto}} de la app, el ${PORT.app}, y el de la base de datos, el ${PORT.database}.`,
+  report: `Lucía puso a funcionar dos programas en ${NAME.lucia}: su app y una base de datos de pruebas. Cada uno es un {{service|servicio}}. Un {{service|servicio}} {{listen|escucha}} en un {{port|puerto}}: ahí espera los {{packet|paquetes}} de otros {{device|dispositivos}}. Un {{port|puerto}} es un número que, junto con la {{ip-address|IP}}, dice a cuál {{service|servicio}} va un {{packet|paquete}}. Haz un {{ping}} a ${NAME.lucia}. Después usa {{nc}} para probar cada {{port|puerto}}: la app usa el ${PORT.app} y la base de datos, el ${PORT.database}.`,
   tasks: [
     pingTask(TASK.ping, `Que vuelva tu {{ping}} a ${NAME.lucia}.`, ADDRESS.lucia.id, 'replied', DEVICE.lucia.id),
     sendTask(TASK.app, `Que vuelva un {{nc}} a {{ip-port|${IP.lucia}:${PORT.app}}}: la app de ${NAME.lucia}.`, MESSAGE.ncApp.id, ADDRESS.lucia.id, 'replied', DEVICE.lucia.id),
@@ -28,8 +28,8 @@ export default defineIncident({
   question: `El {{ping}} a ${NAME.lucia} volvió. ¿Por qué eso no prueba que su app funciona?`,
   explanation: [
     {
-      text: `Porque la app tiene su propia {{ip-address|IP}}, distinta de la de ${NAME.lucia}.`,
-      feedback: `La app y la base de datos de ${NAME.lucia} comparten su {{ip-address|IP}}, ${IP.lucia}. Lo que las distingue es el {{port|puerto}}.`,
+      text: `Porque cada {{service|servicio}} tiene su propia {{ip-address|IP}}, y el {{ping}} solo prueba la de ${NAME.lucia}.`,
+      feedback: `Aquí la app y la base de datos de ${NAME.lucia} comparten la misma {{ip-address|IP}}, ${IP.lucia}. Lo que las distingue es el {{port|puerto}}.`,
       correct: false,
     },
     {
@@ -38,7 +38,7 @@ export default defineIncident({
       correct: true,
     },
     {
-      text: `Porque el {{ping}} no llegó a ${NAME.lucia}, así que no se pudo probar la app.`,
+      text: `Porque el {{ping}} no llegó a ${NAME.lucia}, así que no se pudo probar el {{service|servicio}}.`,
       feedback: `Sí llegó: el {{ping}} volvió. Que el {{device|dispositivo}} conteste no dice si uno de sus {{service|servicios}} funciona.`,
       correct: false,
     },

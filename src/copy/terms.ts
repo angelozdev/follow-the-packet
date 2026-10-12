@@ -160,7 +160,7 @@ export const TERMS = {
   listen: { name: 'escuchar', definition: 'Un servicio escucha cuando espera paquetes en un puerto de una de las IPs del dispositivo.' },
   'ip-port': { name: 'IP:puerto', definition: 'La IP y el puerto juntos, como 192.168.1.40:22. Señalan un servicio concreto de un dispositivo concreto.' },
   'destination-port': { name: 'puerto de destino', definition: 'El puerto del servicio al que va el paquete.' },
-  nc: { name: 'nc', definition: 'Una herramienta de consola. nc -vz IP puerto prueba si hay un servicio escuchando en ese puerto, sin enviarle datos.' },
+  nc: { name: 'nc', definition: 'Una herramienta de consola. nc -vz -w 3 IP puerto prueba si un servicio escucha en ese puerto, sin enviarle datos.' },
   'client-server': {
     name: 'cliente y servidor',
     definition: 'El cliente inicia el contacto y el servidor espera y responde. Son roles de cada intercambio, no tipos de equipo.',
