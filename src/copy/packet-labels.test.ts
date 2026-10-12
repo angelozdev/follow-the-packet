@@ -231,16 +231,29 @@ describe('the label of a packet with ports', () => {
     expect(packetLabel(question, simulate(named, question), named, withoutTerms('udp'))).toBe('{{packet}} al {{port|puerto}} 53 de [[tu-laptop]] a [[servidor-dns]]');
   });
 
+  it('a translated packet is labelled with its private source port before the router and its public source port after it', () => {
+    const fromLucia = { ...toServer, from: device('lucia-laptop') };
+    const [first, second] = simulateSequence(floors, [{ packet: toServer, at: 0 }, { packet: fromLucia, at: 0 }]);
+    const requests = (packet: typeof toServer, trace: typeof first, known?: ReadonlySet<TermId>) => packetPortLabels(packet, trace, known)?.map(({ request }) => request);
+    expect(packetLabel(toServer, first, floors)).toBe('{{tcp}} 51514 → 80 de [[tu-laptop]] a [[servidor-internet]]');
+    expect(requests(toServer, first)).toEqual(['{{tcp}} 51514 → 80', '{{tcp}} 40001 → 80']);
+    expect(requests(fromLucia, second)).toEqual(['{{tcp}} 51514 → 80', '{{tcp}} 40002 → 80']);
+    expect(requests(toServer, first, withoutTerms('tcp'))).toEqual(['{{packet}} al {{port|puerto}} 80', '{{packet}} al {{port|puerto}} 80']);
+  });
+
   it('a packet that is not translated keeps one label along its whole path', () => {
     const inside = simulate(serving(), toLucia);
     expect(inside).not.toHaveProperty('translation');
+    expect(packetPortLabels(toLucia, inside)?.map(({ request }) => request)).toEqual(['{{tcp}} 51514 → 3000']);
     const pinged = ping(device('your-laptop'), server.ip);
     const trace = simulate(floors, pinged);
     expect(trace.translation?.protocol).toBe('icmp');
     expect(trace.translation?.outside).toEqual({ ip: OFFICE_FLOORS.officeRouter.uplink });
+    expect(packetPortLabels(pinged, trace)).toBeNull();
     expect(packetLabel(pinged, trace, floors)).toBe('{{ping}} de [[tu-laptop]] a [[servidor-internet]]');
     const vpc = lab03Net();
     const ssh = tcp(device('servidor1'), '172.31.38.97', 22);
+    expect(packetPortLabels(ssh, simulate(vpc, ssh))).toBeNull();
     expect(packetLabel(ssh, simulate(vpc, ssh), vpc)).toBe('TCP 22 de [[servidor1]] a [[servidor2]]');
   });
 });
