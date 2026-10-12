@@ -1,0 +1,81 @@
+import { defineIncident } from '@/levels/contract/incident';
+import {
+  ADDRESS,
+  APP_LISTEN,
+  APP_LISTEN_ADDRESS,
+  APP_ON_LOOPBACK,
+  CONCEPT,
+  DEVICE,
+  FIREWALL,
+  IP,
+  LESSON,
+  MESSAGE,
+  NAME,
+  ORIGIN,
+  PORT,
+  REFUSAL_PIECES,
+  TASK,
+  sendMove,
+  sendMoveFrom,
+  sendTask,
+  sendTaskFrom,
+} from '@/levels/02-ports-and-names/shared';
+
+export default defineIncident({
+  id: '02-03',
+  chapter: 2,
+  order: 3,
+  title: 'Rechazo o silencio',
+  role: 'defender',
+  mechanic: 'send',
+  lesson: LESSON,
+  concept: CONCEPT,
+  introduces: ['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address'],
+  changes: [APP_ON_LOOPBACK],
+  shown: REFUSAL_PIECES,
+  report: `Lucía reinició su app en ${NAME.lucia}. Ahora la app solo {{listen|escucha}} en ${IP.loopback}, la {{ip-address|IP}} de {{loopback}}. Esa es su {{listen-address|dirección de escucha}}. Haz tres pruebas con {{nc}}. Primero, al {{port|puerto}} ${PORT.app} de ${NAME.lucia}, donde está la app. Segundo, al ${PORT.mysql} de ${NAME.lucia}, donde ningún {{service|servicio}} {{listen|escucha}}: es un {{closed-port|puerto cerrado}}. Tercero, al ${PORT.app} de ${NAME.marta}, que tiene un {{firewall}}. Cuando llega un {{packet|paquete}} a un {{closed-port|puerto cerrado}}, el {{device|dispositivo}} contesta con un {{rst|RST}}, y {{nc}} muestra {{connection-refused}}. Un {{firewall}} que {{drop|descarta}} el {{packet|paquete}} no contesta: su {{port|puerto}} es un {{filtered-port|puerto filtrado}} y {{nc}} solo ve un {{timeout}}. También puedes probar la app desde la terminal de ${NAME.lucia}. Para cambiar su {{listen-address|dirección de escucha}}, abre la pestaña «Servicios» de ${NAME.lucia}.`,
+  tasks: [
+    sendTask(TASK.closedPort, `Que ${NAME.lucia} rechace tu {{nc}} al {{port|puerto}} ${PORT.mysql}.`, MESSAGE.ncMysql.id, ADDRESS.lucia.id, 'refused', DEVICE.lucia.id),
+    sendTask(TASK.filteredPort, `Que tu {{nc}} al {{port|puerto}} ${PORT.app} de ${NAME.marta} se quede sin respuesta.`, MESSAGE.ncApp.id, ADDRESS.marta.id, 'timeout', FIREWALL.marta),
+    sendTaskFrom(ORIGIN.lucia, TASK.ownMachine, `Que vuelva un {{nc}} de ${NAME.lucia} a {{ip-port|${IP.loopback}:${PORT.app}}}: su propia app.`, MESSAGE.ncApp.id, ADDRESS.loopback.id, 'replied', DEVICE.lucia.id),
+    sendTask(TASK.fromTheNetwork, `Que vuelva tu {{nc}} a {{ip-port|${IP.lucia}:${PORT.app}}}: la app de ${NAME.lucia}.`, MESSAGE.ncApp.id, ADDRESS.lucia.id, 'replied', DEVICE.lucia.id),
+  ],
+  flows: [],
+  send: {
+    from: [ORIGIN.you, ORIGIN.lucia],
+    to: [ADDRESS.lucia, ADDRESS.marta, ADDRESS.loopback],
+    message: [MESSAGE.ncApp, MESSAGE.ncMysql],
+    settings: [APP_LISTEN_ADDRESS],
+  },
+  hints: [
+    `Un rechazo lo manda el {{device|dispositivo}}: es una respuesta. El silencio es que nadie contesta.`,
+    `Compara el {{nc}} de ${NAME.lucia} a ${IP.loopback} con el tuyo a ${IP.lucia}: fíjate en la {{ip-address|IP}} de cada uno.`,
+  ],
+  question: `¿Por qué ${NAME.lucia} rechazó tu {{nc}} al {{port|puerto}} ${PORT.app}, si ahí tiene un {{service|servicio}}?`,
+  explanation: [
+    {
+      text: `Porque un {{firewall}} {{drop|descartó}} el {{packet|paquete}} antes de que la app de ${NAME.lucia} pudiera recibirlo.`,
+      feedback: `Un {{firewall}} que {{drop|descarta}} no contesta, y {{nc}} solo habría visto un {{timeout}}. Aquí contestó ${NAME.lucia}: el {{packet|paquete}} llegó y volvió un {{rst|RST}}.`,
+      correct: false,
+    },
+    {
+      text: `Porque el {{port|puerto}} ${PORT.app} de ${NAME.lucia} era un {{closed-port|puerto cerrado}} y ningún {{service|servicio}} lo atendía.`,
+      feedback: `Un {{closed-port|puerto cerrado}} es uno donde ningún {{service|servicio}} {{listen|escucha}}. Aquí la app sí {{listen|escucha}} en el ${PORT.app}, pero solo en ${IP.loopback}.`,
+      correct: false,
+    },
+    {
+      text: `Porque la app solo {{listen|escucha}} en ${IP.loopback} y rechaza lo que llega a otra {{ip-address|IP}} de ${NAME.lucia}.`,
+      feedback: `La {{listen-address|dirección de escucha}} de la app es ${IP.loopback}, y tu {{packet|paquete}} iba a ${IP.lucia}. ${NAME.lucia} lo rechazó con un {{rst|RST}}, y por eso {{nc}} mostró {{connection-refused}}. Con 0.0.0.0 la app atiende todas las {{ip-address|IPs}} de ${NAME.lucia}.`,
+      correct: true,
+    },
+  ],
+  solution: [
+    { type: 'setSetting', deviceId: DEVICE.lucia.id, settingId: APP_LISTEN.setting, chipId: APP_LISTEN.all },
+    sendMove(ADDRESS.lucia.id, MESSAGE.ncMysql.id),
+    sendMove(ADDRESS.marta.id, MESSAGE.ncApp.id),
+    sendMoveFrom(ORIGIN.lucia, ADDRESS.loopback.id, MESSAGE.ncApp.id),
+    sendMove(ADDRESS.lucia.id, MESSAGE.ncApp.id),
+  ],
+  takeaway:
+    'Si nadie {{listen|escucha}} en un {{port|puerto}} (un {{closed-port|puerto cerrado}}), el {{device|dispositivo}} contesta con un {{rst|RST}} y {{nc}} muestra {{connection-refused}}. Un {{service|servicio}} que {{listen|escucha}} solo en 127.0.0.1 rechaza también lo que llega a otra {{ip-address|IP}}. Un {{filtered-port|puerto filtrado}} no contesta: {{nc}} solo ve un {{timeout}}.',
+});

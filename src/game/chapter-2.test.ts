@@ -4,13 +4,16 @@ import { applyAction, ipInCidr, isLoopbackIpv4, networkSchema, type Network } fr
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
-import { ADDRESS, APP_ON_LOOPBACK, CLIENT, DEVICE, DOMAIN, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_PIECES, TASK } from '@/levels/02-ports-and-names/shared';
+import { ADDRESS, APP_LISTEN, APP_ON_LOOPBACK, CLIENT, DEVICE, DOMAIN, FIREWALL, FLOORS_PIECES, HOSTNAME, IP, LUCIA_SERVICES, MESSAGE, ORIGIN, PORT, REFUSAL_PIECES, ROUTER, SERVER, SERVICES_PIECES, SSH_AND_FIREWALL, SSH_PIECES, TASK } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
 import { terminalLine } from './view/cards/terminal/terminal-card';
+import { pieceCard } from './view/cards/piece-card';
+import { servicesCard } from './view/cards/settings-card';
 import { toolOutput } from './view/cards/terminal/output-card';
 import { inspect } from './view/inspection';
+import { PIECE_ID } from './view/piece-id';
 import { pieceViews } from './view/pieces';
 
 const CHAPTER = 2;
@@ -96,8 +99,11 @@ function outsideDocumentationTld(names: string[]): string[] {
   return names.filter((name) => !name.endsWith(DOCUMENTATION_TLD));
 }
 
+/** Sends this message from this terminal to this address. */
+const sendingFrom = (session: Session, fromId: string, toId: string, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
+
 /** Sends this message from your laptop to laptop-lucia. */
-const sending = (session: Session, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.lucia.id, messageId });
+const sending = (session: Session, messageId: string): Session => sendingFrom(session, ORIGIN.you.id, ADDRESS.lucia.id, messageId);
 
 /** Returns the ids of the tasks of a guided incident that do not hold yet. */
 const stillOpen = ({ incident, runs, sent, answers }: Session): string[] => (isGuided(incident) ? incident.tasks.filter((task) => !taskHolds(task, runs, sent, answers)).map(({ id }) => id) : []);
@@ -108,11 +114,45 @@ const lastBox = (session: Session): Record<string, string[]> => {
   return Object.fromEntries((box?.fields ?? []).map(({ label, lines }) => [toPlainText(label), lines.map((line) => toPlainText(line))]));
 };
 
+/** Returns the lines the output card prints for the message sent from this terminal to this address. */
+const printedFrom = (session: Session, fromId: string, toId: string, messageId: string): string[] =>
+  (toolOutput(session, { from: fromId, to: toId, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+
 /** Returns the lines the output card prints for the message sent from your laptop to laptop-lucia. */
-const printedBy = (session: Session, messageId: string): string[] =>
-  (toolOutput(session, { from: ORIGIN.you.id, to: ADDRESS.lucia.id, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+const printedBy = (session: Session, messageId: string): string[] => printedFrom(session, ORIGIN.you.id, ADDRESS.lucia.id, messageId);
 
 const plain = (text: string): string => toPlainText(text);
+
+/** Returns the plain text of every field of the box of each packet sent: its labels, lines and notes. */
+const boxTexts = (session: Session): string[] =>
+  session.sent.flatMap((run) => inspect(session, run.pieceId)?.fields ?? []).flatMap((field) => [field.label, ...field.lines, ...(field.notes ?? [])]).map(plain);
+
+/** Returns every text the player reads in an incident once the packets are sent: the texts of the incident, the boxes, what the tool prints and the definitions of the terms it introduces. */
+const everythingRead = (session: Session): string[] => [
+  ...incidentTexts(session.incident).map(plain),
+  ...boxTexts(session),
+  ...session.sent.flatMap((run) => printedFrom(session, run.fromId, run.toId, run.messageId)),
+  ...session.incident.introduces.map((term) => TERMS[term].definition),
+];
+
+/** Expects every task of the incident to hold and the incident to close with its middle star. */
+function expectClosed(session: Session): void {
+  expect(stillOpen(session)).toEqual([]);
+  expect(starsOf(sessionReducer(session, { type: 'submit' }))).toMatchObject({ closed: true, middle: true });
+}
+
+/** Returns the options of the question of an incident that has one: its three explanations. */
+const optionsOf = (incident: Incident): { text: string; feedback: string; correct: boolean }[] => (isGuided(incident) ? incident.explanation : []);
+
+/** Returns the place, counted from 0, of the right option among the options of an incident. */
+const rightOptionPlace = (incident: Incident): number => optionsOf(incident).findIndex(({ correct }) => correct);
+
+/** True when the right option is longer than each of the others, by the plain text: the length would give it away. */
+function rightOptionIsTheLongest(incident: Incident): boolean {
+  const lengths = optionsOf(incident).map(({ text }) => plain(text).length);
+  const right = lengths[rightOptionPlace(incident)];
+  return lengths.every((length, index) => index === rightOptionPlace(incident) || length < right);
+}
 
 describe('the term ladder of chapter 2 in its incidents', () => {
   it('the table of the approved design holds the 53 terms in 14 incidents, each term once, all registered and none of chapter 1', () => {
@@ -292,6 +332,17 @@ describe('02-01, one machine and many services', () => {
     expect(terminalLine(start, { to: ADDRESS.lucia.id, message: MESSAGE.ncApp.id })).toBe(`nc -vz -w 3 ${IP.lucia} ${PORT.app}`);
   });
 
+  it('02-01: no wrong option of the question says the ping did not arrive, which the question itself says it did', () => {
+    const wrong = optionsOf(start.incident).filter(({ correct }) => !correct);
+    expect(wrong).toHaveLength(2);
+    expect(wrong.flatMap(({ text }) => (/no llegó|no volvió|no contestó/i.test(plain(text)) ? [plain(text)] : []))).toEqual([]);
+  });
+
+  it('02-01: the right option is the second and is not the longest of the three', () => {
+    expect(rightOptionPlace(start.incident)).toBe(1);
+    expect(rightOptionIsTheLongest(start.incident)).toBe(false);
+  });
+
   it('02-01: the ping to laptop-lucia comes back and does not complete the nc tasks', () => {
     const pinged = sending(start, MESSAGE.ping.id);
     expect(pinged.sent[0].replied).toBe(true);
@@ -315,14 +366,6 @@ describe('02-02, opening a connection', () => {
   const app = sending(start, MESSAGE.ncApp.id);
   const both = sending(app, MESSAGE.ncDatabase.id);
   const givesARange = (text: string): boolean => RANGES_OF_PORTS.some((range) => range.test(text));
-  const boxTexts = (session: Session): string[] =>
-    session.sent.flatMap((run) => inspect(session, run.pieceId)?.fields ?? []).flatMap((field) => [field.label, ...field.lines, ...(field.notes ?? [])]).map(plain);
-  const everythingRead = (session: Session): string[] => [
-    ...incidentTexts(session.incident).map(plain),
-    ...boxTexts(session),
-    ...session.sent.flatMap((run) => printedBy(session, run.messageId)),
-    ...session.incident.introduces.map((term) => TERMS[term].definition),
-  ];
 
   it('02-02: the header of the nc shows the source port 51514 and the destination port 3000', () => {
     expect(app.sent[0].trace.header?.request).toMatchObject({ sourcePort: FIRST_PORT, destinationPort: PORT.app });
@@ -383,5 +426,149 @@ describe('02-02, opening a connection', () => {
     expect(lastBox(before)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.app} → ${IP.you}`]);
     expect(lastBox(before)['Encabezado de ida']).toEqual([`${IP.you} → ${IP.lucia}:${PORT.app}`, 'TTL al salir: 64']);
     expect(lastBox(app)[BACK_HEADER]).toEqual([`${IP.lucia}:${PORT.app} → ${IP.you}:${FIRST_PORT}`]);
+  });
+});
+
+describe('02-03, refused or silent', () => {
+  const REFUSED_OR_SILENT = '02-03';
+  const NCAT_REFUSED = 'Ncat: Connection refused.';
+  const NCAT_TIMEOUT = 'Ncat: TIMEOUT.';
+  const GREETING = 'Saludo de tres pasos';
+  const WHERE_IT_STOPPED = 'Dónde y por qué se detuvo';
+  const SENTENCES = /(?<=[.!?])\s+/;
+  const ANOTHER_ADDRESS = /127\.0\.0\.1|dirección de escucha|otra IP|otra dirección/i;
+  const CONTRASTS = /\bpero\b|en cambio|\bno es\b|\bno era\b|\bsí\b/i;
+  const MENTIONS_A_REPLY_REASON = /stateful|stateless|recuerda|conversación|mismo camino|deja(?:n)? (?:pasar|volver|entrar la respuesta)/i;
+  const start = startSession(INCIDENTS, REFUSED_OR_SILENT);
+  const fromYou = (session: Session, toId: string, messageId: string): Session => sendingFrom(session, ORIGIN.you.id, toId, messageId);
+  const fromLucia = (session: Session, toId: string, messageId: string): Session => sendingFrom(session, ORIGIN.lucia.id, toId, messageId);
+  const closedPort = fromYou(start, ADDRESS.lucia.id, MESSAGE.ncMysql.id);
+  const filteredPort = fromYou(start, ADDRESS.marta.id, MESSAGE.ncApp.id);
+  const wrongAddress = fromYou(start, ADDRESS.lucia.id, MESSAGE.ncApp.id);
+  const ownMachine = fromLucia(start, ADDRESS.loopback.id, MESSAGE.ncApp.id);
+  const listensOnEveryIp = (session: Session): Session => sessionReducer(session, { type: 'setSetting', deviceId: DEVICE.lucia.id, settingId: APP_LISTEN.setting, chipId: APP_LISTEN.all });
+  const lastRun = (session: Session) => session.sent.at(-1)!;
+  const stopOf = (session: Session) => lastRun(session).trace.steps.at(-1)?.reason;
+  const equatesClosedPortAndAnotherAddress = (text: string): boolean => text.split(SENTENCES).some((sentence) => /cerrado/i.test(sentence) && ANOTHER_ADDRESS.test(sentence) && !CONTRASTS.test(sentence));
+  const everySend = [closedPort, filteredPort, wrongAddress, ownMachine].reduce((all, session) => ({ ...all, sent: [...all.sent, ...session.sent] }), start);
+
+  it('02-03: nc to a port nobody listens on is refused by laptop-lucia', () => {
+    const run = lastRun(closedPort);
+    expect(run.trace.outcome).toBe('refused');
+    expect(run.by).toEqual([DEVICE.lucia.id]);
+    expect(stopOf(closedPort)).toMatchObject({ code: 'host-refused', deviceId: DEVICE.lucia.id, port: PORT.mysql });
+    expect(stillOpen(closedPort)).toEqual([TASK.filteredPort, TASK.ownMachine, TASK.fromTheNetwork]);
+    expect(printedFrom(closedPort, ORIGIN.you.id, ADDRESS.lucia.id, MESSAGE.ncMysql.id)).toEqual(['Ncat: Version 7.93 ( https://nmap.org/ncat )', NCAT_REFUSED]);
+  });
+
+  it('02-03: the nc to laptop-marta is silent and its firewall is named as the one that dropped it', () => {
+    const run = lastRun(filteredPort);
+    expect(run.trace.outcome).toBe('timeout');
+    expect(run.by).toEqual([FIREWALL.marta]);
+    expect(stopOf(filteredPort)).toMatchObject({ code: 'firewall-in-drop', deviceId: DEVICE.marta.id });
+    expect(lastBox(filteredPort)[WHERE_IT_STOPPED]).toEqual([`Se queda en el firewall de ${DEVICE.marta.name}: ninguna regla lo deja entrar.`]);
+    expect(stillOpen(filteredPort)).toEqual([TASK.closedPort, TASK.ownMachine, TASK.fromTheNetwork]);
+    expect(printedFrom(filteredPort, ORIGIN.you.id, ADDRESS.marta.id, MESSAGE.ncApp.id)).toEqual(['Ncat: Version 7.93 ( https://nmap.org/ncat )', NCAT_TIMEOUT]);
+  });
+
+  it('02-03: the nc from laptop-lucia to 127.0.0.1 comes back', () => {
+    const run = lastRun(ownMachine);
+    expect(run.trace.outcome).toBe('replied');
+    expect(run.by).toEqual([DEVICE.lucia.id]);
+    expect(stillOpen(ownMachine)).toEqual([TASK.closedPort, TASK.filteredPort, TASK.fromTheNetwork]);
+    expect(printedFrom(ownMachine, ORIGIN.lucia.id, ADDRESS.loopback.id, MESSAGE.ncApp.id)[1]).toBe(`Ncat: Connected to ${IP.loopback}:${PORT.app}.`);
+  });
+
+  it('02-03: the nc from tu-laptop to port 3000 is refused while the app listens only on 127.0.0.1', () => {
+    expect(lastRun(wrongAddress).trace.outcome).toBe('refused');
+    expect(stopOf(wrongAddress)).toMatchObject({ code: 'host-wrong-address', deviceId: DEVICE.lucia.id, port: PORT.app, ip: IP.lucia });
+    expect(stillOpen(wrongAddress)).toContain(TASK.fromTheNetwork);
+    expect(lastBox(wrongAddress)[WHERE_IT_STOPPED]).toEqual([
+      `Llega, pero ${DEVICE.lucia.name} lo rechaza. El servicio del puerto ${PORT.app} tiene como dirección de escucha ${IP.loopback}, y el paquete va a ${IP.lucia}.`,
+    ]);
+    expect(printedFrom(wrongAddress, ORIGIN.you.id, ADDRESS.lucia.id, MESSAGE.ncApp.id)[1]).toBe(NCAT_REFUSED);
+  });
+
+  it('02-03: choosing Todas las IPs in the services card of laptop-lucia makes the nc come back', () => {
+    const services = (session: Session) => servicesCard(session, PIECE_ID.device(DEVICE.lucia.id));
+    expect(services(start)?.services.map(({ picked }) => picked)).toEqual([APP_LISTEN.loopback]);
+    const fixed = listensOnEveryIp(wrongAddress);
+    expect(services(fixed)?.services.map(({ picked }) => picked)).toEqual([APP_LISTEN.all]);
+    expect(fixed.world.devices.find((device) => device.id === DEVICE.lucia.id)?.host.services).toEqual([
+      { protocol: 'tcp', port: PORT.app, listen: 'all' },
+      { protocol: 'tcp', port: PORT.database, listen: 'all' },
+    ]);
+    expect(fixed.sent).toEqual([]);
+    const comes = fromYou(fixed, ADDRESS.lucia.id, MESSAGE.ncApp.id);
+    expect(lastRun(comes).trace.outcome).toBe('replied');
+    expect(stillOpen(comes)).toEqual([TASK.closedPort, TASK.filteredPort, TASK.ownMachine]);
+    expect(lastRun(fromYou(fixed, ADDRESS.lucia.id, MESSAGE.ncMysql.id)).trace.outcome).toBe('refused');
+  });
+
+  it('02-03: a pick of the listen address clears the stamps of before, so the four sends are made after it', () => {
+    const before = fromLucia(fromYou(fromYou(closedPort, ADDRESS.marta.id, MESSAGE.ncApp.id), ADDRESS.lucia.id, MESSAGE.ncApp.id), ADDRESS.loopback.id, MESSAGE.ncApp.id);
+    expect(stillOpen(before)).toEqual([TASK.fromTheNetwork]);
+    expect(stillOpen(listensOnEveryIp(before))).toEqual([TASK.closedPort, TASK.filteredPort, TASK.ownMachine, TASK.fromTheNetwork]);
+    const done = fromYou(fromLucia(fromYou(fromYou(listensOnEveryIp(start), ADDRESS.lucia.id, MESSAGE.ncMysql.id), ADDRESS.marta.id, MESSAGE.ncApp.id), ADDRESS.loopback.id, MESSAGE.ncApp.id), ADDRESS.lucia.id, MESSAGE.ncApp.id);
+    expectClosed(done);
+  });
+
+  it('02-03: the report names laptop-lucia', () => {
+    const { report } = start.incident;
+    expect(report).toContain(`[[${DEVICE.lucia.name}]]`);
+    expect(plain(report)).toMatch(new RegExp(`^Lucía reinició su app en ${DEVICE.lucia.name}\\. Ahora la app solo escucha en ${IP.loopback}`));
+    expect(changedNames(solvedWorld(INCIDENTS, '02-02'), startWorld(INCIDENTS, REFUSED_OR_SILENT))).toEqual([DEVICE.lucia.name]);
+  });
+
+  it('02-03: a refusal and a silence leave different stamps', () => {
+    const [refused, silent] = [lastRun(closedPort), lastRun(filteredPort)];
+    expect([refused.reached, refused.blocked, refused.warning]).toEqual([true, false, null]);
+    expect([silent.reached, silent.blocked, silent.warning]).toEqual([false, true, null]);
+    expect(lastBox(closedPort)[GREETING]).toEqual([`1. SYN, de ${DEVICE.you.name} a ${DEVICE.lucia.name}`, `2. RST, de ${DEVICE.lucia.name} a ${DEVICE.you.name}`]);
+    expect(lastBox(wrongAddress)[GREETING]).toEqual([`1. SYN, de ${DEVICE.you.name} a ${DEVICE.lucia.name}`, `2. RST, de ${DEVICE.lucia.name} a ${DEVICE.you.name}`]);
+    expect(lastBox(filteredPort)[GREETING]).toEqual([`1. SYN, de ${DEVICE.you.name} a ${DEVICE.marta.name}`]);
+  });
+
+  it('02-03: no text says that a closed port and a service on another address are the same', () => {
+    expect(['Es un puerto cerrado porque la app solo escucha en 127.0.0.1.', 'Un puerto cerrado y una dirección de escucha distinta son lo mismo.'].filter((text) => !equatesClosedPortAndAnotherAddress(text))).toEqual([]);
+    expect(['El 3306 es un puerto cerrado. La app escucha en 127.0.0.1.', 'Aquí no es un puerto cerrado: la app escucha en 127.0.0.1.', 'Un puerto cerrado no tiene servicio, pero esta app sí escucha en 127.0.0.1.'].filter(equatesClosedPortAndAnotherAddress)).toEqual([]);
+    expect(everythingRead(everySend).filter(equatesClosedPortAndAnotherAddress)).toEqual([]);
+  });
+
+  it('02-03: no text says why a reply comes back', () => {
+    expect(['El firewall deja pasar la respuesta.', 'Es stateful.', 'Vuelve por el mismo camino.', 'Recuerda la conversación.'].filter((text) => !MENTIONS_A_REPLY_REASON.test(text))).toEqual([]);
+    expect(everythingRead(everySend).filter((text) => MENTIONS_A_REPLY_REASON.test(text))).toEqual([]);
+  });
+
+  it('02-03: the services card opens from the label of laptop-lucia', () => {
+    const lucia = pieceCard(start, PIECE_ID.device(DEVICE.lucia.id));
+    expect(lucia).toMatchObject({ tabbed: true, first: 'terminal' });
+    expect(lucia?.tabs.map(({ id }) => id)).toEqual(['terminal', 'services']);
+    const services = lucia?.tabs.find(({ id }) => id === 'services');
+    expect(services?.card).toMatchObject({ deviceId: DEVICE.lucia.id, pieceId: PIECE_ID.device(DEVICE.lucia.id) });
+    expect(plain((services?.card as { title: string }).title)).toBe(`Servicios de ${DEVICE.lucia.name}`);
+    expect(pieceViews(start).filter((piece) => piece.kind === 'device' && plain(piece.label) === DEVICE.lucia.name)).toHaveLength(1);
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.you.id))).toMatchObject({ tabbed: false });
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.marta.id))).toBeNull();
+  });
+
+  it('02-03: draws tu-laptop, laptop-lucia and laptop-marta and the firewalls that two of them have', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    expect(drawn.sort()).toEqual([`device:${DEVICE.lucia.name}`, `device:${DEVICE.marta.name}`, `device:${DEVICE.you.name}`, `firewall:firewall ${DEVICE.marta.name}`, `firewall:firewall ${DEVICE.you.name}`]);
+    expect(start.incident.shown).toEqual(REFUSAL_PIECES);
+  });
+
+  it('02-03: the right option is the third and is not the longest of the three', () => {
+    expect(optionsOf(start.incident)).toHaveLength(3);
+    expect(rightOptionPlace(start.incident)).toBe(2);
+    expect(rightOptionIsTheLongest(start.incident)).toBe(false);
+  });
+
+  it('02-03: introduces closed port, RST, Connection refused, filtered port and listen address, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[REFUSED_OR_SILENT]));
+    expect(sorted(introduces)).toEqual(sorted(['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, REFUSED_OR_SILENT))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
   });
 });

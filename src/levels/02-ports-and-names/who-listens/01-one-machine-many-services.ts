@@ -38,8 +38,8 @@ export default defineIncident({
       correct: true,
     },
     {
-      text: `Porque el {{ping}} no llegó a ${NAME.lucia}, así que no se pudo probar el {{service|servicio}}.`,
-      feedback: `Sí llegó: el {{ping}} volvió. Que el {{device|dispositivo}} conteste no dice si uno de sus {{service|servicios}} funciona.`,
+      text: `Porque el {{ping}} prueba el {{port|puerto}} de otro {{service|servicio}} de ${NAME.lucia}, no el de la app.`,
+      feedback: `El {{ping}} no usa {{port|puertos}}, así que no prueba el de ningún {{service|servicio}}. Solo muestra que ${NAME.lucia} contesta.`,
       correct: false,
     },
   ],

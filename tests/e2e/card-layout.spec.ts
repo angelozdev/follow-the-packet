@@ -3,6 +3,7 @@ import { cardProblems, cardsOutsideTheMap, isReachable, reachWithWheel } from '.
 import { card, openCard, openTerminal, sendTo } from './cards';
 import { IP, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
+import { SERVICES_CARD, SERVICES_TAB } from '@e2e/chapter-2/chapter-2-play';
 import { collectErrors } from './console-errors';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 import { freezeTime, standStill, stepFrame } from './still-scene';
@@ -103,14 +104,19 @@ async function inspectBesideTheTerminal(page: Page) {
   await expect(page.getByRole('heading', { name: INSPECTED_LAPTOP })).toBeVisible();
 }
 
-async function openTheLaptopByKeyboard(page: Page) {
-  await page.getByRole('button', { name: 'tu-laptop', exact: true }).focus();
+async function openTheLaptopByKeyboard(page: Page, laptop = 'tu-laptop') {
+  await page.getByRole('button', { name: laptop, exact: true }).focus();
   await page.keyboard.press('Enter');
 }
 
 async function reachTheSettings(page: Page) {
   await openTheLaptopByKeyboard(page);
   await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
+}
+
+async function reachTheServices(page: Page) {
+  await openTheLaptopByKeyboard(page, 'laptop-lucia');
+  await page.getByRole('tab', { name: SERVICES_TAB, exact: true }).click();
 }
 
 async function sendFromTheTabbedTerminal(page: Page) {
@@ -140,6 +146,7 @@ const THE_TERMINAL: Scene = { name: 'the terminal', level: '01-11', reach: sendO
 const THE_PRINTER: Scene = { name: 'the card of the printer', level: '01-01', reach: opening(PRINTER), last: doneOf(PRINTER) };
 const THE_SETTINGS: Scene = { name: 'the network settings', level: '01-07', reach: reachTheSettings, last: doneOf(SETTINGS_CARD) };
 const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the card of the laptop', level: '01-07', reach: sendFromTheTabbedTerminal, last: doneOf(TERMINAL) };
+const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: doneOf(SERVICES_CARD) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendAPingAndATraceroute, last: doneOf(TERMINAL) };
 
@@ -155,10 +162,11 @@ const SCENES: Scene[] = [
   THE_PRINTER,
   THE_SETTINGS,
   THE_TABBED_TERMINAL,
+  THE_SERVICES,
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_FIREWALL];
 
 async function passTheGrace(page: Page) {
   await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);

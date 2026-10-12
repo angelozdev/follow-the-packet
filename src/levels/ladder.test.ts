@@ -4,7 +4,7 @@ import { ipInCidr, lansOf } from '@/engine';
 import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
 import { IP } from './01-first-day/shared';
 import { FROM } from './04-iaas/shared';
-import { isGuided, type Incident, type SendIncident } from './contract/incident';
+import { isGuided, settingKind, type Incident, type SendIncident } from './contract/incident';
 import { RULES_TERM, chipLabels, configurableParts, incidentTexts, knownTerms, namedTerms, unknownTerms } from './ladder';
 import { INCIDENTS } from './registry';
 import { startWorld } from './world';
@@ -203,6 +203,7 @@ describe('term ladder', () => {
       '01-14': HOST_RULES_IN_AND_OUT,
       '02-01': HOST_RULES_IN_AND_OUT,
       '02-02': HOST_RULES_IN_AND_OUT,
+      '02-03': HOST_RULES_IN_AND_OUT,
       '04-01': INBOUND_RULES,
       '04-02': INBOUND_RULES,
     });
@@ -274,6 +275,7 @@ describe('the term ladder of chapter 2', () => {
 
 describe('the settings of a send incident', () => {
   const NO_VALUE = 'Ninguna';
+  const LISTEN_ADDRESS_IP: Record<string, string> = { loopback: '127.0.0.1', all: '0.0.0.0' };
   const GATEWAY = gatewayIncident();
   const WITH_SETTINGS = [GATEWAY, ...INCIDENTS].filter((incident): incident is SendIncident => incident.mechanic === 'send' && incident.send.settings !== undefined);
   const settings = WITH_SETTINGS.flatMap((incident) => incident.send.settings ?? []);
@@ -283,7 +285,10 @@ describe('the settings of a send incident', () => {
     for (const setting of settings) {
       expect(parseTermText(setting.name).map((segment) => segment.kind)).toEqual(['term']);
       expect(unofficialNames([setting.name])).toEqual([]);
-      for (const chip of setting.chips) expect(chip.label).toBe(chip.value ?? NO_VALUE);
+      for (const chip of setting.chips) {
+        if (settingKind(setting) === 'listen-address') expect(toPlainText(chip.label)).toContain(LISTEN_ADDRESS_IP[String(chip.value)]);
+        else expect(chip.label).toBe(chip.value ?? NO_VALUE);
+      }
     }
   });
 

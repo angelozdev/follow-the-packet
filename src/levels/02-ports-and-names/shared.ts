@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
 import type { NetworkAction, Service } from '@/engine';
-import type { MessageChip } from '@/levels/contract/incident';
+import type { ExpectedOutcome, MessageChip, OriginChip, SendMove, SendTask, SettingSpec } from '@/levels/contract/incident';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
@@ -8,11 +8,12 @@ import {
   LUCIA_FIREWALL,
   MESSAGE as CHAPTER_1_MESSAGE,
   NAME as CHAPTER_1_NAME,
+  ORIGIN as CHAPTER_1_ORIGIN,
   ROUTER as CHAPTER_1_ROUTER,
   SERVER as CHAPTER_1_SERVER,
 } from '@/levels/01-first-day/shared';
 
-export { CONCEPT, LESSON, ORIGIN, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
+export { CONCEPT, FIREWALL, LESSON, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
 
 export const PORT = {
   ssh: 22,
@@ -105,6 +106,9 @@ export const NAME = {
   freshServer: nameTag(SERVER.fresh.name),
 } as const;
 
+/** The terminals chapter 2 sends from: those of chapter 1 and the one of laptop-lucia, which 02-03 uses to test her own app from her own laptop. */
+export const ORIGIN = { ...CHAPTER_1_ORIGIN, lucia: { id: 'lucia', endpoint: { kind: 'device', id: DEVICE.lucia.id } } } satisfies Record<string, OriginChip>;
+
 /** The address chips chapter 2 sends to: those of chapter 1, one id and one address each. */
 export const ADDRESS = { ...CHAPTER_1_ADDRESS } as const;
 
@@ -117,6 +121,7 @@ export const MESSAGE = {
   ...CHAPTER_1_MESSAGE,
   ncApp: ncMessage(PORT.app),
   ncDatabase: ncMessage(PORT.database),
+  ncMysql: ncMessage(PORT.mysql),
 } as const;
 
 export const TASK = {
@@ -125,7 +130,21 @@ export const TASK = {
   database: 'nc-to-database',
   openApp: 'open-connection-to-app',
   openDatabase: 'open-connection-to-database',
+  closedPort: 'nc-to-closed-port',
+  filteredPort: 'nc-to-filtered-port',
+  ownMachine: 'nc-to-own-machine',
+  fromTheNetwork: 'nc-to-app-from-the-network',
 } as const;
+
+/** Returns the task of a send incident that expects what a message sent from this terminal to an address ends in, and, when `by` is given, who answered, warned or dropped it. `sendTask` of chapter 1 is this one for your laptop. */
+export function sendTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, outcome: ExpectedOutcome, by?: string): SendTask {
+  return { id, text, expect: { fromId: origin.id, toId, messageId, outcome, by } };
+}
+
+/** Returns the move that sends a message from this terminal to an address, for the reference solution of a send incident. `sendMove` of chapter 1 is this one for your laptop. */
+export function sendMoveFrom(origin: OriginChip, toId: string, messageId: string): SendMove {
+  return { type: 'sendPacket', fromId: origin.id, toId, messageId };
+}
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */
 function tcpService(port: number, listen: Service['listen'] = 'all'): Service {
@@ -141,6 +160,21 @@ export const LUCIA_SERVICES: NetworkAction = { type: 'setServices', ownerId: DEV
 
 /** What 02-03 changes: Lucía restarted her app and it listens only on 127.0.0.1, the address of the laptop itself. Her database keeps listening on every IP. */
 export const APP_ON_LOOPBACK: NetworkAction = { type: 'setListenAddress', ownerId: DEVICE.lucia.id, protocol: 'tcp', port: PORT.app, listen: 'loopback' };
+
+export const APP_LISTEN = { setting: 'app-listen-address', loopback: 'loopback', all: 'all' } as const;
+
+/** The setting of 02-03 on the «Servicios» tab of laptop-lucia: the listen address of her app (TCP, port 3000). It sits on the device that listens and not on the one that tests. Each chip says its address in words and carries the value the engine takes. */
+export const APP_LISTEN_ADDRESS: SettingSpec = {
+  id: APP_LISTEN.setting,
+  deviceId: DEVICE.lucia.id,
+  kind: 'listen-address',
+  service: { protocol: 'tcp', port: PORT.app },
+  name: '{{listen-address}}',
+  chips: [
+    { id: APP_LISTEN.loopback, label: 'Solo este {{device|dispositivo}} (127.0.0.1)', value: 'loopback' },
+    { id: APP_LISTEN.all, label: 'Todas las {{ip-address|IPs}} (0.0.0.0)', value: 'all' },
+  ],
+};
 
 /** What 02-05 changes on laptop-lucia: SSH (port 22) is on, beside her app and her database, and a firewall of the laptop lets nothing in and everything out. `setServices` replaces the list, so it holds all three. */
 export const SSH_AND_FIREWALL: NetworkAction[] = [{ type: 'setServices', ownerId: DEVICE.lucia.id, services: [APP, DATABASE, SSH] }, LUCIA_FIREWALL];
