@@ -29,13 +29,13 @@
 
 ## Estado del relevo (2026-10-12)
 
-Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el trabajo a otro. Todo está commiteado en `feat/chapter-2`; nada está a medias en el árbol. El 2026-10-12 el trabajo dejó el worktree y pasó al árbol principal, y el estudiante decidió O-1, O-2 y O-3.
+Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el trabajo a otro. Todo está commiteado en `feat/chapter-2`; nada está a medias en el árbol. El 2026-10-12 el trabajo dejó el worktree y pasó al árbol principal, y el estudiante decidió O-1, O-2, O-3 y O-4.
 
 ### Dónde está la rama
 
 - **Dónde vive:** `feat/chapter-2` está ahora en el árbol principal, `/Users/angelozdev/me/AWS Commit Academy`. El worktree `/Users/angelozdev/me/aws-commit-academy-chapter-2` ya no existe.
 - **Último commit:** `11587fc`, el último antes del que registra las decisiones del 2026-10-12. Entre `6979d43` y `11587fc` solo hubo commits de documentos (`7c37229` y `11587fc`).
-- **Último commit con el `pnpm check` completo en verde:** `dcfc04c` (cierre del bloque 4: Vitest 2924 tests en 98 archivos, Playwright 126, jscpd 0, `golden-traces.json` sin cambios). Es la base de la regla C. Lo que vino después (`e0ae23f`, `dc40106`, `5c070f1`, `2b6a3e3`, `f12795f`, `34ff5d3` y `6979d43`) pasó `pnpm check:fast` (Vitest 2938) y las specs `tests/e2e/chapter-2/` y `card-layout.spec.ts`.
+- **Último commit con el `pnpm check` completo en verde:** `11587fc` (corrido el 2026-10-12: Vitest 2938 tests en 98 archivos, Playwright 126, jscpd 0, `golden-traces.json` sin cambios; log `baseline-11587fc-check.log` en el scratchpad). Es la base B0 de la regla C y reemplaza a `dcfc04c` (cierre del bloque 4). Desde `11587fc` solo hubo commits de documentos.
 - **Puerto de Playwright:** el de este árbol es el 4189 (derivado de la ruta, Tarea 19 bis). Ya no hay otra rama que corra e2e a la vez.
 - **`main`:** hoy está en `b6eb2ce` e incluye `46c4074` (el pin de la caja) y `b6eb2ce` (los documentos del capítulo 3). Todavía no está dentro de `feat/chapter-2`.
 
@@ -55,10 +55,11 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Lo que falta y de qué depende
 
-- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó.
+- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó. Son 14 conflictos, no 8. D va en commits propios después del merge, que queda con un rojo conocido en una sola prueba. Se hace en un worktree temporal que se borra al terminar. Tras D toma las capturas con que se abre O-5.
 - **Tarea 28 ter (el aviso de un router sin ruta, en palabras llanas en el capítulo 1, O-3 = A1):** no bloquea nada. No se empezó.
-- **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó.
-- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan la Tarea 28 quater. No se empezaron. La 31 (02-12) no cambia con ella, pero va después de la 29 y la 30 por la cadena del mundo.
+- **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó. O-6 bloquea solo el paso de la marca de la fila (la vista).
+- **Tarea 28 quinquies (los sellos de un lugar que no caben, O-4 = G):** falta escribirla. Destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Con O-2 = A, cuenta también los sellos de las consultas DNS.
+- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan las Tareas 28 quater y 28 quinquies. No se empezaron. La 31 (02-12) no cambia con la 28 quater, pero va después de la 29 y la 30 por la cadena del mundo. La 32 (02-13) espera además la respuesta a O-7.
 - **Tarea 34:** parte ya existe, adelantada por las tareas de contenido:
   - el mapa del 02-07 cabe y no hay solapes tras sus pings;
   - el contorno del 02-04;
@@ -72,16 +73,19 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Decisiones abiertas
 
-Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2 y O-3. Solo O-4 sigue abierta.
+Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2, O-3 y O-4. Las abiertas son O-5, O-6 y O-7, en la sección «Decisiones abiertas del 2026-10-12».
 
 | Decisión | Página | Estado | Qué ejecuta o espera |
 |---|---|---|---|
-| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | **Decidida el 2026-10-12: D** (la caja se aparta de la tarjeta abierta) | La Tarea 28 bis: el merge de `main` y la caja que se aparta, con su prueba de `card-layout.spec.ts`. Retoques en la caja (Tareas 19 y 21). Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`) |
+| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | **Decidida el 2026-10-12: D** (la caja se aparta de la tarjeta abierta) | La Tarea 28 bis: el merge de `main` y la caja que se aparta, con su prueba de `card-layout.spec.ts`. La 19 y la 21 están hechas y no se reabren. Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`). Se abre como O-5. |
 | O-2 · ¿se dibuja la consulta DNS de un `ping` o un `nc` por nombre? | la misma | **Decidida el 2026-10-12: A** (se dibuja) | La Tarea 28 quater y, después, las Tareas 29 a 33. Con A también se reabren la decidida 4, partes de las Tareas 4, 5, 12, 13 y 16 y una adición a la 21: el `nc` por nombre saldría del 51515 |
 | O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | **Decidida el 2026-10-12: A1** (palabras llanas hasta conocer el término) | La Tarea 28 ter, la copia del capítulo 1. No bloquea nada |
-| O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | **Abierta.** Recomendación: C (abanico) | Las pruebas de solapes del 02-03, del 02-05 y del 02-08, que no existen porque fallarían. Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
+| O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | **Decidida el 2026-10-12: G** (estudiante; opción nueva: abanico hasta lo que cabe y un sello «+N») | La Tarea 28 quinquies, por escribir: destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
+| O-5 · ¿una etiqueta o un sello decide el lugar de la caja de inspección? | capturas reales de la Tarea 28 bis (por publicar) | **Abierta.** Recomendación: B si la medición lo permite; si no, A | Nada: no bloquea. Se abre con las capturas del paso 11 de la Tarea 28 bis |
+| O-6 · cómo se marca la fila de una consulta DNS en la tabla de traducciones | por publicar | **Abierta.** Recomendación: A (la palabra «consulta DNS») | Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater |
+| O-7 · ¿el 02-13 suma un `ping` por DNS? | por publicar | **Abierta.** Recomendación: A (no) | Solo la ficha del 02-13 (Tarea 32) |
 
-El estudiante contesta de a una, a través de la sesión principal. Falta O-4.
+El estudiante contesta de a una, a través de la sesión principal. Faltan O-5, O-6 y O-7 (sección «Decisiones abiertas del 2026-10-12»).
 
 ### Lo que vive fuera de la rama
 
@@ -89,7 +93,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
 
 - **`merge/resolved-merge.patch` y `merge/resolved-files/`:** el merge resuelto de `feat/chapter-1-fourteen`, hecho sobre `940f07a`. Hoy lo que se une es `main` (Tarea 28 bis) y la rama avanzó mucho desde entonces: sirve de guía de cómo se resolvió cada conflicto. Lo más seguro es rehacer el merge.
 - **`02-03-overlap-test.patch` y `zz-measure.spec.ts`:** la prueba de solapes del 02-03 y la spec con que se midió (O-4).
-- **`oracle/oracle-at-the-click.chapter-2.spec.ts`:** el oráculo que mide la caja sobre «Listo» justo después del clic, con el reloj pausado (O-1). Falla 10 de 10 mientras exista el defecto.
+- **`oracle/oracle-at-the-click.chapter-2.spec.ts`:** el oráculo que mide la caja sobre «Listo» justo después del clic, con el reloj pausado (O-1). Falla 10 de 10 mientras exista el defecto. Está desactualizado (importa `SETTINGS_BUTTON` y `CHAPTER_1_DONE` y recorre 5 escenas; hoy `MAP_SCENES` tiene 12): la Tarea 28 bis lo rehace en el repo. `merge/build_spec.py` tampoco corre hoy: sirve de lista de qué reescribir, no de herramienta.
 - **`chapter-2-open-decisions.html` y `chapter-2-decision-o4.html`:** las fuentes de las dos páginas publicadas.
 - **`chapter-2-prototypes.html`:** los prototipos de las decisiones V10 a V19 y D-6.
 - **`nmap793/` y `bind918/`:** las fuentes de `ncat` 7.93 y BIND 9.18.50. `bind918/b.tar.xz` trae el árbol completo.
@@ -113,12 +117,12 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Cada commit va con rutas explícitas.
   - El servidor del estudiante en el 5180 sirve este mismo árbol y recarga solo cuando un agente edita: no se mata ni se reinicia.
   - Sin `git push` y sin merge a `main`.
-  - Nunca `--amend`, `reset`, `update-ref` ni `stash`. La forma del commit: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`.
+  - Nunca `--amend`, `reset`, `update-ref` ni `stash`. La forma del commit: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`. **Excepción:** a mitad de un merge git rechaza las rutas; se agrega cada archivo con `git add <ruta>` y se hace `git commit` sin rutas (Tarea 28 bis).
   - Nada en el 5173 ni en el 5180, y nunca `pkill` ni `killall`.
 - **Subagentes:** siempre con `model` explícito: `sonnet` para implementar, revisar e investigar, `haiku` solo para correr un comando. Nunca `opus`.
 - **Lo que una prueba no puede hacer:** prohibidos `waitForTimeout`, `retries`, `skip`, `fixme`, `test.fail` y los filtros que saltan un fallo.
 - **Las pruebas nombradas en el plan:** no se quitan. Las pruebas existentes de los capítulos 1 y 4 no se editan, salvo las que el plan lista o una decisión aprueba, y cada edición va en el cuerpo del commit.
-- **Cada tarjeta nueva:** el primer incidente registrado que la usa suma su escena a `card-layout.spec.ts` y a `MAP_SCENES`, con tope de alto, scroll del cuerpo y pie al alcance.
+- **Cada tarjeta nueva:** el primer incidente registrado que la usa suma su escena a `card-layout.spec.ts` y a `MAP_SCENES`, con tope de alto, scroll del cuerpo y pie al alcance, y la caja de inspección no la tapa (el oráculo de `card-layout.spec.ts` recorre `MAP_SCENES`).
 
 ### Trampas, medidas y cosas a vigilar
 
@@ -134,8 +138,10 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - `tests/e2e/` en 11.
   - `src/ui/incident/` ya está partida en `side-cards/` y `map-cards/`.
   - `pnpm structure` cuenta archivos, no subcarpetas.
-- **DNS hoy (opción B de O-2):**
-  - La consulta de un `ping` o un `nc` por nombre no se dibuja, no gasta puerto y no deja fila.
+- **DNS (O-2 = A, decidida el 2026-10-12; la ejecuta la Tarea 28 quater):**
+  - Hasta que la 28 quater entre, el código sigue como estaba: la consulta de un `ping` o un `nc` por nombre no se dibuja, no gasta puerto y no deja fila.
+  - Con la 28 quater: esa consulta es un datagrama UDP al 53 del resolver. Gasta el primer puerto del envío, deja su fila en la tabla de traducciones y va dentro de la traza del envío (`Trace.question`). El paquete que preguntó toma el puerto siguiente (consulta 51514 → 40001, `nc` 51515 → 40002).
+  - Si el nombre sale del archivo hosts, o el equipo no tiene `dnsServer`, no hay consulta. Un `dig` es la consulta misma.
   - Toda respuesta del resolver llena su caché.
   - Pedir un alias cuyo destino está vivo en la caché renueva ese destino. No está verificado: el 02-12 solo ofrece `dig www`.
   - Los motivos están en `src/engine/dns/CLAUDE.md`, igual que los valores del SOA con su fuente y `MAX_ALIAS_STEPS` (8).
@@ -144,6 +150,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Un solo contador de puertos públicos para TCP y UDP, desde el 40001.
   - Las filas fijas de un reenvío salen primero, marcadas «TCP · fija».
   - Un ping no deja fila; el texto dice que un NAT real traduce el identificador del Echo.
+  - La consulta DNS de un envío por nombre deja una fila UDP antes que el paquete (O-2 = A).
   - Un NAT real puede avisar pasados al menos 6 segundos (RFC 5382 REQ-4).
 - **La caja:**
   - Cada extremo de un encabezado se escribe `IP:puerto` cuando se conocen `ip-port` y el término de su puerto.
@@ -160,10 +167,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - A 390 px la tarjeta de clasificar muestra 88 px de un cuerpo de 927.
   - Un lector de pantalla oye dos veces la palabra de un `Message` («Correcto: Correcto.»; backlog J13).
 - **Rigor que el estudiante puede querer ver:** `router-proveedor` descarta en silencio un destino privado (decidida 11 y 01-08). RFC 1812 §4.3.3.1 obliga a avisar cuando no hay ninguna ruta, pero un proveedor que filtra direcciones privadas suele callar. Hoy el juego lo presenta como lo que hace internet con una IP privada.
-- **Al hacer el merge de `main` en `feat/chapter-2` (Tarea 28 bis):**
-  - La e2e de `main` del viaje del ratón (900 ms) y la gracia (400 ms) se reescriben con `page.clock`, y deben seguir fallando si se rompe el pin (mutación).
-  - La fila J12 del backlog de `main` choca con la J12 de esta rama, que ya va hasta la J14: hay que renumerarla.
-  - J7 queda resuelta por `46c4074`.
+- **Al hacer el merge de `main` en `feat/chapter-2` (Tarea 28 bis):** todo está en la tarea: el reloj en las e2e de `main` (con sus mutaciones), la J12 que pasa a J15, J7, los 14 conflictos y D.
 - **Tarea 33:**
   - La prueba de la solución de referencia de un caso con `fix` tiene que comprobar también que sus tareas fallan antes de aplicarla.
   - `router-destino` va en el `shown` del caso 5.
@@ -181,7 +185,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
 
 - **Rutas.** Relativas a `projects/follow-the-packet/`, salvo las que empiezan por `docs/` o `../../` (raíz del repo). Los comandos se corren desde `projects/follow-the-packet/`.
 - **Reglas.** Valen las de `.claude/rules/` y el `CLAUDE.md` de cada carpeta. Pesan sobre todo:
-  - `folder-structure`: tope de 12 archivos por carpeta (sin contar `CLAUDE.md`), barrels, alias `@/` y nada de `../`. **Hoy están en 12:** `src/ui/`, `src/game/view/cards/`, `src/engine/simulation/` y `tests/e2e/`. **En 11:** `src/engine/network/`, `src/copy/`, `src/scene/`, `src/scene/entities/` y `src/ui/incident/`. **En 10:** `src/design/primitives/` (antes de su mudanza), `src/game/`, `src/game/view/` y `src/levels/`. La Tarea 1 hace sitio en las cuatro primeras. `src/design/primitives/` llegaba a 12 con `Table` (D-3 A); el estudiante aprobó el 2026-10-11 la mudanza por familias: `card` y `tabs`, con sus tests, pasan a `src/design/primitives/panels/` (con su `CLAUDE.md`) en un commit propio, `refactor(design): split the primitives by family to make room`, que va antes del de la Tarea 17 y es su primer paso; `Table` nace ya en `panels/`. Después, `src/design/primitives/` queda en 6 archivos y `panels/` en 6 (`card`, `tabs` y `table` con sus tests); con `Message` (Tarea 18 bis), `src/design/primitives/` queda en 8. Tras la Tarea 19 quedan en 12 de 12 `src/game/view/cards/` y `src/ui/incident/`: ninguna tarea posterior suma un archivo plano a esas dos carpetas (ver «Lo que el 04 pide al código», en la Tarea 26).
+  - `folder-structure`: tope de 12 archivos por carpeta (sin contar `CLAUDE.md`), barrels, alias `@/` y nada de `../`. **Al empezar el plan estaban en 12:** `src/ui/`, `src/game/view/cards/`, `src/engine/simulation/` y `tests/e2e/`. **En 11:** `src/engine/network/`, `src/copy/`, `src/scene/`, `src/scene/entities/` y `src/ui/incident/`. **En 10:** `src/design/primitives/` (antes de su mudanza), `src/game/`, `src/game/view/` y `src/levels/`. La Tarea 1 hace sitio en las cuatro primeras. `src/design/primitives/` llegaba a 12 con `Table` (D-3 A); el estudiante aprobó el 2026-10-11 la mudanza por familias: `card` y `tabs`, con sus tests, pasan a `src/design/primitives/panels/` (con su `CLAUDE.md`) en un commit propio, `refactor(design): split the primitives by family to make room`, que va antes del de la Tarea 17 y es su primer paso; `Table` nace ya en `panels/`. Después, `src/design/primitives/` queda en 6 archivos y `panels/` en 6 (`card`, `tabs` y `table` con sus tests); con `Message` (Tarea 18 bis), `src/design/primitives/` queda en 8. Tras la Tarea 19, `src/game/view/cards/` quedó en 12 de 12 y `src/ui/incident/` se partió en `side-cards/` y `map-cards/` (`875c27d`): hoy tiene 8 archivos planos. Medido el 2026-10-12: con el merge de `main`, `src/ui/` queda en 11 y `tests/e2e/` sigue en 11; la Tarea 28 bis suma 2 archivos a `src/ui/incident/` (10 de 12). Ninguna tarea posterior suma un archivo plano a `src/game/view/cards/` (ver «Lo que el 04 pide al código», en la Tarea 26).
   - `pure-domain-core` y `view-renders-domain-result`: el motor devuelve datos y códigos, sin reloj ni azar; ninguna vista recalcula un resultado. El estado entra al motor como entrada explícita (decidida 5), nunca como lectura escondida.
   - `english-only` y `no-comments`: código, tests, guías y commits en inglés; solo JSDoc. El texto visible va en `src/copy/` y en los archivos de incidente.
   - `rigorous-plain-copy`: nombre oficial, cada término definido donde aparece, frases cortas.
@@ -195,18 +199,20 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Las pruebas del capítulo 1 y del 4 corren sin editarse en cada tarea. Las únicas que cambian a propósito: la del texto de `host-udp-no-service` (`reasons.test.ts`, Tarea 7), las que leen `listeningTcpPorts` (cambio mecánico, Tarea 6), las que citan el campo «Conexión» (D-8 = A, Tarea 16) y la aserción del caso `host-refused` de `reasons.test.ts` (Tarea 16). Cada una se lista en su tarea. Por decisiones del estudiante del 2026-10-11 cambian además, a propósito:
     - **V15 = B (Tarea 19).** Las que leen el segundo botón de la etiqueta, que solo existe en el 01-07. En `pieces.test.ts`: `a laptop that sends and has settings opens its terminal and its settings card, each from its own entry` y `a send incident with no settings gives no piece a settings entry`. En `piece-label.test.tsx`: `a piece with a settings entry has a second button beside its label that activates the entry and not the piece` e `inspects the piece from its own button and not from the settings entry`. En `terminal-card.test.ts`: `opens from the piece of the device and not from its settings entry`. Todas las de `settings-card.test.ts` (abren la tarjeta con `PIECE_ID.settings`) y la constante `ENTRY` de `settings-card.test.tsx`. En `incident-screen.test.tsx`: `the laptop opens its terminal from its piece and its settings card from its own entry, and the terminal offers no setting` y `setting the gateway on the card makes the ping come back and clears the stamps of before, and Esc gives the focus back to the entry`. En `chapter-1.test.ts`: `01-07: the gateway is set from the Ajustes de red card of the laptop, and its terminal offers no setting`. En Playwright: `SETTINGS_BUTTON` y `fixTheGateway` de `tests/e2e/chapter-1/chapter-1-play.ts`, `in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping` (`chapter-1.spec.ts`) e `in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps` (`card-layout.spec.ts`). Lo que prueban se conserva: cambia por dónde se llega a la tarjeta.
     - **Tarea 18 bis.** Las dos aserciones de `identify-card.test.tsx` (`writes the line of a right chip as a note and the line of a wrong chip as an error`, que pasa a llamarse `writes the line of a right chip as a success message and the line of a wrong chip as an error`) que leen las clases `feedback` y `feedback--wrong`; leerán la variante del estándar (`success` para una ficha correcta, `error` para una incorrecta). Las que leen los roles `status` y `alert` no cambian.
-    - **V12 = B (Tarea 21).** En `src/copy/terms.test.ts`: `no term of chapter 2 names an entity of the map or has a short form` (con la excepción declarada de `tcp` y `udp`) y `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded` (la lista de variantes suma las cuatro); y `a warning is never an intruder: only the messages a sender sends are listed as an intruder too`, que se amplía porque las cuatro entidades nuevas de TCP y UDP llevan copia de intruso (V19 = B, Tarea 21).
+    - **V12 = B (Tarea 21).** En `src/copy/terms.test.ts`: `no term of chapter 2 names an entity of the map or has a short form` (con la excepción declarada de `tcp` y `udp`) y `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded` (renombrada en la Tarea 28 ter) (la lista de variantes suma las cuatro); y `a warning is never an intruder: only the messages a sender sends are listed as an intruder too`, que se amplía porque las cuatro entidades nuevas de TCP y UDP llevan copia de intruso (V19 = B, Tarea 21).
     - **V19 = B (Tarea 21).** El intruso deja de ser un rombo en los capítulos 1 y 4: es la forma de su protocolo con el borde de intruso. La Tarea 21 lista los archivos y las pruebas que se vuelven a correr; la única que se reescribe a propósito es la de `terms.test.ts` de arriba.
     - **D-8 = A (Tarea 16).** Las cuatro pruebas de `src/game/view/inspection.test.ts` que citan el campo «Conexión»: `a device of an office shows no public IP whatever the player knows, because how a packet leaves the office is a black box`, `a laptop of the office says what a device is, and shows its IP and its firewall`, `a laptop with no cable keeps its IP and says it is not part of the network, and the rest of the office says it is connected` y `shows the connection of a device only in an office and once the term network is known`. La constante `INSPECTION_TEXT.connection` (`src/copy/screens/incident-ui.ts`) pasa de «Conexión» a «En la red». Las pruebas de `chapter-1.test.ts` que leen las líneas «Conectado a la red.» y «No está conectado: no forma parte de la red.» (`01-01: marking a connected laptop as outside leaves the task open and the box says it has an IP` y `01-01: the box of laptop-visita keeps its IP and says it is not connected, and marking it Yes says so`) leen el valor del campo y no su nombre: no cambian. Ninguna prueba de Playwright cita el campo.
     - **`host-refused` (Tarea 16).** En `src/copy/reasons.test.ts`, el caso `host-refused` de la tabla `CASES` (hoy cerca de la línea 44), que corre `describes %o` con todos los términos conocidos y fija el texto crudo «Llega, pero ningún programa escucha en el puerto 80: [[servidor2]] lo rechaza.». Solo cambia esa aserción: el texto llano que lee el jugador no cambia y aparecen las marcas de términos. Decidido el 2026-10-11 por la sesión principal (y el estudiante aprobó seguir las recomendaciones técnicas que no cambian lo que se aprende). La Tarea 6 no lo tocó: la lista de archivos de esa tarea lo traía por error y pasa a la Tarea 16.
     - **`Trace.routes` (Tarea 8, opción A, 2026-10-11).** Es un campo nuevo de la traza y dos pruebas lo ven. En `src/game/chapter-1.test.ts`, `the same ping of 01-05 and 01-11 has the same trace and only the words change` compara las dos trazas sin el campo `routes`: el camino y los pasos se siguen comparando, y las rutas difieren por diseño, porque en el 01-11 la laptop ya tiene puerta de enlace y su tabla suma la ruta por defecto. En `src/engine/simulation/ports.test.ts`, `the ICMP branch of the host stage keeps every field it had` suma `routes` a su lista de campos, porque sus tres trazas entregan el paquete a la red y las tres llevan el campo. Lo que prueban se conserva.
     - **O-3 = A1 (2026-10-12, Tarea 28 ter).** Dos pruebas leen cómo se nombra el aviso de un router sin ruta, que hoy el capítulo 1 llama «Destination Host Unreachable» hasta conocer `net-unreachable`. En `src/game/view/ladder.test.ts`: `a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term`, que pasa a llamarse `a router with no route is said in plain words on 01-08 after chapter 2 too, and named Destination Net Unreachable only with the term`. En `src/copy/terms.test.ts`: `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded`, que pasa a llamarse `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded, and a router with no route by none until net-unreachable is known` (la Tarea 21 ya la editó por V12 = B; aquí cambia lo que asierta de los avisos). El estudiante aprobó que el capítulo 1 cambie lo que muestra en ese caso, aunque hoy ningún incidente lo muestre. Otras pruebas fijan el mismo comportamiento y cambian por consecuencia; la Tarea 28 ter las lista. Lo que prueban se conserva: un router sin ruta se llama «Destination Net Unreachable» con el término y, antes, se dice en palabras llanas.
+    - **46c4074 y O-1 = D (Tarea 28 bis).** Cambian a propósito, en `tests/e2e/card-layout.spec.ts`, cinco pruebas: `a pinned box survives a human-paced trip across another piece and scrolls under the mouse`, `with the keyboard, Enter pins the box and PageDown scrolls it; Escape gives the focus back`, `with touch, a tap pins the box and a tap outside releases it` y `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view` (las cuatro cierran la terminal antes de pasar el mouse, porque con ella abierta no habría caja en las ventanas bajas), y `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box` (gana la aserción de que la caja fijada no toca la tarjeta). Cambia también el `GameScene` simulado de `incident-screen.test.tsx`, que es un ayudante y no una prueba. Lo que prueban se conserva. La Tarea 35 debe completar esta lista.
+    - **O-2 = A (Tarea 28 quater, 2026-10-12).** `Trace.question` es un campo nuevo de la traza y la consulta gasta puerto y deja fila, así que cambian estas pruebas. En `src/engine/dns/resolve.test.ts`, `the question in a sequence › does not use up the source port of the sender nor leave a row in the translation table` (pasa a `uses a source port of the sender and leaves a row in the translation table, before the packet that asked`). En `src/engine/simulation/sequence.test.ts`, `a lookup by name fills the cache of the resolver and uses neither a port of its sender nor a row of the table, while the dig that follows has both`. En `src/game/view/inspection.test.ts`, `the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered`. En `src/game/view/cards/table-card.test.ts`, `the translations card lists the rows of the sent packets in order` (la fila del `dig` gana «consulta DNS», solo si O-6 = A). Lo que prueban se conserva. Ninguna prueba del capítulo 1 ni del 4 cambia: no tienen resolver, y una que falle por el campo nuevo detiene la tarea.
   - **Ninguna etapa nueva escribe un paso en una traza del capítulo 1 ni del 4.** Los datos nuevos de esas trazas van en campos aparte. Hay pruebas de steps con `toEqual` en `simulate.test.ts`; un paso nuevo las rompería. Si una prueba existente falla por un campo nuevo de la traza, la tarea se detiene y se le pregunta al estudiante: no se edita la prueba por cuenta propia.
 - **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 17 (suma el especimen de `Table` a la de la interfaz), la 18 (suma el de la tarjeta «Salida», plegada, a la de la interfaz), la 18 bis (regraba la de la interfaz, con el aspecto «Pestaña» de V18: los especímenes de avisos y errores pasan a la primitiva y se suma uno por variante) y la 21 (suma a la de piezas los cuatro especímenes de paquete de TCP y UDP, V12 = B, el del contorno del bloque del 02-04, D-6, y los del intruso con el borde nuevo, V19 = B, que se ven en los capítulos 1, 2 y 4). Si en la Tarea 21 esos especímenes no caben en celdas libres del catálogo y este gana una fila, la sección de la interfaz baja y la 21 regraba también la de la interfaz, comprobando que el diff sea solo ese desplazamiento (`DESIGN.md`, «Adding a variant instead of a new element», paso 3). Ninguna otra tarea las toca.
 - **Fuentes y fechas.** Toda cifra, límite o texto de una herramienta que el juego muestre lleva su fuente y su fecha en el test que lo fija o en la guía de la carpeta. Lo del spec se consultó el 2026-10-10 y el 2026-10-11.
 - **"Listo"** (regla del 2026-10-11, Tarea 19 bis; vale desde la Tarea 19, y las Tareas 0 a 18 bis se cerraron con el `pnpm check` completo de antes). `pnpm check:fast` corre tipos, lint, estructura, jscpd y Vitest, sin Playwright; `pnpm check` es `pnpm check:fast` y después toda la suite de Playwright.
   - **En cada tarea:** `pnpm check:fast`, más las specs e2e que nombra la tarea o que cubren lo que tocó (`pnpm e2e <archivo>`; la guía de `tests/e2e/` explica cómo). Lo que su sección llama «Cierre» es lo que se suma.
-  - **Al cerrar un bloque de contenido (Tareas 24, 26, 27, 28, 32 y 33), en las Tareas 34 y 35 y antes de cada merge:** `pnpm check` completo.
+  - **Al cerrar un bloque de contenido (Tareas 24, 26, 27, 28, 28 bis, 32 y 33), en las Tareas 34 y 35 y antes de cada merge:** `pnpm check` completo.
   - **Una e2e que falla se compara con la base: el último commit cuyo `pnpm check` completo pasó** (el cierre del bloque anterior, o el comienzo del plan). Si falla también en esa base, no es de la tarea ni del bloque: se anota en el backlog (`../../docs/plans/2026-10-08-follow-the-packet-followups.md`) y se avisa, sin perseguirla. Si pasa en esa base, la regresión es del bloque: alguna tarea se cerró con solo `pnpm check:fast` y la dejó pasar, y aparece en el siguiente `pnpm check` completo. Se arregla dentro del bloque. No se compara con «HEAD sin los cambios de la tarea»: la regresión ya está en ese HEAD, falla también ahí y se iría al backlog por error.
   - **Nunca dos suites e2e a la vez en la misma carpeta.** Dos worktrees sí pueden: cada uno usa su puerto (Tarea 19 bis).
   - Si Playwright no encuentra Chromium: `pnpm exec playwright install chromium`.
@@ -270,17 +276,18 @@ No queda ninguna decisión abierta (2026-10-11): ni las dieciocho (D-1 a D-18), 
 
 ### Decisiones abiertas ya contestadas (2026-10-12)
 
-El estudiante contestó el 2026-10-12 tres de las cuatro decisiones abiertas la noche del 2026-10-11 (sección siguiente). Aprobó la recomendación del plan en las tres. Su criterio es «rigurosa, visual y entendible». O-4 sigue abierta.
+El estudiante contestó el 2026-10-12 las cuatro decisiones abiertas la noche del 2026-10-11 (sección siguiente). Aprobó la recomendación del plan en tres; en O-4 eligió una opción nueva, G, que el plan no traía. Su criterio es «rigurosa, visual y entendible». Las decisiones nuevas del 2026-10-12 (O-5, O-6 y O-7) siguen abiertas.
 
 | Decisión | Elección | Nota |
 |----------|----------|------|
 | O-1 | **D,** la caja de inspección se aparta de la tarjeta abierta | Tiene dos lugares: abajo a la derecha y abajo a la izquierda. Se abre en el que no toca la tarjeta; si ninguno está libre, no se abre, y una caja fijada se suelta. Porqué: es una sola regla para todas las cajas y todas las tarjetas («una caja nunca tapa una tarjeta abierta»), no muestra nada falso y conserva J7 donde hay caja. La ejecuta la Tarea 28 bis. |
 | O-2 | **A,** se dibuja la consulta DNS de un `ping` o un `nc` por nombre | Gasta puerto y deja fila en la tabla de traducciones. Porqué: un equipo que usa un nombre le pregunta antes a su resolver, y A lo dibuja en vez de contarlo en un campo; así un envío que no sale se ve en el mapa y el par del 02-13 se distingue. La ejecuta la Tarea 28 quater. |
 | O-3 | **A1,** en el capítulo 1 el aviso de un router sin ruta se dice en palabras llanas hasta que se conozca `net-unreachable` | Porqué: B afirma algo falso («Host» para lo que el router avisa con el código 0, Network Unreachable) aunque hoy ningún incidente lo muestre, y A1 es la más barata de las tres que lo corrigen: no mueve ni agrega términos. La ejecuta la Tarea 28 ter. |
+| O-4 | **G,** abanico hasta lo que cabe y un sello «+N» | Opción nueva, que el estudiante pidió al preguntar cómo crece cada opción y cómo lo resuelven otros sistemas; no es la recomendación del plan (C). Si caben todos los sellos del lugar, se ven todos; si no, se ven los que caben menos uno y el último es el sello «+N», que abre la lista de todos. La ejecuta la Tarea 28 quinquies (ver la línea «Decidida» de O-4). |
 
 ## Decisiones abiertas de la noche del 2026-10-11
 
-Estas cuatro decisiones (O-1 a O-4) se abrieron la noche del 2026-10-11 (O-4, pasada la medianoche, ya el 2026-10-12), después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. El 2026-10-12 el estudiante decidió O-1 (D), O-2 (A) y O-3 (A1); O-4 sigue abierta. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
+Estas cuatro decisiones (O-1 a O-4) se abrieron la noche del 2026-10-11 (O-4, pasada la medianoche, ya el 2026-10-12), después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. El 2026-10-12 el estudiante decidió O-1 (D), O-2 (A), O-3 (A1) y O-4 (G): las cuatro están decididas. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
 
 Los prototipos renderizados de O-1 y O-2 están en una página publicada el 2026-10-11: https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST. Los dibujos no son capturas: se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el arte de las piezas, porque nadie arrancó la app esa noche. O-3 se decide con el texto. Los de O-4 están en otra página publicada: https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF (su fuente local, temporal, es `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/chapter-2-decision-o4.html`); esos dibujos se calcularon con un port de las funciones de `layout.ts`, ver «Lo que no se pudo verificar» de O-4.
 
@@ -300,7 +307,7 @@ A 1280×360 el mapa mide 900×360 (la ventana menos los 380 px del panel), la ca
 
 El mismo clic que abre la tarjeta también fija la caja: su banda dice «Fijada» y ofrece «Cerrar». Se queda encima de «Listo» hasta «Cerrar», Escape o un clic fuera de la caja. Esa rama lo pidió por «una sola regla»: todo clic en una pieza fija su caja, tenga o no tarjeta, y dijo que si chocaba con abrir la tarjeta se parara y se informara.
 
-Chocó: a 1280×360 «Listo» queda fuera de alcance y una prueba del juego falla. Por eso el merge de `feat/chapter-1-fourteen` está en pausa.
+Chocó: a 1280×360 «Listo» queda fuera de alcance y una prueba del juego falla. Por eso el merge de `feat/chapter-1-fourteen` quedó sin hacer hasta decidir O-1 (decidida el 2026-10-12: lo hace la Tarea 28 bis).
 
 En el merge resuelto, la prueba `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window` de `tests/e2e/card-layout.spec.ts` falla con «1280×360, the firewall with its tabs: its foot is out of reach». Falló en las 5 corridas repetidas guardadas en `committed-x5.log`. El plan de esa rama es `docs/plans/2026-10-11-follow-the-packet-floating-box-hover.md`.
 
@@ -365,9 +372,9 @@ En el merge resuelto, la prueba `a card beside a piece stays inside the map, wit
 
 **Qué depende de esta decisión.**
 
-- El merge de `feat/chapter-1-fourteen` en `feat/chapter-2`, en pausa. El merge resuelto está guardado en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/merge/` (`resolved-merge.patch` y `resolved-files/`, siete archivos: `docs/plans/2026-10-08-follow-the-packet-followups.md`, `projects/follow-the-packet/src/ui/CLAUDE.md`, `.../src/ui/incident/CLAUDE.md`, `.../src/ui/incident/incident-screen.tsx`, `.../src/ui/incident/incident-screen.test.tsx`, `.../tests/e2e/CLAUDE.md` y `.../tests/e2e/card-layout.spec.ts`). Esa ruta es temporal: si se borra, el merge se rehace con el commit `46c4074` como base.
+- El merge de `feat/chapter-1-fourteen` en `feat/chapter-2` (lo hace la Tarea 28 bis). El merge resuelto está guardado en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/merge/` (`resolved-merge.patch` y `resolved-files/`, siete archivos: `docs/plans/2026-10-08-follow-the-packet-followups.md`, `projects/follow-the-packet/src/ui/CLAUDE.md`, `.../src/ui/incident/CLAUDE.md`, `.../src/ui/incident/incident-screen.tsx`, `.../src/ui/incident/incident-screen.test.tsx`, `.../tests/e2e/CLAUDE.md` y `.../tests/e2e/card-layout.spec.ts`). Esa ruta es temporal: si se borra, el merge se rehace con el commit `46c4074` como base.
 - `tests/e2e/card-layout.spec.ts`: la que falla hoy, `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window`, y la que fija la regla de la rama del capítulo 1, `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box` (A y D la cambian). También se corren `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view`, `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` (J7) y, en `tests/e2e/incidents.spec.ts`, `the inspection box floats inside the window and covers no label or stamp`.
-- Si se elige D: la Tarea 19 (su commit `af90924` ya abre las tarjetas de cada pieza con pestañas, y esas tarjetas son las que la caja tiene que esquivar) y la 21 (la escena, pendiente), porque la caja necesita saber dónde está la tarjeta que ancla `src/scene/overlay/`.
+- Con D (decidida): la Tarea 28 bis. La 19 y la 21 están hechas. La caja mide la tarjeta ya dibujada en el DOM (`.map-card`) y la escena solo exporta el selector `MAP_CARD`.
 
 **Lo que no se pudo verificar.**
 
@@ -551,7 +558,7 @@ En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, 
 - **La prueba de solapes del 02-03**, guardada en un parche: `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/02-03-overlap-test.patch` (suma a `tests/e2e/chapter-2/chapter-2.spec.ts` `in 02-03 no piece label, floor name, stamp or packet label of the still map overlaps another after the four tests`, sin animaciones, y `in 02-03 no piece label, floor name or stamp of the map overlaps another after the four tests`, con ellas, a 1280×800 y a 1440×900) y la medida que la acompaña, `zz-measure.spec.ts` en la misma carpeta. Esa ruta es temporal: si se borra, la prueba se rehace con los cuatro envíos del 02-03. Hoy falla: 2 pares medidos sin animaciones y 1 con ellas. Debe pasar con la opción que se elija más el arreglo común (con C, tras cambiar qué cuenta como solape: sello con sello puede montarse hasta 7 px, sello con etiqueta nunca).
 - **La prueba equivalente del 02-13**, si tiene más envíos (hasta cinco, según el encargo de esta decisión), y las de la Tarea 34 (`in 02-09 and 02-10 no label or stamp overlaps` y `after the pings of 02-07, no label or stamp overlaps`, Review Focus 14).
 - Con A: las pruebas de que el mapa cabe (capítulo 1 y 02-07), a 1280×800 y a 1440×900.
-- O-2: si se elige A, la consulta DNS suma sellos de consulta en el resolver y cuenta para el techo de 3 sellos por lugar.
+- O-2 = A (decidida): la consulta DNS suma sellos de consulta en el resolver. Con G cuentan entre los sellos del lugar que reparte el abanico: el techo de 3 sellos por lugar deja de ser un límite, porque los que no caben van al sello «+N».
 - La página de prototipos de O-4: https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF (publicada el 2026-10-12).
 
 **Lo que no se pudo verificar.**
@@ -563,6 +570,103 @@ En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, 
 - Los incidentes 02-04 a 02-14 no están escritos: no se contó cuántos sellos terminan en un mismo lugar. Una combinación igual de fichas reemplaza a la anterior (`lastOfEach` en `src/game/flow-runs.ts`, que `src/game/session.ts` usa para `sent`), así que los sellos por lugar no pasan de las combinaciones distintas que terminan ahí. En los incidentes `send` del capítulo 1, el mayor grupo que se ve en las listas de fichas es el de los TTL altos del 01-09; no se jugó, y no se contaron los flujos de los incidentes `filter` (01-12, 01-13 y el capítulo 4).
 - El corredor de los servidores de la calle, con sus etiquetas altas, es otro que el de una fila de equipos: no se calculó. Tampoco el 02-07 completo.
 - El tamaño del signo de un sello (unos 14 px) es una estimación. WCAG 2.2, 2.5.8, leído en `https://www.w3.org/TR/WCAG22/` con `curl` el 2026-10-12.
+
+**Decidida (2026-10-12): G.** Es una opción nueva, que el plan no traía: el estudiante la pidió después de preguntar cómo crece cada opción y cómo lo resuelven otros sistemas. No es la recomendación del plan (C). Está descrita y dibujada en la página republicada https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF (fuente local, temporal: `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/chapter-2-decision-o4.html`). Porqué: su criterio, «rigurosa, visual y entendible», y que aguante el crecimiento: con pocos sellos se ven todos, con muchos el mapa no se rompe, y lo que se esconde queda contado y listado. La regla:
+- **Abanico.** Paso de 25 px, en la variante «siempre» (todo grupo de sellos de un lugar se monta).
+- **Cuántos se ven.** Si caben todos los sellos en el pasillo libre entre las etiquetas vecinas, se ven todos. Si no, se ven los que caben menos uno, y la última casilla es un sello «+N»: el mismo estándar de sello, distinguido por su texto, encima del abanico. Al pasar el mouse, al enfocarlo o con un toque, abre la caja de inspección con la lista de todos los sellos del lugar, como un caso nuevo de `inspect()` y sin primitiva nueva.
+- **Prioridad.** Los sellos de problema (✕, ?, ! e intruso) no entran en «+N» mientras haya sellos sin problema que puedan entrar. Entre iguales, los más antiguos. Si hay más sellos de problema que casillas, entran los más antiguos de ellos.
+- **Holgura.** La del dibujo de C y G, sin el mínimo de 8 px. En el 02-03 caben 3 casillas con 6,4 px de sobra. La prueba de solapes deja pasar sello con sello hasta 7 px, falla con sello contra etiqueta y cuenta los sellos que se ven, no los que hay.
+- **Desde 10 escondidos.** El número exacto con letra más chica (14 px cabe, medido), nunca «9+».
+- **Abierto, al backlog.** Cómo se ve un «+N» que esconde un sello de problema. Va con una prueba que falla si un incidente registrado llega a esconder uno.
+- **Arreglo común.** Las etiquetas de paquete se apartan de los sellos.
+- **Quién la ejecuta.** La Tarea 28 quinquies, que agrega otro commit y todavía no está escrita. Destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Con O-2 = A, cuenta también los sellos de las consultas DNS.
+
+## Decisiones abiertas del 2026-10-12
+
+Estas tres decisiones salieron de la replanificación del 2026-10-12 (las Tareas 28 bis y 28 quater). Ninguna bloquea una tarea entera: O-5 no bloquea nada, O-6 bloquea un paso de la Tarea 28 quater y O-7 bloquea una ficha de la Tarea 32. Cada una trae su recomendación y, por opción, qué arregla, qué pierde y cómo crece; la inexacta, si la hay, va marcada. El estudiante contesta de a una, a través de la sesión principal. Su criterio es «rigurosa, visual y entendible».
+
+### O-5. ¿Puede una etiqueta o un sello decidir también el lugar de la caja de inspección?
+
+**Pregunta.** Sin tarjeta abierta, la caja de inspección va abajo a la derecha. En el 04-01 a 1280×500, la caja de `servidor2`, en su mínimo de 120 px, tapa «Security Group servidor2». La causa es una marca (una etiqueta) y no una tarjeta, y O-1 = D solo mira tarjetas. ¿Puede una etiqueta o un sello decidir también el lugar de la caja?
+
+**Recomendación: B si la medición lo permite; si no, A.** B da rigor sin quitarle al jugador la información; C se la quita. B solo cuenta si la sala a la izquierda llega a 120 px o más.
+
+**Cómo se abre.** No bloquea nada. Se abre con capturas reales, no con dibujos: el paso 11 de la Tarea 28 bis las toma después de D (los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01) y mide la sala que deja cada lado.
+
+**Las opciones.** Ninguna es inexacta.
+
+- **A. No (D tal como se aprobó).** Solo la tarjeta decide el lugar.
+  - Qué arregla: nada del residuo.
+  - Qué pierde: el residuo se queda. La caja, en su mínimo de 120 px, tapa la etiqueta.
+  - Cómo crece: con más piezas en los mapas, pasa más veces. No cuesta nada.
+- **B. Sí, para elegir entre los dos lugares.** Sin tarjeta, la caja va a la derecha, salvo que ahí quede en su mínimo y la izquierda tenga más sala.
+  - Qué arregla: el residuo del 04-01, si la sala izquierda llega a 120 px o más.
+  - Qué pierde: retrasa el problema; si los dos lugares quedan en el mínimo, tapa igual. La caja tiene que medir las marcas para elegir el lugar, y hoy solo las usa para topar el alto.
+  - Cómo crece: con más piezas, los dos lugares llegan al mínimo más a menudo (razonado, no medido).
+- **C. Estricta: si los dos lugares taparían una marca, no hay caja.** Es la lectura literal de «el sitio libre cuenta las etiquetas» de O-1.
+  - Qué arregla: el residuo, por construcción: la caja nunca tapa una marca.
+  - Qué pierde: el jugador pierde la caja, que a veces es lo que necesita para resolver.
+  - Cómo crece: peor. Con ocho piezas, las cajas desaparecerían en ventanas bajas.
+
+**Qué depende de esta decisión.** Nada se detiene. Con B o C haría falta una tarea nueva después de la 28 bis (el lugar cuenta las marcas) y la prueba del residuo en `tests/e2e/incidents.spec.ts`.
+
+**Lo que no se pudo verificar.** Nada de esto se midió todavía: la sala que deja cada lado a 1280×500 en el 04-01 la mide el paso 11 de la Tarea 28 bis.
+
+**Prototipo.** Capturas reales de la Tarea 28 bis (paso 11); se enlazan aquí cuando se publiquen.
+
+**Decidida:** pendiente del estudiante.
+
+### O-6. La tabla de traducciones: cómo se marca la fila de una consulta DNS
+
+**Pregunta.** Con O-2 = A, un `ping` o un `nc` por nombre deja en la tabla de traducciones la fila de su consulta antes que la del paquete, y un `dig` deja la suya. Son filas UDP iguales a las demás. ¿Cómo sabe el jugador cuál es de qué?
+
+**Recomendación: A.** Es una palabra, no un color.
+
+**Qué bloquea.** Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater (y la prueba `a row made by a datagram to port 53 wears the words consulta DNS once dns-query is known`). El orden de las filas y la fila «en uso» no dependen de ella.
+
+**Las opciones.**
+
+- **A. La fila hecha por un datagrama al 53 lleva «consulta DNS» en la columna del protocolo** (también la de un `dig`), cuando `dns-query` ya se conoce; antes dice «UDP». **Recomendada.**
+  - Qué arregla: dos filas UDP iguales dejan de confundirse.
+  - Qué pierde: cambia a propósito la fila del `dig` en una prueba existente, `the translations card lists the rows of the sent packets in order`.
+  - Cómo crece: una palabra por fila, con cualquier número de envíos.
+- **B. Sin marca.**
+  - Qué arregla: nada. Es entendible, pero hay que abrir cada caja para saber cuál fila es cuál.
+  - Qué pierde: la tabla muestra dos filas UDP iguales por cada envío por nombre.
+  - Cómo crece: peor con cada envío por nombre, que suma una fila igual.
+- **C. Una columna «Destino».** **Inexacta.** La fila del NAT no depende del destino (RFC 4787 REQ-1 y RFC 5382 REQ-1, decidida 4); una columna con destino dice lo contrario.
+  - Qué arregla: separaría las filas a la vista, pero con una causa falsa.
+  - Qué pierde: la exactitud.
+  - Cómo crece: una columna más para todas las filas.
+
+**Qué depende de esta decisión.** La Tarea 28 quater, solo el paso de la marca de la fila y las dos pruebas que la nombran.
+
+**Prototipo:** se enlaza aquí cuando se publique.
+
+**Decidida:** pendiente del estudiante.
+
+### O-7. ¿El 02-13 suma un `ping` por DNS para ver el contraste?
+
+**Pregunta.** La decisión O-2 decía que el 02-13 mostraría el contraste entre un `ping` por DNS (que dibuja la consulta) y un `ping` con archivo hosts (que no dibuja ninguna). La ficha del 02-13 no tiene un `ping` por DNS: manda `dig` de tres nombres y `ping tienda.lucia.example`. El contraste real es otro: `dig tienda` dibuja una consulta y `ping tienda` (archivo hosts) no dibuja ninguna. ¿Se suma un `ping` por DNS a la ficha?
+
+**Recomendación: A.** No sumarlo.
+
+**Qué bloquea.** Solo la ficha del 02-13 (Tarea 32).
+
+**Las opciones.** Ninguna es inexacta.
+
+- **A. No. Recomendada.**
+  - Qué arregla: el contraste ya se ve, con `dig` y `ping` del mismo nombre.
+  - Qué pierde: el contraste no se hace con el mismo comando.
+  - Cómo crece: nada nuevo. El 02-13 ya es denso (cuatro términos y cinco tareas, D-17).
+- **B. Sí, una ficha `ping www.lucia.example`.**
+  - Qué arregla: muestra las dos cosas con el mismo comando.
+  - Qué pierde: cuesta una ficha más, o una tarea más, en un incidente que ya puede partirse.
+  - Cómo crece: el 02-13 pesa más, y la prueba humana del capítulo entero es la que decide si hay que partirlo.
+
+**Qué depende de esta decisión.** La Tarea 32 (ficha y tests del 02-13). La nota que la Tarea 32 ya trae vale con A.
+
+**Prototipo:** se enlaza aquí cuando se publique.
 
 **Decidida:** pendiente del estudiante.
 
@@ -738,9 +842,9 @@ Cada una tiene una razón técnica y una sola respuesta razonable; si el estudia
 1. **El 02-01 parte del mundo del 01-14.** Hoy `worldBeforeChanges` (`src/levels/world.ts`) lanza un error para un incidente con `changes` y sin incidente previo en su capítulo. Cambia así: un incidente con `changes` y sin previo en su capítulo parte de la solución del último incidente del capítulo anterior, en el orden del juego. Con eso, `explained-changes.test.ts` cubre también el salto del 01-14 al 02-01 sin código nuevo, y la continuidad del mundo la fuerza el dato y no una copia. Descartado: un `base` literal compuesto con las constantes del capítulo 1, que duplicaría el mundo y podría divergir sin avisar. Tarea 3.
 2. **`changedNames` se amplía en dos cosas.** (a) Mira también a los servidores de internet (actores `server`: servicios y DNS), no solo a dispositivos y routers; sin eso, que el sitio de `servidor-internet` o un registro del autoritativo cambie no exigiría nombrarlo. (b) Una interfaz de router que mira a una pieza que la misma acción agrega no cuenta como cambio de configuración: es el cableado de la pieza nueva y no altera nada de lo que ya pasaba. Cualquier otro cambio de interfaces, rutas o avisos sí cuenta. Razón de (b): agregar un servidor de nombres detrás de `router-destino` obligaría a nombrar un router que el mapa no dibuja. Relaja la regla un poco; _para revisar_. Tarea 3.
 3. **El NAT existe siempre en el borde de la oficina; se deriva de la topología; el 08 lo muestra.** El router que da a una LAN y tiene una interfaz con IP no privada hacia afuera (`router-oficina`, `203.0.113.10`, la IP que el capítulo 1 ya declara como `officeUplink`) traduce el origen de todo paquete de un dispositivo de la oficina cuyo siguiente salto sale por esa interfaz. El enlace privado a la otra oficina no traduce (su interfaz es privada). No hay campo nuevo en `Network` ni acción «ahora hay NAT»: el capítulo 1 mostró un ping de `192.168.1.10` llegando a `198.51.100.50`, y un mundo que enciende el NAT en el 08 habría mostrado tráfico imposible. La traducción entra en la traza como un campo aparte, `Trace.translation`, ausente en la VPC y en todo paquete que no sale por esa interfaz; **no escribe pasos ni motivos**, así que `the trip out of the office has no step and no reason that names NAT or the public IP` y las pruebas de `steps` con `toEqual` del capítulo 1 siguen sin editarse. La vista lo muestra cuando `nat` es un término conocido (08). Es una regla del modelo, _para revisar_.
-4. **Los números del NAT.** Puertos públicos desde el 40001, en el orden de la secuencia; mapeo independiente del destino (el mismo `IP:puerto` privado usa la misma fila hacia cualquier servidor; RFC 5382 REQ-1 y RFC 4787 REQ-1); sin conservar el puerto de origen (el ejemplo del RFC 3022 también lo cambia); sin tiempo de vida de las filas; el ping no deja fila visible (ICMP no tiene puertos y el identificador es lo que traducen los NAT reales; spec). La tabla muestra solo los envíos desde el último cambio de mundo.
-5. **El estado entra al motor como entrada, no como lectura.** `simulate(net, packet)` sigue siendo la función pura y sin estado de hoy, la que usan el capítulo 1 y el 4. Una función nueva, `simulateSequence(net, sends)`, recibe una lista ordenada de `{ packet, at }` (`at` = segundos del juego) y devuelve una traza por paquete, llevando de uno al siguiente la tabla del NAT, el puerto efímero de cada dispositivo y la caché del resolver. Es determinista: los mismos envíos dan las mismas trazas. La sesión guarda los envíos y el reloj (`Session.clock`, que solo avanza con `wait`). **Reinicio:** un movimiento que cambia el mundo (colocar o quitar una entrada de una tabla, un ajuste) limpia los envíos, como hoy `setSetting`, y con ellos la tabla y la caché que se derivan; el reloj no vuelve atrás y la caché inicial del mundo (decidida 24) se mide contra él. Para revisar.
-6. **El puerto de origen.** La primera conexión TCP o consulta UDP de cada dispositivo en la secuencia sale del 51514 y cada una nueva del mismo dispositivo sube de a uno (el puerto efímero cambia en cada intercambio nuevo). `PacketSpec.sourcePort` lo fija a mano y gana. Un `simulate` suelto usa el 51514. El 51514 cae dentro del rango de IANA (49152 a 65535) y del de Linux (32768 a 60999); ningún texto da un rango como cifra (depende del sistema).
+4. **Los números del NAT.** Puertos públicos desde el 40001, en el orden de la secuencia; mapeo independiente del destino (el mismo `IP:puerto` privado usa la misma fila hacia cualquier servidor; RFC 5382 REQ-1 y RFC 4787 REQ-1); sin conservar el puerto de origen (el ejemplo del RFC 3022 también lo cambia); sin tiempo de vida de las filas; el ping no deja fila visible (ICMP no tiene puertos y el identificador es lo que traducen los NAT reales; spec). La tabla muestra los envíos desde el último cambio de mundo y, antes del paquete de cada envío por nombre, la fila de su consulta DNS (O-2 = A, 2026-10-12). Un `ping` por nombre deja la fila de su consulta y ninguna propia; un `nc` por nombre deja dos, la de su consulta y la suya. Si el nombre sale del archivo hosts no hay consulta ni fila.
+5. **El estado entra al motor como entrada, no como lectura.** `simulate(net, packet)` sigue siendo la función pura y sin estado de hoy, la que usan el capítulo 1 y el 4. Una función nueva, `simulateSequence(net, sends)`, recibe una lista ordenada de `{ packet, at }` (`at` = segundos del juego) y devuelve una traza por paquete, llevando de uno al siguiente la tabla del NAT, el puerto efímero de cada dispositivo y la caché del resolver. Es determinista: los mismos envíos dan las mismas trazas. La sesión guarda los envíos y el reloj (`Session.clock`, que solo avanza con `wait`). **Reinicio:** un movimiento que cambia el mundo (colocar o quitar una entrada de una tabla, un ajuste) limpia los envíos, como hoy `setSetting`, y con ellos la tabla y la caché que se derivan; el reloj no vuelve atrás y la caché inicial del mundo (decidida 24) se mide contra él. La consulta de un envío por nombre viaja dentro de la traza de ese envío (`Trace.question`), así que sigue habiendo una traza por envío (O-2 = A). Para revisar.
+6. **El puerto de origen.** La primera conexión TCP o consulta UDP de cada dispositivo en la secuencia sale del 51514 y cada una nueva del mismo dispositivo sube de a uno (el puerto efímero cambia en cada intercambio nuevo). La consulta DNS de un `ping` o un `nc` por nombre es el primer intercambio de ese envío: toma el puerto antes que el paquete (la consulta el 51514, el `nc` el 51515). Un envío que termina antes de que haya una IP, porque el nombre no se resolvió o porque la dirección no es válida, no abre ningún socket y no gasta puerto propio (un `ncat` real sale en `getaddrinfo` con «Could not resolve hostname», `ncat_main.c:883` de nmap 7.93); la consulta de un nombre que no se resolvió sí gastó el suyo. Antes la guía del motor decía que un envío que nunca sale gastaba un puerto igual; ahora eso vale solo para los que terminan después (sin ruta, un firewall). `PacketSpec.sourcePort` lo fija a mano y gana. Un `simulate` suelto es una secuencia de un envío: el paquete que no pregunta sale del 51514 y, si pregunta, la consulta toma el 51514 y él el 51515. El 51514 cae dentro del rango de IANA (49152 a 65535) y del de Linux (32768 a 60999); ningún texto da un rango como cifra (depende del sistema).
 7. **`host.services` reemplaza a `host.listeningTcpPorts`.** En el esquema, en los mundos del capítulo 1 y del 4 (cambio mecánico: `[22]` pasa a un servicio TCP 22 en todas las IPs), en las fixtures y en las pruebas que lo leen. Razón: dos maneras de decir lo mismo. No toca el test dorado.
 8. **La dirección de escucha decide por la IP de destino.** Un servicio `loopback` solo acepta un paquete cuyo destino es `127.0.0.1`; uno `all`, cualquier IP del dispositivo. Un paquete a la IP de la red de ese dispositivo, o a otra dirección `127.x`, recibe un RST, también si lo manda el propio equipo. (Corregida el 2026-10-11 por la sesión principal, con el visto bueno del estudiante a las recomendaciones técnicas que no cambian lo que se aprende: el primer commit de la Tarea 6 aceptaba cualquier `127.x.x.x`; el modelo exacto es solo `127.0.0.1`, y el cambio es un commit de seguimiento de la Tarea 6.) **Sin probar:** razonamiento a partir de `ip(7)` (spec, «Sin verificar»). El estudiante puede probarlo en su EC2 cuando quiera; si el comportamiento real difiere, se cambia la regla y esta decisión. Si no lo prueba, queda «sin verificar» en la guía y la Tarea 6 cierra igual.
 9. **UDP cerrado avisa.** Un datagrama UDP que llega a un host sin servicio en ese puerto contesta ICMP Port Unreachable (resultado `unreachable`, aviso `port-unreachable`), no silencio (RFC 1122 §4.1.3.1: «UDP SHOULD send an ICMP Port Unreachable message»). Un firewall que descarta sigue en silencio. Sin límite de tasa (el kernel de Linux manda uno por segundo por destino). Reemplaza `host-udp-no-service`. Tarea 7.
@@ -780,7 +884,7 @@ Cada una tiene una razón técnica y una sola respuesta razonable; si el estudia
     - Mapa final de motivos, una causa por motivo, para que el texto diga solo la que pasó: `dns-unresolved` es una oficina sin `dnsServer`; `dns-resolver-silent`, la pregunta que no llegó a nadie; `dns-no-resolver`, un equipo que recibió la pregunta y no contestó como resolver.
     - Un resolver sigue hasta 8 alias; con 9 o con un bucle contesta SERVFAIL. Sin un tope, un bucle de alias no terminaría. El 8 es un número del juego y no se verificó contra un resolver real.
     - Toda respuesta del resolver llena su caché, también la de un `ping` o un `nc` por nombre: el resolver no distingue quién preguntó.
-    - La consulta de un `ping` o un `nc` por nombre no gasta puerto del emisor ni deja fila (decidida 4). Está abierta en O-2.
+    - La consulta de un `ping` o un `nc` por nombre gasta un puerto del emisor y deja su fila en la tabla de traducciones (decididas 4 y 6; O-2 = A). Va dentro de la traza del envío, en `Trace.question`, con su traza completa. Si el nombre sale del archivo hosts no hay consulta.
     - Pedir un alias cuyo destino está vivo en la caché pregunta la cadena entera y renueva ese destino. No se verificó qué hace un resolver real. El 02-12 solo ofrece `dig www`, así que hoy no se dispara.
 35. **La sesión.** Tarea 15.
     - `routeProblem` (`no-router`, `destination-has-route`) es hermana de `recordProblem`, para que una ruta repetida diga por qué no se aplicó (V17 y la fila 12 del inventario de la Tarea 18 bis).
@@ -810,7 +914,15 @@ Cada una tiene una razón técnica y una sola respuesta razonable; si el estudia
     - `fullyParallel: true` con los workers por defecto. Con 12 workers la suite es más lenta y con 16 una captura agota el tiempo (medido el 2026-10-11, 16 núcleos).
     - `--only-changed` descartado, porque da falsos verdes: las e2e casi no importan el código del juego, y un cambio en `src/ui` selecciona 0 pruebas y sale con 0.
     - El puerto se deriva de la ruta del repo (de 4183 a 4282, con `--strictPort`), para que dos worktrees corran e2e a la vez sin chocar.
-41. **El merge de `46c4074` queda en pausa por O-1.** El arreglo de la rama del capítulo 1 fija la caja de inspección con el clic de la pieza; en el merge resuelto, a 1280×360 «Listo» de la tarjeta recién abierta queda fuera de alcance y una prueba del juego falla. No se une hasta decidir O-1, para no dejar esa prueba rota en `feat/chapter-2`. El merge resuelto está en el scratchpad de la sesión (ruta temporal; ver O-1, «Qué depende de esta decisión»).
+41. **El merge de `46c4074` queda en pausa por O-1.** El arreglo de la rama del capítulo 1 fija la caja de inspección con el clic de la pieza; en el merge resuelto, a 1280×360 «Listo» de la tarjeta recién abierta queda fuera de alcance y una prueba del juego falla. No se une hasta decidir O-1, para no dejar esa prueba rota en `feat/chapter-2`. Levantada el 2026-10-12: O-1 = D, y la Tarea 28 bis hace el merge. El merge resuelto está en el scratchpad de la sesión (ruta temporal; ver O-1, «Qué depende de esta decisión»).
+42. **El motivo de una caja sin sitio va en una nota del panel lateral.** Tarea 28 bis (O-1 = D). Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Cuando una tarjeta abierta ocupa los dos lugares de la caja, la pieza no abre caja y el motivo se escribe en una nota (`Message`, variante `note`) bajo la tarjeta de Lucía. Es el único sitio que ninguna tarjeta del mapa puede tapar, y reutiliza el estándar de avisos. Aparece con el primer intento y se queda mientras la tarjeta siga abierta, para no parpadear; empuja una vez las tarjetas de abajo. Descartados: la ayuda gris de la esquina, que a veces tapa una tarjeta (J2 y J8), y un aviso junto a la pieza, que pide una variante nueva del elemento flotante y puede tapar una etiqueta vecina.
+43. **El texto del motivo.** Tarea 28 bis. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Dice: «La tarjeta ocupa el sitio de la caja de inspección. Ciérrala con «Listo» o haz más grande la ventana.» Dice la causa y las dos salidas, y es exacta: a 1280×360 falta alto y no ancho, por eso «más grande» y no «más ancha». Un texto con el nombre de la pieza cambiaría por pieza y costaría una prueba por término. El texto queda sujeto al revisor de textos. Además, mientras haya una tarjeta abierta, la ayuda gris (`SCREEN_TEXT.inspectHelp`) pierde la frase que promete dejar la caja fija («Haz clic, o pulsa Enter, para dejar la caja fija»): sin sitio sería falsa, y dejarla enseñaría algo inexacto.
+44. **La caja cambia de lado cada vez que tocaría la tarjeta.** Tarea 28 bis. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Con una caja a la vista y una tarjeta que se mueve (el jugador arrastra o acerca el mapa), la caja pasa al otro lugar en cuanto tocaría la tarjeta, porque O-1 = D dice que una caja nunca tapa una tarjeta abierta. Decidir el lugar solo al abrirse la caja o al cambiar la tarjeta dejaría que un arrastre del mapa pusiera la tarjeta sobre la caja. El salto solo ocurre si la caja iba a tapar algo; cuesta una lectura de rectángulos por mutación mientras haya caja y tarjeta.
+45. **Una sola consulta, la del registro A.** Tarea 28 quater (O-2 = A). Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Un equipo real manda dos consultas por el mismo puerto (A y AAAA); el juego dibuja la A. Es exacta en lo que el jugador puede comprobar, el puerto y la fila del NAT (las dos reales salen del mismo socket y se traducen con una fila), y omite la AAAA. Dibujar las dos pediría nombrar IPv6 y AAAA, que Review Focus 4 prohíbe, y llenaría el mapa (cuatro paquetes y dos sellos por envío por nombre). Ningún texto afirma que sea una sola, y una prueba lo guarda.
+46. **Un envío por nombre que no se resolvió se dibuja quieto en su puerta, con `?` y sin gastar puerto.** Tarea 28 quater. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Cuando el nombre no se resuelve (NXDOMAIN, SERVFAIL, sin dirección, sin resolver o sin respuesta), la consulta se ve y el `nc` o el `ping` se queda en la puerta de su dispositivo, con el sello de siempre para un paquete que no llegó a nadie. No gasta puerto propio: un `ncat` real sale en `getaddrinfo` antes de abrir un socket. Dibujarlo saliendo del edificio, como hace `pathFor` hoy, y gastar un puerto que nunca se usó son inexactos; no dibujarlo deja la causa sin sello al que apuntar. Cambia lo que decía la guía del motor (un envío que nunca sale gasta un puerto).
+47. **La consulta se dibuja en cada envío por nombre.** Tarea 28 quater. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Cada `ping` y cada `nc` es un proceso nuevo que pregunta de nuevo, y el resolver contesta de su caché si puede. En el mapa queda la consulta del último envío de cada combinación; la fila de todas queda en la tabla. Dibujarla solo la primera vez, o no dibujarla si el resolver ya la tiene en caché, es inexacto: la pregunta sale antes de que la caché del resolver importe. Modelar una caché en el equipo sería una mecánica nueva y no siempre es cierta.
+48. **La consulta deja su propio sello y el paquete sale cuando vuelve la respuesta.** Tarea 28 quater. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. El sello permite abrir la caja de la consulta (puerto, fila, respuesta) y ver si volvió o por qué no. El paquete sale cuando la respuesta llega al emisor porque el equipo necesita la IP para armarlo; que salgan a la vez es inexacto. Sin animaciones se dibujan las dos trayectorias y las dos etiquetas a la vez. Cuesta un sello más por envío en el resolver, que cuenta entre los que reparte O-4 = G.
+49. **Lo que el juego omite de una consulta real va solo en la guía y el spec.** Tarea 28 quater. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Se omiten la consulta AAAA, la consulta inversa de `ping`, los dominios de búsqueda y los reintentos. Se declaran en `src/engine/dns/CLAUDE.md` y en «Simplificaciones declaradas» del spec, no en pantalla: decirlo en pantalla pediría nombrar IPv6, AAAA, consulta inversa o dominios de búsqueda, que no son términos del juego (Review Focus 4), y una nota vaga («un equipo real manda otra pregunta parecida») no pasa la verificación. Ningún texto afirma que la consulta sea la única.
 
 ## Inventario de mecánicas
 
@@ -818,7 +930,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 
 | # | Mecánica | Hoy | La piden | Lo que falta | Tarea |
 |---|----------|-----|----------|--------------|-------|
-| 1 | Puerto de origen en el paquete | `PacketSpec` solo tiene `port`, el de destino | 02, 08, 09, 10 | `sourcePort` opcional; la secuencia lo asigna (decidida 6) | 4, 5 |
+| 1 | Puerto de origen en el paquete | `PacketSpec` solo tiene `port`, el de destino | 02, 08, 09, 10, 11, 14 | `sourcePort` opcional; la secuencia lo asigna (decidida 6) y, en un envío por nombre, la consulta DNS toma el primero y el paquete el siguiente (O-2 = A) | 4, 5, 28 quater |
 | 2 | Encabezado con puertos y saludo de tres pasos | `Trace.header` lleva IP y TTL, solo en oficinas | 02, 08, 10 | `sourcePort` y `destinationPort` en la ida y en la vuelta (invertidos) y `Trace.exchange` | 4 |
 | 3 | Servicios con dirección de escucha | `host.listeningTcpPorts` (solo TCP, sin dirección) | 01, 03, 05 | `host.services` con `listen`, y el RST por dirección equivocada | 6 |
 | 4 | Servicios de un servidor de internet | Un actor `server` solo contesta Echo | 08, 10, 14 | `ServerActor.services` | 6 |
@@ -829,7 +941,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 | 9 | Rutas editables de un router y ruta elegida | `updateRouter` reemplaza todas; `bestRoute` ya elige la más específica | 07, 14 | `addRoute` y `removeRoute`; la ruta elegida con las que también cubrían el destino | 9 |
 | 10 | Net Unreachable con una tabla sin rutas | `forward-no-route` ya existe | 07, 14 | Prueba de punta a punta y su texto | 9 |
 | 11 | NAT con puertos | La oficina no lo modela (la VPC tiene `route-nat`) | 08 | Derivado de la topología; `Trace.translation` sin pasos (decidida 3) | 10 |
-| 12 | Tabla de traducciones | No existe | 08, 09 | Filas desde la secuencia, con números del juego (decidida 4) | 10 |
+| 12 | Tabla de traducciones | No existe | 08, 09, 10, 11, 14 | Filas desde la secuencia, con números del juego (decidida 4), y la fila de cada consulta DNS de un envío por nombre (O-2 = A) | 10, 28 quater |
 | 13 | NAT entrante y reenvío fijo | Un actor cliente no envía en una oficina con routers | 09 | Entrada por la IP pública, descarte sin traducción, `Router.forwards` | 11 |
 | 14 | DNS: resolver, autoritativo, registros A y CNAME | `resolveName` solo conoce nombres EC2 de una VPC | 10, 11, 13 | `ServerActor.dns`, resolución, NXDOMAIN, SERVFAIL, `Trace.dns`, la regla del CNAME y el SOA de cada zona (lo imprime un NXDOMAIN) | 12 |
 | 15 | Caché con TTL y reloj | No existe | 12 | La caché del resolver, `at` por envío, la caché inicial del mundo | 13 |
@@ -847,7 +959,7 @@ Lo que el motor y el contrato saben hacer hoy y lo que falta para los catorce. �
 | 27 | Salida de `nc` y de `dig` | La tarjeta de traceroute | 01 a 14 | La tarjeta «Salida», con la salida de `dig` plegable (V11 = B), y los textos con su fuente (D-4, D-5) | 18 |
 | 28 | Tarjetas de tablas | No existen | 06 a 13 | `Table` (D-3) y las tarjetas de rutas, traducciones, registros y caché | 17, 19 |
 | 29 | Tarjeta de cada pieza | Un segundo botón en la etiqueta («Ajustes de red de tu-laptop», solo en el 01-07) | 03, 06 a 12 | Un solo botón por pieza, que abre una tarjeta con una pestaña por tarjeta de la pieza (decidida 22, V15 = B); se quitan el segundo botón y `PIECE_ID.settings` | 14, 19 |
-| 30 | Escena | Sin servidores de nombres, sin cliente de internet, sin puerto en el paquete, sin traducción | 08 a 14 | Piezas, etiquetas y especímenes (D-9 B, D-10): cuatro entidades de paquete (TCP y UDP, pedido y respuesta) y la etiqueta que cambia al cruzar el router (V13 = A) | 21 |
+| 30 | Escena | Sin servidores de nombres, sin cliente de internet, sin puerto en el paquete, sin traducción | 08 a 14 | Piezas, etiquetas y especímenes (D-9 B, D-10): cuatro entidades de paquete (TCP y UDP, pedido y respuesta) y la etiqueta que cambia al cruzar el router (V13 = A); la consulta DNS antes del paquete que preguntó, con su sello (O-2 = A) | 21, 28 quater |
 | 31 | Términos | 38 del capítulo 1; `cidr`, `dns` y `nat` esperan al 4 | 01 a 13 | 50 ids nuevos y 3 que se reescriben o cambian de capítulo | 2, 2 bis, 22 a 33 |
 | 32 | Carpetas llenas | Cuatro en 12 y cinco en 11 | todas | Mudanza | 1 |
 | 33 | Desbloqueo y ayudantes e2e | `CHAPTER_1_DONE` abre el 04-01 | todos | `CHAPTER_2_DONE`; el 04-01 se abre con el 02-14 (decidida 18) | 22 |
@@ -886,9 +998,10 @@ Reglas del esquema: ninguna IP se repite entre dispositivos, interfaces y servid
 | `Trace.translation` | `{ protocol, inside: { ip, port }, outside: { ip, port }, isNew, fixed }` | Lo que el NAT hizo con el origen. Un campo aparte, nunca un paso (decidida 3) |
 | `Trace.routes` | lista de `{ holderId, route: { to, via? }, kind: 'connected' \| 'default' \| 'static', alsoCovered }` | Una por decisión de reenvío (el emisor y cada router): la ruta elegida y las que también cubrían el destino |
 | `Trace.dns` | `{ name, status: 'NOERROR' \| 'NXDOMAIN' \| 'SERVFAIL' \| 'NO-RESOLVER', answers, fromCache, ttlLeft?, usedHostsFile, viaDig }` | Lo que pasó con el nombre. Ausente cuando el destino era una IP. En un NXDOMAIN lleva además el SOA de la zona que contestó |
+| `Trace.question` | `{ packet, trace }` | La consulta que un `ping` o un `nc` por nombre mandó a su resolver antes de salir: el datagrama UDP al 53 tal como salió, con su puerto de origen, y su traza completa (encabezado con puertos, `exchange`, `translation`, aviso). Su `dns` es el de `Trace.dns` con `viaDig` en verdadero. Ausente con una IP, con el archivo hosts, sin `dnsServer`, en un `dig`, en una VPC y en el capítulo 1 |
 | `NoticeKind` | gana `'port-unreachable'` | El aviso de un puerto UDP sin servicio |
 | Códigos de motivo nuevos | `host-wrong-address`, `host-udp-closed` (reemplaza a `host-udp-no-service`), `nat-no-translation`, `nat-forwarded`, `dns-answered`, `dns-cached`, `dns-hosts-file`, `dns-nxdomain`, `dns-servfail`, `dns-no-resolver`, `dns-resolver-silent` | Cada uno trae sus datos (ids, IP, puertos, nombres); `src/copy/` los vuelve texto |
-| `simulateSequence(net, sends)` | `sends` = lista de `{ packet, at }` | Una traza por envío, llevando la tabla del NAT, el puerto efímero y la caché de uno al siguiente. Determinista (decidida 5) |
+| `simulateSequence(net, sends)` | `sends` = lista de `{ packet, at }` | Una traza por envío, llevando la tabla del NAT, el puerto efímero y la caché de uno al siguiente. Determinista (decidida 5). La consulta de un envío por nombre va dentro de su traza y gasta el primer puerto del envío. |
 
 Los campos nuevos están ausentes en toda traza que el test dorado registra, y ninguna etapa nueva escribe un paso en una traza del capítulo 1 ni del 4. Los pasos nuevos solo los escriben paquetes que el capítulo 2 envía: TCP, UDP, de un actor cliente, o con un nombre de DNS de oficina.
 
@@ -929,6 +1042,7 @@ Los campos nuevos están ausentes en toda traza que el test dorado registra, y n
 | Tarjeta «Reloj del juego» (V16 = C) | Una tarjeta del panel del incidente, bajo la de Lucía, con `Session.clock` y las fichas de `send.clock`; solo existe en un incidente con reloj |
 | `describeReason(reason, net, known)` | Los motivos nuevos, con los términos que el jugador conoce; un motivo cuyo término es desconocido dice solo lo que el jugador vio |
 | Campos de la caja | «Servicios», «Encabezado» con puertos, «Saludo», «Ruta que usó», «Traducción» y «DNS», cada uno detrás del término que usa |
+| `SentPacket.question` y `drawnSends` | La corrida de la consulta de un envío por nombre (su id, su sello, su caja y su fila) y la lista que dibuja el mapa: por cada envío, su consulta primero y luego el paquete, que la espera |
 
 ## Los catorce: fichas
 
@@ -1038,19 +1152,21 @@ El mundo base de cada incidente es la solución del anterior (decidida 1): el 02
 
 **02-10 · Preguntar por un nombre** · `send` con la tarjeta «Ajustes de red» de `tu-laptop` (servidor DNS, solo lectura) · términos: nombre de dominio, DNS, consulta DNS, resolver, UDP, dig, DHCP (apoyo). Denso (siete términos).
 - **Mundo:** `addActor` de `servidor-dns` (el resolver, `198.51.100.8`, servicios UDP 53 y TCP 53) y de `servidor-autoritativo` (`198.51.100.53`, zona `lucia.example` con `www` A `198.51.100.50`, TTL 300); `setDnsServer` de `tu-laptop`: `198.51.100.8`. El report nombra a `tu-laptop` («En Ajustes de red de tu-laptop apareció el servidor DNS que le prestó DHCP»). Dibuja `tu-laptop`, `router-oficina`, `servidor-dns`, el globo y `servidor-internet`; el autoritativo espera al 11 porque su término aún no se conoce.
-- **Qué viaja:** `dig www.lucia.example` y `ping www.lucia.example` desde `tu-laptop`.
+- **Qué viaja:** `dig www.lucia.example` y `ping www.lucia.example` desde `tu-laptop`. El `ping` por nombre manda primero su consulta (un datagrama UDP del equipo a `servidor-dns` y su respuesta) y, cuando la respuesta vuelve, sale el ping. El mapa muestra las dos cosas.
+- **Los números (O-2 = A):** si el `dig` es el primer envío, sale del 51514 y se traduce al 40001. El `ping` no tiene puerto, pero su consulta sale del 51515 y deja la fila 51515 → 40002; el ping no deja fila. Si el jugador hace el `ping` primero, la consulta toma el 51514 y el `dig` el 51515: la caja de cada uno dice de qué puerto salió y por qué.
+- **La caja de la consulta del `ping`:** la de un datagrama UDP al 53, igual a la de un `dig`: «Consulta DNS», «Respuesta», la fila nueva de la tabla de traducciones. Si el `dig` ya había llenado la caché del resolver, la respuesta de la consulta sale de ella.
 - **La caja de `dig`:** «Consulta DNS»: UDP, `192.168.1.10:51514 → 198.51.100.8:53`, un mensaje; «Respuesta»: `198.51.100.8:53 → 192.168.1.10:51514`, `www.lucia.example A 198.51.100.50`; «El resolver buscó la respuesta por ti». La tarjeta «Salida» imprime lo que imprime `dig` (D-5), completo y plegado: a la vista el `status` y la respuesta, y el resto detrás de «Ver las N líneas restantes» (V11 = B).
 - **Tareas:** (1) que `dig www.lucia.example` vuelva con `198.51.100.50`; (2) que `ping www.lucia.example` vuelva.
 - **Pregunta:** «¿Por qué `dig` no hizo el saludo de tres pasos antes de preguntar?» Correcta (2.ª): usa UDP, que manda cada mensaje suelto, sin abrir una conexión. Incorrectas: «Porque DNS no usa puertos» (la consulta va al puerto 53); «Porque el resolver ya tenía una conexión abierta contigo» (UDP no tiene conexión).
 - **Pistas:** (1) compara la caja de este `dig` con la de un `nc` del 02. (2) mira cuántos mensajes hay antes de la respuesta.
-- **Rigor:** la consulta «suele» ir por UDP; el servidor también escucha en TCP (RFC 7766 §5) y ninguna consulta del juego lo usa; los nombres de `lucia.example` son ficticios y no existen en el DNS real: `.example` no está delegado en la zona raíz (D-13, verificado el 2026-10-11); DHCP es solo una línea de la tarjeta, sin incidente propio.
+- **Rigor:** la consulta «suele» ir por UDP; el servidor también escucha en TCP (RFC 7766 §5) y ninguna consulta del juego lo usa; los nombres de `lucia.example` son ficticios y no existen en el DNS real: `.example` no está delegado en la zona raíz (D-13, verificado el 2026-10-11); DHCP es solo una línea de la tarjeta, sin incidente propio; un `ping` o un `nc` reales mandan dos consultas por el mismo puerto (A y AAAA) y el juego dibuja la del registro A (glibc `resolv.conf(5)`, iputils 20211215 y ncat 7.93, leídos el 2026-10-12), mientras que un `dig` manda una sola; IPv6 no se nombra en pantalla (Review Focus 4) y ningún texto dice que el equipo pregunta «una sola vez».
 
 **02-11 · Los registros** · `send` con la tarjeta «Registros de lucia.example» (editable) · términos: servidor autoritativo, registro DNS, registro A, registro CNAME.
 - **Mundo:** `setDns` de `servidor-autoritativo`: `www.lucia.example` A `198.51.100.51` (alguien lo cambió a una IP que nadie tiene) y `blog.lucia.example` A `198.51.100.51`. El report nombra a `servidor-autoritativo`. Dibuja `tu-laptop`, `servidor-dns`, `servidor-autoritativo` y `servidor-internet`.
-- **Qué viaja:** `nc` al puerto 80 por nombre y `dig` al alias.
+- **Qué viaja:** `nc` al puerto 80 por nombre y `dig` al alias. El `nc` por nombre manda primero su consulta. Si es el primer envío, la consulta sale del 51514 y deja la fila 51514 → 40001; el `nc` sale del 51515 y se traduce al 40002. Después de cada edición de la tarjeta de registros los números vuelven a empezar (el mundo cambió y los envíos se borran). La caja del `nc` dice por qué no es el 51514: la consulta salió antes.
 - **Fichas:** dirección: `www.lucia.example` y `blog.lucia.example`; mensajes: «nc · puerto 80» y `dig`. Tarjeta de registros: Nombre: `www.lucia.example`, `blog.lucia.example`, `lucia.example`; Tipo: `A` y `CNAME`; Valor: `198.51.100.50`, `198.51.100.51` y `www.lucia.example`.
 - **Tareas:** (1) que el `nc` a `www.lucia.example`, puerto 80, vuelva (corregir el registro A); (2) que `dig blog.lucia.example` vuelva con `198.51.100.50` por un alias (`answer.alias`).
-- **Fallo y causa:** crear el CNAME de `blog.lucia.example` mientras tiene su A, o un CNAME en `lucia.example`, lo rechaza la regla del CNAME y la tarjeta dice por qué: un nombre con un CNAME no puede tener otros registros; la zona ya tiene sus propios registros en `lucia.example`. Antes de corregir, el `nc` por nombre recibe Destination Host Unreachable de un router de afuera, que el mapa no dibuja y el texto no nombra.
+- **Fallo y causa:** crear el CNAME de `blog.lucia.example` mientras tiene su A, o un CNAME en `lucia.example`, lo rechaza la regla del CNAME y la tarjeta dice por qué: un nombre con un CNAME no puede tener otros registros; la zona ya tiene sus propios registros en `lucia.example`. Antes de corregir, el `nc` por nombre recibe Destination Host Unreachable de un router de afuera, que el mapa no dibuja y el texto no nombra. La consulta vuelve bien y trae la IP equivocada: se ve que el DNS contestó y que el fallo viene después.
 - **Pregunta:** «¿Por qué no se pudo crear el CNAME de `blog.lucia.example` mientras tenía un registro A?» Correcta (1.ª): un nombre con un CNAME no puede tener otros registros: o es un alias, o tiene datos propios. Incorrectas: «Porque un CNAME solo puede apuntar a una IP» (invierte la regla: apunta a un nombre); «Porque `blog.lucia.example` no existía» (existía).
 - **Pistas:** (1) quita el A de `blog.lucia.example` antes de crear el alias. (2) un alias apunta a otro nombre, no a una IP.
 - **Rigor:** RFC 1034 §3.6.2 y RFC 2181 §10.1; el apex de la zona y el Alias de Route 53 son del capítulo 17 y no se nombran en pantalla; el TTL de los registros es 300 s, del juego (decidida 25).
@@ -1075,14 +1191,14 @@ El mundo base de cada incidente es la solución del anterior (decidida 1): el 02
 ### Bloque 6 · La guardia
 
 **02-14 · Guardia: «no conecta»** · `diagnose` con reparación en el caso 5 · sin términos nuevos (D-12).
-- **Mundo:** el del 13 más los cambios de cada caso (cada caso es un cambio sobre ese mundo y no sobre el del caso anterior); cada caso dibuja solo las piezas que usa (`shown` por caso). El report del 14 dice una vez qué cambió antes de empezar, si algo cambia.
-- **Qué viaja:** lo que el jugador elija; el primer caso muestra además la secuencia de tres pruebas en orden: ¿resuelve el nombre (`dig`)?, ¿hay ruta (`ping`)?, ¿contesta el puerto (`nc`)?
+- **Mundo:** el del 13 más los cambios de cada caso (cada caso es un cambio sobre ese mundo y no sobre el del caso anterior); cada caso dibuja solo las piezas que usa (`shown` por caso). Un caso que manda por nombre dibuja también `servidor-dns`, que es adonde va la consulta (O-2 = A). El report del 14 dice una vez qué cambió antes de empezar, si algo cambia.
+- **Qué viaja:** lo que el jugador elija; el primer caso muestra además la secuencia de tres pruebas en orden: ¿resuelve el nombre (`dig`)?, ¿hay ruta (`ping`)?, ¿contesta el puerto (`nc`)? En el caso 1, por nombre y en ese orden, los números son: `dig` 51514 → 40001, consulta del `ping` 51515 → 40002, consulta del `nc` 51516 → 40003 y `nc` 51517 → 40004. En el resolver quedan tres sellos (el del `dig` y los de las dos consultas). O-4 midió el pasillo del 02-03; el resolver es otro lugar y no se midió, así que este caso es el que lo prueba. Si el jugador prueba el `ping` o el `nc` por la IP que dio el `dig`, no hay consulta.
 - **Éxito:** nombrar la causa de cada caso; en el 5, también arreglar el bucle con la tarjeta de rutas de `router-proveedor` (quitar la ruta `0.0.0.0/0` hacia `router-oficina` y poner `198.51.100.0/24` hacia `router-destino`) hasta que el ping al servidor vuelva. En ese caso se dibuja `router-destino`, porque los chips de la reparación lo nombran. Pistas y reporte por caso.
 
 | Caso | Reporte y origen | Qué enseña la evidencia | Causa | Opciones incorrectas (error que reflejan) |
 |------|------------------|--------------------------|-------|-------------------------------------------|
 | 1, guiado | «Tu `nc` a `www.lucia.example`, puerto 80, no conecta»; origen `tu-laptop`; el sitio de `servidor-internet` escucha ahora solo en `127.0.0.1` | La prueba 1 resuelve, la 2 vuelve, la 3 es rechazada (RST) | El servicio escucha solo en `127.0.0.1` | «El nombre no resuelve» (la prueba 1 volvió); «Un firewall descarta el paquete» (un firewall callaría; aquí llegó un RST) |
-| 2 | «Tu `nc` a `wwww.lucia.example`, puerto 80, no conecta»; origen `tu-laptop` | NXDOMAIN; nada salió hacia el servidor | El nombre está mal escrito y no existe | «El servidor no contesta en el puerto 80» (nunca llegó a resolver); «`router-oficina` perdió una ruta» (el paquete no llegó a salir) |
+| 2 | «Tu `nc` a `wwww.lucia.example`, puerto 80, no conecta»; origen `tu-laptop` | La consulta sale y vuelve con NXDOMAIN; el `nc` se queda en la puerta y nada sale hacia el servidor | El nombre está mal escrito y no existe | «El servidor no contesta en el puerto 80» (nunca llegó a resolver); «`router-oficina` perdió una ruta» (el `nc` no llegó a salir y la consulta sí volvió) |
 | 3 | «`ping tienda.lucia.example` no vuelve, pero `dig tienda.lucia.example` da `198.51.100.50`»; origen `tu-laptop`; su hosts apunta a `198.51.100.70` y `servidor-autoritativo` tiene ahora un registro A de `tienda.lucia.example` a `198.51.100.50` (el report nombra a los dos) | `dig` da la IP buena; el ping va a otra y recibe Destination Host Unreachable | Una línea vieja en el archivo hosts de `tu-laptop` | «El resolver tiene la respuesta vieja en caché» (`dig` da la buena); «`servidor-internet` está caído» (la IP buena sí contesta) |
 | 4 | «Ningún ping de `tu-laptop` sale de la oficina»; `router-oficina` solo conserva la ruta a `10.0.0.0/16` | El ping al servidor recibe Destination Net Unreachable desde `192.168.1.1`; el de `10.0.0.10` vuelve | Falta la ruta por defecto en `router-oficina` | «`servidor-internet` está caído» (el aviso viene del router, no del servidor); «El firewall de `tu-laptop` no deja salir» (el paquete salió y el router avisó) |
 | 5 | «Ningún ping de `tu-laptop` a `servidor-internet` vuelve»; origen `tu-laptop`, con ping, traceroute y TTL 1, 2 y 3; `router-proveedor` devuelve todo lo que recibe a `router-oficina` | Time Exceeded desde dos routers que se alternan; traceroute repite las IP | Un bucle entre dos routers por la configuración de `router-proveedor` | «`servidor-internet` está sobrecargado» (el aviso viene de un router, no del servidor); «`router-oficina` descarta lo que va al servidor» (lo pasa al proveedor, que se lo devuelve) |
@@ -1145,6 +1261,8 @@ Cada riesgo, con la prueba que lo guarda.
 23. **Una regla para todo paquete (V19).** La forma dice el protocolo y un borde rojo de intruso dice el papel. Tests: `every protocol has an intruder version with the intruder border`, `no packet is drawn as a rhombus` y `the packet of an intruder has the shape of its protocol and the intruder border` (Tarea 21).
 24. **El 04 sin que viaje nada se dibuja y se contesta (D-6).** Tests: los de la tarjeta de clasificar y del contorno, repartidos en las Tareas 14, 15, 19, 21 y 26 (lista en la Tarea 26, «Lo que el 04 pide al código»).
 25. **Pruebas deterministas y chequeo rápido (Tarea 19 bis).** Una prueba de layout o de tiempos da el mismo resultado en cada corrida, y el chequeo de cada tarea es corto sin perder rigor. Tests: `no e2e test waits a fixed time`, `a box is measured only once the scene stands still`, `the port of the e2e server is derived from the path of the repo and stays in 4183-4282` y `check runs check:fast and then the e2e suite, and check:fast runs every step check had except the e2e suite`; y la aceptación con `--repeat-each`. Sin `retries`, sin esperas fijas y sin `skip` ni `fixme` para tapar un fallo.
+26. **La caja de inspección nunca tapa una tarjeta abierta.** Tests: `a card beside a piece keeps its foot in reach right after the click, in a low or narrow window`, `the inspection box covers no card of the map, right after the click and at rest, in a low or narrow window`, `takes the left place when the card touches the right one` y `has no place when the card touches both` (Tarea 28 bis).
+27. **Un router sin ruta no se llama «Host» mientras no se conozca `net-unreachable`.** Tests: `a router with no route is said in plain words on 01-08 after chapter 2 too, and named Destination Net Unreachable only with the term` (`ladder.test.ts`) y `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded, and a router with no route by none until net-unreachable is known` (`terms.test.ts`) (Tarea 28 ter).
 
 ## Árbol al terminar (solo lo cambiado)
 
@@ -1158,8 +1276,8 @@ Cada riesgo, con la prueba que lo guarda.
   - `index.ts`
   - `network/`: `schema.ts`, `types.ts`, `actions.ts`, `services.ts` (nuevo) y sus tests; `addressing/` (nuevo: `cidr`, `topology` y `routing`, mudados, y `routing-table.ts`); `naming/` (sin cambios); `CLAUDE.md`
   - `nat/` (nueva): `translation.ts`, `forwards.ts` y sus tests
-  - `dns/` (nueva): `records.ts`, `resolve.ts`, `cache.ts`, `hosts.ts` y sus tests
-  - `simulation/`: `simulate.ts`, `sequence.ts` (nuevo), `trace.ts`, `context.ts`, `ports.test.ts` y `routing-table.test.ts` (nuevos); `paths/` (nueva: `routers.ts`, `traceroute.ts`, `checkpoints.ts` y sus tests, mudados); `stages/`: `host.ts`, `route.ts`, `forward.ts`, `dns.ts`, `reply.ts` y `nat.ts` (nuevo); `CLAUDE.md`
+  - `dns/` (nueva): `records.ts`, `resolve.ts`, `cache.ts`, `hosts.ts`, `question.test.ts` (Tarea 28 quater) y sus tests
+  - `simulation/`: `simulate.ts`, `sequence.ts` (nuevo), `trace.ts`, `context.ts`, `ports.test.ts` y `routing-table.test.ts` (nuevos); `paths/` (nueva: `routers.ts`, `traceroute.ts`, `checkpoints.ts` y sus tests, mudados); `stages/`: `host.ts`, `route.ts`, `forward.ts`, `dns.ts`, `reply.ts`, `nat.ts` (nuevo) y `port.ts` (nuevo, Tarea 28 quater); `CLAUDE.md`
   - `exposure/exposure.test.ts`
 - `src/copy/`: `terms.ts`, `reasons.ts`, `packet-labels.ts` y sus tests; `tools/` (nueva: `nc-output.ts` y `dig-output.ts` con sus tests); `screens/`; `CLAUDE.md`
 - `src/levels/`
@@ -1323,7 +1441,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - Modify: `src/engine/network/schema.ts` (`PacketSpec.sourcePort`), `types.ts`, `src/engine/simulation/trace.ts` (`header` con puertos y `exchange`), `simulate.ts` (`headerOf` para TCP y UDP de una oficina), `stages/host.ts` y `stages/reply.ts` (llenan `exchange`), `src/engine/CLAUDE.md` y `src/engine/simulation/CLAUDE.md`.
 - Create: `src/engine/simulation/ports.test.ts`.
 
-**Interfaces:** `PacketSpec.sourcePort`, opcional, de 1 a 65535; sin él, `simulate` usa 51514 (decidida 6). Para un paquete TCP o UDP de una oficina, `Trace.header.request` y `reply` llevan `sourcePort` y `destinationPort`, invertidos en la vuelta. `Trace.exchange` lista los extremos: TCP aceptado, SYN, SYN-ACK y ACK; TCP rechazado, SYN y RST; TCP sin respuesta, SYN; UDP, `query` y `response`. Ningún campo nuevo aparece en un paquete ICMP ni en una VPC; `describePacket` y el resumen de `tcpdump` no cambian.
+**Interfaces:** `PacketSpec.sourcePort`, opcional, de 1 a 65535; sin él, `simulate` usa 51514 (decidida 6) (O-2 = A: el paquete que pidió una consulta DNS toma el puerto después de ella; ver Tarea 28 quater). Para un paquete TCP o UDP de una oficina, `Trace.header.request` y `reply` llevan `sourcePort` y `destinationPort`, invertidos en la vuelta. `Trace.exchange` lista los extremos: TCP aceptado, SYN, SYN-ACK y ACK; TCP rechazado, SYN y RST; TCP sin respuesta, SYN; UDP, `query` y `response`. Ningún campo nuevo aparece en un paquete ICMP ni en una VPC; `describePacket` y el resumen de `tcpdump` no cambian.
 
 **Tests:**
 - `ports.test.ts`, `a tcp packet of an office carries its source and destination ports in the request header`.
@@ -1351,7 +1469,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - Create: `src/engine/simulation/sequence.ts` y `sequence.test.ts`.
 - Modify: `src/engine/index.ts` (exporta `simulateSequence`), `src/engine/CLAUDE.md`.
 
-**Interfaces:** `simulateSequence(net, sends)`, con `sends` una lista ordenada de `{ packet, at }`; devuelve una traza por envío. Asigna el puerto de origen a cada paquete TCP o UDP que no trae uno: el primero de cada dispositivo sale del 51514 y cada uno nuevo del mismo dispositivo suma uno. Deja ganchos para la tabla del NAT (Tarea 10) y la caché del resolver (Tarea 13). `simulate(net, packet)` sigue igual.
+**Interfaces:** `simulateSequence(net, sends)`, con `sends` una lista ordenada de `{ packet, at }`; devuelve una traza por envío. Asigna el puerto de origen a cada paquete TCP o UDP que no trae uno: el primero de cada dispositivo sale del 51514 y cada uno nuevo del mismo dispositivo suma uno. Con O-2 = A la asignación pasa a una etapa del motor (Tarea 28 quater) y la consulta DNS de un envío por nombre toma el suyo antes que el paquete. Deja ganchos para la tabla del NAT (Tarea 10) y la caché del resolver (Tarea 13). `simulate(net, packet)` sigue igual.
 
 **Tests:**
 - `sequence.test.ts`, `gives the same traces for the same sends`.
@@ -1541,7 +1659,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - Create: `src/engine/dns/records.ts`, `records.test.ts`, `resolve.ts` y `resolve.test.ts`.
 - Modify: `src/engine/network/schema.ts` (`ServerActor.dns`, `Device.dnsServer`), `actions.ts` (`setDns`, `setDnsServer`, `addRecord`, `removeRecord`), `src/engine/simulation/stages/dns.ts` (la resolución nueva; los nombres EC2 de una VPC siguen como hoy), `trace.ts` (`Trace.dns` y los motivos `dns-answered`, `dns-nxdomain`, `dns-servfail`, `dns-no-resolver`), `src/copy/reasons.ts`, `src/engine/CLAUDE.md`.
 
-**Interfaces:** `resolve(net, device, name, mode)` envía la consulta al resolver de `Device.dnsServer` como un datagrama UDP al 53 (con las reglas, rutas y servicios del resto del motor), y el resolver, sin red de por medio, consulta a su `upstreams` (decidida 13). Sigue un CNAME hasta un A. Sin registro: NXDOMAIN, con el SOA de la zona. Autoritativo caído: SERVFAIL. `recordProblem` dice por qué una entrada no se acepta (un CNAME con otros registros). Un dispositivo de una oficina sin `dnsServer` no resuelve. **El SOA de cada zona es un dato.** El apex trae un SOA con los siete campos de RFC 1035 §3.3.13 (MNAME, RNAME, SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM), con valores fijos del juego y cada uno con su fuente; los que no vengan de una fuente se declaran números del juego, como el TTL de 300 segundos (decidida 25). La traza de un NXDOMAIN lleva el SOA de la zona que contestó, con el TTL que RFC 2308 §3 manda para una respuesta negativa: el menor entre el TTL del propio SOA y su campo MINIMUM. El juego no guarda NXDOMAIN en caché (decidida 13), así que ese TTL se entrega entero. Es lo que la Tarea 18 imprime en la `AUTHORITY SECTION` de `dig`. El spec declaraba el SOA entre lo que el juego no modela («Fuera del capítulo»); esa línea se corrigió el 2026-10-11, en la Tarea 0, y ahora dice que el juego modela el SOA de cada zona como dato.
+**Interfaces:** `resolve(net, device, name, mode)` envía la consulta al resolver de `Device.dnsServer` como un datagrama UDP al 53 (con las reglas, rutas y servicios del resto del motor), y el resolver, sin red de por medio, consulta a su `upstreams` (decidida 13). La traza de ese datagrama ya no se descarta: va en `Trace.question` (Tarea 28 quater). Sigue un CNAME hasta un A. Sin registro: NXDOMAIN, con el SOA de la zona. Autoritativo caído: SERVFAIL. `recordProblem` dice por qué una entrada no se acepta (un CNAME con otros registros). Un dispositivo de una oficina sin `dnsServer` no resuelve. **El SOA de cada zona es un dato.** El apex trae un SOA con los siete campos de RFC 1035 §3.3.13 (MNAME, RNAME, SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM), con valores fijos del juego y cada uno con su fuente; los que no vengan de una fuente se declaran números del juego, como el TTL de 300 segundos (decidida 25). La traza de un NXDOMAIN lleva el SOA de la zona que contestó, con el TTL que RFC 2308 §3 manda para una respuesta negativa: el menor entre el TTL del propio SOA y su campo MINIMUM. El juego no guarda NXDOMAIN en caché (decidida 13), así que ese TTL se entrega entero. Es lo que la Tarea 18 imprime en la `AUTHORITY SECTION` de `dig`. El spec declaraba el SOA entre lo que el juego no modela («Fuera del capítulo»); esa línea se corrigió el 2026-10-11, en la Tarea 0, y ahora dice que el juego modela el SOA de cada zona como dato.
 
 **Tests:**
 - `resolve.test.ts`, `an a record gives its ip and its time to live`.
@@ -1572,7 +1690,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - Create: `src/engine/dns/cache.ts`, `cache.test.ts`, `hosts.ts` y `hosts.test.ts`.
 - Modify: `src/engine/simulation/sequence.ts` (lleva la caché de un envío al siguiente y mide cada envío contra su `at`), `stages/dns.ts`, `schema.ts` (`PacketSpec.lookup`, `Device.hosts`), `actions.ts` (`setHosts`), `trace.ts` (`dns-cached`, `dns-hosts-file`, `dns-resolver-silent`), `src/copy/reasons.ts`, guías.
 
-**Interfaces:** el resolver guarda cada respuesta con `expiresAt = at + ttl` y la entrega mientras `at` sea menor; la caché inicial de su `dns.cache` se mide contra el mismo reloj. `lookup: system` (ping y `nc`) lee primero el archivo hosts del dispositivo y después pregunta; `lookup: dig` pregunta directo al resolver y no lee hosts. Una consulta a una IP sin servicio UDP 53 recibe Port Unreachable.
+**Interfaces:** el resolver guarda cada respuesta con `expiresAt = at + ttl` y la entrega mientras `at` sea menor; la caché inicial de su `dns.cache` se mide contra el mismo reloj. `lookup: system` (ping y `nc`) lee primero el archivo hosts del dispositivo y después pregunta; `lookup: dig` pregunta directo al resolver y no lee hosts. Una consulta a una IP sin servicio UDP 53 recibe Port Unreachable. Con O-2 = A la consulta de un `ping` o un `nc` por nombre corre con la tabla, los puertos y el reloj del envío (Tarea 28 quater); la caché no cambia.
 
 **Tests:**
 - `cache.test.ts`, `the resolver answers from its cache until the time to live runs out`.
@@ -1671,7 +1789,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 **Archivos:**
 - Modify: `src/copy/reasons.ts` y `reasons.test.ts`, `packet-labels.ts` y `packet-labels.test.ts`, `src/copy/screens/incident-ui.ts`, `src/game/view/inspection.ts` y `inspection.test.ts`, `src/game/view/pieces.ts`, `src/game/view/CLAUDE.md`, `src/copy/CLAUDE.md`.
 
-**Interfaces:** cada campo de la caja declara el término que usa y se deja fuera mientras no se conozca: «Servicios» (`service`; dice «puerto 3000» hasta que `tcp` se conoce y «TCP 3000» después), «Encabezado» con puertos (`port`), «Saludo de tres pasos» (`handshake`), «Ruta que usó» (`route`), «Encabezado (en internet)» y la tabla de traducciones (`nat`), y «DNS» (`dns`). Con `nat` conocido, la nota «Fuera de la oficina el encabezado cambia…» desaparece (decidida 15). Los motivos nuevos se escriben con los términos conocidos; si el término de la causa es desconocido, el texto dice solo lo que el jugador vio. **D-8 = A (decidida el 2026-10-11):** el campo «Conexión» pasa a llamarse «En la red» en todas las cajas de oficina (`INSPECTION_TEXT.connection`); cambian las cuatro pruebas de `inspection.test.ts` que lo citan, listadas en «Global Constraints». **Etiqueta del paquete (V13 = A):** la de un paquete TCP o UDP dice el protocolo y los puertos («TCP 51514 → 80»), y cada parte aparece cuando su término se conoce (`tcp` y `udp`, en el 02-02 y el 02-10); antes dice solo lo que el jugador conoce. Al salir por el router con NAT, la etiqueta pasa al puerto de origen público («TCP 40001 → 80»), tomado de `Trace.translation`; la caja ya da los dos encabezados. La escena lo dibuja en la Tarea 21.
+**Interfaces:** cada campo de la caja declara el término que usa y se deja fuera mientras no se conozca: «Servicios» (`service`; dice «puerto 3000» hasta que `tcp` se conoce y «TCP 3000» después), «Encabezado» con puertos (`port`), «Saludo de tres pasos» (`handshake`), «Ruta que usó» (`route`), «Encabezado (en internet)» y la tabla de traducciones (`nat`), y «DNS» (`dns`). Con O-2 = A, el campo «DNS» de un `ping` o un `nc` por nombre suma una línea que dice de qué puerto salió la consulta y que se ve en el mapa (Tarea 28 quater); sus dos frases de hoy siguen siendo ciertas. Con `nat` conocido, la nota «Fuera de la oficina el encabezado cambia…» desaparece (decidida 15). Los motivos nuevos se escriben con los términos conocidos; si el término de la causa es desconocido, el texto dice solo lo que el jugador vio. **D-8 = A (decidida el 2026-10-11):** el campo «Conexión» pasa a llamarse «En la red» en todas las cajas de oficina (`INSPECTION_TEXT.connection`); cambian las cuatro pruebas de `inspection.test.ts` que lo citan, listadas en «Global Constraints». **Etiqueta del paquete (V13 = A):** la de un paquete TCP o UDP dice el protocolo y los puertos («TCP 51514 → 80»), y cada parte aparece cuando su término se conoce (`tcp` y `udp`, en el 02-02 y el 02-10); antes dice solo lo que el jugador conoce. Al salir por el router con NAT, la etiqueta pasa al puerto de origen público («TCP 40001 → 80»), tomado de `Trace.translation`; la caja ya da los dos encabezados. La escena lo dibuja en la Tarea 21.
 
 **`host-refused` y el resultado «rechazado» (decidido el 2026-10-11 por la sesión principal).** El caso `host-refused` de `reasons.ts` pasa a llevar las marcas de los términos nuevos que el jugador conozca: el texto llano que lee el jugador no cambia. La aserción de `reasons.test.ts` que fija su texto crudo cambia a propósito (Global Constraints). `OUTCOME_TEXT.refused` («Llegó, pero ningún programa lo estaba esperando.», en `src/copy/packet-labels.ts`) no puede servir a los dos casos de un rechazo con un solo texto: se corrige con un texto exacto para cada uno, nadie escucha en ese puerto o el servicio escucha en otra dirección (`host-wrong-address`). Quien implementa decide si el texto depende del motivo de la traza. Ninguno nombra un sistema operativo ni da una razón de por qué.
 
@@ -2101,7 +2219,7 @@ Las dos decisiones visuales que se abrieron después, V18 (la primitiva `Message
 - **El contorno del bloque (D-6 = A; el 02-04).** Un contorno alrededor de las piezas que el jugador puso dentro del bloque; `tu-laptop` está dentro desde el principio. Su aspecto es el de la sección D-6 de la página de prototipos. Hoy no hay nada que lo dibuje: `PieceState` es `normal`, `intruded` o `blocking`, y la escena dibuja la losa de cada red o piso y su etiqueta (`layout.floors` y `FloorLabel`), nunca algo que dependa de lo que el jugador respondió. Falta: (a) la marca «dentro del bloque» de la pieza, que calcula `game` desde `session.answers` (Tarea 19); (b) la geometría en `layout.ts`: el rectángulo que rodea los lugares de las piezas marcadas (`DeviceSpot`), sin tapar etiquetas; (c) el dibujo en `game-scene.tsx`: una variante de la losa de red dibujada solo con borde, no un elemento hermano (`DESIGN.md`); si resulta una entidad nueva del catálogo, suma su celda en `catalog-cells.tsx` y regraba la captura de piezas, que esta tarea ya regraba. **No depende de V19.**
 - **El catálogo y las capturas.** En `CATALOG_ROWS` la fila de paquetes y la de sellos tienen sus cinco celdas ocupadas; la rejilla es de 5 columnas por 10 filas y quedan 11 celdas libres repartidas en filas de otras familias (se contaron el 2026-10-11). Caso 1: las celdas nuevas (las cuatro de TCP y UDP, las cuatro de sus copias de intruso por V19 y la del contorno por D-6: nueve, frente a 11 libres) caben en celdas libres, aunque queden en filas de otras familias: cambia la captura de piezas y la de la interfaz no. Caso 2: van en una fila nueva: la sección de la interfaz baja y su captura cambia en cada píxel (medido en `DESIGN.md`, «Adding a variant instead of a new element», paso 3), y entonces esta tarea regraba también `interface-darwin.png`, comprobando que el diff sea solo ese desplazamiento. La tarea dice en su commit cuál de los dos casos fue.
 - **La traducción a la vista (V13 = A).** La etiqueta de un paquete TCP o UDP dice el protocolo y los puertos. En el 02-08 dice «TCP 51514 → 80» hasta `router-oficina` y «TCP 40001 → 80» después (en el de `laptop-lucia`, 51514 y luego 40002). La escena lo toma de `Trace.translation`, como la Tarea 16. En «Sin animaciones» el dibujo quieto muestra la etiqueta del tramo donde está el paquete. El 40001 es un número del juego. La caja ya muestra los dos encabezados (Tarea 16).
-- **O-2 (abierta, decide el estudiante).** Esta tarea sirve con A y con B. Con A, la escena sumaría dos cosas: dibujar la consulta DNS antes del paquete de un `ping` o un `nc` por nombre (un datagrama UDP del equipo a su resolver y su respuesta, antes del paquete) y la etiqueta UDP de esa consulta («UDP 51514 → 53», que pasa a «UDP 40001 → 53» al cruzar `router-oficina`, como la de cualquier paquete con puertos). Con B no cambia nada de esta tarea.
+- **O-2 = A (decidida el 2026-10-12).** Lo ejecuta la Tarea 28 quater, no esta. Esta tarea no cambia: la forma de UDP y la etiqueta que cambia al cruzar `router-oficina` (V13) ya valen para la consulta, que es un paquete UDP más.
 
 **Tests:**
 - `layout.test.ts`, `places the servers of names on the road behind the globe without covering a label`.
@@ -2363,6 +2481,228 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 
 ---
 
+### Tarea 28 bis: el merge de `main` y la caja que se aparta (O-1 = D)
+
+**Presenta:** ningún término. **Depende de:** O-1 = D (decidida el 2026-10-12). Va después de la Tarea 28 y no depende de la 28 ter. No cambia lo que enseña ningún incidente.
+
+**Quién autorizó lo técnico.** La sesión principal autorizó el 2026-10-12 decidir lo técnico que no cambia lo que se aprende. Aprobó tres cosas: el worktree temporal de esta tarea, el orden 28 bis → 28 ter → 28 quater → 28 quinquies → 29 a 33, y el commit de merge rojo en una sola prueba conocida, con D en commits propios después. Las decisiones de esta tarea que no cambian lo que se aprende están en «Decididas sin el estudiante» (42 a 44).
+
+**Propósito.**
+- Unir `main` en `feat/chapter-2`. Trae `46c4074` (la caja de inspección se fija con un clic o con Enter) y `b6eb2ce` (los documentos del capítulo 3).
+- Hacer que una caja nunca tape una tarjeta abierta (D). La caja tiene dos lugares: abajo a la derecha y abajo a la izquierda. Se abre en el que no toca la tarjeta. Si ninguno está libre, no se abre, y una caja fijada se suelta.
+
+**Lo que se midió el 2026-10-12 (solo lectura, sobre `ccb20b3`).**
+- **Son 14 conflictos, no 8.** `git merge-tree --write-tree --name-only feat/chapter-2 main` lista, además de los ocho conocidos:
+  - `src/scene/game-scene.tsx`, `src/scene/overlay/piece-label.tsx` y `piece-label.test.tsx`, `src/scene/traffic/traffic.tsx`;
+  - `src/scene/entities/CLAUDE.md` y `src/scene/overlay/CLAUDE.md`.
+  - Vienen de las Tareas 19 y 21, que son posteriores al merge guardado.
+- **Git no marca estos arreglos y el merge los exige:**
+  - `src/ui/incident/map-cards/piece-card.test.tsx` (línea 119) sigue pasando `onInspect` a `PieceLabel`: pasa a `trigger`.
+  - `opensCard`, que `main` define en `incident-screen.tsx`, mira `piece.settings?.id`, y la Tarea 19 quitó `settings`: queda solo `candidate.id === pieceId && candidate.configurable`.
+  - `src/scene/catalog/catalog-cells.tsx` se une solo, pero mezcla `ignore` de la rama con el disparador vacío de `main`: lo dice `pnpm typecheck`.
+  - `tests/e2e/chapter-1/chapter-1-play.ts` debe exportar `LOST_TO_OTHER_OFFICE`. Git traslada el cambio de `main` porque detecta el renombrado; se comprueba con `git grep -n LOST_TO_OTHER_OFFICE tests/e2e`.
+- **La guía del scratchpad es más corta de lo que parece.**
+  - `merge/resolved-files/` tiene 7 archivos y es de antes de las Tareas 19 y 21 y de `118d9b0`. Sirve para el backlog, las guías `src/ui/CLAUDE.md`, `src/ui/incident/CLAUDE.md` y `tests/e2e/CLAUDE.md`, `incident-screen.tsx` con su prueba y `card-layout.spec.ts`. No dice nada de `use-inspection.ts`, `game-scene.tsx`, `piece-label*`, `traffic.tsx` ni las guías de la escena.
+  - `merge/build_spec.py` no corre hoy. Se probó a solas, en el scratchpad, con los archivos de hoy: su primera aserción muere en la importación `SETTINGS_BUTTON`, que la Tarea 19 cambió por `SETTINGS_TAB`. Sirve de lista de qué reescribir, no de herramienta.
+  - `oracle/oracle-at-the-click.chapter-2.spec.ts` es viejo: importa `SETTINGS_BUTTON` y `CHAPTER_1_DONE` y recorre 5 escenas, y `MAP_SCENES` tiene hoy 12. Se rehace en el repo (ver los tests).
+  - Las mutaciones M1 a M3 del merge viejo no están guardadas, solo sus registros (`merge/mut-M1.log`: falla al clic, porque el pin no se toma; `mut-M2.log` y `mut-M3.log`: fallan tras el viaje, porque el pin se pierde). Se definen de nuevo, abajo.
+- **Carpetas tras la unión** (de un `merge-tree` fresco, archivos planos sin contar `CLAUDE.md`): `src/ui/` 11 (sale `term-tip.tsx`; entra `floating-box/` con 4 archivos), `src/ui/incident/` 8, `src/scene/` 11, `src/scene/overlay/` 7, `tests/e2e/` 11. La frase de «Global Constraints» que dice que `src/ui/incident/` está en 12 de 12 ya no es cierta desde `875c27d`.
+
+**Orden seguro de los pasos.** Base verde (hecha), worktree temporal, merge sin commit, commit de merge con el rojo conocido (una sola prueba), mutaciones del pin, oráculo en rojo, D, oráculo en verde, mutaciones de D, el motivo, las capturas para O-5, cierre y traer la rama.
+
+**Por qué D va en commits propios, después del merge.** D necesita `release()` y el pin que trae `main`: no puede ir antes. Y si fuera dentro del commit de merge, 14 resoluciones quedarían enterradas bajo una función nueva y D no se podría revertir sola. El costo: el commit de merge queda con un rojo conocido (el pin sin D) y no pasa `pnpm check` por sí solo. La sesión principal autorizó ese commit el 2026-10-12, con el rojo limitado a una sola prueba conocida (paso 4) y D en commits propios después. La alternativa es un commit de merge más grande que ya incluya D, verde pero sin ese historial.
+
+- [ ] **0. Preparar, sin cambiar nada.**
+  - `git status` solo muestra `concepts/ami.md` (no se toca, no se agrega, no se commitea). Repetir el `merge-tree`: si la lista de conflictos cambió, se relee la tabla de abajo.
+  - **Worktree temporal** (autorizado por la sesión principal el 2026-10-12): `git worktree add -b merge/28bis /Users/angelozdev/me/aws-commit-academy-28bis feat/chapter-2` y `pnpm install --frozen-lockfile` allí (el tiempo no se midió). Todo el trabajo de la tarea se hace allí.
+    - **Para qué sirve.** Solo para no romper la página del 5180, que sirve el árbol principal y recarga sola (14 archivos con marcas de conflicto la romperían; las mutaciones rompen código a propósito), y para no arriesgar `concepts/ami.md` con un merge a medias.
+    - **Es temporal.** El estudiante pidió expresamente no tener el capítulo en un worktree. En cuanto el trabajo está listo, en el árbol principal se hace `git merge --ff-only merge/28bis`, y enseguida `git worktree remove /Users/angelozdev/me/aws-commit-academy-28bis` y `git branch -d merge/28bis`. Desde ahí el capítulo vuelve a vivir solo en el árbol principal.
+    - **`concepts/ami.md`.** El avance rápido no lo toca: `main` no lo cambió (`git diff --name-only feat/chapter-2...main`, 2026-10-12).
+    - El puerto de Playwright sale de la ruta del worktree; si choca con el del árbol principal, `--strictPort` avisa y se cambia el nombre de la carpeta.
+  - **Esta sección ya está commiteada en el plan.** Desde ese commit no se hacen más commits en `feat/chapter-2` hasta que la tarea aterrice. Si la rama se mueve igual, esos commits se traen a `merge/28bis` con un merge normal antes del paso 12: el avance rápido ya no valdría y las reglas prohíben reescribir la historia.
+- [x] **1. La base de la regla C (hecha el 2026-10-12).** `pnpm check` completo sobre `11587fc` pasó en verde: Vitest 2938 tests en 98 archivos, Playwright 126, jscpd 0 y `golden-traces.json` sin cambios (log: `baseline-11587fc-check.log`, en el scratchpad). Desde entonces solo hubo commits de documentos. **La base B0 de la regla C es `11587fc`** y reemplaza a `dcfc04c`. Cada rojo de los pasos siguientes se compara con B0.
+- [ ] **2. Merge sin commit.** `git merge --no-ff --no-commit main`.
+  - Git rechaza `git commit -- <rutas>` a mitad de un merge. **Esta es la excepción a la regla de las rutas explícitas:** se agrega cada archivo con `git add <ruta>`, se comprueba que `git diff --cached --name-only` no lista `concepts/ami.md` ni nada de `labs/`, y se hace `git commit` sin rutas. Para salir de un merge malo: `git merge --abort` (`reset` sigue prohibido).
+  - Resolver los 14 conflictos (tabla de abajo) y los arreglos que git no marca, de una pasada.
+  - Comprobar: `git grep -nE "<<<<<<<|>>>>>>>" -- .` vacío; `git grep -nE "onInspect|OnInspect|inspect-handlers|inspectHandlers|SETTINGS_BUTTON|settings\?\.id|term-tip" -- src tests` solo lista `floating-box/term-tip` y nada más; `pnpm typecheck`.
+- [ ] **3. Reescribir con `page.clock` las e2e de `main`.** Va dentro del merge: el lint prohíbe `waitForTimeout`, y las de `main` lo usan.
+  - Las pruebas conservan su nombre. Instalar el reloj antes de cargar la página; esperar a que la escena quede quieta (`standStill`) y congelar el tiempo (`freezeTime`) antes del clic.
+  - El viaje del ratón (30 pasos de 30 ms, unos 900 ms) mueve el reloj con `page.clock.runFor(30)` tras cada paso, para que los 900 ms sean de la página y no del equipo. La gracia (400 ms) se pasa con `passTheGrace`, que ya existe en el archivo.
+  - Son seis: `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view` (01-05: `main` la cambió para fijar con un clic y esperar con `waitForTimeout`; la rama ya usa el reloj; queda con el clic y con `passTheGrace`), `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` (1440×900, 1280×800 y 1000×700), `with the keyboard, Enter pins the box and PageDown scrolls it; Escape gives the focus back`, `with touch, a tap pins the box and a tap outside releases it`, `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box` y `a term definition can be reached with the mouse, and Escape closes it`.
+  - `merge/build_spec.py` muestra cómo se reescribió cada una en el merge viejo (`holdTheClock`, `travel` con `runFor`, `passTheGrace`). Se usa de guía, no se corre.
+- [ ] **4. Cerrar el merge.**
+  - `pnpm check:fast` verde.
+  - `pnpm e2e` completo. Cada rojo se compara con B0 (`11587fc`).
+  - **Rojo conocido y autorizado en este commit: una sola prueba.** `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window`, a 1280×360, porque una caja fijada tapa «Listo» o un botón de una tarjeta abierta, y eso pasa en B0. El caso seguro es «the firewall with its tabs: its foot is out of reach» (falló en las 5 corridas del merge viejo). Esa prueba recorre muchas escenas y ventanas: puede fallar en más de una (las escenas del capítulo 2 no estaban en el merge viejo), siempre por ese motivo.
+  - **Cualquier otro rojo es un error de la resolución:** otra prueba, o esa misma por otro motivo. Se para, se informa y se arregla antes de commitear.
+  - `entities.spec.ts` pasa **sin regrabar** las capturas. Si una cambia, se para y se informa.
+  - `git diff --exit-code src/levels/04-iaas/golden-traces.json`.
+  - Commit de merge (mensaje en «Commits»), con el rojo conocido en el cuerpo, para que quien haga `bisect` lo reconozca.
+- [ ] **5. Mutaciones del pin, sobre el commit de merge.** En el worktree, una por una: aplicar, correr la prueba nombrada, ver que falla, `git checkout -- <archivo>` y comprobar que `git status` queda limpio. Se definen contra `src/ui/floating-box/use-floating-box.ts` de `main`:
+  - **M1:** `pin` no deja `pinned: true`. Debe fallar `a pinned box survives a human-paced trip across another piece and scrolls under the mouse` al clic, y el Vitest `clicking a stamp pins its box with «Fijada» and «Cerrar», and hovering another piece leaves it`.
+  - **M2:** `preview` ya no ignora a un disparador nuevo cuando la caja está fijada (se quita su guardia de `pinned`). Debe fallar la prueba del viaje, después del recorrido.
+  - **M3:** el temporizador de la gracia ya no respeta `pinned` (se quita la condición). Debe fallar la prueba del viaje: el recorrido dura más que la gracia.
+  - Si una mutación no hace fallar su prueba, la reescritura con el reloj perdió lo que probaba: se arregla la prueba, no la mutación. El resultado va en `tests/e2e/CLAUDE.md`, con fecha.
+- [ ] **6. El oráculo, en rojo.** Antes de escribir D, agregar a `card-layout.spec.ts` la prueba del oráculo y las de D que no dependen del motivo (lista en «Tests»). Deben fallar; se anota cuántas escenas × ventanas fallan. Es la medida que dice cuántas quedan sin sitio.
+- [ ] **7. D, con TDD.** (a) `inspectionPlace` y su prueba. (b) El gancho y la pantalla. (c) El CSS. (d) El resto de las pruebas. Los detalles están en «El diseño de D».
+- [ ] **8. El oráculo, en verde.** `card-layout.spec.ts --repeat-each=10` pasa entera. Las pruebas de `main` que cambian a propósito se ajustan ahora (lista en «Tests»).
+- [ ] **9. Mutaciones de D.** Igual que el paso 5, ahora con el código de D:
+  - **D1:** `inspectionPlace` siempre devuelve `right`. Fallan el oráculo y `with a card open and room beside it, the box of another piece takes the side the card leaves free`.
+  - **D2:** la pantalla no suelta la caja fijada cuando no hay lugar. Falla `with a card open and no room beside it, a hover shows no box and a pinned box is released`.
+  - **D3:** se quita la espera de la caja del clic que abre una tarjeta. Falla el Vitest `the box of the click that opens a card is not drawn until the card is measured`.
+- [ ] **10. El motivo** (decididas 42 y 43). Sin sitio, la caja no se abre y ahora lo dice: una nota (`Message`, variante `note`) en el panel lateral, bajo la tarjeta de Lucía, y la ayuda gris sin la frase que promete la caja fija mientras haya una tarjeta abierta. Los detalles están en «Dónde se dice el motivo». Va en su propio commit (el tercero).
+- [ ] **11. Las capturas para O-5.** Después de D, con el árbol fusionado: capturas reales de los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01, y la medida de «El residuo del 04-01 a 1280×500». Se guardan en el scratchpad y no se commitean; el orquestador abre **O-5** con ellas. **La tarea no espera la respuesta.**
+  - El lugar derecho es el de siempre. Para ver el izquierdo sin tarjeta, en una captura de prueba fuera del repo se fuerza `data-place='left'` en el contenedor de la caja, o se usa una ventana que lo elija.
+- [ ] **12. Cierre y traer la rama.** `pnpm check` completo en el worktree; luego, en el árbol principal, comprobar que `feat/chapter-2` no se movió (ver el paso 0) y hacer `git merge --ff-only merge/28bis`; `git worktree remove` y `git branch -d merge/28bis`.
+
+**Cómo se resuelve cada conflicto.** Regla general: lo que la rama cambió se queda como está y se le suma lo que `main` agregó.
+
+| Archivo | Qué choca | Resolución |
+|---|---|---|
+| `docs/plans/2026-10-08-follow-the-packet-followups.md` | La rama trae J6 a J14; `main` trae una J12 distinta | Se conservan las filas de la rama. La J12 de `main` (el sello «?» del 01-08 a 390×844 queda fuera de la ventana) pasa a **J15**; se anota que `46c4074` y el plan de `main` la llaman J12. J7 pasa a «Resuelta por `46c4074`». J14 sigue pendiente hasta D |
+| `src/scene/entities/CLAUDE.md` | El párrafo de los paquetes | El texto de la rama (formas por protocolo, etiquetas con puertos) más la frase de `main`: el sello reparte las props de su disparador, que da la pantalla |
+| `src/scene/game-scene.tsx` | La firma de `GameScene` | `blockName = null` de la rama y `inspectTrigger` de `main` en lugar de `onInspect` |
+| `src/scene/overlay/CLAUDE.md` | La viñeta de la etiqueta | La de la rama (un botón, sin segunda entrada) más la de `main` (el disparador, `data-pinned` y su anillo). Sale la mención de `inspect-handlers` |
+| `src/scene/overlay/piece-label.tsx` | Comentario y firma | La firma de `main` (`trigger: TriggerProps`) y el comentario de la rama (un solo botón). Sin segundo botón |
+| `src/scene/overlay/piece-label.test.tsx` | La prueba de pasar el mouse | La de la rama (un solo botón), escrita con el `trigger` de `main`: pasar el mouse sobre `tu-laptop` llama una vez a `onPointerEnter` |
+| `src/scene/traffic/traffic.tsx` (2) | Importaciones; firma y `tagsOf` | Las importaciones de la rama (`spreadTags`, `translationDistance`, `PacketTags`, `Vec2`) más el tipo `InspectTrigger` de `main`; `tagsOf` y su comentario de la rama, con `inspectTrigger` en la firma de `Traffic` |
+| `src/ui/CLAUDE.md` | El primer párrafo y las viñetas | El primer párrafo de la rama (`map-cards/`, `side-cards/`), con `floating-box/` de `main`; las viñetas de `main` sobre la definición de un término y las cajas flotantes; la de la rama sobre `Message` |
+| `src/ui/incident/CLAUDE.md` | Viñetas de tarjetas y estado | La estructura de la rama (la viñeta de la tarjeta del caso ya vive en `side-cards/`); de `main` solo «Fijada» y «Cerrar» en la banda. Se queda «State lives in the session reducer … including the game clock» de la rama |
+| `src/ui/incident/incident-screen.test.tsx` | Importaciones | La unión: `OUTCOME_TEXT` y `type SendIncident` de la rama, `INSPECTION_TEXT` de `main`. Los dos `describe` de `main` sobre el pin entran tal cual; se arregla lo que mencione la segunda entrada de una etiqueta |
+| `src/ui/incident/incident-screen.tsx` (3) | Importaciones, consts, `activate` | Sin `inspect` en la importación de `@/game`; `piece` y `origins` de la rama; `activate` llama a `opensCard`. `opensCard` sin `piece.settings`. `useInspection(session, opensCard)` de `main`, y `inspectTrigger={trigger}` y `InspectionBox` con `pinned`, `heading` y `onClose` |
+| `src/ui/incident/use-inspection.ts` (2) | `main` lo reescribió sobre `useFloatingBox`; la rama le suma el tope de alto | **Se toma el archivo de `main` y se le conserva el tope de la rama.** La capa de layout que escribe `--inspection-room` (`inspectionRoom` con `MAP_MARKS`, tras `118d9b0`) se queda y cambia su dependencia: de `[inspecting]` a `[shown]`. Si se pierde, no falla nada de golpe: lo guardan las dieciocho pruebas `the inspection box of <name> lies inside the window and covers no label or stamp` de `incidents.spec.ts` (nueve piezas del 04-01 en dos ventanas) |
+| `tests/e2e/CLAUDE.md` | Viñetas de `card-layout.spec.ts` | Las de la rama más las dos de `main` sobre las cajas flotantes (adaptadas al reloj). «Known gap» se queda: lo cierra D |
+| `tests/e2e/card-layout.spec.ts` (6) | Importaciones, constantes, ayudantes, y los bloques de pruebas | Rutas de la rama (`@e2e/chapter-1/chapter-1-play`, `SETTINGS_TAB`), más `LOST_TO_OTHER_OFFICE`. Constantes de `main` (`PINNED`, `CLOSE`, tiempos del viaje…). Ayudantes de `main` con `travel` movido por `page.clock.runFor`. Las pruebas, reescritas (paso 3) |
+
+**El diseño de D.**
+
+*Quién mide la tarjeta.* El gancho `useInspection`, leyendo el DOM: el rectángulo de la tarjeta (`.map-card`) y el del mapa (`.incident__map`). El selector es una constante nueva, `MAP_CARD`, en `src/scene/html-layer.ts`, exportada por el barril de `@/scene` junto a `MAP_MARKS`. Por qué el DOM y no la escena:
+- La tarjeta vive dentro del `Html` de drei, que dibuja sus hijos en una raíz de React propia, después del commit del clic (`Html.js` hace `root.render` en un efecto de layout; leído, no medido). Medir solo al abrir la caja se pierde justo el caso que se arregla.
+- El DOM tiene lo que el cálculo no: el alto real, el tope `--card-room` y el `clamp` bajo la barra.
+- Subir el rectángulo a un estado de `IncidentScreen` lo repintaría en cada fotograma mientras el jugador arrastra el mapa, y cada repintado vuelve a dibujar la tarjeta.
+- La escena no importa la UI. Lo que `useCardSide`, `terminalSide` y su `avoid` deciden es el lado de la **tarjeta**, que D no mueve: no se tocan.
+
+*Cómo se avisa a la caja.* No hay aviso: la caja mira.
+- Un observador, `useMutationObserverTarget` de `@mantine/hooks` (9.7.1; firma leída en `node_modules`: `(callback, options, target)`), sobre el mapa, con `childList`, `subtree` y `attributes` filtrado a `style` y `class`. Se dispara cuando la tarjeta aparece, cambia de pestaña o de alto, cambia de lado (la clase `map-card--left`, `--right` o `--dock`) y cuando la cámara la mueve (drei escribe `style.transform`).
+- Solo actúa si hay una caja a la vista o una tarjeta pedida. Con una tarjeta abierta y una caja a la vista, cuesta tres lecturas de rectángulo por mutación.
+- Su callback corre antes de pintar. **Mide y escribe `data-place` y `--inspection-room` sobre el contenedor de la caja en el acto**, como hoy lo hace la capa de layout con el tope, y después avisa a React para soltar el pin y, más adelante, escribir el motivo. Así, entre dos fotogramas, el DOM no se queda con la caja sobre la tarjeta. Eso se puede comprobar en el DOM después de cada fotograma pasado a mano; el orden real de pintado no se puede observar desde la prueba.
+- **La caja del clic que abre una tarjeta espera.** `IncidentScreen` le dice al gancho que hay una tarjeta pedida (`card !== null || piece !== null`). Mientras esa tarjeta no esté en el DOM, el contenedor lleva `data-hold` y no se ve (`visibility: hidden`). Cuando el observador la mide, quita la marca y pone el lugar. Sin esto, la vista previa que ya estaba abierta antes del clic se vería encima de la tarjeta durante los fotogramas que tarda en dibujarse.
+- Plan B, solo si el oráculo con fotogramas lo exige: `useInterval` de la misma librería a 32 ms o menos. Se justifica por escrito en la guía. No hay un gancho de fotogramas en `@mantine/hooks` (lista de `esm/` revisada el 2026-10-12).
+
+*Cómo se elige el lugar.* Una función pura nueva, `inspectionPlace`, en `src/ui/incident/inspection-place.ts`.
+- Entra: el rectángulo del mapa; el ancho de la caja (22 rem, con el tope de `100%` menos dos márgenes) y su alto más grande (45 % del mapa); el margen (`--space-md`); el rectángulo de la tarjeta, o null; y el lugar que la caja tiene.
+- Sale: `right`, `left` o `null`.
+- Un lugar está libre si el rectángulo de la caja en él, **a su alto más grande**, queda a 8 px o más de la tarjeta. Una tarjeta sin tamaño no toca nada (es el caso de jsdom y el de una tarjeta que aún no se dibujó).
+- Entre dos lugares libres gana el que la caja ya tiene; si abre de cero, `right`. Un lugar libre no se cambia nunca por otro: la caja no salta mientras no toque.
+- **Solo la tarjeta decide el lugar.** Las etiquetas, los sellos y los nombres de piso siguen como hoy: topan el **alto** después de elegir el lugar, con los bordes del lugar elegido (`inspectionRoom`). El alto más grande no depende de lo que muestra la caja, así que el lugar no cambia de una pieza a otra mientras la tarjeta siga igual.
+- Cuando la tarjeta se cierra, la caja se queda donde está hasta que ella misma se cierre. La siguiente caja que se abra de cero vuelve a `right`.
+- **Debajo de 901 px D no hace nada.** La caja es entonces un bloque bajo el mapa y no puede tapar una tarjeta. El gancho lo sabe porque el contenedor no queda sobre el mapa (compara los rectángulos); no repite el 900 del CSS. El CSS del lugar izquierdo va dentro de `@media (min-width: 901px)`: una regla con atributo pesa más que la clase sola del bloque de 900 px y la ganaría.
+
+*Qué pasa sin sitio.* Ni el lugar derecho ni el izquierdo están libres:
+- Una vista previa (mouse o foco) no se dibuja. Su estado en `useFloatingBox` sigue (la gracia y la salida funcionan igual).
+- Una caja fijada se suelta con `release()`: el pin sale, la pieza deja de llevar su anillo y nunca queda «Fijada» a la vista sin caja. Si el foco estaba dentro de la caja, `release()` lo devuelve al disparador.
+- La caja no vuelve sola cuando la tarjeta se cierra: el jugador la fija otra vez.
+- A qué ventanas toca: una tarjeta acoplada abajo a la izquierda llega a 306 px del borde del mapa (6 de margen y 300 de ancho). Con la separación de 8 px, la caja cabe a la derecha desde un mapa de unos 682 px, es decir, una ventana de unos 1062 px (O-1 decía unos 1054, sin la separación). Entre 901 y ese ancho, con esa tarjeta abierta, no hay caja. La altura también cuenta: a 1280×360 casi todas las tarjetas del mapa tocan los dos lugares.
+
+*Una caja fijada.*
+- Fijada, con una tarjeta que aparece después (el clic que abre la tarjeta de su pieza o el de otra): si el lugar que tiene se toca, pasa al otro; si ninguno está libre, se suelta.
+- Una tarjeta que cambia de pestaña, de alto o de lado, o que la cámara mueve, vuelve a medirse con la misma regla. Una caja que el jugador fijó y que el arrastre del mapa deja tocando la tarjeta cambia de lado (decidida 44).
+
+*Dónde se dice el motivo* (decididas 42 y 43). El gancho entrega `noRoom` (hay una pieza con la caja pedida y el lugar es `null`); la pantalla lo escribe.
+- **Dónde.** En una nota del panel lateral (`Message`, variante `note`), bajo la tarjeta de Lucía. Ninguna tarjeta del mapa la cubre, por construcción. Aparece con el primer intento de caja sin sitio y se queda mientras la tarjeta siga abierta, para no parpadear. Empuja una vez las tarjetas de abajo (reloj, caso, explicación).
+- **Qué dice.** «La tarjeta ocupa el sitio de la caja de inspección. Ciérrala con «Listo» o haz más grande la ventana.» Es exacta: a 1280×360 falta alto y no ancho, por eso «más grande» y no «más ancha». El texto queda sujeto al revisor de textos: el siguiente revisor de bloque lo lee con los demás textos visibles y puede corregirlo.
+- **La ayuda gris.** El sitio de la ayuda gris de la esquina no sirve de anfitrión: a veces lo tapa una tarjeta (J2, J8 y la revisión «a card over the help of the inspection box» de `cardProblems` lo dicen). Además, `SCREEN_TEXT.inspectHelp` termina con «Haz clic, o pulsa Enter, para dejar la caja fija», que sin sitio es falso. Mientras haya una tarjeta abierta, la ayuda pierde esa frase.
+
+**El residuo del 04-01 a 1280×500.**
+- La caja de `servidor2`, en su mínimo de 120 px, tapa «Security Group servidor2». La causa es una marca, no una tarjeta.
+- **D, tal como se aprobó, no lo arregla y esta tarea no lo afirma.** Ninguna prueba nueva lo afirma, como hoy.
+- Lo que sí hace la tarea (paso 11): medir y capturar. Con el árbol fusionado y D hecha, a 1280×500 y a 1280×800, pasar el mouse por `servidor2` en el 04-01 y anotar, en `tests/e2e/CLAUDE.md` y en el backlog, la sala que `inspectionRoom` deja a la derecha y la que dejaría a la izquierda (el mismo cálculo con los bordes del lugar izquierdo). Con eso, capturas reales de la caja en cada lugar a 1280×500.
+- Con esas medidas y capturas el orquestador abre **O-5** (¿puede una etiqueta o un sello decidir también el lugar de la caja?). **La tarea no espera la respuesta** y no cambia el lugar de la caja por ello. Si O-5 pide cambiarlo o escribir la prueba del residuo, será otra tarea.
+
+**Archivos:**
+- Create: `src/ui/incident/inspection-place.ts` y `inspection-place.test.ts`. `src/ui/incident/` queda en 10 de 12 archivos planos.
+- Modify, el merge: los 14 de la tabla; `src/ui/incident/map-cards/piece-card.test.tsx`; `src/scene/catalog/catalog-cells.tsx` si `typecheck` lo pide; `tests/e2e/chapter-1/chapter-1-play.ts` si no trae `LOST_TO_OTHER_OFFICE`.
+- Modify, D: `src/ui/incident/use-inspection.ts`, `incident-screen.tsx` y `incident-screen.test.tsx` (el `GameScene` simulado dibuja la tarjeta dentro de un `.map-card`, como la escena real; sin eso la caja del clic que abre una tarjeta nunca dejaría de esperar en jsdom); `src/scene/html-layer.ts` y `src/scene/index.ts` (`MAP_CARD`); `src/styles.css` (`[data-place='left']` dentro de `@media (min-width: 901px)` y `[data-hold]`); `src/copy/screens/incident-ui.ts` (el motivo, decidida 43, y la ayuda gris sin la frase de la caja fija); `tests/e2e/card-layout.spec.ts`; `tests/e2e/card-boxes.ts` (`cardProblems` suma la caja de inspección a los pares de cosas que no deben solaparse).
+- Sin archivo nuevo en `src/scene/` (11 de 12) ni en `tests/e2e/` (11 de 12): el oráculo va dentro de `card-layout.spec.ts`, donde viven `MAP_SCENES` y `playWithTheClockPaused`.
+- Modify, guías y documentos: ver «Guías».
+
+**Tests.** Los nombres están en inglés y son exactos.
+
+*Vitest, `inspection-place.test.ts`:*
+- `takes the right place when no card is open`.
+- `takes the left place when the card touches the right one`.
+- `has no place when the card touches both`.
+- `a card that ends above a place leaves it free`.
+- `a card closer than the gap to a place touches it`.
+- `a card with no size touches no place`.
+- `keeps the place it has while the card does not touch it`.
+- `measures the place at the tallest the box may be, whatever it shows`.
+
+*Vitest, `incident-screen.test.tsx`, un `describe` nuevo, `the inspection box steps aside from an open card` (los rectángulos se simulan sobre `getBoundingClientRect`):*
+- `a box with no card open takes the right place`.
+- `a pinned box moves to the other place when the card takes its own`.
+- `a pinned box is released, and its piece wears no pin, when the card takes both places`.
+- `a preview is not drawn when the card takes both places`.
+- `the box of the click that opens a card is not drawn until the card is measured`.
+- `the place does not change from one piece to the next while the card stays`.
+- `the reason is written when a piece is inspected and the card takes both places` (la nota del panel lateral, decididas 42 y 43; y la ayuda gris sin la frase de la caja fija).
+
+*Playwright, `card-layout.spec.ts`, nuevas:*
+- **El oráculo:** `a card beside a piece keeps its foot in reach right after the click, in a low or narrow window`. Es el cuerpo de la prueba que ya existe, `a card beside a piece stays inside the map, with its foot in view, in a low or narrow window`, con `playWithTheClockPaused(page, scene, stepFrame)` en lugar de `playUntilItRests`, sobre las 12 escenas de `MAP_SCENES` y las 4 ventanas de `LOW_MAP_WINDOWS`. Es lo que hace `oracle/make-oracle.py`, sobre el archivo de hoy. **La de hoy se queda con su nombre y su aserción.**
+- `the inspection box covers no card of the map, right after the click and at rest, in a low or narrow window`. Mide el solapamiento de la caja con la tarjeta **después de cada fotograma pasado a mano**, desde el clic hasta que la escena queda quieta (un `eachFrame` propio que se le pasa a `standStill`, que además llama a `stepFrame`). Comprueba el DOM tras cada fotograma, no el orden real de pintado.
+- `with a card open and room beside it, the box of another piece takes the side the card leaves free` (01-08 a 1440×900, terminal abierta, sin pin).
+- `with a card open and no room beside it, a hover shows no box and a pinned box is released` (01-08 a 1000×700, terminal abierta).
+
+*Playwright, existentes que cambian a propósito (todas de `card-layout.spec.ts`; las cinco primeras las trae `main`, ya reescritas en el paso 3, y D les cambia el escenario):*
+- `a pinned box survives a human-paced trip across another piece and scrolls under the mouse`, `with the keyboard, Enter pins the box and PageDown scrolls it; Escape gives the focus back` y `with touch, a tap pins the box and a tap outside releases it`: el ayudante `sendTheLostPing` cierra la terminal («Listo») antes de devolver el sello. Prueban el pin, no D, y sin tarjeta la caja toma el lugar de siempre (a la derecha) y el viaje conserva la geometría que `main` midió (cruza `impresora` a 1440×900). Con la terminal abierta a 1000×700 no habría caja.
+- `an inspection box that does not fit scrolls under the mouse to its last line, and its band stays in view` (01-05): cierra la terminal antes de pasar el mouse por el sello, por lo mismo.
+- `a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box`: gana la aserción de que la caja fijada no toca la tarjeta (1440×900). Si ahí no hubiera sitio, se elige una ventana con sitio; D no se debilita.
+- `tests/e2e/card-boxes.ts › cardProblems` suma la caja: la usa `no card is clipped and cards never overlap, at 390 px and at desktop width`, que conserva su nombre.
+- Vitest: el `GameScene` simulado de `incident-screen.test.tsx` (no es una prueba, es su ayudante).
+
+*Lo que se corre:*
+- En cada paso: `pnpm check:fast` y la spec que el paso toca.
+- `card-layout.spec.ts` (con `--repeat-each=10` al final), `incidents.spec.ts`, `tests/e2e/chapter-1/` y `tests/e2e/chapter-2/`, `entities.spec.ts`.
+- Nunca dos suites en la misma carpeta.
+
+**Cierre.**
+- `pnpm check` completo en verde; su hash es la nueva base de la regla C.
+- `git diff --exit-code src/levels/04-iaas/golden-traces.json`.
+- `entities.spec.ts` sin regrabar capturas.
+- El chequeo de links del `CLAUDE.md` del repo sobre el Markdown cambiado: `LINKS OK`.
+- El oráculo: rojo antes de D, verde después, con las cifras en el cuerpo del commit.
+- Las seis mutaciones (M1 a M3 y D1 a D3) anotadas en `tests/e2e/CLAUDE.md`, con fecha.
+- La medida del residuo (paso 11) anotada en `tests/e2e/CLAUDE.md` y en el backlog; las capturas, en el scratchpad.
+- Backlog: J7 resuelta por `46c4074`; J14 y, con casi toda seguridad, J9 resueltas por D (J9 se vuelve a medir a 1000×700 con la terminal abierta: no hay caja y la terminal queda libre); J2 y J8 siguen pendientes (la decidida 42 deja la ayuda gris donde está); la J15 nueva.
+
+**Guías `CLAUDE.md` y documentos que se actualizan.**
+- `src/ui/incident/CLAUDE.md`: la viñeta larga de la caja (hoy «it is anchored at the bottom right of the map…»): dos lugares, la tarjeta decide, las marcas topan el alto, `data-hold`, el observador, qué pasa sin sitio.
+- `src/ui/CLAUDE.md` y `src/ui/floating-box/CLAUDE.md`: que el pin se suelta también cuando no hay sitio.
+- `src/scene/CLAUDE.md` y `src/scene/overlay/CLAUDE.md`: `MAP_CARD` junto a `MAP_MARKS`; la tarjeta no sabe de la caja.
+- `tests/e2e/CLAUDE.md`: el oráculo y su razón; «Known gap» pasa a «cerrado por la Tarea 28 bis»; el reloj y el viaje; las mutaciones con fecha; el residuo medido.
+- `DESIGN.md`: una frase en la viñeta «A card on the map»: una caja de inspección nunca tapa una tarjeta abierta.
+- `src/ui/incident/side-cards/CLAUDE.md`: la nota del motivo bajo la tarjeta de Lucía (decidida 42).
+
+**Commits** (en inglés, Conventional Commits, con la línea `Claude-Session:` como segundo `-m`):
+1. El merge, con el mensaje que git propone, como en `de69ac7`: `Merge branch 'main' into feat/chapter-2`. Conventional Commits no cubre los merges. El cuerpo lista los conflictos, el rojo conocido y las pruebas editadas.
+2. `feat(ui): move the inspection box away from the open card`. Cuerpo: cifras del oráculo, pruebas que cambian a propósito, mutaciones, backlog.
+3. `feat(ui): write why the inspection box has no room next to an open card` (decididas 42 y 43). Lleva también las notas del paso 11 en `tests/e2e/CLAUDE.md` y en el backlog.
+
+**Lo que no se pudo verificar.**
+- Nada se corrió: ni `pnpm`, ni Vitest, ni Playwright, ni el merge real. Todo sale de leer código, CSS, `node_modules` y registros. La excepción es la base B0 (paso 1), que sí se corrió.
+- **Cuánto tarda en existir el DOM de la tarjeta después del clic.** Se leyó que drei dibuja sus hijos en una raíz propia; no se midió. Es lo único que podría cambiar el diseño. Lo contesta a medias la prueba que mide después de cada fotograma pasado a mano (ve el DOM entre fotogramas, no la pintura). Si esa prueba ve un solo fotograma con la caja sobre la tarjeta, entra el plan B (`useInterval`) o se vuelve a pensar la espera.
+- Cuántas escenas × ventanas de `MAP_SCENES` quedan sin sitio: no se calculó. Depende de dónde caiga cada tarjeta.
+- Que las pruebas del pin pasen a 1000×700 con la terminal cerrada: se espera, no se corrió.
+- La sala izquierda a 1280×500 en el 04-01: la mide el paso 11.
+- Que los 14 conflictos sean todos: sale de `merge-tree` (el mismo algoritmo), no del merge real. Los arreglos que git no marca salen de `grep`; `typecheck` puede encontrar más.
+- Qué línea mutó cada M1 a M3 del merge viejo.
+- Que el observador corra antes de pintar en este juego: es el comportamiento de `MutationObserver`; no se probó aquí.
+- El tiempo de `pnpm install` en un worktree nuevo.
+
+**Review Focus:** 2, 14, 16, 25 y 26.
+
+---
+
 ### Tarea 28 ter: el aviso de un router sin ruta, en palabras llanas en el capítulo 1 (O-3 = A1)
 
 **Presenta:** ningún término. **Depende de:** O-3 = A1 (2026-10-12). No bloquea nada.
@@ -2387,19 +2727,278 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - El aviso de host inalcanzable no cambia: las pruebas que lo fijan corren sin editarse.
 - Cierre: `pnpm check:fast`, más `pnpm e2e tests/e2e/chapter-1/` si toca lo que el capítulo 1 dibuja.
 
-**Review Focus:** 2 y 18.
+**Review Focus:** 2, 18 y 27.
 
 **Commit:** `fix(copy): say in plain words that a router has no route until net-unreachable is known`.
 
 ---
 
+### Tarea 28 quater: la consulta DNS de un envío por nombre se dibuja (O-2 = A)
+
+**Presenta:** ningún término. Los de la ficha 02-10 bastan (`dns-query`, `udp`, `resolver`, `port`, `source-port`) y `knownTerms` incluye los del incidente en curso, así que valen desde el primer envío del 02-10. **Depende de:** O-2 = A (2026-10-12). Va después de la Tarea 28 ter y antes de la 28 quinquies y de las Tareas 29 a 33, que usan lo que deja. Hoy ninguna partida real manda por nombre: no cambia nada de lo que el estudiante ya jugó. Una decisión abierta la toca en un solo paso: O-6, la marca de la fila de una consulta en la tabla de traducciones (paso de la vista). Las decisiones técnicas de esta tarea (una sola consulta, el paquete quieto en su puerta, una consulta por envío, su sello y lo que se omite) están en «Decididas sin el estudiante», 45 a 49.
+
+**Propósito:** que un `ping` o un `nc` por nombre muestre en el mapa lo que hace un equipo de verdad antes de mandar el paquete: preguntarle a su resolver. La consulta es un datagrama UDP del equipo al resolver y su respuesta. Gasta el primer puerto de origen del envío, deja su fila en la tabla de traducciones y sale antes que el paquete. Si el nombre sale del archivo hosts, o el equipo no tiene resolver, no hay consulta. El capítulo 4 no cambia.
+
+**Hallazgos de la lectura (2026-10-12; no se corrió nada).**
+1. **El puerto cambia de dueño.** Hoy `withSourcePort` (`sequence.ts`) le da su puerto al paquete antes de `run`. Con la consulta primero, el `nc` tomaría el 51514 y la consulta el 51515: al revés de lo decidido (consulta 51514, `nc` 51515). Hay dos salidas. (a) Pasar el contador a `Carried` y dar el puerto del paquete en una etapa nueva después de `dns`. (b) Que la secuencia adivine si habrá consulta, lo que copia la decisión de la etapa `dns` (hosts, `dnsServer`, `lookup`) en otro lugar y puede divergir. Se elige (a).
+2. **Un nombre que no se resuelve no gasta puerto propio.** La guía de `src/engine/simulation/` dice que sí gasta (el contador avanza una vez por envío). Un `ncat` real sale en `getaddrinfo`, antes de abrir un socket (`ncat/ncat_main.c` línea 883, nmap 7.93). Con la etapa `port` después de `dns` pasa solo. Cambia un número que el jugador ve (decidida 46).
+3. **«Hoy no mueve nada» no es cierto en la escena.** `pathFor` (`src/scene/layout.ts`) termina en la calle para cualquier paso `dns` descartado: la rama `s.stage === 'route' || s.stage === 'dns'` con `drop` devuelve `[puerta, firewall, calle]`. Hoy un `nc` a un nombre inexistente se dibuja saliendo del edificio (leído en el código, no corrido; decidida 46).
+4. **El 02-13 no tiene un `ping` por DNS** (ver la nota de la Tarea 32 y O-7), y **el 02-12 no cambia**: su ficha manda solo `dig` y las fichas de espera, y un `dig` es la consulta misma.
+5. **El dibujo aprobado de O-2 era estático.** En el prototipo de A el hexágono, pasado `router-oficina`, lleva la etiqueta «UDP 51514 → 53»; la regla V13 (Tarea 21, hecha) dice «UDP 40001 → 53». La implementación sigue V13. Hay que avisar al estudiante de que el dibujo era estático.
+6. **Los incidentes 02-01 a 02-09 no mandan por nombre.** Ninguno usa `HOSTNAME`, `DOMAIN` ni `setDnsServer`, y el capítulo 1 no tiene `dnsServer`. Por eso A no mueve ningún número que el estudiante ya jugó: los que se mueven son los de pruebas unitarias.
+7. **Ninguna e2e actual manda por nombre.** `tests/e2e/chapter-2/chapter-2.spec.ts`, `chapter-2-play.ts` y `card-layout.spec.ts` no tienen `www` ni `dig` (solo `entities.spec.ts` imprime una salida de `dig` de un especimen del catálogo). La primera partida real con consulta es la del 02-10; hasta la Tarea 29, la escena de la consulta se prueba con pruebas de unidad.
+8. **Nada del catálogo ni de los términos cambia.** El hexágono de UDP y su etiqueta ya existen (Tarea 21). `dns-query`, `udp`, `resolver`, `port`, `source-port` y `translation-table` ya están en el 02-10 o antes. No nace ningún término (la escalera fija 53) ni ninguna entidad: las capturas de `#/entidades` no se regraban.
+9. **IPv6 no se puede nombrar.** Review Focus 4 lista IPv6 entre lo que ningún texto del capítulo 2 nombra. Eso descarta decir en pantalla que hay una segunda consulta (decidida 49).
+10. **`the new trace fields are absent from every trace of a VPC` ya cubre el campo nuevo.** Usa una lista de campos permitidos (`vpcFields`): cualquier campo que no esté ahí falla. No hay que editarla.
+11. **Carpetas.** Al tope (12 de 12, sin archivos planos nuevos): `src/game/`, `src/game/view/`, `src/game/view/cards/`, `src/ui/`. Con sitio: `src/engine/simulation/` (11), `src/engine/simulation/stages/` (9), `src/engine/dns/` (8), `src/scene/` (11), `src/scene/traffic/` (8), `src/copy/` (11), `src/ui/incident/map-cards/` (11), `tests/e2e/` (11). La tarea crea dos archivos: uno en `stages/` y uno en `src/engine/dns/`.
+
+**Archivos** (por commit; los topes de carpeta están en «Hallazgos», punto 11):
+
+Commit 1, motor:
+- Create: `src/engine/simulation/stages/port.ts` (la etapa que da su puerto de origen al paquete que no trae uno; `stages/` pasa de 9 a 10), `src/engine/dns/question.test.ts` (`src/engine/dns/` pasa de 8 a 9).
+- Modify: `src/engine/simulation/trace.ts` (`Trace.question` y su tipo `Question`), `context.ts` (`SimContext.question` y el contador de puertos), `simulate.ts` (`Carried.nextSourcePort`, `sendQuestion` en lugar de `sendQuery`, la etapa `port` en `PIPELINE` después de `dns`, `finish` suma el campo), `stages/dns.ts` (`createDnsStage` recibe `sendQuestion`; `askResolver` guarda la consulta), `sequence.ts` (`SequenceState` pasa a ser `Carried`; sale `withSourcePort`), `src/engine/index.ts` (exporta `Question`), `src/engine/dns/resolve.ts` (solo el comentario de `Resolution.query`), `sequence.test.ts`, `src/engine/dns/resolve.test.ts`, `src/game/chapter-1.test.ts` (una prueba nueva).
+- Guías: `src/engine/CLAUDE.md`, `src/engine/dns/CLAUDE.md`, `src/engine/simulation/CLAUDE.md`, `src/engine/simulation/stages/CLAUDE.md`, `src/engine/nat/CLAUDE.md`.
+
+Commit 2, vista y textos:
+- Modify: `src/game/flow-runs.ts` (`SentPacket.question`, `drawnSends`, `hideStopsOutOfSight`), `src/game/index.ts`, `src/game/view/inspection.ts` (`inspect` encuentra la consulta por su id), `src/game/view/packet-fields.ts` (`dnsField`, `translationField`, y el comentario de `dnsField`, que dice «That question is not drawn and leaves no row in the translation table»), `src/game/view/cards/table-card.ts` (filas de las consultas), `src/copy/screens/incident-ui.ts` (`INSPECTION_TEXT.dnsQuestion` y la marca de la fila), sus pruebas (`flow-runs.test.ts`, `src/game/view/inspection.test.ts`, `src/game/view/cards/table-card.test.ts`) y las guías `src/game/CLAUDE.md` (la viñeta de la secuencia: «A traceroute stays out of the sequence … asks no resolver» sigue siendo cierta; suma la consulta de un envío por nombre), `src/game/view/CLAUDE.md` (la viñeta del campo «DNS»: «That question is not drawn and leaves no row in the translation table (decided 4)» deja de ser cierta) y `src/copy/CLAUDE.md`.
+- Ningún archivo plano nuevo en `src/game/`, `src/game/view/` ni `src/game/view/cards/`: están en 12 de 12.
+
+Commit 3, escena:
+- Modify: `src/scene/layout.ts` y `layout.test.ts` (`pathFor`), `src/scene/traffic/traffic.tsx` (`MapSent.after`, la espera), `use-packet-runs.ts` y su prueba (`useSendOnce` con espera), `schedule.ts` y su prueba (`travelSeconds`), `flow-look.test.ts`, `src/ui/incident/incident-screen.tsx` (pasa `drawnSends` al mapa), y las guías `src/scene/traffic/CLAUDE.md`, `src/scene/CLAUDE.md`, `src/ui/incident/CLAUDE.md`.
+
+Commit 4, documentos:
+- Modify: `../../docs/specs/2026-10-11-follow-the-packet-chapter-2-design.md`, en «Simplificaciones declaradas»: la fila «El puerto de origen es 51514 y sube de uno en uno por cada conexión nueva del mismo dispositivo» pasa a decir «por cada conexión o consulta nueva», y dos filas nuevas. Una: «La consulta DNS de un `ping` o un `nc` por nombre es una sola, la del registro A» (porqué: un equipo real manda también la AAAA por el mismo puerto, y `ping` una consulta inversa; el puerto y la fila son los mismos; IPv6 queda fuera del capítulo). Otra: «El equipo del juego no guarda la respuesta: pregunta en cada envío y guarda el resolver» (porqué: algunos sistemas tienen una caché local, `nscd` o `systemd-resolved`, que el juego no modela). En «Base de investigación», las fuentes de «Fuentes y rigor», abajo, con su fecha. `tests/e2e/chapter-2/CLAUDE.md` (la consulta cuenta como un sello más en el resolver).
+
+**Interfaces:**
+
+*Traza.*
+- `Trace.question`, opcional: `{ packet, trace }`. `packet` es el datagrama UDP al puerto 53 del resolver tal como salió, con su `sourcePort`. `trace` es su traza completa (encabezado con puertos, `exchange` de consulta y respuesta, `translation` con su fila, saltos, aviso). Es lo que hoy se tira: `Resolution.query` lo calcula y `askResolver` lo descarta.
+- `question.trace.dns` lleva lo mismo que `Trace.dns` del paquete que preguntó, con `viaDig` en `true`. Es lo que lleva un `dig`: la caja de la consulta reutiliza la función que imprime la caja de un `dig`, y no nace un segundo estándar. En la traza del paquete que preguntó `viaDig` sigue en `false`.
+- Existe solo cuando la etapa `dns` mandó la consulta: un `ping` o un `nc` (`lookup: system`) de un dispositivo de oficina, con `dnsServer`, a un nombre que el archivo hosts no contesta. No existe: con una IP de destino, cuando contesta el archivo hosts, cuando el equipo no tiene `dnsServer` (sigue `dns-unresolved`), en un `dig` (él es la consulta), en una VPC, en cualquier traza del capítulo 1 (nadie tiene resolver) ni dentro de otra consulta.
+- Qué hay en cada caso:
+
+| Qué pasó con la consulta | `question.trace` | Paquete que preguntó |
+|---|---|---|
+| Contestó el resolver (también `NXDOMAIN`, `SERVFAIL` o un nombre sin dirección) | `replied`, con su fila | sigue si hay dirección; si no, `unresolved` con `dns-nxdomain`, `dns-servfail` o `dns-no-address` |
+| Un firewall la descartó | `timeout`, sin respuesta | `unresolved` con `dns-resolver-silent` |
+| Un router o el emisor avisó | `unreachable` o `ttl-exceeded`, con su aviso | `unresolved` con `dns-resolver-silent` |
+| Un equipo sin servicio en el 53 la rechazó | `unreachable`, con Port Unreachable de ese equipo | `unresolved` con `dns-no-resolver` |
+| Un equipo con servicio en el 53 que no es resolver contestó | `replied`, con `dns.status` `NO-RESOLVER` | `unresolved` con `dns-no-resolver` |
+
+*Puertos y filas (decidida 6, reformulada).*
+- `Carried` gana `nextSourcePort` (por emisor). La secuencia ya no asigna puertos: solo pasa el estado de un envío al siguiente.
+- La etapa `port` va después de `dns`. Da su puerto al paquete TCP o UDP que no trae uno. Un envío que termina antes (`address`, o `dns` sin resolver) no toma puerto. Un puerto dado a mano gana y no mueve el contador, como hoy.
+- La consulta toma el puerto del mismo contador, antes que el paquete: consulta 51514, `nc` 51515. El 51514 es del juego, como siempre.
+- `sendQuestion(ctx, packet)` corre la consulta con la tabla del NAT, el contador y el reloj (`ctx.now`) del envío que pregunta, y le devuelve la tabla y el contador. La consulta deja su fila antes que el paquete: consulta 51514 → 40001, `nc` 51515 → 40002. Un `ping` deja la fila de su consulta y ninguna propia.
+- Toda respuesta del resolver sigue llenando su caché, también la de la consulta: no cambia nada de `cacheAfter`.
+- Un `simulate` suelto es la secuencia de un envío: el paquete que no pregunta sale del 51514 como hoy, y el que pregunta deja el 51514 a su consulta y sale del 51515. No cambia ninguna traza del capítulo 4 (no tiene resolver) ni del 1.
+- La consulta no escribe ningún paso, motivo, salto ni tramo en la traza del paquete que preguntó. La traza anidada es independiente: su `tcpdump` es el suyo y no se mezcla con el del paquete (la guía lo dejaba abierto; hoy nada lee `Trace.tcpdump` en la interfaz).
+- El traceroute no cambia: corre `simulate` por sonda y no entra en la secuencia. `sendSequence` no dibuja la consulta de un traceroute (ninguna ficha lo manda por nombre).
+
+*Vista.*
+- `SentPacket.question`, opcional: la corrida de la consulta, construida con el mismo `runOf` que cualquier paquete. Tiene su id (`<id del envío>-question`), su paquete, su traza, su etiqueta con puertos (la privada antes del router y la pública después, de `Trace.translation`), su aviso, su sello y su caja.
+- `drawnSends(sent)` devuelve la lista que dibuja el mapa: por cada envío, su consulta primero y luego el paquete, con `after` = el id de la consulta. Solo el último envío de cada combinación de fichas está en `Session.sent`, así que solo su consulta queda en el mapa; la fila de todos queda en la tabla.
+- `hideStopsOutOfSight` recorre también la consulta: un firewall que el jugador no conoce la frena sin bloquearla, como a cualquier paquete.
+- `inspect(session, pieceId)` encuentra la consulta por su id. Su caja es la de un datagrama UDP al 53: definición del paquete, campo «DNS» como el de un `dig` (los registros, si salió de la caché, el TTL), encabezado con puertos, traducción con su fila, «Consulta y respuesta», resultado y causa.
+- El campo «DNS» del paquete que preguntó conserva sus dos frases (el encabezado «Antes de mandar el paquete, … averigua la IP de …» y la frase del motivo). Todas siguen siendo ciertas. Suma una tercera línea que dice de qué puerto salió la consulta y que se ve en el mapa; y, si el paquete tiene puerto propio, por qué no es el primero. Cada parte espera a su término (`port`, `source-port`). Si la consulta falló, la causa sigue en la línea donde el paquete se detuvo.
+- La tabla de traducciones lista las filas de las consultas junto con las de los paquetes, en orden de tiempo: primero la de la consulta, después la del paquete que la pidió. La fila «en uso» es la que tocó el último envío al final: la del paquete si la tiene, si no la de su consulta.
+- Una fila hecha por un datagrama al puerto 53 (de una consulta o de un `dig`) lleva la marca «consulta DNS» en la columna del protocolo cuando `dns-query` ya se conoce, igual que una fila fija lleva «fija». Es una palabra y no solo un color. **Esta marca espera O-6** (abierta; recomendación A): sin la respuesta del estudiante no se hace.
+
+*Escena.*
+- `MapSent.after`, opcional: el id del paquete que este espera. El paquete que preguntó sale cuando la respuesta de la consulta vuelve a su emisor (`travelSeconds` de la consulta, sin su fin). `useSendOnce(send)` gana una espera en segundos desde que el número del envío se ve por primera vez. Sin animaciones (el dibujo quieto) se dibujan las dos trayectorias y las dos etiquetas a la vez, sin espera.
+- La consulta es un paquete UDP más: hexágono lleno al ir, anillo al volver (V12 = B), etiqueta «UDP 51514 → 53» que pasa a «UDP 40001 → 53» al cruzar el router que traduce (V13). Termina como cualquier paquete: vuelve con ✓, la frena un firewall conocido con ✕, se pierde con ?, o vuelve un aviso con !.
+- Deja su sello propio en su lugar (decidida 48). Pasa por `spreadStamps` y `spreadTags`; en el resolver suma un sello por cada envío por nombre. Cuenta entre los sellos de un lugar que O-4 = G reparte: los que caben se ven y el resto va al sello «+N». O-4 midió el pasillo del 02-03; el del resolver no se midió.
+- `pathFor`: el paquete cuya búsqueda del nombre falló (`dns-nxdomain`, `dns-servfail`, `dns-no-address`, `dns-no-resolver`, `dns-resolver-silent`) se queda quieto en la puerta de su dispositivo, como uno que nunca salió (`STAYS_IN_DEVICE`). `dns-unresolved` no cambia: es el del capítulo 1. Su sello es el de siempre para un paquete que no llegó a nadie: `?` (decidida 46).
+- Un paquete cuyo resolver el incidente no dibuja no queda bien: cada incidente que manda por nombre dibuja `servidor-dns` en su lista `shown`. Una prueba por incidente lo guarda (Tareas 29, 30 y 33).
+
+*Lo que no cambia.* `Trace.dns` de un `dig`. Las salidas de `nc`, `dig` y `ping` de la terminal (no leen la consulta). El campo «DNS» cuando contesta el archivo hosts («No preguntó a nadie»): ahora el mapa también lo muestra. La caché (decidida 34). Las tareas, las estrellas y los `expect` de los incidentes (leen la traza del paquete que preguntó, que no cambia).
+
+**Pasos:**
+
+Commit 1, motor:
+- [ ] Escribir primero las pruebas nuevas de `question.test.ts` y reescribir las dos existentes de abajo: con el código de hoy fallan.
+- [ ] Pasar el contador de puertos a `Carried` y sacar `withSourcePort` de `sequence.ts`. La secuencia solo pasa el estado.
+- [ ] Crear la etapa `port` y registrarla en `PIPELINE` después de `dns`.
+- [ ] Reemplazar `sendQuery` por `sendQuestion(ctx, packet)`: corre la consulta con la tabla, el contador y el reloj del envío, y los devuelve. `createDnsStage` lo recibe como hoy recibía `sendQuery` (la etapa no importa el `simulate` que la contiene).
+- [ ] En `askResolver`, mandar la consulta con una función que llame a `sendQuestion` y guarde `{ packet, trace }` en `ctx.question`. `resolve` sigue sin saber del pipeline.
+- [ ] Armar `question.trace.dns` desde `Resolution.dns` con `viaDig: true`.
+- [ ] `finish` suma `question` solo si existe.
+- [ ] Correr todo el motor y el capítulo 1 sin editar más que lo listado. Si otra prueba falla por el campo nuevo, se detiene y se pregunta: el campo está aprobado (O-2 = A), pero una falla en una traza del capítulo 1 o del 4 sería un error.
+- [ ] Actualizar los comentarios y las guías que dicen la regla vieja. Se buscaron con `grep` el 2026-10-12 (`sendQuery`, `NOTHING_CARRIED`, `empty state`, `uses no source port`, `leaves no row`, `never leaves its sender`, `uses up a port`, `always gets 40001`):
+  - `src/engine/simulation/simulate.ts`: el comentario de `sendQuery` («the question is not one of the player's sends, so it neither uses up a source port nor leaves a row»), el de `simulate` («a resolver answers from no cache but its own initial one») y el de `Carried`.
+  - `src/engine/simulation/trace.ts`: el comentario de `DnsTrace.viaDig` («says the lookup was a `dig`»): en `Trace.question.trace.dns` también es verdadero.
+  - `src/engine/dns/CLAUDE.md`: el final de la viñeta «The cache» («that question still uses no source port of the sender and leaves no row in the table»), «The tcpdump lines and the legs of the question are not merged…» (pasa a decir que no se mezclan porque la consulta tiene su propia traza), «The question of a lookup is not one of the player's sends» (se reescribe entera) y «Sin verificar» (suma lo de «Fuentes y rigor», abajo: AAAA, PTR, `search`, reintentos, caché del equipo, orden de `nsswitch`, con sus fuentes).
+  - `src/engine/simulation/CLAUDE.md`: la viñeta de la etapa `dns` (la parte de `sendQuery`, `NOTHING_CARRIED` y «uses no source port of the sender's counter»), la de `simulateSequence` (`Carried` es `{ nat, dnsCache }` y «A TCP or UDP send that never leaves its sender … still uses up a port»: ahora un envío que termina antes de la etapa `port` no toma puerto) y «The source port in a sequence (`withSourcePort`)».
+  - `src/engine/simulation/stages/CLAUDE.md`: la viñeta de `dns` («`simulate.ts` hands it `sendQuery`, which runs a packet from an empty state»), el orden de las etapas (suma `port`) y una viñeta para `port`.
+  - `src/engine/nat/CLAUDE.md`: «A loose `simulate(net, packet)` … the same packet always gets 40001».
+  - `src/engine/CLAUDE.md`: si cuenta la lista de campos de la traza, suma `question`.
+
+Commit 2, vista y textos:
+- [ ] Pruebas primero (lista abajo).
+- [ ] `SentPacket.question` y `drawnSends`; `hideStopsOutOfSight` y `inspect` la encuentran.
+- [ ] `dnsField` elige el constructor de `dig` por `dns.viaDig`, así que la caja de la consulta lo usa sin una bandera aparte. Se actualiza su comentario («That question is not drawn and leaves no row…» deja de ser cierto).
+- [ ] La tercera línea del campo «DNS» (textos de abajo).
+- [ ] La tabla: filas de las consultas, orden y fila «en uso».
+- [ ] La marca de la fila (textos de abajo). **Espera la respuesta a O-6.** Si O-6 sigue abierta cuando llega este paso, se hace todo lo demás del commit 2 y la marca se agrega en un commit propio cuando el estudiante conteste.
+
+Commit 3, escena:
+- [ ] Pruebas primero.
+- [ ] `pathFor`: los cinco motivos de arriba salen a `STAYS_IN_DEVICE`.
+- [ ] `useSendOnce` con espera y `travelSeconds`.
+- [ ] `Traffic` lee `after` y lo traduce a la espera; `incident-screen.tsx` pasa `drawnSends(session.sent)`.
+- [ ] Sin animaciones, comprobar que la consulta y el paquete se dibujan a la vez y que ninguna etiqueta pisa a otra con `spreadTags`.
+
+Commit 4, documentos:
+- [ ] La fila del puerto del spec, sus dos filas nuevas, las fuentes y la nota de la guía de e2e.
+
+**Textos nuevos** (borrador; la redacción final la hace quien ejecuta, en lenguaje llano y con los términos que el jugador conoce):
+- Tercera línea del campo «DNS» de un `ping` o un `nc` por nombre, con `port` conocido: «La consulta salió del {{port|puerto}} 51514 y se ve en el mapa, antes de este {{packet|paquete}}.» Sin `port`: «La consulta se ve en el mapa, antes de este {{packet|paquete}}.»
+- Con `source-port` conocido y un paquete TCP o UDP con puerto propio, una cuarta línea: «Este paquete salió del puerto 51515: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta fue el primero.»
+- Marca de la fila (solo si O-6 = A): «UDP · consulta DNS», con `{{dns-query|consulta DNS}}` si el término se conoce y «UDP» si no.
+- Ningún texto dice que el equipo manda «una sola» consulta, «solo una pregunta» o «la única». Ningún texto nombra un sistema operativo ni IPv6.
+
+**Tests:**
+
+Nuevas, `src/engine/dns/question.test.ts`:
+- `a ping by name carries the question that went to its resolver: a udp datagram to port 53 with its own source port`.
+- `the question carries the answer of the resolver as the trace of a dig does, and the packet that asked keeps its own dns`.
+- `a tcp packet by name leaves from the port after the one of its question`.
+- `a source port given by hand wins for the packet and the question still takes the counter`.
+- `in a sequence each send by name asks again and its question takes a new source port`.
+- `the question leaves a row of the translation table before the packet that asked, and the packet takes the next public port`.
+- `a ping by name leaves the row of its question and none of its own`.
+- `a name answered by the hosts file sends no question, takes no port for one and leaves no row`.
+- `a device with no resolver sends no question`.
+- `a dig is the question itself and carries no question`.
+- `a packet addressed by IP carries no question`.
+- `a question carries no question of its own`.
+- `a question that a firewall drops ends the packet as unresolved with dns-resolver-silent and the question has no reply`.
+- `a name that does not exist leaves the question replied, the packet unresolved and no port taken by the packet`.
+- `a resolver with no service on port 53 answers the question with Port Unreachable and the packet is unresolved with dns-no-resolver`.
+- `the question is measured against the second of its send and the answer fills the cache of the resolver for the next send`.
+- `a loose simulate is the sequence of one send`.
+- `the steps of a send by name are the ones they were: the question writes no step in the trace that asked`.
+
+Nueva, `src/game/chapter-1.test.ts`: `no trace of chapter 1 carries a question`.
+
+Nuevas, `src/game/flow-runs.test.ts`:
+- `a send by name has a question run with its own id and stamp, and the run of the packet keeps its trace`.
+- `the question run is labelled with its ports, the private source port before the router and the public one after it`.
+- `a send addressed by IP has no question run`.
+- `a firewall the player does not know stops the question without blocking it`.
+- `drawnSends puts the question of each send before the packet that asked and makes the packet wait for it`.
+- `a traceroute has no question run`.
+- `only the last send of each combination keeps its question on the map while every send keeps its row in the history`.
+
+Nuevas, `src/game/view/inspection.test.ts`:
+- `the stamp of a question opens the box of a udp datagram to port 53 with the answer printed as the box of a dig prints it`.
+- `the dns field of a send by name says which port its question left from and that the question is on the map, each part once its term is known`.
+- `no line of the box says the computer asks only once`.
+
+Nuevas, `src/game/view/cards/table-card.test.ts`:
+- `the translations card lists the row of a question before the row of the packet that asked`.
+- `a row made by a datagram to port 53 wears the words consulta DNS once dns-query is known` (solo si O-6 = A).
+- `the row in use is the one the last send touched last: the packet's if it has one, else the one of its question`.
+
+Nuevas, escena:
+- `layout.test.ts`: `a packet that stopped at its lookup stays at the doorstep of its sender, as a packet that never left`; `a packet of an office with no resolver keeps the path it had in chapter 1`; `the path of a question runs to the resolver and back`.
+- `use-packet-runs.test.ts`: `useSendOnce with a wait says yes once, when the wait has passed since the number grew`.
+- `schedule.test.ts`: `a packet that waits for another leaves when the answer of the other is back at its sender`.
+- `flow-look.test.ts`: `the question of a send is drawn with the shapes of udp and ends replied, warned or lost like any packet`.
+
+Existentes que cambian a propósito (cada una va en el cuerpo del commit):
+- `src/engine/dns/resolve.test.ts`, `the question in a sequence › does not use up the source port of the sender nor leave a row in the translation table`. Pasa a llamarse `uses a source port of the sender and leaves a row in the translation table, before the packet that asked`. Los números pasan: `nc` por nombre 51515 → 40002 (antes 51514 → 40001) y `nc` por IP 51516 → 40003 (antes 51515 → 40002).
+- `src/engine/simulation/sequence.test.ts`, `a lookup by name fills the cache of the resolver and uses neither a port of its sender nor a row of the table, while the dig that follows has both`. Pasa a llamarse `a lookup by name fills the cache of the resolver and its question uses a port of the sender and a row of the table, before the packet that asked`. Los números: `tcp` por nombre 51515 → 40002 (la consulta, 51514 → 40001); `dig` 51516 → 40003; `tcp` por IP 51517 → 40004.
+- `src/game/view/inspection.test.ts`, `the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered`. Gana la tercera línea en el caso del resolver y en el del nombre que no existe; el caso del archivo hosts no cambia.
+- `src/game/view/cards/table-card.test.ts`, `the translations card lists the rows of the sent packets in order`. La fila del `dig` pasa de «UDP» a «UDP · consulta DNS» (solo si O-6 = A; si no, la prueba no cambia).
+- Se corren sin editarse, y se editan solo si fallan por este cambio: `src/game/view/inspection.test.ts` › `tags only the terms the player knows in the fields of a packet with ports, names, routes and a translation, whichever term is missing` (manda `ping` por nombre), `src/engine/dns/hosts.test.ts`, `cache.test.ts`, `simulate.test.ts` (varias mandan `ping`/`tcp` sueltos por nombre con `simulate`) y `src/game/tasks.test.ts` (`ping` por nombre).
+- Siguen sin editarse y deben pasar: `the new trace fields are absent from every trace of a VPC`, `the ICMP branch of the host stage keeps every field it had`, `the first connection of a device leaves from 51514 and each new one adds one`, `a sequence of icmp packets gives the same traces as simulate one by one`, `a sequence of the packets of a VPC gives the same traces as simulate one by one`, `dig does not read the hosts file and ping does`, y el dorado.
+
+**Specs e2e que se corren** (no hay una que mande por nombre hasta la Tarea 29): `pnpm e2e tests/e2e/chapter-2/chapter-2.spec.ts`, `tests/e2e/card-layout.spec.ts`, `tests/e2e/chapter-1/chapter-1.spec.ts`, `tests/e2e/incidents.spec.ts` y `tests/e2e/entities.spec.ts`. `Traffic` es común a todos los mapas; ninguno cambia. Las capturas de `tests/e2e/snapshots/` no cambian: `git diff --exit-code tests/e2e/snapshots`.
+
+**Cierre:** `pnpm check:fast`; las specs de arriba; `git diff --exit-code src/levels/04-iaas/golden-traces.json`. La Tarea 29 estrena el primer e2e de la consulta (`in 02-10 a ping by name draws the question first and the ping after it, each with its stamp`, con `page.clock`). Si algo de la escena falla ahí, se arregla en la 29 con un commit `fix(scene)` y no se reabre esta.
+
+**Review Focus:** 1, 2, 8, 11, 12, 14, 16 y 18.
+
+**Rigor** (lo que hace un equipo real, lo que hace el juego y cómo se dice; detalle y fuentes en «Fuentes y rigor», abajo):
+- El juego dibuja una consulta (la del registro A) y su respuesta. Un equipo real manda dos (A y AAAA) por el mismo socket, y el NAT las traduce con una fila. Es exacto en el puerto y en la fila. Omite la AAAA, la consulta inversa que hace `ping`, los dominios de búsqueda si el nombre no existe y los reintentos. Ningún texto afirma que es una sola.
+- El archivo hosts va antes que el DNS en un sistema con `files dns` (valor por defecto de glibc 2.39). `dig` no lo lee. Qué hace Amazon Linux no se verificó, y ningún texto nombra un sistema.
+- El juego repite la consulta en cada envío y el que guarda la respuesta es el resolver. Cada `ping` y cada `nc` es un proceso nuevo que resuelve una vez, pero algunos sistemas tienen una caché en el equipo (`nscd`, `systemd-resolved`). El juego no la modela. Los textos dicen «en este juego».
+
+**Commits** (en inglés, Conventional Commits; cada uno termina con la línea `Claude-Session`):
+1. `feat(engine): send the question of a lookup by name as a datagram of the sequence`
+2. `feat(game): give the question of a send its own run, stamp, box and translation row`
+3. `feat(scene): draw the question of a send before the packet that asked`
+4. `docs: declare what the drawn question of a lookup by name leaves out`
+
+**Fuentes y rigor (leídas el 2026-10-12).**
+
+Fecha de lectura: 2026-10-12. Los `man7.org` son man-pages 6.19 (resolv.conf(5) con pie 2026-08-22; nsswitch.conf(5) y nscd(8) con pie 2026-02-08; systemd 262~devel para `systemd-resolved(8)`; render del 2026-09-09). Son las versiones más nuevas, no las del sistema del jugador.
+
+**1. ¿Cuántas consultas manda un `ping` o un `nc` real por nombre?**
+
+**Hecho.** Los dos programas (`ping` de iputils y `ncat`) piden a `getaddrinfo` la familia sin fijar (`AF_UNSPEC`) y sin `AI_ADDRCONFIG`. glibc, entonces, manda la consulta A y la AAAA en paralelo por el mismo socket.
+
+Fuentes:
+- iputils, etiqueta `20211215`, `ping/ping.c`: `main()` arma `hints` con `.ai_family = AF_UNSPEC` y `.ai_flags = getaddrinfo_flags` (líneas 257 a 262), y antes de llamar fuerza `hints.ai_family = AF_UNSPEC` (línea 556) y llama `getaddrinfo(target, NULL, &hints, &result)` (línea 558), con un comentario que dice que se hace siempre en modo de doble pila. `getaddrinfo_flags` está en `ping/ping.h` (líneas 45 y 48): `AI_CANONNAME`, más `AI_IDN | AI_CANONIDN` si hay soporte. Ninguna es `AI_ADDRCONFIG`. Descargado de `raw.githubusercontent.com/iputils/iputils/20211215/ping/` el 2026-10-12.
+- ncat 7.93 (`scratchpad/nmap793/`): `ncat/ncat_core.c:102`, `o.af = AF_UNSPEC`; `resolve_internal` (líneas 161 a 206), `hints.ai_family = af`, `hints.ai_socktype = SOCK_DGRAM`, `hints.ai_flags |= addl_flags` (0 si no hay `-n`); `ncat/ncat_main.c:883`, una sola llamada, `resolve_multi(o.target, 0, targetaddrs, o.af)`.
+- glibc 2.39, `resolv/nss_dns/dns-host.c`, `_nss_dns_gethostbyname4_r` (línea 376): llama `__res_context_search(ctx, name, C_IN, T_QUERY_A_AND_AAAA, …)` (línea 418) salvo que `RES_NOAAAA` esté puesto.
+- `resolv.conf(5)` (man7.org): «By default, glibc performs IPv4 and IPv6 lookups in parallel since glibc 2.9» (opción `single-request`) y, en `single-request-reopen`, «The resolver uses the same socket for the A and AAAA requests».
+
+**Además de A y AAAA, un `ping` real hace más**, y ncat no:
+- `ping` sin `-n` hace una consulta inversa (PTR) de la IP que contesta: `pr_addr` (iputils `ping/ping.c`, línea 1625) llama `getnameinfo` sin `NI_NUMERICHOST` cuando `!rts->opt_numeric` (líneas 1641 a 1643). El `-n` se activa solo con un único destino que es una IP (líneas 673 a 676). ncat solo usa `getnameinfo` con `NI_NUMERICHOST | NI_NUMERICSERV` (`ncat_core.c:583` y `:612`).
+- Si el nombre no existe, un resolver real prueba además los dominios de la lista `search` (`resolv.conf(5)`: `ndots` y `search`). Si nadie contesta, reintenta (`timeout` de 5 s y `attempts` de 2 por defecto, `resolv.conf(5)`).
+- Un `dig` manda una consulta, del tipo A por defecto: `make_empty_lookup` de BIND 9.18.50 (`bin/dig/dighost.c`, líneas 617 y 618) arma el `lookup` con `.rdtype = dns_rdatatype_a`. Por eso «`dig` no cambia» es exacto: ya es una consulta, y es la del registro A. Que un `dig` solo mande esa, sin más, sale de leer ese valor por defecto; no leí el resto de `dighost.c`.
+
+**Qué hace el juego.** Dibuja una consulta (la A) y su respuesta. Es **exacto** en lo que el jugador puede comprobar: el puerto de origen es uno y la tabla del NAT tiene una fila. **Omite** la AAAA, la PTR, los dominios de búsqueda y los reintentos.
+
+**Cómo se dice sin enseñar algo falso.** En pantalla, nada afirma que sea una sola consulta (el campo «DNS» dice «preguntó»; la marca de la fila, si O-6 = A, dice «consulta DNS»; ninguna cifra la cuenta). IPv6 no se nombra (Review Focus 4). La omisión se declara en `src/engine/dns/CLAUDE.md` y en el spec («Simplificaciones declaradas», dos filas nuevas). Una prueba busca «una sola», «solo una» y «la única» en los textos del campo.
+
+**2. ¿En qué orden se leen el archivo hosts y el DNS?**
+
+**Hecho.**
+- glibc 2.39, `nss/nss_database.c`: la lista por defecto de la base `hosts` es `"files dns"` (`nss_database_default_dns`, líneas 83 y 98, y la asignación en líneas 135 a 137), cuando `/etc/nsswitch.conf` no trae la línea.
+- `nsswitch.conf(5)` (man7.org): «The order of the services on the line determines the order in which those services will be queried, in turn, until a result is found». Una respuesta con éxito (`success`) termina la búsqueda (acción por defecto `return`); `notfound` sigue con el servicio siguiente (`continue`).
+- Fedora, perfil `sssd` de `authselect`, `profiles/sssd/nsswitch.conf` (GitHub, 2026-10-12): `hosts: files myhostname … resolve [!UNAVAIL=return] dns`. También `files` primero.
+- `systemd-resolved(8)`: «The mappings defined in /etc/hosts are resolved to their configured addresses» y las direcciones de `/etc/hosts` «are never routed to the network».
+- `dig` (BIND 9.18.50, `scratchpad/bind918/`): no hay ninguna referencia a `/etc/hosts` en `bin/dig`, `lib/isc` ni `lib/dns`, y `dighost.c` lee `resolv.conf` (líneas 1277 y 1327). Esto mejora la marca **[local]** de la ficha 02-13: ahora hay fuente para «`dig` no lee hosts».
+
+**Razonado, sin fuente:** con una línea de hosts que solo trae IPv4, `getaddrinfo` termina en `files` y no manda ni la AAAA (por la regla `success` → `return`). No leí `nss_files` para confirmarlo.
+
+**Qué hace el juego.** `ping` y `nc` leen el archivo hosts primero y, si contesta, no preguntan a nadie y no hay consulta; `dig` no lo lee. **Exacto** para un sistema con `files` antes que `dns`.
+
+**No verificado.** El `nsswitch.conf` de Amazon Linux (AL2 y AL2023) y la versión de glibc de cada una. La documentación de AL2023 consultada (`compare-with-al2` y `networking-service`) no lo trae. Los textos no nombran un sistema (ya lo guarda `the text of a warning quotes no operating system and says only what the player saw`).
+
+**3. ¿Repite el equipo la consulta en cada envío, o la guarda en caché?**
+
+**Hecho.**
+- Cada `ping` y cada `nc` es un proceso que resuelve **una vez** al arrancar (`ncat_main.c:883`; `ping.c` línea 558). No hay caché dentro del proceso.
+- glibc por sí sola no guarda respuestas de DNS. La guarda un servicio aparte si existe: `nscd(8)` («provides a cache for the most common name service requests», incluye `hosts`) o `systemd-resolved(8)` («implements a caching and validating DNS/DNSSEC stub resolver», con un stub en `127.0.0.53`). Si el equipo del jugador corre alguno, una segunda consulta dentro del TTL puede no salir de la máquina.
+- Un reporte de un usuario en AWS re:Post («dns caching in amazon linux 2023», `repost.aws/questions/QUXJ5yuiRpQE2c2Htf4Dc9iA`) dice que AL2023 trae `systemd-resolved` con el stub apagado por defecto (un archivo `resolved-disable-stub-listener.conf`). Solo vi el fragmento de la búsqueda, no la página, y no es una fuente oficial.
+
+**Qué hace el juego.** Pregunta de nuevo en cada envío y el que guarda la respuesta es el resolver. Es **exacto por comando** y **omite** la caché local de algunos sistemas.
+
+**Cómo se dice.** «En este juego…». Ningún texto dice que el equipo «no recuerda» o «no guarda» nada: dice que pregunta y que contesta el resolver, de su caché si la tiene.
+
+**Lo que no se pudo verificar.**
+
+1. **El comportamiento de Amazon Linux.** No se encontró su `/etc/nsswitch.conf`, ni su versión de `iputils`, `glibc` o `nmap-ncat`. La página de paquetes de AL2023.9 no se pudo bajar con `curl` (devolvió 330 bytes); `WebFetch` leyó solo el principio y vio `bind-utils 9.18.50-1.amzn2023.0.3`, lo que cuadra con el BIND 9.18.50 en que se basa el `dig` del juego (no lo releí).
+2. **Que el `ping` y el `nc` del jugador sean los leídos.** Se leyeron iputils `20211215` y nmap `7.93`. La estructura de `main()` y de `pr_addr` puede diferir en otras versiones.
+3. **El caso de hosts con solo IPv4 (punto 2 de «Fuentes y rigor»).** Razonado, no leído en `nss_files`.
+4. **La caché del equipo en AL2023.** Solo un reporte de un usuario (punto 3 de «Fuentes y rigor»).
+5. **El dibujo en pantalla.** `pathFor` se leyó, no se corrió: que hoy un paquete con nombre sin resolver salga a la calle sale de leer las ramas del código. Las posiciones del prototipo son aproximadas y la etiqueta sin traducir de su hexágono no sigue V13 («Hallazgos», punto 5). La espera de la escena, el apilado de sellos en el resolver y la ausencia de solapes no se pueden comprobar hasta el e2e de la Tarea 29 y la Tarea 34.
+6. **La lista de pruebas que cambian.** Sale de buscar `40001`, `51514`, `51515` y mandar por nombre en `src/` y `tests/` el 2026-10-12. Otras pruebas con `simulate` suelto, `ping` o `tcp` por nombre pueden fallar por el campo nuevo o por los números; quien ejecuta las lista en el cuerpo del commit.
+7. **Que el 02-12 mande solo `dig`.** Sale de su ficha; el incidente todavía no existe.
+
+---
+
 ### Tarea 29: Bloque 5 · 10
 
-**Presenta:** nombre de dominio, DNS, consulta DNS, resolver, UDP, dig, DHCP (ficha 02-10). Denso: tarea propia.
+**Presenta:** nombre de dominio, DNS, consulta DNS, resolver, UDP, dig, DHCP (ficha 02-10). Denso: tarea propia. **Depende de:** la Tarea 28 quater (O-2 = A).
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/names/10-asking-for-a-name.ts` y `names/CLAUDE.md`.
-- Modify: `shared.ts` (los servidores de nombres, la zona, `setDnsServer`), `src/game/chapter-2.test.ts`, `registry.test.ts`, `tests/e2e/chapter-2/chapter-2-play.ts`.
+- Modify: `shared.ts` (los servidores de nombres, la zona, `setDnsServer`), `src/game/chapter-2.test.ts`, `registry.test.ts`, `tests/e2e/chapter-2/chapter-2.spec.ts` y `chapter-2-play.ts`.
 
 **Tests:**
 - `02-10: dig sends one query by udp to port 53 of the resolver and gets one answer`.
@@ -2410,6 +3009,12 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - `02-10: draws the resolver and not the authoritative server`.
 - `02-10: every address of the chapter is in a documentation block and every name is under .example`.
 - `02-10: introduces domain name, DNS, DNS query, resolver, UDP, dig and DHCP, and uses no later term`.
+- `02-10: ping by name draws the question to the resolver first, with its own source port, and the ping after it`.
+- `02-10: the question of a ping leaves a row in the translation table and the ping leaves none`.
+- `02-10: the ping after a dig gets its answer from the cache of the resolver and still sends its question`.
+- `02-10: the incident draws the resolver, so the question has somewhere to go`.
+- `02-10: no text says the computer asks only once`.
+- Playwright, `in 02-10 a ping by name draws the question first and the ping after it, each with its stamp`.
 - Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 4, 11, 13 y 19.
@@ -2420,7 +3025,7 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 
 ### Tarea 30: Bloque 5 · 11
 
-**Presenta:** servidor autoritativo, registro DNS, registro A, registro CNAME (ficha 02-11).
+**Presenta:** servidor autoritativo, registro DNS, registro A, registro CNAME (ficha 02-11). **Depende de:** la Tarea 28 quater (O-2 = A).
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/names/11-the-records.ts`.
@@ -2435,6 +3040,9 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - `02-11: draws the authoritative server only now`.
 - `02-11: the records of the zone itself are hidden under one line`.
 - `02-11: introduces authoritative server, DNS record, A record and CNAME record, and uses no later term`.
+- `02-11: the nc by name draws its question first and leaves from the next port`.
+- `02-11: after a record is placed the numbers start again at the first port and the first public port`.
+- `02-11: the question comes back with the wrong address before the nc is warned by a router`.
 - Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 6, 11 y 18.
@@ -2458,6 +3066,7 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - `02-12: the text separates the ttl of dns, in seconds, from the ttl of ip, which counts hops`.
 - `02-12: the report names servidor-autoritativo and servidor-dns`.
 - `02-12: introduces DNS cache and DNS TTL, and uses no later term`.
+- `02-12: offers only dig, so no send of the incident asks a question`.
 - Cierre: `pnpm check:fast` y la spec de `tests/e2e/chapter-2/` que juega este incidente con `chapter-2-play.ts` y `tests/e2e/roadmap.spec.ts`; golden sin cambios.
 
 **Review Focus:** 3, 6, 11, 12 y 18.
@@ -2468,7 +3077,9 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 
 ### Tarea 32: Bloque 5 · 13
 
-**Presenta:** NXDOMAIN, SERVFAIL, Port Unreachable, archivo hosts (ficha 02-13). Si la prueba humana del capítulo entero lo siente pesado, se parte en «tres fallas» y «la trampa de hosts».
+**Presenta:** NXDOMAIN, SERVFAIL, Port Unreachable, archivo hosts (ficha 02-13). Si la prueba humana del capítulo entero lo siente pesado, se parte en «tres fallas» y «la trampa de hosts». **Depende de:** la Tarea 28 quater (O-2 = A) y la respuesta a O-7.
+
+**O-2 = A.** Nada de lo que se manda en este incidente cambia de número: todo lo que va por DNS es un `dig`, que ya es la consulta. El contraste se ve así: `dig tienda.lucia.example` dibuja un datagrama al resolver y su respuesta NXDOMAIN, y `ping tienda.lucia.example` no dibuja ninguna consulta, porque contestó el archivo hosts. La opción A de O-2 decía que el contraste sería con «un `ping` por DNS»; no vale para este incidente, cuya ficha no tiene un `ping` por DNS. Sumarlo es la decisión O-7, abierta: bloquea solo la ficha de esta tarea, y esta nota vale con la recomendación (A).
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/names/13-it-does-not-resolve.ts`.
@@ -2483,6 +3094,8 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - `02-13: the report names tu-laptop, laptop-andres, servidor-dns and servidor-autoritativo-noticias`.
 - `02-13: the NXDOMAIN demo uses a subdomain that does not exist and not a name under .invalid`.
 - `02-13: introduces NXDOMAIN, SERVFAIL, Port Unreachable and hosts file, and uses no later term`.
+- `02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none`.
+- `02-13: every send of the incident that goes by name has the resolver in its shown list`.
 - Cierre: `pnpm check` completo (cierra el bloque 5); golden sin cambios.
 
 **Review Focus:** 3, 6, 7, 11 y 18.
@@ -2495,17 +3108,17 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 
 ### Tarea 33: Bloque 6 · 14
 
-**Presenta:** ningún término (ficha 02-14). **Depende de:** D-12.
+**Presenta:** ningún término (ficha 02-14). **Depende de:** D-12 y la Tarea 28 quater (O-2 = A).
 
 **Archivos:**
 - Create: `src/levels/02-ports-and-names/on-call/14-on-call-it-does-not-connect.ts`, `cases.ts` y `on-call/CLAUDE.md`.
-- Modify: `shared.ts` (los cambios de cada caso, `LOOP` y su reparación, las listas `shown` por caso), `src/game/chapter-2.test.ts` (ahora exige los 53 términos), `registry.test.ts`, `tests/e2e/chapter-2/chapter-2-play.ts`, `src/storage/progress.test.ts`.
+- Modify: `shared.ts` (los cambios de cada caso, `LOOP` y su reparación, las listas `shown` por caso; las de los casos 1 a 3 suman `servidor-dns`, O-2 = A), `src/game/chapter-2.test.ts` (ahora exige los 53 términos), `registry.test.ts`, `tests/e2e/chapter-2/chapter-2-play.ts`, `src/storage/progress.test.ts`.
 
 **Interfaces:** siete casos (tabla de la ficha), cada uno como un cambio sobre el mundo del 13; `cases.ts` usa constructores para que `jscpd` no vea siete casos casi iguales. El caso 5 trae `fix`.
 
 **Tests:**
 - `02-14: case 1 shows the three tests in order and the third is refused`.
-- `02-14: case 2 ends in NXDOMAIN and nothing leaves the laptop`.
+- `02-14: case 2 ends in NXDOMAIN, the question goes to the resolver and nothing goes to the server`.
 - `02-14: case 3 gets the good ip from dig and sends the ping to the one in the hosts file`.
 - `02-14: case 4 warns Destination Net Unreachable from router-oficina`.
 - `02-14: case 5 alternates two routers in its Time Exceeded and closes only with the cause named and the fix done`.
@@ -2517,6 +3130,10 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - `02-14: no report and no correct option names a switched-off device as the cause`.
 - `02-14: every case report names a ping, an nc or a dig that does not come back and none uses a verb of the web`.
 - `02-14: every change a case makes is named in its report or in the feedback of its right cause`.
+- `02-14: case 1 draws the dig and the question of the ping and of the nc by name, each with its stamp at the resolver`.
+- `02-14: case 2 draws the question and its answer and the nc stays at its doorstep without a port`.
+- `02-14: case 3 draws a question for the dig and none for the ping, which the hosts file answered`.
+- `02-14: every case that sends by name has the resolver in its shown list`.
 - `chapter-2.test.ts`, `introduces exactly the 53 terms of the approved design, each in its incident`.
 - `no term of the approved design is missing: the ids of the table of the spec equal the ids that 02-01 to 02-14 introduce`.
 - `cidr, dns and nat are introduced by chapter 2 and by no incident of chapter 4`.
@@ -2525,7 +3142,7 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - Playwright: `04-01 opens once 02-14 has a star`.
 - Cierre: `pnpm check` completo (cierra el bloque 6); golden sin cambios.
 
-**Review Focus:** 3, 4, 6, 17 y 19.
+**Review Focus:** 3, 4, 6, 14, 17 y 19.
 
 **Commit:** `feat(levels): add chapter 2 incident 14, on call`.
 
@@ -2544,7 +3161,7 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 ### Tarea 34: Playwright del capítulo entero
 
 **Archivos:**
-- Modify: `tests/e2e/chapter-2/chapter-2.spec.ts` (nuevo), `chapter-2-play.ts`, `tests/e2e/saved-progress.ts`, `tests/e2e/incidents.spec.ts` (si algún nombre cambió), `tests/e2e/card-layout.spec.ts` (suma las escenas de las tarjetas nuevas), `tests/e2e/map-boxes.ts` y `card-boxes.ts` (si hace falta), `tests/e2e/CLAUDE.md`.
+- Modify: `tests/e2e/chapter-2/chapter-2.spec.ts` (nuevo), `chapter-2-play.ts`, `tests/e2e/saved-progress.ts`, `tests/e2e/incidents.spec.ts` (si algún nombre cambió), `tests/e2e/card-layout.spec.ts` (suma las escenas de las tarjetas nuevas; cada escena nueva entra también en las pruebas de que la caja no tapa la tarjeta: el oráculo recorre `MAP_SCENES`), `tests/e2e/map-boxes.ts` y `card-boxes.ts` (si hace falta), `tests/e2e/CLAUDE.md`.
 
 **Tests:**
 - `chapter 2 is played from 02-01 to 02-14, each incident opening the next, with 3 stars each`.
@@ -2553,6 +3170,8 @@ Mientras el término `net-unreachable` no se conoce, el aviso de un router sin r
 - Dentro de «Sin animaciones»: `in 02-07 the map and its labels fit the area at full size`.
 - `after the pings of 02-07, no label or stamp overlaps`.
 - `in 02-09 and 02-10 no label or stamp overlaps`.
+- `in 02-14 case 1 no label or stamp overlaps after the dig, the ping and the nc by name` (llega a 3 sellos en el resolver, un lugar que O-4 no midió; los que no caben pasan al sello «+N» y la prueba cuenta los que se ven).
+- `in 02-07 and 02-08 the inspection box of a piece covers no open card, at 1280×800 and at 1440×900`.
 - `the cards of tables, output and services cover no piece of the map`.
 - `in 02-12 waiting from the clock card changes the answer of dig`.
 - `in 02-03 the services card opens from the label of laptop-lucia and switches the address`.
@@ -2625,13 +3244,14 @@ El plan prueba que no falta ninguno de dos maneras: esta tabla, hecha del spec, 
 | IPs de RFC 5737 y nombres bajo `.example` de RFC 2606 §2, verificados y citados | Spec («El mapa que crece», «Base de investigación»); D-13; Review Focus 19 |
 | El 53 se lista con DNS (reformulado con D-18: los cinco puertos son de `default-port`) | Spec («Decisiones del estudiante»); Tareas 2 y 2 bis (`default-port`, `well-known-ports`, `dns`) |
 | Huecos del motor primero y antes del contenido | «Inventario de mecánicas»; Tareas 4 a 13 antes de las 14 a 33 |
-| Puerto de origen en el paquete | Tareas 4 y 5 |
+| Puerto de origen en el paquete | Tareas 4, 5 y 28 quater |
 | Servicios UDP y Port Unreachable | Tareas 6 y 7 |
 | Dirección de escucha | Tarea 6; decidida 8 |
 | Tablas de rutas en dispositivos y routers, editables, con prefijo más largo | Tareas 8 y 9 |
 | Net Unreachable | Tarea 9 |
-| NAT con puertos y tabla de traducciones | Tareas 10 y 11; decididas 3 y 4 |
-| Modelo de DNS con resolver, autoritativo, A, CNAME, caché con TTL, NXDOMAIN, SERVFAIL y archivo hosts | Tareas 12 y 13 |
+| NAT con puertos y tabla de traducciones | Tareas 10, 11 y 28 quater; decididas 3 y 4 |
+| Modelo de DNS con resolver, autoritativo, A, CNAME, caché con TTL, NXDOMAIN, SERVFAIL y archivo hosts | Tareas 12, 13 y 28 quater |
+| La consulta DNS de un `ping` o un `nc` por nombre se dibuja (O-2 = A) | Tarea 28 quater; decididas 4, 5, 6 y 34; Tareas 29 a 33; Review Focus 1, 2, 8, 11, 12, 14, 16 y 18 |
 | `nc -vz` y `dig` con salidas fieles, con fuente | Tarea 18; D-5; spec («Lo que la simulación enseña») |
 | Capítulo 4: regenerar o no el test dorado | D-1; Review Focus 1 |
 | Mover `cidr`, `dns` y `nat` del 4 al 2 (`nat` se reescribe) | Tarea 2; D-7; «Cambios visibles del capítulo 4» |
