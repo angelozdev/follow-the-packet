@@ -165,7 +165,7 @@ Lo dejó el plan `docs/plans/2026-10-10-follow-the-packet-33-chapters.md`. Ningu
 
 ## Bloque J: lo que dejó el capítulo 1 en catorce subcapítulos (2026-10-10)
 
-Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md` (sus notas de la Tarea 13 y de la Tarea 27), el arreglo de la distribución de las tarjetas (`c8bc2f4`) y el de las cajas flotantes que se desplazan cuando su texto no cabe (`b2f5a0d`). Ninguno impide jugar el capítulo 1. Lo que anote la prueba humana del capítulo entero se agrega aquí después de hacerla.
+Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.md` (sus notas de la Tarea 13 y de la Tarea 27), el arreglo de la distribución de las tarjetas (`c8bc2f4`) y el de las cajas flotantes que se desplazan cuando su texto no cabe (`b2f5a0d`). Ninguno impide jugar el capítulo 1. Lo que anote la prueba humana del capítulo entero se agrega aquí después de hacerla. J10 se amplió y J12 a J14 los sumó el plan del capítulo 2 (`2026-10-11-follow-the-packet-chapter-2.md`, Tareas 18 bis, 19 y 19 bis).
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
@@ -178,8 +178,11 @@ Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.m
 | J7 | Con el teclado no se puede hacer scroll dentro de la caja de inspección (accesibilidad). Se vio al arreglar las cajas que se desplazan (`b2f5a0d`) | Pendiente |
 | J8 | A 1280×360, el texto de ayuda pisa las tarjetas | Pendiente |
 | J9 | A 1000×700, la caja de inspección pisa la terminal | Pendiente |
-| J10 | En el 01-07, a 900×500, el título intercepta clics | Pendiente |
+| J10 | En el 01-07, a 900×500, el título intercepta clics. Es más amplio que eso: el `h1` del título tapa la etiqueta de `tu-laptop` a 1280×360, 900×500, 844×460 y 700×600. Pasa también en `940f07a`, antes de la Tarea 19 del capítulo 2 | Pendiente |
 | J11 | A 844×390, una tarjeta se pasa 2 px del mapa | Pendiente |
+| J12 | En el 01-07, `router-oficina` queda fuera de la ventana a 1280×360, 900×500, 844×460 y 700×600. Pasa también en `940f07a`, antes de la Tarea 19 del capítulo 2 | Pendiente |
+| J13 | Un lector de pantalla oye la palabra dos veces en la retroalimentación de una opción: «Correcto: Correcto.» y «Error: No es eso.». La pestaña de `Message` dice el tipo y el texto empieza con la misma palabra (Tarea 18 bis del capítulo 2) | Pendiente |
+| J14 | La caja de inspección tapa «Listo» de una tarjeta recién abierta durante la gracia, unos 400 ms, a 1280×360. Lo midió la Tarea 19 bis del capítulo 2 con el reloj pausado | Pendiente: está abierta como decisión O-1 en [el plan del capítulo 2](2026-10-11-follow-the-packet-chapter-2.md) |
 
 ## Fuera de este backlog (decide el estudiante)
 
