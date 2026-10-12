@@ -3,10 +3,12 @@ import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, TERMS, toPlainText, type TermId } fro
 import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
+import { ADDRESS, IP, MESSAGE, ORIGIN, PORT, ROUTER } from '@/levels/02-ports-and-names/shared';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
+import { translationsCard } from './cards/table-card';
 import { inspect, type Inspection } from './inspection';
 import { PIECE_ID } from './piece-id';
 import { pieceViews } from './pieces';
@@ -810,6 +812,7 @@ describe('the route a packet used and the translation the NAT made', () => {
     expect(nc.sent[0].replied).toBe(true);
     expect(field(nc, 'Encabezado de ida (en tu red local)')).toEqual(['Encabezado de ida (en tu red local)', `192.168.1.10:51514 → ${server.ip}:3000`, 'TTL al salir: 64']);
     expect(field(nc, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `${officeRouter.uplink}:40001 → ${server.ip}:3000`]);
+    expect(field(nc, 'Encabezado de vuelta (en internet)')).toEqual(['Encabezado de vuelta (en internet)', `${server.ip}:3000 → ${officeRouter.uplink}:40001`]);
     const beforeSourcePort = sent(without(start, 'source-port'), 'you', 'server', 'nc-3000');
     expect(field(beforeSourcePort, 'Encabezado de ida (en tu red local)')).toEqual(['Encabezado de ida (en tu red local)', `192.168.1.10 → ${server.ip}:3000`, 'TTL al salir: 64']);
     expect(field(beforeSourcePort, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `${officeRouter.uplink} → ${server.ip}:3000`]);
@@ -861,5 +864,63 @@ describe('the route a packet used and the translation the NAT made', () => {
     expect(field(entering, 'Traducción')).toEqual(['Traducción', `${officeRouter.uplink}:3000 → 192.168.2.15:3000`, 'Un reenvío de puertos lo entregó a ese dispositivo.']);
     expect(field(sent(without(entering, 'port-forwarding'), 'home', 'uplink', 'nc-3000'), 'Traducción')).toEqual(['Traducción', `${officeRouter.uplink}:3000 → 192.168.2.15:3000`]);
     expect(fields(entering).map(([label]) => label).filter((label) => label.includes('internet'))).toEqual([]);
+  });
+});
+
+describe('the box of 02-08 shows the four headers of a translated packet', () => {
+  const start = startSession(INCIDENTS, '02-08');
+  const sendWeb = (session: Session, from: { id: string }): Session => sessionReducer(session, { type: 'sendPacket', fromId: from.id, toId: ADDRESS.server.id, messageId: MESSAGE.ncWeb.id });
+  const without = (session: Session, ...terms: TermId[]): Session => ({ ...session, known: new Set([...session.known].filter((term) => !terms.includes(term))) });
+  const fromYou = sendWeb(start, ORIGIN.you);
+  const fromBoth = sendWeb(fromYou, ORIGIN.lucia);
+  const box = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId))?.fields ?? [];
+  const headers = (session: Session) => box(session).filter(([label]) => label.startsWith('Encabezado'));
+  const field = (session: Session, label: string) => box(session).find(([name]) => name === label);
+  const BACK_IN_THE_INTERNET = 'Encabezado de vuelta (en internet)';
+  const publicPort = (session: Session) => Number(toPlainText(translationsCard(session, PIECE_ID.router(ROUTER.office.id))?.rows.find((row) => row.inUse)?.cells[2].text ?? '').split(':')[1]);
+
+  it('lists the request and the answer, in the local network and in the internet, once nat is known', () => {
+    expect(headers(fromYou).map(([label]) => label)).toEqual([
+      'Encabezado de ida (en tu red local)',
+      'Encabezado de vuelta (en tu red local)',
+      'Encabezado de ida (en internet)',
+      BACK_IN_THE_INTERNET,
+    ]);
+    expect(headers(fromYou)).toEqual([
+      ['Encabezado de ida (en tu red local)', `${IP.you}:51514 → ${IP.server}:${PORT.web}`, 'TTL al salir: 64'],
+      ['Encabezado de vuelta (en tu red local)', `${IP.server}:${PORT.web} → ${IP.you}:51514`],
+      ['Encabezado de ida (en internet)', `${IP.officeUplink}:40001 → ${IP.server}:${PORT.web}`],
+      [BACK_IN_THE_INTERNET, `${IP.server}:${PORT.web} → ${IP.officeUplink}:40001`],
+    ]);
+  });
+
+  it('brings the answer of each laptop back to the public port of its own row, as the second hint says', () => {
+    expect(field(fromBoth, BACK_IN_THE_INTERNET)).toEqual([BACK_IN_THE_INTERNET, `${IP.server}:${PORT.web} → ${IP.officeUplink}:40002`]);
+    expect(field(fromBoth, 'Encabezado de vuelta (en tu red local)')).toEqual(['Encabezado de vuelta (en tu red local)', `${IP.server}:${PORT.web} → ${IP.lucia}:51514`]);
+    const { incident } = start;
+    expect(incident.mechanic).toBe('send');
+    const hint = incident.mechanic === 'send' ? incident.hints[1] : '';
+    expect(toPlainText(hint)).toBe('La respuesta llega al puerto público de su fila.');
+    for (const [session, port] of [[fromYou, 40001], [fromBoth, 40002]] as const) {
+      expect(publicPort(session)).toBe(port);
+      expect(field(session, BACK_IN_THE_INTERNET)?.[1].endsWith(`:${publicPort(session)}`)).toBe(true);
+    }
+  });
+
+  it('waits for the terms of the end of each port, and for the Echo Reply in a ping', () => {
+    expect(field(sendWeb(without(start, 'source-port'), ORIGIN.you), BACK_IN_THE_INTERNET)).toEqual([BACK_IN_THE_INTERNET, `${IP.server}:${PORT.web} → ${IP.officeUplink}`]);
+    expect(field(sendWeb(without(start, 'destination-port'), ORIGIN.you), BACK_IN_THE_INTERNET)).toEqual([BACK_IN_THE_INTERNET, `${IP.server} → ${IP.officeUplink}:40001`]);
+    expect(field(sendWeb(without(start, 'ip-port'), ORIGIN.you), BACK_IN_THE_INTERNET)).toEqual([BACK_IN_THE_INTERNET, `IP de origen: ${IP.server}`, `IP de destino: ${IP.officeUplink}`]);
+    expect(field(sendWeb(without(start, 'nat'), ORIGIN.you), BACK_IN_THE_INTERNET)).toBeUndefined();
+    const ping = sessionReducer(start, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.server.id, messageId: MESSAGE.ping.id });
+    expect(headers(ping).map(([label]) => label)).toEqual([
+      'Encabezado del Echo Request (en tu red local)',
+      'Encabezado del Echo Reply (en tu red local)',
+      'Encabezado del Echo Request (en internet)',
+      'Encabezado del Echo Reply (en internet)',
+    ]);
+    expect(field(ping, 'Encabezado del Echo Reply (en internet)')).toEqual(['Encabezado del Echo Reply (en internet)', `IP de origen: ${IP.server}`, `IP de destino: ${IP.officeUplink}`]);
+    const early = sessionReducer(without(start, 'echo-reply'), { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.server.id, messageId: MESSAGE.ping.id });
+    expect(headers(early).map(([label]) => label)).toEqual(['Encabezado (en tu red local)', 'Encabezado (en internet)']);
   });
 });

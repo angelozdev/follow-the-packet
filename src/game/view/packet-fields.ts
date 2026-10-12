@@ -40,14 +40,18 @@ function requestLabel(protocol: PacketSpec['protocol'], answered: boolean, known
   return known.has('echo-request') ? INSPECTION_TEXT.requestHeader : INSPECTION_TEXT.header;
 }
 
-/** The header of the packet as it travels the internet, after the NAT of the office changed its source: the public IP and, for TCP and UDP, the public port. It has no TTL, since the one the sender chose is not the one the packet carries after the router. */
-function internetHeader(request: PacketHeader['request'], translation: Translation, label: TermText, known: Known): InspectionField {
-  const { destination, destinationPort } = request;
-  const side = { source: translation.outside.ip, destination, sourcePort: translation.outside.port, destinationPort };
-  return field(INSPECTION_TEXT.inInternet(label, known), sideLines(side, known));
+/** One header of the packet as it travels the internet, after the NAT of the office changed the source of the request: the request leaves with the public IP and, for TCP and UDP, the public port, and the answer comes back to that same public end, so the destination of the answer is the one the NAT will turn back into the private end. It has no TTL, since the one the sender chose is not the one the packet carries after the router. */
+function internetHeader(side: Side, label: TermText, known: Known, answer = false): InspectionField {
+  return field(INSPECTION_TEXT.inInternet(label, known), sideLines(side, known, answer));
 }
 
-/** The fields with the addresses a packet carries: the header it left with and, when it was answered, the header of the answer, which swaps source and destination and, for TCP and UDP, the ports. An ICMP packet calls them the header of the Echo Request and of the Echo Reply; a TCP or UDP packet, the header «de ida» and «de vuelta». The TTL is listed once its term is known, unless the packet is a traceroute, whose last probe has a TTL of its own that the player never chose. A trip that leaves the office shows the headers seen in the local network, labelled so, and, once `nat` is known, the header in the internet after the translation of the router; before, the last one carries a note that outside the office the header changes, without saying how. */
+/** The headers in the internet of a translated packet: the request, from the public end, and, when there is an answer, the answer, to that public end. */
+function internetHeaders({ request, reply }: { request: PacketHeader['request']; reply?: PacketHeader['reply'] }, { outside }: Translation, [asked, back]: [TermText, TermText], known: Known): InspectionField[] {
+  const out = internetHeader({ ...request, source: outside.ip, sourcePort: outside.port }, asked, known);
+  return reply ? [out, internetHeader({ ...reply, destination: outside.ip, destinationPort: outside.port }, back, known, true)] : [out];
+}
+
+/** The fields with the addresses a packet carries: the header it left with and, when it was answered, the header of the answer, which swaps source and destination and, for TCP and UDP, the ports. An ICMP packet calls them the header of the Echo Request and of the Echo Reply; a TCP or UDP packet, the header «de ida» and «de vuelta». The TTL is listed once its term is known, unless the packet is a traceroute, whose last probe has a TTL of its own that the player never chose. A trip that leaves the office shows the headers seen in the local network, labelled so, and, once `nat` is known, the headers in the internet after the translation of the router: the one of the request, with the public end as its source, and, when the packet was answered, the one of the answer, which comes back to that public end; before, the last one carries a note that outside the office the header changes, without saying how. */
 export function headerFields(run: PacketRun, known: Known, ttl: boolean): InspectionField[] {
   const { header, translation } = run.trace;
   if (!header || !known.has('header')) return [];
@@ -59,11 +63,12 @@ export function headerFields(run: PacketRun, known: Known, ttl: boolean): Inspec
   const asked = requestLabel(protocol, answered, known);
   const back = protocol === 'icmp' ? INSPECTION_TEXT.replyHeader : INSPECTION_TEXT.backHeader;
   const own = [field(named(asked), [...sideLines(request, known), ...(ttl && known.has('ttl') ? [INSPECTION_TEXT.ttl(request.ttl)] : [])])];
-  const answer = reply && answered ? [field(named(back), sideLines(reply, known, true))] : [];
+  const heard = answered ? reply : undefined;
+  const answer = heard ? [field(named(back), sideLines(heard, known, true))] : [];
   const fields = [...own, ...answer];
   const explained = known.has('nat');
   const noted = local && !explained ? [...fields.slice(0, -1), { ...fields[fields.length - 1], notes: [INSPECTION_TEXT.headerChanges] }] : fields;
-  const outside = local && explained && translation && run.packet.from.kind === 'device' ? [internetHeader(request, translation, asked, known)] : [];
+  const outside = local && explained && translation && run.packet.from.kind === 'device' ? internetHeaders({ request, reply: heard }, translation, [asked, back], known) : [];
   return [...noted, ...outside];
 }
 

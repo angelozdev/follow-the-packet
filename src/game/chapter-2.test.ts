@@ -1085,6 +1085,7 @@ describe('02-08, one address for the whole office', () => {
   const ONE_ADDRESS = '02-08';
   const LOCAL_HEADER = 'Encabezado de ida (en tu red local)';
   const INTERNET_HEADER = 'Encabezado de ida (en internet)';
+  const INTERNET_BACK_HEADER = 'Encabezado de vuelta (en internet)';
   const TRANSLATION = 'Traducción';
   const HEADER_CHANGES_NOTE = /el encabezado cambia/i;
   const FIRST_PORT = 51514;
@@ -1122,6 +1123,7 @@ describe('02-08, one address for the whole office', () => {
     const yours = lastBox(fromYou);
     expect(yours[LOCAL_HEADER]).toEqual([`${IP.you}:${FIRST_PORT} → ${IP.server}:${PORT.web}`, 'TTL al salir: 64']);
     expect(yours[INTERNET_HEADER]).toEqual([`${IP.officeUplink}:${FIRST_PUBLIC_PORT} → ${IP.server}:${PORT.web}`]);
+    expect(yours[INTERNET_BACK_HEADER]).toEqual([`${IP.server}:${PORT.web} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT}`]);
     expect(yours[TRANSLATION]).toEqual([
       `${IP.you}:${FIRST_PORT} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT}`,
       'Cambió la IP y el puerto de origen (traducción de puertos).',
@@ -1130,6 +1132,7 @@ describe('02-08, one address for the whole office', () => {
     const hers = lastBox(both);
     expect(hers[LOCAL_HEADER]).toEqual([`${IP.lucia}:${FIRST_PORT} → ${IP.server}:${PORT.web}`, 'TTL al salir: 64']);
     expect(hers[INTERNET_HEADER]).toEqual([`${IP.officeUplink}:${SECOND_PUBLIC_PORT} → ${IP.server}:${PORT.web}`]);
+    expect(hers[INTERNET_BACK_HEADER]).toEqual([`${IP.server}:${PORT.web} → ${IP.officeUplink}:${SECOND_PUBLIC_PORT}`]);
     expect(hers[TRANSLATION][0]).toBe(`${IP.lucia}:${FIRST_PORT} → ${IP.officeUplink}:${SECOND_PUBLIC_PORT}`);
   });
 

@@ -180,7 +180,7 @@ describe('the terms of a player who has finished a later chapter', () => {
 
   it('the same trip shows the header in the internet, the route and the translation once the terms of chapter 2 are known, so the check above can fail', () => {
     const [toServer] = tripsOf({ ...again, known: EVERY_TERM });
-    expect(labelsOf(toServer).filter((label) => CHAPTER_2_FIELDS.test(label))).toHaveLength(3);
+    expect(labelsOf(toServer).filter((label) => CHAPTER_2_FIELDS.test(label))).toHaveLength(4);
   });
 
   it('a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term', () => {
