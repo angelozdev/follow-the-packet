@@ -29,13 +29,15 @@
 
 ## Estado del relevo (2026-10-12)
 
-Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el trabajo a otro. Todo está commiteado en `feat/chapter-2`; nada está a medias en el árbol.
+Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el trabajo a otro. Todo está commiteado en `feat/chapter-2`; nada está a medias en el árbol. El 2026-10-12 el trabajo dejó el worktree y pasó al árbol principal, y el estudiante decidió O-1, O-2 y O-3.
 
 ### Dónde está la rama
 
-- **Último commit:** `6979d43`.
+- **Dónde vive:** `feat/chapter-2` está ahora en el árbol principal, `/Users/angelozdev/me/AWS Commit Academy`. El worktree `/Users/angelozdev/me/aws-commit-academy-chapter-2` ya no existe.
+- **Último commit:** `11587fc`, el último antes del que registra las decisiones del 2026-10-12. Entre `6979d43` y `11587fc` solo hubo commits de documentos (`7c37229` y `11587fc`).
 - **Último commit con el `pnpm check` completo en verde:** `dcfc04c` (cierre del bloque 4: Vitest 2924 tests en 98 archivos, Playwright 126, jscpd 0, `golden-traces.json` sin cambios). Es la base de la regla C. Lo que vino después (`e0ae23f`, `dc40106`, `5c070f1`, `2b6a3e3`, `f12795f`, `34ff5d3` y `6979d43`) pasó `pnpm check:fast` (Vitest 2938) y las specs `tests/e2e/chapter-2/` y `card-layout.spec.ts`.
-- **Puerto de Playwright:** este worktree usa el 4232 y el árbol principal el 4189 (derivados de la ruta, Tarea 19 bis).
+- **Puerto de Playwright:** el de este árbol es el 4189 (derivado de la ruta, Tarea 19 bis). Ya no hay otra rama que corra e2e a la vez.
+- **`main`:** hoy está en `b6eb2ce` e incluye `46c4074` (el pin de la caja) y `b6eb2ce` (los documentos del capítulo 3). Todavía no está dentro de `feat/chapter-2`.
 
 ### Tareas hechas (hash)
 
@@ -53,7 +55,10 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Lo que falta y de qué depende
 
-- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan O-2. No se empezaron. La 31 (02-12) no cambia con O-2, pero va después de la 29 y la 30 por la cadena del mundo.
+- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó.
+- **Tarea 28 ter (el aviso de un router sin ruta, en palabras llanas en el capítulo 1, O-3 = A1):** no bloquea nada. No se empezó.
+- **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó.
+- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan la Tarea 28 quater. No se empezaron. La 31 (02-12) no cambia con ella, pero va después de la 29 y la 30 por la cadena del mundo.
 - **Tarea 34:** parte ya existe, adelantada por las tareas de contenido:
   - el mapa del 02-07 cabe y no hay solapes tras sus pings;
   - el contorno del 02-04;
@@ -63,27 +68,26 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
   Falta el resto de su lista: los catorce jugados con 3 estrellas, el roadmap, el 04-01 tras el 02-14, el 02-10, el reloj del 02-12, la reparación del caso 5 y que las tarjetas no tapen piezas.
 - **Tarea 35:** documentos y totales reales. Debe completar en «Global Constraints» la lista de pruebas existentes que cambiaron a propósito: las de la Tarea 16 con `CHAPTER_1_TERMS`, `ladder.test.ts` de la 25 y de los arreglos del bloque 4, entre otras. Cada commit las lista en su cuerpo.
-- **Merge de `feat/chapter-1-fourteen`** (`46c4074`, pin de la caja, y `b6eb2ce`, documentos del capítulo 3): espera O-1.
 - **La revisión final y el `pnpm check` completo del capítulo:** al final.
 
 ### Decisiones abiertas
 
-Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan.
+Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2 y O-3. Solo O-4 sigue abierta.
 
-| Decisión | Página | Recomendación | Qué espera |
+| Decisión | Página | Estado | Qué ejecuta o espera |
 |---|---|---|---|
-| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | D (la caja se aparta); la más barata, A | El merge de `feat/chapter-1-fourteen` y su prueba de `card-layout.spec.ts`. Con D, retoques en la caja (Tareas 19 y 21). Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`) |
-| O-2 · ¿se dibuja la consulta DNS de un `ping` o un `nc` por nombre? | la misma | A (dibujarla) | Las Tareas 29 a 33. Con A también se reabren la decidida 4, partes de las Tareas 12, 13 y 16 y una adición a la 21: el `nc` por nombre saldría del 51515 |
-| O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | A1 (palabras llanas hasta conocer el término) | La copia del capítulo 1. No bloquea nada |
-| O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | C (abanico) | Las pruebas de solapes del 02-03, del 02-05 y del 02-08, que no existen porque fallarían. Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
+| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | **Decidida el 2026-10-12: D** (la caja se aparta de la tarjeta abierta) | La Tarea 28 bis: el merge de `main` y la caja que se aparta, con su prueba de `card-layout.spec.ts`. Retoques en la caja (Tareas 19 y 21). Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`) |
+| O-2 · ¿se dibuja la consulta DNS de un `ping` o un `nc` por nombre? | la misma | **Decidida el 2026-10-12: A** (se dibuja) | La Tarea 28 quater y, después, las Tareas 29 a 33. Con A también se reabren la decidida 4, partes de las Tareas 4, 5, 12, 13 y 16 y una adición a la 21: el `nc` por nombre saldría del 51515 |
+| O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | **Decidida el 2026-10-12: A1** (palabras llanas hasta conocer el término) | La Tarea 28 ter, la copia del capítulo 1. No bloquea nada |
+| O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | **Abierta.** Recomendación: C (abanico) | Las pruebas de solapes del 02-03, del 02-05 y del 02-08, que no existen porque fallarían. Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
 
-El estudiante contesta de a una, a través de la sesión principal, empezando por O-2.
+El estudiante contesta de a una, a través de la sesión principal. Falta O-4.
 
 ### Lo que vive fuera de la rama
 
 Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/`, que puede borrarse al reiniciar el equipo.
 
-- **`merge/resolved-merge.patch` y `merge/resolved-files/`:** el merge resuelto de `feat/chapter-1-fourteen`, hecho sobre `940f07a`. La rama avanzó mucho desde entonces: sirve de guía de cómo se resolvió cada conflicto. Lo más seguro es rehacer el merge.
+- **`merge/resolved-merge.patch` y `merge/resolved-files/`:** el merge resuelto de `feat/chapter-1-fourteen`, hecho sobre `940f07a`. Hoy lo que se une es `main` (Tarea 28 bis) y la rama avanzó mucho desde entonces: sirve de guía de cómo se resolvió cada conflicto. Lo más seguro es rehacer el merge.
 - **`02-03-overlap-test.patch` y `zz-measure.spec.ts`:** la prueba de solapes del 02-03 y la spec con que se midió (O-4).
 - **`oracle/oracle-at-the-click.chapter-2.spec.ts`:** el oráculo que mide la caja sobre «Listo» justo después del clic, con el reloj pausado (O-1). Falla 10 de 10 mientras exista el defecto.
 - **`chapter-2-open-decisions.html` y `chapter-2-decision-o4.html`:** las fuentes de las dos páginas publicadas.
@@ -105,8 +109,11 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - lo que informa se cierra en commits de arreglo antes del bloque siguiente.
 - **Regla de los 30 minutos:** un agente que lleva unos 30 minutos con el mismo problema se detiene e informa. Si el problema no es de la tarea (regla C), va al backlog y se sigue.
 - **Git y procesos:**
-  - Sin `git push`, sin merge a `main` y sin tocar el árbol principal (`/Users/angelozdev/me/AWS Commit Academy`, donde el estudiante tiene su servidor en el 5180 y un `concepts/ami.md` sin commit).
-  - Nunca `--amend`, `reset`, `update-ref` ni `stash`. Cada commit con rutas explícitas: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`.
+  - `concepts/ami.md` tiene cambios del estudiante sin commit: nunca se toca, nunca se agrega y nunca se commitea.
+  - Cada commit va con rutas explícitas.
+  - El servidor del estudiante en el 5180 sirve este mismo árbol y recarga solo cuando un agente edita: no se mata ni se reinicia.
+  - Sin `git push` y sin merge a `main`.
+  - Nunca `--amend`, `reset`, `update-ref` ni `stash`. La forma del commit: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`.
   - Nada en el 5173 ni en el 5180, y nunca `pkill` ni `killall`.
 - **Subagentes:** siempre con `model` explícito: `sonnet` para implementar, revisar e investigar, `haiku` solo para correr un comando. Nunca `opus`.
 - **Lo que una prueba no puede hacer:** prohibidos `waitForTimeout`, `retries`, `skip`, `fixme`, `test.fail` y los filtros que saltan un fallo.
@@ -153,9 +160,9 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - A 390 px la tarjeta de clasificar muestra 88 px de un cuerpo de 927.
   - Un lector de pantalla oye dos veces la palabra de un `Message` («Correcto: Correcto.»; backlog J13).
 - **Rigor que el estudiante puede querer ver:** `router-proveedor` descarta en silencio un destino privado (decidida 11 y 01-08). RFC 1812 §4.3.3.1 obliga a avisar cuando no hay ninguna ruta, pero un proveedor que filtra direcciones privadas suele callar. Hoy el juego lo presenta como lo que hace internet con una IP privada.
-- **Al rehacer el merge de `feat/chapter-1-fourteen`:**
-  - Su e2e del viaje del ratón (900 ms) y la gracia (400 ms) se reescriben con `page.clock`, y deben seguir fallando si se rompe el pin (mutación).
-  - Su fila J12 del backlog choca con la J12 de esta rama, que ya va hasta la J14: hay que renumerarla.
+- **Al hacer el merge de `main` en `feat/chapter-2` (Tarea 28 bis):**
+  - La e2e de `main` del viaje del ratón (900 ms) y la gracia (400 ms) se reescriben con `page.clock`, y deben seguir fallando si se rompe el pin (mutación).
+  - La fila J12 del backlog de `main` choca con la J12 de esta rama, que ya va hasta la J14: hay que renumerarla.
   - J7 queda resuelta por `46c4074`.
 - **Tarea 33:**
   - La prueba de la solución de referencia de un caso con `fix` tiene que comprobar también que sus tareas fallan antes de aplicarla.
@@ -193,6 +200,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
     - **D-8 = A (Tarea 16).** Las cuatro pruebas de `src/game/view/inspection.test.ts` que citan el campo «Conexión»: `a device of an office shows no public IP whatever the player knows, because how a packet leaves the office is a black box`, `a laptop of the office says what a device is, and shows its IP and its firewall`, `a laptop with no cable keeps its IP and says it is not part of the network, and the rest of the office says it is connected` y `shows the connection of a device only in an office and once the term network is known`. La constante `INSPECTION_TEXT.connection` (`src/copy/screens/incident-ui.ts`) pasa de «Conexión» a «En la red». Las pruebas de `chapter-1.test.ts` que leen las líneas «Conectado a la red.» y «No está conectado: no forma parte de la red.» (`01-01: marking a connected laptop as outside leaves the task open and the box says it has an IP` y `01-01: the box of laptop-visita keeps its IP and says it is not connected, and marking it Yes says so`) leen el valor del campo y no su nombre: no cambian. Ninguna prueba de Playwright cita el campo.
     - **`host-refused` (Tarea 16).** En `src/copy/reasons.test.ts`, el caso `host-refused` de la tabla `CASES` (hoy cerca de la línea 44), que corre `describes %o` con todos los términos conocidos y fija el texto crudo «Llega, pero ningún programa escucha en el puerto 80: [[servidor2]] lo rechaza.». Solo cambia esa aserción: el texto llano que lee el jugador no cambia y aparecen las marcas de términos. Decidido el 2026-10-11 por la sesión principal (y el estudiante aprobó seguir las recomendaciones técnicas que no cambian lo que se aprende). La Tarea 6 no lo tocó: la lista de archivos de esa tarea lo traía por error y pasa a la Tarea 16.
     - **`Trace.routes` (Tarea 8, opción A, 2026-10-11).** Es un campo nuevo de la traza y dos pruebas lo ven. En `src/game/chapter-1.test.ts`, `the same ping of 01-05 and 01-11 has the same trace and only the words change` compara las dos trazas sin el campo `routes`: el camino y los pasos se siguen comparando, y las rutas difieren por diseño, porque en el 01-11 la laptop ya tiene puerta de enlace y su tabla suma la ruta por defecto. En `src/engine/simulation/ports.test.ts`, `the ICMP branch of the host stage keeps every field it had` suma `routes` a su lista de campos, porque sus tres trazas entregan el paquete a la red y las tres llevan el campo. Lo que prueban se conserva.
+    - **O-3 = A1 (2026-10-12, Tarea 28 ter).** Dos pruebas leen cómo se nombra el aviso de un router sin ruta, que hoy el capítulo 1 llama «Destination Host Unreachable» hasta conocer `net-unreachable`. En `src/game/view/ladder.test.ts`: `a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term`, que pasa a llamarse `a router with no route is said in plain words on 01-08 after chapter 2 too, and named Destination Net Unreachable only with the term`. En `src/copy/terms.test.ts`: `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded`, que pasa a llamarse `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded, and a router with no route by none until net-unreachable is known` (la Tarea 21 ya la editó por V12 = B; aquí cambia lo que asierta de los avisos). El estudiante aprobó que el capítulo 1 cambie lo que muestra en ese caso, aunque hoy ningún incidente lo muestre. Otras pruebas fijan el mismo comportamiento y cambian por consecuencia; la Tarea 28 ter las lista. Lo que prueban se conserva: un router sin ruta se llama «Destination Net Unreachable» con el término y, antes, se dice en palabras llanas.
   - **Ninguna etapa nueva escribe un paso en una traza del capítulo 1 ni del 4.** Los datos nuevos de esas trazas van en campos aparte. Hay pruebas de steps con `toEqual` en `simulate.test.ts`; un paso nuevo las rompería. Si una prueba existente falla por un campo nuevo de la traza, la tarea se detiene y se le pregunta al estudiante: no se edita la prueba por cuenta propia.
 - **Capturas.** Las dos capturas de `#/entidades` (`tests/e2e/snapshots/entities-darwin.png` e `interface-darwin.png`) cambian solo en cuatro tareas, a propósito y revisando el diff: la 17 (suma el especimen de `Table` a la de la interfaz), la 18 (suma el de la tarjeta «Salida», plegada, a la de la interfaz), la 18 bis (regraba la de la interfaz, con el aspecto «Pestaña» de V18: los especímenes de avisos y errores pasan a la primitiva y se suma uno por variante) y la 21 (suma a la de piezas los cuatro especímenes de paquete de TCP y UDP, V12 = B, el del contorno del bloque del 02-04, D-6, y los del intruso con el borde nuevo, V19 = B, que se ven en los capítulos 1, 2 y 4). Si en la Tarea 21 esos especímenes no caben en celdas libres del catálogo y este gana una fila, la sección de la interfaz baja y la 21 regraba también la de la interfaz, comprobando que el diff sea solo ese desplazamiento (`DESIGN.md`, «Adding a variant instead of a new element», paso 3). Ninguna otra tarea las toca.
 - **Fuentes y fechas.** Toda cifra, límite o texto de una herramienta que el juego muestre lleva su fuente y su fecha en el test que lo fija o en la guía de la carpeta. Lo del spec se consultó el 2026-10-10 y el 2026-10-11.
@@ -260,9 +268,19 @@ El estudiante contestó el 2026-10-11 las dieciocho decisiones abiertas. Aprobó
 
 No queda ninguna decisión abierta (2026-10-11): ni las dieciocho (D-1 a D-18), ni las visuales de la Tarea 0 (V10 a V17; están en «Decisiones visuales», al final), ni las que abrieron después las Tareas 18 bis y 21: V18 (la primitiva `Message`, el aspecto «Pestaña» y el verde de `success`) y V19 (la forma del intruso).
 
+### Decisiones abiertas ya contestadas (2026-10-12)
+
+El estudiante contestó el 2026-10-12 tres de las cuatro decisiones abiertas la noche del 2026-10-11 (sección siguiente). Aprobó la recomendación del plan en las tres. Su criterio es «rigurosa, visual y entendible». O-4 sigue abierta.
+
+| Decisión | Elección | Nota |
+|----------|----------|------|
+| O-1 | **D,** la caja de inspección se aparta de la tarjeta abierta | Tiene dos lugares: abajo a la derecha y abajo a la izquierda. Se abre en el que no toca la tarjeta; si ninguno está libre, no se abre, y una caja fijada se suelta. Porqué: es una sola regla para todas las cajas y todas las tarjetas («una caja nunca tapa una tarjeta abierta»), no muestra nada falso y conserva J7 donde hay caja. La ejecuta la Tarea 28 bis. |
+| O-2 | **A,** se dibuja la consulta DNS de un `ping` o un `nc` por nombre | Gasta puerto y deja fila en la tabla de traducciones. Porqué: un equipo que usa un nombre le pregunta antes a su resolver, y A lo dibuja en vez de contarlo en un campo; así un envío que no sale se ve en el mapa y el par del 02-13 se distingue. La ejecuta la Tarea 28 quater. |
+| O-3 | **A1,** en el capítulo 1 el aviso de un router sin ruta se dice en palabras llanas hasta que se conozca `net-unreachable` | Porqué: B afirma algo falso («Host» para lo que el router avisa con el código 0, Network Unreachable) aunque hoy ningún incidente lo muestre, y A1 es la más barata de las tres que lo corrigen: no mueve ni agrega términos. La ejecuta la Tarea 28 ter. |
+
 ## Decisiones abiertas de la noche del 2026-10-11
 
-Estas cuatro decisiones (O-1 a O-4) se abrieron la noche del 2026-10-11 (O-4, pasada la medianoche, ya el 2026-10-12), después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. Ninguna está decidida. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
+Estas cuatro decisiones (O-1 a O-4) se abrieron la noche del 2026-10-11 (O-4, pasada la medianoche, ya el 2026-10-12), después de contestadas las anteriores: la frase «No queda ninguna decisión abierta (2026-10-11)» de arriba valía hasta esta noche. El 2026-10-12 el estudiante decidió O-1 (D), O-2 (A) y O-3 (A1); O-4 sigue abierta. Cada una trae sus opciones, una recomendación razonada con las reglas del proyecto (rigor, un estándar por elemento y causas a la vista), el porqué, la opción inexacta o que engaña marcada como tal y las tareas que dependen de ella.
 
 Los prototipos renderizados de O-1 y O-2 están en una página publicada el 2026-10-11: https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST. Los dibujos no son capturas: se calcularon con el CSS de `src/styles.css`, las medidas de `src/scene/layout.ts` y el arte de las piezas, porque nadie arrancó la app esa noche. O-3 se decide con el texto. Los de O-4 están en otra página publicada: https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF (su fuente local, temporal, es `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/chapter-2-decision-o4.html`); esos dibujos se calcularon con un port de las funciones de `layout.ts`, ver «Lo que no se pudo verificar» de O-4.
 
@@ -357,7 +375,7 @@ En el merge resuelto, la prueba `a card beside a piece stays inside the map, wit
 - Lo medido por la prueba de la rama (que el centro de «Listo» queda fuera de alcance a 1280×360) se leyó en el log, no se volvió a correr.
 - WCAG 2.2, 1.4.13 «Hoverable», leído en `https://www.w3.org/TR/WCAG22/` con `curl` el 2026-10-11.
 
-**Decidida:** pendiente del estudiante.
+**Decidida (2026-10-12): D.** La caja de inspección se aparta de la tarjeta abierta. Tiene dos lugares: abajo a la derecha y abajo a la izquierda. Se abre en el que no toca la tarjeta; si ninguno está libre, no se abre, y una caja fijada se suelta. Es la recomendación del plan. Porqué: es una sola regla para todas las cajas y todas las tarjetas, las de hoy y las que vengan («una caja nunca tapa una tarjeta abierta»); no muestra nada falso ni deja un botón que se ve y no responde; y conserva J7 (fijar una caja para leerla y desplazarla) donde hay caja. La ejecuta la Tarea 28 bis, «el merge de `main` y la caja que se aparta (O-1 = D)».
 
 ### O-2. La consulta DNS de un `ping` o un `nc` por nombre
 
@@ -410,7 +428,7 @@ La caja del paquete lo cuenta en su campo «DNS»: que el equipo preguntó antes
 - Los dibujos no son capturas: la posición de las piezas del mapa es aproximada, los textos de las cajas son de ejemplo con la forma de los reales, y la tarjeta y la caja van a los lados del mapa (no es una ventana del juego) para que se vea el dibujo.
 - Que las Tareas 4, 5, 12, 13 y 16 están hechas sale de los mensajes de commit de la rama (`git log`), no de las casillas del plan.
 
-**Decidida:** pendiente del estudiante.
+**Decidida (2026-10-12): A.** Se dibuja la consulta DNS de un `ping` o un `nc` por nombre: gasta puerto y deja fila en la tabla de traducciones. Es la recomendación del plan. Porqué: un equipo que usa un nombre le pregunta antes a su resolver, y A lo dibuja en vez de contarlo en un campo; así un envío que no sale por un nombre que no existe o por una consulta descartada se ve en el mapa, y el par del 02-13 (dos `ping` que parecen iguales y solo uno pregunta al DNS) se distingue. La ejecuta la Tarea 28 quater, «la consulta DNS de un envío por nombre se dibuja (O-2 = A)». Las Tareas 29 a 33 esperan a esa.
 
 ### O-3. En el capítulo 1, un router sin ruta avisa «Destination Host Unreachable»
 
@@ -461,7 +479,7 @@ La caja del paquete lo cuenta en su campo «DNS»: que el equipo preguntó antes
 - Que hoy ningún incidente del capítulo 1 lo muestre sale de leer las listas `send.to` y los routers de `shared.ts`; no se jugó cada combinación ni se corrió el motor sobre ellas.
 - RFC 1812 y RFC 792, leídos con `curl` y `grep` el 2026-10-11.
 
-**Decidida:** pendiente del estudiante.
+**Decidida (2026-10-12): A1.** En el capítulo 1, el aviso de un router sin ruta se dice en palabras llanas hasta que se conozca el término `net-unreachable`. Es la recomendación del plan. Porqué: B afirma algo falso («Host» para lo que el router avisa con el código 0, Network Unreachable) aunque hoy ningún incidente lo muestre, y A1 es la más barata de las tres que lo corrigen: no mueve ni agrega términos. El estudiante aprobó que el capítulo 1 cambie lo que muestra en ese caso. La ejecuta la Tarea 28 ter, «el aviso de un router sin ruta, en palabras llanas en el capítulo 1 (O-3 = A1)».
 
 ### O-4. Los sellos de un mismo lugar no caben entre las etiquetas vecinas
 
@@ -2342,6 +2360,36 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 **Commit:** `feat(levels): add chapter 2 incidents 08 and 09, one address for the whole office and from outside`.
 
 **Revisión de los textos del bloque 4** (08 y 09) por un revisor `sonnet`, antes del bloque 5 (ver «Contenido»).
+
+---
+
+### Tarea 28 ter: el aviso de un router sin ruta, en palabras llanas en el capítulo 1 (O-3 = A1)
+
+**Presenta:** ningún término. **Depende de:** O-3 = A1 (2026-10-12). No bloquea nada.
+
+Mientras el término `net-unreachable` no se conoce, el aviso de un router sin ruta deja de llamarse «Host» y se dice en palabras llanas: «un router avisó que no tiene ruta a esa red». Con el término conocido sigue llamándose «Destination Net Unreachable». Hoy ningún incidente del capítulo 1 lo muestra: el cambio es de copia y de pruebas. El estudiante aprobó que el capítulo 1 cambie lo que muestra en ese caso.
+
+**Archivos:**
+- Modify: `src/copy/packet-labels.ts` (`WARNING_TERM` y `warningOf`: el aviso `net-unreachable` admite «sin término» mientras el término no se conoce); `src/copy/reasons.ts` (los casos que dicen `warning('host-unreachable')` y vienen de un router sin ruta; el aviso de host inalcanzable no cambia); `src/game/view/revealed-routers.ts` (`visibleIp` usa hoy `host-unreachable` para los dos avisos del traceroute); `src/game/flow-runs.ts` (`visibleWarning` lee `warning.term`); `src/copy/CLAUDE.md` (la guía cuenta la excepción de `warningOf`). Si «sin término» alcanza a otro lector de `Warning`, se lista en el cuerpo del commit.
+- Modify, pruebas: `src/game/view/ladder.test.ts` y `src/copy/terms.test.ts` (las dos de O-3). Otras fijan el mismo comportamiento y O-3 no las nombra: en `src/copy/packet-labels.test.ts`, `names each notice by its term, and a net unreachable by the host one, which shares its ICMP type` y `names the warning of a router with no route Destination Net Unreachable once that term is known, and Destination Host Unreachable before`; en `src/copy/reasons.test.ts`, la fila `forward-no-route` de la tabla `HIDDEN_CAUSES`; en `src/game/flow-runs.test.ts`, `a router with no route is named Destination Net Unreachable by the run once that term is known, and Destination Host Unreachable before`; en `src/game/session.test.ts`, la entrada `no-route` de `is part of the result of its run, with the kind of warning and who generated it`. La lista sale de buscar `net-unreachable`, `host-unreachable`, `warningOf` y `Destination Host` en `src/` y `tests/` el 2026-10-12; puede no ser completa. Cada edición va en el cuerpo del commit.
+
+**Pasos:**
+- [ ] Reescribir primero las pruebas de abajo: con el código de hoy fallan.
+- [ ] En `warningOf`, hacer que un aviso `net-unreachable` sin el término `net-unreachable` conocido no lleve el término `host-unreachable`. El caso sin `known` se comporta como el de antes del término.
+- [ ] Hacer lo mismo en `reasons.ts` y en `visibleIp`. El aviso de host inalcanzable (el del propio equipo y el de un router que no encuentra el host) conserva su término.
+- [ ] Decir el aviso sin término con el texto que propone O-3 y ningún otro. **Si la etiqueta del paquete en el mapa necesita un texto visible que O-3 no fija, el implementador se detiene y lo informa:** no inventa texto visible.
+- [ ] Correr las pruebas de los capítulos 1 y 4 sin editar más que las listadas. Si otra falla por este cambio, la tarea se detiene y se pregunta (Global Constraints).
+
+**Tests:**
+- `a router with no route is said in plain words on 01-08 after chapter 2 too, and named Destination Net Unreachable only with the term` (`ladder.test.ts`; pasa a llamarse así desde `a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term`).
+- `every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded, and a router with no route by none until net-unreachable is known` (`terms.test.ts`; pasa a llamarse así desde la de hoy, que ya editó la Tarea 21).
+- Las otras de arriba (`packet-labels.test.ts`, `reasons.test.ts`, `flow-runs.test.ts` y `session.test.ts`) pasan a asertar lo mismo: antes del término, ni el aviso ni la causa oculta de un router sin ruta nombran un host.
+- El aviso de host inalcanzable no cambia: las pruebas que lo fijan corren sin editarse.
+- Cierre: `pnpm check:fast`, más `pnpm e2e tests/e2e/chapter-1/` si toca lo que el capítulo 1 dibuja.
+
+**Review Focus:** 2 y 18.
+
+**Commit:** `fix(copy): say in plain words that a router has no route until net-unreachable is known`.
 
 ---
 
