@@ -204,20 +204,20 @@ export const TERMS = {
     name: 'puertos conocidos',
     definition: 'Los puertos del 0 al 1023, que IANA reserva para servicios comunes, como el 22 de SSH.',
   },
-  route: { name: 'ruta', definition: 'Una instrucción de reenvío: los paquetes para un bloque de IPs van directo o a un router concreto.' },
-  'routing-table': { name: 'tabla de rutas', definition: 'La lista de rutas de un dispositivo o router. Cada paquete que sale se compara con ella.' },
+  route: { name: 'ruta', definition: 'Una instrucción que dice a dónde mandar los paquetes para un bloque de IPs: directo, o a un router concreto.' },
+  'routing-table': { name: 'tabla de rutas', definition: 'La lista de rutas de un dispositivo o router. Cada paquete que envía o reenvía se compara con ella.' },
   'connected-route': {
     name: 'ruta de red conectada',
-    definition: 'La ruta del bloque al que el dispositivo está conectado: esos paquetes se entregan directo, sin router.',
+    definition: 'La ruta del bloque al que el dispositivo está conectado: esos paquetes se entregan directo, sin pasar por otro router.',
   },
   'default-route': {
     name: 'ruta por defecto',
-    definition: 'La ruta 0.0.0.0/0: recibe lo que ninguna otra ruta cubre. Va a la puerta de enlace predeterminada.',
+    definition: 'La ruta 0.0.0.0/0: recibe lo que ninguna otra ruta cubre. En un dispositivo, va a su puerta de enlace predeterminada.',
   },
-  'next-hop': { name: 'siguiente salto', definition: 'La IP del router al que se entrega el paquete en el próximo paso de su camino.' },
+  'next-hop': { name: 'siguiente salto', definition: 'La IP del siguiente router en el camino: la de su lado que mira a quien le entrega el paquete.' },
   'net-unreachable': {
     name: 'Destination Net Unreachable',
-    definition: 'Un aviso ICMP de que un router no tiene ruta a esa red. Es el par de Destination Host Unreachable.',
+    definition: 'Un aviso ICMP del router que no tiene ninguna ruta, ni por defecto, hacia la red del destino.',
   },
   'most-specific-route': {
     name: 'ruta más específica',

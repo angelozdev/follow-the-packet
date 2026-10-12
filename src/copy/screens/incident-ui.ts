@@ -285,7 +285,7 @@ export const TABLE_TEXT = {
     'cname-at-apex': 'La zona ya tiene sus propios registros en ese nombre, y un nombre con un {{cname-record|registro CNAME}} no puede tener otros registros.',
     'a-record-needs-ip': 'Un {{a-record|registro A}} guarda una IPv4 (cuatro números), no un nombre. Un nombre va en un {{cname-record|registro CNAME}}.',
     'no-router': 'Ese router no existe.',
-    'destination-has-route': 'Ese destino ya tiene una {{route|ruta}}. En este juego una {{routing-table|tabla de rutas}} guarda una sola ruta por destino: quita la que hay antes de poner otra.',
+    'destination-has-route': 'Ese destino ya tiene una {{route|ruta}}. En este juego, una {{routing-table|tabla de rutas}} guarda una sola ruta por destino. Quita la que hay antes de agregar otra.',
   } satisfies Record<RecordProblem | RouteProblem | 'a-record-needs-ip', TermText>,
 } as const;
 

@@ -33,9 +33,9 @@ export default defineIncident({
   introduces: ['next-hop', 'net-unreachable', 'most-specific-route'],
   changes: [...OTHER_OFFICE, ROUTES_LOST],
   shown: ROUTES_PIECES,
-  report: `Alguien reinició ${NAME.router} y perdió sus {{route|rutas}}: ya no sabe a dónde mandar lo que no es de la oficina. La empresa tiene además un enlace privado con otra oficina, que llega a ${NAME.branchRouter} y usa las {{private-ip|IPs privadas}} 10.0.0.x. Haz un {{ping}} al servidor, otro a ${IP.otherOfficePrinter} y otro a ${IP.otherOfficeLaptop}. Cuando un {{router}} no tiene ninguna {{route|ruta}} para un destino, puede avisar con un {{net-unreachable|Destination Net Unreachable}}. Después abre ${NAME.router} y agrega sus {{route|rutas}}. Cada una tiene un destino y un {{next-hop|siguiente salto}}. Al cambiar la tabla, las pruebas vuelven a empezar.`,
+  report: `Alguien reinició ${NAME.router} y perdió sus {{route|rutas}}. Solo le quedan las {{connected-route|rutas de red conectada}}. Ninguna sirve para lo que no es de la oficina. Además, ahora hay otra oficina, unida a ${NAME.router} por un enlace privado. Su {{router}} es ${NAME.branchRouter}, y sus {{private-ip|IPs privadas}} son 10.0.0.x. Haz un {{ping}} a ${NAME.server}, otro a ${NAME.branchPrinter} (${IP.otherOfficePrinter}) y otro a ${NAME.branchLaptop} (${IP.otherOfficeLaptop}). Cuando un {{router}} no tiene ninguna {{route|ruta}} para el destino, puede avisar con un {{net-unreachable|Destination Net Unreachable}}. Después abre ${NAME.router} y agrega sus {{route|rutas}}. Cada una tiene un destino y un {{next-hop|siguiente salto}}. Al cambiar la tabla, las pruebas vuelven a empezar.`,
   tasks: [
-    pingTask(TASK.serverPing, `Que vuelva tu {{ping}} al servidor, ${NAME.server}.`, ADDRESS.server.id, 'replied', SERVER.internet.id),
+    pingTask(TASK.serverPing, `Que vuelva tu {{ping}} a ${NAME.server}.`, ADDRESS.server.id, 'replied', SERVER.internet.id),
     pingTask(TASK.branchPrinterPing, `Que vuelva tu {{ping}} a ${NAME.branchPrinter}, ${IP.otherOfficePrinter}.`, ADDRESS.otherOffice.id, 'replied', DEVICE.branchPrinter.id),
     pingTask(TASK.branchLaptopPing, `Que vuelva tu {{ping}} a ${NAME.branchLaptop}, ${IP.otherOfficeLaptop}.`, ADDRESS.otherLaptop.id, 'replied', DEVICE.branchLaptop.id),
   ],
@@ -49,17 +49,17 @@ export default defineIncident({
   explanation: [
     {
       text: `Porque la {{route|ruta}} a ${NAME.branchRouter} se agregó después, y siempre gana la última {{route|ruta}} que se agrega.`,
-      feedback: 'El orden en que se agregan las {{route|rutas}} no decide. Decide qué tan específica es cada una.',
+      feedback: `El orden en que se agregan las {{route|rutas}} no decide. Con las dos en el orden contrario, el {{ping}} iría igual a ${NAME.branchRouter}.`,
       correct: false,
     },
     {
       text: `Porque ${BRANCH_LAN.cidr} es más específica que 0.0.0.0/0: tiene el {{prefix|prefijo}} más largo.`,
-      feedback: `Las dos {{route|rutas}} cubren ${IP.otherOfficePrinter}. Gana la {{most-specific-route|ruta más específica}}, la de {{prefix|prefijo}} más largo: /16 contra /0.`,
+      feedback: `Las dos {{route|rutas}} cubren ${IP.otherOfficePrinter}. El {{prefix|prefijo}} de ${BRANCH_LAN.cidr} es 16 y el de 0.0.0.0/0 es 0. Gana el más largo: es la {{most-specific-route|ruta más específica}}.`,
       correct: true,
     },
     {
       text: 'Porque 0.0.0.0/0 es una ruta de respaldo y solo se usa cuando falla otra {{route|ruta}}.',
-      feedback: '0.0.0.0/0 no es un respaldo. Cubre todas las {{ip-address|IPs}} y pierde frente a cualquier {{route|ruta}} más específica.',
+      feedback: `Ninguna {{route|ruta}} falla aquí. 0.0.0.0/0 cubre todas las {{ip-address|IPs}}, y solo se usa cuando ninguna {{route|ruta}} más específica cubre la {{ip-address|IP}}. Con ${IP.otherOfficePrinter}, la de ${BRANCH_LAN.cidr} es más específica.`,
       correct: false,
     },
   ],
@@ -70,5 +70,5 @@ export default defineIncident({
     sendMove(ADDRESS.otherOffice.id, MESSAGE.ping.id),
     sendMove(ADDRESS.otherLaptop.id, MESSAGE.ping.id),
   ],
-  takeaway: `Un {{router}} que no tiene ninguna {{route|ruta}} para un destino puede avisar con un {{net-unreachable|Destination Net Unreachable}}. Cuando varias {{route|rutas}} cubren una {{ip-address|IP}}, gana la {{most-specific-route|ruta más específica}}: la de {{prefix|prefijo}} más largo. 0.0.0.0/0 cubre todo y pierde frente a 10.0.0.0/16. Cada {{route|ruta}} termina en un {{next-hop|siguiente salto}}: el {{router}} al que se entrega el {{packet|paquete}}. ${NAME.provider} no avisó por las {{private-ip|IPs privadas}} 10.0.0.x: {{internet}} no las entrega, y un {{router}} no está obligado a avisar.`,
+  takeaway: `Un {{router}} sin ninguna {{route|ruta}} para el destino, ni siquiera la {{default-route|ruta por defecto}}, puede avisar con un {{net-unreachable|Destination Net Unreachable}}. Cuando varias {{route|rutas}} cubren una {{ip-address|IP}}, gana la {{most-specific-route|ruta más específica}}: la de {{prefix|prefijo}} más largo. 0.0.0.0/0 cubre todas las {{ip-address|IPs}}, pero pierde frente a ${BRANCH_LAN.cidr}. El {{next-hop|siguiente salto}} es la {{ip-address|IP}} del {{router}} al que se pasa el {{packet|paquete}}: la de su lado que mira a quien lo pasa. Por ejemplo, ${IP.branchLink} es la {{ip-address|IP}} de ${NAME.branchRouter} que mira a ${NAME.router}. ${NAME.provider} descarta sin avisar lo que va a las {{private-ip|IPs privadas}} 10.0.0.x, porque {{internet}} no las entrega.`,
 });
