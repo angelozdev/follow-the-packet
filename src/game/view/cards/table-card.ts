@@ -2,7 +2,7 @@ import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, ty
 import { ROUTE_DEFAULT, cacheAfter, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute } from '@/engine';
 import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
 import type { SentPacket } from '@/game/flow-runs';
-import { currentCase, type Session } from '@/game/session';
+import { canEdit, currentCase, type Session } from '@/game/session';
 import { PIECE_ID, parsePieceId } from '@/game/view/piece-id';
 import { routerWithIp } from '@/game/view/revealed-routers';
 import { routerPlace } from '@/game/view/router-place';
@@ -126,17 +126,17 @@ function opensRoutes(session: Session, pieceId: string, holder: Device | Router)
   return 'interfaces' in holder || Object.values(originPieces(session)).includes(pieceId);
 }
 
-/** Returns the «Tabla de rutas» card of a device or a router: the routing table the engine derives for it (`routingTableOf`: a connected route for each network it is plugged into, the default route and, for a router, its routes), with the row the last packet sent used marked. A router whose table the incident lets the player edit gets the trays of the destination and the next hop, a button to take away each route that is not connected, the problem the engine gave to the last entry it refused and the label of the button that adds one; any other table is read only, and shows only once `routing-table` is known, for a router and for a device that sends. The column of the next hop is called «Por dónde sale» until `next-hop` is known. Null for a piece that is no device or router, in an incident that is not a send, and when the piece has no such card. */
+/** Returns the «Tabla de rutas» card of a device or a router: the routing table the engine derives for it (`routingTableOf`: a connected route for each network it is plugged into, the default route and, for a router, its routes), with the row the last packet sent used marked. A router whose table the incident lets the player edit gets the trays of the destination and the next hop, a button to take away each route that is not connected, the problem the engine gave to the last entry it refused and the label of the button that adds one; any other table is read only, and shows only once `routing-table` is known, for a router and for a device that sends. A table the incident lets the player edit is read only too once the session no longer accepts edits (`canEdit`: the case of a diagnose is closed, or the incident is), so the card never offers a control that would do nothing. The column of the next hop is called «Por dónde sale» until `next-hop` is known. Null for a piece that is no device or router, in an incident that is not a send, and when the piece has no such card. */
 export function routesCard(session: Session, pieceId: string): TableCard | null {
   const holder = holderOf(session, pieceId);
   if (!holder) return null;
   const spec = tableSpec(session, holder.id, 'routes');
   if (!spec && !opensRoutes(session, pieceId, holder)) return null;
-  const editable = spec?.kind === 'routes';
+  const editable = spec?.kind === 'routes' && canEdit(session);
   const outlet = session.known.has('next-hop') ? TABLE_TEXT.routes.nextHop : TABLE_TEXT.routes.outlet;
   return {
     kind: 'routes',
-    tableId: spec?.id ?? null,
+    tableId: editable ? spec.id : null,
     ownerId: holder.id,
     pieceId: 'interfaces' in holder ? PIECE_ID.router(holder.id) : PIECE_ID.device(holder.id),
     title: TABLE_TEXT.routes.title(deviceName(session.world, holder.id)),
@@ -147,9 +147,9 @@ export function routesCard(session: Session, pieceId: string): TableCard | null 
     rows: routingTableOf(session.world, holder).map((route) => routeRow(session, holder, route, editable)),
     empty: TABLE_TEXT.routes.empty,
     note: null,
-    trays: spec?.kind === 'routes' ? [trayOf('destination', TABLE_TEXT.destination, spec.trays.destination), trayOf('nextHop', toPlainText(outlet), spec.trays.nextHop)] : null,
+    trays: editable ? [trayOf('destination', TABLE_TEXT.destination, spec.trays.destination), trayOf('nextHop', toPlainText(outlet), spec.trays.nextHop)] : null,
     add: editable ? TABLE_TEXT.routes.add : null,
-    problem: problemOf(session, spec),
+    problem: editable ? problemOf(session, spec) : null,
   };
 }
 
@@ -217,32 +217,33 @@ function typeCell(session: Session, type: AnswerRecord['type']): TableCell {
   return code(word(session.known, type === 'A' ? 'a-record' : 'cname-record', type));
 }
 
-function recordRow(session: Session, record: AnswerRecord): TableRowView {
+function recordRow(session: Session, record: AnswerRecord, editable: boolean): TableRowView {
   const ttl = session.known.has('dns-ttl') ? [code(TABLE_TEXT.records.seconds(record.ttl))] : [];
-  return { id: recordEntryId(record), entryId: recordEntryId(record), cells: [code(record.name), typeCell(session, record.type), code(record.value), ...ttl], inUse: false };
+  return { id: recordEntryId(record), entryId: editable ? recordEntryId(record) : null, cells: [code(record.name), typeCell(session, record.type), code(record.value), ...ttl], inUse: false };
 }
 
-/** Returns the «Registros» card of the zone of an authoritative server whose records the incident lets the player edit: its address and alias records as rows, with a button to take away each one, the trays of the name, the type and the value, the problem the engine gave to the last record it refused, and, under the table, one muted line when the zone has records of its own besides (the player never edits them). The time to live is a column once `dns-ttl` is known. Null when the piece is no server of the internet or the incident offers no table of records for it. */
+/** Returns the «Registros» card of the zone of an authoritative server whose records the incident lets the player edit: its address and alias records as rows, with a button to take away each one, the trays of the name, the type and the value, the problem the engine gave to the last record it refused, and, under the table, one muted line when the zone has records of its own besides (the player never edits them). The time to live is a column once `dns-ttl` is known. When the session no longer accepts edits (`canEdit`: the case is closed, or the incident is) the card is the same table read only, with no trays, no button, no table id, no button on the rows and no problem. Null when the piece is no server of the internet or the incident offers no table of records for it. */
 export function recordsCard(session: Session, pieceId: string): TableCard | null {
   const server = serverOf(session, pieceId);
   const spec = server && tableSpec(session, server.id, 'records');
   if (!server || spec?.kind !== 'records') return null;
+  const editable = canEdit(session);
   const zones = server.dns?.zones ?? [];
   const records = answerRecords(server);
   const ttl = session.known.has('dns-ttl') ? [{ id: 'ttl', label: TABLE_TEXT.records.ttl }] : [];
   return {
     kind: 'records',
-    tableId: spec.id,
+    tableId: editable ? spec.id : null,
     ownerId: server.id,
     pieceId: PIECE_ID.actor(server.id),
     title: TABLE_TEXT.records.title(zones.length === 1 ? nameTag(zones[0].name) : nameTag(server.name)),
     columns: [...recordColumns(), ...ttl],
-    rows: records.map((record) => recordRow(session, record)),
+    rows: records.map((record) => recordRow(session, record, editable)),
     empty: TABLE_TEXT.records.empty,
     note: zones.some((zone) => zone.records.some((record) => record.type !== 'A' && record.type !== 'CNAME')) ? TABLE_TEXT.records.own : null,
-    trays: [trayOf('name', TABLE_TEXT.records.name, spec.trays.name), trayOf('type', TABLE_TEXT.records.type, spec.trays.type), trayOf('value', TABLE_TEXT.records.value, spec.trays.value)],
-    add: TABLE_TEXT.records.add,
-    problem: problemOf(session, spec),
+    trays: editable ? [trayOf('name', TABLE_TEXT.records.name, spec.trays.name), trayOf('type', TABLE_TEXT.records.type, spec.trays.type), trayOf('value', TABLE_TEXT.records.value, spec.trays.value)] : null,
+    add: editable ? TABLE_TEXT.records.add : null,
+    problem: editable ? problemOf(session, spec) : null,
   };
 }
 

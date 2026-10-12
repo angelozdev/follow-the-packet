@@ -153,6 +153,19 @@ describe('the card of a case with a fix', () => {
     expect(cardOf(atTheFix(removeDefault, placeServer, send, { type: 'removeEntry', tableId: 'routes', entryId: server.range })).repair?.tasks.map((task) => task.done)).toEqual([false]);
   });
 
+  it('keeps the table on the card of the router once the case is closed, read only, with nothing that would do nothing', () => {
+    const open = routesCard(atTheFix(), routerPiece);
+    expect(open).toMatchObject({ tableId: 'routes', add: TABLE_TEXT.routes.add });
+    const closed = atTheFix(...solution, named(right(fixed)));
+    expect(cardOf(closed).closed).toBe(true);
+    expect(pieceCard(closed, routerPiece)?.tabs.map((tab) => tab.id)).toEqual(['routes']);
+    const card = routesCard(closed, routerPiece);
+    expect(card).toMatchObject({ tableId: null, trays: null, add: null, problem: null });
+    expect(card?.rows.map((row) => row.id)).toContain(`static:${server.range}`);
+    expect(card?.rows.every((row) => row.entryId === null)).toBe(true);
+    expect(pieceViews(closed).find((piece) => piece.id === routerPiece)).toMatchObject({ configurable: true });
+  });
+
   it('the reference solution of a case with a fix repairs the world of that case', () => {
     const before = atTheFix(sendPing);
     expect(before.sent.map((packet) => packet.trace.outcome)).toEqual(['ttl-exceeded']);

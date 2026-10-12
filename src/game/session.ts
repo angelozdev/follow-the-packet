@@ -190,8 +190,8 @@ function withProblem(state: Session, action: SettingMove | TableMove): Session {
   return { ...state, entryProblem: { tableId: action.tableId, code } };
 }
 
-/** True when the player can change the world from the cards of the pieces: in a send incident, and in a diagnose only in a case that has a fix and is not closed yet, where the tables of the fix are all there is to edit. */
-function canEdit(state: Session): boolean {
+/** True when the player can change the world from the cards of the pieces: in a send incident that is still open, and in a diagnose only in a case that has a fix and is not closed yet, where the tables of the fix are all there is to edit. The session refuses every other edit, and the cards of the tables read this same fact to offer no control that would do nothing. */
+export function canEdit(state: Session): boolean {
   if (state.phase !== 'playing') return false;
   return state.incident.mechanic === 'send' || (currentCase(state)?.fix !== undefined && !caseClosed(state));
 }

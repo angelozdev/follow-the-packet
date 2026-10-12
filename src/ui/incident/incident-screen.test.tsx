@@ -589,6 +589,24 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
     expect(screen.queryByRole('button', { name: 'router-provider' })).toBeNull();
     expect(caseCardOf(fixed + 1)).toBeInTheDocument();
   });
+
+  it('once the case is closed the card of the router keeps the table and offers nothing to edit', async () => {
+    const user = userEvent.setup();
+    render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
+    await reachTheFix(user);
+    await repairTheRoutes(user);
+    await pingTheServer(user);
+    await user.click(screen.getByRole('button', { name: KNOW }));
+    await user.click(screen.getByRole('button', { name: optionOf(fixed) }));
+    expect(screen.getByRole('button', { name: NEXT })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'router-provider' }));
+    const table = screen.getByRole('dialog', { name: ROUTES });
+    expect(within(table).getByRole('table')).toBeInTheDocument();
+    expect(within(table).queryByRole('button', { name: /^Quitar/ })).toBeNull();
+    expect(within(table).queryByRole('button', { name: 'Agregar ruta' })).toBeNull();
+    expect(within(table).queryByRole('button', { name: '198.51.100.0/24' })).toBeNull();
+    expect(within(table).queryByRole('status')).toBeNull();
+  });
 });
 
 describe('the standard of warnings and errors', () => {

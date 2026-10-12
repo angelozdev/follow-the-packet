@@ -249,3 +249,20 @@ describe('cacheCard', () => {
     expect(cacheCard(without(START, 'dns-cache'), RESOLVER)).toBeNull();
   });
 });
+
+describe('a table the session no longer lets the player edit', () => {
+  const closed: Session = { ...START, phase: 'explaining' };
+  const refused = play(START, place('routes', { destination: range, nextHop: officeRouter.id }));
+
+  it('stays on the card as the same table, read only: no trays, no button, no table id, no button on its rows and no problem', () => {
+    expect(refused.entryProblem).not.toBeNull();
+    for (const [card, open] of [[routesCard(closed, PROVIDER), routesCard(START, PROVIDER)], [recordsCard(closed, AUTHORITATIVE), recordsCard(START, AUTHORITATIVE)]] as const) {
+      expect(card).toMatchObject({ tableId: null, trays: null, add: null, problem: null });
+      expect(card?.rows.every((row) => row.entryId === null)).toBe(true);
+      expect(card?.rows.map((row) => row.id)).toEqual(open?.rows.map((row) => row.id));
+      expect(card?.title).toBe(open?.title);
+    }
+    expect(routesCard({ ...refused, phase: 'explaining' }, PROVIDER)?.problem).toBeNull();
+    expect(routesCard(refused, PROVIDER)?.problem).not.toBeNull();
+  });
+});
