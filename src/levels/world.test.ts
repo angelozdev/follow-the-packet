@@ -418,6 +418,55 @@ describe('applyMove of the tables, the clock and the settings of chapter 2', () 
     expect(placementProblem(start, NAMES, placeRoute('ghost'))).toBeUndefined();
   });
 
+  it('placementProblem refuses an address record whose value is no IP, and says nothing about a tray with no pick or an alias', () => {
+    const shop = `tienda.${zone}`;
+    const odd = withTables({ id: 'records', kind: 'records', ownerId: authoritative.id, trays: { name: [{ id: 'shop', label: shop, value: shop }], type: [{ id: 'a', label: 'A', value: 'A' }, { id: 'cname', label: 'CNAME', value: 'CNAME' }], value: [{ id: 'ip', label: server.ip, value: server.ip }, { id: 'name', label: WWW, value: WWW }] } });
+    const place = (picks: Record<string, string>): PlaceEntryMove => ({ type: 'placeEntry', tableId: 'records', picks });
+    expect(placementProblem(start, odd, place({ name: 'shop', type: 'a', value: 'name' }))).toBe('a-record-needs-ip');
+    expect(placementProblem(start, odd, place({ name: 'shop', type: 'a', value: 'ip' }))).toBeUndefined();
+    expect(placementProblem(start, odd, place({ name: 'shop', type: 'cname', value: 'name' }))).toBeUndefined();
+    expect(placementProblem(start, odd, place({ name: 'shop', type: 'a' }))).toBeUndefined();
+    expect(applyMove(start, odd, place({ name: 'shop', type: 'a', value: 'name' }))).toBe(start);
+  });
+
+  it('no combination of the chips of a table of records changes nothing in silence', () => {
+    const blog = `blog.${zone}`;
+    const names = [WWW, blog, zone, `tienda.${zone}`, `nadie.otra-zona.example`];
+    const values = [server.ip, OTHER_IP, WWW, blog, `tienda.${zone}`, zone];
+    const full = withTables({ id: 'records', kind: 'records', ownerId: authoritative.id, trays: { name: chips(...names), type: chips('A', 'CNAME'), value: chips(...values) } });
+    const refusals = new Set<string | undefined>();
+    for (const name of names) {
+      for (const type of ['A', 'CNAME']) {
+        for (const value of values) {
+          const move = placeRecord(name, type, value);
+          const world = applyMove(start, full, move);
+          const problem = placementProblem(start, full, move);
+          expect(world !== start || problem !== undefined, `${name} ${type} ${value}`).toBe(true);
+          if (world === start) refusals.add(problem);
+        }
+      }
+    }
+    expect([...refusals].sort()).toEqual(['a-record-needs-ip', 'already-there', 'cname-at-apex', 'cname-with-other-records', 'name-is-an-alias', 'no-zone']);
+  });
+
+  it('no combination of the chips of a table of routes changes nothing in silence, a router that shares no link included', () => {
+    const { officeRouter, backbone } = OFFICE_FLOORS;
+    const destinations = ['default', range, OFFICE_FLOORS.server.range, '10.0.0.0/16', '10.0.0.10/32'];
+    const nextHops = [officeRouter.id, backbone.id, provider.id];
+    const full = withTables({ id: 'routes', kind: 'routes', ownerId: provider.id, trays: { destination: chips(...destinations), nextHop: chips(...nextHops) } });
+    for (const destination of destinations) {
+      for (const nextHop of nextHops) {
+        const move = placeRoute(destination, nextHop);
+        const world = applyMove(start, full, move);
+        const problem = placementProblem(start, full, move);
+        expect(world !== start || problem !== undefined, `${destination} via ${nextHop}`).toBe(true);
+        if (world !== start) expect(networkSchema.safeParse(world).success, `${destination} via ${nextHop}`).toBe(true);
+      }
+    }
+    const loop = placeRoute('10.0.0.0/16', provider.id);
+    expect(networkSchema.safeParse(applyMove(start, full, loop)).success).toBe(true);
+  });
+
   it('a setting move sets the DNS server of a device, and a chip with no value takes it away', () => {
     const set = (chipId: string): PlayerMove => ({ type: 'setSetting', deviceId: 'your-laptop', settingId: 'resolver', chipId });
     expect(deviceOf(start, 'your-laptop').dnsServer).toBe(resolver.ip);

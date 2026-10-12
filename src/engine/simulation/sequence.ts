@@ -1,6 +1,6 @@
-import { EMPTY_CACHE } from '@/engine/dns/cache';
+import { EMPTY_CACHE, entriesOf } from '@/engine/dns/cache';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
-import type { Network, PacketSpec } from '@/engine/network/types';
+import type { DnsCacheEntry, Network, PacketSpec } from '@/engine/network/types';
 import { run, type Carried } from './simulate';
 import type { Trace } from './trace';
 
@@ -37,8 +37,12 @@ function advance(net: Network, state: SequenceState, { packet, at }: Send): Adva
   return { state: { ...next.state, ...carried }, trace };
 }
 
-/** Simulates the sends in order and returns one trace per send, in the same order. What one send leaves behind (the source port of its sender, the rows of the NAT and what the resolvers remembered) is the input of the next, and each send is measured against its own `at`, so the same sends in the same network always give the same traces; a single `simulate` knows nothing of the sends before it. */
-export function simulateSequence(net: Network, sends: readonly Send[]): Trace[] {
+interface Played {
+  traces: Trace[];
+  state: SequenceState;
+}
+
+function play(net: Network, sends: readonly Send[]): Played {
   const traces: Trace[] = [];
   let state = emptyState();
   for (const send of sends) {
@@ -46,5 +50,27 @@ export function simulateSequence(net: Network, sends: readonly Send[]): Trace[] 
     state = step.state;
     traces.push(step.trace);
   }
-  return traces;
+  return { traces, state };
+}
+
+/** Simulates the sends in order and returns one trace per send, in the same order. What one send leaves behind (the source port of its sender, the rows of the NAT and what the resolvers remembered) is the input of the next, and each send is measured against its own `at`, so the same sends in the same network always give the same traces; a single `simulate` knows nothing of the sends before it. */
+export function simulateSequence(net: Network, sends: readonly Send[]): Trace[] {
+  return play(net, sends).traces;
+}
+
+/** One answer a resolver holds: the record and the seconds it has left. */
+export interface CachedRow {
+  name: string;
+  type: DnsCacheEntry['type'];
+  value: string;
+  ttlLeft: number;
+}
+
+/** Returns what the resolver with this id holds once the sends have run, at second `now` of the game clock: its own `dns.cache` and what the sends stored, each with the seconds it has left (`expiresAt` less `now`), in the order the resolver holds them. An entry is alive while `now` is below its `expiresAt`, as in `cachedAnswer`, so one that ran out is not listed. Empty for an id that is no resolver. Nothing in it comes from the clock of the machine: `now` is the clock of the game, and the sends are replayed exactly as `simulateSequence` plays them. */
+export function cacheAfter(net: Network, sends: readonly Send[], resolverId: string, now: number): CachedRow[] {
+  const resolver = net.actors.find((actor) => actor.kind === 'server' && actor.id === resolverId && actor.dns?.role === 'resolver');
+  if (resolver?.kind !== 'server') return [];
+  return entriesOf(resolver, play(net, sends).state.dnsCache)
+    .filter((entry) => now < entry.expiresAt)
+    .map(({ name, type, value, expiresAt }) => ({ name, type, value, ttlLeft: expiresAt - now }));
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { InkIcon } from '@/scene';
 
-export type CardIconKind = 'lucia' | 'question' | 'result' | 'inspection' | 'terminal' | 'settings' | 'case' | 'chapter';
+export type CardIconKind = 'lucia' | 'question' | 'result' | 'inspection' | 'terminal' | 'settings' | 'table' | 'clock' | 'case' | 'chapter';
 
 const SHAPES: Record<CardIconKind, ReactNode> = {
   lucia: (
@@ -36,6 +36,18 @@ const SHAPES: Record<CardIconKind, ReactNode> = {
       <circle cx="8" cy="16" r="2" />
     </>
   ),
+  table: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="1" />
+      <path d="M4 10h16M4 14.5h16M10 5v14" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
   case: (
     <>
       <rect x="6" y="4" width="12" height="17" rx="1" />
@@ -51,7 +63,7 @@ const SHAPES: Record<CardIconKind, ReactNode> = {
   ),
 };
 
-/** The icon on the stripe of a card whose kind is not an entity of the map: Lucía, her question, the result, an inspection, a terminal, the network settings of a device, a case of a diagnose and a chapter of the roadmap. A card about an entity wears that entity's icon (`EntityIcon`). */
+/** The icon on the stripe of a card whose kind is not an entity of the map: Lucía, her question, the result, an inspection, a terminal, the network settings of a device, a table, the clock of the game, a case of a diagnose and a chapter of the roadmap. A card about an entity wears that entity's icon (`EntityIcon`). */
 export function CardIcon({ kind }: { kind: CardIconKind }) {
   return <InkIcon>{SHAPES[kind]}</InkIcon>;
 }

@@ -6,7 +6,7 @@ import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { dnsField, exchangeField, headerFields, routeField, translationField, type InspectionField } from './packet-fields';
-import { drawsRouter, isDrawn, isShown } from './pieces';
+import { drawsRouter, isDrawn, isShown } from './drawn';
 import { placesOf, routerPlace } from './router-place';
 
 export type { InspectionField } from './packet-fields';

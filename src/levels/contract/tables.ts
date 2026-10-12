@@ -27,14 +27,29 @@ function recordOf(name: string, type: AnswerRecord['type'], value: string): Answ
   return { name, type, value, ttl: RECORD_TTL };
 }
 
-/** Returns the action that places the entry the chips of a table stand for, one chip picked in each tray: a route of the router that owns a table of routes, or a record, with the time to live of the game, in the zone of the server that owns a table of records. Null when a tray has no pick or the pick is not one of its chips, and when the chips do not make a record (an address record whose value is not an IP). */
+function pickedValue<Value extends string>(chips: readonly { id: string; value: Value }[], picks: Readonly<Record<string, string>>, trayName: string): Value | undefined {
+  return chips.find((chip) => chip.id === picks[trayName])?.value;
+}
+
+export const CHIP_PROBLEMS = ['a-record-needs-ip'] as const;
+
+/** Why the chips picked in a table make no entry although every tray has a pick: an address record (`A`) whose value is not an IPv4 address, which RFC 1035 §3.4.1 says is what an A record holds (a name belongs in a CNAME). */
+export type ChipProblem = (typeof CHIP_PROBLEMS)[number];
+
+/** Says why the chips picked in a table of records make no record, or undefined when they make one and also when a tray has no pick, which is no entry at all and has nothing to explain. Only an `A` with a value that is no IP is refused this way: the engine never sees it. */
+export function chipProblem(table: TableSpec, picks: Readonly<Record<string, string>>): ChipProblem | undefined {
+  if (table.kind !== 'records') return undefined;
+  const [name, type, value] = [pickedValue(table.trays.name, picks, 'name'), pickedValue(table.trays.type, picks, 'type'), pickedValue(table.trays.value, picks, 'value')];
+  return name !== undefined && type === 'A' && value !== undefined && !isIpv4(value) ? 'a-record-needs-ip' : undefined;
+}
+
+/** Returns the action that places the entry the chips of a table stand for, one chip picked in each tray: a route of the router that owns a table of routes, or a record, with the time to live of the game, in the zone of the server that owns a table of records. Null when a tray has no pick or the pick is not one of its chips, and when the chips do not make a record (an address record whose value is not an IP: `chipProblem` says so). */
 export function placementOf(table: TableSpec, picks: Readonly<Record<string, string>>): Placement | null {
-  const pick = <Value extends string>(chips: readonly { id: string; value: Value }[], trayName: string): Value | undefined => chips.find((chip) => chip.id === picks[trayName])?.value;
   if (table.kind === 'routes') {
-    const [to, next] = [pick(table.trays.destination, 'destination'), pick(table.trays.nextHop, 'nextHop')];
+    const [to, next] = [pickedValue(table.trays.destination, picks, 'destination'), pickedValue(table.trays.nextHop, picks, 'nextHop')];
     return to !== undefined && next !== undefined ? { type: 'addRoute', routerId: table.ownerId, route: { to, next } } : null;
   }
-  const [name, type, value] = [pick(table.trays.name, 'name'), pick(table.trays.type, 'type'), pick(table.trays.value, 'value')];
+  const [name, type, value] = [pickedValue(table.trays.name, picks, 'name'), pickedValue(table.trays.type, picks, 'type'), pickedValue(table.trays.value, picks, 'value')];
   const record = name !== undefined && type !== undefined && value !== undefined ? recordOf(name, type, value) : null;
   return record ? { type: 'addRecord', serverId: table.ownerId, record } : null;
 }

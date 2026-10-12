@@ -8,11 +8,13 @@ import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIEC
 import type { FlowRun, SentPacket } from './flow-runs';
 import { firewallCard } from './view/cards/firewall-card';
 import { identifyCard } from './view/cards/identify-card';
+import { pieceCard } from './view/cards/piece-card';
 import { settingsCard } from './view/cards/settings-card';
 import { terminalCard, terminalLine } from '@/game/view/cards/terminal/terminal-card';
 import { inspect } from './view/inspection';
 import { PIECE_ID } from './view/piece-id';
-import { drawsRouter, pieceViews } from './view/pieces';
+import { drawsRouter } from './view/drawn';
+import { pieceViews } from './view/pieces';
 import { routerPlace } from './view/router-place';
 import { caseCard, caseSummary } from './view/cards/case-card';
 import { tracerouteLines } from '@/game/view/cards/terminal/traceroute-lines';
@@ -63,7 +65,7 @@ const HOP_OR_TTL = /salto|TTL/i;
 const NO_GATEWAY_TEXT = '192.168.2.15 no está en la red local de tu-laptop, y tu-laptop no tiene puerta de enlace predeterminada: no sabe por dónde sacar el paquete.';
 const PRINTER_GATEWAY_TEXT = 'La IP 192.168.1.21, la puerta de enlace predeterminada guardada, es de impresora, que no es un router: recibe el paquete, no lo pasa a otra red y no vuelve nada.';
 const NOBODY_GATEWAY_TEXT = 'tu-laptop buscó en su red quién tenía la IP 192.168.1.50, su puerta de enlace predeterminada, y nadie contestó. El propio dispositivo avisa que no pudo entregar el paquete.';
-const SETTINGS_ENTRY = 'Ajustes de red de tu-laptop';
+const SETTINGS_TAB = 'Ajustes de red';
 const GATEWAY_TRAY = 'puerta de enlace predeterminada';
 const NO_GATEWAY_CHIP = 'Ninguna';
 const OUTSIDE_THE_OFFICE = 'fuera de la oficina';
@@ -690,16 +692,19 @@ describe('01-07, who gets whats outside', () => {
   });
 
   it('01-07: the gateway is set from the Ajustes de red card of the laptop, and its terminal offers no setting', () => {
-    const entries = pieceViews(start).flatMap((piece) => (piece.settings ? [{ owner: piece.anchorId, id: piece.settings.id, label: toPlainText(piece.settings.label) }] : []));
-    expect(entries).toEqual([{ owner: DEVICE.you.id, id: PIECE_ID.settings(DEVICE.you.id), label: SETTINGS_ENTRY }]);
-    const card = settingsCard(start, entries[0].id);
+    const laptop = PIECE_ID.device(DEVICE.you.id);
+    const tabs = pieceCard(start, laptop)?.tabs.map((tab) => ({ id: tab.id, label: toPlainText(tab.label) }));
+    expect(tabs).toEqual([{ id: 'terminal', label: 'Terminal' }, { id: 'settings', label: SETTINGS_TAB }]);
+    expect(pieceViews(start).filter((piece) => piece.id === laptop)).toHaveLength(1);
+    expect(pieceViews(start).find((piece) => piece.id === laptop)).not.toHaveProperty('settings');
+    const card = settingsCard(start, laptop);
     expect(card?.settings.map((setting) => ({ id: setting.id, name: toPlainText(setting.name), picked: setting.picked, chips: setting.chips.map((chip) => toPlainText(chip.label)) }))).toEqual([
       { id: GATEWAY.setting, name: GATEWAY_TRAY, picked: GATEWAY.none, chips: [NO_GATEWAY_CHIP, IP.router, IP.printer, IP.nobody] },
     ]);
-    const terminal = terminalCard(start, PIECE_ID.device(DEVICE.you.id));
+    const terminal = terminalCard(start, laptop);
     expect(terminal?.trays.map((tray) => tray.name)).toEqual(['to']);
     expect(terminal?.trays.flatMap((tray) => tray.chips.map((chip) => toPlainText(chip.label)))).toEqual([IP.andres, IP.printer]);
-    expect(settingsCard(pickGateway(start, GATEWAY.router), entries[0].id)?.settings[0].picked).toBe(GATEWAY.router);
+    expect(settingsCard(pickGateway(start, GATEWAY.router), laptop)?.settings[0].picked).toBe(GATEWAY.router);
   });
 
   it('01-07: the world is valid with every gateway the card offers', () => {

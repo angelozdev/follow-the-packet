@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { probePackets, withProbeActor } from '@/engine/exposure/exposure';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
-import { NAME_SERVERS, OFFICE, actor, chapter4Worlds, device, dig, officeNet, officeWithNames, ping, tcp } from '@/testing';
-import { simulateSequence, type Send } from './sequence';
+import { NAME_SERVERS, OFFICE, actor, chapter4Worlds, device, dig, officeNet, officeWithNames, ping, tcp, withResolverCache } from '@/testing';
+import { cacheAfter, simulateSequence, type Send } from './sequence';
 import { simulate } from './simulate';
 
 const CLOSED_PORT = 80;
@@ -168,5 +168,45 @@ describe('the cache of a resolver in a sequence', () => {
     expect(simulateSequence(names, list)).toEqual(first);
     expect(first.map((trace) => trace.dns?.fromCache)).toEqual([false, false, true]);
     expect(simulate(names, dig(you, WWW)).dns?.fromCache).toBe(false);
+  });
+});
+
+describe('what a resolver holds after a sequence', () => {
+  const { zone, site, resolver, authoritative } = NAME_SERVERS;
+  const WWW = `www.${zone}`;
+  const names = officeWithNames();
+  const rows = (list: Send[], now: number, id: string = resolver.id) => cacheAfter(names, list, id, now);
+
+  it('lists the answers the sends left with the seconds each has left at the second asked', () => {
+    const list: Send[] = [{ packet: dig(you, WWW), at: 10 }];
+    expect(rows(list, 10)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 300 }]);
+    expect(rows(list, 70)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 240 }]);
+    expect(rows(list, 309)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 1 }]);
+    expect(rows(list, 310)).toEqual([]);
+  });
+
+  it('holds the entries of the world before any send, measured against the clock of the game', () => {
+    const seeded = withResolverCache(names, [{ name: WWW, type: 'A', value: site, expiresAt: 240 }]);
+    expect(cacheAfter(seeded, [], resolver.id, 0)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 240 }]);
+    expect(cacheAfter(seeded, [], resolver.id, 239)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 1 }]);
+    expect(cacheAfter(seeded, [], resolver.id, 300)).toEqual([]);
+  });
+
+  it('shows the newer answer in place of the entry of the world for the same name and type', () => {
+    const seeded = withResolverCache(names, [{ name: WWW, type: 'A', value: '198.51.100.99', expiresAt: 5 }]);
+    expect(cacheAfter(seeded, [{ packet: dig(you, WWW), at: 10 }], resolver.id, 10)).toEqual([{ name: WWW, type: 'A', value: site, ttlLeft: 300 }]);
+  });
+
+  it('keeps each link of an alias chain and nothing a lookup did not store', () => {
+    const list: Send[] = [{ packet: dig(you, `blog.${zone}`), at: 0 }, { packet: dig(you, `noexiste.${zone}`), at: 1 }];
+    expect(rows(list, 2).map(({ name, type, ttlLeft }) => [name, type, ttlLeft])).toEqual([[`blog.${zone}`, 'CNAME', 298], [WWW, 'A', 298]]);
+  });
+
+  it('is empty for a server that is no resolver and for an id that is no server, and it leaves the sends untouched', () => {
+    const list: Send[] = [{ packet: dig(you, WWW), at: 0 }];
+    const before = structuredClone(list);
+    expect(rows(list, 1, authoritative.id)).toEqual([]);
+    expect(rows(list, 1, 'nobody')).toEqual([]);
+    expect(list).toEqual(before);
   });
 });

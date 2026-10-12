@@ -1,0 +1,277 @@
+import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
+import { ROUTE_DEFAULT, cacheAfter, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute } from '@/engine';
+import { recordEntryId, routeEntryId, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
+import type { SentPacket } from '@/game/flow-runs';
+import type { Session } from '@/game/session';
+import { PIECE_ID, parsePieceId } from '@/game/view/piece-id';
+import { routerWithIp } from '@/game/view/revealed-routers';
+import { routerPlace } from '@/game/view/router-place';
+import { originPieces } from './terminal/terminal-card';
+
+export type TableKind = 'routes' | 'translations' | 'records' | 'cache';
+
+/** One cell of a table: its text and whether it is a value written in code (an IP, a range, a name or a number) and not a word. */
+export interface TableCell {
+  text: TermText;
+  code: boolean;
+}
+
+/** One row of a table. `entryId` is how the session names the row it removes, and is null for a row the player cannot take away (a route of the network the holder is plugged into). `inUse` marks the row the last packet sent used. */
+export interface TableRowView {
+  id: string;
+  entryId: string | null;
+  cells: TableCell[];
+  inUse: boolean;
+}
+
+/** A tray of an editable table: the name the placement picks it by (`destination` and `nextHop` for a route, `name`, `type` and `value` for a record), the name the player reads and its chips. */
+export interface EntryTray {
+  name: string;
+  label: string;
+  chips: { id: string; label: TermText }[];
+}
+
+export interface TableCard {
+  kind: TableKind;
+  tableId: string | null;
+  ownerId: string;
+  pieceId: string;
+  title: TermText;
+  columns: { id: string; label: TermText }[];
+  rows: TableRowView[];
+  empty: TermText;
+  note: TermText | null;
+  trays: EntryTray[] | null;
+  add: string | null;
+  problem: TermText | null;
+}
+
+const ANYWHERE = '0.0.0.0/0';
+
+function sendIncident(session: Session): SendIncident | null {
+  return session.incident.mechanic === 'send' ? session.incident : null;
+}
+
+function tableSpec(session: Session, ownerId: string, kind: TableSpec['kind']): TableSpec | undefined {
+  return sendIncident(session)?.send.tables?.find((table) => table.ownerId === ownerId && table.kind === kind);
+}
+
+function holderOf(session: Session, pieceId: string): Device | Router | undefined {
+  const ref = parsePieceId(pieceId);
+  if (ref?.kind === 'device') return session.world.devices.find((device) => device.id === ref.id);
+  return ref?.kind === 'router' ? (session.world.routers ?? []).find((router) => router.id === ref.id) : undefined;
+}
+
+function serverOf(session: Session, pieceId: string): ServerActor | undefined {
+  const ref = parsePieceId(pieceId);
+  return ref?.kind === 'actor' ? session.world.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === ref.id) : undefined;
+}
+
+function lastRun(session: Session): SentPacket | undefined {
+  const last = session.history.at(-1);
+  return last && last.route === undefined ? last : undefined;
+}
+
+function code(text: TermText): TableCell {
+  return { text, code: true };
+}
+
+function words(text: TermText): TableCell {
+  return { text, code: false };
+}
+
+function problemOf(session: Session, spec: TableSpec | undefined): TermText | null {
+  const kept = session.entryProblem;
+  if (!spec || kept?.tableId !== spec.id) return null;
+  const problems: Record<EntryProblem, TermText> = TABLE_TEXT.problems;
+  return TABLE_TEXT.refused(problems[kept.code]);
+}
+
+function trayOf(name: string, label: string, chips: readonly { id: string; label: TermText }[]): EntryTray {
+  return { name, label, chips: chips.map(({ id, label: chipLabel }) => ({ id, label: chipLabel })) };
+}
+
+function routerText(session: Session, router: Router): TermText {
+  const place = routerPlace(session, router.id);
+  return place === 'named' ? nameTag(router.name) : INSPECTION_TEXT.place[place];
+}
+
+function viaText(session: Session, via: string): TermText {
+  const router = routerWithIp(session.world, via);
+  if (!router) return via;
+  return routerPlace(session, router.id) === 'named' ? `${via} ${nameTag(router.name)}` : routerText(session, router);
+}
+
+/** Returns what the column of the next hop says for a row: «directo» for the network the holder is plugged into, the IP of the next hop with its router when the map draws it, and, for a route whose router shares no link with the holder (so the engine has no IP to give), the router alone. */
+function outletOf(session: Session, holder: Device | Router, route: TableRoute): TableCell {
+  if (route.kind === 'connected') return words(TABLE_TEXT.routes.direct);
+  if (route.via !== undefined) return code(viaText(session, route.via));
+  const next = 'interfaces' in holder ? (session.world.routers ?? []).find((router) => router.id === holder.routes.find(({ to }) => to === route.to)?.next) : undefined;
+  return next ? code(routerText(session, next)) : words(TABLE_TEXT.routes.direct);
+}
+
+function routeRow(session: Session, holder: Device | Router, route: TableRoute, editable: boolean): TableRowView {
+  const decision = lastRun(session)?.trace.routes?.find((candidate) => candidate.holderId === holder.id);
+  const destination = route.to === ROUTE_DEFAULT ? ANYWHERE : route.to;
+  return {
+    id: `${route.kind}:${route.to}`,
+    entryId: editable && route.kind !== 'connected' ? routeEntryId(route) : null,
+    cells: [code(destination), outletOf(session, holder, route)],
+    inUse: decision !== undefined && decision.route.to === route.to && decision.kind === route.kind,
+  };
+}
+
+function opensRoutes(session: Session, pieceId: string, holder: Device | Router): boolean {
+  if (session.incident.mechanic !== 'send' || !session.known.has('routing-table')) return false;
+  return 'interfaces' in holder || Object.values(originPieces(session)).includes(pieceId);
+}
+
+/** Returns the «Tabla de rutas» card of a device or a router: the routing table the engine derives for it (`routingTableOf`: a connected route for each network it is plugged into, the default route and, for a router, its routes), with the row the last packet sent used marked. A router whose table the incident lets the player edit gets the trays of the destination and the next hop, a button to take away each route that is not connected, the problem the engine gave to the last entry it refused and the label of the button that adds one; any other table is read only, and shows only once `routing-table` is known, for a router and for a device that sends. The column of the next hop is called «Por dónde sale» until `next-hop` is known. Null for a piece that is no device or router, in an incident that is not a send, and when the piece has no such card. */
+export function routesCard(session: Session, pieceId: string): TableCard | null {
+  const holder = holderOf(session, pieceId);
+  if (!holder) return null;
+  const spec = tableSpec(session, holder.id, 'routes');
+  if (!spec && !opensRoutes(session, pieceId, holder)) return null;
+  const editable = spec?.kind === 'routes';
+  const outlet = session.known.has('next-hop') ? TABLE_TEXT.routes.nextHop : TABLE_TEXT.routes.outlet;
+  return {
+    kind: 'routes',
+    tableId: spec?.id ?? null,
+    ownerId: holder.id,
+    pieceId: 'interfaces' in holder ? PIECE_ID.router(holder.id) : PIECE_ID.device(holder.id),
+    title: TABLE_TEXT.routes.title(deviceName(session.world, holder.id)),
+    columns: [
+      { id: 'destination', label: TABLE_TEXT.destination },
+      { id: 'outlet', label: outlet },
+    ],
+    rows: routingTableOf(session.world, holder).map((route) => routeRow(session, holder, route, editable)),
+    empty: TABLE_TEXT.routes.empty,
+    note: null,
+    trays: spec?.kind === 'routes' ? [trayOf('destination', TABLE_TEXT.destination, spec.trays.destination), trayOf('nextHop', toPlainText(outlet), spec.trays.nextHop)] : null,
+    add: editable ? TABLE_TEXT.routes.add : null,
+    problem: problemOf(session, spec),
+  };
+}
+
+function translationKey({ protocol, inside, outside }: { protocol: string; inside: { ip: string; port?: number }; outside: { ip: string; port?: number } }): string {
+  return `${protocol}|${inside.ip}:${inside.port}|${outside.ip}:${outside.port}`;
+}
+
+function makesRow(run: SentPacket): boolean {
+  const { translation } = run.trace;
+  return run.route === undefined && translation !== undefined && translation.protocol !== 'icmp' && translation.isNew && !translation.fixed;
+}
+
+function translationRow(session: Session, run: SentPacket, usedKey: string | undefined): TableRowView {
+  const { translation } = run.trace;
+  const { protocol, inside, outside } = translation!;
+  const key = translationKey(translation!);
+  return {
+    id: key,
+    entryId: null,
+    cells: [code(word(session.known, protocol, protocol.toUpperCase())), code(`${inside.ip}:${inside.port}`), code(`${outside.ip}:${outside.port}`)],
+    inUse: key === usedKey,
+  };
+}
+
+/** Returns the «Tabla de traducciones» card of the router of the office, read only and shown once `translation-table` is known: one row for each TCP or UDP packet the player sent since the world last changed that made one (`Session.history`, in the order they were made, because `sent` keeps only the last send of each combination of chips and would lose rows), with the private IP:port, the public IP:port, and the row the last packet sent used marked. A ping makes no row (ICMP has no ports) and neither does a packet a fixed forward delivered. Null for a piece that is no router, a router that does not translate, and an incident that is not a send. */
+export function translationsCard(session: Session, pieceId: string): TableCard | null {
+  const holder = holderOf(session, pieceId);
+  if (!holder || !('interfaces' in holder) || sendIncident(session) === null || !session.known.has('translation-table') || !translates(session.world, holder)) return null;
+  const last = lastRun(session);
+  const used = last?.trace.translation && last.trace.translation.protocol !== 'icmp' && !last.trace.translation.fixed ? translationKey(last.trace.translation) : undefined;
+  const ownRows = session.history.filter((run) => makesRow(run) && holder.interfaces.some((face) => face.ip === run.trace.translation?.outside.ip));
+  return {
+    kind: 'translations',
+    tableId: null,
+    ownerId: holder.id,
+    pieceId: PIECE_ID.router(holder.id),
+    title: TABLE_TEXT.translations.title(deviceName(session.world, holder.id)),
+    columns: [
+      { id: 'protocol', label: TABLE_TEXT.translations.protocol },
+      { id: 'inside', label: TABLE_TEXT.translations.inside },
+      { id: 'outside', label: TABLE_TEXT.translations.outside },
+    ],
+    rows: ownRows.map((run) => translationRow(session, run, used)),
+    empty: TABLE_TEXT.translations.empty,
+    note: null,
+    trays: null,
+    add: null,
+    problem: null,
+  };
+}
+
+function recordColumns(): { id: string; label: TermText }[] {
+  return [
+    { id: 'name', label: TABLE_TEXT.records.name },
+    { id: 'type', label: TABLE_TEXT.records.type },
+    { id: 'value', label: TABLE_TEXT.records.value },
+  ];
+}
+
+function answerRecords(server: ServerActor): AnswerRecord[] {
+  return (server.dns?.zones ?? []).flatMap((zone) => zone.records).filter((record): record is AnswerRecord => record.type === 'A' || record.type === 'CNAME');
+}
+
+function typeCell(session: Session, type: AnswerRecord['type']): TableCell {
+  return code(word(session.known, type === 'A' ? 'a-record' : 'cname-record', type));
+}
+
+function recordRow(session: Session, record: AnswerRecord): TableRowView {
+  const ttl = session.known.has('dns-ttl') ? [code(TABLE_TEXT.records.seconds(record.ttl))] : [];
+  return { id: recordEntryId(record), entryId: recordEntryId(record), cells: [code(record.name), typeCell(session, record.type), code(record.value), ...ttl], inUse: false };
+}
+
+/** Returns the «Registros» card of the zone of an authoritative server whose records the incident lets the player edit: its address and alias records as rows, with a button to take away each one, the trays of the name, the type and the value, the problem the engine gave to the last record it refused, and, under the table, one muted line when the zone has records of its own besides (the player never edits them). The time to live is a column once `dns-ttl` is known. Null when the piece is no server of the internet or the incident offers no table of records for it. */
+export function recordsCard(session: Session, pieceId: string): TableCard | null {
+  const server = serverOf(session, pieceId);
+  const spec = server && tableSpec(session, server.id, 'records');
+  if (!server || spec?.kind !== 'records') return null;
+  const zones = server.dns?.zones ?? [];
+  const records = answerRecords(server);
+  const ttl = session.known.has('dns-ttl') ? [{ id: 'ttl', label: TABLE_TEXT.records.ttl }] : [];
+  return {
+    kind: 'records',
+    tableId: spec.id,
+    ownerId: server.id,
+    pieceId: PIECE_ID.actor(server.id),
+    title: TABLE_TEXT.records.title(zones.length === 1 ? nameTag(zones[0].name) : nameTag(server.name)),
+    columns: [...recordColumns(), ...ttl],
+    rows: records.map((record) => recordRow(session, record)),
+    empty: TABLE_TEXT.records.empty,
+    note: zones.some((zone) => zone.records.some((record) => record.type !== 'A' && record.type !== 'CNAME')) ? TABLE_TEXT.records.own : null,
+    trays: [trayOf('name', TABLE_TEXT.records.name, spec.trays.name), trayOf('type', TABLE_TEXT.records.type, spec.trays.type), trayOf('value', TABLE_TEXT.records.value, spec.trays.value)],
+    add: TABLE_TEXT.records.add,
+    problem: problemOf(session, spec),
+  };
+}
+
+/** Returns the packets the engine has to replay to know what a resolver remembers: every send since the world last changed, in order, with the second of the game clock it left at, without the traceroutes, which are not in the sequence. */
+function replayOf(history: readonly SentPacket[]): { packet: SentPacket['packet']; at: number }[] {
+  return history.filter((run) => run.route === undefined).map(({ packet, at }) => ({ packet, at }));
+}
+
+/** Returns the «Caché» card of a resolver, read only and shown once `dns-cache` is known: the answers it holds at the second of the game clock the session is on, each with the seconds it has left (`cacheAfter` replays the sends since the world last changed against the engine, so the seconds are the engine's and not the view's). A resolver that holds nothing says so. Null when the piece is no resolver or the incident is not a send. */
+export function cacheCard(session: Session, pieceId: string): TableCard | null {
+  const server = serverOf(session, pieceId);
+  if (!server || server.dns?.role !== 'resolver' || sendIncident(session) === null || !session.known.has('dns-cache')) return null;
+  return {
+    kind: 'cache',
+    tableId: null,
+    ownerId: server.id,
+    pieceId: PIECE_ID.actor(server.id),
+    title: TABLE_TEXT.cache.title(nameTag(server.name)),
+    columns: [...recordColumns(), { id: 'left', label: TABLE_TEXT.cache.left }],
+    rows: cacheAfter(session.world, replayOf(session.history), server.id, session.clock).map((entry) => ({
+      id: `${entry.name}|${entry.type}|${entry.value}`,
+      entryId: null,
+      cells: [code(entry.name), typeCell(session, entry.type), code(entry.value), code(TABLE_TEXT.cache.seconds(entry.ttlLeft))],
+      inUse: false,
+    })),
+    empty: TABLE_TEXT.cache.empty,
+    note: null,
+    trays: null,
+    add: null,
+    problem: null,
+  };
+}

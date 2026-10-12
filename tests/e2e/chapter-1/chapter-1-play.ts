@@ -18,8 +18,8 @@ export const IP = {
   otherOffice: '10.0.0.10',
 } as const;
 
-export const SETTINGS_BUTTON = 'Ajustes de red de tu-laptop';
-export const SETTINGS_CARD = SETTINGS_BUTTON;
+export const SETTINGS_TAB = 'Ajustes de red';
+export const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
 
 const NOTE_FEEDBACK = 'cada uno de los cuatro números va de 0 a 255';
 const NOTE_RULE = 'La nota de Lucía estaba mal';
@@ -137,11 +137,20 @@ async function playTheRouter(page: Page) {
   await submitAndFinish(page, /está en otra red local y a esa solo se llega por el router/);
 }
 
-/** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the settings card and sends it again, which now arrives: the pick clears the stamps of the old world. */
+/** Opens the card of tu-laptop from its only button and goes to its tab «Ajustes de red», which is not the one it opens on, and returns the card. */
+export async function openTheSettings(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'tu-laptop', exact: true }).click();
+  await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
+  const settings = page.getByRole('dialog', { name: SETTINGS_CARD });
+  await expect(settings).toBeVisible();
+  return settings;
+}
+
+/** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the tab «Ajustes de red» of the card of the laptop, which is open on its terminal, and sends it again, which now arrives: the pick clears the stamps of the old world. */
 export async function fixTheGateway(page: Page) {
   await sendTo(await openTerminal(page), IP.andres);
   await expect(page.getByRole('button', { name: LOST_TO_ANDRES })).toBeVisible();
-  await page.getByRole('button', { name: SETTINGS_BUTTON, exact: true }).click();
+  await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
   const settings = page.getByRole('dialog', { name: SETTINGS_CARD });
   await settings.getByRole('button', { name: IP.router, exact: true }).click();
   await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(0);

@@ -28,15 +28,15 @@ const TRAY_CLASS: Record<TrayVariant, string> = {
 interface ChipTrayProps {
   name: string;
   chips: TrayChip[];
-  picked: string | null;
+  picked?: string | null;
   onPick: (chipId: string) => void;
   variant?: TrayVariant;
 }
 
-/** A named tray of chips where at most one is picked: the name shows above the chips and names the group for screen readers, and picking a chip reports its id. The segmented variant, for a yes or no, draws its chips as the two halves of one pill. */
+/** A named tray of chips where at most one is picked: the name shows above the chips and names the group for screen readers, and picking a chip reports its id. The segmented variant, for a yes or no, draws its chips as the two halves of one pill. A tray that gives no `picked` is a tray of actions, such as the steps of the clock: its chips are drawn the same and announced as plain buttons, since none of them stays picked. */
 export function ChipTray({ name, chips, picked, onPick, variant = 'default' }: ChipTrayProps) {
   const choices = chips.map((chip) => (
-    <Choice key={chip.id} pressed={picked === chip.id} onClick={() => onPick(chip.id)}>
+    <Choice key={chip.id} pressed={picked === undefined ? undefined : picked === chip.id} onClick={() => onPick(chip.id)}>
       {chip.label}
     </Choice>
   ));

@@ -6,7 +6,7 @@ import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
 import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, sendIncident, tcpService, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
-import { canAskHint, caseClosed, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
+import { canAskHint, caseClosed, clockSteps, currentCase, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 import { taskHolds } from './tasks';
 
@@ -845,5 +845,15 @@ describe('a new case of a diagnose incident', () => {
   it('waits no time and edits no table, because a case offers neither', () => {
     const start = diagnosing();
     for (const move of [{ type: 'wait', seconds: 60 }, { type: 'placeEntry', tableId: 'routes', picks: {} }, { type: 'removeEntry', tableId: 'routes', entryId: 'x' }] as const) expect(sessionReducer(start, move), move.type).toBe(start);
+  });
+});
+
+describe('clockSteps', () => {
+  it('lists the steps of the clock of a send incident and none for an incident without a clock or of another mechanic', () => {
+    const names = namesSendIncident();
+    expect(clockSteps(startSession([names], names.id)).map((step) => step.seconds)).toEqual([60, 300]);
+    const sending = sendIncident();
+    expect(clockSteps(startSession([sending], sending.id))).toEqual([]);
+    expect(clockSteps(startSession(INCIDENTS, '04-01'))).toEqual([]);
   });
 });

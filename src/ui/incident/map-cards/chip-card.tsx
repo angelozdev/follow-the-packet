@@ -47,3 +47,28 @@ export function ChipCard({ title, icon, heading, onClose, onDone = onClose, acti
 export function trayChips(chips: { id: string; label: TermText }[]): TrayChip[] {
   return chips.map(({ id, label }) => ({ id, label: <TaggedText text={label} /> }));
 }
+
+/** What a card puts in the frame every card of the map shares: its title, the icon on its stripe, what it shows, the actions of its foot and, when it has its own way out, what "Listo" does. A card that lives beside others as a tab of a piece is drawn from its frame in the same `ChipCard`. */
+export interface CardFrame {
+  title: TermText;
+  icon: ReactNode;
+  body: ReactNode;
+  actions?: ReactNode;
+  onDone?: () => void;
+}
+
+interface FramedCardProps {
+  frame: CardFrame;
+  heading: RefObject<HTMLHeadingElement | null>;
+  onClose: () => void;
+  children?: ReactNode;
+}
+
+/** The `ChipCard` of a frame. `children` replaces the body of the frame: the card of a piece with tabs puts its tabs there, each with the body of its frame. */
+export function FramedCard({ frame, heading, onClose, children = frame.body }: FramedCardProps) {
+  return (
+    <ChipCard title={frame.title} icon={frame.icon} heading={heading} onClose={onClose} onDone={frame.onDone} actions={frame.actions}>
+      {children}
+    </ChipCard>
+  );
+}

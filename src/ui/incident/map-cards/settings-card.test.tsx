@@ -10,7 +10,7 @@ import { gatewayIncident } from '@/testing/incidents';
 import { SettingsCard } from './settings-card';
 
 const INCIDENT = gatewayIncident();
-const ENTRY = PIECE_ID.settings('your-laptop');
+const ENTRY = PIECE_ID.device('your-laptop');
 const TITLE = 'Ajustes de red de tu-laptop';
 const TRAY = TERMS['default-gateway'].name;
 const ROUTER = '192.168.1.1';

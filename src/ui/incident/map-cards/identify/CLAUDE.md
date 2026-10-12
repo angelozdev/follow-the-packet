@@ -1,0 +1,10 @@
+# ui/incident/map-cards/identify
+
+The card that classifies other devices, drawn as a card beside the piece of its owner (`classify-card.tsx`): the block with its mask, the 32 bits of the IP of the owner (four numbers of eight bits, the first ones the prefix fixes filled), the items still to classify and the two bins.
+
+- It shows what `@/game` computed (`ClassifyCard`) and reports the placement of one item at a time (`onAnswer(deviceId, picks)`, which becomes `answerCard`): it never decides whether an item fits.
+- **An item is placed when it is put down, not when "Listo" is pressed** (decided in Task 19). The bins, the line under each item and the outline of the block on the map are all drawn from `Session.answers`, so a draft until "Listo" would leave the model with nothing to draw. This differs from the card of a device (`../identify-card.tsx`), whose picks are a draft until "Listo". The player picks an item up (a `Choice`, pressed while it is held) and presses «Poner aquí» in a bin, which is also how an item moves to the other bin; nothing is dragged, so it works with the keyboard and needs no library. After placing, the focus goes to the title (the button that had it is disabled). "Listo" and Escape only close the card.
+- The line of a placed item is a `Message` in a `status` region of its own (`success` when the bin is right, `error` when it is not). The row of bits is `role="img"` per number, named by its eight bits; the cells are hidden from the screen reader because the number beside them says the same thing.
+- The item picked up lives above the card (`ClassifyDraft`), so the card of a piece that shows this one as a tab keeps it when the player switches tabs.
+- Not here: the card of a device with trays of chips (`../identify-card.tsx`), the chip card every map card is built from (`../chip-card.tsx`), what the card shows (`src/game/view/cards/identify/`).
+- May import: `@/game`, `@/copy`, `@/design`, `@/scene`, other files of `src/ui/` (`@/ui/<file>`, `@/ui/incident/map-cards/chip-card`, `@/ui/incident/use-focus-on-mount`), and only types from `@/engine`.

@@ -1,19 +1,18 @@
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { caseCard, caseSummary, countStars, firewallCard, identifyCard, inspect, pieceViews, sessionReducer, settingsCard, startSession, starsOf, terminalCard, terminalLine, toolOutput, tracerouteLines } from '@/game';
+import { caseCard, caseSummary, clockSteps, countStars, firewallCard, inspect, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
+import { ClockCard } from './side-cards/clock-card';
 import { ExplanationCard } from './side-cards/explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './side-cards/lucia-card';
-import { IdentifyCard } from './map-cards/identify-card';
-import { SettingsCard } from './map-cards/settings-card';
+import { PieceCard, pieceHandlers } from './map-cards/piece-card';
 import { TaskCard } from './map-cards/task-card';
-import { TerminalCard } from './map-cards/terminal/terminal-card';
 import { ResultCard } from './side-cards/result-card';
 import { useInspection } from './use-inspection';
 
@@ -33,15 +32,15 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const pieces = pieceViews(session);
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
-  const terminal = playing && cardPieceId ? terminalCard(session, cardPieceId) : null;
-  const identify = playing && cardPieceId ? identifyCard(session, cardPieceId) : null;
-  const settings = playing && cardPieceId ? settingsCard(session, cardPieceId) : null;
+  const piece = playing && cardPieceId ? pieceCard(session, cardPieceId) : null;
+  const origins = piece?.tabs.find((tab) => tab.id === 'terminal')?.card.origins;
   const inspection = inspecting ? inspect(session, inspecting) : null;
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
+  const steps = clockSteps(session);
   const { incident } = session;
 
   const activate = (pieceId: string) => {
-    if (playing && pieces.some((piece) => (piece.id === pieceId && piece.configurable) || piece.settings?.id === pieceId)) setCardPieceId(pieceId);
+    if (playing && pieces.some((candidate) => candidate.id === pieceId && candidate.configurable)) setCardPieceId(pieceId);
   };
   const closeCard = () => {
     if (cardPieceId) document.getElementById(pieceDomId(cardPieceId))?.focus();
@@ -72,7 +71,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           flows={session.runs}
           sent={session.sent}
           still={still}
-          activePieceId={card || terminal || identify || settings ? (settings?.pieceId ?? cardPieceId) : null}
+          activePieceId={card || piece ? cardPieceId : null}
           overlay={
             (card && chips && (
               <TaskCard
@@ -88,32 +87,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
                 onClose={closeCard}
               />
             )) ||
-            (terminal && (
-              <TerminalCard
-                card={terminal}
-                describe={(picks) => terminalLine(session, picks)}
-                route={(picks) => tracerouteLines(session, picks)}
-                printed={(picks) => toolOutput(session, picks)}
-                onPickOrigin={(fromId) => setCardPieceId(terminal.origins[fromId])}
-                onSend={({ from, to, message }) => dispatch({ type: 'sendPacket', fromId: from, toId: to, messageId: message })}
-                onClose={closeCard}
-              />
-            )) ||
-            (identify && (
-              <IdentifyCard
-                key={identify.deviceId}
-                card={identify}
-                onAnswer={(picks) => dispatch({ type: 'answerCard', deviceId: identify.deviceId, picks })}
-                onClose={closeCard}
-              />
-            )) ||
-            (settings && (
-              <SettingsCard
-                key={settings.deviceId}
-                card={settings}
-                onPick={(settingId, chipId) => dispatch({ type: 'setSetting', deviceId: settings.deviceId, settingId, chipId })}
-                onClose={closeCard}
-              />
+            (piece && (
+              <PieceCard card={piece} {...pieceHandlers(session, dispatch, (fromId) => origins?.[fromId] && setCardPieceId(origins[fromId]))} onClose={closeCard} />
             ))
           }
           onInspect={onInspect}
@@ -132,6 +107,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       </div>
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
+        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
         {caseOnCard && (
           <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
         )}

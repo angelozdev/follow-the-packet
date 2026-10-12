@@ -69,7 +69,6 @@ h3, .caption { font: var(--weight-bold) var(--text-xs)/1.2 var(--font-body); tex
 .name-tag, .map-button--name { border: var(--stroke-thin) solid var(--color-ink-soft); border-radius: var(--radius); background: var(--color-shade); }
 .name-tag { font-family: var(--font-mono); font-weight: var(--weight-regular); font-size: 0.82em; line-height: 1.35; padding: 0 0.35em; white-space: nowrap; }
 .map-button--name .name-tag { border: 0; padding: 0; background: none; font-size: var(--text-xs); }
-.map-labels { display: grid; justify-items: center; gap: var(--space-2xs); }
 .map-button--locked { border-style: dashed; color: var(--color-ink-soft); }
 .map-button__alert { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: var(--radius-round); font: var(--weight-bold) var(--text-2xs) var(--font-body); color: var(--color-on-fill); background: var(--color-danger); vertical-align: 1px; }
 .map-button__lock .entity-icon { margin-right: 0; }

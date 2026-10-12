@@ -90,3 +90,20 @@ describe('ChipTray, segmented', () => {
     expect(screen.getByRole('group', { name: 'Type' })).toHaveClass('tray', { exact: true });
   });
 });
+
+describe('ChipTray, of actions', () => {
+  it('a tray that gives no picked chip draws plain buttons, announces none as pressed and reports the chip the player presses', async () => {
+    const user = userEvent.setup();
+    const onPick = vi.fn();
+    render(<ChipTray name="Esperar" chips={[{ id: 'minute', label: 'Esperar 1 min' }, { id: 'five', label: 'Esperar 5 min' }]} onPick={onPick} />);
+    const tray = within(screen.getByRole('group', { name: 'Esperar' }));
+    for (const chip of tray.getAllByRole('button')) {
+      expect(chip).not.toHaveAttribute('aria-pressed');
+      expect(chip).toHaveClass('chip', { exact: true });
+    }
+    await user.click(tray.getByRole('button', { name: 'Esperar 5 min' }));
+    await user.click(tray.getByRole('button', { name: 'Esperar 5 min' }));
+    expect(onPick).toHaveBeenCalledTimes(2);
+    expect(onPick).toHaveBeenLastCalledWith('five');
+  });
+});

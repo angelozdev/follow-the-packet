@@ -5,7 +5,7 @@ import type { Firewall, Forward, Network, PacketSpec, Router } from '@/engine/ne
 import { simulateSequence } from '@/engine/simulation/sequence';
 import { simulate } from '@/engine/simulation/simulate';
 import { ATTACKER_IP, OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService } from '@/testing';
-import { FIRST_PUBLIC_PORT, publicIpOf, translateSource, type NatTable } from './translation';
+import { FIRST_PUBLIC_PORT, publicIpOf, translateSource, translates, type NatTable } from './translation';
 
 const { floor1, floor2, officeRouter, provider, backbone, server } = OFFICE_FLOORS;
 const WEB_PORT = 80;
@@ -385,5 +385,14 @@ describe('what comes from outside reaches a device only through a row or a forwa
     const delivered = simulateSequence(net, sends(tcp(you, server.ip, WEB_PORT), toUplink(home, FIRST_PUBLIC_PORT), toUplink(home, SECOND_PUBLIC_PORT)));
     expect([delivered[1].translation?.fixed, delivered[1].destinationId]).toEqual([true, 'andres-laptop']);
     expect([delivered[2].translation?.fixed, delivered[2].destinationId]).toEqual([false, 'your-laptop']);
+  });
+});
+
+describe('translates', () => {
+  it('is true for the router of the office and false for the routers of the provider and the backbone', () => {
+    const net = officeTwoFloorsNet();
+    expect(translates(net, routerOf(net, officeRouter.id))).toBe(true);
+    expect(translates(net, routerOf(net, provider.id))).toBe(false);
+    expect(translates(net, routerOf(net, backbone.id))).toBe(false);
   });
 });

@@ -63,6 +63,32 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .chip-card__body > .btn--small { justify-self: start; }
 .slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.2rem; margin: 0; padding: var(--space-2xs) var(--space-xs); border: var(--stroke-regular) dashed var(--color-ink-soft); border-radius: var(--radius-tile); }
 .slot__empty { color: var(--color-ink-soft); font-size: var(--text-md); }
+.classify__fields { margin: 0; display: grid; gap: var(--space-xs); }
+.classify__fields dd { margin: 0; }
+.cidr { font-size: var(--text-lg); }
+.ip { display: inline-flex; align-items: stretch; font-family: var(--font-mono); font-size: var(--text-md); line-height: 1.4; white-space: nowrap; }
+.ip__net { background: var(--color-ink); color: var(--color-on-fill); border: var(--stroke-regular) solid var(--color-ink); border-radius: var(--radius) 0 0 var(--radius); padding: 0 0.4em; }
+.ip__host { background: var(--color-surface); color: var(--color-ink); border: var(--stroke-regular) solid var(--color-ink); border-left: 0; border-radius: 0 var(--radius) var(--radius) 0; padding: 0 0.4em; }
+.chip[aria-pressed='true'] .ip__net, .chip[aria-pressed='true'] .ip__host { border-color: var(--color-on-fill); }
+.legend-ip { font-size: var(--text-sm); color: var(--color-ink-soft); }
+.legend-ip .ip { font-size: var(--text-xs); }
+.bits-wrap { display: grid; gap: var(--space-2xs); }
+.bits__braces, .bits { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-xs); }
+.bits__brace { text-align: center; font-size: var(--text-xs); line-height: 1.25; border-top: var(--stroke-bold) solid var(--color-ink); padding-top: var(--stroke-regular); }
+.bits__brace--net { grid-column: 1 / span var(--numbers); }
+.bits__brace--device { grid-column: calc(var(--numbers) + 1) / -1; font-size: var(--text-2xs); }
+.bits__cells { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); border: var(--stroke-regular) solid var(--color-ink); border-radius: var(--radius); overflow: hidden; }
+.bits__b { text-align: center; font: var(--weight-regular) var(--text-xs)/1.7 var(--font-mono); background: var(--color-surface); color: var(--color-ink); }
+.bits__b--net { background: var(--color-ink); color: var(--color-on-fill); }
+.bits__dec { display: block; text-align: center; font: var(--weight-regular) var(--text-xs)/1.4 var(--font-mono); color: var(--color-ink-soft); }
+.tiles { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.bins { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
+.bin { display: grid; gap: var(--space-2xs); min-width: 0; }
+.bin h3 { margin: 0; }
+.bin__slot { align-items: flex-start; flex-direction: column; min-height: 3.2rem; }
+.bin__item { display: grid; gap: var(--space-2xs); justify-items: start; align-self: stretch; }
+.clock { margin: 0 0 var(--space-xs); }
+.clock code { font-size: var(--text-lg); }
 .stamp--intruder { color: var(--color-danger); border-style: double; border-width: var(--stroke-double); }
 .stamp--lost { color: var(--color-ink-soft); border-style: dashed; }
 button.stamp { cursor: help; }

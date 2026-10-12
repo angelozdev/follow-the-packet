@@ -79,6 +79,11 @@ export interface InboundTarget {
   fixed: boolean;
 }
 
+/** True when the router is the NAT of the office: it faces a LAN and has an interface with a public IP, which `publicIpOf` would translate to. The routers of the provider and the router of another office are not. */
+export function translates(net: Network, router: Router): boolean {
+  return router.interfaces.some(({ faces }) => publicIpOf(net, router, faces) !== undefined);
+}
+
 /** True when `ip` is a public IP of the NAT of this router: one of its own interfaces that `publicIpOf` would translate to. A packet from outside for any other IP of the router is for the router itself. */
 export function isNatPublicIp(net: Network, router: Router, ip: string): boolean {
   return router.interfaces.some(({ faces }) => publicIpOf(net, router, faces) === ip);

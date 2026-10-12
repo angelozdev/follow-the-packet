@@ -12,7 +12,6 @@ export type MapPiece = Extract<EntityRef, { kind: MapPieceKind }> & {
   label: TermText;
   locked: boolean;
   state: 'normal' | 'intruded' | 'blocking';
-  settings?: { id: string; label: TermText };
   inOffice?: boolean;
 };
 
@@ -39,10 +38,10 @@ function buttonClass(segments: TermSegment[], locked: boolean): string {
   return ['map-button', isOnlyName(segments) && 'map-button--name', locked && 'map-button--locked'].filter(Boolean).join(' ');
 }
 
-/** The label of a piece: a button that opens its card, with its name, its lock and its alert. A piece with a second entry, such as the settings card of a device, has a second button under it. */
+/** The label of a piece: one button that opens its card, whatever the number of cards the piece has, with its name, its lock and its alert. */
 export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; onInspect: OnInspect; onActivate: (pieceId: string) => void }) {
   const segments = parseTermText(piece.label);
-  const label = (
+  return (
     <button
       type="button"
       id={pieceDomId(piece.id)}
@@ -78,15 +77,5 @@ export function PieceLabel({ piece, onInspect, onActivate }: { piece: MapPiece; 
         </>
       )}
     </button>
-  );
-  const { settings } = piece;
-  if (!settings) return label;
-  return (
-    <div className="map-labels">
-      {label}
-      <button type="button" id={pieceDomId(settings.id)} className="map-button" onClick={() => onActivate(settings.id)}>
-        <Segments segments={parseTermText(settings.label)} />
-      </button>
-    </div>
   );
 }

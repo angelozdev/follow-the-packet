@@ -22,7 +22,6 @@ const LAPTOP: MapPiece = {
   label: '[[tu-laptop]]',
   locked: false,
   state: 'normal',
-  settings: { id: 'settings:your-laptop', label: 'Ajustes de red de [[tu-laptop]]' },
 };
 
 describe('piece label', () => {
@@ -90,25 +89,25 @@ describe('piece label', () => {
     expect(screen.getByRole('button', { name: 'Security Group servidor2' })).toHaveAttribute('id', pieceDomId(SG_PIECE.id));
   });
 
-  it('a piece with a settings entry has a second button beside its label that activates the entry and not the piece', async () => {
+  it('a label draws one button however many cards its piece has', async () => {
     const user = userEvent.setup();
     const { onActivate } = renderLabel(LAPTOP);
-    const entry = screen.getByRole('button', { name: 'Ajustes de red de tu-laptop' });
-    expect(entry.querySelectorAll('.name-tag')).toHaveLength(1);
-    expect(entry.id).toBe(pieceDomId('settings:your-laptop'));
-    await user.click(entry);
-    expect(onActivate).toHaveBeenLastCalledWith('settings:your-laptop');
-    await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
-    expect(onActivate).toHaveBeenLastCalledWith('device:your-laptop');
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    const button = screen.getByRole('button', { name: 'tu-laptop' });
+    expect(button.id).toBe(pieceDomId('device:your-laptop'));
+    expect(screen.queryByRole('button', { name: /Ajustes de red/ })).toBeNull();
+    expect(button.closest('.map-labels')).toBeNull();
+    await user.click(button);
+    expect(onActivate).toHaveBeenCalledExactlyOnceWith('device:your-laptop');
   });
 
-  it('inspects the piece from its own button and not from the settings entry', async () => {
+  it('inspects the piece from its only button', async () => {
     const user = userEvent.setup();
     const { onInspect } = renderLabel(LAPTOP);
-    await user.hover(screen.getByRole('button', { name: 'Ajustes de red de tu-laptop' }));
-    expect(onInspect).not.toHaveBeenCalled();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
     expect(onInspect).toHaveBeenLastCalledWith(LAPTOP.id);
+    await user.unhover(screen.getByRole('button', { name: 'tu-laptop' }));
+    expect(onInspect).toHaveBeenLastCalledWith(null);
   });
 
   it('a piece without a settings entry draws one button only', () => {

@@ -1,6 +1,6 @@
 export { ENTITY_REFS, ENTITY_TERMS, TERMS, TERM_ENTITY, entityTerm, isTermId } from './terms';
 export type { EntityKind, EntityRef, EntityVariants, PacketMessage, PacketVariant, TermId } from './terms';
-export { nameTag, parseTermText, termsIn, toPlainText, unofficialNames } from './term-text';
+export { nameTag, parseTermText, termsIn, toPlainText, unofficialNames, word } from './term-text';
 export type { TermSegment, TermText } from './term-text';
 export { describeReason } from './reasons';
 export { describeRule } from './rule-text';
@@ -8,7 +8,7 @@ export type { PlaceOf, RouterPlace } from './reasons';
 export { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, messageLabel, packetLabel, packetLabelOutside, packetMessage, roundTripText, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
 export type { StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';
 export { CATALOG_TEXT, INTERFACE_TEXT, MESSAGE_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './screens/ui';
-export { ACTOR_ROLE_TEXT, CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, RESULT_TEXT, SCREEN_TEXT, SETTINGS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from './screens/incident-ui';
+export { ACTOR_ROLE_TEXT, CASE_TEXT, CLASSIFY_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, PIECE_TEXT, RESULT_TEXT, SCREEN_TEXT, SERVICES_TEXT, SETTINGS_TEXT, TABLE_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from './screens/incident-ui';
 export { digOutput } from './tools/dig-output';
 export type { DigFailure, DigLine, DigReply, DigResult } from './tools/dig-output';
 export { ncOutput } from './tools/nc-output';

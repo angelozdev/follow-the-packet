@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, OFFICE_FLOORS, classifyIncident, diagnoseIncident, gatewayIncident, identifyIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { canConfigure, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
+import { classifyCard } from './cards/identify/classify-card';
+import { pieceCard } from './cards/piece-card';
 import { settingsCard } from './cards/settings-card';
 import { terminalCard } from '@/game/view/cards/terminal/terminal-card';
 import { PIECE_ID } from './piece-id';
-import { drawsRouter, pieceViews } from './pieces';
+import { drawsRouter } from './drawn';
+import { pieceViews } from './pieces';
 
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
@@ -94,26 +97,52 @@ describe('pieceViews', () => {
     expect(opening).toContainEqual({ id: PIECE_ID.device('marta-laptop'), locked: true, configurable: false });
   });
 
-  it('a laptop that sends and has settings opens its terminal and its settings card, each from its own entry', () => {
+  it('a laptop that sends and has settings opens one card with its terminal and its settings, from its own piece', () => {
     const gateway = gatewayIncident();
-    const session = startSession([gateway], gateway.id);
+    const session: Session = { ...startSession([gateway], gateway.id), known: CHAPTER_1_TERMS };
     const pieces = pieceViews(session);
     const laptop = pieces.find((piece) => piece.id === PIECE_ID.device('your-laptop'));
-    const entry = laptop?.settings;
     expect(laptop).toMatchObject({ locked: false, configurable: true });
-    expect(entry).toEqual({ id: PIECE_ID.settings('your-laptop'), label: 'Ajustes de red de [[tu-laptop]]' });
-    if (!laptop || !entry) throw new Error('missing the laptop or its settings entry');
+    expect(laptop).not.toHaveProperty('settings');
+    if (!laptop) throw new Error('missing the laptop');
     expect(terminalCard(session, laptop.id)).not.toBeNull();
-    expect(settingsCard(session, laptop.id)).toBeNull();
-    expect(settingsCard(session, entry.id)).not.toBeNull();
-    expect(terminalCard(session, entry.id)).toBeNull();
-    expect(pieces.filter((piece) => piece.settings).map((piece) => piece.id)).toEqual([laptop.id]);
-    expect(pieces.map((piece) => piece.id)).not.toContain(entry.id);
+    expect(settingsCard(session, laptop.id)).not.toBeNull();
+    expect(pieceCard(session, laptop.id)).toMatchObject({ pieceId: laptop.id, tabbed: true, first: 'terminal' });
+    expect(pieceCard(session, laptop.id)?.tabs.map((tab) => tab.id)).toEqual(['terminal', 'settings']);
+    expect(pieces.filter((piece) => pieceCard(session, piece.id)?.tabbed).map((piece) => piece.id)).toEqual([laptop.id]);
+    expect(pieces.map((piece) => piece.id).filter((id) => id.startsWith('settings'))).toEqual([]);
   });
 
-  it('a send incident with no settings gives no piece a settings entry', () => {
+  it('a send incident with no settings gives no piece more than one card', () => {
     const sending = sendIncident();
-    expect(pieceViews(startSession([sending], sending.id)).filter((piece) => piece.settings)).toEqual([]);
+    const session = startSession([sending], sending.id);
+    expect(pieceViews(session).map((piece) => pieceCard(session, piece.id)?.tabs.length ?? 0).filter((count) => count > 1)).toEqual([]);
+    expect(pieceViews(session).filter((piece) => piece.configurable).map((piece) => piece.id)).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.actor('attacker')]);
+  });
+
+  it('a piece the player placed inside the block carries the mark of being inside, and the owner of the card is inside from the start', () => {
+    const classifying = classifyIncident();
+    const start = startSession([classifying], classifying.id);
+    const inside = (session: Session) => pieceViews(session).filter((piece) => piece.insideBlock).map((piece) => piece.id);
+    const place = (session: Session, deviceId: string, binId: string) => sessionReducer(session, { type: 'answerCard', deviceId, picks: { bin: binId } });
+    expect(inside(start)).toEqual([PIECE_ID.device('your-laptop')]);
+    const printerIn = place(start, 'printer', 'inside');
+    expect(inside(printerIn)).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.device('printer')]);
+    expect(inside(place(printerIn, 'andres-laptop', 'outside'))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.device('printer')]);
+    expect(inside(place(printerIn, 'printer', 'outside'))).toEqual([PIECE_ID.device('your-laptop')]);
+    expect(pieceViews(printerIn).filter((piece) => !piece.insideBlock).every((piece) => !('insideBlock' in piece))).toBe(true);
+    expect(pieceViews(first).some((piece) => 'insideBlock' in piece)).toBe(false);
+  });
+
+  it('only the owner of a classify card opens it: the pieces of the items open no card', () => {
+    const classifying = classifyIncident();
+    const session = startSession([classifying], classifying.id);
+    const opening = pieceViews(session).filter((piece) => piece.kind === 'device' && piece.configurable).map((piece) => piece.id);
+    expect(opening).toEqual([PIECE_ID.device('your-laptop')]);
+    expect(classifyCard(session, PIECE_ID.device('printer'))).toBeNull();
+    expect(classifyCard(session, PIECE_ID.device('andres-laptop'))).toBeNull();
+    expect(classifyCard(session, PIECE_ID.device('your-laptop'))).not.toBeNull();
+    expect(pieceViews(session).find((piece) => piece.id === PIECE_ID.device('printer'))).toMatchObject({ locked: true, configurable: false });
   });
 
   it('an actor of kind server is not drawn as an actor piece', () => {

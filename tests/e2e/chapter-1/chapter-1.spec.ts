@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PROGRESS_KEY } from '@/storage/progress';
 import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
-import { CHAPTER_1, IP, LOST_TO_SERVER, SETTINGS_BUTTON, SETTINGS_CARD, WATCH_CASES, fixTheGateway, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
+import { CHAPTER_1, IP, LOST_TO_SERVER, WATCH_CASES, fixTheGateway, openTheSettings, sendOnlyThePing, sendThePacket, sendThePingAndTheTraceroute, sendThePingsWithTtl, sendTheTestsOfTheCase } from './chapter-1-play';
 import { FULL_STARS, closeCase } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
 import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps, recordLabels, recordedLabels, type Box } from '@e2e/map-boxes';
@@ -206,7 +206,7 @@ test('in 10 the question about the broken stretch cannot be answered from the ma
   await expectBesideYourLaptop(page, lost);
 });
 
-test('in 07 picking the gateway in the Ajustes de red card changes the stamps of the ping', async ({ page }) => {
+test('in 07 picking the gateway in the Ajustes de red tab changes the stamps of the ping', async ({ page }) => {
   await startWithProgress(page, { '01-06': 1 });
   await page.goto('/#/level/01-07');
   await fixTheGateway(page);
@@ -310,8 +310,7 @@ test.describe('Sin animaciones', () => {
     test('in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps', async ({ page }) => {
       await startWithProgress(page, { '01-06': 1 });
       await page.goto('/#/level/01-07');
-      await page.getByRole('button', { name: SETTINGS_BUTTON, exact: true }).click();
-      const settings = card(page, SETTINGS_CARD);
+      const settings = await openTheSettings(page);
       for (const piece of OFFICE_PIECES) await expectApart(settings, page.getByRole('button', { name: piece, exact: true }));
       await expect.poll(() => overlappingPairs(page)).toEqual([]);
       await confirm(settings);

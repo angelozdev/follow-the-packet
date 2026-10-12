@@ -47,7 +47,8 @@ export type {
   WhatChip,
 } from './contract/incident';
 export { cardsOfPiece, firstCardOf, isGuided, settingKind } from './contract/incident';
-export { recordEntryId, routeEntryId } from './contract/tables';
+export { CHIP_PROBLEMS, recordEntryId, routeEntryId } from './contract/tables';
+export type { ChipProblem } from './contract/tables';
 export { INCIDENTS } from './registry';
 export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, shownOf } from './contract/chips';
 export type { SendOwner } from './contract/chips';

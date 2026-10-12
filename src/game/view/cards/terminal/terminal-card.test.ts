@@ -61,8 +61,9 @@ describe('terminalCard of a device that has settings', () => {
     expect(terminalLine(settings, { to: 'andres', message: 'ping' })).toBe('ping 192.168.2.15');
   });
 
-  it('opens from the piece of the device and not from its settings entry', () => {
-    expect(terminalCard(settings, PIECE_ID.settings('your-laptop'))).toBeNull();
+  it('opens from the piece of the device, the only button its label has, and from no other id', () => {
+    expect(terminalCard(settings, PIECE_ID.device('your-laptop'))).not.toBeNull();
+    expect(terminalCard(settings, 'settings:your-laptop')).toBeNull();
   });
 });
 

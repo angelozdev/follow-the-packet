@@ -1,7 +1,7 @@
 import { DEFAULT_DIRECTION, applyAction, listenSchema, recordProblem, routeProblem, type Device, type Network, type RecordProblem, type RouteProblem } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
 import { settingKind, type CaseSpec, type Incident, type PlaceEntryMove, type PlayerMove, type RemoveEntryMove, type RuleMove, type SettingMove, type SettingSpec } from './contract/incident';
-import { placementOf, removalOf, tableOf } from './contract/tables';
+import { chipProblem, placementOf, removalOf, tableOf, type ChipProblem } from './contract/tables';
 
 function findIncident(incidents: Incident[], incidentId: string): Incident {
   const found = incidents.find((i) => i.id === incidentId);
@@ -9,8 +9,8 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Why the engine does not take an entry the player placed: a record code or a route code. */
-export type EntryProblem = RecordProblem | RouteProblem;
+/** Why an entry the player placed does not go in: the engine does not take it (a record code or a route code) or the chips do not make an entry (an address record with no IP). */
+export type EntryProblem = RecordProblem | RouteProblem | ChipProblem;
 
 function listenOf(device: Device, { protocol, port }: NonNullable<SettingSpec['service']>): string | undefined {
   return device.host.services.find((service) => service.protocol === protocol && service.port === port)?.listen;
@@ -88,11 +88,12 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove):
   }
 }
 
-/** Says why the engine does not take a placement the incident offers: the code of the problem (`recordProblem` or `routeProblem`), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray, chips that do not make a record), because then there is nothing to explain. */
+/** Says why a placement the incident offers does not go in: the code of the problem (`recordProblem` or `routeProblem` when the engine refuses it, or `chipProblem` when the chips make no record), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray), because then there is nothing to explain. */
 export function placementProblem(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove): EntryProblem | undefined {
   const table = tableOf(incident, tableId);
-  const action = table && placementOf(table, picks);
-  if (!action) return undefined;
+  if (!table) return undefined;
+  const action = placementOf(table, picks);
+  if (!action) return chipProblem(table, picks);
   return action.type === 'addRoute' ? routeProblem(world, action.routerId, action.route) : recordProblem(world, action.serverId, action.record);
 }
 

@@ -11,6 +11,7 @@ import {
   startWorld,
   type AnswerMove,
   type CaseSpec,
+  type ClockStep,
   type ConfigurableParts,
   type EntryProblem,
   type IdentifyIncident,
@@ -196,10 +197,14 @@ function edit(state: Session, action: SettingMove | TableMove): Session {
   return world === state.world ? withProblem(state, action) : withNewWorld(state, world);
 }
 
+/** Returns the steps of the clock of the incident, which the player waits by; none when the incident has no clock, and none for any other mechanic than a send. */
+export function clockSteps({ incident }: Session): ClockStep[] {
+  return incident.mechanic === 'send' ? (incident.send.clock?.steps ?? []) : [];
+}
+
 /** Moves the game clock on by one of the steps of the incident's clock. A time that is no step, an incident with no clock and a closed incident change nothing. */
 function wait(state: Session, { seconds }: WaitMove): Session {
-  const steps = state.incident.mechanic === 'send' ? (state.incident.send.clock?.steps ?? []) : [];
-  return state.phase === 'playing' && steps.some((step) => step.seconds === seconds) ? { ...state, clock: state.clock + seconds } : state;
+  return state.phase === 'playing' && clockSteps(state).some((step) => step.seconds === seconds) ? { ...state, clock: state.clock + seconds } : state;
 }
 
 /** Sends the packet of three chips at the second the clock is on. Every send since the world last changed is simulated again, in order, so each one starts from what the ones before left (`sendSequence`); the last packet of each combination stays in `sent`, and a new send takes Lucía's reply away. In a diagnose only the chips of the case the player is on can be sent. */

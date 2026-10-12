@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ipInCidr, isIpv4, isLoopbackIpv4, isPrivateCidr, isPrivateIpv4, networkOf, parseCidr } from './cidr';
+import { ipBits, ipInCidr, isIpv4, isLoopbackIpv4, isPrivateCidr, isPrivateIpv4, maskOf, networkOf, parseCidr, prefixNumbers } from './cidr';
 
 describe('isIpv4', () => {
   it('accepts valid IPs and rejects names and out-of-range octets', () => {
@@ -67,5 +67,39 @@ describe('isPrivateIpv4', () => {
   it('knows the three private ranges of RFC 1918 and nothing else', () => {
     for (const ip of ['10.0.0.5', '172.16.0.1', '172.31.38.97', '192.168.1.10']) expect(isPrivateIpv4(ip), ip).toBe(true);
     for (const ip of ['172.32.0.1', '34.244.254.100', '203.0.113.66', '192.169.0.1']) expect(isPrivateIpv4(ip), ip).toBe(false);
+  });
+});
+
+describe('maskOf', () => {
+  it('writes a prefix as the four numbers of its mask', () => {
+    expect(maskOf(24)).toBe('255.255.255.0');
+    expect(maskOf(16)).toBe('255.255.0.0');
+    expect(maskOf(8)).toBe('255.0.0.0');
+    expect(maskOf(28)).toBe('255.255.255.240');
+    expect(maskOf(32)).toBe('255.255.255.255');
+    expect(maskOf(0)).toBe('0.0.0.0');
+  });
+
+  it('rejects a prefix that is no whole number from 0 to 32', () => {
+    for (const prefix of [-1, 33, 2.5]) expect(() => maskOf(prefix), String(prefix)).toThrow('invalid prefix');
+  });
+});
+
+describe('ipBits', () => {
+  it('gives the 32 bits of an IP, most significant first, eight per number', () => {
+    expect(ipBits('192.168.1.10').join('')).toBe('11000000101010000000000100001010');
+    expect(ipBits('0.0.0.0')).toEqual(Array(32).fill(0));
+    expect(ipBits('255.255.255.255')).toEqual(Array(32).fill(1));
+  });
+
+  it('rejects what is no IP', () => {
+    expect(() => ipBits('192.168.1')).toThrow('invalid IP');
+  });
+});
+
+describe('prefixNumbers', () => {
+  it('counts the numbers of an IP a prefix covers only when it ends at a dot', () => {
+    expect([8, 16, 24].map(prefixNumbers)).toEqual([1, 2, 3]);
+    for (const prefix of [0, 1, 7, 20, 28, 32]) expect(prefixNumbers(prefix), String(prefix)).toBeNull();
   });
 });

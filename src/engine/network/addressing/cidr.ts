@@ -37,6 +37,28 @@ export function networkOf(ip: string, prefix: number): string {
   return `${[24, 16, 8, 0].map((shift) => Math.floor(start / 2 ** shift) % 256).join('.')}/${prefix}`;
 }
 
+const FULL_MASK = 2 ** 32 - 1;
+
+/** Returns the subnet mask of a prefix written as four numbers: 24 gives 255.255.255.0 and 28 gives 255.255.255.240 (RFC 950 §2.1 describes a mask as the ones that mark the network part of an address). */
+export function maskOf(prefix: number): string {
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error(`invalid prefix: ${prefix}`);
+  const mask = prefix === 0 ? 0 : (FULL_MASK << (32 - prefix)) >>> 0;
+  return [24, 16, 8, 0].map((shift) => (mask >>> shift) & 255).join('.');
+}
+
+/** Returns the 32 bits of an IPv4 address, most significant first: four groups of eight, one per number. */
+export function ipBits(ip: string): number[] {
+  const value = ipToInt(ip);
+  return Array.from({ length: 32 }, (_, index) => Math.floor(value / 2 ** (31 - index)) % 2);
+}
+
+const BYTE_BITS = 8;
+
+/** Returns how many numbers of an IP a prefix covers when it ends at a dot, which only /8, /16 and /24 do, and none for any other prefix: with /28 the block ends inside the fourth number, and its range cannot be told by writing the first numbers of an IP. */
+export function prefixNumbers(prefix: number): number | null {
+  return prefix > 0 && prefix < 32 && prefix % BYTE_BITS === 0 ? prefix / BYTE_BITS : null;
+}
+
 const PRIVATE_RANGES = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 
 /** True when the IPv4 address is in a private range of RFC 1918, which the internet does not deliver. */

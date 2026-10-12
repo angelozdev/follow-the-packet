@@ -1,4 +1,4 @@
-import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type Service, type UnreachableKind } from '@/engine';
+import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type RecordProblem, type RouteProblem, type Service, type UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, word, type TermText } from '@/copy/term-text';
 import type { TermId } from '@/copy/terms';
@@ -211,8 +211,119 @@ export const TERMINAL_TEXT = {
 } as const;
 
 export const SETTINGS_TEXT = {
-  entry: (device: TermText): TermText => `Ajustes de red de ${device}`,
   title: (device: TermText): TermText => `Ajustes de red de ${device}`,
+  dns: {
+    label: 'Servidor {{dns|DNS}}',
+    lent: 'Lo prestó {{dhcp}}.',
+    value: (ip: string, server: TermText | null): TermText => (server === null ? ip : `${ip} ${server}`),
+  },
+} as const;
+
+export const SERVICES_TEXT = {
+  title: (device: TermText): TermText => `Servicios de ${device}`,
+  service: (service: Pick<Service, 'protocol' | 'port'>, known: ReadonlySet<TermId>): TermText =>
+    known.has(service.protocol) ? `{{${service.protocol}}} ${service.port}` : `${word(known, 'port', 'puerto')} ${service.port}`,
+} as const;
+
+export const PIECE_TEXT = {
+  tabsName: 'Tarjetas de la pieza',
+  tabs: {
+    terminal: 'Terminal',
+    identify: 'Preguntas',
+    classify: 'Clasificar',
+    settings: 'Ajustes de red',
+    services: '{{service|Servicios}}',
+    routes: '{{routing-table|Tabla de rutas}}',
+    translations: '{{translation-table|Tabla de traducciones}}',
+    records: '{{dns-record|Registros}}',
+    cache: '{{dns-cache|Caché}}',
+  },
+} as const;
+
+export const TABLE_TEXT = {
+  inUse: 'en uso',
+  remove: 'Quitar',
+  destination: 'Destino',
+  routes: {
+    title: (owner: TermText): TermText => `{{routing-table|Tabla de rutas}} de ${owner}`,
+    outlet: 'Por dónde sale',
+    nextHop: '{{next-hop|Siguiente salto}}',
+    direct: 'directo',
+    add: 'Agregar ruta',
+    empty: 'Esta tabla no tiene rutas.',
+  },
+  translations: {
+    title: (owner: TermText): TermText => `{{translation-table|Tabla de traducciones}} de ${owner}`,
+    protocol: 'Protocolo',
+    inside: '{{ip-port|IP:puerto}} privado',
+    outside: '{{ip-port|IP:puerto}} público',
+    empty: 'Todavía no hay filas. Aparece una cuando sale de la oficina un paquete con {{port|puertos}}; un {{ping}} no deja ninguna, porque no usa puertos.',
+  },
+  records: {
+    title: (zone: TermText): TermText => `{{dns-record|Registros}} de ${zone}`,
+    name: 'Nombre',
+    type: 'Tipo',
+    value: 'Valor',
+    ttl: '{{dns-ttl|TTL}}',
+    seconds: (seconds: number): string => `${seconds} s`,
+    add: 'Agregar registro',
+    empty: 'La zona no tiene registros que se puedan cambiar.',
+    own: 'La zona también tiene sus registros propios. Aquí no se editan.',
+  },
+  cache: {
+    title: (owner: TermText): TermText => `{{dns-cache|Caché}} de ${owner}`,
+    left: 'Quedan',
+    seconds: (seconds: number): string => `${seconds} s`,
+    empty: 'No hay respuestas guardadas.',
+  },
+  refused: (reason: TermText): TermText => `No se pudo agregar. ${reason}`,
+  problems: {
+    'no-zone': 'Este servidor no tiene ninguna zona que contenga ese nombre.',
+    'already-there': 'Ese {{dns-record|registro}} ya está en la zona.',
+    'name-is-an-alias': 'Ese nombre ya es un alias, y un nombre con un {{cname-record|registro CNAME}} no puede tener otros registros.',
+    'cname-with-other-records': 'Ese nombre ya tiene otros registros, y un nombre con un {{cname-record|registro CNAME}} no puede tener otros: o es un alias, o tiene datos propios.',
+    'cname-at-apex': 'La zona ya tiene sus propios registros en ese nombre, y un nombre con un {{cname-record|registro CNAME}} no puede tener otros registros.',
+    'a-record-needs-ip': 'Un {{a-record|registro A}} guarda una IPv4 (cuatro números), no un nombre. Un nombre va en un {{cname-record|registro CNAME}}.',
+    'no-router': 'Ese router no existe.',
+    'destination-has-route': 'Ese destino ya tiene una {{route|ruta}}. En este juego una {{routing-table|tabla de rutas}} guarda una sola ruta por destino: quita la que hay antes de poner otra.',
+  } satisfies Record<RecordProblem | RouteProblem | 'a-record-needs-ip', TermText>,
+} as const;
+
+const OWN_FIRST_NUMBERS = ['Su primer número', 'Sus dos primeros números', 'Sus tres primeros números'] as const;
+
+const firstNumbers = (ip: string, count: number): string => ip.split('.').slice(0, count).join('.');
+
+export const CLASSIFY_TEXT = {
+  block: 'Tu bloque, en notación {{cidr}}',
+  mask: '{{subnet-mask|Máscara de subred}}',
+  bitsLead: (device: TermText, ip: string, prefix: number): TermText =>
+    `La {{ip-address|IP}} de ${device}, ${ip}, en 32 {{bit|bits}}. El {{prefix|prefijo}} /${prefix} dice que los primeros ${prefix} bits son iguales para todo el bloque.`,
+  bitsName: 'Los 32 bits de la IP, en cuatro números',
+  blockBits: (count: number): string => `${count} bits · el bloque`,
+  deviceBits: (count: number): string => `${count} bits · el equipo`,
+  legend: { fixed: 'lleno', free: 'vacío', fixedMeaning: 'se compara con el bloque', freeMeaning: 'es el equipo' },
+  waiting: 'Por clasificar',
+  nothingWaiting: 'Nada por clasificar.',
+  emptyBin: 'Vacía',
+  here: 'Poner aquí',
+  placeIn: (item: string | null, bin: string): string => (item === null ? `Poner aquí en ${bin}` : `Poner ${item} en ${bin}`),
+  line: {
+    fits: (ip: string, prefix: number, block: string, numbers: number | null): TermText => {
+      if (numbers === null) return `Sus primeros ${prefix} {{bit|bits}} son los del bloque ${block}: cabe.`;
+      return `${OWN_FIRST_NUMBERS[numbers - 1]}, ${firstNumbers(ip, numbers)}, ${numbers === 1 ? 'es el' : 'son los'} del bloque: cabe.`;
+    },
+    doesNotFit: (ip: string, prefix: number, block: string, numbers: number | null): TermText => {
+      if (numbers === null) return `Sus primeros ${prefix} {{bit|bits}} no son los del bloque ${block}: no cabe.`;
+      return `${OWN_FIRST_NUMBERS[numbers - 1]}, ${firstNumbers(ip, numbers)}, no ${numbers === 1 ? 'es' : 'son'} ${firstNumbers(block, numbers)}: no cabe.`;
+    },
+  },
+} as const;
+
+export const CLOCK_TEXT = {
+  title: 'Reloj del juego',
+  tray: 'Esperar',
+  time: (seconds: number): string => `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`,
+  note: 'El tiempo pasa para todo el mapa.',
 } as const;
 
 export const CASE_TEXT = {
