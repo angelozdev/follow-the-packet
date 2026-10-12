@@ -100,7 +100,7 @@ button.stamp { cursor: help; }
 .incident__bar h1 { font-size: var(--text-xl); margin: 0; }
 .incident__motion { margin-left: auto; font-size: var(--text-md); }
 .incident__side { grid-area: 1 / 2; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
-.incident__inspection { grid-area: 1 / 1; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: 45%; pointer-events: none; }
+.incident__inspection { grid-area: 1 / 1; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: min(45%, var(--inspection-room, 45%)); pointer-events: none; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
 .incident__inspection[data-scrolls] > .card { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }

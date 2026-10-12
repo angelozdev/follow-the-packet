@@ -5,7 +5,6 @@ import { mapBoxes, overlappingPairs, overlaps, type Box } from './map-boxes';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
-const LABEL_THE_BOX_WITH_SERVICES_COVERS = SG_SERVIDOR2;
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
 const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
@@ -113,7 +112,7 @@ test('the inspection box floats inside the window and covers no label or stamp',
   const rect = await inspection.boundingBox();
   expect(isInside(await windowSize(page), rect)).toBe(true);
   const covered = (await mapBoxes(page)).filter((other) => overlaps(rect, other)).map((other) => other.name);
-  expect(covered.filter((name) => name !== LABEL_THE_BOX_WITH_SERVICES_COVERS)).toEqual([]);
+  expect(covered).toEqual([]);
 });
 
 test('focus goes to the card heading when a Security Group opens, and back to it on Escape', async ({ page }) => {
@@ -156,3 +155,41 @@ test('sending with Anywhere-IPv4 open gets Lucía’s reply, and with the card s
   await expect(card).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+const WINDOWS = [
+  { width: 1280, height: 800 },
+  { width: 1440, height: 900 },
+];
+const INSPECTED_THINGS = [
+  'servidor1 con candado',
+  INSPECTED_SERVER,
+  'Security Group servidor1',
+  SG_SERVIDOR2,
+  'Atacante',
+  'Internet gateway con candado',
+  'internet',
+  'Paquete: ping de servidor1 a servidor2. Bloqueado.',
+  'Paquete: ping de Atacante a servidor2. Bloqueado.',
+];
+
+async function boxProblems(page: Page, size: Size): Promise<string[]> {
+  const rect = await page.locator('.incident__inspection .card').boundingBox();
+  const covered = (await mapBoxes(page)).filter((other) => overlaps(rect, other));
+  return [...(isInside(size, rect) ? [] : ['sticks out of the window']), ...covered.map((other) => `covers ${other.name}`)];
+}
+
+for (const size of WINDOWS) {
+  test.describe(`${size.width}x${size.height}`, () => {
+    test.use({ viewport: size });
+
+    for (const name of INSPECTED_THINGS) {
+      test(`the inspection box of ${name} lies inside the window and covers no label or stamp`, async ({ page }) => {
+        await page.goto('/#/level/04-01');
+        await expect(page.getByRole('button', { name: INSPECTED_SERVER, exact: true })).toBeVisible();
+        await page.getByRole('button', { name, exact: true }).hover();
+        await expect(page.locator('.incident__inspection .card')).toBeVisible();
+        expect(await boxProblems(page, size)).toEqual([]);
+      });
+    }
+  });
+}
