@@ -27,7 +27,7 @@ export default defineIncident({
   introduces: ['bit', 'prefix', 'cidr', 'subnet-mask'],
   changes: [],
   shown: FLOORS_PIECES,
-  report: `Las {{ip-address|IPs}} de una red local forman un bloque, y todas empiezan igual. En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}, escritos como cuatro números de 8 {{bit|bits}}. Los primeros {{bit|bits}}, los que son iguales para todo el bloque, forman el {{prefix|prefijo}}. El bloque se escribe en notación {{cidr|CIDR}}. La {{subnet-mask|máscara de subred}} escribe el {{prefix|prefijo}} como una {{ip-address|IP}}. Abre la tarjeta de ${NAME.you}. En «Clasificar» ves su bloque y los 32 {{bit|bits}} de su {{ip-address|IP}}. En «Preguntas» eliges el bloque y la {{subnet-mask|máscara de subred}}. Después pon a la ${NAME.printer} y a ${NAME.andres} dentro del bloque o fuera.`,
+  report: `Las {{ip-address|IPs}} de una red local forman un bloque. En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}, escritos como cuatro números de 8 {{bit|bits}} cada uno. Los primeros {{bit|bits}}, iguales para todo el bloque, son el {{prefix|prefijo}}. Abre la tarjeta de ${NAME.you}. En «Clasificar» ves su bloque en notación {{cidr|CIDR}}, su {{subnet-mask|máscara de subred}} y los {{bit|bits}} de su {{ip-address|IP}}. En «Preguntas» eliges el bloque y la máscara. Después clasifica la ${NAME.printer} y a ${NAME.andres}: dentro del bloque o fuera.`,
   tasks: [
     {
       id: TASK.block,
@@ -115,12 +115,12 @@ export default defineIncident({
   },
   hints: [
     'Un {{prefix|prefijo}} /24 quiere decir que los 24 primeros {{bit|bits}}, los tres primeros números, son fijos.',
-    'Compara los tres primeros números de la {{ip-address|IP}} de cada equipo con los de tu bloque.',
+    'Compara los tres primeros números de la {{ip-address|IP}} de cada {{device|dispositivo}} con los de tu bloque.',
   ],
   question: `¿Por qué ${IP.andres} no cabe en el bloque ${BLOCK.cidr}?`,
   explanation: [
     {
-      text: 'Porque un /24 deja solo 24 {{ip-address|IPs}}, y el bloque ya no tiene sitio para otra {{ip-address|IP}}.',
+      text: 'Porque un {{prefix|prefijo}} /24 deja solo 24 {{ip-address|IPs}}, y el bloque ya está lleno.',
       feedback: 'Un /24 no cuenta {{ip-address|IPs}}: dice que 24 {{bit|bits}} son fijos. Los otros 8 {{bit|bits}} dan 256 direcciones.',
       correct: false,
     },
@@ -130,7 +130,7 @@ export default defineIncident({
       correct: true,
     },
     {
-      text: 'Porque el 2 de esa {{ip-address|IP}} es mayor que el 1 del bloque, y tendría que ser menor.',
+      text: 'Porque el 2 de esa {{ip-address|IP}} es mayor que el 1 del bloque, y debe ser menor.',
       feedback: `No importa si el número es mayor o menor: importa que sea el mismo. Con ${SMALLER_IP} tampoco cabría.`,
       correct: false,
     },
@@ -140,5 +140,5 @@ export default defineIncident({
     { type: 'answerCard', deviceId: DEVICE.printer.id, picks: { [BLOCK_CARD.bin.tray]: BLOCK_CARD.bin.inside } },
     { type: 'answerCard', deviceId: DEVICE.andres.id, picks: { [BLOCK_CARD.bin.tray]: BLOCK_CARD.bin.outside } },
   ],
-  takeaway: `En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}. El {{prefix|prefijo}} dice cuántos de los primeros {{bit|bits}} son iguales para todo el bloque. En {{cidr|CIDR}}, el bloque de tu red es ${BLOCK.cidr}: 256 direcciones. Su {{subnet-mask|máscara de subred}} es ${BLOCK.mask}. Una {{ip-address|IP}} cabe en el bloque si sus primeros 24 {{bit|bits}} son los del bloque.`,
+  takeaway: `En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}. El {{prefix|prefijo}} dice cuántos de los primeros {{bit|bits}} son iguales para todo el bloque. En notación {{cidr|CIDR}}, el bloque de la red local de ${NAME.you} es ${BLOCK.cidr}: 256 direcciones. Su {{subnet-mask|máscara de subred}} es ${BLOCK.mask}, el {{prefix|prefijo}} /24 escrito como una {{ip-address|IP}}. Una {{ip-address|IP}} cabe en el bloque si sus primeros 24 {{bit|bits}} son los del bloque.`,
 });

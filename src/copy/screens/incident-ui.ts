@@ -297,7 +297,7 @@ export const CLASSIFY_TEXT = {
   block: 'Tu bloque, en notación {{cidr}}',
   mask: '{{subnet-mask|Máscara de subred}}',
   bitsLead: (device: TermText, ip: string, prefix: number): TermText =>
-    `La {{ip-address|IP}} de ${device}, ${ip}, en 32 {{bit|bits}}. El {{prefix|prefijo}} /${prefix} dice que los primeros ${prefix} bits son iguales para todo el bloque.`,
+    `Estos son los 32 {{bit|bits}} de la {{ip-address|IP}} de ${device}, ${ip}. El {{prefix|prefijo}} /${prefix} dice que los primeros ${prefix} {{bit|bits}} son iguales para todo el bloque.`,
   bitsName: 'Los 32 bits de la IP, en cuatro números',
   blockBits: (count: number): string => `${count} bits · el bloque`,
   deviceBits: (count: number): string => `${count} bits · el equipo`,

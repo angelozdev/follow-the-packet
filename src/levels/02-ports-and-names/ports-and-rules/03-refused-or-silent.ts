@@ -33,7 +33,7 @@ export default defineIncident({
   introduces: ['closed-port', 'rst', 'connection-refused', 'filtered-port', 'listen-address'],
   changes: [APP_ON_LOOPBACK],
   shown: REFUSAL_PIECES,
-  report: `Lucía reinició su app en ${NAME.lucia}. Ahora la app solo {{listen|escucha}} en ${IP.loopback}, la {{ip-address|IP}} de {{loopback}}. Esa es su {{listen-address|dirección de escucha}}. Haz tres pruebas con {{nc}}. Primero, al {{port|puerto}} ${PORT.app} de ${NAME.lucia}, donde está la app. Segundo, al ${PORT.mysql} de ${NAME.lucia}, donde ningún {{service|servicio}} {{listen|escucha}}: es un {{closed-port|puerto cerrado}}. Tercero, al ${PORT.app} de ${NAME.marta}, que tiene un {{firewall}}. Cuando llega un {{packet|paquete}} a un {{closed-port|puerto cerrado}}, el {{device|dispositivo}} contesta con un {{rst|RST}}, y {{nc}} muestra {{connection-refused}}. Un {{firewall}} que {{drop|descarta}} el {{packet|paquete}} no contesta: su {{port|puerto}} es un {{filtered-port|puerto filtrado}} y {{nc}} solo ve un {{timeout}}. También puedes probar la app desde la terminal de ${NAME.lucia}. Para cambiar su {{listen-address|dirección de escucha}}, abre la pestaña «Servicios» de ${NAME.lucia}.`,
+  report: `Lucía reinició su app en ${NAME.lucia}. Ahora la app solo {{listen|escucha}} en ${IP.loopback}, una dirección de {{loopback}}: esa es su {{listen-address|dirección de escucha}}. Haz primero un {{nc}} al {{port|puerto}} ${PORT.app} de ${NAME.lucia}, donde está la app. Después prueba su {{port|puerto}} ${PORT.mysql}, donde ningún {{service|servicio}} {{listen|escucha}}: es un {{closed-port|puerto cerrado}}. Cuando un {{packet|paquete}} llega a un {{closed-port|puerto cerrado}}, el {{device|dispositivo}} contesta con un {{rst|RST}}, y {{nc}} muestra {{connection-refused}}. Prueba también el {{port|puerto}} ${PORT.app} de ${NAME.marta}, que tiene un {{firewall}}. Si el {{firewall}} {{drop|descarta}} el {{packet|paquete}}, nadie contesta: ese {{port|puerto}} es un {{filtered-port|puerto filtrado}}, y {{nc}} solo ve un {{timeout}}. Para cambiar la {{listen-address|dirección de escucha}}, abre la tarjeta de ${NAME.lucia} y su pestaña «Servicios». Al cambiarla, las pruebas vuelven a empezar.`,
   tasks: [
     sendTask(TASK.closedPort, `Que ${NAME.lucia} rechace tu {{nc}} al {{port|puerto}} ${PORT.mysql}.`, MESSAGE.ncMysql.id, ADDRESS.lucia.id, 'refused', DEVICE.lucia.id),
     sendTask(TASK.filteredPort, `Que tu {{nc}} al {{port|puerto}} ${PORT.app} de ${NAME.marta} se quede sin respuesta.`, MESSAGE.ncApp.id, ADDRESS.marta.id, 'timeout', FIREWALL.marta),
@@ -48,13 +48,13 @@ export default defineIncident({
     settings: [APP_LISTEN_ADDRESS],
   },
   hints: [
-    `Un rechazo lo manda el {{device|dispositivo}}: es una respuesta. El silencio es que nadie contesta.`,
-    `Compara el {{nc}} de ${NAME.lucia} a ${IP.loopback} con el tuyo a ${IP.lucia}: fíjate en la {{ip-address|IP}} de cada uno.`,
+    `Un rechazo es una respuesta: la manda el {{device|dispositivo}}. El silencio es que nadie contesta.`,
+    `Compara el {{nc}} de ${NAME.lucia} a ${IP.loopback} con el tuyo a ${IP.lucia}: mira a qué {{ip-address|IP}} va cada uno.`,
   ],
   question: `¿Por qué ${NAME.lucia} rechazó tu {{nc}} al {{port|puerto}} ${PORT.app}, si ahí tiene un {{service|servicio}}?`,
   explanation: [
     {
-      text: `Porque un {{firewall}} {{drop|descartó}} el {{packet|paquete}} antes de que la app de ${NAME.lucia} pudiera recibirlo.`,
+      text: `Porque un {{firewall}} {{drop|descartó}} el {{packet|paquete}} antes de que la app de ${NAME.lucia} lo recibiera.`,
       feedback: `Un {{firewall}} que {{drop|descarta}} no contesta, y {{nc}} solo habría visto un {{timeout}}. Aquí contestó ${NAME.lucia}: el {{packet|paquete}} llegó y volvió un {{rst|RST}}.`,
       correct: false,
     },
@@ -64,8 +64,8 @@ export default defineIncident({
       correct: false,
     },
     {
-      text: `Porque la app solo {{listen|escucha}} en ${IP.loopback} y rechaza lo que llega a otra {{ip-address|IP}} de ${NAME.lucia}.`,
-      feedback: `La {{listen-address|dirección de escucha}} de la app es ${IP.loopback}, y tu {{packet|paquete}} iba a ${IP.lucia}. ${NAME.lucia} lo rechazó con un {{rst|RST}}, y por eso {{nc}} mostró {{connection-refused}}. Con 0.0.0.0 la app atiende todas las {{ip-address|IPs}} de ${NAME.lucia}.`,
+      text: `Porque la {{listen-address|dirección de escucha}} de la app es ${IP.loopback}, y tu {{packet|paquete}} iba a otra {{ip-address|IP}}.`,
+      feedback: `Tu {{packet|paquete}} fue a ${IP.lucia}, y la app solo {{listen|escucha}} en ${IP.loopback}. ${NAME.lucia} lo rechazó con un {{rst|RST}}, y por eso {{nc}} mostró {{connection-refused}}. Con 0.0.0.0 la app atiende todas las {{ip-address|IPs}} de ${NAME.lucia}.`,
       correct: true,
     },
   ],
@@ -76,6 +76,5 @@ export default defineIncident({
     sendMoveFrom(ORIGIN.lucia, ADDRESS.loopback.id, MESSAGE.ncApp.id),
     sendMove(ADDRESS.lucia.id, MESSAGE.ncApp.id),
   ],
-  takeaway:
-    'Si nadie {{listen|escucha}} en un {{port|puerto}} (un {{closed-port|puerto cerrado}}), el {{device|dispositivo}} contesta con un {{rst|RST}} y {{nc}} muestra {{connection-refused}}. Un {{service|servicio}} que {{listen|escucha}} solo en 127.0.0.1 rechaza también lo que llega a otra {{ip-address|IP}}. Un {{filtered-port|puerto filtrado}} no contesta: {{nc}} solo ve un {{timeout}}.',
+  takeaway: `Cuando un {{packet|paquete}} llega a un {{closed-port|puerto cerrado}}, el {{device|dispositivo}} contesta con un {{rst|RST}}, y {{nc}} muestra {{connection-refused}}. Si una app {{listen|escucha}} solo en ${IP.loopback}, el {{device|dispositivo}} también contesta con un {{rst|RST}} cuando otro {{device|dispositivo}}, como ${NAME.you}, manda un {{packet|paquete}} a otra {{ip-address|IP}}. Un {{filtered-port|puerto filtrado}} no contesta: {{nc}} solo ve un {{timeout}}. Si ves {{connection-refused}} y la app está en marcha, mira en qué {{ip-address|IP}} {{listen|escucha}}.`,
 });

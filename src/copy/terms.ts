@@ -177,7 +177,7 @@ export const TERMS = {
     definition: 'El puerto de origen que el dispositivo elige para cada intercambio nuevo. Su rango depende del sistema operativo.',
   },
   'closed-port': { name: 'puerto cerrado', definition: 'Un puerto donde nadie escucha. En TCP, el dispositivo lo avisa con un RST.' },
-  rst: { name: 'RST', definition: 'Un paquete TCP que dice «aquí no hay conexión». Lo manda quien recibe un SYN en un puerto donde nadie escucha.' },
+  rst: { name: 'RST', definition: 'Un paquete TCP que dice «aquí no hay conexión». Lo manda quien recibe un SYN en una IP y un puerto donde nadie escucha.' },
   'connection-refused': {
     name: 'Connection refused',
     definition: 'El error de quien conecta a un puerto que rechaza la conexión: llegó un RST. Casi siempre, un puerto cerrado.',

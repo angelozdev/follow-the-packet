@@ -64,7 +64,7 @@ async function playRefusedOrSilent(page: Page) {
     { ip: IP.lucia, message: NC_TO_THE_APP },
   ]);
   await sendNcAndClose(await openTerminal(page, LUCIA), [{ ip: IP.loopback, message: NC_TO_THE_APP }]);
-  await submitAndFinish(page, /rechaza lo que llega a otra IP de laptop-lucia/);
+  await submitAndFinish(page, /y tu paquete iba a otra IP/);
 }
 
 /** Opens the card of your laptop from its label, on the tab «Clasificar», and returns it. */
