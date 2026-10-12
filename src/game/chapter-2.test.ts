@@ -1211,6 +1211,16 @@ describe('02-08, one address for the whole office', () => {
     expect(takeaway).not.toMatch(/por eso/i);
   });
 
+  it('02-08: the takeaway says a public IP has a limited number of ports and that the game does not reach the limit, with no figure', () => {
+    const takeaway = plain(start.incident.takeaway);
+    expect(takeaway).toContain('En un NAT real, las filas caducan; aquí no. Una IP pública tiene un número limitado de puertos, y este juego no llega a ese límite. Un ping también sale con la IP cambiada.');
+    const sentence = takeaway.split(/(?<=[.!?])\s+/).find((candidate) => /número limitado de puertos/.test(candidate));
+    expect(sentence).toBeDefined();
+    expect(sentence).not.toMatch(/\d/);
+    expect(['public-ip', 'port'].filter((term) => !knownTerms(INCIDENTS, ONE_ADDRESS).has(term as TermId))).toEqual([]);
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, ONE_ADDRESS))).toEqual([]);
+  });
+
   it('02-08: names no router the map does not draw, in any text, box or table', () => {
     const undrawn = Object.values(ROUTER).filter(({ id }) => !TRANSLATION_PIECES.includes(id));
     expect(undrawn.map(({ name }) => name)).toEqual([ROUTER.provider.name, ROUTER.destination.name, ROUTER.branch.name]);
