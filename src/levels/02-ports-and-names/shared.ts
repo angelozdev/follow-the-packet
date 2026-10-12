@@ -115,11 +115,19 @@ export const NAME = {
   freshServer: nameTag(SERVER.fresh.name),
 } as const;
 
-/** The terminals chapter 2 sends from: those of chapter 1 and the one of laptop-lucia, which 02-03 uses to test her own app from her own laptop. */
-export const ORIGIN = { ...CHAPTER_1_ORIGIN, lucia: { id: 'lucia', endpoint: { kind: 'device', id: DEVICE.lucia.id } } } satisfies Record<string, OriginChip>;
+/** The terminals chapter 2 sends from: those of chapter 1, the one of laptop-lucia, which 02-03 uses to test her own app from her own laptop, and the one of casa-lucia, the client of the internet that 02-09 sends from. */
+export const ORIGIN = {
+  ...CHAPTER_1_ORIGIN,
+  lucia: { id: 'lucia', endpoint: { kind: 'device', id: DEVICE.lucia.id } },
+  home: { id: 'home', endpoint: { kind: 'actor', id: CLIENT.home.id } },
+} satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, and the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1). */
-export const ADDRESS = { ...CHAPTER_1_ADDRESS, otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop } } as const;
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1) and the public IP of router-oficina, which is where a client outside the office writes to (02-09). */
+export const ADDRESS = {
+  ...CHAPTER_1_ADDRESS,
+  otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop },
+  officePublic: { id: 'ip-office-public', address: IP.officeUplink },
+} as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
 function ncMessage(port: number): MessageChip {
@@ -131,6 +139,8 @@ export const MESSAGE = {
   ncApp: ncMessage(PORT.app),
   ncDatabase: ncMessage(PORT.database),
   ncMysql: ncMessage(PORT.mysql),
+  ncWeb: ncMessage(PORT.web),
+  ncUnmapped: ncMessage(PORT.unmapped),
 } as const;
 
 export const TASK = {
@@ -153,6 +163,10 @@ export const TASK = {
   serverPing: 'ping-to-server',
   branchPrinterPing: 'ping-to-branch-printer',
   branchLaptopPing: 'ping-to-branch-laptop',
+  webFromYou: 'nc-to-port-80-from-your-laptop',
+  webFromLucia: 'nc-to-port-80-from-laptop-lucia',
+  unsolicited: 'nc-from-outside-to-a-port-with-no-row',
+  forwarded: 'nc-from-outside-to-the-forwarded-port',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -271,6 +285,16 @@ export const OTHER_OFFICE: NetworkAction[] = [
 
 /** What 02-07 changes on a router that already existed: router-oficina lost every route, so it no longer knows where to send what is not for the office, and gained the interface of the private link to router-sucursal (172.16.0.1). An update replaces the list of interfaces, so the update restates the two floors and the way out to the provider. It keeps `sendsUnreachable`: with no route that covers a destination it warns Destination Net Unreachable. */
 export const ROUTES_LOST: NetworkAction = { type: 'updateRouter', routerId: ROUTER.office.id, interfaces: [...OFFICE_INTERFACES, { ip: IP.officeLink, faces: ROUTER.branch.id }], routes: [] };
+
+/** What 02-08 changes: servidor-internet puts a service on port 80 and another on 443, listening on every IP, so a connection to either gets an answer. They are only numbers here: what a program does behind them is not this chapter's. The NAT of router-oficina is no change: it has translated what leaves the office since the office reached the internet, and the map did not show it before. */
+export const WEB_PORTS: NetworkAction = { type: 'setServices', ownerId: SERVER.internet.id, services: [tcpService(PORT.web), tcpService(PORT.secureWeb)] };
+
+/** What 02-09 changes: casa-lucia, a client of the internet, appears at 192.0.2.77; laptop-andres puts her app on port 3000, listening on every IP, and router-oficina gets one fixed forward, which hands what arrives at its public IP on TCP port 3000 to port 3000 of laptop-andres. The port the 02-09 probe asks for, 40009, has no forward and no row. */
+export const FORWARDED_APP: NetworkAction[] = [
+  { type: 'addActor', actor: { id: CLIENT.home.id, name: CLIENT.home.name, ip: IP.home, kind: 'home' } },
+  { type: 'setServices', ownerId: DEVICE.andres.id, services: [APP] },
+  { type: 'setForwards', routerId: ROUTER.office.id, forwards: [{ protocol: 'tcp', publicPort: PORT.app, toDeviceId: DEVICE.andres.id, toPort: PORT.app }] },
+];
 
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
 export const OFFICE_ROUTES = {

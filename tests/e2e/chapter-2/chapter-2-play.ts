@@ -6,6 +6,8 @@ import { IP, type PlayedIncident } from '@e2e/chapter-1/chapter-1-play';
 export const NC_TO_THE_APP = 'nc · puerto 3000';
 export const NC_TO_THE_DATABASE = 'nc · puerto 5432';
 export const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
+export const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
+export const NC_TO_THE_UNMAPPED_PORT = 'nc · puerto 40009';
 export const LUCIA = 'laptop-lucia';
 export const SERVICES_TAB = 'Servicios';
 export const SERVICES_CARD = 'Servicios de laptop-lucia';
@@ -28,6 +30,12 @@ export const OTHER_OFFICE_BLOCK = '10.0.0.0/16';
 export const OTHER_OFFICE_LAPTOP = '10.0.0.20';
 export const PROVIDER_HOP = '203.0.113.1 router-proveedor';
 export const BRANCH_HOP = '172.16.0.2 router-sucursal';
+export const TRANSLATIONS_TAB = 'Tabla de traducciones';
+export const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
+export const HOME = 'casa-lucia';
+export const OFFICE_PUBLIC_IP = '203.0.113.10';
+const FIRST_PUBLIC_PORT = '40001';
+const SECOND_PUBLIC_PORT = '40002';
 const ADD_ROUTE = 'Agregar ruta';
 const IN_USE = 'en uso';
 const DEFAULT_ROW = /0\.0\.0\.0\/0/;
@@ -162,6 +170,36 @@ async function playAWayToTheOtherOffice(page: Page) {
   await submitAndFinish(page, /tiene el prefijo más largo/);
 }
 
+/** Sends the nc to port 80 of the server from the terminal of the laptop and closes the terminal. */
+async function sendTheWebNc(page: Page, laptop: string) {
+  const terminal = await openTerminal(page, laptop);
+  await sendMessage(terminal, NC_TO_THE_WEB_PORT);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+}
+
+async function playOneAddressForTheWholeOffice(page: Page) {
+  await sendTheWebNc(page, YOUR_LAPTOP);
+  await sendTheWebNc(page, LUCIA);
+  await openCard(page, OFFICE_ROUTER);
+  await page.getByRole('tab', { name: TRANSLATIONS_TAB, exact: true }).click();
+  const translations = card(page, TRANSLATIONS_CARD);
+  await expect(translations.getByRole('row', { name: new RegExp(FIRST_PUBLIC_PORT) })).toBeVisible();
+  await expect(translations.getByRole('row', { name: new RegExp(SECOND_PUBLIC_PORT) })).toBeVisible();
+  await confirm(translations);
+  await expect(translations).toBeHidden();
+  await submitAndFinish(page, /Por el puerto: cada conexión tiene su fila con su puerto público/);
+}
+
+async function playFromOutside(page: Page) {
+  const terminal = await openTerminal(page, HOME);
+  await sendMessage(terminal, NC_TO_THE_UNMAPPED_PORT);
+  await sendMessage(terminal, NC_TO_THE_APP);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await submitAndFinish(page, /no había ninguna fila para ese puerto/);
+}
+
 /** How each incident of chapter 2 is played with the mouse, in game order. Each content task adds the incident it builds: its title as the roadmap shows it and the moves that earn the stars. */
 export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-01', title: 'Un equipo, muchos servicios', play: playOneMachineManyServices },
@@ -171,6 +209,8 @@ export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-05', title: 'La regla completa', play: playTheWholeRule },
   { id: '02-06', title: 'Tu tabla de rutas', play: playYourRoutingTable },
   { id: '02-07', title: 'Un camino a la otra oficina', play: playAWayToTheOtherOffice },
+  { id: '02-08', title: 'Una IP para toda la oficina', play: playOneAddressForTheWholeOffice },
+  { id: '02-09', title: 'Desde afuera', play: playFromOutside },
 ];
 
 /** The id of the last incident of chapter 2 that is built: while chapter 2 is incomplete it is the one right before 04-01 in game order, so the one whose star opens 04-01. */

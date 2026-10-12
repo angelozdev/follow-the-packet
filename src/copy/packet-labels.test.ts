@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Network } from '@/engine';
 import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetLabelOutside, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -231,28 +231,17 @@ describe('the label of a packet with ports', () => {
     expect(packetLabel(question, simulate(named, question), named, withoutTerms('udp'))).toBe('{{packet}} al {{port|puerto}} 53 de [[tu-laptop]] a [[servidor-dns]]');
   });
 
-  it('a translated packet is labelled with its private source port before the router and its public source port after it', () => {
-    const [first, second] = simulateSequence(floors, [{ packet: toServer, at: 0 }, { packet: { ...toServer, from: device('lucia-laptop') }, at: 0 }]);
-    expect(packetLabel(toServer, first, floors)).toBe('{{tcp}} 51514 → 80 de [[tu-laptop]] a [[servidor-internet]]');
-    expect(packetLabelOutside(toServer, first, floors)).toBe('{{tcp}} 40001 → 80 de [[tu-laptop]] a [[servidor-internet]]');
-    expect(packetLabelOutside({ ...toServer, from: device('lucia-laptop') }, second, floors)).toBe('{{tcp}} 40002 → 80 de [[laptop-lucia]] a [[servidor-internet]]');
-    expect(packetLabelOutside(toServer, first, floors, withoutTerms('tcp'))).toBe('{{packet}} al {{port|puerto}} 80 de [[tu-laptop]] a [[servidor-internet]]');
-  });
-
   it('a packet that is not translated keeps one label along its whole path', () => {
     const inside = simulate(serving(), toLucia);
     expect(inside).not.toHaveProperty('translation');
-    expect(packetLabelOutside(toLucia, inside, serving())).toBe(packetLabel(toLucia, inside, serving()));
     const pinged = ping(device('your-laptop'), server.ip);
     const trace = simulate(floors, pinged);
     expect(trace.translation?.protocol).toBe('icmp');
     expect(trace.translation?.outside).toEqual({ ip: OFFICE_FLOORS.officeRouter.uplink });
-    expect(packetLabelOutside(pinged, trace, floors)).toBe(packetLabel(pinged, trace, floors));
     expect(packetLabel(pinged, trace, floors)).toBe('{{ping}} de [[tu-laptop]] a [[servidor-internet]]');
     const vpc = lab03Net();
     const ssh = tcp(device('servidor1'), '172.31.38.97', 22);
     expect(packetLabel(ssh, simulate(vpc, ssh), vpc)).toBe('TCP 22 de [[servidor1]] a [[servidor2]]');
-    expect(packetLabelOutside(ssh, simulate(vpc, ssh), vpc)).toBe('TCP 22 de [[servidor1]] a [[servidor2]]');
   });
 });
 

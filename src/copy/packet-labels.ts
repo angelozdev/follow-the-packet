@@ -74,20 +74,15 @@ function transportLabel(protocol: 'tcp' | 'udp', ports: { source: number; destin
   return `{{${protocol}}} ${knows('source-port') ? `${ports.source} → ` : ''}${destination}`;
 }
 
-function packetService(packet: PacketSpec, trace: Trace, known: ReadonlySet<TermId> | undefined, sourcePort: number | undefined): TermText {
+function packetService(packet: PacketSpec, trace: Trace, known: ReadonlySet<TermId> | undefined): TermText {
   const request = trace.header?.request;
   if (packet.protocol === 'icmp' || request?.sourcePort === undefined || request.destinationPort === undefined) return serviceLabel(packet, known);
-  return transportLabel(packet.protocol, { source: sourcePort ?? request.sourcePort, destination: request.destinationPort }, known);
+  return transportLabel(packet.protocol, { source: request.sourcePort, destination: request.destinationPort }, known);
 }
 
 /** Describes a packet as what, from whom and to whom, naming the device the trace reached or else the address it was sent to; what it is called follows what the player knows (`serviceLabel`). A TCP or UDP packet of an office also names its ports, as it leaves its sender (`transportLabel`); one of a VPC has no ports in its trace and keeps `TCP 22`. A packet that never left its sender (to `127.0.0.1`, `localhost` or its own IP) names the address as it was written, so these packets are told apart. */
 export function packetLabel(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
-  return `${packetService(packet, trace, known, undefined)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
-}
-
-/** The label of a packet once the NAT of the office has changed its source: the same as `packetLabel`, with the public source port of `Trace.translation` («TCP 40001 → 80»). A packet that was not translated, or whose translation has no port (an ICMP message has none), keeps its one label. */
-export function packetLabelOutside(packet: PacketSpec, trace: Trace, net: Network, known?: ReadonlySet<TermId>): TermText {
-  return `${packetService(packet, trace, known, trace.translation?.outside.port)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
+  return `${packetService(packet, trace, known)} de ${endpointName(packet.from, net)} a ${destinationName(packet, trace, net)}`;
 }
 
 /** The label a packet carries along one leg of its path: its protocol and ports as it asks, and as its answer comes back, with the ports swapped. */

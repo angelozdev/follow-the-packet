@@ -19,7 +19,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .stars-inline { margin-left: auto; color: var(--color-emphasis); }
 .locked { color: var(--color-ink-soft); }
 
-.html-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.html-layer { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
 
 .map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
 .map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }

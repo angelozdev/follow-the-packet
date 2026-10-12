@@ -23,6 +23,7 @@ import {
   OFFICE_ROUTES,
   ORIGIN,
   OTHER_OFFICE,
+  OUTSIDE_PIECES,
   PORT,
   REFUSAL_PIECES,
   ROUTER,
@@ -36,6 +37,7 @@ import {
   SSH_PIECES,
   SSH_WHAT,
   TASK,
+  TRANSLATION_PIECES,
   routeMove,
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
@@ -1075,6 +1077,279 @@ describe('02-07, a way to the other office', () => {
     expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[WAY]));
     expect(sorted(introduces)).toEqual(sorted(['next-hop', 'net-unreachable', 'most-specific-route']));
     expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, WAY))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-08, one address for the whole office', () => {
+  const ONE_ADDRESS = '02-08';
+  const LOCAL_HEADER = 'Encabezado de ida (en tu red local)';
+  const INTERNET_HEADER = 'Encabezado de ida (en internet)';
+  const TRANSLATION = 'Traducción';
+  const HEADER_CHANGES_NOTE = /el encabezado cambia/i;
+  const FIRST_PORT = 51514;
+  const FIRST_PUBLIC_PORT = 40001;
+  const SECOND_PUBLIC_PORT = 40002;
+  const A_REASON_FOR_THE_REPLY = /stateful|stateless|recuerda|conversación|mismo camino|deja(?:n)? (?:pasar|volver|entrar la respuesta)|porque la respuesta|por eso vuelve/i;
+  const start = startSession(INCIDENTS, ONE_ADDRESS);
+  const webFrom = (session: Session, origin: { id: string }): Session => sendingFrom(session, origin.id, ADDRESS.server.id, MESSAGE.ncWeb.id);
+  const pinging = (session: Session): Session => sendingFrom(session, ORIGIN.you.id, ADDRESS.server.id, MESSAGE.ping.id);
+  const fromYou = webFrom(start, ORIGIN.you);
+  const both = webFrom(fromYou, ORIGIN.lucia);
+  const translationsOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined;
+  const rowsOf = (session: Session) => (translationsOf(session)?.rows ?? []).map((row) => row.cells.map((cell) => plain(cell.text)));
+  const routerOf = (world: Network) => world.routers?.find((router) => router.id === ROUTER.office.id);
+
+  it('02-08: two laptops with the same source port get two public ports and the table lists both rows', () => {
+    expect(both.sent.map(({ trace }) => trace.header?.request.sourcePort)).toEqual([FIRST_PORT, FIRST_PORT]);
+    expect(both.sent.map(({ trace }) => [trace.translation?.outside.ip, trace.translation?.outside.port])).toEqual([[IP.officeUplink, FIRST_PUBLIC_PORT], [IP.officeUplink, SECOND_PUBLIC_PORT]]);
+    expect(both.sent.map(({ trace }) => trace.translation?.isNew)).toEqual([true, true]);
+    expect(rowsOf(both)).toEqual([
+      ['TCP', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`],
+      ['TCP', `${IP.lucia}:${FIRST_PORT}`, `${IP.officeUplink}:${SECOND_PUBLIC_PORT}`],
+    ]);
+    expect(translationsOf(both)?.columns.map(({ label }) => plain(label))).toEqual(['Protocolo', 'IP:puerto privado', 'IP:puerto público']);
+    expect(translationsOf(both)).toMatchObject({ kind: 'translations', tableId: null, trays: null, add: null });
+    expect(translationsOf(both)?.rows.map(({ inUse }) => inUse)).toEqual([false, true]);
+    expect(rowsOf(start)).toEqual([]);
+    expect(stillOpen(start)).toEqual([TASK.webFromYou, TASK.webFromLucia]);
+    expect(stillOpen(fromYou)).toEqual([TASK.webFromLucia]);
+    expect(stillOpen(webFrom(start, ORIGIN.lucia))).toEqual([TASK.webFromYou]);
+    expectClosed(both);
+  });
+
+  it('02-08: the box shows the header in the local network and the header in the internet', () => {
+    const yours = lastBox(fromYou);
+    expect(yours[LOCAL_HEADER]).toEqual([`${IP.you}:${FIRST_PORT} → ${IP.server}:${PORT.web}`, 'TTL al salir: 64']);
+    expect(yours[INTERNET_HEADER]).toEqual([`${IP.officeUplink}:${FIRST_PUBLIC_PORT} → ${IP.server}:${PORT.web}`]);
+    expect(yours[TRANSLATION]).toEqual([
+      `${IP.you}:${FIRST_PORT} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT}`,
+      'Cambió la IP y el puerto de origen (traducción de puertos).',
+      'Es una fila nueva de la tabla de traducciones.',
+    ]);
+    const hers = lastBox(both);
+    expect(hers[LOCAL_HEADER]).toEqual([`${IP.lucia}:${FIRST_PORT} → ${IP.server}:${PORT.web}`, 'TTL al salir: 64']);
+    expect(hers[INTERNET_HEADER]).toEqual([`${IP.officeUplink}:${SECOND_PUBLIC_PORT} → ${IP.server}:${PORT.web}`]);
+    expect(hers[TRANSLATION][0]).toBe(`${IP.lucia}:${FIRST_PORT} → ${IP.officeUplink}:${SECOND_PUBLIC_PORT}`);
+  });
+
+  it('02-08: the note that the header changes outside the office is gone', () => {
+    const before = startSession(INCIDENTS, '02-07');
+    const withWays = [routeMove(OFFICE_ROUTES.to.anywhere, OFFICE_ROUTES.via.provider)].reduce(sessionReducer, before);
+    const oldNote = boxTexts(sendingFrom(withWays, ORIGIN.you.id, ADDRESS.server.id, MESSAGE.ping.id));
+    expect(oldNote.filter((text) => HEADER_CHANGES_NOTE.test(text))).toHaveLength(1);
+    expect(boxTexts(both).filter((text) => HEADER_CHANGES_NOTE.test(text))).toEqual([]);
+    expect(boxTexts(pinging(both)).filter((text) => HEADER_CHANGES_NOTE.test(text))).toEqual([]);
+    expect(everythingRead(both).filter((text) => HEADER_CHANGES_NOTE.test(text))).toEqual([]);
+  });
+
+  it('02-08: the report says router-oficina did this since the office reached the internet and changes nothing in the world', () => {
+    const { report } = start.incident;
+    const before = solvedWorld(INCIDENTS, '02-07');
+    const after = startWorld(INCIDENTS, ONE_ADDRESS);
+    expect(report).toContain(`[[${ROUTER.office.name}]]`);
+    expect(plain(report)).toMatch(/desde que la oficina salió a internet/);
+    expect(plain(report)).toMatch(/no es un cambio nuevo, solo que el mapa no lo mostraba/);
+    expect(routerOf(after)).toEqual(routerOf(before));
+    expect(after.routers).toEqual(before.routers);
+    expect({ ...after, actors: before.actors }).toEqual(before);
+    expect(after.actors.filter((actor, index) => actor !== before.actors[index]).map(({ id }) => id)).toEqual([SERVER.internet.id]);
+    expect(report).toContain(`[[${SERVER.internet.name}]]`);
+    expect(changedNames(before, after)).toEqual([SERVER.internet.name]);
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+  });
+
+  it('01-08 still says the header changes outside the office and does not name NAT', () => {
+    const chapterOne = startSession(INCIDENTS, '01-08');
+    const toTheServer = sendingFrom(chapterOne, ORIGIN.you.id, ADDRESS.server.id, MESSAGE.ping.id);
+    expect(['nat', 'napt', 'translation-table'].filter((term) => chapterOne.known.has(term as TermId))).toEqual([]);
+    expect(boxTexts(toTheServer).filter((text) => HEADER_CHANGES_NOTE.test(text))).toHaveLength(1);
+    expect(boxTexts(toTheServer).filter((text) => /\bNAT\b|pública/.test(text))).toEqual([]);
+    expect(Object.keys(lastBox(toTheServer)).filter((label) => /\(en internet\)|Traducción/.test(label))).toEqual([]);
+    expect(incidentTexts(chapterOne.incident).map(plain).filter((text) => /\bNAT\b|traducción/i.test(text))).toEqual([]);
+    expect(INCIDENTS.map(({ id }) => id)).toContain(ONE_ADDRESS);
+  });
+
+  it('02-08: a ping from tu-laptop to the server still comes back and leaves no row', () => {
+    const pinged = pinging(start);
+    expect(pinged.sent[0].replied).toBe(true);
+    expect(pinged.sent[0].trace.translation).toMatchObject({ protocol: 'icmp', outside: { ip: IP.officeUplink }, isNew: false });
+    expect(pinged.sent[0].trace.translation?.outside.port).toBeUndefined();
+    expect(rowsOf(pinged)).toEqual([]);
+    expect(lastBox(pinged)[TRANSLATION]).toEqual([`${IP.you} → ${IP.officeUplink}`, 'ICMP no usa puertos: solo cambió la IP de origen.']);
+    expect(stillOpen(pinged)).toEqual([TASK.webFromYou, TASK.webFromLucia]);
+    expect(rowsOf(pinging(both))).toEqual(rowsOf(both));
+    expect(rowsOf(webFrom(pinged, ORIGIN.you))[0]).toEqual(['TCP', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`]);
+  });
+
+  it('02-08: a second nc of the same laptop leaves from the next source port and makes a row of its own, and the public ports follow the order of the sends', () => {
+    const again = webFrom(fromYou, ORIGIN.you);
+    expect(again.history.map(({ trace }) => trace.header?.request.sourcePort)).toEqual([FIRST_PORT, FIRST_PORT + 1]);
+    expect(rowsOf(again)).toEqual([
+      ['TCP', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`],
+      ['TCP', `${IP.you}:${FIRST_PORT + 1}`, `${IP.officeUplink}:${SECOND_PUBLIC_PORT}`],
+    ]);
+    const luciaFirst = webFrom(webFrom(start, ORIGIN.lucia), ORIGIN.you);
+    expect(rowsOf(luciaFirst)).toEqual([
+      ['TCP', `${IP.lucia}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`],
+      ['TCP', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${SECOND_PUBLIC_PORT}`],
+    ]);
+  });
+
+  it('02-08: no text gives a reason for the reply to come back beyond its row, and the numbers are said to be the game\'s', () => {
+    expect(['La respuesta vuelve porque el router recuerda la conversación.', 'Es stateful.'].filter((text) => !A_REASON_FOR_THE_REPLY.test(text))).toEqual([]);
+    expect(everythingRead(both).filter((text) => A_REASON_FOR_THE_REPLY.test(text))).toEqual([]);
+    const takeaway = plain(start.incident.takeaway);
+    expect(takeaway).toMatch(/Los números 40001 y 40002 son de este juego: otros NAT eligen otros\./);
+    expect(takeaway).toMatch(/En un NAT real, las filas caducan; aquí no\./);
+    expect(takeaway).toMatch(/no deja fila, porque ICMP no usa puertos/);
+  });
+
+  it('02-08: names no router the map does not draw, in any text, box or table', () => {
+    const undrawn = Object.values(ROUTER).filter(({ id }) => !TRANSLATION_PIECES.includes(id));
+    expect(undrawn.map(({ name }) => name)).toEqual([ROUTER.provider.name, ROUTER.destination.name, ROUTER.branch.name]);
+    const cards = [translationsOf(both), pieceCard(both, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'routes')?.card as TableCard | undefined];
+    const tables = cards.flatMap((card) => (card?.rows ?? []).flatMap((row) => row.cells.map((cell) => plain(cell.text))));
+    expect(tables.length).toBeGreaterThan(0);
+    expect([...everythingRead(pinging(both)), ...tables].filter((text) => undrawn.some(({ name }) => text.includes(name)))).toEqual([]);
+  });
+
+  it('02-08: draws tu-laptop, laptop-lucia, router-oficina, the globe and servidor-internet', () => {
+    const names = [DEVICE.you.name, DEVICE.lucia.name, SERVER.internet.name];
+    expect(drawnLabels(start)).toEqual([...names.map((name) => `device:${name}`), `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`, `firewall:firewall ${DEVICE.lucia.name}`, 'internet:internet'].sort());
+    expect(start.incident.shown).toEqual(TRANSLATION_PIECES);
+    const world = startWorld(INCIDENTS, ONE_ADDRESS);
+    const ids = [...world.devices.map(({ id }) => id), ...(world.routers ?? []).map(({ id }) => id), ...world.actors.map(({ id }) => id)];
+    expect(TRANSLATION_PIECES.filter((id) => !ids.includes(id))).toEqual([]);
+  });
+
+  it('02-08: the card of router-oficina has its routes tab first and the translations tab, and its report says which one to open', () => {
+    const card = pieceCard(start, PIECE_ID.router(ROUTER.office.id));
+    expect(card).toMatchObject({ tabbed: true, first: 'routes' });
+    expect(card?.tabs.map(({ id }) => id)).toEqual(['routes', 'translations']);
+    expect(plain(translationsOf(start)?.title ?? '')).toBe(`Tabla de traducciones de ${ROUTER.office.name}`);
+    expect(plain(start.incident.report)).toContain('abre router-oficina y su pestaña «Tabla de traducciones»');
+  });
+
+  it('02-08: the right option is the first and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 0);
+  });
+
+  it('02-08: introduces NAT, port translation and translation table, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[ONE_ADDRESS]));
+    expect(sorted(introduces)).toEqual(sorted(['nat', 'napt', 'translation-table']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, ONE_ADDRESS))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-09, from outside', () => {
+  const FROM_OUTSIDE = '02-09';
+  const WHERE_IT_STOPPED = 'Dónde y por qué se detuvo';
+  const TRANSLATION = 'Traducción';
+  const NCAT_BANNER = 'Ncat: Version 7.93 ( https://nmap.org/ncat )';
+  const NAT_ACTS = /\bNAT\b(?:(?!\bno\b)[^.])*?\b(?:bloquea\w*|filtra\w*|protege\w*|es un firewall)/i;
+  const SENTENCES = /(?<=[.!?])\s+/;
+  const start = startSession(INCIDENTS, FROM_OUTSIDE);
+  const fromHome = (session: Session, messageId: string): Session => sendingFrom(session, ORIGIN.home.id, ADDRESS.officePublic.id, messageId);
+  const unmapped = fromHome(start, MESSAGE.ncUnmapped.id);
+  const forwarded = fromHome(start, MESSAGE.ncApp.id);
+  const both = fromHome(unmapped, MESSAGE.ncApp.id);
+  const lastRun = (session: Session) => session.sent.at(-1)!;
+  const translationsOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined;
+  const prose = (incident: Incident): string[] => incidentTexts(incident).map(plain);
+  const declaredWrong = (incident: Incident): string[] => optionsOf(incident).filter(({ correct }) => !correct).map(({ text }) => plain(text));
+  const sayingNatActs = (texts: string[]): string[] => texts.flatMap((text) => text.split(SENTENCES)).filter((sentence) => NAT_ACTS.test(sentence));
+
+  it('02-09: a packet to the public IP on a port with no row is not delivered to any device', () => {
+    const run = lastRun(unmapped);
+    expect(run.trace.outcome).toBe('timeout');
+    expect([run.trace.destinationId, run.reached, run.replied, run.warning, run.trace.notice]).toEqual([null, false, false, null, undefined]);
+    expect(run.by).toEqual([ROUTER.office.id]);
+    expect(run.trace.steps.at(-1)?.reason).toMatchObject({ code: 'nat-no-translation', routerId: ROUTER.office.id, port: PORT.unmapped, ip: IP.officeUplink });
+    expect(run.trace.translation).toBeUndefined();
+    expect(lastBox(unmapped)[WHERE_IT_STOPPED]).toEqual([`${ROUTER.office.name} no tiene ninguna fila en su tabla de traducciones para el puerto ${PORT.unmapped} de ${IP.officeUplink} (TCP). No sabe a qué dispositivo entregar el paquete: no lo entrega a nadie.`]);
+    expect(printedFrom(unmapped, ORIGIN.home.id, ADDRESS.officePublic.id, MESSAGE.ncUnmapped.id)).toEqual([NCAT_BANNER, 'Ncat: TIMEOUT.']);
+    expect(stillOpen(start)).toEqual([TASK.unsolicited, TASK.forwarded]);
+    expect(stillOpen(unmapped)).toEqual([TASK.forwarded]);
+    expect(translationsOf(unmapped)?.rows).toEqual([]);
+  });
+
+  it('02-09: the forward delivers to laptop-andres and nothing stops it', () => {
+    const run = lastRun(forwarded);
+    expect(run.trace.outcome).toBe('replied');
+    expect([run.trace.destinationId, run.by, run.replied]).toEqual([DEVICE.andres.id, [DEVICE.andres.id], true]);
+    expect(run.trace.translation).toMatchObject({ protocol: 'tcp', fixed: true, isNew: false, inside: { ip: IP.andres, port: PORT.app }, outside: { ip: IP.officeUplink, port: PORT.app } });
+    expect(run.trace.steps.map(({ reason }) => reason.code)).toEqual(['nat-forwarded', 'forward-hop', 'host-accepts', 'reply-stateful']);
+    expect(run.trace.steps.filter((step) => step.verdict === 'drop')).toEqual([]);
+    expect(startWorld(INCIDENTS, FROM_OUTSIDE).devices.find((device) => device.id === DEVICE.andres.id)?.firewallIds).toEqual([]);
+    expect(lastBox(forwarded)[TRANSLATION]).toEqual([`${IP.officeUplink}:${PORT.app} → ${IP.andres}:${PORT.app}`, 'Un reenvío de puertos lo entregó a ese dispositivo.']);
+    expect(translationsOf(forwarded)?.rows).toEqual([]);
+    expect(stillOpen(forwarded)).toEqual([TASK.unsolicited]);
+    expect(printedFrom(forwarded, ORIGIN.home.id, ADDRESS.officePublic.id, MESSAGE.ncApp.id)[1]).toBe(`Ncat: Connected to ${IP.officeUplink}:${PORT.app}.`);
+    expectClosed(both);
+  });
+
+  it('02-09: no text says NAT blocks or filters', () => {
+    const wrong = declaredWrong(start.incident);
+    expect(sayingNatActs(['NAT bloquea todo lo que viene de afuera.', 'NAT es un firewall.', 'El NAT filtra los paquetes.', 'NAT no filtra.'])).toEqual([
+      'NAT bloquea todo lo que viene de afuera.',
+      'NAT es un firewall.',
+      'El NAT filtra los paquetes.',
+    ]);
+    expect(wrong.filter((text) => sayingNatActs([text]).length > 0)).toHaveLength(1);
+    const everyOther = [...prose(start.incident).filter((text) => !wrong.includes(text)), ...everythingRead(both).filter((text) => !wrong.includes(text))];
+    expect(sayingNatActs(everyOther)).toEqual([]);
+    expect(plain(start.incident.takeaway)).toMatch(/NAT traduce, no filtra: no da seguridad por sí solo\. Lo que decide qué entra es un firewall\./);
+    expect(everythingRead(both).filter((text) => /\blo bloquea\b/i.test(text))).toEqual([]);
+    expect(boxTexts(unmapped).filter((text) => /no lo entrega a nadie/.test(text))).toHaveLength(1);
+    expect(plain(start.incident.takeaway)).toContain('no lo entrega a nadie');
+  });
+
+  it('02-09: the report names router-oficina and laptop-andres', () => {
+    const { report } = start.incident;
+    expect(report).toContain(`[[${ROUTER.office.name}]]`);
+    expect(report).toContain(`[[${DEVICE.andres.name}]]`);
+    expect(changedNames(solvedWorld(INCIDENTS, '02-08'), startWorld(INCIDENTS, FROM_OUTSIDE))).toEqual([DEVICE.andres.name, ROUTER.office.name]);
+    expect(plain(report)).toMatch(/^casa-lucia es un cliente de internet: está fuera de la oficina, en 192\.0\.2\.77\./);
+    expect(plain(report)).toContain('Eso es un reenvío de puertos.');
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, FROM_OUTSIDE)).error).toBeUndefined();
+  });
+
+  it('02-09: casa-lucia sends from its own piece, with a terminal and no other card', () => {
+    const home = pieceCard(start, PIECE_ID.actor(CLIENT.home.id));
+    expect(home).toMatchObject({ tabbed: false, first: 'terminal' });
+    expect(home?.tabs.map(({ id }) => id)).toEqual(['terminal']);
+    expect(terminalLine(start, { from: ORIGIN.home.id, to: ADDRESS.officePublic.id, message: MESSAGE.ncUnmapped.id })).toBe(`nc -vz -w 3 ${IP.officeUplink} ${PORT.unmapped}`);
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.andres.id))).toBeNull();
+  });
+
+  it('02-09: the forward is one fixed row on TCP 3000 of router-oficina and nothing else of the world changes', () => {
+    const before = solvedWorld(INCIDENTS, '02-08');
+    const after = startWorld(INCIDENTS, FROM_OUTSIDE);
+    const router = after.routers?.find((candidate) => candidate.id === ROUTER.office.id);
+    expect(router?.forwards).toEqual([{ protocol: 'tcp', publicPort: PORT.app, toDeviceId: DEVICE.andres.id, toPort: PORT.app }]);
+    expect({ ...router, forwards: undefined }).toEqual({ ...before.routers?.find((candidate) => candidate.id === ROUTER.office.id), forwards: undefined });
+    expect(after.devices.find((device) => device.id === DEVICE.andres.id)?.host.services).toEqual([{ protocol: 'tcp', port: PORT.app, listen: 'all' }]);
+    expect(after.actors.map(({ id }) => id)).toEqual([...before.actors.map(({ id }) => id), CLIENT.home.id]);
+    expect(after.actors.at(-1)).toMatchObject({ kind: 'home', ip: IP.home });
+  });
+
+  it('02-09: draws casa-lucia, router-oficina, laptop-andres and the globe', () => {
+    expect(drawnLabels(start)).toEqual([`actor:${CLIENT.home.name}`, `device:${DEVICE.andres.name}`, `edge:${ROUTER.office.name}`, 'internet:internet'].sort());
+    expect(start.incident.shown).toEqual(OUTSIDE_PIECES);
+  });
+
+  it('02-09: the right option is the third and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 2);
+  });
+
+  it('02-09: introduces port forwarding and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[FROM_OUTSIDE]));
+    expect(sorted(introduces)).toEqual(['port-forwarding']);
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, FROM_OUTSIDE))).toEqual([]);
     expect(laterTermLeaks([start.incident])).toEqual([]);
   });
 });

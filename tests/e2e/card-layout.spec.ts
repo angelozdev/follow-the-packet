@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { cardProblems, cardsOutsideTheMap, isReachable, reachWithWheel } from './card-boxes';
-import { card, openCard, openTerminal, sendTo } from './cards';
+import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
 import { IP, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
 import {
@@ -9,6 +9,8 @@ import {
   BRANCH_HOP,
   CLASSIFY_TAB,
   INSIDE_THE_BLOCK,
+  LUCIA,
+  NC_TO_THE_WEB_PORT,
   OFFICE_ROUTER,
   OFFICE_ROUTES_CARD,
   OTHER_OFFICE_BLOCK,
@@ -17,6 +19,8 @@ import {
   ROUTES_TAB,
   SERVICES_CARD,
   SERVICES_TAB,
+  TRANSLATIONS_CARD,
+  TRANSLATIONS_TAB,
   YOUR_LAPTOP,
   YOUR_ROUTES_CARD,
   addRoute,
@@ -47,6 +51,8 @@ const WARNED_PING = 'Paquete: ping de tu-laptop a 192.168.1.50. Apareció un avi
 const WARNED_PING_BOX = 'ping de tu-laptop a 192.168.1.50';
 const LONGER_THAN_THE_GRACE_MS = 800;
 const PIECE_LABEL = '.map-button';
+const HTML_LAYER = '.html-layer';
+const PHONE_WINDOW = { width: 390, height: 844 };
 const GENTLE_WHEEL_PX = 60;
 const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
@@ -161,6 +167,17 @@ async function reachTheOfficeRoutes(page: Page) {
   await addRoute(table, OTHER_OFFICE_BLOCK, BRANCH_HOP);
 }
 
+async function reachTheTranslations(page: Page) {
+  for (const laptop of [YOUR_LAPTOP, LUCIA]) {
+    const terminal = await openTerminal(page, laptop);
+    await sendMessage(terminal, NC_TO_THE_WEB_PORT);
+    await confirm(terminal);
+    await expect(terminal).toBeHidden();
+  }
+  await openTheLaptopByKeyboard(page, OFFICE_ROUTER);
+  await page.getByRole('tab', { name: TRANSLATIONS_TAB, exact: true }).click();
+}
+
 async function sendFromTheTabbedTerminal(page: Page) {
   await openTheLaptopByKeyboard(page);
   await sendTo(card(page, TERMINAL), IP.andres);
@@ -198,6 +215,12 @@ const THE_EDITABLE_ROUTES: Scene = {
   reach: reachTheOfficeRoutes,
   last: doneOf(OFFICE_ROUTES_CARD),
 };
+const THE_TRANSLATIONS: Scene = {
+  name: 'the table of translations of router-oficina, read only, with the rows of two laptops',
+  level: '02-08',
+  reach: reachTheTranslations,
+  last: doneOf(TRANSLATIONS_CARD),
+};
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendAPingAndATraceroute, last: doneOf(TERMINAL) };
 
@@ -216,10 +239,11 @@ const SCENES: Scene[] = [
   THE_SERVICES,
   THE_ROUTES,
   THE_EDITABLE_ROUTES,
+  THE_TRANSLATIONS,
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function passTheGrace(page: Page) {
   await page.clock.fastForward(LONGER_THAN_THE_GRACE_MS);
@@ -354,6 +378,25 @@ test('with the clock paused the scene still moves to its rest frame by frame, an
   await page.clock.fastForward(SLOW_TIMER_MS);
   await standStill(page, { eachFrame: stepFrame });
   expect(await left()).toBeNull();
+});
+
+test('a card opened on a narrow map never scrolls the layer of the labels, so the labels keep their place over the drawing', async ({ page }) => {
+  await page.setViewportSize(PHONE_WINDOW);
+  await page.goto(`/#/level/${THE_TRANSLATIONS.level}`);
+  await page.reload();
+  const layer = page.locator(HTML_LAYER);
+  const scrolled = () => layer.evaluate((element) => [element.scrollLeft, element.scrollTop]);
+  const router = page.getByRole('button', { name: OFFICE_ROUTER, exact: true });
+  await standStill(page);
+  const home = await router.boundingBox();
+  const terminal = await openTerminal(page, LUCIA);
+  await standStill(page);
+  expect(await scrolled(), 'with the terminal of the laptop at the right edge open').toEqual([0, 0]);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await standStill(page);
+  expect(await scrolled(), 'after it closes').toEqual([0, 0]);
+  expect(await router.boundingBox(), 'the label of the router stands where it stood').toEqual(home);
 });
 
 test('the tab of a Message in the cards of the game covers nothing of the element above it', async ({ page }) => {
