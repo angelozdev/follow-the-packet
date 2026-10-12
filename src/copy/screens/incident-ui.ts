@@ -79,8 +79,8 @@ export const INSPECTION_TEXT = {
     if (!known.has('listen-address')) return what;
     return `${what} · {{listen-address|${service.listen === 'all' ? 'escucha en todas las IPs' : `escucha solo en ${LOOPBACK_IP}`}}}`;
   },
-  sourcePort: (port: number): TermText => `{{source-port|Puerto de origen}}: ${port}`,
-  destinationPort: (port: number, known: ReadonlySet<TermId>): TermText => `${known.has('destination-port') ? '{{destination-port|Puerto de destino}}' : word(known, 'port', 'Puerto')}: ${port}`,
+  end: (ip: string, port: number | undefined): TermText => (port === undefined ? ip : `{{ip-port|${ip}:${port}}}`),
+  ends: (from: TermText, to: TermText): TermText => `${from} → ${to}`,
   outHeader: '{{header|Encabezado}} de ida',
   backHeader: '{{header|Encabezado}} de vuelta',
   inInternet: (header: TermText, known: ReadonlySet<TermId>): TermText => `${header} (en ${word(known, 'internet', 'internet')})`,

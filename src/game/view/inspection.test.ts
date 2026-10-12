@@ -644,16 +644,23 @@ describe('the box of a packet with ports and names', () => {
   it('a tcp packet shows its ports in the header behind the term port', () => {
     const nc = sentTo(served, 'lucia', 'nc');
     expect(nc.sent[0].replied).toBe(true);
-    expect(field(nc, 'Encabezado de ida')).toEqual(['Encabezado de ida', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'Puerto de origen: 51514', 'Puerto de destino: 3000', 'TTL al salir: 64']);
-    expect(field(nc, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', 'IP de origen: 192.168.1.11', 'IP de destino: 192.168.1.10', 'Puerto de origen: 3000', 'Puerto de destino: 51514']);
-    const noPorts = sentTo(without(served, 'port'), 'lucia', 'nc');
-    expect(field(noPorts, 'Encabezado de ida')).toEqual(['Encabezado de ida', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'TTL al salir: 64']);
-    expect(field(sentTo(without(served, 'source-port'), 'lucia', 'nc'), 'Encabezado de ida')?.slice(3)).toEqual(['Puerto de destino: 3000', 'TTL al salir: 64']);
-    expect(field(sentTo(without(served, 'destination-port'), 'lucia', 'nc'), 'Encabezado de ida')?.slice(3)).toEqual(['Puerto de origen: 51514', 'Puerto: 3000', 'TTL al salir: 64']);
+    expect(field(nc, 'Encabezado de ida')).toEqual(['Encabezado de ida', '192.168.1.10:51514 → 192.168.1.11:3000', 'TTL al salir: 64']);
+    expect(field(nc, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11:3000 → 192.168.1.10:51514']);
+    const ipsOnly = ['Encabezado de ida', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'TTL al salir: 64'];
+    expect(field(sentTo(without(served, 'port'), 'lucia', 'nc'), 'Encabezado de ida')).toEqual(ipsOnly);
+    expect(field(sentTo(without(served, 'ip-port'), 'lucia', 'nc'), 'Encabezado de ida')).toEqual(ipsOnly);
+    const beforeSourcePort = sentTo(without(served, 'source-port'), 'lucia', 'nc');
+    expect(field(beforeSourcePort, 'Encabezado de ida')).toEqual(['Encabezado de ida', '192.168.1.10 → 192.168.1.11:3000', 'TTL al salir: 64']);
+    expect(field(beforeSourcePort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11 → 192.168.1.10:51514']);
+    const beforeDestinationPort = sentTo(without(served, 'destination-port'), 'lucia', 'nc');
+    expect(field(beforeDestinationPort, 'Encabezado de ida')).toEqual(['Encabezado de ida', '192.168.1.10:51514 → 192.168.1.11', 'TTL al salir: 64']);
+    expect(field(beforeDestinationPort, 'Encabezado de vuelta')).toEqual(['Encabezado de vuelta', '192.168.1.11:3000 → 192.168.1.10']);
     const refused = sentTo(base, 'lucia', 'nc');
-    expect(field(refused, 'Encabezado')?.slice(1, 3)).toEqual(['IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11']);
-    expect(fields(sentTo(served, 'lucia', 'ping')).flat().join(' ')).not.toMatch(/Puerto/);
-    for (const missing of ['port', 'source-port', 'destination-port', 'handshake', 'tcp'] as const) {
+    expect(field(refused, 'Encabezado')?.slice(1, 2)).toEqual(['192.168.1.10:51514 → 192.168.1.11:3000']);
+    const ping = sentTo(served, 'lucia', 'ping');
+    expect(field(ping, 'Encabezado del Echo Request')).toEqual(['Encabezado del Echo Request', 'IP de origen: 192.168.1.10', 'IP de destino: 192.168.1.11', 'TTL al salir: 64']);
+    expect(fields(ping).flat().join(' ')).not.toMatch(/Puerto|:\d{4,5}/);
+    for (const missing of ['port', 'ip-port', 'source-port', 'destination-port', 'handshake', 'tcp'] as const) {
       const unaware = sentTo(without(served, missing), 'lucia', 'nc');
       const shown = inspect(unaware, unaware.sent[0].pieceId)?.fields ?? [];
       expect(unknownTerms(shown.flatMap((field) => [field.label, ...field.lines, ...(field.notes ?? [])]), unaware.known), missing).toEqual([]);
@@ -801,10 +808,12 @@ describe('the route a packet used and the translation the NAT made', () => {
   it('the box shows the header in the local network and the header in the internet once nat is known', () => {
     const nc = sent(start, 'you', 'server', 'nc-3000');
     expect(nc.sent[0].replied).toBe(true);
-    expect(field(nc, 'Encabezado de ida (en tu red local)')).toEqual([
-      'Encabezado de ida (en tu red local)', 'IP de origen: 192.168.1.10', `IP de destino: ${server.ip}`, 'Puerto de origen: 51514', 'Puerto de destino: 3000', 'TTL al salir: 64',
-    ]);
-    expect(field(nc, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `IP de origen: ${officeRouter.uplink}`, `IP de destino: ${server.ip}`, 'Puerto de origen: 40001', 'Puerto de destino: 3000']);
+    expect(field(nc, 'Encabezado de ida (en tu red local)')).toEqual(['Encabezado de ida (en tu red local)', `192.168.1.10:51514 → ${server.ip}:3000`, 'TTL al salir: 64']);
+    expect(field(nc, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `${officeRouter.uplink}:40001 → ${server.ip}:3000`]);
+    const beforeSourcePort = sent(without(start, 'source-port'), 'you', 'server', 'nc-3000');
+    expect(field(beforeSourcePort, 'Encabezado de ida (en tu red local)')).toEqual(['Encabezado de ida (en tu red local)', `192.168.1.10 → ${server.ip}:3000`, 'TTL al salir: 64']);
+    expect(field(beforeSourcePort, 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `${officeRouter.uplink} → ${server.ip}:3000`]);
+    expect(field(sent(without(start, 'ip-port'), 'you', 'server', 'nc-3000'), 'Encabezado de ida (en internet)')).toEqual(['Encabezado de ida (en internet)', `IP de origen: ${officeRouter.uplink}`, `IP de destino: ${server.ip}`]);
     expect(field(nc, 'Traducción')).toEqual(['Traducción', `192.168.1.10:51514 → ${officeRouter.uplink}:40001`, 'Cambió la IP y el puerto de origen (traducción de puertos).', 'Es una fila nueva de la tabla de traducciones.']);
     const early = sent(without(start, 'nat'), 'you', 'server', 'nc-3000');
     expect(fields(early).map(([label]) => label).filter((label) => label.includes('internet') || label === 'Traducción')).toEqual([]);

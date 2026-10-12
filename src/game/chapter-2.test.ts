@@ -238,8 +238,8 @@ describe('02-01, one machine and many services', () => {
 
   it('02-01: the box of the nc shows 192.168.1.11:3000 as the destination', () => {
     const toTheApp = lastBox(sending(start, MESSAGE.ncApp.id));
-    expect(toTheApp[OUT_HEADER]).toEqual([`IP de origen: ${IP.you}`, `IP de destino: ${IP.lucia}`, `Puerto de destino: ${PORT.app}`, 'TTL al salir: 64']);
-    expect(lastBox(sending(start, MESSAGE.ncDatabase.id))[OUT_HEADER]).toContain(`Puerto de destino: ${PORT.database}`);
+    expect(toTheApp[OUT_HEADER]).toEqual([`${IP.you} → ${IP.lucia}:${PORT.app}`, 'TTL al salir: 64']);
+    expect(lastBox(sending(start, MESSAGE.ncDatabase.id))[OUT_HEADER]).toContain(`${IP.you} → ${IP.lucia}:${PORT.database}`);
     expect([...Object.keys(toTheApp), ...Object.values(toTheApp).flat()].join(' ')).not.toMatch(/Puerto de origen|Saludo/);
   });
 

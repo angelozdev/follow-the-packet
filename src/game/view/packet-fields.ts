@@ -23,15 +23,13 @@ function leavesTheOffice(trace: Trace): boolean {
   return trace.steps.some((step) => step.reason.code === 'route-leaves-office');
 }
 
-/** The lines with the addresses a header carries and, for TCP and UDP once `port` is known, its ports: the destination port with its term, and the source port only once `source-port` is known. */
+/** The lines with the addresses a header carries. A TCP or UDP header, once `port` and `ip-port` are known, is one line as the sheets write it, `IP:puerto → IP:puerto`: each end carries its port once the term of its role in that header is known (`source-port` for the source, `destination-port` for the destination) and shows only its IP before. Any other header, an ICMP one or one without those terms, has a line for each IP. */
 function sideLines(side: Side, known: Known): TermText[] {
-  const ports = known.has('port') && side.sourcePort !== undefined && side.destinationPort !== undefined;
-  return [
-    INSPECTION_TEXT.source(side.source, known),
-    INSPECTION_TEXT.destination(side.destination, known),
-    ...(ports && known.has('source-port') ? [INSPECTION_TEXT.sourcePort(side.sourcePort!)] : []),
-    ...(ports ? [INSPECTION_TEXT.destinationPort(side.destinationPort!, known)] : []),
-  ];
+  const { sourcePort, destinationPort } = side;
+  if (!known.has('port') || !known.has('ip-port') || sourcePort === undefined || destinationPort === undefined) return [INSPECTION_TEXT.source(side.source, known), INSPECTION_TEXT.destination(side.destination, known)];
+  const from = INSPECTION_TEXT.end(side.source, known.has('source-port') ? sourcePort : undefined);
+  const to = INSPECTION_TEXT.end(side.destination, known.has('destination-port') ? destinationPort : undefined);
+  return [INSPECTION_TEXT.ends(from, to)];
 }
 
 /** The label of the header the packet left with: «Encabezado» alone, or «del Echo Request» (ICMP) or «de ida» (TCP and UDP) while the header of the answer is shown beside it. */
