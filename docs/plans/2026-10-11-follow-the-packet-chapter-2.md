@@ -27,6 +27,141 @@
 - **Totales al cerrar el capítulo 1** (no se volvieron a medir hoy): Vitest, 1853 tests en 70 archivos; Playwright, 61 tests; `pnpm check` verde. El criterio de cierre de este plan es el mismo: `pnpm check` verde, con los totales que existan entonces.
 - **Lo que ya existe y este capítulo usa tal cual.** Reglas de firewall con `tcp` y `udp` y rango de puertos (`ruleWhatSchema`, `matchesWhat`); rutas de router con prefijo más largo (`bestRoute`) y los avisos `net-unreachable` y `host-unreachable`; el resultado `refused`; `NoticeKind`; la etapa `nat` en `StepStage` (la usa la VPC); la mecánica `identify` con bandejas `segmented`; `send.settings` con `setSetting`; la tarjeta de traceroute; `Tabs`; el estilo B; las listas `shown`; `explained-changes.test.ts`.
 
+## Estado del relevo (2026-10-12)
+
+Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el trabajo a otro. Todo está commiteado en `feat/chapter-2`; nada está a medias en el árbol.
+
+### Dónde está la rama
+
+- **Último commit:** `6979d43`.
+- **Último commit con el `pnpm check` completo en verde:** `dcfc04c` (cierre del bloque 4: Vitest 2924 tests en 98 archivos, Playwright 126, jscpd 0, `golden-traces.json` sin cambios). Es la base de la regla C. Lo que vino después (`e0ae23f`, `dc40106`, `5c070f1`, `2b6a3e3`, `f12795f`, `34ff5d3` y `6979d43`) pasó `pnpm check:fast` (Vitest 2938) y las specs `tests/e2e/chapter-2/` y `card-layout.spec.ts`.
+- **Puerto de Playwright:** este worktree usa el 4232 y el árbol principal el 4189 (derivados de la ruta, Tarea 19 bis).
+
+### Tareas hechas (hash)
+
+- **Motor:** 8 (`afe01ce`, guías `6c1cfe8`), 9 (`0f5b044`), 10 (`a6b4c84`), 11 (`bcef414`), 12 (`497b0c2`, `5197049`), 13 (`af7d831`, `de3c8b8`).
+- **Contrato, sesión y vista:** 14 (`4dc84fb`, `a2da8eb`), 15 (`6b4c670`, `587b7f1`), 16 (`3346501`, `f33ffee`, `28072e5`), 17 (`ee69cfd`), 18 (`269c83a`), 18 bis (`4655244`), 19 (mudanza `875c27d`, tarea `af90924`), 19 bis (plan `1edede0`, código `940f07a`), 20 (`0537425`, `7be53a2`), 21 (`90becc1`), 22 (`1924162`).
+- **Contenido:**
+  - Bloque 1: 23 (`9d9cca5`, arreglos `118d9b0`, `56ef126`, `b9c7d1b`, `716606f`, `622bf69`), 24 (`b0188bf`), revisión `603cff9`.
+  - Bloque 2: 25 (`5af4dea`), 26 (`281aedf`), revisión `50e7ea0`.
+  - Bloque 3: 27 (`a732c16`), revisión `3c098ff`.
+  - Bloque 4: 28 (`dcfc04c`), revisión `e0ae23f` y `dc40106`, arreglos de rigor `5c070f1`, `2b6a3e3`, `f12795f`, `34ff5d3` y `6979d43`.
+- **Otros commits:**
+  - `domain-name` bajo `.example` (`4438275`), nota `@e2e` en `az-rules.json` (`a8e95e0`), cámara sin salto de etiquetas (`4e15c90`).
+  - Merge del arreglo de cajas con scroll `b2f5a0d` (`de69ac7`) y su backlog (`a2e8f21`).
+  - Decisiones registradas: `526a5a6`, `a23176b` y `6aa44fc`.
+
+### Lo que falta y de qué depende
+
+- **Tareas 29 a 33 (bloques 5 y 6, DNS y guardia):** esperan O-2. No se empezaron. La 31 (02-12) no cambia con O-2, pero va después de la 29 y la 30 por la cadena del mundo.
+- **Tarea 34:** parte ya existe, adelantada por las tareas de contenido:
+  - el mapa del 02-07 cabe y no hay solapes tras sus pings;
+  - el contorno del 02-04;
+  - los solapes del 02-09;
+  - la etiqueta que cambia en el router (V13);
+  - las escenas de tablas, «Servicios», clasificar y traducciones en `card-layout.spec.ts`.
+
+  Falta el resto de su lista: los catorce jugados con 3 estrellas, el roadmap, el 04-01 tras el 02-14, el 02-10, el reloj del 02-12, la reparación del caso 5 y que las tarjetas no tapen piezas.
+- **Tarea 35:** documentos y totales reales. Debe completar en «Global Constraints» la lista de pruebas existentes que cambiaron a propósito: las de la Tarea 16 con `CHAPTER_1_TERMS`, `ladder.test.ts` de la 25 y de los arreglos del bloque 4, entre otras. Cada commit las lista en su cuerpo.
+- **Merge de `feat/chapter-1-fourteen`** (`46c4074`, pin de la caja, y `b6eb2ce`, documentos del capítulo 3): espera O-1.
+- **La revisión final y el `pnpm check` completo del capítulo:** al final.
+
+### Decisiones abiertas
+
+Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan.
+
+| Decisión | Página | Recomendación | Qué espera |
+|---|---|---|---|
+| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | D (la caja se aparta); la más barata, A | El merge de `feat/chapter-1-fourteen` y su prueba de `card-layout.spec.ts`. Con D, retoques en la caja (Tareas 19 y 21). Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`) |
+| O-2 · ¿se dibuja la consulta DNS de un `ping` o un `nc` por nombre? | la misma | A (dibujarla) | Las Tareas 29 a 33. Con A también se reabren la decidida 4, partes de las Tareas 12, 13 y 16 y una adición a la 21: el `nc` por nombre saldría del 51515 |
+| O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | A1 (palabras llanas hasta conocer el término) | La copia del capítulo 1. No bloquea nada |
+| O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | C (abanico) | Las pruebas de solapes del 02-03, del 02-05 y del 02-08, que no existen porque fallarían. Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
+
+El estudiante contesta de a una, a través de la sesión principal, empezando por O-2.
+
+### Lo que vive fuera de la rama
+
+Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4fb9dddd-09ca-4da4-bcb4-f94c447042db/scratchpad/`, que puede borrarse al reiniciar el equipo.
+
+- **`merge/resolved-merge.patch` y `merge/resolved-files/`:** el merge resuelto de `feat/chapter-1-fourteen`, hecho sobre `940f07a`. La rama avanzó mucho desde entonces: sirve de guía de cómo se resolvió cada conflicto. Lo más seguro es rehacer el merge.
+- **`02-03-overlap-test.patch` y `zz-measure.spec.ts`:** la prueba de solapes del 02-03 y la spec con que se midió (O-4).
+- **`oracle/oracle-at-the-click.chapter-2.spec.ts`:** el oráculo que mide la caja sobre «Listo» justo después del clic, con el reloj pausado (O-1). Falla 10 de 10 mientras exista el defecto.
+- **`chapter-2-open-decisions.html` y `chapter-2-decision-o4.html`:** las fuentes de las dos páginas publicadas.
+- **`chapter-2-prototypes.html`:** los prototipos de las decisiones V10 a V19 y D-6.
+- **`nmap793/` y `bind918/`:** las fuentes de `ncat` 7.93 y BIND 9.18.50. `bind918/b.tar.xz` trae el árbol completo.
+- **`keep/orchestrator-notes.md`:** las notas del orquestador, tarea por tarea.
+- **La rama `wip/task-19`** (`8c97014`): el trabajo de la Tarea 19 antes de la pausa. Ya entró completo en `af90924`. Se puede borrar cuando el estudiante lo apruebe.
+
+### Reglas de trabajo vigentes que no estaban escritas
+
+- **Regla C, con su ajuste (aprobado el 2026-10-11):**
+  - en cada tarea, `pnpm check:fast` más las specs que cubren lo que tocó;
+  - al cerrar un bloque y antes de cada merge, `pnpm check` completo;
+  - la base para decidir si una e2e que falla es de la tarea es el último commit con el `pnpm check` completo en verde, no «HEAD sin los cambios de la tarea»;
+  - nunca dos suites e2e a la vez en la misma carpeta.
+- **Un revisor `sonnet` de textos por bloque**, después de que el bloque cierra con el `pnpm check` completo:
+  - aplica él mismo sus correcciones y las commitea como `fix(levels): plainer and more exact texts for block N of chapter 2`;
+  - lo que cambia la mecánica o lo que se aprende lo informa y no lo hace;
+  - lo que informa se cierra en commits de arreglo antes del bloque siguiente.
+- **Regla de los 30 minutos:** un agente que lleva unos 30 minutos con el mismo problema se detiene e informa. Si el problema no es de la tarea (regla C), va al backlog y se sigue.
+- **Git y procesos:**
+  - Sin `git push`, sin merge a `main` y sin tocar el árbol principal (`/Users/angelozdev/me/AWS Commit Academy`, donde el estudiante tiene su servidor en el 5180 y un `concepts/ami.md` sin commit).
+  - Nunca `--amend`, `reset`, `update-ref` ni `stash`. Cada commit con rutas explícitas: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`.
+  - Nada en el 5173 ni en el 5180, y nunca `pkill` ni `killall`.
+- **Subagentes:** siempre con `model` explícito: `sonnet` para implementar, revisar e investigar, `haiku` solo para correr un comando. Nunca `opus`.
+- **Lo que una prueba no puede hacer:** prohibidos `waitForTimeout`, `retries`, `skip`, `fixme`, `test.fail` y los filtros que saltan un fallo.
+- **Las pruebas nombradas en el plan:** no se quitan. Las pruebas existentes de los capítulos 1 y 4 no se editan, salvo las que el plan lista o una decisión aprueba, y cada edición va en el cuerpo del commit.
+- **Cada tarjeta nueva:** el primer incidente registrado que la usa suma su escena a `card-layout.spec.ts` y a `MAP_SCENES`, con tope de alto, scroll del cuerpo y pie al alcance.
+
+### Trampas, medidas y cosas a vigilar
+
+- **Nunca dos agentes que hagan commits a la vez en el mismo worktree.**
+  - Un `--amend` sobre un commit ajeno mezcló dos tareas el 2026-10-11.
+  - Durante un `cherry-pick` git rechaza los commits parciales.
+  - Hay que esperar el aviso de que un agente terminó antes de lanzar el siguiente.
+- **`EVERY_TERM` ya incluye los términos del capítulo 2.**
+  - Una prueba del capítulo 1 usa `CHAPTER_1_TERMS`.
+  - La escalera se calcula por la posición del incidente, no por el progreso: lo fija `src/game/view/ladder.test.ts`.
+- **Carpetas al tope:**
+  - `src/game/` está en 12 de 12 archivos planos.
+  - `tests/e2e/` en 11.
+  - `src/ui/incident/` ya está partida en `side-cards/` y `map-cards/`.
+  - `pnpm structure` cuenta archivos, no subcarpetas.
+- **DNS hoy (opción B de O-2):**
+  - La consulta de un `ping` o un `nc` por nombre no se dibuja, no gasta puerto y no deja fila.
+  - Toda respuesta del resolver llena su caché.
+  - Pedir un alias cuyo destino está vivo en la caché renueva ese destino. No está verificado: el 02-12 solo ofrece `dig www`.
+  - Los motivos están en `src/engine/dns/CLAUDE.md`, igual que los valores del SOA con su fuente y `MAX_ALIAS_STEPS` (8).
+  - El nombre del 02-01 al 02-14 vive en `shared.ts` (`NAME`, `DOMAIN`, `HOSTNAME`).
+- **NAT:**
+  - Un solo contador de puertos públicos para TCP y UDP, desde el 40001.
+  - Las filas fijas de un reenvío salen primero, marcadas «TCP · fija».
+  - Un ping no deja fila; el texto dice que un NAT real traduce el identificador del Echo.
+  - Un NAT real puede avisar pasados al menos 6 segundos (RFC 5382 REQ-4).
+- **La caja:**
+  - Cada extremo de un encabezado se escribe `IP:puerto` cuando se conocen `ip-port` y el término de su puerto.
+  - El puerto del cliente se oculta hasta `source-port`.
+  - Con `nat` conocido, la caja muestra cuatro encabezados (ida y vuelta, local e internet).
+- **Solapes:**
+  - Los sellos solo se mueven en horizontal.
+  - `spreadTags` separa las etiquetas de paquete entre sí y de los nombres de piso, pero no de los sellos ni de las etiquetas de pieza. Ese hueco es O-4.
+  - Tras O-4 hay que escribir las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34).
+- **El 02-05 dibuja también `laptop-marta`.** Sin ella la estrella del medio es inalcanzable, porque la batería de sondas ve el ping que su regla del 01-12 deja entrar.
+- **Huecos conocidos, sin arreglar:**
+  - La pestaña de rutas de solo lectura de `router-oficina` lista `203.0.113.1/32` y `172.16.0.2/32`, IPs de routers que el mapa no dibuja (02-06 y 02-08). `routerRef` y `visibleVia` ya tratan esa IP como nombrar al router.
+  - La arista de la losa cruza el nombre «Piso 1», también en el 01-06.
+  - A 390 px la tarjeta de clasificar muestra 88 px de un cuerpo de 927.
+  - Un lector de pantalla oye dos veces la palabra de un `Message` («Correcto: Correcto.»; backlog J13).
+- **Rigor que el estudiante puede querer ver:** `router-proveedor` descarta en silencio un destino privado (decidida 11 y 01-08). RFC 1812 §4.3.3.1 obliga a avisar cuando no hay ninguna ruta, pero un proveedor que filtra direcciones privadas suele callar. Hoy el juego lo presenta como lo que hace internet con una IP privada.
+- **Al rehacer el merge de `feat/chapter-1-fourteen`:**
+  - Su e2e del viaje del ratón (900 ms) y la gracia (400 ms) se reescriben con `page.clock`, y deben seguir fallando si se rompe el pin (mutación).
+  - Su fila J12 del backlog choca con la J12 de esta rama, que ya va hasta la J14: hay que renumerarla.
+  - J7 queda resuelta por `46c4074`.
+- **Tarea 33:**
+  - La prueba de la solución de referencia de un caso con `fix` tiene que comprobar también que sus tareas fallan antes de aplicarla.
+  - `router-destino` va en el `shown` del caso 5.
+  - Falta la escena e2e de la tarjeta del caso con su sección de arreglo.
+
 ## Formato de este plan
 
 - **Sin bloques de código y sin ensayo.** Hay identificadores en línea, tablas y prosa. Los contratos nuevos se describen con nombre, tipo y significado; la forma exacta de cada función la decide quien implementa.
@@ -399,7 +534,7 @@ En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, 
 - **La prueba equivalente del 02-13**, si tiene más envíos (hasta cinco, según el encargo de esta decisión), y las de la Tarea 34 (`in 02-09 and 02-10 no label or stamp overlaps` y `after the pings of 02-07, no label or stamp overlaps`, Review Focus 14).
 - Con A: las pruebas de que el mapa cabe (capítulo 1 y 02-07), a 1280×800 y a 1440×900.
 - O-2: si se elige A, la consulta DNS suma sellos de consulta en el resolver y cuenta para el techo de 3 sellos por lugar.
-- La página de prototipos de O-4 se enlazará aquí cuando esté publicada.
+- La página de prototipos de O-4: https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF (publicada el 2026-10-12).
 
 **Lo que no se pudo verificar.**
 
