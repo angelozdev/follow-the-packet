@@ -70,7 +70,7 @@ export default defineIncident({
     },
     {
       text: `Porque no había ninguna fila para ese {{port|puerto}}: ${NAME.router} no sabía a qué {{device|dispositivo}} entregarlo.`,
-      feedback: `${NAME.router} recibió el {{packet|paquete}} en ${IP.officeUplink}, {{port|puerto}} ${PORT.unmapped}, y no tiene ninguna fila ni {{port-forwarding|reenvío de puertos}} para ese {{port|puerto}}. No lo entrega a nadie. ${NAME.home} solo espera, y {{nc}} ve un {{timeout}}.`,
+      feedback: `${NAME.router} recibió el {{packet|paquete}} en ${IP.officeUplink}, {{port|puerto}} ${PORT.unmapped}, y no tiene ninguna fila ni {{port-forwarding|reenvío de puertos}} para ese {{port|puerto}}. No lo entrega a nadie. ${NAME.home} solo espera, y {{nc}} ve un {{timeout}}. Un {{nat}} real puede contestar con un aviso, pero no antes de 6 segundos, y {{nc}} se rinde a los 3.`,
       correct: true,
     },
   ],

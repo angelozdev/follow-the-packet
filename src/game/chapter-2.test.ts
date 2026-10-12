@@ -1310,6 +1310,14 @@ describe('02-09, from outside', () => {
     expect(plain(start.incident.takeaway)).toContain('no lo entrega a nadie');
   });
 
+  it('02-09: the explanation of the right option says a real NAT may answer with a notice, but not before 6 seconds, and that nc gives up at 3', () => {
+    const right = optionsOf(start.incident)[rightOptionPlace(start.incident)];
+    expect(plain(right.feedback)).toContain('No lo entrega a nadie.');
+    expect(plain(right.feedback)).toContain('Un NAT real puede contestar con un aviso, pero no antes de 6 segundos, y nc se rinde a los 3.');
+    expect(terminalLine(start, { from: ORIGIN.home.id, to: ADDRESS.officePublic.id, message: MESSAGE.ncUnmapped.id })).toContain('-w 3');
+    expect(prose(start.incident).filter((text) => /Port Unreachable|ICMP|\bsilencio\b|\bcalla\b/i.test(text))).toEqual([]);
+  });
+
   it('02-09: the report names router-oficina and laptop-andres', () => {
     const { report } = start.incident;
     expect(report).toContain(`[[${ROUTER.office.name}]]`);
