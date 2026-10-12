@@ -55,7 +55,7 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Lo que falta y de qué depende
 
-- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó. Son 14 conflictos, no 8. D va en commits propios después del merge, que queda con un rojo conocido en una sola prueba. Se hace en un worktree temporal que se borra al terminar. Tras D toma las capturas con que se abre O-5.
+- **Tarea 28 bis (el merge de `main` y la caja que se aparta, O-1 = D):** une `main` en `feat/chapter-2` (trae `46c4074`, el pin de la caja, y `b6eb2ce`, los documentos del capítulo 3) y hace que la caja de inspección se aparte de la tarjeta abierta. Antes esperaba O-1. No se empezó. Son 14 conflictos, no 8. D va en commits propios después del merge, que queda con un rojo conocido en una sola prueba. Se hace en un worktree temporal que se borra al terminar. Tras D toma las capturas reales del residuo del 04-01, que comprueban la medida y deciden entre B y A en la decidida 52 (O-5).
 - **Tarea 28 ter (el aviso de un router sin ruta, en palabras llanas en el capítulo 1, O-3 = A1):** no bloquea nada. No se empezó.
 - **Tarea 28 quater (la consulta DNS de un envío por nombre se dibuja, O-2 = A):** reabre la decidida 4 y partes de las Tareas 4, 5, 12, 13, 16 y 21. No se empezó. O-6 bloquea solo el paso de la marca de la fila (la vista).
 - **Tarea 28 quinquies (los sellos en abanico hasta lo que cabe, más «+N», O-4 = G):** escrita; no se empezó. Va después de la 28 quater. Destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Con O-2 = A, cuenta también los sellos de las consultas DNS.
@@ -73,22 +73,22 @@ Lo escribió el orquestador que llevó las Tareas 8 a 28 antes de pasar el traba
 
 ### Decisiones abiertas
 
-Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2, O-3 y O-4. Las abiertas son O-5, O-6, O-7, O-8 y O-9, más O-10, que solo se abre si el paso 2 de la Tarea 28 quinquies lo pide, en la sección «Decisiones abiertas del 2026-10-12».
+Están en la sección «Decisiones abiertas de la noche del 2026-10-11» de este plan. El 2026-10-12 el estudiante decidió O-1, O-2, O-3 y O-4. Las abiertas son O-6 y O-7, en la sección «Decisiones abiertas del 2026-10-12». O-5, O-8, O-9 y O-10 se decidieron con la regla del umbral (ver «Reglas de trabajo vigentes que no estaban escritas») y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
 
 | Decisión | Página | Estado | Qué ejecuta o espera |
 |---|---|---|---|
-| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | **Decidida el 2026-10-12: D** (la caja se aparta de la tarjeta abierta) | La Tarea 28 bis: el merge de `main` y la caja que se aparta, con su prueba de `card-layout.spec.ts`. La 19 y la 21 están hechas y no se reabren. Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`). Se abre como O-5. |
+| O-1 · la caja de inspección tapa la tarjeta recién abierta | https://claude.ai/artifact/WuUFHfn7Ryzki8f1AbHrST | **Decidida el 2026-10-12: D** (la caja se aparta de la tarjeta abierta) | La Tarea 28 bis: el merge de `main` y la caja que se aparta, con su prueba de `card-layout.spec.ts`. La 19 y la 21 están hechas y no se reabren. Un residuo: a 1280×500 la caja, en su mínimo de 120 px, todavía tapa «Security Group servidor2» en el 04-01 (tras `118d9b0`). Se decidió como O-5 (decidida 52). |
 | O-2 · ¿se dibuja la consulta DNS de un `ping` o un `nc` por nombre? | la misma | **Decidida el 2026-10-12: A** (se dibuja) | La Tarea 28 quater y, después, las Tareas 29 a 33. Con A también se reabren la decidida 4, partes de las Tareas 4, 5, 12, 13 y 16 y una adición a la 21: el `nc` por nombre saldría del 51515 |
 | O-3 · el capítulo 1 llama «Host» al aviso de un router sin ruta | la misma | **Decidida el 2026-10-12: A1** (palabras llanas hasta conocer el término) | La Tarea 28 ter, la copia del capítulo 1. No bloquea nada |
 | O-4 · sellos que no caben entre etiquetas | https://claude.ai/artifact/B7hsCV4ySvrtXhFErM73ZF | **Decidida el 2026-10-12: G** (estudiante; opción nueva: abanico hasta lo que cabe y un sello «+N») | La Tarea 28 quinquies, escrita: destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Medidas en `tests/e2e/chapter-2/CLAUDE.md` |
-| O-5 · ¿una etiqueta o un sello decide el lugar de la caja de inspección? | capturas reales de la Tarea 28 bis (por publicar) | **Abierta.** Recomendación: B si la medición lo permite; si no, A | Nada: no bloquea. Se abre con las capturas del paso 11 de la Tarea 28 bis |
+| O-5 · ¿una etiqueta o un sello decide el lugar de la caja de inspección? | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 52): B si la medición lo permite; si no, A** | Nada: no bloquea. El paso 11 de la Tarea 28 bis toma las capturas reales y la medida que deciden entre B y A |
 | O-6 · cómo se marca la fila de una consulta DNS en la tabla de traducciones | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Abierta.** Recomendación: A (la palabra «consulta DNS») | Solo la marca de la fila, en el paso de la vista de la Tarea 28 quater |
 | O-7 · ¿el 02-13 suma un `ping` por DNS? | https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap | **Abierta.** Recomendación: A (no) | Solo la ficha del 02-13 (Tarea 32) |
-| O-8 · ¿qué pasa con la etiqueta de un paquete cuyo sello se esconde en un «+N»? | por publicar | **Abierta.** Recomendación: A (la etiqueta sigue la visibilidad de su sello; se aparta de la página de O-4) | Nada: no bloquea. La Tarea 28 quinquies conserva lo de hoy (se dibujan todas las etiquetas); si se elige A, cambia una línea del commit 3 |
-| O-9 · la altura de los sellos de un grupo | por publicar | **Abierta.** Recomendación: B si un prototipo renderizado se lee bien | Nada: no bloquea. La Tarea 28 quinquies implementa la altura media del grupo (A) con la frase corregida; si se elige B, el cambio cabe en los commits 2 y 3 antes de cablear |
-| O-10 · si la etiqueta de un paquete no cabe moviéndola solo en horizontal | sin página: solo se abre si hace falta | **Condicional.** Recomendación: A (baja o sube lo justo) | Solo si el paso 2 de la Tarea 28 quinquies muestra que no basta mover en horizontal: entonces la tarea se detiene en ese paso hasta que el estudiante elija |
+| O-8 · ¿qué pasa con la etiqueta de un paquete cuyo sello se esconde en un «+N»? | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 53): A** (la etiqueta sigue a su sello y no se dibuja; se aparta de la página de O-4) | Nada: no bloquea. La Tarea 28 quinquies la implementa desde el principio |
+| O-9 · la altura de los sellos de un grupo | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 54): B** (cada sello conserva la altura de su punto) | Nada: no bloquea. La Tarea 28 quinquies la implementa en sus commits 2 y 3, con una salvaguarda |
+| O-10 · si la etiqueta de un paquete no cabe moviéndola solo en horizontal | sin página: se decidió con la regla del umbral | **Decidida por el orquestador el 2026-10-12 (decidida 55): A** (sube o baja lo justo, con tope) | Nada: no bloquea. La Tarea 28 quinquies ya no se detiene en el paso 2 |
 
-El estudiante contesta de a una, a través de la sesión principal. Faltan O-5 a O-9 (sección «Decisiones abiertas del 2026-10-12»); O-10 solo si se abre.
+El estudiante contesta de a una, a través de la sesión principal. Faltan O-6 y O-7 (sección «Decisiones abiertas del 2026-10-12»).
 
 ### Lo que vive fuera de la rama
 
@@ -124,6 +124,11 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Sin `git push` y sin merge a `main`.
   - Nunca `--amend`, `reset`, `update-ref` ni `stash`. La forma del commit: `git commit -m … -m … -- <rutas>`. Nunca `git add .` ni nada de `labs/`. **Excepción:** a mitad de un merge git rechaza las rutas; se agrega cada archivo con `git add <ruta>` y se hace `git commit` sin rutas (Tarea 28 bis).
   - Nada en el 5173 ni en el 5180, y nunca `pkill` ni `killall`.
+- **El umbral para abrirle una decisión al estudiante (regla de la sesión principal, 2026-10-12):**
+  - Una decisión se abre al estudiante solo si ninguna opción pasa sus tres criterios (rigurosa, visual y entendible), o si dos o más los pasan y cambian de forma importante lo que el jugador aprende o ve.
+  - Todo lo demás se decide con la recomendación y va a «Decididas sin el estudiante (para revisar)», con su «por qué no se abre».
+  - Al final del capítulo, antes de que el estudiante lo juegue, todas las «para revisar» se juntan en una sola página para que las revise de una vez (Tarea 33).
+  - Con esta regla se decidieron O-5, O-8, O-9 y O-10 (decididas 52 a 55). O-6 y O-7 siguen abiertas: la sesión principal se las pregunta al estudiante.
 - **Subagentes:** siempre con `model` explícito: `sonnet` para implementar, revisar e investigar, `haiku` solo para correr un comando. Nunca `opus`.
 - **Lo que una prueba no puede hacer:** prohibidos `waitForTimeout`, `retries`, `skip`, `fixme`, `test.fail` y los filtros que saltan un fallo.
 - **Las pruebas nombradas en el plan:** no se quitan. Las pruebas existentes de los capítulos 1 y 4 no se editan, salvo las que el plan lista o una decisión aprueba, y cada edición va en el cuerpo del commit.
@@ -163,7 +168,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
   - Con `nat` conocido, la caja muestra cuatro encabezados (ida y vuelta, local e internet).
 - **Solapes:**
   - Los sellos solo se mueven en horizontal. Los de un lugar se montan en abanico con paso de 25 px (O-4 = G, Tarea 28 quinquies): se ven los que caben en el pasillo entre las etiquetas vecinas, menos uno, y el último es un «+N» que abre la lista en la caja.
-  - Dos sellos de la misma fila pueden solaparse hasta lo que mide el abanico (la caja de un sello mide 36 px; los aros, 32). Es lo único que deja pasar el ayudante `pairsThatOverlap`; sello contra etiqueta nunca.
+  - Dos sellos del mismo abanico pueden solaparse hasta lo que mide el abanico (la caja de un sello mide 36 px; los aros, 32). Es lo único que deja pasar el ayudante `pairsThatOverlap`; sello contra etiqueta nunca.
   - `spreadTags` separa las etiquetas de paquete entre sí, de los nombres de piso, de los sellos que se ven y de las etiquetas de pieza. Los anchos de las etiquetas de pieza salen de un modelo puro (`labelWidth`, `src/scene/marks/label-width.ts`) que una e2e compara con el DOM.
   - Las pruebas de solapes del 02-03, del 02-05 y del 02-08 las escribe la Tarea 28 quinquies; la del 02-10 (y la del 02-13 y la del 02-14 si hace falta) las suma la Tarea 34.
   - Un «+N» que esconde un sello de problema no está diseñado (backlog J16). Un centinela falla el día que un incidente lo produzca.
@@ -216,7 +221,7 @@ Todo está en `/private/tmp/claude-501/-Users-angelozdev-me-AWS-Commit-Academy/4
     - **O-2 = A (Tarea 28 quater, 2026-10-12).** `Trace.question` es un campo nuevo de la traza y la consulta gasta puerto y deja fila, así que cambian estas pruebas. En `src/engine/dns/resolve.test.ts`, `the question in a sequence › does not use up the source port of the sender nor leave a row in the translation table` (pasa a `uses a source port of the sender and leaves a row in the translation table, before the packet that asked`). En `src/engine/simulation/sequence.test.ts`, `a lookup by name fills the cache of the resolver and uses neither a port of its sender nor a row of the table, while the dig that follows has both`. En `src/game/view/inspection.test.ts`, `the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered`. En `src/game/view/cards/table-card.test.ts`, `the translations card lists the rows of the sent packets in order` (la fila del `dig` gana «consulta DNS», solo si O-6 = A). Lo que prueban se conserva. Ninguna prueba del capítulo 1 ni del 4 cambia: no tienen resolver, y una que falle por el campo nuevo detiene la tarea.
     - **O-4 = G (2026-10-12, Tarea 28 quinquies).** Cambia lo que muestran los capítulos 1 y 4 (los grupos de 2 sellos o más pasan de 43 a 25 px de paso y puede aparecer «+N»; ver «Cambios visibles») y cambian a propósito estas pruebas, sin que cambie lo que prueban:
       - En `src/scene/layout.test.ts`, `paths and stamps`: `chains close points into one group: A near B and B near C spread together, although A is far from C`, `a spread group that comes close to another stamp takes it in, so no two stamps end up closer than the minimum`, `moves apart stamps whose points are close but not the same, such as the door, the doorstep and the firewall of one device` y `moves apart stamps that are farther than the minimum on the ground and still overlap on the screen, such as the two tests that stay at the doorstep and the one that ends on the road in front of it`. El ayudante `terminalOnMap` y los `describe` `the labels of packets that share a place` y `the labels of packets and the floor names` cambian de firma, no de nombre. Otras pruebas de `layout.test.ts` y de `chapter-2.spec.ts` que miden dónde cae una etiqueta de paquete se corren y cambian solo si fallan por este cambio (lista en la Tarea 28 quinquies).
-      - En `tests/e2e/map-boxes.ts`, `pairsThatOverlap` y `overlappingPairs` dejan pasar sello con sello de la misma fila hasta el solape medido del abanico. Los llaman, sin editarse, siete pruebas de `tests/e2e/chapter-1/chapter-1.spec.ts` (más la que se renombra, abajo), dos de `tests/e2e/incidents.spec.ts` (las del 04-01) y las de solapes de `tests/e2e/chapter-2/chapter-2.spec.ts` por `expectClear` (lista en la Tarea 28 quinquies).
+      - En `tests/e2e/map-boxes.ts`, `pairsThatOverlap` y `overlappingPairs` dejan pasar sello con sello del mismo abanico hasta el solape medido del abanico. Los llaman, sin editarse, siete pruebas de `tests/e2e/chapter-1/chapter-1.spec.ts` (más la que se renombra, abajo), dos de `tests/e2e/incidents.spec.ts` (las del 04-01) y las de solapes de `tests/e2e/chapter-2/chapter-2.spec.ts` por `expectClear` (lista en la Tarea 28 quinquies).
       - Se renombra `after the four tests of case 1 of 14, no stamp overlaps another` (`chapter-1.spec.ts`) a `after the four tests of case 1 of 14, no stamp lies over a label or covers another beyond the step of the fan`.
       - `golden-traces.json` no cambia: ningún archivo de `src/engine/` ni de `src/levels/` cambia.
   - **Ninguna etapa nueva escribe un paso en una traza del capítulo 1 ni del 4.** Los datos nuevos de esas trazas van en campos aparte. Hay pruebas de steps con `toEqual` en `simulate.test.ts`; un paso nuevo las rompería. Si una prueba existente falla por un campo nuevo de la traza, la tarea se detiene y se le pregunta al estudiante: no se edita la prueba por cuenta propia.
@@ -288,7 +293,7 @@ No queda ninguna decisión abierta (2026-10-11): ni las dieciocho (D-1 a D-18), 
 
 ### Decisiones abiertas ya contestadas (2026-10-12)
 
-El estudiante contestó el 2026-10-12 las cuatro decisiones abiertas la noche del 2026-10-11 (sección siguiente). Aprobó la recomendación del plan en tres; en O-4 eligió una opción nueva, G, que el plan no traía. Su criterio es «rigurosa, visual y entendible». Las decisiones nuevas del 2026-10-12 (O-5 a O-9, y O-10 si se abre) siguen abiertas.
+El estudiante contestó el 2026-10-12 las cuatro decisiones abiertas la noche del 2026-10-11 (sección siguiente). Aprobó la recomendación del plan en tres; en O-4 eligió una opción nueva, G, que el plan no traía. Su criterio es «rigurosa, visual y entendible». Las decisiones nuevas del 2026-10-12 que siguen abiertas son O-6 y O-7; O-5, O-8, O-9 y O-10 se decidieron con la regla del umbral (decididas 52 a 55).
 
 | Decisión | Elección | Nota |
 |----------|----------|------|
@@ -587,47 +592,16 @@ En D la cifra es cuánto se corre la etiqueta de la derecha (`laptop-marta`) y, 
 - **Abanico.** Paso de 25 px, en la variante «siempre» (todo grupo de sellos de un lugar se monta).
 - **Cuántos se ven.** Si caben todos los sellos en el pasillo libre entre las etiquetas vecinas, se ven todos. Si no, se ven los que caben menos uno, y la última casilla es un sello «+N»: el mismo estándar de sello, distinguido por su texto, encima del abanico. Al pasar el mouse, al enfocarlo o con un toque, abre la caja de inspección con la lista de todos los sellos del lugar, como un caso nuevo de `inspect()` y sin primitiva nueva.
 - **Prioridad.** Los sellos de problema (✕, ?, ! e intruso) no entran en «+N» mientras haya sellos sin problema que puedan entrar. Entre iguales, los más antiguos. Si hay más sellos de problema que casillas, entran los más antiguos de ellos.
-- **Holgura.** La del dibujo de C y G, sin el mínimo de 8 px. En el 02-03 caben 3 casillas con 6,4 px de sobra. La prueba de solapes deja pasar sello con sello de la misma fila hasta lo que se solapan sus cajas, falla con sello contra etiqueta y cuenta los sellos que se ven, no los que hay. Los aros se tapan 7 px (el sello mide 32 px y el paso es de 25), pero la prueba mide cajas: la de un sello girado −8° mide 36,1 px (calculado) y las cajas se solapan unos 11 px. La cifra se mide en el primer paso de la Tarea 28 quinquies.
+- **Holgura.** La del dibujo de C y G, sin el mínimo de 8 px. En el 02-03 caben 3 casillas con 6,4 px de sobra. La prueba de solapes deja pasar sello con sello del mismo abanico hasta lo que se solapan sus cajas, falla con sello contra etiqueta y cuenta los sellos que se ven, no los que hay. Los aros se tapan 7 px (el sello mide 32 px y el paso es de 25), pero la prueba mide cajas: la de un sello girado −8° mide 36,1 px (calculado) y las cajas se solapan unos 11 px. La cifra se mide en el primer paso de la Tarea 28 quinquies.
 - **Desde 10 escondidos.** El número exacto con letra más chica (14 px cabe, medido), nunca «9+».
 - **Abierto, al backlog.** Cómo se ve un «+N» que esconde un sello de problema. Va con una prueba que falla si un incidente registrado llega a esconder uno.
-- **Arreglo común.** Las etiquetas de paquete se apartan de los sellos y de las etiquetas de pieza: el 02-05 y el primer par del 02-08 son una etiqueta de paquete sobre la etiqueta de un firewall, no un sello. Si apartarlas solo en horizontal no alcanza, se abre O-10.
+- **Arreglo común.** Las etiquetas de paquete se apartan de los sellos y de las etiquetas de pieza: el 02-05 y el primer par del 02-08 son una etiqueta de paquete sobre la etiqueta de un firewall, no un sello. Si apartarlas solo en horizontal no alcanza, la etiqueta sube o baja lo justo, con tope (decidida 55).
 - **Quién la ejecuta.** La Tarea 28 quinquies (escrita el 2026-10-12, en cuatro commits). Destraba las pruebas de solapes del 02-03, del 02-05 y del 02-08, y la del 02-10 (Tarea 34). Con O-2 = A, cuenta también los sellos de las consultas DNS.
-- **Lo que G deja sin cerrar.** Dos puntos para el estudiante: las etiquetas de paquete de los sellos escondidos (O-8) y la altura de los sellos de un grupo encadenado (O-9). Y uno condicional, la etiqueta que no cabe moviéndola en horizontal (O-10). Están en la sección «Decisiones abiertas del 2026-10-12». Otros dos se decidieron sin el estudiante y quedan para revisar, en «Decididas sin el estudiante»: el título de la lista de un «+N» (50, que se aparta del texto de la página y se le avisa) y la leyenda de los sellos (51).
+- **Lo que G deja sin cerrar.** Cinco puntos que G no cerraba se decidieron sin el estudiante y quedan para revisar, en «Decididas sin el estudiante»: el título de la lista de un «+N» (50, que se aparta del texto de la página), la leyenda de los sellos (51), las etiquetas de paquete de los sellos escondidos (53, O-8, que también se aparta de la página), la altura de los sellos de un grupo encadenado (54, O-9) y la etiqueta que no cabe moviéndola en horizontal (55, O-10).
 
 ## Decisiones abiertas del 2026-10-12
 
-Estas decisiones salieron de la replanificación del 2026-10-12 (las Tareas 28 bis, 28 quater y 28 quinquies). Ninguna bloquea una tarea entera: O-5 no bloquea nada, O-6 bloquea un paso de la Tarea 28 quater, O-7 bloquea una ficha de la Tarea 32, O-8 y O-9 no bloquean nada (la Tarea 28 quinquies sigue con lo que dice cada una) y O-10 solo se abre si el paso 2 de la Tarea 28 quinquies lo pide, y entonces detiene esa tarea en ese paso. Cada una trae su recomendación y, por opción, qué arregla, qué pierde y cómo crece; la inexacta, si la hay, va marcada. El estudiante contesta de a una, a través de la sesión principal. Su criterio es «rigurosa, visual y entendible».
-
-### O-5. ¿Puede una etiqueta o un sello decidir también el lugar de la caja de inspección?
-
-**Pregunta.** Sin tarjeta abierta, la caja de inspección va abajo a la derecha. En el 04-01 a 1280×500, la caja de `servidor2`, en su mínimo de 120 px, tapa «Security Group servidor2». La causa es una marca (una etiqueta) y no una tarjeta, y O-1 = D solo mira tarjetas. ¿Puede una etiqueta o un sello decidir también el lugar de la caja?
-
-**Recomendación: B si la medición lo permite; si no, A.** B da rigor sin quitarle al jugador la información; C se la quita. B solo cuenta si la sala a la izquierda llega a 120 px o más.
-
-**Cómo se abre.** No bloquea nada. Se abre con capturas reales, no con dibujos: el paso 11 de la Tarea 28 bis las toma después de D (los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01) y mide la sala que deja cada lado.
-
-**Las opciones.** Ninguna es inexacta.
-
-- **A. No (D tal como se aprobó).** Solo la tarjeta decide el lugar.
-  - Qué arregla: nada del residuo.
-  - Qué pierde: el residuo se queda. La caja, en su mínimo de 120 px, tapa la etiqueta.
-  - Cómo crece: con más piezas en los mapas, pasa más veces. No cuesta nada.
-- **B. Sí, para elegir entre los dos lugares.** Sin tarjeta, la caja va a la derecha, salvo que ahí quede en su mínimo y la izquierda tenga más sala.
-  - Qué arregla: el residuo del 04-01, si la sala izquierda llega a 120 px o más.
-  - Qué pierde: retrasa el problema; si los dos lugares quedan en el mínimo, tapa igual. La caja tiene que medir las marcas para elegir el lugar, y hoy solo las usa para topar el alto.
-  - Cómo crece: con más piezas, los dos lugares llegan al mínimo más a menudo (razonado, no medido).
-- **C. Estricta: si los dos lugares taparían una marca, no hay caja.** Es la lectura literal de «el sitio libre cuenta las etiquetas» de O-1.
-  - Qué arregla: el residuo, por construcción: la caja nunca tapa una marca.
-  - Qué pierde: el jugador pierde la caja, que a veces es lo que necesita para resolver.
-  - Cómo crece: peor. Con ocho piezas, las cajas desaparecerían en ventanas bajas.
-
-**Qué depende de esta decisión.** Nada se detiene. Con B o C haría falta una tarea nueva después de la 28 bis (el lugar cuenta las marcas) y la prueba del residuo en `tests/e2e/incidents.spec.ts`.
-
-**Lo que no se pudo verificar.** Nada de esto se midió todavía: la sala que deja cada lado a 1280×500 en el 04-01 la mide el paso 11 de la Tarea 28 bis.
-
-**Prototipo.** Capturas reales de la Tarea 28 bis (paso 11); se enlazan aquí cuando se publiquen.
-
-**Decidida:** pendiente del estudiante.
+Estas dos decisiones salieron de la replanificación del 2026-10-12 (la Tarea 28 quater y la Tarea 32). Ninguna bloquea una tarea entera: O-6 bloquea un paso de la Tarea 28 quater y O-7 bloquea una ficha de la Tarea 32. Cada una trae su recomendación y, por opción, qué arregla, qué pierde y cómo crece; la inexacta, si la hay, va marcada. El estudiante contesta de a una, a través de la sesión principal. Su criterio es «rigurosa, visual y entendible». Las otras cuatro que salieron de la misma replanificación (O-5, O-8, O-9 y O-10) no pasaron el umbral para abrirse y están en «Decididas sin el estudiante (para revisar)», 52 a 55.
 
 ### O-6. La tabla de traducciones: cómo se marca la fila de una consulta DNS
 
@@ -682,97 +656,6 @@ Estas decisiones salieron de la replanificación del 2026-10-12 (las Tareas 28 b
 **Prototipo:** https://claude.ai/artifact/3yLNkFurxLnhSeTfZN2Bap (una sola página para O-6 y O-7; fuente local, temporal: `chapter-2-decisions-o6-o7.html` en el scratchpad). Los dibujos son SVG calculados, no capturas.
 
 **Decidida:** pendiente del estudiante.
-
-### O-8. ¿Qué pasa con la etiqueta de un paquete cuyo sello se esconde en un «+N»?
-
-**Pregunta.** Con «Sin animaciones» cada paquete con puertos lleva su etiqueta a mitad de camino, a 184 px de paso. La página de O-4 dice que ninguna opción las toca y que, en F, «cada envío escondido sigue con la suya en el mapa quieto». Es el comportamiento sobre el que el estudiante eligió G. ¿Qué pasa con la etiqueta de un paquete cuyo sello se esconde en un «+N»?
-
-**Recomendación: A.** Rigor: nada se pierde, porque el texto de la etiqueta está en la lista del «+N», y el mapa no se desborda. **Se desvía de la página de O-4:** hay que avisar al estudiante.
-
-**Qué bloquea.** Nada. Mientras no haya respuesta, el commit 3 de la Tarea 28 quinquies conserva B: se dibujan todas las etiquetas, como hoy. Si el estudiante elige A, cambia una línea de ese commit en `traffic.tsx`: la etiqueta de un paquete escondido no se dibuja en el mapa quieto.
-
-**Las opciones.** Ninguna es inexacta.
-
-- **A. La etiqueta sigue la visibilidad de su sello. Recomendada.** La etiqueta del paquete escondido no se dibuja. Su texto (por ejemplo «TCP 51517 → 3000») está en la lista del «+N». La línea de su camino sigue dibujada y termina en el «+N».
-  - Qué arregla: el mapa no se desborda con muchos envíos.
-  - Qué pierde: en el mapa quieto, el texto de esa etiqueta solo se lee abriendo el «+N». Y se desvía de lo que dice la página de O-4.
-  - Cómo crece: constante. El costo está en la caja.
-- **B. Todas se dibujan.** Es lo de hoy y lo que dice la página.
-  - Qué arregla: cada envío escondido sigue con su etiqueta a la vista en el mapa quieto.
-  - Qué pierde: el mapa. Con 10 envíos son 10 etiquetas de 184 px: 1.840 px, más que el mapa. Se apartan unas de otras (`spreadTags`) y salen del área.
-  - Cómo crece: lineal, y rompe la prueba de que todo cabe en el mapa.
-- **C. Una sola etiqueta para los escondidos («N envíos»).**
-  - Qué arregla: el mapa no se desborda con muchos envíos.
-  - Qué pierde: es un elemento nuevo y repite lo que ya dice el «+N».
-  - Cómo crece: constante, pero es un elemento más.
-
-**Qué depende de esta decisión.** Solo la línea de `traffic.tsx` del commit 3 de la Tarea 28 quinquies que decide qué etiquetas se dibujan en el mapa quieto.
-
-**Lo que no se pudo verificar.** Las cifras (184 px de paso, 10 etiquetas de 184 px) son cálculo. No se dibujó el mapa con 5 ni con 10 envíos.
-
-**Prototipo:** se enlaza aquí cuando se publique. Como es una decisión visual, conviene un prototipo renderizado con 5 y con 10 envíos antes de preguntar.
-
-**Decidida:** pendiente del estudiante.
-
-### O-9. La altura de los sellos de un grupo
-
-**Pregunta.** La página de O-4 dice que cada sello sigue a la altura de su lugar y descarta B porque la altura dice dónde ocurrió. El código de hoy (`placeGroups`) pone a todos los sellos de un grupo a la altura media del grupo. En un grupo de un mismo punto no importa. En uno encadenado (puerta, firewall y camino de un dispositivo, unos 14 px de diferencia) un sello que terminó en el firewall aparece a la altura de la puerta. ¿Qué altura tiene cada sello?
-
-**Recomendación: B, si un prototipo renderizado se lee bien.** Es la que sostiene el argumento de rigor con el que el estudiante eligió G.
-
-**Qué bloquea.** Nada. Mientras no haya respuesta, la Tarea 28 quinquies implementa A, la altura media del grupo, y corrige la frase en `DESIGN.md` y en el plan: un sello está en la franja de su grupo, y la lista de la caja dice dónde terminó cada uno.
-
-**Las opciones.** Ninguna es inexacta por sí misma. A deja falsa la frase de la página de O-4 («cada sello sigue a la altura de su lugar») en un grupo encadenado: por eso la tarea la corrige y se le avisa al estudiante.
-
-- **A. La altura media del grupo, como hoy.**
-  - Qué arregla: nada cambia en el código. El abanico queda en una fila, y el ayudante de las pruebas y el pasillo la suponen.
-  - Qué pierde: la frase de la página de O-4 deja de ser cierta en un grupo encadenado. Hay que corregirla en `DESIGN.md` y en el plan.
-  - Cómo crece: constante.
-- **B. Cada sello conserva la altura de su punto.** Es lo que la página afirma.
-  - Qué arregla: la altura de cada sello dice dónde terminó su paquete, como dice la página.
-  - Qué pierde: los sellos de un grupo forman una escalera de unos 14 px (más si el grupo junta el camino y la puerta de dispositivos distintos). Cambian `placeGroups`, la franja de altura del pasillo (por sello y no por grupo), el ayudante «misma fila» (por par, con la diferencia de altura) y el dibujo de C.
-  - Cómo crece: la escalera crece con la cantidad de lugares distintos que un grupo encadena. Hoy son 3 por dispositivo.
-- **C. Un grupo solo junta sellos del mismo punto.**
-  - Qué arregla: dentro de un grupo, todos los sellos tienen la altura de su punto, y la frase de la página vale.
-  - Qué pierde: hay más grupos y más «+N» con menos sellos cada uno. La puerta, el firewall y el camino de un dispositivo se montarían unos sobre otros, que es lo que `areNear` evita hoy.
-  - Cómo crece: con la cantidad de sellos, no con la de lugares, y vuelve a pisar sellos de lugares cercanos.
-
-**Qué depende de esta decisión.** Los commits 2 y 3 de la Tarea 28 quinquies. Si el estudiante elige B antes de cablear, el cambio cabe en el modelo puro (commit 2). Después de cablear, cuesta una pasada más por las pruebas de solapes.
-
-**Lo que no se pudo verificar.** `placeGroups` se leyó en `ccb20b3`. No se corrió ni se dibujó la escalera de B.
-
-**Prototipo:** se enlaza aquí cuando se publique. Conviene un prototipo renderizado de la escalera de B antes de preguntar.
-
-**Decidida:** pendiente del estudiante.
-
-### O-10. Si la etiqueta de un paquete no cabe moviéndola solo en horizontal (condicional)
-
-**Pregunta.** Solo se abre si el paso 2 de la Tarea 28 quinquies muestra que, en el 02-05 o en el primer par del 02-08, mover la etiqueta de paquete a un lado no la libra de la etiqueta de pieza (las etiquetas miden de 115 a 176 px y el pasillo, unos 114). ¿Se puede mover en vertical?
-
-**Recomendación: A, si hace falta.**
-
-**Qué bloquea.** Solo si se abre: la Tarea 28 quinquies se detiene en el paso 2 hasta que el estudiante elija. La tarea no baja ni sube la etiqueta por cuenta propia. Si mover a un lado alcanza, O-10 no se abre.
-
-**Las opciones.** La C es inexacta.
-
-- **A. La etiqueta baja o sube lo justo. Recomendada si hace falta.** Una etiqueta de paquete es un rótulo de lo que viaja y su altura no dice dónde ocurrió nada (la del sello sí). Se mueve en vertical lo que haga falta, con tope, y sigue pegada a su camino.
-  - Qué arregla: la etiqueta libra a la etiqueta de pieza.
-  - Qué pierde: la etiqueta ya no queda a la altura de la mitad del camino, aunque sigue pegada a él.
-  - Cómo crece: cada etiqueta que no cabe pide un salto vertical. Con muchos paquetes en un camino, se apilan hacia abajo.
-- **B. La etiqueta cambia de lugar a lo largo del camino** (no a mitad).
-  - Qué arregla: la etiqueta libra a la etiqueta de pieza sin salir de su camino.
-  - Qué pierde: su posición deja de ser «la mitad del camino», y dos paquetes distintos pueden terminar con etiquetas en lugares distintos del mismo recorrido.
-  - Cómo crece: depende de la longitud del camino y se complica con la traducción del NAT (la etiqueta cambia a mitad de camino en el 02-08).
-- **C. Se acorta el texto. Inexacta.**
-  - Qué arregla: la etiqueta cabe en el pasillo.
-  - Qué pierde: el protocolo o un puerto. No pasa el rigor.
-  - Cómo crece: no crece.
-
-**Qué depende de esta decisión.** El paso 2 de la Tarea 28 quinquies y, si se abre, el movimiento de `spreadTags`, que hoy es solo en horizontal.
-
-**Lo que no se pudo verificar.** Que mover la etiqueta solo en horizontal no alcance: no está medido. El paso 2 lo prueba en rojo.
-
-**Decidida:** pendiente del estudiante (solo si se abre).
 
 ## Decisiones abiertas
 
@@ -941,7 +824,7 @@ El encargo dice que el caso del bucle «el jugador lo encuentra con traceroute y
 
 ## Decididas sin el estudiante (para revisar)
 
-Cada una tiene una razón técnica y una sola respuesta razonable; si el estudiante no está de acuerdo, se cambia la tarea que la aplica.
+Cada una tiene una razón técnica y una sola respuesta razonable; si el estudiante no está de acuerdo, se cambia la tarea que la aplica. Desde la 52 son decisiones que se iban a abrir y no pasaron el umbral (ver «Reglas de trabajo vigentes que no estaban escritas»): más de una opción puede pasar los tres criterios, pero la diferencia no cambia de forma importante lo que el jugador aprende o ve. Al final del capítulo, antes de que el estudiante lo juegue, todas se juntan en una sola página para que las revise de una vez (Tarea 33).
 
 1. **El 02-01 parte del mundo del 01-14.** Hoy `worldBeforeChanges` (`src/levels/world.ts`) lanza un error para un incidente con `changes` y sin incidente previo en su capítulo. Cambia así: un incidente con `changes` y sin previo en su capítulo parte de la solución del último incidente del capítulo anterior, en el orden del juego. Con eso, `explained-changes.test.ts` cubre también el salto del 01-14 al 02-01 sin código nuevo, y la continuidad del mundo la fuerza el dato y no una copia. Descartado: un `base` literal compuesto con las constantes del capítulo 1, que duplicaría el mundo y podría divergir sin avisar. Tarea 3.
 2. **`changedNames` se amplía en dos cosas.** (a) Mira también a los servidores de internet (actores `server`: servicios y DNS), no solo a dispositivos y routers; sin eso, que el sitio de `servidor-internet` o un registro del autoritativo cambie no exigiría nombrarlo. (b) Una interfaz de router que mira a una pieza que la misma acción agrega no cuenta como cambio de configuración: es el cableado de la pieza nueva y no altera nada de lo que ya pasaba. Cualquier otro cambio de interfaces, rutas o avisos sí cuenta. Razón de (b): agregar un servidor de nombres detrás de `router-destino` obligaría a nombrar un router que el mapa no dibuja. Relaja la regla un poco; _para revisar_. Tarea 3.
@@ -1029,6 +912,10 @@ Cada una tiene una razón técnica y una sola respuesta razonable; si el estudia
 49. **Lo que el juego omite de una consulta real va solo en la guía y el spec.** Tarea 28 quater. Autorizada por la sesión principal el 2026-10-12: decisión técnica que no cambia lo que se aprende; las otras opciones son inexactas o las prohíbe una regla del plan. Se omiten la consulta AAAA, la consulta inversa de `ping`, los dominios de búsqueda y los reintentos. Se declaran en `src/engine/dns/CLAUDE.md` y en «Simplificaciones declaradas» del spec, no en pantalla: decirlo en pantalla pediría nombrar IPv6, AAAA, consulta inversa o dominios de búsqueda, que no son términos del juego (Review Focus 4), y una nota vaga («un equipo real manda otra pregunta parecida») no pasa la verificación. Ningún texto afirma que la consulta sea la única.
 50. **El título de la lista de un «+N» es «N sellos juntos».** Tarea 28 quinquies (O-4 = G). Autorizada por la sesión principal el 2026-10-12: decisión técnica o de copia que no cambia lo que se aprende. Se aparta del texto de la página de O-4 («4 sellos en la puerta de `laptop-lucia`»): un grupo se forma por cercanía en pantalla y puede juntar lugares distintos, y ese texto sería falso. Cada línea de la lista ya dice dónde terminó su paquete. Al estudiante se le avisa antes de su prueba humana.
 51. **La leyenda de los sellos no nombra «+N».** Tarea 28 quinquies (O-4 = G). Autorizada por la sesión principal el 2026-10-12: decisión técnica o de copia que no cambia lo que se aprende. `SCREEN_TEXT.stampLegend` («Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso.…») queda como está: el «+N» dice su cuenta, la ayuda gris ya dice «Pasa el mouse o el foco por una pieza o un sello», y la caja que abre se explica sola con su título. Si la prueba humana muestra que se pierde, nombrarlo es una línea de copia.
+52. **O-5 · el lugar de la caja de inspección también lo decide una etiqueta o un sello: B si la medición lo permite; si no, A.** Tarea 28 bis (O-1 = D). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. B: sin tarjeta abierta, la caja va a la derecha, salvo que ahí quede en su mínimo (120 px) y la izquierda tenga más sala. Porqué: el residuo del 04-01 a 1280×500 tapa «Security Group servidor2» con una marca, y B lo arregla sin quitarle información al jugador. Solo cuenta si la sala a la izquierda llega a 120 px o más; si no, queda A (D tal como se aprobó). Por qué no se abre: A deja la caja sobre una etiqueta y C quita la caja, que a veces es lo que el jugador necesita. El paso 11 de la Tarea 28 bis deja de abrir una decisión: sus capturas reales del 04-01 a 1280×500 comprueban la medida y deciden entre B y A. Si la medida dice B, hace falta una tarea nueva después de la 28 bis (el lugar cuenta las marcas) y la prueba del residuo en `tests/e2e/incidents.spec.ts`.
+53. **O-8 · la etiqueta de un paquete cuyo sello se esconde en un «+N» no se dibuja (A).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. La etiqueta sigue a su sello: la del paquete escondido no se dibuja en el mapa quieto, su texto (por ejemplo «TCP 51517 → 3000») va en la lista del «+N» y la línea de su camino sigue dibujada y termina en el «+N». Porqué: nada se pierde, porque el texto está en la lista, y el mapa no se desborda. **Se aparta de la página de O-4**, que dice que en F «cada envío escondido sigue con la suya en el mapa quieto»: el estudiante lo ve al revisar. Por qué no se abre: B crece claramente peor (con 10 envíos son 10 etiquetas de 184 px y salen del mapa) y C es un elemento nuevo que repite el «+N». La Tarea 28 quinquies la implementa desde el principio.
+54. **O-9 · cada sello de un grupo conserva la altura de su punto (B).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. Los sellos de un grupo forman una escalera de unos 14 px (más si el grupo junta el camino y la puerta de dispositivos distintos), `placeGroups` deja de colapsarlos a la media y el «+N» se dibuja a la altura media de los sellos que esconde. Porqué: es la opción exacta (la altura dice dónde terminó el paquete, como dice la página de O-4) y sostiene el argumento de rigor con que se eligió G. Por qué no se abre: A y B pasan los tres criterios, pero la diferencia (unos 14 px) no cambia de forma importante lo que se ve ni lo que se aprende, y la lista ya dice dónde terminó cada sello. **Salvaguarda:** si las pruebas de solapes muestran que la escalera choca con etiquetas vecinas donde A no choca, se queda A (la altura media del grupo), con la frase de la página corregida en `DESIGN.md`, y se informa. La Tarea 28 quinquies implementa B en sus commits 2 y 3.
+55. **O-10 · si mover la etiqueta de un paquete en horizontal no alcanza, sube o baja lo justo (A).** Tarea 28 quinquies (O-4 = G). Decidida por el orquestador el 2026-10-12 con la regla del umbral de la sesión principal. La etiqueta se mueve en vertical lo que haga falta, con tope, y sigue pegada a su camino. Porqué: una etiqueta de paquete es un rótulo de lo que viaja y su altura no dice dónde ocurrió nada (la del sello sí). Solo hace falta si el paso 2 de la tarea muestra que moverla a un lado no la libra de la etiqueta de pieza (las etiquetas miden de 115 a 176 px y el pasillo, unos 114; no está medido). Por qué no se abre: C (acortar el texto) es inexacta, porque pierde el protocolo o un puerto, y B (cambiarla de lugar a lo largo del camino) crece peor con la traducción del NAT. La tarea ya no se detiene en ese paso.
 
 ## Inventario de mecánicas
 
@@ -1329,7 +1216,7 @@ Lo que ve quien juega el 04-01 y el 04-02 con este plan. Las trazas y el test do
 - **Con el estándar de avisos y errores (V18 = A, aspecto «Pestaña»), cuatro mensajes del 04-01 y el 04-02 cambian de apariencia, no de texto, de rol ni de comportamiento:** el aviso de intruso de Lucía («¡Algo raro está entrando!»; hoy, texto en negrita en el color de peligro y sin marco), su respuesta a una solución rechazada («Todavía no se cumple: …» y «Además, algo prohibido está entrando.»; hoy, un marco punteado en el color de peligro) y la retroalimentación de la pregunta de Lucía, que es `error` si la opción es incorrecta («No es eso.» …; hoy, la línea `feedback--wrong`) y `success`, en verde, si es la correcta («Correcto.»; hoy, la línea `feedback`). Cada uno lleva su pestaña («✕ ERROR», «✓ CORRECTO»). Los avisos de la red (el paquete de aviso, el sello «!» y las frases de la caja de inspección) no cambian.
 - **El paquete de un intruso cambia de forma (V19 = B).** El atacante del 04-01 y el 04-02 era un rombo rojo; pasa a ser la forma del ping (el punto o el anillo, según sea pedido o respuesta) con el borde rojo de intruso. Es la regla de todo paquete: la forma dice el protocolo y el borde dice el papel. Cambian el mapa, el catálogo y el ícono de la caja de inspección; no cambian el texto ni el comportamiento. Se regraba la captura de piezas de `#/entidades` en la Tarea 21 (y la de la interfaz solo si el catálogo gana una fila: `DESIGN.md`, «Adding a variant instead of a new element», paso 3).
 - **El campo «Conexión» no se ve cambiar en el capítulo 4.** D-8 lo renombra «En la red» en las cajas de oficina (capítulos 1 y 2), pero la caja de un dispositivo de una VPC no tiene ese campo (`src/game/view/CLAUDE.md`; prueba `shows the connection of a device only in an office and once the term network is known`).
-- **Los sellos de un mismo lugar se montan en abanico (O-4 = G).** El 04-01 y el 04-02 dibujan siempre dos envíos vivos y los dos terminan en `servidor2`, en su puerta o en su Security Group (por medir): los dos sellos pasan de 43 px de paso a 25 y cada uno tapa 7 px del aro del otro. El signo se ve entero. No cambia ningún texto, ningún comportamiento ni el tamaño del mapa. Se regraba la captura de piezas de `#/entidades` por el especimen nuevo «+N» (Tarea 28 quinquies); «+N» no aparece en el 04-01 ni en el 04-02 (por medir).
+- **Los sellos de un mismo lugar se montan en abanico (O-4 = G).** El 04-01 y el 04-02 dibujan siempre dos envíos vivos y los dos terminan en `servidor2`, en su puerta o en su Security Group (por medir): los dos sellos pasan de 43 px de paso a 25 y cada uno tapa 7 px del aro del otro, a la altura de su punto (decidida 54). El signo se ve entero. No cambia ningún texto, ningún comportamiento ni el tamaño del mapa. Se regraba la captura de piezas de `#/entidades` por el especimen nuevo «+N» (Tarea 28 quinquies); «+N» no aparece en el 04-01 ni en el 04-02 (por medir).
 - **Sin cambios de comportamiento:** el código de `04-iaas/shared.ts` cambia mecánicamente (`listeningTcpPorts` pasa a `services`), el test dorado no se edita y la batería de sondas no se toca.
 
 **Cambio visible del capítulo 1 (D-8 = A, decidida el 2026-10-11):** el campo «Conexión» de la caja de un dispositivo de oficina se llama «En la red», en todo incidente de oficina de los capítulos 1 y 2. No cambia nada más (el valor del campo, «Conectado a la red.» o «No está conectado: no forma parte de la red.», es el mismo). Las pruebas que cambian están en «Global Constraints».
@@ -1338,7 +1225,7 @@ Lo que ve quien juega el 04-01 y el 04-02 con este plan. Las trazas y el test do
 - **V15 = B, solo en el 01-07.** Hoy la etiqueta de `tu-laptop` tiene dos botones: «tu-laptop», que abre «Terminal de tu-laptop», y debajo «Ajustes de red de tu-laptop» (`SETTINGS_TEXT.entry`, con el id de DOM `piece-settings-your-laptop`), que abre la tarjeta con ese título. Pasa a tener un solo botón, «tu-laptop», que abre una tarjeta con dos pestañas: «Terminal», que abre primero (como hoy, el jugador manda ahí el ping) y «Ajustes de red», el nombre que el reporte y las pistas del 01-07 ya usan y que no cambian. El título de la tarjeta abierta sigue siendo el de la pestaña elegida («Terminal de tu-laptop» o «Ajustes de red de tu-laptop»). El segundo botón desaparece. En los demás incidentes del capítulo 1 cada pieza tiene un solo botón y una sola tarjeta (terminal, firewall o ficha de identificación): no lleva pestañas y no cambia.
 - **Estándar de avisos y errores (V18 = A, aspecto «Pestaña»).** El aviso de intruso, la respuesta de Lucía a una solución rechazada y la retroalimentación de una ficha o de una opción (01-01 y los incidentes con firewall y con pregunta) cambian de apariencia, no de texto, de rol ni de comportamiento: la incorrecta es `error` («✕ ERROR»), la correcta es `success`, en verde («✓ CORRECTO»).
 - **El paquete de un intruso (V19 = B).** En los incidentes con un flujo prohibido del capítulo 1, el rombo rojo del intruso desaparece: el paquete es la forma del ping (el punto o el anillo) con el borde rojo de intruso. Cambian el mapa, el catálogo y el ícono de la caja; no cambian el texto ni el comportamiento. La Tarea 21 regraba la captura de piezas por esta razón. La Tarea 18 bis los lista y su captura los muestra.
-- **Los sellos de un mismo lugar se montan en abanico (O-4 = G, 2026-10-12).** Donde 2 o más sellos terminan juntos (lista exacta en el cuerpo del commit de la Tarea 28 quinquies), pasan de 43 a 25 px de paso. Si no caben entre las etiquetas vecinas, los que sobran se cuentan en un «+N» que abre la lista en la caja de inspección. Ningún texto de los incidentes cambia.
+- **Los sellos de un mismo lugar se montan en abanico (O-4 = G, 2026-10-12).** Donde 2 o más sellos terminan juntos (lista exacta en el cuerpo del commit de la Tarea 28 quinquies), pasan de 43 a 25 px de paso, cada uno a la altura de su punto (decidida 54). Si no caben entre las etiquetas vecinas, los que sobran se cuentan en un «+N» que abre la lista en la caja de inspección. Ningún texto de los incidentes cambia.
 
 ## Review Focus
 
@@ -1357,7 +1244,7 @@ Cada riesgo, con la prueba que lo guarda.
 11. **El DNS.** Tests: `dig does not read the hosts file and ping does`, `a name with a cname cannot hold another record`, `the resolver answers from its cache until the time to live runs out`, `an authoritative server that fails makes the resolver answer SERVFAIL` y `a resolver with no service on port 53 answers Port Unreachable`.
 12. **Pureza.** Tests: `gives the same traces for the same sends` (Tarea 5), `a move that changes the world clears the sends and keeps the clock` (Tarea 15) y la regla de lint de `pure-domain-core`, que prohíbe leer el reloj o un número al azar en el motor (`pnpm lint`).
 13. **Las salidas de las herramientas son fieles a su fuente.** Tests: `every line nc prints matches the format of ncat_connect.c of Nmap 7.93`, `every line dig prints matches the format of dig.c and dighost.c of BIND 9.18`, `a timeout prints no line that the source cannot confirm` (Tarea 18) y `the text of a warning quotes no operating system and says only what the player saw` (Tarea 16). Cada uno cita su fuente y su fecha.
-14. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 34): `in 02-07 the map and its labels fit the area at full size`, `in 02-09 and 02-10 no label or stamp overlaps` y `the cards of tables, output and services cover no piece of the map`, a 1280×800 y a 1440×900. Con O-4 = G, «no label or stamp overlaps» quiere decir: ninguna etiqueta, nombre o etiqueta de paquete pisa a otra cosa, y dos sellos de la misma fila solo se tapan lo que mide el abanico (la tolerancia está en `tests/e2e/map-boxes.ts`).
+14. **Un mapa con más piezas no se amontona.** Tests de Playwright (Tarea 34): `in 02-07 the map and its labels fit the area at full size`, `in 02-09 and 02-10 no label or stamp overlaps` y `the cards of tables, output and services cover no piece of the map`, a 1280×800 y a 1440×900. Con O-4 = G, «no label or stamp overlaps» quiere decir: ninguna etiqueta, nombre o etiqueta de paquete pisa a otra cosa, y dos sellos del mismo abanico solo se tapan lo que mide el abanico (la tolerancia está en `tests/e2e/map-boxes.ts`).
 15. **Las capturas cambian solo lo que se quiso** (Tareas 17, 18, 18 bis, 21 y 28 quinquies): el diff muestra solo los especímenes nuevos o rehechos; `entities` de Playwright pasa después.
 16. **Carpetas y primitivas.** `pnpm structure` pasa en cada tarea; el tope de 12 no se rompe; las únicas primitivas nuevas son `Table` y la de avisos y errores (Tarea 18 bis), y no nace ningún hermano (`DESIGN.md`).
 17. **Los casos del 14 se cuentan bien.** Tests: `the middle star is no hint asked in any case`, `the explained star needs every cause right at the first try`, `02-14: each case starts from the world before the incident plus its own changes, not from the case before` (Tarea 33) y `the case closes only when the cause is named and the tasks of its fix hold` (Tarea 20).
@@ -1407,7 +1294,7 @@ Cada riesgo, con la prueba que lo guarda.
 - `src/ui/catalog/interface-section.tsx` (los especímenes de `Table`, de «Salida» y de avisos y errores)
 - `src/ui/notice-page.tsx` y `src/styles.css` (los avisos y errores pasan a la primitiva: salen `.feedback`, `.feedback--wrong`, `.lucia__alert` y la regla `.lucia__reply p`)
 - `src/testing/`: `fixtures.ts`, `incidents.ts`
-- `tests/e2e/`: `chapter-1/` (nueva: `chapter-1.spec.ts` y `chapter-1-play.ts`, mudados), `chapter-2/` (nueva: `chapter-2.spec.ts` y `chapter-2-play.ts`), `saved-progress.ts`, `entities.spec.ts`, `card-layout.spec.ts` (si hace falta), `map-boxes.ts` (el ayudante de solapes: deja pasar sello con sello de la misma fila, Tarea 28 quinquies), `snapshots/` (dos capturas, regrabadas en las Tareas 17, 18, 18 bis, 21 y 28 quinquies); el ayudante de la escena quieta (Tarea 19 bis)
+- `tests/e2e/`: `chapter-1/` (nueva: `chapter-1.spec.ts` y `chapter-1-play.ts`, mudados), `chapter-2/` (nueva: `chapter-2.spec.ts` y `chapter-2-play.ts`), `saved-progress.ts`, `entities.spec.ts`, `card-layout.spec.ts` (si hace falta), `map-boxes.ts` (el ayudante de solapes: deja pasar sello con sello del mismo abanico, Tarea 28 quinquies), `snapshots/` (dos capturas, regrabadas en las Tareas 17, 18, 18 bis, 21 y 28 quinquies); el ayudante de la escena quieta (Tarea 19 bis)
 - `playwright.config.ts` (el puerto por worktree) · `package.json` (solo `scripts`: `check:fast`) · `eslint.config.js` (sin esperas fijas en `tests/**`) · `scripts/` (`e2e-port.ts`, `e2e-port.test.ts` y `package-scripts.test.ts`; Tarea 19 bis)
 
 ---
@@ -2617,7 +2504,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
   - Las mutaciones M1 a M3 del merge viejo no están guardadas, solo sus registros (`merge/mut-M1.log`: falla al clic, porque el pin no se toma; `mut-M2.log` y `mut-M3.log`: fallan tras el viaje, porque el pin se pierde). Se definen de nuevo, abajo.
 - **Carpetas tras la unión** (de un `merge-tree` fresco, archivos planos sin contar `CLAUDE.md`): `src/ui/` 11 (sale `term-tip.tsx`; entra `floating-box/` con 4 archivos), `src/ui/incident/` 8, `src/scene/` 11, `src/scene/overlay/` 7, `tests/e2e/` 11. La frase de «Global Constraints» que dice que `src/ui/incident/` está en 12 de 12 ya no es cierta desde `875c27d`.
 
-**Orden seguro de los pasos.** Base verde (hecha), worktree temporal, merge sin commit, commit de merge con el rojo conocido (una sola prueba), mutaciones del pin, oráculo en rojo, D, oráculo en verde, mutaciones de D, el motivo, las capturas para O-5, cierre y traer la rama.
+**Orden seguro de los pasos.** Base verde (hecha), worktree temporal, merge sin commit, commit de merge con el rojo conocido (una sola prueba), mutaciones del pin, oráculo en rojo, D, oráculo en verde, mutaciones de D, el motivo, las capturas del residuo (decidida 52), cierre y traer la rama.
 
 **Por qué D va en commits propios, después del merge.** D necesita `release()` y el pin que trae `main`: no puede ir antes. Y si fuera dentro del commit de merge, 14 resoluciones quedarían enterradas bajo una función nueva y D no se podría revertir sola. El costo: el commit de merge queda con un rojo conocido (el pin sin D) y no pasa `pnpm check` por sí solo. La sesión principal autorizó ese commit el 2026-10-12, con el rojo limitado a una sola prueba conocida (paso 4) y D en commits propios después. La alternativa es un commit de merge más grande que ya incluya D, verde pero sin ese historial.
 
@@ -2660,7 +2547,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
   - **D2:** la pantalla no suelta la caja fijada cuando no hay lugar. Falla `with a card open and no room beside it, a hover shows no box and a pinned box is released`.
   - **D3:** se quita la espera de la caja del clic que abre una tarjeta. Falla el Vitest `the box of the click that opens a card is not drawn until the card is measured`.
 - [ ] **10. El motivo** (decididas 42 y 43). Sin sitio, la caja no se abre y ahora lo dice: una nota (`Message`, variante `note`) en el panel lateral, bajo la tarjeta de Lucía, y la ayuda gris sin la frase que promete la caja fija mientras haya una tarjeta abierta. Los detalles están en «Dónde se dice el motivo». Va en su propio commit (el tercero).
-- [ ] **11. Las capturas para O-5.** Después de D, con el árbol fusionado: capturas reales de los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01, y la medida de «El residuo del 04-01 a 1280×500». Se guardan en el scratchpad y no se commitean; el orquestador abre **O-5** con ellas. **La tarea no espera la respuesta.**
+- [ ] **11. Las capturas del residuo (decidida 52, O-5).** Después de D, con el árbol fusionado: capturas reales de los dos lugares de la caja de `servidor2` a 1280×500 en el 04-01, y la medida de «El residuo del 04-01 a 1280×500». Se guardan en el scratchpad y no se commitean. **La medida decide entre B y A** (decidida 52): si la sala a la izquierda llega a 120 px o más, vale B y el orquestador agenda la tarea que le sigue; si no, vale A y el residuo queda anotado en el backlog. **La tarea no cambia el lugar de la caja por ello.**
   - El lugar derecho es el de siempre. Para ver el izquierdo sin tarjeta, en una captura de prueba fuera del repo se fuerza `data-place='left'` en el contenedor de la caja, o se usa una ventana que lo elija.
 - [ ] **12. Cierre y traer la rama.** `pnpm check` completo en el worktree; luego, en el árbol principal, comprobar que `feat/chapter-2` no se movió (ver el paso 0) y hacer `git merge --ff-only merge/28bis`; `git worktree remove` y `git branch -d merge/28bis`.
 
@@ -2726,7 +2613,7 @@ Falta, y se reparte así (la infraestructura va antes del contenido):
 - La caja de `servidor2`, en su mínimo de 120 px, tapa «Security Group servidor2». La causa es una marca, no una tarjeta.
 - **D, tal como se aprobó, no lo arregla y esta tarea no lo afirma.** Ninguna prueba nueva lo afirma, como hoy.
 - Lo que sí hace la tarea (paso 11): medir y capturar. Con el árbol fusionado y D hecha, a 1280×500 y a 1280×800, pasar el mouse por `servidor2` en el 04-01 y anotar, en `tests/e2e/CLAUDE.md` y en el backlog, la sala que `inspectionRoom` deja a la derecha y la que dejaría a la izquierda (el mismo cálculo con los bordes del lugar izquierdo). Con eso, capturas reales de la caja en cada lugar a 1280×500.
-- Con esas medidas y capturas el orquestador abre **O-5** (¿puede una etiqueta o un sello decidir también el lugar de la caja?). **La tarea no espera la respuesta** y no cambia el lugar de la caja por ello. Si O-5 pide cambiarlo o escribir la prueba del residuo, será otra tarea.
+- Con esas medidas y capturas se comprueba la decidida 52 (O-5: ¿puede una etiqueta o un sello decidir también el lugar de la caja?): B si la sala a la izquierda llega a 120 px o más; si no, A. **La tarea no cambia el lugar de la caja por ello.** Si vale B, escribir la prueba del residuo y hacer que el lugar cuente las marcas será otra tarea.
 
 **Archivos:**
 - Create: `src/ui/incident/inspection-place.ts` y `inspection-place.test.ts`. `src/ui/incident/` queda en 10 de 12 archivos planos.
@@ -3107,11 +2994,12 @@ Fuentes:
 
 **Por qué después de las tres y no antes.** Hay una razón débil para adelantar el modelo puro (commits 1 y 2): no toca nada que las otras tres reescriban. Hay una fuerte para no hacerlo: el cableado (commit 3) toca `traffic.tsx` y `stamp.tsx`, que la 28 bis reescribe (`StampPiece` con `trigger`, `inspectTrigger`), y la 28 quater cambia `traffic.tsx` y `layout.ts` (`pathFor`). Se mantiene el orden del encargo. No se pide cambiarlo.
 
-**Decisiones que la tocan.** Ninguna bloquea la tarea, salvo O-10 si llega a abrirse.
-- **O-8** (la etiqueta de un paquete cuyo sello se esconde; abierta). Mientras no haya respuesta, el commit 3 conserva lo de hoy: se dibujan todas las etiquetas.
-- **O-9** (la altura de los sellos de un grupo; abierta). Mientras no haya respuesta, la tarea implementa la altura media del grupo, con la frase corregida.
-- **O-10** (la etiqueta que no cabe moviéndola solo en horizontal; condicional). Solo se abre si el paso 2 lo pide, y entonces la tarea se detiene en ese paso.
+**Decisiones que la tocan.** Ninguna bloquea la tarea. Cuatro se decidieron con la regla del umbral y la tarea las implementa desde el principio; el estudiante las revisa en la página de «para revisar» (Tarea 33).
+- **53 (O-8).** La etiqueta de un paquete cuyo sello se esconde en un «+N» no se dibuja en el mapa quieto; su texto va en la lista del «+N». Se aparta de la página de O-4.
+- **54 (O-9).** Cada sello conserva la altura de su punto, y los de un grupo forman una escalera. Salvaguarda: si las pruebas de solapes muestran que la escalera choca con etiquetas vecinas donde la altura media no choca, se queda la altura media (A), con la frase corregida en `DESIGN.md`, y se informa.
+- **55 (O-10).** Si apartar una etiqueta de paquete en horizontal no alcanza, sube o baja lo justo, con tope. La tarea no se detiene en el paso 2.
 - **50 y 51** (decididas sin el estudiante, para revisar). El título de la lista de un «+N» es «N sellos juntos», y la leyenda de los sellos no cambia.
+- **52 (O-5)** toca el lugar de la caja de inspección: lo mide el paso 11 de la Tarea 28 bis. Mientras no se aplique, «+N» se comporta como cualquier sello.
 
 **Propósito.** Que los sellos de un mismo lugar no pisen ninguna etiqueta y que ninguno se pierda en silencio.
 - Los sellos de un lugar se montan en abanico, con paso de 25 px (el 43 de hoy sale).
@@ -3120,13 +3008,16 @@ Fuentes:
 - «+N» es el mismo estándar de sello (redondo, mismo aro, tamaño y letra). Lo distingue su texto, no solo su color. Queda encima del abanico.
 - Al pasar el mouse, al enfocarlo o con un toque, «+N» abre la caja de inspección que ya existe, con la lista de todos los sellos del lugar. No hay primitiva nueva.
 - Las etiquetas de paquete se apartan de los sellos y de las etiquetas de pieza, como ya se apartan de los nombres de piso.
+- Cada sello conserva la altura de su punto: los de un grupo encadenado forman una escalera de unos 14 px (decidida 54).
+- La etiqueta de un paquete cuyo sello se esconde en un «+N» no se dibuja en el mapa quieto; su texto va en la lista del «+N» (decidida 53).
 
 **La regla, completa y sin huecos.**
-- **Casillas.** Un abanico de `n` casillas mide `36 + 25 (n − 1)` px (la caja medida de un sello es de 36 px). El grupo se centra en su lugar. Manda el lado más estrecho del pasillo: caben `n` casillas si `18 + 12,5 (n − 1)` px no pasan de ese lado. Holgura: 0 (la del dibujo de C y G; no el mínimo de 8 px).
-- **El pasillo de un lugar.** Entre el borde de la etiqueta más cercana de la izquierda y el de la más cercana de la derecha, solo con las etiquetas que comparten la franja de altura del sello (las de pieza y los nombres de piso; las etiquetas de paquete no cuentan: se apartan después). Sin vecina de un lado, ese lado no limita.
+- **Casillas.** Un abanico de `n` casillas mide `36 + 25 (n − 1)` px (la caja medida de un sello es de 36 px). El grupo se centra en su lugar. Manda el lado más estrecho del pasillo: caben `n` casillas si `18 + 12,5 (n − 1)` px no pasan de ese lado. Holgura: 0 (la del dibujo de C y G; no el mínimo de 8 px). Con la altura de cada punto (decidida 54) cada casilla tiene su franja de altura: la cuenta de arriba es la de un grupo de un solo punto, y en un grupo encadenado el modelo la calcula casilla por casilla (caben `n` casillas si la caja de cada una, de 36 px, queda libre de las etiquetas de su franja).
+- **El pasillo de un lugar.** Entre el borde de la etiqueta más cercana de la izquierda y el de la más cercana de la derecha, solo con las etiquetas que comparten la franja de altura de ese sello, la de su casilla (las de pieza y los nombres de piso; las etiquetas de paquete no cuentan: se apartan después). Sin vecina de un lado, ese lado no limita.
 - **Quién se ve.** Si el grupo tiene `k` sellos y caben `n` casillas: si `k ≤ n`, se ven los `k`. Si no, se ven `n − 1` y la casilla `n` es «+N», con `N = k − (n − 1)`. Si solo cabe una casilla (`n = 1`), se ve un «+N» solo, con `N = k`. `N` nunca es menor que 2. Un sello sin vecino cercano no se mueve, no se esconde ni se cuenta (como hoy).
 - **Prioridad.** Los sellos de problema (✕ bloqueado, ? perdido, ! aviso e intruso) no entran en «+N» mientras haya sellos sin problema que puedan entrar. Entre iguales, entran los más antiguos. Si hay más sellos de problema que casillas visibles, entran los más antiguos de ellos. «Más antiguo» es el menor número de envío (`send`) del último envío de esa combinación (`lastOfEach` conserva la posición del primero y el `send` del último). Los flujos vivos del incidente no tienen `send`: son más antiguos que todo lo que el jugador manda, y entre ellos manda su orden.
 - **Orden y capas.** Los sellos que se ven conservan el orden de la pantalla (x − z). Cada uno tapa el borde del anterior. «+N» es la última casilla y queda encima. El sello bajo el puntero o con el foco sube al frente.
+- **Altura.** Cada sello se dibuja a la altura de su punto (decidida 54). «+N» se dibuja a la altura media de los sellos que esconde (el paso 1 lo confirma).
 - **El número.** Es la cuenta exacta de los escondidos, nunca «9+». Con letra de 18 px hasta 9 escondidos. Desde 10 escondidos, 14 px (`--text-md`): «+10» mide 29,5 px a 18 px y se sale del aro; a 14 px mide 24,3 y cabe con 0,8 px (medido en Chromium el 2026-10-12, sin la inclinación de −8°). Cota declarada: 99 escondidos. «+100» a 14 px no cabe (extrapolado, no medido); un centinela falla antes de que un incidente registrado llegue ahí.
 - **Abierto, sin implementar.** Cómo se ve un «+N» que esconde un sello de problema. Hoy se dibuja igual que cualquier «+N». Va al backlog y tiene un centinela (más abajo).
 
@@ -3134,11 +3025,11 @@ Fuentes:
 1. **El «7 px» no es el solape de las pruebas.**
    - `.stamp` mide 32 px (`box-sizing: border-box`, `src/styles.css`) y se gira −8°. Su caja en pantalla es el cuadrado girado: 32 cos 8° + 32 sen 8° = 36,1 px (calculado; coincide con los 36 px medidos).
    - A 25 px de paso, los aros se tapan 7 px (32 − 25) y las cajas se solapan 11,1 px (36,1 − 25). Las pruebas e2e miden cajas (`getBoundingClientRect`). Con una tolerancia literal de 7, el abanico de 3 falla en su propio camino feliz.
-   - La tolerancia de las pruebas se deriva de «caja menos paso», se mide en el paso 1 y vale solo para sello contra sello de la misma fila (centros a menos de 1 px de altura). Todo lo demás sigue estricto.
+   - La tolerancia de las pruebas se deriva de «caja menos paso», se mide en el paso 1 y vale solo para sello contra sello vecinos del mismo abanico (el paso 1a mide el límite, con la escalera de unos 14 px de la decidida 54). Todo lo demás sigue estricto.
 2. **El arreglo común no destraba solo.**
    - Los huecos del 02-05 y del primer par del 02-08 son una etiqueta de paquete sobre una etiqueta de pieza (la del firewall), no contra un sello (guía de `tests/e2e/chapter-2/CLAUDE.md`). `spreadTags` hoy conoce los nombres de piso y a las otras etiquetas de paquete, no a las etiquetas de pieza.
    - Esta tarea suma como obstáculos de `spreadTags` los sellos que se ven y las etiquetas de pieza. Solo toca el capítulo 2: solo los paquetes con puertos llevan etiqueta.
-   - Las etiquetas de paquete miden 115 a 176 px y el pasillo de `laptop-lucia` unos 114. Mover solo en horizontal puede no bastar. **No está medido.** El paso 2 lo prueba en rojo; si no basta, se abre O-10 (en «Decisiones abiertas del 2026-10-12») y la tarea se detiene en ese punto.
+   - Las etiquetas de paquete miden 115 a 176 px y el pasillo de `laptop-lucia` unos 114. Mover solo en horizontal puede no bastar. **No está medido.** El paso 2 lo prueba en rojo; si no basta, la etiqueta sube o baja lo justo, con tope, y sigue pegada a su camino (decidida 55). La tarea no se detiene.
 3. **Los anchos de las etiquetas no los conoce `layout.ts`.**
    - Hoy solo tiene `LABEL_REACH` = 64 (medio ancho) y las etiquetas de pieza miden de 79 a 146 px. En el 02-03, «se ven los 3» tiene 6,4 px de holgura: un error de más de 6 px por exceso en el ancho de una etiqueta vecina lo vuelve «2 y +2», y por defecto deja un solape.
    - El ancho sale de un modelo puro (`labelWidth`) calibrado en Chromium y exportado, sobre los caracteres del texto llano, los de los nombres (`NameTag`, mono) y si lleva candado o alerta. Una prueba e2e lo compara con el DOM, para que un cambio de fuente rompa esa prueba y no el mapa en silencio.
@@ -3146,7 +3037,8 @@ Fuentes:
 5. **El argumento de rigor de G se apoya en algo que hoy solo vale para un grupo de un mismo punto.**
    - `placeGroups` pone a todos los sellos de un grupo en `(promedio x + desplazamiento, promedio z − desplazamiento)`: la misma altura de pantalla, la media del grupo.
    - La página de O-4 dice que «cada sello sigue a la altura de su lugar» y descarta B porque «la altura dice dónde ocurrió». Eso es cierto cuando los sellos terminan en el mismo punto. En un grupo encadenado (puerta, firewall y camino de un dispositivo, unos 14 px de diferencia) ya se colapsaba a la media. Es de antes de G, pero G lo hereda y el estudiante eligió por «rigurosa».
-   - La tarea escribe `fanStamps` con la altura media, como hoy, y el ayudante e2e y el pasillo suponen una sola fila. Es la decisión O-9 (abierta): si el estudiante elige otra, el ayudante «misma fila» y la franja del pasillo cambian.
+   - La tarea escribe `fanStamps` con la altura de cada punto (decidida 54): los sellos de un grupo forman una escalera de unos 14 px (más si el grupo junta el camino y la puerta de dispositivos distintos), `placeGroups` deja de colapsarlos a la media, la franja de altura del pasillo es por sello y no por grupo, y el ayudante e2e compara por par, con la diferencia de altura. El «+N» se dibuja a la altura media de los sellos que esconde.
+   - **Salvaguarda.** Si las pruebas de solapes muestran que la escalera choca con etiquetas vecinas donde la altura media no choca, se queda la altura media (A), con la frase de la página corregida en `DESIGN.md` y en el plan, y se informa.
 6. **Capas.** El abanico se mueve a `x + z` constante, es decir, a la misma profundidad: `Html` de drei les da el mismo `z-index` y manda el orden del DOM (cálculo, sin medir). Hoy `Traffic` dibuja cada sello dentro del `<group>` de su paquete, así que el orden es el de los paquetes. Con el abanico los sellos se dibujan aparte, en el orden de las casillas, con «+N» al final.
 7. **Los escondidos no están en el DOM.** Un sello escondido no es un botón: su nombre accesible vive en la lista de «+N». Los conteos `/^Paquete:/` cuentan solo los que se ven.
 8. **Capas del código.**
@@ -3160,13 +3052,13 @@ Fuentes:
   - `stampOf` devuelve el `StampState` de un resultado (`warning`, `reached`, `intruder`, `blocked`): lo que hoy hace `stampState` de `flow-look.ts`, sin cambiar un caso. `flowLook` pasa a usarlo.
   - `isProblemStamp` es verdadero para `blocked`, `lost`, `warned` e `intruder`.
 - **Modelo del ancho (`src/scene/marks/label-width.ts`).** `labelWidth` da el ancho en px de una etiqueta a partir de sus hechos (caracteres de texto llano, caracteres de nombres, candado, alerta). `labelSpans` da, para las piezas que el mapa dibuja y los nombres de piso, la caja de pantalla de cada etiqueta (`u`, `v`, ancho, alto) usando `labelPosition` y la proyección de la altura. La prueba e2e lee los hechos de cada etiqueta del DOM (texto llano, caracteres de `.name-tag`, `.map-button__lock`, `.map-button__alert`) y llama a `labelWidth` por el alias `@/scene/marks/label-width`, como `saved-progress.ts` ya importa `@/storage/progress`. Por eso `label-width.ts` no importa React ni three (solo `layout.ts` y tipos).
-- **El abanico (`src/scene/marks/stamp-fan.ts`).** Función pura `fanStamps`. Entra, por sello: su punto de suelo, su identificador, si es de problema y su antigüedad. Entran también las cajas de las etiquetas. Sale: para cada sello, si se ve y dónde (suelo); y para cada lugar que desborda, la casilla de «+N» con su posición, cuántos esconde y los identificadores de todos los sellos del lugar. Constantes: `FAN_STEP_PX` (25), `STAMP_BOX_PX` (36), `FAN_CLEARANCE_PX` (0). El paso en suelo sale de `FAN_STEP_PX / (2 · UNIT_PX_X)`, no es un número aparte. `casillasThatFit` da cuántas casillas caben en un lado de pasillo dado. La unión de grupos cuyas casillas quedan cerca sigue como hoy, ahora con las casillas que se ven.
-- **Las etiquetas de paquete (`src/scene/marks/spread.ts`).** `spreadTags(paths, obstacles)`: los obstáculos son cajas de pantalla (nombres de piso, etiquetas de pieza y sellos que se ven). `clearOfNames` se generaliza a obstáculos de cualquier tamaño; un nombre de piso es un obstáculo de 31 × 39 px.
+- **El abanico (`src/scene/marks/stamp-fan.ts`).** Función pura `fanStamps`. Entra, por sello: su punto de suelo, su identificador, si es de problema y su antigüedad. Entran también las cajas de las etiquetas. Sale: para cada sello, si se ve y dónde (suelo, a la altura de su punto, decidida 54); y para cada lugar que desborda, la casilla de «+N» con su posición, cuántos esconde y los identificadores de todos los sellos del lugar. Constantes: `FAN_STEP_PX` (25), `STAMP_BOX_PX` (36), `FAN_CLEARANCE_PX` (0). El paso en suelo sale de `FAN_STEP_PX / (2 · UNIT_PX_X)`, no es un número aparte. `casillasThatFit` da cuántas casillas caben en un lado de pasillo dado. La unión de grupos cuyas casillas quedan cerca sigue como hoy, ahora con las casillas que se ven.
+- **Las etiquetas de paquete (`src/scene/marks/spread.ts`).** `spreadTags(paths, obstacles)`: los obstáculos son cajas de pantalla (nombres de piso, etiquetas de pieza y sellos que se ven). `clearOfNames` se generaliza a obstáculos de cualquier tamaño; un nombre de piso es un obstáculo de 31 × 39 px. Si moverla a un lado no libra a una etiqueta de pieza, la etiqueta de paquete sube o baja lo justo, con tope, y sigue pegada a su camino (decidida 55).
 - **`game`.** `PIECE_ID.stamps(ids)` y un caso `stamps` en `PieceRef`/`parsePieceId`. `inspect()` gana el caso `stamps`: una `Inspection` con el título «N sellos juntos» (decidida 50: se aparta del texto de la página de O-4, que no vale cuando un grupo junta lugares distintos) y un campo por sello (su etiqueta y cómo terminó, el sello más nuevo primero). `Inspection.entity` pasa a ser opcional (la lista no es una entidad); `InspectionBox` dibuja el ícono solo si existe (`caller-controls-visibility`). Si un identificador ya no nombra ningún envío (el mundo cambió y los envíos se borraron), `inspect()` devuelve null.
 - **Textos (`src/copy/screens/incident-ui.ts`, `INSPECTION_TEXT` y `MAP_TEXT`).** El título de la lista, la línea de cada sello (con las palabras de `STAMP_TEXT`: «Llegó.», «Bloqueado.», «Perdido.», «Entró y no debía.», «Apareció un aviso.»; ningún vocabulario nuevo) y el nombre accesible de «+N». Propuesta: «N sellos más. Abre la lista de los T sellos de este lugar.» Quien implementa la fija con `rigorous-plain-copy`. La leyenda de los sellos (`SCREEN_TEXT.stampLegend`) no cambia y no nombra «+N» (decidida 51).
-- **Escena (`src/scene/entities/stamp.tsx`).** `StampMore`: variante del sello (clase `stamp--more`; con 10 o más escondidos suma `stamp--tight`, en `src/styles.css`, solo con tokens). Mismo botón, mismos disparadores (`trigger`, `inspectTrigger` de la 28 bis): pasar el mouse, enfocar y tocar (el clic fija la caja, como en `main`). Se exporta el botón sin `Html` para probarlo en jsdom. La caja que abre «+N» es la de siempre: sigue la regla de la 28 bis (no tapa una tarjeta abierta) y, si se decide O-5, lo que ese punto diga de un sello vale también para «+N»; mientras O-5 siga abierta, «+N» se comporta como cualquier sello.
+- **Escena (`src/scene/entities/stamp.tsx`).** `StampMore`: variante del sello (clase `stamp--more`; con 10 o más escondidos suma `stamp--tight`, en `src/styles.css`, solo con tokens). Mismo botón, mismos disparadores (`trigger`, `inspectTrigger` de la 28 bis): pasar el mouse, enfocar y tocar (el clic fija la caja, como en `main`). Se exporta el botón sin `Html` para probarlo en jsdom. La caja que abre «+N» es la de siempre: sigue la regla de la 28 bis (no tapa una tarjeta abierta) y, si la decidida 52 (O-5) se aplica (B), lo que ese punto diga de un sello vale también para «+N»; mientras no se aplique, «+N» se comporta como cualquier sello.
 - **Catálogo.** «+N» tiene su especimen en `#/entidades`: dos celdas, «+2» (letra de 18 px) y «+12» (letra de 14 px). No tiene `StampIcon` ni entra en `STAMP_STATES`: la lista de íconos no crece.
-- **Ayudante e2e (`tests/e2e/map-boxes.ts`).** `pairsThatOverlap` (y `overlappingPairs`, que lo usa) deja pasar sello con sello de la misma fila hasta la tolerancia medida en el paso 1 (se espera 11,1 + 0,5 px de redondeo), con una constante propia del ayudante y no importada del modelo (si el paso del modelo se rompe, la prueba lo ve). Sello contra etiqueta, nombre, etiqueta de paquete o sello de otra fila: sigue sin dejar pasar nada.
+- **Ayudante e2e (`tests/e2e/map-boxes.ts`).** `pairsThatOverlap` (y `overlappingPairs`, que lo usa) deja pasar sello con sello del mismo abanico hasta la tolerancia medida en el paso 1, por par y con la diferencia de altura entre los dos (sin diferencia se espera 11,1 + 0,5 px de redondeo; con la escalera de la decidida 54 la fija el paso 1a), con una constante propia del ayudante y no importada del modelo (si el paso del modelo se rompe, la prueba lo ve). Sello contra etiqueta, nombre o etiqueta de paquete, o sello de otro abanico: sigue sin dejar pasar nada.
 
 **Archivos (por commit).** Los topes de carpeta están en la tabla de abajo. Todos los nombres son los de después de la 28 bis.
 
@@ -3176,11 +3068,11 @@ Fuentes:
 
 *Commit 2, el modelo puro.*
 - Create: `src/scene/marks/stamp-fan.ts` y `stamp-fan.test.ts`, `src/scene/marks/label-width.ts` y `label-width.test.ts`.
-- Modify: `src/scene/marks/spread.ts` (obstáculos), `src/copy/packet-labels.ts` y `packet-labels.test.ts` (`stampOf`, `isProblemStamp`), `src/copy/index.ts` (el barrel exporta los dos), `src/scene/traffic/flow-look.ts` (usa `stampOf`), `src/scene/layout.test.ts` (las llamadas a `spreadTags` pasan a la firma nueva), `src/copy/CLAUDE.md`, `src/scene/marks/CLAUDE.md`.
+- Modify: `src/scene/marks/spread.ts` (obstáculos; y `placeGroups`, que deja de poner a todos los sellos de un grupo a la altura media, decidida 54), `src/copy/packet-labels.ts` y `packet-labels.test.ts` (`stampOf`, `isProblemStamp`), `src/copy/index.ts` (el barrel exporta los dos), `src/scene/traffic/flow-look.ts` (usa `stampOf`), `src/scene/layout.test.ts` (las llamadas a `spreadTags` pasan a la firma nueva), `src/copy/CLAUDE.md`, `src/scene/marks/CLAUDE.md`.
 - `src/scene/traffic/traffic.tsx` solo adapta su llamada a `spreadTags` (los nombres de piso pasan como obstáculos de 31 × 39 px). Lo que dibuja no cambia: nada que el jugador vea.
 
 *Commit 3, el cableado, «+N», la lista y lo que depende de ellos.*
-- Modify, escena: `src/scene/game-scene.tsx` (calcula `labelSpans` y se los pasa a `Traffic`), `src/scene/traffic/traffic.tsx` (llama a `fanStamps`; dibuja los sellos aparte y en orden de casilla; da a `spreadTags` los obstáculos; y, solo si el estudiante elige O-8 = A, no dibuja la etiqueta de paquete de un sello escondido en el mapa quieto), `src/scene/entities/stamp.tsx` (`StampMore`; el botón exportado), `src/scene/entities/index.ts`, `src/styles.css`, `src/scene/catalog/catalog-cells.tsx` (los dos especímenes), `src/scene/layout.test.ts` (las pruebas que cambian a propósito, más abajo).
+- Modify, escena: `src/scene/game-scene.tsx` (calcula `labelSpans` y se los pasa a `Traffic`), `src/scene/traffic/traffic.tsx` (llama a `fanStamps`; dibuja los sellos aparte y en orden de casilla; da a `spreadTags` los obstáculos; y no dibuja la etiqueta de paquete de un sello escondido en el mapa quieto, decidida 53), `src/scene/entities/stamp.tsx` (`StampMore`; el botón exportado), `src/scene/entities/index.ts`, `src/styles.css`, `src/scene/catalog/catalog-cells.tsx` (los dos especímenes), `src/scene/layout.test.ts` (las pruebas que cambian a propósito, más abajo).
 - Create: `src/scene/entities/stamp.test.tsx` (`src/scene/entities/` queda en 12 de 12).
 - Modify, `game` y `copy`: `src/game/view/piece-id.ts`, `src/game/view/inspection.ts` y `inspection.test.ts`, `src/copy/screens/incident-ui.ts`, `src/ui/incident/inspection-box.tsx`.
 - Create: `src/ui/incident/stamp-fan.test.ts` (el centinela).
@@ -3214,16 +3106,16 @@ Fuentes:
   - Leer con los nombres de después del merge: `stamp.tsx`, `traffic.tsx`, `src/scene/overlay/inspect-trigger.ts`, `src/ui/floating-box/`, y lo que la 28 quater dejó en `traffic.tsx`.
   - Con la decidida 48 de la 28 quater, la consulta DNS deja su sello propio en el resolver: es un sello más del lugar y entra en `fanStamps` sin código aparte; el paso 4 bis lo cuenta. El pasillo del resolver no se midió (la página de O-4 midió el del 02-03).
 - [ ] **1. Medir, sin commitear.** Scripts desechables en el scratchpad. Una suite de Playwright a la vez, a 1280×800 y a 1440×900.
-  - **1a.** Dos sellos montados a 25 px (montando a mano dos botones `.stamp` a 25 px en una página con los estilos del juego): la caja de cada uno y el solape de las cajas. Fija la tolerancia del ayudante (se espera 11,1 px).
+  - **1a.** Dos sellos montados a 25 px (montando a mano dos botones `.stamp` a 25 px en una página con los estilos del juego): la caja de cada uno y el solape de las cajas, sin diferencia de altura y con una de 14 px (la escalera de la decidida 54). Fija la tolerancia del ayudante (sin diferencia se espera 11,1 px).
   - **1b.** El ancho y el texto de todas las etiquetas de pieza del 02-03, del 02-05 y del 02-08, y de una con candado y una con alerta del capítulo 1. Calibra `labelWidth`. Se esperan 79, 100, 119, 127 y 146 px en el 02-03.
   - **1c.** Los pasillos de cada lugar con sellos en esos tres incidentes: borde izquierdo, borde derecho y centro del grupo. En el 02-03: 49,4 px a la derecha del centro y 64,1 a la izquierda (de la página de O-4; confirmar).
   - **1d.** Confirmar con un script de Vitest desechable (`computeLayout`, `pathFor` y `spreadStamps` de hoy) el grupo de 2 sellos en `servidor2` del 04-01 y el 04-02, y cuántos sellos termina cada lugar de cada incidente registrado de los capítulos 1, 2 y 4 cuando se mandan todas las combinaciones de sus fichas. Eso dice dónde cambia el paso de 43 a 25 px y dónde el «+N» es alcanzable.
 - [ ] **2. Pruebas en rojo, en local.** Las puras del modelo (tabla de abajo) y las e2e del 02-03 (el parche del scratchpad, reescrito sobre el árbol actual), del 02-05 y del 02-08. Se ven fallar con el árbol sin cambios, salvo el ayudante, que ya lleva la tolerancia del paso 1a (si no, el 02-03 falla por dos sellos del abanico y no por lo que debe).
   - Hoy el 02-03 falla con 2 pares medidos sin animaciones y 1 con ellas.
-  - Para el 02-05 y el primer par del 02-08, la prueba debe mostrar la etiqueta de paquete sobre la etiqueta de pieza (hallazgo 2). Si mover la etiqueta solo en horizontal no la libra, **la tarea se detiene** y se abre O-10. No se baja ni se sube la etiqueta por cuenta propia.
+  - Para el 02-05 y el primer par del 02-08, la prueba debe mostrar la etiqueta de paquete sobre la etiqueta de pieza (hallazgo 2). Si mover la etiqueta solo en horizontal no la libra, la etiqueta sube o baja lo justo, con tope, y sigue pegada a su camino (decidida 55). La tarea no se detiene.
 - [ ] **3. Commit 1.** Mudanza. `pnpm check:fast` verde sin editar ninguna prueba salvo los imports. `git diff -M` muestra el código movido y no escrito de nuevo.
 - [ ] **4. Commit 2.** El modelo puro, con TDD (las pruebas de la tabla, rojo primero). `pnpm check:fast` verde.
-- [ ] **4 bis. La tabla de cambios visibles, sin commitear.** Con el modelo ya escrito, un script de Vitest desechable repite el 1d con `labelSpans` y `fanStamps`: para cada incidente registrado de los capítulos 1, 2 y 4, en su estado final y mandando todas las combinaciones de sus fichas, los lugares con 2 o más sellos, cuántas casillas caben, cuántos sellos se esconden y si alguno es de problema. La tabla va al cuerpo del commit 3 y a «Cambios visibles». Si un incidente de los capítulos 1 o 4 llega a «+N», se informa antes de seguir.
+- [ ] **4 bis. La tabla de cambios visibles, sin commitear.** Con el modelo ya escrito, un script de Vitest desechable repite el 1d con `labelSpans` y `fanStamps`: para cada incidente registrado de los capítulos 1, 2 y 4, en su estado final y mandando todas las combinaciones de sus fichas, los lugares con 2 o más sellos, cuántas casillas caben, cuántos sellos se esconden y si alguno es de problema. La tabla va al cuerpo del commit 3 y a «Cambios visibles». Si un incidente de los capítulos 1 o 4 llega a «+N», se informa antes de seguir. Con la altura de cada punto (decidida 54), el mismo script compara cada lugar con la altura media: si la escalera choca con una etiqueta vecina donde la media no choca, se aplica la salvaguarda (se queda la media, con la frase corregida en `DESIGN.md`) y se informa.
 - [ ] **5. Commit 3.** El cableado, «+N», la lista, el catálogo, el ayudante. Cuando el abanico existe, las pruebas existentes que cambian a propósito se ajustan (lista de abajo) y se corren las e2e de los capítulos 1, 2 y 4.
   - El mecanismo para subir al frente el sello bajo el puntero, o con el foco, y para dejar «+N» arriba lo decide quien implementa (cada sello es un `Html` de drei con su propio `z-index`). El resultado lo fija la prueba `…takes the click…` de abajo.
 - [ ] **6. Mutaciones**, una por una, con `git checkout -- <archivo>` después y `git status` limpio:
@@ -3233,7 +3125,7 @@ Fuentes:
   - **M4.** `spreadTags` ignora los sellos: deben fallar las pruebas de solapes del 02-03 (sin animaciones).
   - **M5.** `inspect()` ignora el caso `stamps`: deben fallar las pruebas de la lista y las de «+2».
   - El resultado va en `tests/e2e/chapter-2/CLAUDE.md`, con fecha. Una mutación que no hace fallar su prueba se arregla en la prueba.
-- [ ] **7. Commit 4.** Las e2e nuevas, la guía y el backlog.
+- [ ] **7. Commit 4.** Las e2e nuevas, la guía y el backlog. Si una prueba de solapes falla por la escalera y pasaba con la altura media, se aplica la salvaguarda de la decidida 54 y se informa.
 - [ ] **8. Cierre** (abajo).
 
 **Tests nuevos** (nombres exactos, en inglés).
@@ -3242,7 +3134,7 @@ Fuentes:
 - `a place whose stamps all fit draws every stamp, 25 px apart along the screen and centered on the place`.
 - `the corridor beside laptop-lucia in 02-03 holds three casillas with 6.4 px to spare and not four` (con las cajas medidas en el paso 1).
 - `the room of a place is the narrow side of its corridor, taken twice, because the fan is centered on the place`.
-- `a label above or below the row of the stamps does not narrow the corridor, and one in the row does`.
+- `a label above or below the band of a stamp does not narrow the corridor of its casilla, and one in the band does`.
 - `a place with no label beside it draws all its stamps`.
 - `a place whose stamps do not fit draws the casillas that fit less one, and the last casilla is a «+N» that counts the rest`.
 - `a place where only one casilla fits draws a lone «+N» that holds every stamp of the place`.
@@ -3253,7 +3145,8 @@ Fuentes:
 - `the live flows of an incident are older than every packet the player sent, and a combination sent again is as new as its last send`.
 - `the stamps that are drawn keep the order of the screen, whatever the order in which they were chosen`.
 - `two places whose casillas would come near are taken in as one place`.
-- `the casillas of one place stand at the same height and move along the screen only`.
+- `the casillas of one place keep the height of their point and move along the screen only`.
+- `«+N» stands at the mean height of the stamps it hides`.
 - `«+N» is the last casilla of its place and counts at least two stamps`.
 - `the list of a «+N» holds every stamp of the place, the drawn ones too`.
 
@@ -3292,6 +3185,7 @@ Fuentes:
 - `in 02-03 no piece label, floor name or stamp of the map overlaps another after the four tests` (el parche; «Con animaciones»).
 - `in 02-03 the three stamps of laptop-lucia stand in a fan 25 px apart and no «+N» is drawn`.
 - `in 02-03 a fourth stamp at laptop-lucia turns the last casilla into «+2», and hovering it lists the four`.
+- `in 02-03 the packet label of a hidden stamp is not drawn on the still map, and its text is in the list of «+2»`.
 - `in 02-03 the list of «+2» opens with the keyboard focus and Escape gives the focus back`.
 - `in 02-03 a tap on «+2» pins the list and a tap outside releases it` (contexto con `hasTouch`).
 - `in 02-03 the click lands on the stamp under the pointer, on «+2» over the fan, and on the visible strip of each stamp`: `elementFromPoint` en la franja visible (unos 4 px a la izquierda del centro de cada sello que no es el último).
@@ -3310,7 +3204,7 @@ Fuentes:
   - `stamps on the same point spread apart along the screen, the rest stay` y `keeps each spread stamp on its own side of the screen, whatever the order of the points` se vuelven a correr; cambian solo si fallan.
 - `src/scene/layout.test.ts`, el ayudante `terminalOnMap` llama a `spreadStamps`: pasa a la función nueva sin vecinos. Lo usan los `describe` `the terminal card in the office with no outside drawn` y `the terminal card in the office with the outside drawn`. Con los sellos más juntos, el número que fija `at 1280×800 the terminal of Casa de Lucía, 495 px tall because its title takes two lines, is 6 px too tall for the free strip: it covers the bottom of the lost stamps and no label` puede cambiar (por confirmar). Si cambia, se informa antes de editarlo.
 - `src/scene/layout.test.ts`, los `describe` `the labels of packets that share a place` y `the labels of packets and the floor names`: sus llamadas a `spreadTags(paths, names)` pasan a la firma con obstáculos (mecánico; los nombres no cambian).
-- `tests/e2e/map-boxes.ts`, `pairsThatOverlap` y `overlappingPairs` (el cambio de significado: dejan pasar sello con sello de la misma fila). Los llaman, sin editarse:
+- `tests/e2e/map-boxes.ts`, `pairsThatOverlap` y `overlappingPairs` (el cambio de significado: dejan pasar sello con sello del mismo abanico). Los llaman, sin editarse:
   - `tests/e2e/chapter-1/chapter-1.spec.ts`: `in 01-01 the open card of the printer covers none of the pieces the player compares`, `in 01-02 the open terminal covers neither the printer, nor laptop-marta, nor the packet once sent`, `in 05 the warning for 192.168.1.50 appears at your own laptop and does not travel`, `after the pings of 08, no label or stamp overlaps, and the lost ping says why`, `in 01-09 and 01-10 no label or stamp of the map overlaps once the player has sent its messages`, `in 01-10, before the traceroute, no label or stamp of the map overlaps, and the lost ping stands just outside tu-laptop` y `in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps`.
   - `tests/e2e/incidents.spec.ts`: `an intrusion shows its alert inside the label of the device, and no label or stamp overlaps` y `labels and stamps do not overlap, and the open card does not cover its Security Group`. Estas dos son las del 04-01: sus dos envíos vivos terminan, con casi toda seguridad, en un grupo de 2 sellos en `servidor2` (paso 1d).
   - `tests/e2e/chapter-2/chapter-2.spec.ts`, por `expectClear` (que usa `pairsThatOverlap`): `in 02-01 no piece label, floor name, stamp or packet label of the still map overlaps another`, `in 02-02 no piece label, floor name, stamp or packet label of the still map overlaps another once the labels say TCP and both ports`, `in 02-04 no piece label, floor name or name of the outline of the still map overlaps another, with only your laptop inside, with the printer too and with laptop-andres too`, `after the pings of 02-07, no label or stamp overlaps` e `in 02-09 and 02-10 no label or stamp overlaps`. Sus nombres no cambian: la guía de la carpeta explica qué deja pasar el ayudante.
@@ -3330,7 +3224,7 @@ Fuentes:
 - Sin `StampIcon` para «+N»: la lista de íconos de `#/entidades` no crece (en la Tarea 21 creció de 24 a 33 y movió la captura de la interfaz).
 
 **Cambios visibles de los capítulos 1 y 4** (están en «Cambios visibles»; los números salen del paso 4 bis y van en el cuerpo del commit).
-- **Los grupos de 2 o más sellos en un lugar** pasan de 43 px de paso a 25: cada sello tapa 7 px del aro del vecino y el de más a la derecha queda encima. Ningún mapa cambia de tamaño. El signo de cada sello se ve entero.
+- **Los grupos de 2 o más sellos en un lugar** pasan de 43 px de paso a 25: cada sello tapa 7 px del aro del vecino y el de más a la derecha queda encima. Cada sello queda a la altura de su punto (hasta unos 14 px más arriba o más abajo que el vecino; decidida 54). Ningún mapa cambia de tamaño. El signo de cada sello se ve entero.
 - **Capítulo 4.** El 04-01 y el 04-02 dibujan siempre dos envíos vivos y los dos terminan en `servidor2`: el grupo de 2 se ve más junto (por medir en el paso 1d).
 - **Capítulo 1.** Los incidentes con 2 o más sellos juntos: los TTL altos del 01-09 que terminan en el servidor, los envíos repetidos a un mismo destino del 01-08 al 01-10, los casos del 01-14 y los flujos del 01-12 y del 01-13 si terminan cerca (por medir en el paso 4 bis).
 - **«+N»** aparece donde un lugar ya no cabe entre sus etiquetas vecinas. Si el paso 4 bis dice que algún incidente de los capítulos 1 o 4 lo produce, se lista aquí con su incidente.
@@ -3368,13 +3262,13 @@ El cuerpo del commit 3 lista las pruebas existentes que cambió, el caso de capt
 **Lo que no se pudo verificar.**
 - Nada de esto se corrió. El 36,1 px de la caja girada, el solape de 11,1 px y la altura de proyección `√(2/3)` son cálculo, no medida: el paso 1 los mide.
 - El modelo del ancho depende de las fuentes de la máquina del estudiante. «Se ven los 3» en el 02-03 tiene 6,4 px de holgura: con otra fuente podría ser «2 y +2». La prueba que compara el modelo con el DOM lo detecta, pero esa máquina es la única medida.
-- Que mover una etiqueta de paquete solo en horizontal libre al 02-05 y al primer par del 02-08 no está medido (hallazgo 2).
+- Que mover una etiqueta de paquete solo en horizontal libre al 02-05 y al primer par del 02-08 no está medido (hallazgo 2); cuánto tiene que subir o bajar si no basta lo mide el paso 2, que fija el tope (decidida 55).
 - Que el 04-01 y el 04-02 formen un grupo de 2 en `servidor2` es probable, no medido. Qué lugares de los capítulos 1 y 4 llegan a «+N» no se calculó.
 - Si algún incidente registrado esconde un sello de problema con todas sus combinaciones: lo dice el centinela, que no se corrió.
 - El mecanismo de capas de `Html` (el sello al frente, «+N» encima) no se probó; es cálculo.
 - «+10» a «+99» a 14 px: solo «+10» está medido. «+100» no cabe (extrapolado).
 - El pasillo del resolver (donde la decidida 48 pone el sello de cada consulta) no se midió; lo mide el paso 1c cuando exista el incidente.
-- Que la altura de cada sello sea la de su lugar (la afirmación de la página) no vale en un grupo encadenado: O-9.
+- La escalera de unos 14 px (decidida 54), su efecto sobre el pasillo y sobre la tolerancia del ayudante, y la altura del «+N» (la media de los sellos que esconde) no se midieron: el paso 1 y la salvaguarda lo deciden.
 - El zoom del jugador, el borde del mapa y el ancho máximo del abanico no están modelados.
 - `layout.test.ts` y las e2e que se listan como «por confirmar» no se corrieron: la lista puede ser más larga o más corta.
 
@@ -3536,6 +3430,8 @@ El cuerpo del commit 3 lista las pruebas existentes que cambió, el caso de capt
 
 **Revisión de los textos del bloque 6** (14) por un revisor `sonnet` (ver «Contenido»).
 
+**La página de las decididas «para revisar»** (regla del umbral, 2026-10-12). Antes de que el estudiante juegue el capítulo, el orquestador junta todas las entradas de «Decididas sin el estudiante (para revisar)» en una sola página, para que las revise de una vez. Por entrada: la decisión, el porqué, qué cambia para el jugador si el estudiante elige otra y qué tarea la aplica. Las entradas visuales (50, 52, 53, 54 y 55, entre otras) llevan capturas reales del capítulo ya construido y no dibujos calculados (regla del estudiante «Elecciones visuales con prototipos renderizados»). Las que se apartan de una página publicada (50 y 53) van marcadas. Lo que el estudiante cambie se agrega a la tarea que lo aplica o al backlog. La página la publica el orquestador; no es un archivo de código y no se commitea.
+
 **Prueba humana del capítulo entero** (única; D-15 = B, 2026-10-11). El estudiante la hace con su propio servidor al terminar esta tarea: juega los catorce de seguido y entra después al capítulo 4, y dice si algún mensaje lo pierde. Las Tareas 34 y 35 no se detienen a esperarla; lo que anote se agrega al backlog. Comprueba, por bloque:
 1. **Bloque 1 · 01 y 02.** (a) Si el 01 y el 02 se sienten pesados (seis términos cada uno; D-17); (b) si la caja separa bien el ping del `nc`; (c) si «cliente y servidor» se entiende como roles; (d) si el saludo de tres pasos y los puertos invertidos se leen. (La pregunta sobre `tcp` en la salida de `nc` antes del 02 ya no aplica: D-5.)
 2. **Bloque 2 · 03, 04 y 05.** (a) Si el 03 se siente pesado (tres causas; D-17); (b) si el rechazo y el silencio se distinguen en el mapa y en la caja; (c) si la tarjeta «Servicios de laptop-lucia» se encuentra; (d) si el 04 sin viaje se entiende (D-6) y si la fila de bits, las bandejas y el contorno ayudan; (e) si «`0.0.0.0/0` es cualquier origen» queda claro en el 05; (f) si las fichas de rango de puertos se entienden.
@@ -3556,7 +3452,7 @@ El cuerpo del commit 3 lista las pruebas existentes que cambió, el caso de capt
 - `the roadmap lists the fourteen incidents of chapter 2 with their stars`.
 - `04-01 opens after 02-14 has a star`.
 - Dentro de «Sin animaciones»: `in 02-07 the map and its labels fit the area at full size`.
-- `in 02-09 and 02-10 no label or stamp overlaps` existe para el 02-09 (Tarea 28). Esta tarea suma a la misma prueba, con el mismo nombre, los estados del 02-10: sin nada enviado, tras el `dig`, tras un `ping` por nombre y tras los dos. Con el ayudante de la Tarea 28 quinquies deja pasar sello con sello de la misma fila y falla sello contra etiqueta. Además cuenta: los sellos que se ven más los que cuenta cada «+N» son los envíos (la consulta de cada `ping` por nombre es un sello más del resolver, decidida 48).
+- `in 02-09 and 02-10 no label or stamp overlaps` existe para el 02-09 (Tarea 28). Esta tarea suma a la misma prueba, con el mismo nombre, los estados del 02-10: sin nada enviado, tras el `dig`, tras un `ping` por nombre y tras los dos. Con el ayudante de la Tarea 28 quinquies deja pasar sello con sello del mismo abanico y falla sello contra etiqueta. Además cuenta: los sellos que se ven más los que cuenta cada «+N» son los envíos (la consulta de cada `ping` por nombre es un sello más del resolver, decidida 48).
 - `in 02-14 case 1 no label or stamp overlaps after the dig, the ping and the nc by name` (llega a 3 sellos en el resolver, un lugar que O-4 no midió; los que no caben pasan al sello «+N» y la prueba cuenta los que se ven). El centinela de la 28 quinquies (`in no registered incident does sending every combination its chips offer hide a stamp with a problem in «+N»`) recorre también los incidentes del capítulo 2 que existan entonces; los estados del 02-10 al 02-14 los suma esta tarea a ese recorrido si el incidente ofrece más combinaciones de las que el centinela ve.
 - `in 02-07 and 02-08 the inspection box of a piece covers no open card, at 1280×800 and at 1440×900`.
 - `the cards of tables, output and services cover no piece of the map`.
