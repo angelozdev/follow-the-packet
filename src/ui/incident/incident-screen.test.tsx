@@ -553,6 +553,64 @@ describe('the inspection box steps aside from an open card', () => {
     expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
   });
 
+  it('the reason is written when a piece is inspected and the card takes both places', async () => {
+    drawTheMap(OVER_BOTH);
+    const user = userEvent.setup();
+    renderFirst();
+    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'no card is open, so nothing to explain').toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectPinHelp), 'with no card the grey help promises the pinned box').toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+
+    const reason = screen.getByText(SCREEN_TEXT.noRoomForTheBox);
+    expect(reason, 'a note, in the side panel, right under the card of Lucía').toHaveClass('message--note');
+    expect(reason.closest('.incident__side')).not.toBeNull();
+    expect(reason.previousElementSibling).toBe(screen.getByRole('region', { name: /Lucía/ }));
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    expect(screen.queryByText(SCREEN_TEXT.inspectPinHelp), 'with a card open the grey help no longer promises the pinned box').toBeNull();
+
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    await user.unhover(screen.getByRole('button', { name: LOCKED_SERVER }));
+
+    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox), 'it stays while the card is open, so it does not blink').toBeInTheDocument();
+
+    await user.click(within(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).getByRole('button', { name: TASK_CARD_TEXT.done }));
+
+    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'it goes with the card').toBeNull();
+  });
+
+  it('the reason is written at a hover that finds no room, with no click on a piece', async () => {
+    drawTheMap(DOCKED_AT_THE_LEFT);
+    const user = userEvent.setup();
+    renderFirst();
+    await openTheCardAndLetGoOfItsBox(user);
+    await moveTheCardTo(OVER_BOTH);
+
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox)).toBeInTheDocument();
+  });
+
+  it('no reason is written while the card leaves a place free, and it goes when the card moves away and the box shows', async () => {
+    drawTheMap(DOCKED_AT_THE_LEFT);
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox)).toBeNull();
+
+    await moveTheCardTo(OVER_BOTH);
+    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox)).toBeInTheDocument();
+
+    await moveTheCardTo(FAR_FROM_BOTH);
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+
+    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
+    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'the card no longer takes the place, so the reason is no longer true').toBeNull();
+  });
+
   it('the place does not change from one piece to the next while the card stays', async () => {
     drawTheMap(OVER_THE_TOP_OF_THE_TALLEST_BOX);
     const user = userEvent.setup();

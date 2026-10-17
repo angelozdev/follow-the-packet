@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { INSPECTION_TEXT, TERMS } from '@/copy';
+import { INSPECTION_TEXT, SCREEN_TEXT, TERMS } from '@/copy';
 import { cardProblems, cardsOutsideTheMap, inspectionBoxOverCards, isReachable, reachWithWheel } from './card-boxes';
 import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
 import { IP, LOST_TO_OTHER_OFFICE, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
@@ -28,7 +28,7 @@ import {
   placeInBin,
 } from '@e2e/chapter-2/chapter-2-play';
 import { collectErrors } from './console-errors';
-import type { Area } from './map-boxes';
+import { overlaps, type Area } from './map-boxes';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 import { freezeTime, standStill, stepFrame } from './still-scene';
 
@@ -893,6 +893,10 @@ test('with a card open and no room beside it, a hover shows no box and a pinned 
   await standStill(page);
 
   await expect(box, 'the terminal takes both places, so a hover shows no box').toHaveCount(0);
+  const reason = page.getByText(SCREEN_TEXT.noRoomForTheBox);
+  await expect(reason, 'the reason is written in the side panel').toBeVisible();
+  expect(overlaps(await areaOf(reason), await areaOf(terminal)), 'and no card of the map covers it').toBe(false);
+  await expect(page.getByText(SCREEN_TEXT.inspectPinHelp), 'the grey help no longer promises the pinned box').toHaveCount(0);
 
   await piece.click();
   await standStill(page);
@@ -900,4 +904,5 @@ test('with a card open and no room beside it, a hover shows no box and a pinned 
   await expect(box, 'a click shows no box either: the pin is released').toHaveCount(0);
   await expect(piece, 'and the piece wears no pin').not.toHaveAttribute(PINNED_MARK);
   await expect(terminal, 'the terminal stays open').toBeVisible();
+  await expect(reason, 'and the reason stays while the card does').toBeVisible();
 });

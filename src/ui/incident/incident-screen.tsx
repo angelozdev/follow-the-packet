@@ -1,6 +1,6 @@
 import { useReducer, useState } from 'react';
-import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
-import { Button } from '@/design';
+import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
+import { Button, Message } from '@/design';
 import { caseCard, caseSummary, classifiedBlock, clockSteps, countStars, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
@@ -33,7 +33,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const piece = playing && cardPieceId ? pieceCard(session, cardPieceId) : null;
-  const { inspection, pinned, trigger, release, heading, holder, watchTheMap } = useInspection(session, opensCard, card !== null || piece !== null);
+  const cardOpen = card !== null || piece !== null;
+  const { inspection, pinned, noRoom, trigger, release, heading, holder, watchTheMap } = useInspection(session, opensCard, cardOpen);
   const origins = piece?.tabs.find((tab) => tab.id === 'terminal')?.card.origins;
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -101,13 +102,26 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           <InspectionBox inspection={inspection} pinned={pinned} heading={heading} onClose={release} />
         ) : (
           <>
-            <p className="muted">{SCREEN_TEXT.inspectHelp}</p>
+            <p className="muted">
+              {SCREEN_TEXT.inspectHelp}
+              {!cardOpen && (
+                <>
+                  {' '}
+                  <span>{SCREEN_TEXT.inspectPinHelp}</span>
+                </>
+              )}
+            </p>
             <p className="muted">{SCREEN_TEXT.stampLegend}</p>
           </>
         )}
       </div>
       <aside className="incident__side">
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
+        {noRoom && (
+          <Message variant="note" words={MESSAGE_TEXT} role="status">
+            {SCREEN_TEXT.noRoomForTheBox}
+          </Message>
+        )}
         {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
         {caseOnCard && (
           <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
