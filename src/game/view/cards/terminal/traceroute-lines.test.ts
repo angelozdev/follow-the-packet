@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
+import { ROUTE_DEFAULT, applyAction } from '@/engine';
 import { unknownTerms } from '@/levels/ladder';
 import { EVERY_TERM, OFFICE_FLOORS, routedSendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
@@ -15,7 +16,7 @@ const without = (session: Session, ...terms: TermId[]): Session => ({ ...session
 const drawing = (session: Session, ...ids: string[]): Session => ({ ...session, incident: { ...session.incident, shown: ids } });
 const hop = (number: number, address: string, time: string | null = null, mark: string | null = null): RouteLine => ({ hop: number, address, time, mark });
 const STAR = (number: number) => hop(number, '*');
-const NOTE = { silent: '«*» es un salto que no contestó a tiempo.', times: 'Los tiempos son cifras de ejemplo.' };
+const NOTE = { silent: '«*» es un salto que no contestó a tiempo.', net: '«!N»: el equipo con esa IP avisó que no pudo llegar a la red de destino.', times: 'Los tiempos son cifras de ejemplo.' };
 
 describe('tracerouteLines', () => {
   it('a traceroute lists its hops with the IP and the time, and a star for a silent hop', () => {
@@ -53,6 +54,22 @@ describe('tracerouteLines', () => {
     expect(router?.lines.at(-1)).toEqual(hop(4, '203.0.113.2', '44 ms', '!H'));
     expect(router?.lines).toHaveLength(4);
     expect(router?.notes).toEqual([own?.notes[0], NOTE.times]);
+  });
+
+  it('ends at a router with no route with its mark and a note in plain words, whether or not net-unreachable is known, and the note names no host', () => {
+    const withoutDefaultRoute: Session = { ...start, world: applyAction(start.world, { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT }) };
+    for (const session of [withoutDefaultRoute, without(withoutDefaultRoute, 'net-unreachable')]) {
+      const view = linesOf(sent(session, 'server'), 'server');
+      expect(view?.lines.at(-1)).toMatchObject({ address: '192.168.1.1', mark: '!N' });
+      expect(view?.notes).toContain(NOTE.net);
+    }
+    expect(NOTE.net).not.toMatch(/host|dispositivo/i);
+  });
+
+  it('shows the line of a router with no route as a star until the first warning term is known, as for any other warning', () => {
+    const withoutDefaultRoute: Session = { ...start, world: applyAction(start.world, { type: 'removeRoute', routerId: officeRouter.id, to: ROUTE_DEFAULT }) };
+    const view = linesOf(sent(without(withoutDefaultRoute, 'net-unreachable', 'host-unreachable'), 'server'), 'server');
+    expect(view?.lines.at(-1)).toEqual(STAR(2));
   });
 
   it('shows the time only once the term RTT is known, and then says that the figures are examples', () => {

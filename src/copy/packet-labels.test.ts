@@ -68,10 +68,10 @@ describe('packet labels', () => {
     expect(label).not.toMatch(/windows|linux|macos|arp|destination|unreachable|time exceeded|ttl|icmp|router/i);
   });
 
-  it('names each notice by its term, and a net unreachable by the host one, which shares its ICMP type', () => {
+  it('names each notice by its term, and a net unreachable by none until its own term is known', () => {
     const from = device('your-laptop');
     expect(warningOf({ kind: 'host-unreachable', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'host-unreachable' });
-    expect(warningOf({ kind: 'net-unreachable', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'host-unreachable' });
+    expect(warningOf({ kind: 'net-unreachable', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: null });
     expect(warningOf({ kind: 'time-exceeded', fromId: 'router-office', fromIp: '192.168.1.1' }, { from })).toMatchObject({ term: 'time-exceeded' });
   });
 
@@ -322,12 +322,12 @@ describe('the warning of a trace', () => {
     expect(warningOf(routed.notice!, { from }).by).toBe('router');
   });
 
-  it('names the warning of a router with no route Destination Net Unreachable once that term is known, and Destination Host Unreachable before', () => {
+  it('names the warning of a router with no route Destination Net Unreachable once that term is known, and by no term before', () => {
     const trace = simulate(noRoutes(), ping(you, OFFICE_FLOORS.server.ip));
     expect(trace.notice).toMatchObject({ kind: 'net-unreachable', fromId: OFFICE_FLOORS.officeRouter.id });
     expect(warningOf(trace.notice!, { from }, EVERY_TERM)).toEqual({ term: 'net-unreachable', by: 'router' });
-    expect(warningOf(trace.notice!, { from }, withoutTerms('net-unreachable'))).toEqual({ term: 'host-unreachable', by: 'router' });
-    expect(warningOf(trace.notice!, { from })).toEqual({ term: 'host-unreachable', by: 'router' });
+    expect(warningOf(trace.notice!, { from }, withoutTerms('net-unreachable'))).toEqual({ term: null, by: 'router' });
+    expect(warningOf(trace.notice!, { from })).toEqual({ term: null, by: 'router' });
     const noHost = simulate(officeTwoFloorsNet(), ping(you, OFFICE_FLOORS.server.nobody));
     expect(noHost.notice?.kind).toBe('host-unreachable');
     expect(warningOf(noHost.notice!, { from }, EVERY_TERM).term).toBe('host-unreachable');

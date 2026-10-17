@@ -175,12 +175,13 @@ function warning(term: TermId): HiddenCause {
   return { term, text: NOT_DELIVERED };
 }
 
-/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination; a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected; a packet from outside that no row or forward takes says that nothing came back, and one that a forward or a row delivers says only that it arrived at the device. */
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination, and is hidden by the term of its own kind (a router with no route by net-unreachable, never by host-unreachable); a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected; a packet from outside that no row or forward takes says that nothing came back, and one that a forward or a row delivers says only that it arrived at the device. */
 function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
   switch (reason.code) {
     case 'forward-no-owner':
       return warning('host-unreachable');
     case 'forward-no-route':
+      return reason.warns ? warning('net-unreachable') : null;
     case 'forward-no-host':
       return reason.warns ? warning('host-unreachable') : null;
     case 'forward-ttl-exceeded':

@@ -235,7 +235,7 @@ const HIDDEN_CAUSES: [Reason, TermId, string][] = [
   [dropAt('firewall-out-drop', 'security-group'), 'security-group', NOTHING_CAME_BACK],
   [{ code: 'host-ignores-echo', deviceId: 'servidor2' }, 'icmp-echo-ignore-all', NOTHING_CAME_BACK],
   [{ code: 'forward-no-owner', deviceId: 'your-laptop', ip: floor1.nobody, viaGateway: false }, 'host-unreachable', NOT_DELIVERED],
-  [{ code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true }, 'host-unreachable', NOT_DELIVERED],
+  [{ code: 'forward-no-route', routerId: provider.id, ip: '8.8.8.8', warns: true }, 'net-unreachable', NOT_DELIVERED],
   [{ code: 'forward-no-host', routerId: OFFICE_FLOORS.backbone.id, ip: '198.51.100.77', warns: true }, 'host-unreachable', NOT_DELIVERED],
   [{ code: 'forward-ttl-exceeded', routerId: provider.id, ip: provider.towardOffice }, 'time-exceeded', NOT_DELIVERED],
 ];

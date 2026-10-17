@@ -1,11 +1,11 @@
-import type { TermId } from '@/copy';
+import { FIRST_WARNING_TERM, type TermId } from '@/copy';
 import type { Network, Router, TracerouteLine } from '@/engine';
 import type { Session } from '@/game/session';
 
-/** Returns the IP that answered when the player can see the answer: the destination always, and a warning once its term is known; an unknown warning is seen as a hop nobody answered. */
+/** Returns the IP that answered when the player can see the answer: the destination always, and a warning once its term is known (a router with no route, which has no term of its own, once the first warning term is known); an unknown warning is seen as a hop nobody answered. */
 export function visibleIp(line: TracerouteLine, known: ReadonlySet<TermId>): string | undefined {
   if (line.reached) return line.ip;
-  const warning: TermId = line.unreachable ? 'host-unreachable' : 'time-exceeded';
+  const warning: TermId = line.unreachable ? FIRST_WARNING_TERM : 'time-exceeded';
   return known.has(warning) ? line.ip : undefined;
 }
 

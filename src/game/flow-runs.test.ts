@@ -76,9 +76,9 @@ describe('the warning a run shows', () => {
   const withoutRoutes = applyAction(WORLD, { type: 'removeRoute', routerId: OFFICE_FLOORS.officeRouter.id, to: ROUTE_DEFAULT });
   const toServer = (known: ReadonlySet<TermId>) => sendPacket(withoutRoutes, NAMES, { type: 'sendPacket', fromId: 'you', toId: 'server', messageId: 'ping' }, 1, known);
 
-  it('a router with no route is named Destination Net Unreachable by the run once that term is known, and Destination Host Unreachable before', () => {
+  it('a router with no route is named Destination Net Unreachable by the run once that term is known, and by no term before', () => {
     expect(toServer(EVERY_TERM)?.warning).toEqual({ term: 'net-unreachable', by: 'router' });
-    expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable')))?.warning).toEqual({ term: 'host-unreachable', by: 'router' });
+    expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable')))?.warning).toEqual({ term: null, by: 'router' });
     expect(toServer(new Set([...EVERY_TERM].filter((term) => term !== 'net-unreachable' && term !== 'host-unreachable')))?.warning).toBeNull();
   });
 });

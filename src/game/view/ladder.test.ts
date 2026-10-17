@@ -183,8 +183,8 @@ describe('the terms of a player who has finished a later chapter', () => {
     expect(labelsOf(toServer).filter((label) => CHAPTER_2_FIELDS.test(label))).toHaveLength(4);
   });
 
-  it('a router with no route is named Destination Host Unreachable on 01-08 after chapter 2 too, and Destination Net Unreachable only with the term', () => {
-    expect(warningOfTheTrip(again)).toEqual({ term: 'host-unreachable', by: 'router' });
+  it('a router with no route is said in plain words on 01-08 after chapter 2 too, and named Destination Net Unreachable only with the term', () => {
+    expect(warningOfTheTrip(again)).toEqual({ term: null, by: 'router' });
     expect(warningOfTheTrip({ ...again, known: EVERY_TERM })).toEqual({ term: 'net-unreachable', by: 'router' });
   });
 });

@@ -444,7 +444,7 @@ describe('a warning that comes back to the sender', () => {
     expect(warnings(CHAPTER_1_TERMS)).toEqual({
       own: { term: 'host-unreachable', by: 'sender' },
       expired: { term: 'time-exceeded', by: 'router' },
-      'no-route': { term: 'host-unreachable', by: 'router' },
+      'no-route': { term: null, by: 'router' },
       silent: null,
       answered: null,
     });

@@ -267,14 +267,14 @@ describe('entity terms', () => {
     expect(TERM_ENTITY.device).toEqual({ kind: 'device', variant: 'laptop' });
   });
 
-  it('every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded', () => {
+  it('every packet variant is named by a term or by none, and the warnings are named by host-unreachable and time-exceeded, and a router with no route by none until net-unreachable is known', () => {
     expect(Object.keys(ENTITY_TERMS.packet).sort()).toEqual(['echo-reply', 'echo-request', 'tcp-reply', 'tcp-request', 'udp-reply', 'udp-request', 'warning']);
     for (const term of Object.values(ENTITY_TERMS.packet)) expect(term === null || isTermId(term)).toBe(true);
     expect(entityTerm({ kind: 'packet', variant: 'warning' })).toBeNull();
     const from = { kind: 'device', id: 'your-laptop' } as const;
     const named = (['host-unreachable', 'net-unreachable', 'time-exceeded'] as const).map((kind) => warningOf({ kind, fromId: 'router', fromIp: '192.168.1.1' }, { from }).term);
-    expect(named).toEqual(['host-unreachable', 'host-unreachable', 'time-exceeded']);
-    for (const term of new Set(named)) expect(TERM_ENTITY[term]).toEqual({ kind: 'packet', variant: 'warning' });
+    expect(named).toEqual(['host-unreachable', null, 'time-exceeded']);
+    for (const term of new Set(named)) if (term !== null) expect(TERM_ENTITY[term]).toEqual({ kind: 'packet', variant: 'warning' });
   });
 
   it('a warning is never an intruder: only the messages a sender sends are listed as an intruder too', () => {

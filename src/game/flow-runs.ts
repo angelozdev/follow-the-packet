@@ -1,4 +1,4 @@
-import { entityTerm, packetLabel, packetPortLabels, tracerouteLabel, warningOf, type PacketPorts, type TermId, type TermText, type Warning } from '@/copy';
+import { FIRST_WARNING_TERM, entityTerm, packetLabel, packetPortLabels, tracerouteLabel, warningOf, type PacketPorts, type TermId, type TermText, type Warning } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, facesALan, reachesHost, simulate, simulateSequence, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
 import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
@@ -75,11 +75,11 @@ function firewallKnown(step: Step, known: ReadonlySet<TermId>): boolean {
   return term === null || known.has(term);
 }
 
-/** Returns the warning that came back to the sender when the player knows its term, else null: an unknown term hides the warning, and the packet is seen as one that nobody answered. Only the look changes; the outcome, `by` and the trace are those of the engine. */
+/** Returns the warning that came back to the sender when the player knows its term, else null: an unknown term hides the warning, and the packet is seen as one that nobody answered. A warning with no term (a router with no route, until net-unreachable is known) is hidden until the first warning term is known, and then seen and told in plain words. Only the look changes; the outcome, `by` and the trace are those of the engine. */
 function visibleWarning(packet: PacketSpec, trace: Trace, known: ReadonlySet<TermId>): Warning | null {
   if (!trace.notice) return null;
   const warning = warningOf(trace.notice, packet, known);
-  return known.has(warning.term) ? warning : null;
+  return known.has(warning.term ?? FIRST_WARNING_TERM) ? warning : null;
 }
 
 const LOCAL_ERRORS: ReadonlySet<Outcome> = new Set(['invalid-address', 'unresolved', 'no-route']);
