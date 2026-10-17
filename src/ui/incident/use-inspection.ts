@@ -1,16 +1,26 @@
-import { useMergedRef } from '@mantine/hooks';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useMergedRef, useMutationObserver } from '@mantine/hooks';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { inspect, type Session } from '@/game';
-import { MAP_MARKS } from '@/scene';
+import { MAP_CARD, MAP_MARKS } from '@/scene';
 import { useFloatingBox } from '@/ui/floating-box/use-floating-box';
+import { inspectionPlace, type InspectionPlace } from './inspection-place';
 import { inspectionRoom, type Edges } from './inspection-room';
 
 const BODY = '.card__body';
+const MAP = '.incident__map';
 const ROOM = '--inspection-room';
+const PLACE = 'data-place';
 const SCOPE = 'inspection';
+const TALLEST_SHARE = 0.45;
+const WATCHED: MutationObserverInit = { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] };
 
-/** Returns what the inspection box shows (the inspection of the piece or the stamp on display, or null), whether it is pinned, the props of the trigger of a piece id, how to release the box, the ref of the box's heading and the props of the element that holds the box. It is the floating box of `useFloatingBox` over the inspections of the session: a piece whose inspection no longer exists is released. A pin from the keyboard moves the focus to the heading of the box, unless `opensCard` says, at the moment of the pin, that the same click opens a card, which keeps the focus: the decision is taken once, when the pin happens, and used once, so a later change of phase never moves the focus. Each time the box shows another piece, and before the browser draws it, the height it may take is capped by the lowest mark of the map that lies over it (`inspectionRoom`), so it covers no label, stamp or floor name of the map as the player first sees it; what does not fit scrolls. The holder says when the body of the box has more text than it shows (`data-scrolls`): only then does the box take the mouse, pinned or not, so one that fits never stands between the pointer and the label under it. */
-export function useInspection(session: Session, opensCard: (pieceId: string) => boolean) {
+function edgesOf(target: Element): Edges {
+  const { left, right, bottom } = target.getBoundingClientRect();
+  return { left, right, bottom };
+}
+
+/** Returns what the inspection box shows (the inspection of the piece or the stamp on display, or null), whether it is pinned, the props of the trigger of a piece id, how to release the box, the ref of the box's heading, the ref callback that the map takes so the hook watches it (`useMutationObserver` of `@mantine/hooks`) and the props of the element that holds the box. It is the floating box of `useFloatingBox` over the inspections of the session: a piece whose inspection no longer exists is released. A pin from the keyboard moves the focus to the heading of the box, unless `opensCard` says, at the moment of the pin, that the same click opens a card, which keeps the focus: the decision is taken once, when the pin happens, and used once, so a later change of phase never moves the focus. `cardAsked` says that the screen has asked for a card to open. The box never covers a card of the map: it has two places, the bottom right corner of the map, where it opens, and the bottom left one (`inspectionPlace`), and it takes the one that stays clear of the card (`MAP_CARD`) that is open, written as `data-place` on the holder. It looks at the map instead of being told: a mutation observer on the map fires when the card appears, changes tab, height or side, or when the camera moves it, and the holder is arranged right then, before the browser draws, so no frame shows the box over the card; a box that lies over the card in the place it has moves to the other, and when neither place is free a preview is not drawn and a pinned box is released. The box of the click that opens a card waits, hidden (`data-hold`), until the card is in the map and measured. Each time the box shows another piece or changes place, and before the browser draws it, the height it may take is capped by the lowest mark of the map that lies over it in its place (`inspectionRoom`), so it covers no label, stamp or floor name of the map as the player first sees it; what does not fit scrolls. Under 901 px the box is a block under the map and none of this applies. The holder says when the body of the box has more text than it shows (`data-scrolls`): only then does the box take the mouse, pinned or not, so one that fits never stands between the pointer and the label under it. */
+export function useInspection(session: Session, opensCard: (pieceId: string) => boolean, cardAsked: boolean) {
   const focusOnPin = useRef<string | null>(null);
   const box = useFloatingBox<string>(SCOPE, {
     onPin: (key, fromKeyboard) => {
@@ -19,23 +29,57 @@ export function useInspection(session: Session, opensCard: (pieceId: string) => 
   });
   const { shown, pinned, release } = box;
   const [scrolls, setScrolls] = useState(false);
+  const [place, setPlace] = useState<InspectionPlace | null>('right');
+  const [cardDrawn, setCardDrawn] = useState(false);
   const watched = useRef<HTMLDivElement>(null);
+  const latest = useRef({ shown, pinned, asked: cardAsked, release });
+  const placed = useRef<InspectionPlace | null>(null);
+  const capped = useRef<{ key: string | null; place: InspectionPlace | null }>({ key: null, place: null });
   const heading = useRef<HTMLHeadingElement>(null);
   const holderRef = useMergedRef<HTMLDivElement>(box.box.ref, watched);
   const inspection = shown === null ? null : inspect(session, shown);
   const gone = shown !== null && inspection === null;
 
+  const arrange = useCallback(() => {
+    const holder = watched.current;
+    const map = holder?.parentElement?.querySelector(MAP);
+    if (!holder || !map) return;
+    const card = map.querySelector(MAP_CARD);
+    setCardDrawn(card !== null);
+    const { shown: key, pinned: isPinned, release: letGo } = latest.current;
+    const mapFrame = map.getBoundingClientRect();
+    const own = holder.getBoundingClientRect();
+    const underTheMap = mapFrame.height > 0 && own.top >= mapFrame.bottom;
+    const chosen =
+      key === null || underTheMap
+        ? 'right'
+        : inspectionPlace({ map: mapFrame, width: own.width, tallest: TALLEST_SHARE * mapFrame.height, margin: mapFrame.bottom - own.bottom, card: card?.getBoundingClientRect() ?? null, current: placed.current });
+    placed.current = key === null ? null : chosen;
+    setPlace(chosen);
+    if (chosen === null) {
+      if (isPinned) letGo();
+      return;
+    }
+    holder.setAttribute(PLACE, chosen);
+    if (capped.current.key === key && capped.current.place === chosen) return;
+    capped.current = { key, place: chosen };
+    const room = inspectionRoom(edgesOf(holder), [...(holder.parentElement?.querySelectorAll(MAP_MARKS) ?? [])].map(edgesOf));
+    if (room === null) holder.style.removeProperty(ROOM);
+    else holder.style.setProperty(ROOM, `${room}px`);
+  }, []);
+  const onMapChange = useCallback(() => {
+    if (latest.current.shown !== null || latest.current.asked) arrange();
+    else setCardDrawn(watched.current?.parentElement?.querySelector(`${MAP} ${MAP_CARD}`) != null);
+  }, [arrange]);
+  const watchTheMap = useMutationObserver(onMapChange, WATCHED);
+
   useLayoutEffect(() => {
-    const element = watched.current;
-    if (element === null || element.parentElement === null) return;
-    const edgesOf = (target: Element): Edges => {
-      const { left, right, bottom } = target.getBoundingClientRect();
-      return { left, right, bottom };
-    };
-    const room = inspectionRoom(edgesOf(element), [...element.parentElement.querySelectorAll(MAP_MARKS)].map(edgesOf));
-    if (room === null) element.style.removeProperty(ROOM);
-    else element.style.setProperty(ROOM, `${room}px`);
-  }, [shown]);
+    latest.current = { shown, pinned, asked: cardAsked, release };
+  });
+
+  useLayoutEffect(() => {
+    arrange();
+  }, [arrange, shown, pinned, cardAsked]);
 
   useEffect(() => {
     const element = watched.current;
@@ -58,12 +102,15 @@ export function useInspection(session: Session, opensCard: (pieceId: string) => 
     heading.current?.focus();
   }, [pinned, shown]);
 
+  const drawn = place === null ? null : inspection;
+
   return {
-    inspection,
-    pinned: pinned && inspection !== null,
+    inspection: drawn,
+    pinned: pinned && drawn !== null,
     trigger: box.trigger,
     release,
     heading,
-    holder: { ref: holderRef, 'data-scrolls': scrolls ? true : undefined, onPointerEnter: box.box.onPointerEnter, onPointerLeave: box.box.onPointerLeave },
+    watchTheMap,
+    holder: { ref: holderRef, 'data-scrolls': scrolls ? true : undefined, 'data-hold': cardAsked && !cardDrawn && shown !== null ? true : undefined, onPointerEnter: box.box.onPointerEnter, onPointerLeave: box.box.onPointerLeave },
   };
 }

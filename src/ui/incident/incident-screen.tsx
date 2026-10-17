@@ -30,10 +30,10 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const opensCard = (pieceId: string) => playing && pieces.some((candidate) => candidate.id === pieceId && candidate.configurable);
-  const { inspection, pinned, trigger, release, heading, holder } = useInspection(session, opensCard);
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
   const piece = playing && cardPieceId ? pieceCard(session, cardPieceId) : null;
+  const { inspection, pinned, trigger, release, heading, holder, watchTheMap } = useInspection(session, opensCard, card !== null || piece !== null);
   const origins = piece?.tabs.find((tab) => tab.id === 'terminal')?.card.origins;
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -57,7 +57,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
 
   return (
     <main className="incident">
-      <div className="incident__map">
+      <div className="incident__map" ref={watchTheMap}>
         <header className="incident__bar">
           <Button variant="text" href="#/">
             {SCREEN_TEXT.back}

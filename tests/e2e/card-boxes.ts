@@ -156,6 +156,22 @@ export async function cardsOutsideTheMap(page: Page): Promise<string[]> {
   });
 }
 
+/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the map that it covers. */
+export async function inspectionBoxOverCards(page: Page): Promise<{ shown: boolean; covered: string[] }> {
+  return page.evaluate(() => {
+    const EPSILON = 0.5;
+    const box = document.querySelector('.incident__inspection > .card');
+    if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
+    const taken = box.getBoundingClientRect();
+    const covered = [...document.querySelectorAll('.map-card .card')].flatMap((card) => {
+      const { left, top, right, bottom } = card.getBoundingClientRect();
+      const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
+      return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the map'}`] : [];
+    });
+    return { shown: true, covered };
+  });
+}
+
 /** True when the element lies wholly in the window and is what a click lands on at its middle and at a quarter of its width from each side, so nothing covers it and no ancestor cuts it off. */
 export async function isReachable(page: Page, target: Locator): Promise<boolean> {
   const [box, viewport] = await Promise.all([target.boundingBox(), page.viewportSize()]);

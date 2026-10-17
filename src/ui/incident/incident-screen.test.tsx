@@ -7,6 +7,9 @@ import { INCIDENTS, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
+import type { Frame } from './inspection-place';
+
+const scene = vi.hoisted(() => ({ drawsItsCards: true }));
 
 vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
@@ -22,7 +25,7 @@ vi.mock('@/scene/game-scene', async () => {
             {toPlainText(flow.label)}
           </button>
         ))}
-        {overlay}
+        {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
       </div>
     ),
   };
@@ -79,9 +82,13 @@ async function tabTo(user: User, element: HTMLElement) {
   expect(element).toHaveFocus();
 }
 
+function firstScreen(onFinish = vi.fn()) {
+  return <IncidentScreen incidents={INCIDENTS} incidentId={FIRST.id} nextId="04-02" onFinish={onFinish} />;
+}
+
 function renderFirst() {
   const onFinish = vi.fn();
-  render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST.id} nextId="04-02" onFinish={onFinish} />);
+  render(firstScreen(onFinish));
   return onFinish;
 }
 
@@ -408,6 +415,157 @@ describe('a pinned inspection box whose piece is gone', () => {
     expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
     expect(screen.getByRole('region', { name: 'tu-laptop' })).not.toHaveTextContent(INSPECTION_TEXT.pinned);
+  });
+});
+
+describe('the inspection box steps aside from an open card', () => {
+  const MAP: Frame = { left: 0, top: 0, right: 1060, bottom: 900 };
+  const NOTHING: Frame = { left: 0, top: 0, right: 0, bottom: 0 };
+  const DOCKED_AT_THE_LEFT: Frame = { left: 6, top: 582, right: 306, bottom: 894 };
+  const AT_THE_RIGHT: Frame = { left: 535, top: 203, right: 835, bottom: 589 };
+  const OVER_THE_TOP_OF_THE_TALLEST_BOX: Frame = { left: 700, top: 300, right: 1000, bottom: 600 };
+  const FAR_FROM_BOTH: Frame = { left: 400, top: 100, right: 600, bottom: 300 };
+  const OVER_BOTH: Frame = { left: 300, top: 600, right: 700, bottom: 880 };
+  const BOX_BOTTOM = 884;
+  const BOX_LEFT = 692;
+  const BOX_WIDTH = 352;
+  const SHORT_BOX = 100;
+  const TALL_BOX = 300;
+  const MOVED = 'translate(1px, 1px)';
+  const rects: { card: Frame } = { card: NOTHING };
+
+  function domRect({ left, top, right, bottom }: Frame): DOMRect {
+    return { left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) };
+  }
+
+  function drawTheMap(card: Frame) {
+    rects.card = card;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this.matches('.incident__map')) return domRect(MAP);
+      if (this.matches('.map-card')) return domRect(rects.card);
+      if (!this.matches('.incident__inspection')) return domRect(NOTHING);
+      const height = this.querySelector('h2')?.textContent === 'servidor2' ? SHORT_BOX : TALL_BOX;
+      return domRect({ left: BOX_LEFT, top: BOX_BOTTOM - height, right: BOX_LEFT + BOX_WIDTH, bottom: BOX_BOTTOM });
+    });
+  }
+
+  function theHolder() {
+    const holder = document.querySelector('.incident__inspection');
+    if (holder === null) throw new Error('the inspection holder is not on the page');
+    return holder;
+  }
+
+  async function moveTheCardTo(card: Frame) {
+    rects.card = card;
+    await act(async () => {
+      document.querySelector('.map-card')?.setAttribute('style', `transform: ${MOVED}`);
+    });
+  }
+
+  async function openTheCardAndLetGoOfItsBox(user: User) {
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    const card = screen.queryByRole('dialog', { name: SG_SERVIDOR2 });
+    if (card !== null) await user.click(within(card).getByRole('heading', { name: SG_SERVIDOR2 }));
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    scene.drawsItsCards = true;
+  });
+
+  it('a box with no card open takes the right place', async () => {
+    drawTheMap(NOTHING);
+    const user = userEvent.setup();
+    renderFirst();
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
+    expect(theHolder()).toHaveAttribute('data-place', 'right');
+  });
+
+  it('a pinned box moves to the other place when the card takes its own', async () => {
+    drawTheMap(DOCKED_AT_THE_LEFT);
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expect(theHolder()).toHaveAttribute('data-place', 'right');
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+
+    await moveTheCardTo(AT_THE_RIGHT);
+
+    expect(theHolder()).toHaveAttribute('data-place', 'left');
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+
+    await moveTheCardTo(FAR_FROM_BOTH);
+
+    expect(theHolder(), 'a box that the card does not touch keeps the place it has').toHaveAttribute('data-place', 'left');
+  });
+
+  it('a pinned box is released, and its piece wears no pin, when the card takes both places', async () => {
+    drawTheMap(OVER_BOTH);
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
+    expect(screen.getByRole('button', { name: SG_SERVIDOR2 })).not.toHaveAttribute('data-pinned');
+    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+  });
+
+  it('a preview is not drawn when the card takes both places', async () => {
+    drawTheMap(OVER_BOTH);
+    const user = userEvent.setup();
+    renderFirst();
+    await openTheCardAndLetGoOfItsBox(user);
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+  });
+
+  it('a click on another piece shows no pinned box, and its piece wears no pin, when the card takes both places', async () => {
+    drawTheMap(OVER_BOTH);
+    const user = userEvent.setup();
+    renderFirst();
+    await openTheCardAndLetGoOfItsBox(user);
+    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
+    expect(screen.getByRole('button', { name: LOCKED_SERVER })).not.toHaveAttribute('data-pinned');
+  });
+
+  it('the box of the click that opens a card is not drawn until the card is measured', async () => {
+    drawTheMap(AT_THE_RIGHT);
+    scene.drawsItsCards = false;
+    const user = userEvent.setup();
+    const view = render(firstScreen());
+    await user.hover(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    expect(theHolder(), 'the preview that was up before the click').not.toHaveAttribute('data-hold');
+
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+
+    expect(theHolder(), 'the card is asked for and not in the map yet').toHaveAttribute('data-hold');
+    expect(theHolder()).toHaveAttribute('data-place', 'right');
+
+    scene.drawsItsCards = true;
+    await act(async () => {
+      view.rerender(firstScreen());
+    });
+
+    expect(theHolder()).not.toHaveAttribute('data-hold');
+    expect(theHolder(), 'the card is measured before the box shows').toHaveAttribute('data-place', 'left');
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+  });
+
+  it('the place does not change from one piece to the next while the card stays', async () => {
+    drawTheMap(OVER_THE_TOP_OF_THE_TALLEST_BOX);
+    const user = userEvent.setup();
+    renderFirst();
+    await openTheCardAndLetGoOfItsBox(user);
+
+    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
+    expect(theHolder(), 'a short box, which the card would not touch').toHaveAttribute('data-place', 'left');
+
+    await user.hover(screen.getByRole('button', { name: OTHER_DOOR }));
+    expect(screen.getByRole('region', { name: OTHER_DOOR })).toBeInTheDocument();
+    expect(theHolder(), 'a tall box, which it would').toHaveAttribute('data-place', 'left');
   });
 });
 

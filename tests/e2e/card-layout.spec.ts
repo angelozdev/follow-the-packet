@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { INSPECTION_TEXT, TERMS } from '@/copy';
-import { cardProblems, cardsOutsideTheMap, isReachable, reachWithWheel } from './card-boxes';
+import { cardProblems, cardsOutsideTheMap, inspectionBoxOverCards, isReachable, reachWithWheel } from './card-boxes';
 import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from './cards';
 import { IP, LOST_TO_OTHER_OFFICE, SETTINGS_CARD, SETTINGS_TAB, WATCH_CASES, fixTheGateway, sendThePingAndTheTraceroute } from '@e2e/chapter-1/chapter-1-play';
 import { submitAndFinish } from './closing';
@@ -74,6 +74,8 @@ const TIP_INSET_PX = 3;
 const GLOSSED_TERM = TERMS['public-ip'];
 const OUTSIDE_POINT = { x: 4, y: 4 };
 const PINNED_MARK = 'data-pinned';
+const DESKTOP_WINDOW = { width: 1440, height: 900 };
+const TIGHT_WINDOW = { width: 1000, height: 700 };
 
 const TALL_WINDOWS = [
   { name: '390 px wide', size: { width: 390, height: 844 } },
@@ -85,10 +87,10 @@ const LOW_WINDOWS = [
 ];
 
 const LOW_MAP_WINDOWS = [
-  { name: '1280×360', size: { width: 1280, height: 360 } },
-  { name: '1000×700', size: { width: 1000, height: 700 } },
-  { name: '700×600', size: { width: 700, height: 600 } },
-  { name: '844×460', size: { width: 844, height: 460 } },
+  { name: '1280×360', size: { width: 1280, height: 360 }, boxShows: true },
+  { name: '1000×700', size: { width: 1000, height: 700 }, boxShows: false },
+  { name: '700×600', size: { width: 700, height: 600 }, boxShows: true },
+  { name: '844×460', size: { width: 844, height: 460 }, boxShows: true },
 ];
 const TRIP_WINDOWS = [
   { name: '1440×900', size: { width: 1440, height: 900 }, crosses: OFFICE_ROUTER },
@@ -384,6 +386,8 @@ async function sendTheLostPing(page: Page): Promise<Locator> {
   const terminal = await openTerminal(page);
   await sendTo(terminal, IP.server);
   await sendTo(terminal, IP.otherOffice);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
   const lost = page.getByRole('button', { name: LOST_TO_OTHER_OFFICE });
   await expect(lost).toBeVisible();
   return lost;
@@ -576,7 +580,10 @@ test('an inspection box that does not fit scrolls under the mouse to its last li
   for (const { name, size } of INSPECTION_WINDOWS) {
     await page.setViewportSize(size);
     await visit(page, '01-05');
-    await sendTo(await openTerminal(page), IP.nobody);
+    const terminal = await openTerminal(page);
+    await sendTo(terminal, IP.nobody);
+    await confirm(terminal);
+    await expect(terminal).toBeHidden();
     const stamp = page.getByRole('button', { name: WARNED_PING, exact: true });
     const box = page.getByRole('region', { name: WARNED_PING_BOX, exact: true });
     const body = box.locator('.card__body');
@@ -721,6 +728,8 @@ test("a click on a piece that opens a card opens it, pins the piece's box, and a
   await expect.poll(() => holdsTheFocus(terminal), 'the terminal holds the focus').toBe(true);
   await expect(box, 'the box of the piece is pinned').toContainText(PINNED);
   await expect(label).toHaveAttribute(PINNED_MARK, 'true');
+  await standStill(page, { eachFrame: stepFrame });
+  expect(await inspectionBoxOverCards(page), 'the pinned box is on show and covers none of the cards of the map').toEqual({ shown: true, covered: [] });
 
   await chip.click();
 
@@ -772,17 +781,123 @@ test('a term definition can be reached with the mouse, and Escape closes it', as
   await expect(tip, 'Escape closes it for good').toHaveCount(0);
 });
 
-test('a card beside a piece stays inside the map, with its foot in view, in a low or narrow window', async ({ page }) => {
-  test.slow();
-  await page.clock.install();
+async function problemsOfTheCardsOfTheMap(page: Page, eachFrame: (page: Page) => Promise<void>, windows: readonly { name: string; size: { width: number; height: number } }[] = LOW_MAP_WINDOWS): Promise<string[]> {
   const problems: string[] = [];
-  for (const { name, size } of LOW_MAP_WINDOWS) {
+  for (const { name, size } of windows) {
     await page.setViewportSize(size);
     for (const scene of MAP_SCENES) {
-      await playUntilItRests(page, scene);
+      await playWithTheClockPaused(page, scene, eachFrame);
       problems.push(...(await cardsOutsideTheMap(page)).map((problem) => `${name}, ${scene.name}: ${problem}`));
       if (!(await isReachable(page, scene.last(page)))) problems.push(`${name}, ${scene.name}: its foot is out of reach`);
     }
   }
-  expect(problems).toEqual([]);
+  return problems;
+}
+
+test('a card beside a piece stays inside the map, with its foot in view, in a low or narrow window', async ({ page }) => {
+  test.slow();
+  await page.clock.install();
+  expect(await problemsOfTheCardsOfTheMap(page, passTheGrace)).toEqual([]);
+});
+
+for (const { name, size } of LOW_MAP_WINDOWS) {
+  test.describe(name, () => {
+    test.use({ viewport: size });
+
+    test('a card beside a piece keeps its foot in reach right after the click, in a low or narrow window', async ({ page }) => {
+      test.slow();
+      await page.clock.install();
+      expect(await problemsOfTheCardsOfTheMap(page, stepFrame, [{ name, size }])).toEqual([]);
+    });
+  });
+}
+
+for (const { name, size, boxShows } of LOW_MAP_WINDOWS) {
+  test.describe(name, () => {
+    test.use({ viewport: size });
+
+    test('the inspection box covers no card of the map, right after the click and at rest, in a low or narrow window', async ({ page }) => {
+      test.slow();
+      await page.clock.install();
+      const covered = new Set<string>();
+      let framesWithABox = 0;
+      for (const scene of MAP_SCENES) {
+        const sample = async () => {
+          const seen = await inspectionBoxOverCards(page);
+          if (seen.shown) framesWithABox += 1;
+          for (const problem of seen.covered) covered.add(`${name}, ${scene.name}: ${problem}`);
+        };
+        const reachAndSample = async (reached: Page) => {
+          await scene.reach(reached);
+          await sample();
+        };
+        await playWithTheClockPaused(page, { ...scene, reach: reachAndSample }, async (stepped) => {
+          await stepFrame(stepped);
+          await sample();
+        });
+      }
+      expect([...covered]).toEqual([]);
+      expect(framesWithABox > 0, 'the box was up in some of the frames exactly where this window leaves it room, so the test looked at something').toBe(boxShows);
+    });
+  });
+}
+
+function labelOf(piece: string): RegExp {
+  return new RegExp(`^${piece}`);
+}
+
+function sideOf(box: Area, beside: Area): 'left' | 'right' | 'over it' {
+  if (box.x >= beside.x + beside.width) return 'right';
+  return box.x + box.width <= beside.x ? 'left' : 'over it';
+}
+
+async function openAndLetGoOfItsBox(opened: Locator, page: Page) {
+  await opened.locator('h2').first().click();
+  await standStill(page);
+}
+
+const CARD_AND_ITS_FREE_SIDE = [
+  { name: 'the terminal of 01-08, docked at the left of the map', level: '01-08', open: openTerminal, over: OFFICE_ROUTER, takes: 'right' },
+  { name: 'the card of the firewall of 01-13, at the right of its piece', level: '01-13', open: (page: Page) => openCard(page, FIREWALL), over: YOUR_LAPTOP, takes: 'left' },
+] as const;
+
+test('with a card open and room beside it, the box of another piece takes the side the card leaves free', async ({ page }) => {
+  await page.setViewportSize(DESKTOP_WINDOW);
+  for (const { name, level, open, over, takes } of CARD_AND_ITS_FREE_SIDE) {
+    await visit(page, level);
+    await page.locator(PIECE_LABEL).first().waitFor();
+    await standStill(page);
+    const opened = await open(page);
+    await openAndLetGoOfItsBox(opened, page);
+
+    await page.getByRole('button', { name: labelOf(over) }).hover();
+
+    const box = page.getByRole('region', { name: over, exact: true });
+    await expect(box, `${name}: hovering ${over} shows its box`).toBeVisible();
+    await standStill(page);
+    expect(sideOf(await areaOf(box), await areaOf(opened)), `${name}: the box takes the side the card leaves free`).toBe(takes);
+  }
+});
+
+test('with a card open and no room beside it, a hover shows no box and a pinned box is released', async ({ page }) => {
+  await page.setViewportSize(TIGHT_WINDOW);
+  await visit(page, '01-08');
+  await page.locator(PIECE_LABEL).first().waitFor();
+  await standStill(page);
+  const terminal = await openTerminal(page);
+  await openAndLetGoOfItsBox(terminal, page);
+  const piece = page.getByRole('button', { name: labelOf(OFFICE_ROUTER) });
+  const box = page.getByRole('region', { name: OFFICE_ROUTER, exact: true });
+
+  await piece.hover();
+  await standStill(page);
+
+  await expect(box, 'the terminal takes both places, so a hover shows no box').toHaveCount(0);
+
+  await piece.click();
+  await standStill(page);
+
+  await expect(box, 'a click shows no box either: the pin is released').toHaveCount(0);
+  await expect(piece, 'and the piece wears no pin').not.toHaveAttribute(PINNED_MARK);
+  await expect(terminal, 'the terminal stays open').toBeVisible();
 });

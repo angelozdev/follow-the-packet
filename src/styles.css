@@ -110,6 +110,7 @@ button.stamp { cursor: help; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
+.incident__inspection[data-hold] { visibility: hidden; }
 .inspection__fields { margin: 0; }
 .inspection__fields > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-sm); }
 .inspection__fields > div:has(dd + dd) dd { flex-basis: 100%; }
@@ -117,6 +118,9 @@ button.stamp { cursor: help; }
 .inspection__fields dd { min-width: 0; margin: 0; }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
+@media (min-width: 901px) {
+  .incident__inspection[data-place='left'] { place-self: end start; }
+}
 @media (max-width: 900px) {
   .incident { grid-template-columns: 1fr; grid-template-rows: 65vh auto auto; height: auto; }
   .incident__inspection { grid-area: 2 / 1; place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
