@@ -1,5 +1,6 @@
 import type { TermId, TermText } from '@/copy';
 import type { GraphNode, Point } from '@/scene/map2d/layout/graph';
+import { LABEL_HEIGHT } from '@/scene/map2d/layout/metrics';
 import type { Drawn } from '@/scene/map2d/layout/stations';
 
 export type PieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
@@ -21,6 +22,11 @@ export interface Box {
   y: number;
   width: number;
   height: number;
+}
+
+export interface RowExtent {
+  above: number;
+  below: number;
 }
 
 export interface Density {
@@ -76,6 +82,13 @@ export interface RowLayout {
   drawn: Drawn;
 }
 
+export type MapMode = 'row' | 'row-compact' | 'stack';
+
+export interface MapLayout extends RowLayout {
+  mode: MapMode;
+}
+
+export const MIN_WIDTH = 360;
 export const OUTER = 16;
 export const GROUP_PAD = 14;
 export const CAPTION = 18;
@@ -114,6 +127,10 @@ export const LINE_END_REACH = 2 * ICON_MARK_BACK;
 export const SERVERS_GAP = 2 * (MARK_SPACING + MARK_BACK) - COMPACT.lane;
 export const FAN_HALF = (STAMP + FAN_PITCH * (CASILLAS - 1)) / 2;
 export const STOP_LABEL_RISE = FAN_HALF + FAN_CLEARANCE;
+export const LINE_PITCH = STOP_LABEL_RISE + LABEL_HEIGHT + FAN_HALF + FAN_CLEARANCE;
+export const NAME_ABOVE = STOP_LABEL_RISE + LABEL_HEIGHT;
+export const DROP_GAP = 6;
+export const GATEWAY_DROP = BOX_GAP + ICON / 2;
 
 /** Returns the box of a fan of `casillas` stamps centered on a point and opening along `axis`: as long as the fan on that axis and one stamp across. */
 export function fanBox([x, y]: Point, axis: FanAxis, casillas: number): Box {

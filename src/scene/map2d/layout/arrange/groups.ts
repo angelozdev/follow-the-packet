@@ -1,7 +1,7 @@
 import type { TermId } from '@/copy';
 import type { Device, Network } from '@/engine';
 import type { Point } from '@/scene/map2d/layout/graph';
-import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BOX_GAP, CAPTION, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart } from './geometry';
+import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BOX_GAP, CAPTION, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart, type RowExtent } from './geometry';
 import { busOf } from './pieces';
 
 export interface Floor {
@@ -20,6 +20,7 @@ export interface StackSpec {
   floorRight: number;
   outer: Pick<Group, 'id' | 'kind' | 'name'>;
   inside: ReadonlySet<string>;
+  row?: (id: string) => RowExtent;
 }
 
 export interface BusSpan {
@@ -75,35 +76,53 @@ export function shownParts(name: readonly NamePart[], known: ReadonlySet<TermId>
   return name.filter(({ term }) => term === undefined || known.has(term)).map(({ text }) => text);
 }
 
+const EVEN_ROW = (): RowExtent => ({ above: ROW_HEIGHT / 2, below: ROW_HEIGHT / 2 });
+
 function blocksOf(floor: Floor, centers: readonly number[], box: Group['box'], spec: StackSpec): Group[] {
+  const extentOf = spec.row ?? EVEN_ROW;
   const runs: number[][] = [];
   floor.plugged.forEach((id, index) => {
     if (!spec.inside.has(id)) return;
     const joins = index > 0 && spec.inside.has(floor.plugged[index - 1]);
-    if (joins) runs[runs.length - 1].push(centers[index]);
-    else runs.push([centers[index]]);
+    if (joins) runs[runs.length - 1].push(index);
+    else runs.push([index]);
   });
   const x = box.x + BLOCK_INSET_X;
-  return runs.map((run) => ({
-    id: `block:${floor.id}:${run[0]}`,
-    kind: 'block',
-    name: [],
-    box: { x, y: run[0] - ROW_HEIGHT / 2 + BLOCK_INSET_Y, width: spec.busX - BLOCK_BUS_GAP - x, height: run[run.length - 1] - run[0] + ROW_HEIGHT - 2 * BLOCK_INSET_Y },
-  }));
+  return runs.map((run) => {
+    const [first, last] = [run[0], run[run.length - 1]];
+    const [top, bottom] = [centers[first] - extentOf(floor.plugged[first]).above, centers[last] + extentOf(floor.plugged[last]).below];
+    return {
+      id: `block:${floor.id}:${centers[first]}`,
+      kind: 'block',
+      name: [],
+      box: { x, y: top + BLOCK_INSET_Y, width: spec.busX - BLOCK_BUS_GAP - x, height: bottom - top - 2 * BLOCK_INSET_Y },
+    };
+  });
 }
 
 /** Takes the floors of a map and where to stack them; returns the boxes (the one of the office or the VPC around the floors when there are two or more floors, or any subnet), the outline of each run of rows marked `inside`, the center of each row (a device with no cable stands in a row under every box), the span of each bus, the center of the rows to put the main line on, and the bottom of it all. A floor is a box with room for its name and a row of 100 px for each plugged device; its bus runs from its first row to its last at `busX`. */
 export function stackFloors(floors: readonly Floor[], spec: StackSpec): Stack {
   const nested = isNested(floors);
   const [left, right] = nested ? [spec.left + GROUP_PAD, spec.floorRight] : [spec.left, spec.right];
+  const extentOf = spec.row ?? EVEN_ROW;
   const boxes: Group[] = [];
   const blocks: Group[] = [];
   const buses: BusSpan[] = [];
   const rows: Record<string, number> = {};
+  const rowsFrom = (start: number, ids: readonly string[]) => {
+    let cursor = start;
+    const centers = ids.map((id) => {
+      const { above, below } = extentOf(id);
+      const center = cursor + above;
+      cursor += above + below;
+      return center;
+    });
+    return { centers, end: cursor };
+  };
   let top = spec.top + (nested ? HEADER : 0);
   for (const floor of floors) {
-    const centers = floor.plugged.map((_, index) => top + HEADER + ROW_HEIGHT * index + ROW_HEIGHT / 2);
-    const box = { x: left, y: top, width: right - left, height: HEADER + ROW_HEIGHT * Math.max(1, floor.plugged.length) + GROUP_PAD };
+    const { centers, end } = rowsFrom(top + HEADER, floor.plugged);
+    const box = { x: left, y: top, width: right - left, height: HEADER + (floor.plugged.length > 0 ? end - top - HEADER : ROW_HEIGHT) + GROUP_PAD };
     floor.plugged.forEach((id, index) => (rows[id] = centers[index]));
     boxes.push({ id: floor.id, kind: floor.kind, box, name: floor.name });
     blocks.push(...blocksOf(floor, centers, box, spec));
@@ -114,13 +133,14 @@ export function stackFloors(floors: readonly Floor[], spec: StackSpec): Stack {
   const outer: Group[] = nested ? [{ ...spec.outer, box: { x: spec.left, y: spec.top, width: spec.right - spec.left, height: top - BOX_GAP + GROUP_PAD - spec.top } }] : [];
   const boxesBottom = nested ? top - BOX_GAP + GROUP_PAD : floors.length > 0 ? top - BOX_GAP : spec.top;
   const loose = floors.flatMap((floor) => floor.unplugged);
-  loose.forEach((id, index) => (rows[id] = boxesBottom + BOX_GAP + ROW_HEIGHT * index + ROW_HEIGHT / 2));
+  const { centers: looseCenters, end } = rowsFrom(boxesBottom + BOX_GAP, loose);
+  loose.forEach((id, index) => (rows[id] = looseCenters[index]));
   return {
     groups: [...outer, ...boxes, ...blocks],
     rows,
     buses,
     center: buses.length > 0 ? (buses[0].top + buses[buses.length - 1].bottom) / 2 : spec.top,
-    bottom: loose.length > 0 ? boxesBottom + BOX_GAP + ROW_HEIGHT * loose.length : boxesBottom,
+    bottom: loose.length > 0 ? end : boxesBottom,
   };
 }
 
