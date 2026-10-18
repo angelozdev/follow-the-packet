@@ -971,6 +971,16 @@ describe('the list of stamps of a place', () => {
     ]);
   });
 
+  it('a packet sent again is the newest of the list, though it keeps its place among the packets sent', () => {
+    const again = sessionReducer(sentAll, { type: 'sendPacket', fromId: 'you', toId: 'nobody', messageId: 'ping' });
+    expect(again.sent.map((run) => [run.id, run.send])).toEqual([[SENT.nobody, 4], [SENT.printer, 2], [SENT.lucia, 3]]);
+    expect(plain(inspect(again, PIECE_ID.stamps([SENT.printer, SENT.lucia, SENT.nobody])))?.fields).toEqual([
+      ['ping de your-laptop a 192.168.1.30', 'Perdido.'],
+      ['ping de your-laptop a lucia-laptop', 'Bloqueado.'],
+      ['ping de your-laptop a printer', 'Llegó.'],
+    ]);
+  });
+
   it('a list of stamps whose packets are gone inspects nothing', () => {
     expect(inspect(sentAll, PIECE_ID.stamps([SENT.printer, SENT.lucia]))).not.toBeNull();
     expect(inspect(start, PIECE_ID.stamps([SENT.printer, SENT.lucia]))).toBeNull();
