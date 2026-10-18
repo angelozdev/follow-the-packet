@@ -131,6 +131,9 @@ export const LINE_PITCH = STOP_LABEL_RISE + LABEL_HEIGHT + FAN_HALF + FAN_CLEARA
 export const NAME_ABOVE = STOP_LABEL_RISE + LABEL_HEIGHT;
 export const DROP_GAP = 6;
 export const GATEWAY_DROP = BOX_GAP + ICON / 2;
+export const SNAKE_LANE = 44;
+export const SNAKE_BUS_WALL = 24;
+export const SNAKE_LABEL_WALL = 8;
 
 /** Returns the box of a fan of `casillas` stamps centered on a point and opening along `axis`: as long as the fan on that axis and one stamp across. */
 export function fanBox([x, y]: Point, axis: FanAxis, casillas: number): Box {

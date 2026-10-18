@@ -4,11 +4,11 @@ import { applyAction, facesALan, isClientActor, simulate, type Network } from '@
 import { INCIDENTS, caseWorld, solvedWorld, startWorld } from '@/levels';
 import { lengthOf, route, type Point } from '@/scene/map2d/layout/graph';
 import { characterCount, labelWidth } from '@/scene/map2d/layout/metrics';
-import { LINE_END, startsOnMap, stationsFor } from '@/scene/map2d/layout/stations';
+import { LINE_END, startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
 import { NAME_SERVERS, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames } from '@/testing';
 import { graphOf } from './arrange/assemble';
-import { COMPACT, MIN_WIDTH, NORMAL, OUTER, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
-import { layoutRow } from './arrange/row';
+import { COMPACT, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
+import { SERVERS, layoutRow } from './arrange/row';
 import { layoutStack } from './arrange/stack';
 import { layoutMap } from './map-layout';
 
@@ -33,6 +33,7 @@ function registeredWorlds(): { id: string; world: Network }[] {
 const FLOORS = officeTwoFloorsNet();
 const HOME = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
 const NAMED = applyAction(officeWithNames(), { type: 'addActor', actor: HOME });
+const NAMED_OPENING_A_CARD = drawnWhole(NAMED).map((each) => (each.anchorId === NAME_SERVERS.down.id ? { ...each, locked: false } : each));
 const OTHER_OFFICE = startWorld(INCIDENTS, '02-07');
 const hosts = (world: Network, ...ids: string[]) => drawnWhole(world).filter(({ kind, anchorId }) => kind !== 'device' || ids.includes(anchorId));
 const withoutKinds = (pieces: RowPiece[], ...kinds: RowPiece['kind'][]) => pieces.filter(({ kind }) => !kinds.includes(kind));
@@ -198,12 +199,41 @@ describe('layoutMap', () => {
     const layout = layoutStack(longest.world, drawnWhole(longest.world), MIN_WIDTH);
     const lane = layout.labels[`${isClientActor(longest.actor) ? 'actor' : 'device'}:${longest.actor.id}`];
     expect(lane.width).toBe(labelWidth(longest.actor.name, { locked: !isClientActor(longest.actor) }));
-    expect(lane.x).toBeGreaterThanOrEqual(OUTER);
-    expect(lane.x + lane.width).toBeLessThanOrEqual(MIN_WIDTH - OUTER);
+    expect(lane.x).toBeGreaterThanOrEqual(SNAKE_LABEL_WALL);
+    expect(lane.x + lane.width).toBeLessThanOrEqual(MIN_WIDTH - SNAKE_LABEL_WALL);
     expect(problemsOf(layout)).toEqual([]);
   });
 
-  it('a name of 30 characters, which no registered world has, widens the snake past 360 px instead of leaving the map', () => {
+  it('a name of 30 characters, in the server of names that opens a card, fits the snake at 360 px: 24 + 48 + 44 + 6 + 230, and 8 px to the wall', () => {
+    const layout = layoutStack(NAMED, NAMED_OPENING_A_CARD, MIN_WIDTH);
+    const [name, icon, door, bus] = [layout.labels[`device:${NAME_SERVERS.down.id}`], layout.icons[`device:${NAME_SERVERS.down.id}`], layout.stations[station.door(NAME_SERVERS.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
+    const side = Math.sign(door[0] - bus[0]);
+    expect(layout.size.width).toBe(MIN_WIDTH);
+    expect(characterCount(NAME_SERVERS.down.id)).toBe(30);
+    expect(name.width).toBe(230);
+    expect(side === 1 ? bus[0] : MIN_WIDTH - bus[0]).toBe(24);
+    expect(Math.abs(door[0] - bus[0])).toBe(44);
+    expect(icon.width).toBe(48);
+    expect(side === 1 ? name.x - (icon.x + icon.width) : icon.x - (name.x + name.width)).toBe(6);
+    expect(side === 1 ? MIN_WIDTH - (name.x + name.width) : name.x).toBe(8);
+    expect(problemsOf(layout)).toEqual([]);
+    expect(packetFailures(NAMED, layout)).toEqual([]);
+  });
+
+  it('the lane of a name of 30 characters comes within 8 px of the wall on whichever side it hangs, and the snake holds at every width', () => {
+    const nearest = new Map<number, number>();
+    for (let width = MIN_WIDTH; width <= 520; width += 2) {
+      const layout = layoutStack(NAMED, NAMED_OPENING_A_CARD, width);
+      const [name, door, bus] = [layout.labels[`device:${NAME_SERVERS.down.id}`], layout.stations[station.door(NAME_SERVERS.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
+      const side = Math.sign(door[0] - bus[0]);
+      nearest.set(side, Math.min(nearest.get(side) ?? Infinity, side === 1 ? width - (name.x + name.width) : name.x));
+      expect(layout.size.width, `at ${width}`).toBe(width);
+      expect(problemsOf(layout), `at ${width}`).toEqual([]);
+    }
+    expect([...nearest.entries()].sort()).toEqual([[-1, 8], [1, 8]]);
+  });
+
+  it('a name of 30 characters with its lock, which no registered world has, widens the snake past 360 px instead of leaving the map', () => {
     const pieces = drawnWhole(NAMED);
     const narrow = layoutStack(NAMED, pieces, MIN_WIDTH);
     const name = narrow.labels[`device:${NAME_SERVERS.down.id}`];

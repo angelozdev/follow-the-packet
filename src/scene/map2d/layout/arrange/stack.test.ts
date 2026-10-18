@@ -5,7 +5,7 @@ import { route, type Point } from '@/scene/map2d/layout/graph';
 import { station } from '@/scene/map2d/layout/stations';
 import { OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing';
 import { graphOf } from './assemble';
-import { BOX_GAP, COMPACT, FAN_HALF, ICON, LINE_PITCH, MIN_WIDTH, NORMAL, OUTER, STOP_LABEL_RISE, STOP_PITCH, TRUNK_PITCH, overlaps, type Box, type PieceKind, type RowLayout, type RowPiece } from './geometry';
+import { BOX_GAP, FAN_HALF, ICON, LINE_PITCH, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, SNAKE_LANE, STOP_LABEL_RISE, STOP_PITCH, TRUNK_PITCH, overlaps, type Box, type PieceKind, type RowLayout, type RowPiece } from './geometry';
 import { layoutRow } from './row';
 import { layoutStack } from './stack';
 
@@ -106,16 +106,17 @@ describe('layoutStack', () => {
       const bus = pointOf(layout, 'join:servers');
       const [door, icon, label] = [layout.stations[station.door(server.id)], layout.icons[`device:${server.id}`], layout.labels[`device:${server.id}`]];
       const side = Math.sign(door[0] - bus[0]);
-      expect(Math.abs(door[0] - bus[0])).toBe(COMPACT.lane);
+      expect(Math.abs(door[0] - bus[0])).toBe(SNAKE_LANE);
       expect(overlaps(icon, label)).toBe(false);
       expect(Math.sign(centerOf(label)[0] - centerOf(icon)[0])).toBe(side);
-      expect(label.x).toBeGreaterThanOrEqual(OUTER);
-      expect(label.x + label.width).toBeLessThanOrEqual(width - OUTER);
+      expect(label.x).toBeGreaterThanOrEqual(SNAKE_LABEL_WALL);
+      expect(label.x + label.width).toBeLessThanOrEqual(width - SNAKE_LABEL_WALL);
       return side;
     });
     expect(sides[0]).toBe(1);
-    const odd = layoutStack(OTHER_OFFICE, WITH_BRANCH, MIN_WIDTH);
-    expect(odd.stations[station.door('internet-server')][0]).toBeLessThan(pointOf(odd, 'join:servers')[0]);
+    const [narrow, wide] = [MIN_WIDTH, 400].map((width) => layoutStack(OTHER_OFFICE, WITH_BRANCH, width));
+    expect(narrow.stations[station.door('internet-server')][0]).toBeGreaterThan(pointOf(narrow, 'join:servers')[0]);
+    expect(wide.stations[station.door('internet-server')][0]).toBeLessThan(pointOf(wide, 'join:servers')[0]);
   });
 
   it('draws the stations, the pieces and the marks the row draws', () => {

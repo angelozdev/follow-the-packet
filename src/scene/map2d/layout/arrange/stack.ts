@@ -7,7 +7,6 @@ import {
   BLOCK_BUS_GAP,
   BLOCK_INSET_Y,
   BOX_GAP,
-  COMPACT,
   DROP_GAP,
   FAN_CLEARANCE,
   FAN_HALF,
@@ -27,6 +26,9 @@ import {
   NAME_ABOVE,
   OUTER,
   SERVERS_GAP,
+  SNAKE_BUS_WALL,
+  SNAKE_LABEL_WALL,
+  SNAKE_LANE,
   STAMP,
   STOP_LABEL_RISE,
   STOP_PITCH,
@@ -186,7 +188,7 @@ function placeItems(items: readonly Item[], runs: readonly Run[], available: num
 
 function itemsOf(world: Network, pieces: readonly RowPiece[], found: Classified, lanes: readonly RowPiece[], available: number, firstBehind: number): Item[] {
   const stops = stopsNamed(world, pieces, found).map(([name, piece], index): Item => ({ name, piece, width: widthOf(piece), gap: index === 0 ? 0 : STOP_PITCH, behind: index === 0 ? firstBehind : STOP_BEHIND, ahead: STOP_AHEAD, accepts: () => true }));
-  const reach = COMPACT.lane + ICON + LABEL_GAP + Math.max(0, ...lanes.map((lane) => labelOf(lane).width));
+  const reach = SNAKE_LANE + ICON + LABEL_GAP + Math.max(0, ...lanes.map((lane) => labelOf(lane).width));
   const clear = STAMP / 2 + FAN_CLEARANCE;
   const servers: Item = {
     name: SERVERS,
@@ -194,8 +196,8 @@ function itemsOf(world: Network, pieces: readonly RowPiece[], found: Classified,
     width: 0,
     gap: SERVERS_GAP,
     behind: clear,
-    ahead: clear,
-    accepts: ({ run, x }) => (run.to < run.from ? x - STAMP / 2 >= OUTER && x + reach <= available - OUTER : x + STAMP / 2 <= available - OUTER && x - reach >= OUTER),
+    ahead: SNAKE_BUS_WALL - OUTER,
+    accepts: ({ run, x }) => (run.to < run.from ? x + reach <= available - SNAKE_LABEL_WALL : x - reach >= SNAKE_LABEL_WALL),
   };
   const end: Item = { name: LINE_END, piece: undefined, width: 0, gap: LINE_END_REACH, behind: clear, ahead: clear, accepts: () => true };
   return [...stops, ...(lanes.length > 0 ? [servers] : stops.length > 0 ? [end] : [])];
@@ -224,7 +226,7 @@ function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, br
 
 function extentOf(boxes: readonly Box[], fans: readonly Box[], points: readonly Point[], available: number): { width: number; height: number } {
   return {
-    width: Math.max(available, ...boxes.map(({ x, width }) => x + width + OUTER), ...fans.map(({ x, width }) => x + width), ...points.map(([x]) => x + OUTER)),
+    width: Math.max(available, ...boxes.map(({ x, width }) => x + width + SNAKE_LABEL_WALL), ...fans.map(({ x, width }) => x + width), ...points.map(([x]) => x + OUTER)),
     height: Math.max(0, ...[...boxes, ...fans].map(({ y, height }) => y + height), ...points.map(([, y]) => y)) + OUTER,
   };
 }
@@ -314,7 +316,7 @@ function build(world: Network, pieces: readonly RowPiece[], available: number): 
   if (servers !== undefined) {
     const side = servers.seat.run.to < servers.seat.run.from ? 1 : -1;
     const centers = lanes.map((_, index) => servers.seat.run.y + LINE_PITCH + index * LANE_HEIGHT);
-    lastJunction = placeLanes(draft, lanes, { busX: servers.seat.x, junctionY: servers.seat.run.y, centers, length: COMPACT.lane, side });
+    lastJunction = placeLanes(draft, lanes, { busX: servers.seat.x, junctionY: servers.seat.run.y, centers, length: SNAKE_LANE, side });
   }
   const beforeEnd = lastJunction ?? stops[stops.length - 1]?.item.name ?? (mainFloors.length > 0 ? station.bus(mainFloors[0].id) : undefined);
   if (beforeEnd !== undefined) draft.marks.push({ station: LINE_END, facing: beforeEnd, back: 0 });
