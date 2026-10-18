@@ -49,7 +49,8 @@ function isRouterDrawn(id: string, drawn: Drawn): boolean {
   return drawn.routers.includes(id) || drawn.gateways.includes(id);
 }
 
-function mainLine(drawn: Drawn): string[] {
+/** Takes what the map draws and returns the stops of its main line, in order: the lone edge, the routers from the office outward, the internet and the door of each server. */
+export function mainLine(drawn: Drawn): string[] {
   return [...(drawn.edge ? [EDGE] : []), ...drawn.routers.map(station.router), ...(drawn.internet ? [INTERNET] : []), ...drawn.servers.map(station.door)];
 }
 
