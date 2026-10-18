@@ -13,5 +13,5 @@
     "paths": { "@/*": ["./src/*"], "@e2e/*": ["./tests/e2e/*"] },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "scripts", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src/testing/setup.ts", "src", "tests", "scripts", "vite.config.ts", "playwright.config.ts"]
 }

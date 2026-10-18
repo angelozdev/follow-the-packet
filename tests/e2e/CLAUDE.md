@@ -95,7 +95,7 @@ The captures, not committed, are in the SDD workspace of the main tree (`.superp
 ## When to run what
 
 - **Each task:** `pnpm check:fast` (types, lint, structure, jscpd and Vitest, about 10 s, no browser) and the specs that the task names or that cover what it touched.
-- **Closing a block and before every merge:** `pnpm check`, which is `pnpm check:fast` and then the whole suite.
+- **Closing a block and before every merge:** `pnpm check`, which is `pnpm check:fast`, then `pnpm test:browser` and then the whole suite.
 - **A failing e2e is compared with the base: the last commit whose full `pnpm check` passed.** If it fails there too, it is not of the task or of the block: write it in the backlog (`docs/plans/2026-10-08-follow-the-packet-followups.md`), say so, and do not chase it. If it passes on that base, the regression belongs to the block: some task closed with only `pnpm check:fast` and let it through, and it shows up in the next full `pnpm check`. Fix it inside the block. Do not compare against «HEAD without the changes of the task»: the regression is already in that HEAD, so it also fails there and would go to the backlog by mistake.
 - **Never two suites at once in the same folder.**
 

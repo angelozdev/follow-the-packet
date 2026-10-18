@@ -34,7 +34,8 @@ const ENGINE_PACKAGES = { group: ['react', 'react-dom', 'three', '@react-three/*
 
 const NO_DYNAMIC_IMPORT = { selector: 'ImportExpression', message: 'Use static imports only, so the layer rules can check them.' };
 const NO_EFFECT_CALLS = { selector: 'MemberExpression[property.name=/^use(Layout)?Effect$/]', message: 'Effects live in use-*.ts hooks.' };
-const NO_FIXED_WAIT_MESSAGE = 'A test never waits a fixed time: wait for a state (an expectation, or the still scene helper), or advance page.clock.';
+const NO_FIXED_WAIT_MESSAGE =
+  'A test never waits a fixed time: wait for a state (an expectation, expect.poll, expect.element, or the still scene helper), or advance a fake clock (page.clock in e2e tests, vi.advanceTimersByTime in browser tests).';
 const NO_FIXED_WAIT = [
   { selector: "CallExpression[callee.property.name='waitForTimeout']", message: NO_FIXED_WAIT_MESSAGE },
   { selector: "CallExpression[callee.name=/^(setTimeout|setInterval)$/]", message: NO_FIXED_WAIT_MESSAGE },
@@ -52,11 +53,11 @@ const ENGINE_GLOBALS = ['window', 'document', 'localStorage', 'sessionStorage', 
 
 /**
  * Builds the no-restricted-syntax setting for one kind of source file.
- * @param {{ isEngine?: boolean, isHook?: boolean }} kind Which kind of file the setting is for.
+ * @param {{ isEngine?: boolean, isHook?: boolean, isBrowserTest?: boolean }} kind Which kind of file the setting is for.
  * @returns {['error', ...object[]]} The rule entry.
  */
-function syntaxRules({ isEngine = false, isHook = false }) {
-  return ['error', NO_DYNAMIC_IMPORT, ...(isHook ? [] : [NO_EFFECT_CALLS]), ...(isEngine ? ENGINE_SYNTAX : [])];
+function syntaxRules({ isEngine = false, isHook = false, isBrowserTest = false }) {
+  return ['error', NO_DYNAMIC_IMPORT, ...(isHook ? [] : [NO_EFFECT_CALLS]), ...(isEngine ? ENGINE_SYNTAX : []), ...(isBrowserTest ? NO_FIXED_WAIT : [])];
 }
 
 /**
@@ -113,6 +114,7 @@ const syntaxBlocks = [
   { files: ['src/**/*.{ts,tsx}'], ignores: [...TEST_FILES, ...HOOK_FILES, 'src/engine/**'], rules: { 'no-restricted-syntax': syntaxRules({}) } },
   { files: HOOK_FILES, ignores: [...TEST_FILES, 'src/engine/**'], rules: { 'no-restricted-syntax': syntaxRules({ isHook: true }) } },
   { files: ['src/**/*.test.{ts,tsx}'], rules: { 'no-restricted-syntax': syntaxRules({}) } },
+  { files: ['src/**/*.browser.test.{ts,tsx}'], rules: { 'no-restricted-syntax': syntaxRules({ isBrowserTest: true }) } },
   {
     files: ['src/engine/**/*.{ts,tsx}'],
     ignores: TEST_FILES,

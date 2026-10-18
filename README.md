@@ -15,7 +15,7 @@ Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live
     pnpm check:fast
     pnpm check
 
-`pnpm check:fast` runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector and unit tests, with no browser (about 10 seconds). `pnpm check` is `pnpm check:fast` and then Playwright. "Done" for a task means `pnpm check:fast` plus the end-to-end specs that cover what it touched; closing a block and merging need the whole `pnpm check` (see `tests/e2e/CLAUDE.md`).
+`pnpm check:fast` runs types, lint (layer boundaries, names, comments), the folder-structure check, the copy-paste detector and unit tests, with no browser (about 10 seconds). `pnpm test:browser` runs the browser tests (`src/**/*.browser.test.tsx`) in headless Chromium. `pnpm check` is `pnpm check:fast`, then `pnpm test:browser`, then Playwright. "Done" for a task means `pnpm check:fast` plus `pnpm test:browser` when the task touches geometry or CSS and the end-to-end specs that cover what it touched; closing a block and merging need the whole `pnpm check` (see `tests/e2e/CLAUDE.md`).
 
 ## Layout
 

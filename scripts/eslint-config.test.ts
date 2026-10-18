@@ -155,6 +155,28 @@ describe('eslint config', { timeout: LINT_TIMEOUT_MS }, () => {
     });
   });
 
+  describe('fixed waits in browser tests', () => {
+    const BROWSER_TEST_PATH = 'src/ui/probe.browser.test.tsx';
+    const fixedWaits = [
+      'export const sleep = () => new Promise((done) => setTimeout(done, 500));\n',
+      'export const poll = () => setInterval(() => undefined, 50);\n',
+      'export const sleep = () => new Promise((done) => window.setTimeout(done, 500));\n',
+    ];
+
+    it('a browser test that waits a fixed time is rejected', async () => {
+      for (const code of fixedWaits) expect(await ruleIdsFor(BROWSER_TEST_PATH, code)).toContain('no-restricted-syntax');
+    });
+
+    it('a browser test that waits for a state is allowed', async () => {
+      const code = "import { expect } from 'vitest';\nexport const settled = () => expect.poll(() => 1).toBe(1);\n";
+      expect(await ruleIdsFor(BROWSER_TEST_PATH, code)).toEqual([]);
+    });
+
+    it('a browser test still rejects a dynamic import', async () => {
+      expect(await ruleIdsFor(BROWSER_TEST_PATH, "export const load = () => import('@/engine');\n")).toContain('no-restricted-syntax');
+    });
+  });
+
   describe('names', () => {
     const SOURCE = 'export const value = 1;\n';
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const PACKAGE_JSON_PATH = fileURLToPath(new URL('../package.json', import.meta.url));
 const SEPARATOR = ' && ';
 const RUN = 'pnpm ';
-const STEPS_OF_CHECK_BEFORE_CHECK_FAST = ['typecheck', 'lint', 'structure', 'dup', 'test'];
+const STEPS_OF_CHECK_FAST = ['typecheck', 'lint', 'structure', 'dup', 'test'];
 
 interface PackageJson {
   scripts: Record<string, string>;
@@ -18,9 +18,15 @@ function stepsOf(name: string): string[] {
 }
 
 describe('package.json scripts', () => {
-  it('check runs check:fast and then the e2e suite, and check:fast runs every step check had except the e2e suite', () => {
-    expect(stepsOf('check')).toEqual(['check:fast', 'e2e']);
-    expect(stepsOf('check:fast')).toEqual(STEPS_OF_CHECK_BEFORE_CHECK_FAST);
+  it('check runs check:fast, then the browser tests, then the e2e suite, and check:fast has no browser step', () => {
+    expect(stepsOf('check')).toEqual(['check:fast', 'test:browser', 'e2e']);
+    expect(stepsOf('check:fast')).toEqual(STEPS_OF_CHECK_FAST);
+    expect(stepsOf('check:fast')).not.toContain('test:browser');
+  });
+
+  it('test runs only the unit project and test:browser only the browser project', () => {
+    expect(scripts.test).toBe('vitest run --project unit');
+    expect(scripts['test:browser']).toBe('vitest run --project browser');
   });
 
   it('every step of check and of check:fast is a script of the package', () => {
