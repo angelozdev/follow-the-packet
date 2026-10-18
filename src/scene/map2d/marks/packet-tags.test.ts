@@ -3,7 +3,7 @@ import type { Box, Mark } from '@/scene/map2d/layout/arrange/geometry';
 import { lengthOf, positionAt, type Point } from '@/scene/map2d/layout/graph';
 import { LABEL_HEIGHT } from '@/scene/map2d/layout/metrics';
 import { crowds } from './boxes';
-import { placeTags, separateGlyphs, stillTags, type PacketTag } from './packet-tags';
+import { placeTags, separateGlyphs, type PacketTag } from './packet-tags';
 import { fanStamps } from './stamp-fan';
 
 const LINE: Point[] = [[0, 100], [400, 100]];
@@ -78,18 +78,19 @@ describe('placeTags', () => {
   });
 });
 
-describe('stillTags', () => {
+describe('placeTags with the fans of the stamps', () => {
   it('the label of a hidden stamp is not drawn on the still map and its text is in the list', () => {
     const mark: Mark = { station: 'door:lucia', point: [200, 100], axis: 'y', casillas: 3 };
     const stamps = ['one', 'two', 'three', 'four'].map((id, index) => ({ id, problem: false, send: index + 1 }));
     const [fan] = fanStamps({ 'door:lucia': stamps }, [mark]);
     const tags = [...stamps.map(({ id }) => tagOf(`tag-${id}`, LINE, { stamp: id })), tagOf('tag-of-a-flow')];
-    const drawn = stillTags(tags, [fan]);
+    const placed = placeTags(tags, [], [fan]);
     expect(fan.hidden).toEqual(['one', 'two']);
-    expect(drawn.map(({ id }) => id)).toEqual(['tag-three', 'tag-four', 'tag-of-a-flow']);
-    expect(placeTags(drawn, []).map(({ id }) => id)).toEqual(['tag-three', 'tag-four', 'tag-of-a-flow']);
+    expect(placed.map(({ id }) => id)).toEqual(['tag-three', 'tag-four', 'tag-of-a-flow']);
+    expect(placed).toEqual(placeTags(tags.slice(2), []));
     for (const id of fan.hidden) expect(fan.more?.ids).toContain(id);
-    expect(stillTags(tags, [])).toEqual(tags);
+    expect(placeTags(tags, [], []).map(({ id }) => id)).toEqual(tags.map(({ id }) => id));
+    expect(placeTags(tags, [])).toEqual(placeTags(tags, [], []));
   });
 });
 

@@ -107,16 +107,15 @@ function freePoint({ path, at }: Glyph, taken: readonly Point[]): Point {
   return positionAt(path, lengths, at);
 }
 
-/** Takes the labels of the packets and the fans of the stamps; returns the labels a still map draws: those of a packet whose stamp is drawn, and those of a packet that has no stamp. The label of a stamp that went into a «+N» is left out, and its text is in the list of the «+N». */
-export function stillTags(tags: readonly PacketTag[], fans: readonly Fan[]): PacketTag[] {
+function stillTags(tags: readonly PacketTag[], fans: readonly Fan[]): PacketTag[] {
   const hidden = new Set(fans.flatMap((fan) => fan.hidden));
   return tags.filter(({ stamp }) => stamp === undefined || !hidden.has(stamp));
 }
 
-/** Takes the labels of packets (each with the path it follows and the size of its box) and the boxes they must keep clear of (stamps, labels of pieces, icons and whatever else the caller lists); returns, for each label in order, where it stands: in the middle of its path unless a box is in the way, and then as little farther along the path as it takes to clear them, and, when no place of the path is clear, up or down from the path in steps of 22 px (up before down at each step, three steps up and two down at most), trying the whole path at each height before the next one. Each label placed is an obstacle for the ones after it. A label that nothing clears stays in the middle of its path and says it is not `clear`. */
-export function placeTags(tags: readonly PacketTag[], obstacles: readonly Box[]): PlacedTag[] {
+/** Takes the labels of packets (each with the path it follows and the size of its box), the boxes they must keep clear of (stamps, labels of pieces, icons and whatever else the caller lists) and, in `fans`, the fans of the stamps of the map; returns, for each label in order, where it stands: in the middle of its path unless a box is in the way, and then as little farther along the path as it takes to clear them, and, when no place of the path is clear, up or down from the path in steps of 22 px (up before down at each step, three steps up and two down at most), trying the whole path at each height before the next one. Each label placed is an obstacle for the ones after it. A label that nothing clears stays in the middle of its path and says it is not `clear`. The label of a packet whose stamp went into a «+N» of `fans` is not placed, so it is not drawn on the still map (O-8) and does not push the others: its text is the line of the list of the «+N». A label with no stamp is always placed. */
+export function placeTags(tags: readonly PacketTag[], obstacles: readonly Box[], fans: readonly Fan[] = []): PlacedTag[] {
   const placed: PlacedTag[] = [];
-  for (const tag of tags) placed.push(placeOne(tag, [...obstacles, ...placed.map(({ box }) => box)]));
+  for (const tag of stillTags(tags, fans)) placed.push(placeOne(tag, [...obstacles, ...placed.map(({ box }) => box)]));
   return placed;
 }
 

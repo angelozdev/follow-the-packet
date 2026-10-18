@@ -3,7 +3,7 @@
 What stands on the 2D map once the layout is done, as pure functions: no React, no DOM, no clock, no randomness. The layout (`../layout/`) says where each mark is and gives the boxes of the labels and the icons; this folder decides which stamps are drawn at each mark, where the label of a packet stands, how two shapes on one point are told apart and which boxes overlap. The design is in the spec (`docs/specs/2026-10-12-follow-the-packet-2d-map-design.md`, «Los sellos», «Los paquetes y su etiqueta», «Colisiones»).
 
 - `stamp-fan.ts`: `fanStamps(stamps, marks)`. `stamps` holds the stamps of each place by the name of its station (`StampSource`: an id, whether it is a problem, and its `send` number, which a live flow of the incident does not have); `marks` is `layout.marks`. It returns a `Fan` for every place that has stamps, in the order of the marks, and throws when a place with stamps has no mark.
-- `packet-tags.ts`: `stillTags` (the labels a still map draws), `placeTags` (where each one stands) and `separateGlyphs` (the shapes of two packets on one point).
+- `packet-tags.ts`: `placeTags` (where the label of each packet stands on the still map, leaving out the label of a stamp that went into a «+N») and `separateGlyphs` (the shapes of two packets on one point).
 - `collisions.ts`: `collisions(layout, fans, tags)`, the pairs of boxes that overlap.
 - `boxes.ts`: `crowds` and `holds`, the two box tests of the other three, with a noise of 1e-6 px so a float that lands a hair over an edge is not a collision.
 
@@ -18,7 +18,7 @@ What stands on the 2D map once the layout is done, as pure functions: no React, 
 
 - A label (`PacketTag`) has the path of its packet and the size of its box. It stands on the middle of its path. If a box is in the way it slides along the path (no farther than it takes: the nearest place where it clears, forward on a tie), and if no place of the path is clear it goes up 22 px (`TAG_STEP`) and tries the whole path again, then down 22, up 44, down 44 and up 66: three steps up and two down at most. Up is toward smaller `y`. The places it tries are the middle and the ones where an edge of its box touches an edge of an obstacle (the nearest clear place is always one of them), so it is found exactly and no step in pixels is chosen.
 - The obstacles are the boxes the caller lists (the drawn stamps and the «+N», the labels of the pieces, the icons, whatever else it counts) and the labels already placed, in the order given. A label that nothing touches does not move. A label that no height clears stays in the middle of its path and says it is not `clear`; `collisions` then lists it.
-- The label of a packet whose stamp went into a «+N» is not drawn on the still map (O-8): `stillTags` leaves it out and its text is the line of the list. Call `stillTags` first and then `placeTags`.
+- The label of a packet whose stamp went into a «+N» is not drawn on the still map (O-8): `placeTags` leaves it out when it is given the `fans` (its third argument) and its text is the line of the list. A label that is left out does not push the others.
 - `separateGlyphs`: a shape that falls on the point of one placed before it (1e-6 px) moves 12 px (`GLYPH_STEP`) further along its own path, and again until it stands alone; near the end of the path it moves back instead.
 
 ## Collisions
