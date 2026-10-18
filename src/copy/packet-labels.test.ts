@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Network } from '@/engine';
 import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
-import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, tracerouteLabel, warningOf } from './packet-labels';
+import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, isProblemStamp, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, stampOf, tracerouteLabel, warningOf, type StampResult } from './packet-labels';
+import { MAP_TEXT } from './screens/incident-ui';
 import { termsIn, toPlainText } from './term-text';
 import type { TermId } from './terms';
 
@@ -66,6 +67,30 @@ describe('packet labels', () => {
     const others = (['arrived', 'blocked', 'lost', 'intruder'] as const).map((state) => stampLabel('ping de tu-laptop a 192.168.1.99', state));
     expect(others).not.toContain(label);
     expect(label).not.toMatch(/windows|linux|macos|arp|destination|unreachable|time exceeded|ttl|icmp|router/i);
+  });
+
+  it('names a +N for a screen reader with the stamps it hides first and the stamps of its place after', () => {
+    expect(MAP_TEXT.moreStamps(2, 4)).toBe('2 sellos más. Abre la lista de los 4 sellos de este lugar.');
+    expect(MAP_TEXT.moreStamps(12, 14)).toBe('12 sellos más. Abre la lista de los 14 sellos de este lugar.');
+  });
+
+  it('a stamp is a problem when it is blocked, lost, warned or an intruder, and not when it arrived', () => {
+    expect((['blocked', 'lost', 'warned', 'intruder'] as const).map(isProblemStamp)).toEqual([true, true, true, true]);
+    expect(isProblemStamp('arrived')).toBe(false);
+  });
+
+  it('the state of a stamp comes from the result as it did before it moved here: a warning first, then reached, an intruder if it was not meant to, then blocked or lost', () => {
+    const result = (changes: Partial<StampResult>): StampResult => ({ intruder: false, reached: false, blocked: false, warning: null, ...changes });
+    const warning = { term: 'time-exceeded', by: 'router' } as const;
+    expect(stampOf(result({ warning, reached: true, intruder: true, blocked: true }))).toBe('warned');
+    expect(stampOf(result({ warning: { term: null, by: 'sender' } }))).toBe('warned');
+    expect(stampOf(result({ reached: true }))).toBe('arrived');
+    expect(stampOf(result({ reached: true, blocked: true }))).toBe('arrived');
+    expect(stampOf(result({ reached: true, intruder: true, blocked: true }))).toBe('intruder');
+    expect(stampOf(result({ blocked: true }))).toBe('blocked');
+    expect(stampOf(result({ blocked: true, intruder: true }))).toBe('blocked');
+    expect(stampOf(result({}))).toBe('lost');
+    expect(stampOf(result({ intruder: true }))).toBe('lost');
   });
 
   it('names each notice by its term, and a net unreachable by none until its own term is known', () => {

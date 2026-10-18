@@ -1,6 +1,7 @@
 import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type RecordProblem, type RouteProblem, type Service, type UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, word, type TermText } from '@/copy/term-text';
+import { STAMP_TEXT, type StampState } from '@/copy/packet-labels';
 import type { TermId } from '@/copy/terms';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
@@ -18,6 +19,7 @@ export const MAP_TEXT = {
   edge: EDGE_LABEL,
   internet: '{{internet}}',
   locked: 'con candado',
+  moreStamps: (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`,
   alert: 'con alerta: entra algo que no debe',
 } as const;
 
@@ -27,6 +29,8 @@ export const INSPECTION_TEXT = {
   close: 'Cerrar',
   closeLabel: 'Cerrar la caja de inspección',
   whatIs: 'Qué es',
+  stampsTitle: (count: number): TermText => `${count} sellos juntos`,
+  stampLine: (state: StampState): TermText => STAMP_TEXT[state],
   ipAddress: '{{ip-address}}',
   privateIp: '{{private-ip}}',
   publicIp: '{{public-ip}}',

@@ -32,12 +32,12 @@ export function InspectionBox({ inspection, pinned, heading, onClose }: Inspecti
       }}
     >
       <h2 id="inspection-title" ref={heading} tabIndex={-1}>
-        <EntityIcon entity={inspection.entity} />
+        {inspection.entity && <EntityIcon entity={inspection.entity} />}
         <TaggedText text={inspection.title} tips={false} />
       </h2>
       <dl className="inspection__fields">
-        {inspection.fields.map((field) => (
-          <div key={field.label}>
+        {inspection.fields.map((field, index) => (
+          <div key={`${index}-${field.label}`}>
             <dt className="caption caption--soft">
               <TaggedText text={field.label} tips={false} />
             </dt>

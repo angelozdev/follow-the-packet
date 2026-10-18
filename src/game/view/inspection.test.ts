@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, applyAction, type NetworkAction, type Rule } from '@/engine';
-import { INCIDENTS } from '@/levels';
+import { INCIDENTS, caseWorld, sendCombinations, startWorld, type Flow, type Incident, type SendOwner } from '@/levels';
 import { unknownTerms } from '@/levels/ladder';
 import { ADDRESS, IP, MESSAGE, ORIGIN, PORT, ROUTER } from '@/levels/02-ports-and-names/shared';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { sendPacket } from '@/game/flow-runs';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
 import { translationsCard } from './cards/table-card';
 import { inspect, type Inspection } from './inspection';
-import { PIECE_ID } from './piece-id';
+import { PIECE_ID, STAMPS_SEPARATOR, parsePieceId } from './piece-id';
 import { pieceViews } from './pieces';
 
 const WHAT_IS = 'Qué es';
@@ -922,5 +923,66 @@ describe('the box of 02-08 shows the four headers of a translated packet', () =>
     expect(field(ping, 'Encabezado del Echo Reply (en internet)')).toEqual(['Encabezado del Echo Reply (en internet)', `IP de origen: ${IP.server}`, `IP de destino: ${IP.officeUplink}`]);
     const early = sessionReducer(without(start, 'echo-reply'), { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.server.id, messageId: MESSAGE.ping.id });
     expect(headers(early).map(([label]) => label)).toEqual(['Encabezado (en tu red local)', 'Encabezado (en internet)']);
+  });
+});
+
+describe('the list of stamps of a place', () => {
+  const LIVE = { printer: 'live-printer', nobody: 'live-nobody' };
+  const SENT = { printer: 'sent-you-printer-ping', nobody: 'sent-you-nobody-ping', lucia: 'sent-you-lucia-ping' };
+  const flows: Flow[] = [
+    { id: LIVE.printer, kind: 'required', packet: ping(device('your-laptop'), OFFICE.printer) },
+    { id: LIVE.nobody, kind: 'required', packet: ping(device('your-laptop'), OFFICE.nobody) },
+  ];
+  const listing = { ...sendIncident(), base: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }), flows, introduces: [...sendIncident().introduces, 'firewall' as const] };
+  const start = startSession([listing], listing.id);
+  const sentAll = ['nobody', 'printer', 'lucia'].reduce((session, toId) => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId: 'ping' }), start);
+  const asked = [LIVE.nobody, SENT.printer, LIVE.printer, SENT.lucia, SENT.nobody];
+
+  const ownersOf = (incident: Incident): { owner: SendOwner; world: ReturnType<typeof startWorld> }[] => {
+    const world = startWorld(INCIDENTS, incident.id);
+    if (incident.mechanic === 'send') return [{ owner: incident, world }];
+    return incident.mechanic === 'diagnose' ? incident.diagnose.cases.map((owner) => ({ owner, world: caseWorld(world, owner) })) : [];
+  };
+  const packetIdsOf = (incident: Incident): string[] => {
+    const sent = ownersOf(incident).flatMap(({ owner, world }) => sendCombinations(owner).flatMap((combination) => sendPacket(world, owner, { type: 'sendPacket', ...combination }, 1, EVERY_TERM) ?? []));
+    return [...incident.flows.map((flow) => flow.id), ...sent.map((run) => run.id)];
+  };
+
+  it('the id of a list of stamps reads back into the ids of its packets', () => {
+    expect(parsePieceId(PIECE_ID.stamps(asked))).toEqual({ kind: 'stamps', ids: asked });
+    expect(parsePieceId(PIECE_ID.stamps([SENT.printer]))).toEqual({ kind: 'stamps', ids: [SENT.printer] });
+    expect(parsePieceId(PIECE_ID.stamps([]))).toEqual({ kind: 'stamps', ids: [] });
+    expect(parsePieceId(PIECE_ID.packet(SENT.printer))).toEqual({ kind: 'packet', id: SENT.printer });
+  });
+
+  it('no id of a packet of any registered incident holds the separator of the id of a list of stamps', () => {
+    const ids = INCIDENTS.flatMap(packetIdsOf);
+    expect(ids.length).toBeGreaterThan(INCIDENTS.length);
+    expect(ids.filter((id) => id.includes(STAMPS_SEPARATOR))).toEqual([]);
+  });
+
+  it('a list of stamps shows one field per packet, newest first, with its label and how it ended', () => {
+    expect(plain(inspect(sentAll, PIECE_ID.stamps(asked)))?.fields).toEqual([
+      ['ping de your-laptop a lucia-laptop', 'Bloqueado.'],
+      ['ping de your-laptop a printer', 'Llegó.'],
+      ['ping de your-laptop a 192.168.1.30', 'Perdido.'],
+      ['ping de your-laptop a 192.168.1.30', 'Perdido.'],
+      ['ping de your-laptop a printer', 'Llegó.'],
+    ]);
+  });
+
+  it('a list of stamps whose packets are gone inspects nothing', () => {
+    expect(inspect(sentAll, PIECE_ID.stamps([SENT.printer, SENT.lucia]))).not.toBeNull();
+    expect(inspect(start, PIECE_ID.stamps([SENT.printer, SENT.lucia]))).toBeNull();
+    expect(inspect(sentAll, PIECE_ID.stamps([LIVE.printer, 'sent-you-ghost-ping']))).toBeNull();
+    expect(inspect(sentAll, PIECE_ID.stamps([]))).toBeNull();
+  });
+
+  it('the list of stamps has no entity and its title counts the stamps', () => {
+    const list = inspect(sentAll, PIECE_ID.stamps(asked));
+    expect(list).not.toBeNull();
+    expect(list).not.toHaveProperty('entity');
+    expect(plain(list)?.title).toBe('5 sellos juntos');
+    expect(plain(inspect(sentAll, PIECE_ID.stamps([SENT.printer, SENT.lucia, LIVE.printer])))?.title).toBe('3 sellos juntos');
   });
 });

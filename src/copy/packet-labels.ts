@@ -134,7 +134,7 @@ export function tracerouteLabel(packet: PacketSpec, trace: Trace, net: Network, 
 
 export type StampState = 'arrived' | 'blocked' | 'lost' | 'intruder' | 'warned';
 
-const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró y no debía.', warned: 'Apareció un aviso.' };
+export const STAMP_TEXT: Record<StampState, string> = { arrived: 'Llegó.', blocked: 'Bloqueado.', lost: 'Perdido.', intruder: 'Entró y no debía.', warned: 'Apareció un aviso.' };
 
 export type WarnedBy = 'router' | 'host' | 'sender';
 export type WarningTerm = Extract<TermId, 'host-unreachable' | 'net-unreachable' | 'time-exceeded' | 'port-unreachable'>;
@@ -162,6 +162,28 @@ function warnedBy(notice: Notice, packet: Pick<PacketSpec, 'from'>): WarnedBy {
 export function warningOf(notice: Notice, packet: Pick<PacketSpec, 'from'>, known?: ReadonlySet<TermId>): Warning {
   const term = notice.kind === 'net-unreachable' && known?.has('net-unreachable') ? 'net-unreachable' : WARNING_TERM[notice.kind];
   return { term, by: warnedBy(notice, packet) };
+}
+
+/** What a packet's computed result says about its stamp: whether it was not meant to get in (`intruder`), whether it reached a device, whether a firewall the player knows stopped it, and the warning the player knows that came back. */
+export interface StampResult {
+  intruder: boolean;
+  reached: boolean;
+  blocked: boolean;
+  warning: Warning | null;
+}
+
+/** Returns the stamp that a packet's result leaves: a warning the player knows first (a datagram that reached its host and got a Port Unreachable is not an arrival, since no program received it), then a packet that reached a device, which is an intruder if it was not meant to get in, and then blocked, when a firewall the player knows stopped it, or lost. */
+export function stampOf({ warning, reached, intruder, blocked }: StampResult): StampState {
+  if (warning) return 'warned';
+  if (reached) return intruder ? 'intruder' : 'arrived';
+  return blocked ? 'blocked' : 'lost';
+}
+
+const PROBLEM_STAMP: Record<StampState, boolean> = { arrived: false, blocked: true, lost: true, intruder: true, warned: true };
+
+/** True for the stamps that tell the player something went wrong (blocked, lost, warned and an intruder that got in), and false for one that arrived. */
+export function isProblemStamp(state: StampState): boolean {
+  return PROBLEM_STAMP[state];
 }
 
 /** Names a stamp for a screen reader: the packet it stands for and how it ended, since its mark is only drawn. */

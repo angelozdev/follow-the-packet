@@ -1,6 +1,6 @@
-import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, packetShape, roundTripText, type EntityRef, type TermId, type TermText } from '@/copy';
+import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, packetShape, roundTripText, stampOf, type EntityRef, type TermId, type TermText } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketSpec, type Router, type ServerActor, type Service } from '@/engine';
-import { routerOutOfSight, type PacketRun } from '@/game/flow-runs';
+import { routerOutOfSight, type PacketRun, type SentPacket } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
@@ -12,7 +12,7 @@ import { placesOf, routerPlace } from './router-place';
 export type { InspectionField } from './packet-fields';
 
 export interface Inspection {
-  entity: EntityRef;
+  entity?: EntityRef;
   title: TermText;
   fields: InspectionField[];
 }
@@ -226,7 +226,22 @@ function packet(session: Session, run: PacketRun): Inspection {
   };
 }
 
-/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or null when the id names nothing on the map (a firewall, a router, the edge and the internet are not on it while their terms are unknown, and nothing is on it that the incident does not show). */
+/** Returns the runs of the given ids, the newest first: what the player sent, the last send first, and then the live flows of the incident, the last one of the incident first, since a flow has no send and is older than every packet the player sends. Null when an id names no run any more, or when there is none. */
+function newestFirst(session: Session, ids: readonly string[]): PacketRun[] | null {
+  const sentOldestFirst: SentPacket[] = [...session.sent].sort((a, b) => a.send - b.send);
+  const wanted = new Set(ids);
+  const listed = [...session.runs, ...sentOldestFirst].filter((run) => wanted.has(run.id)).reverse();
+  return listed.length > 0 && listed.length === wanted.size ? listed : null;
+}
+
+/** The box of the stamps that a place holds together, which the «+N» of the map opens: one field for each packet, the newest first, with the label of the packet and how it ended, in the words of the stamp. It is no entity, so it has no icon. */
+function stamps(session: Session, ids: readonly string[]): Inspection | null {
+  const listed = newestFirst(session, ids);
+  if (!listed) return null;
+  return { title: INSPECTION_TEXT.stampsTitle(listed.length), fields: listed.map((run) => ({ label: run.label, lines: [INSPECTION_TEXT.stampLine(stampOf(run))] })) };
+}
+
+/** Returns what the inspection box shows for a piece, a flow's packet or a packet the player sent, starting with what it is, or for the list of the stamps of a place (a «+N»), or null when the id names nothing on the map (a firewall, a router, the edge and the internet are not on it while their terms are unknown, and nothing is on it that the incident does not show). */
 export function inspect(session: Session, pieceId: string): Inspection | null {
   const ref = parsePieceId(pieceId);
   if (!ref) return null;
@@ -258,5 +273,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
       const found = [...runs, ...sent].find((run) => run.id === ref.id);
       return found ? packet(session, found) : null;
     }
+    case 'stamps':
+      return stamps(session, ref.ids);
   }
 }
