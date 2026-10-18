@@ -113,6 +113,7 @@ export const STOP_PITCH = 2 * (ICON_MARK_BACK + MARK_SPACING);
 export const LINE_END_REACH = 2 * ICON_MARK_BACK;
 export const SERVERS_GAP = 2 * (MARK_SPACING + MARK_BACK) - COMPACT.lane;
 export const FAN_HALF = (STAMP + FAN_PITCH * (CASILLAS - 1)) / 2;
+export const STOP_LABEL_RISE = FAN_HALF + FAN_CLEARANCE;
 
 /** Returns the box of a fan of `casillas` stamps centered on a point and opening along `axis`: as long as the fan on that axis and one stamp across. */
 export function fanBox([x, y]: Point, axis: FanAxis, casillas: number): Box {

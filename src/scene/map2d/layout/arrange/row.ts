@@ -27,6 +27,7 @@ import {
   ROW_HEIGHT,
   SERVERS_GAP,
   STAMP,
+  STOP_LABEL_RISE,
   STOP_PITCH,
   STUB,
   fanBox,
@@ -100,7 +101,7 @@ function frameOf(pieces: readonly RowPiece[], found: Classified, nested: boolean
   return { innerLeft, iconLeft, doorX: iconLeft + ICON, busX, floorRight: busX + GROUP_PAD };
 }
 
-function stopsOf(world: Network, pieces: readonly RowPiece[], found: Classified, lineStart: number, nearest: number): Stop[] {
+function stopsOf(world: Network, pieces: readonly RowPiece[], found: Classified, firstCenter: number, nearest: number): Stop[] {
   const routerIds = new Set((world.routers ?? []).map(({ id }) => id));
   const edge = pieces.find(({ kind, anchorId }) => kind === 'edge' && !routerIds.has(anchorId));
   const internet = pieces.find(({ kind }) => kind === 'internet');
@@ -113,7 +114,7 @@ function stopsOf(world: Network, pieces: readonly RowPiece[], found: Classified,
   for (const [name, piece] of named) {
     const before = stops[stops.length - 1];
     const width = widthOf(piece);
-    const center = before ? Math.max(before.center + STOP_PITCH, before.labelRight + LABEL_SEP + width / 2) : lineStart + ICON / 2;
+    const center = before ? Math.max(before.center + STOP_PITCH, before.labelRight + LABEL_SEP + width / 2) : firstCenter;
     const labelLeft = Math.max(center - width / 2, before ? before.labelRight + LABEL_SEP : nearest);
     stops.push({ name, piece, center, labelLeft, labelRight: labelLeft + width });
   }
@@ -151,7 +152,7 @@ function placeBus(draft: Draft, frame: Frame, floor: Floor, stack: Stack, lane: 
 
 function placeStops(draft: Draft, stops: readonly Stop[], yMain: number, from: string) {
   stops.forEach(({ name, piece, center, labelLeft }, index) => {
-    place(draft, piece, box(center - ICON / 2, yMain - ICON / 2, ICON, ICON), ({ width, height }) => box(labelLeft, yMain - ICON / 2 - LABEL_GAP - height, width, height));
+    place(draft, piece, box(center - ICON / 2, yMain - ICON / 2, ICON, ICON), ({ width, height }) => box(labelLeft, yMain - STOP_LABEL_RISE - height, width, height));
     draft.marks.push({ station: name, facing: index === 0 ? from : stops[index - 1].name, back: ICON_MARK_BACK });
   });
 }
@@ -190,9 +191,9 @@ function legsOf(drawn: RowLayout['drawn']): [string, string][] {
   return [...fromBuses, ...along, ...(line.length > 0 ? [[line[line.length - 1], LINE_END] as [string, string]] : [])];
 }
 
-function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, branch: Branch, stack: Stack, gateway: { x: number; y: number; first: string; firstY: number }) {
+function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, branch: Branch, stack: Stack, gateway: { x: number; y: number; headX: number; first: string; firstY: number }) {
   const [id, router] = [branch.gateway.id, station.router(branch.gateway.id)];
-  const head: Head = { name: headOf(id), point: [gateway.x - ICON / 2, gateway.y] };
+  const head: Head = { name: headOf(id), point: [gateway.headX, gateway.y] };
   branch.floors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, stack);
     placeBus(draft, frame, floor, stack, trunkLane(index, branch.floors.length, gateway.y), head);
@@ -215,18 +216,19 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
   const laneCount = found.servers.length + found.clients.length;
   const hasLine = found.edge || found.routers.length > 0 || found.internet || laneCount > 0;
   const lineStart = floors.length === 0 ? OUTER + STAMP / 2 + ICON_MARK_BACK - ICON / 2 : frame.busX + (hasLine ? density.trunk : LINE_END_REACH);
-  const stops = stopsOf(world, pieces, found, lineStart, floors.length > 0 ? frame.busX + FAN_HALF + FAN_CLEARANCE : OUTER);
+  const firstCenter = floors.length === 0 ? lineStart + ICON / 2 : frame.busX + STOP_PITCH;
+  const stops = stopsOf(world, pieces, found, firstCenter, floors.length > 0 ? frame.busX + FAN_HALF + FAN_CLEARANCE : OUTER);
   const last = stops[stops.length - 1];
-  const serversX = last ? Math.max(last.center + SERVERS_GAP, last.labelRight + LABEL_SEP) : lineStart;
+  const serversX = last ? Math.max(last.center + SERVERS_GAP, last.labelRight + LABEL_SEP) : floors.length === 0 ? lineStart : frame.busX + SERVERS_GAP;
   const officeRight = stops[0] && stops[0].name !== INTERNET ? stops[0].center : frame.floorRight + (nested ? GROUP_PAD : 0);
   const inside = new Set(pieces.filter(({ kind, insideBlock }) => kind === 'device' && insideBlock).map(({ anchorId }) => anchorId));
   const stackAt = (top: number) => stackFloors(mainFloors, { top, left: OUTER, right: officeRight, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside });
-  const above = Math.max(...stops.map(({ piece }) => (piece ? ICON / 2 + LABEL_GAP + labelOf(piece).height : 0)), (laneCount * LANE_HEIGHT) / 2);
+  const above = Math.max(...stops.map(({ piece }) => (piece ? STOP_LABEL_RISE + labelOf(piece).height : 0)), (laneCount * LANE_HEIGHT) / 2);
   const settled = stackAt(OUTER);
   const yMain = Math.max(settled.center, OUTER + above);
   const main = stackAt(OUTER + yMain - settled.center);
   const draft: Draft = { roads: [], marks: [], labels: {}, icons: {} };
-  const head: Head = { name: stops.length > 0 ? HEAD : laneCount > 0 ? SERVERS : LINE_END, point: [lineStart, yMain] };
+  const head: Head = { name: hasLine ? HEAD : LINE_END, point: [lineStart, yMain] };
   mainFloors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, main);
     placeBus(draft, frame, floor, main, trunkLane(index, mainFloors.length, yMain), head);
@@ -236,6 +238,7 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
     if (laneCount === 0) draft.roads.push({ kind: 'stub', via: [named(last.name, [last.center, yMain]), named(LINE_END, [last.center + LINE_END_REACH, yMain])] });
     placeStops(draft, stops, yMain, mainFloors.length > 0 ? station.bus(mainFloors[0].id) : (stops[1]?.name ?? LINE_END));
   }
+  if (stops.length === 0 && laneCount > 0) draft.roads.push({ kind: 'line', via: [named(HEAD, head.point), named(SERVERS, [serversX, yMain])] });
   const lastJunction = laneCount > 0 ? placeLanes(draft, pieces, found, serversX, yMain, density) : undefined;
   const beforeEnd = lastJunction ?? last?.name ?? (mainFloors.length > 0 ? station.bus(mainFloors[0].id) : undefined);
   if (beforeEnd !== undefined) draft.marks.push({ station: LINE_END, facing: beforeEnd, back: 0 });
@@ -245,7 +248,7 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
     const left = frame.innerLeft - (isNested(branch.floors) ? GROUP_PAD : 0);
     const stack = stackFloors(branch.floors, { top, left, right: stops[0].center, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside });
     const y = branch.floors.length > 0 ? stack.center : top + ROW_HEIGHT / 2;
-    placeBranch(draft, pieces, frame, branch, stack, { x: stops[0].center, y, first: station.router(found.routers[0].id), firstY: yMain });
+    placeBranch(draft, pieces, frame, branch, stack, { x: stops[0].center, y, headX: lineStart, first: station.router(found.routers[0].id), firstY: yMain });
     groups.push(...stack.groups.map((group) => (group.kind === 'block' ? group : { ...group, gateway: branch.gateway.id })));
     top = (branch.floors.length > 0 ? stack.bottom : top + ROW_HEIGHT) + BOX_GAP;
   }

@@ -71,8 +71,9 @@ const SCENES: Scene[] = [
   { name: 'a road with no office', world: FLOORS, pieces: [...ROUTERS, GLOBE] },
 ];
 const DENSITIES: Density[] = [NORMAL, COMPACT];
-const TAIL_MIDS = /^mid:(bus:|door:)|^mid:.*-(door:|line-end$)|^line-end$/;
-const TAIL_SPACING = /^mid:(bus:|door:)|^mid:.*-line-end$|^line-end$/;
+const SHARED_TRUNK_MIDS = /^mid:bus:/;
+const sharesTrunk = (layout: RowLayout, name: string) => SHARED_TRUNK_MIDS.test(name) && new Set(Object.values(layout.drawn.devices)).size > 1;
+const LANE_BUS_MIDS = /^mid:(door:|.*-door:|.*-line-end$)/;
 
 describe('layoutRow', () => {
   it('lays out the drawn routers along the main line between the office and the internet, in order', () => {
@@ -233,22 +234,30 @@ describe('layoutRow', () => {
     expect(firewallLabel.height).toBe(36);
     const [router, routerLabel] = [layout.icons[ROUTERS[1].id], layout.labels[ROUTERS[1].id]];
     expect(centerOf(routerLabel)[0]).toBe(centerOf(router)[0]);
-    expect(routerLabel.y + routerLabel.height + LABEL_GAP).toBe(router.y);
+    expect(routerLabel.y + routerLabel.height + 47).toBe(layout.stations[station.router(provider.id)][1]);
     const [office, officeLabel] = [layout.icons[ROUTERS[0].id], layout.labels[ROUTERS[0].id]];
     expect(officeLabel.x).toBeGreaterThanOrEqual(layout.stations[station.bus(floor1.id)][0]);
-    expect(officeLabel.y + officeLabel.height + LABEL_GAP).toBe(office.y);
+    expect(officeLabel.y + officeLabel.height + 47).toBe(layout.stations[station.router(officeRouter.id)][1]);
+    expect(office.y).toBe(layout.stations[station.router(officeRouter.id)][1] - 24);
   });
 
-  it('the compact row differs from the normal one only in the trunk and in the lane', () => {
+  it('the compact row differs from the normal one only in the lane: the trunk shortens a cable that the first stop keeps 172 px from the bus', () => {
     const [normal, compact] = DENSITIES.map((density) => layoutRow(FLOORS, OFFICE_AND_ROAD, density));
-    expect(normal.size.width - compact.size.width).toBe(NORMAL.trunk - COMPACT.trunk + NORMAL.lane - COMPACT.lane);
+    expect(normal.size.width - compact.size.width).toBe(NORMAL.lane - COMPACT.lane);
     expect(compact.size.height).toBe(normal.size.height);
-    for (const id of ['device:your-laptop', 'device:andres-laptop']) expect(compact.icons[id]).toEqual(normal.icons[id]);
-    expect(normal.icons[ROUTERS[0].id].x - compact.icons[ROUTERS[0].id].x).toBe(NORMAL.trunk - COMPACT.trunk);
-    expect(normal.icons[GLOBE.id].x - compact.icons[GLOBE.id].x).toBe(NORMAL.trunk - COMPACT.trunk);
-    expect(normal.icons[SERVER_PIECE.id].x - compact.icons[SERVER_PIECE.id].x).toBe(NORMAL.trunk - COMPACT.trunk + NORMAL.lane - COMPACT.lane);
+    for (const id of ['device:your-laptop', 'device:andres-laptop', ROUTERS[0].id, ROUTERS[2].id, GLOBE.id]) expect(compact.icons[id], id).toEqual(normal.icons[id]);
+    expect(normal.icons[SERVER_PIECE.id].x - compact.icons[SERVER_PIECE.id].x).toBe(NORMAL.lane - COMPACT.lane);
+    const trunkLength = (layout: RowLayout) => lengthOf(layout.links.find(({ kind, from }) => kind === 'trunk' && from === station.bus(floor1.id))?.points ?? []).at(-1);
+    expect(trunkLength(normal)).toBeGreaterThan(trunkLength(compact) ?? Infinity);
     const [officeOnly, officeOnlyCompact] = DENSITIES.map((density) => layoutRow(FLOORS, FLOOR_1_DEVICES, density));
     expect(officeOnlyCompact).toEqual(officeOnly);
+  });
+
+  it('the first stop of the line stands 172 px from the bus, whatever the density', () => {
+    for (const density of DENSITIES) {
+      const layout = layoutRow(FLOORS, OFFICE_AND_ROAD, density);
+      expect(layout.stations[station.router(officeRouter.id)][0] - layout.stations[station.road('your-laptop')][0]).toBe(172);
+    }
   });
 
   describe.each(SCENES)('in $name', ({ world, pieces }) => {
@@ -277,7 +286,7 @@ describe('layoutRow', () => {
         const boxes = Object.entries({ ...layout.labels, ...Object.fromEntries(Object.entries(layout.icons).map(([id, box]) => [`icon ${id}`, box])) });
         const clashes = boxes.flatMap(([id, box], index) => boxes.slice(index + 1).filter(([, other]) => overlaps(box, other)).map(([otherId]) => `${id} / ${otherId}`));
         expect(clashes.slice(0, 8)).toEqual([]);
-        const covered = layout.marks.filter(({ station: name }) => !name.startsWith('mid:bus:')).flatMap(({ station: name, point, axis, casillas }) => boxes.filter(([, box]) => overlaps(fanBox(point, axis, casillas), box)).map(([id]) => `${name} / ${id}`));
+        const covered = layout.marks.filter(({ station: name }) => !sharesTrunk(layout, name)).flatMap(({ station: name, point, axis, casillas }) => boxes.filter(([, box]) => overlaps(fanBox(point, axis, casillas), box)).map(([id]) => `${name} / ${id}`));
         expect(covered.slice(0, 8)).toEqual([]);
       }
     });
@@ -285,10 +294,9 @@ describe('layoutRow', () => {
     it('two marks of one link are at least 40 px apart', () => {
       for (const layout of layouts) {
         const spaced = layout.links
-          .filter(({ kind }) => kind !== 'trunk')
           .flatMap(({ from, to, points }) => {
             const walked = lengthOf(points);
-            const along = layout.marks.filter(({ station: name }) => !TAIL_SPACING.test(name)).flatMap(({ station: name, point }) => {
+            const along = layout.marks.filter(({ station: name }) => !sharesTrunk(layout, name)).flatMap(({ station: name, point }) => {
               const segment = points.slice(1).findIndex((end, at) => onSegment(point, points[at], end));
               return segment < 0 ? [] : [{ name, at: walked[segment] + Math.hypot(point[0] - points[segment][0], point[1] - points[segment][1]) }];
             });
@@ -299,12 +307,24 @@ describe('layoutRow', () => {
       }
     });
 
-    it('the fans of two marks never overlap, but the ones at the end of a bus, at the end of the line, in the tails of the line and at the first stop, whose trunk is shorter than a fan', () => {
+    it('the fans of two marks never overlap, but at the end of a bus, on the bus of the lanes and in the first leg', () => {
       for (const layout of layouts) {
-        const [first] = mainLine(layout.drawn);
-        const fans = layout.marks.filter(({ station: name }) => !TAIL_MIDS.test(name) && !name.startsWith('bus-end:') && name !== first).map(({ station: name, point, axis, casillas }) => [name, fanBox(point, axis, casillas)] as const);
-        const clashes = fans.flatMap(([name, fan], index) => fans.slice(index + 1).filter(([, other]) => overlaps(fan, other)).map(([other]) => `${name} / ${other}`));
-        expect(clashes.slice(0, 8)).toEqual([]);
+        const laneDoors = new Set([...layout.drawn.servers, ...layout.drawn.clients].map(station.door));
+        const onLaneBus = (name: string) => LANE_BUS_MIDS.test(name) || laneDoors.has(name) || name === LINE_END;
+        const clashes = (name: string, other: string) => sharesTrunk(layout, name) || sharesTrunk(layout, other) || (onLaneBus(name) && onLaneBus(other)) || [name, other].sort().join(' ').match(/^bus-end:\S+ road:/) !== null;
+        const fans = layout.marks.map(({ station: name, point, axis, casillas }) => [name, fanBox(point, axis, casillas)] as const);
+        const found = fans.flatMap(([name, fan], index) => fans.slice(index + 1).filter(([other, box]) => overlaps(fan, box) && !clashes(name, other)).map(([other]) => `${name} / ${other}`));
+        expect(found.slice(0, 8)).toEqual([]);
+      }
+    });
+
+    it('every stop of the line, and the middle between two of them, holds three casillas', () => {
+      for (const layout of layouts) {
+        const stops = mainLine(layout.drawn).filter((name) => !name.startsWith('door:'));
+        const between = stops.slice(1).map((after, index) => station.mid(stops[index], after));
+        const short = layout.marks.filter(({ station: name, casillas }) => (stops.includes(name) || between.includes(name)) && casillas < 3).map(({ station: name, casillas }) => `${name}: ${casillas}`);
+        expect(short).toEqual([]);
+        expect(layout.marks.filter(({ station: name }) => stops.includes(name) || between.includes(name)).length).toBe(stops.length + between.length);
       }
     });
 
