@@ -10,7 +10,7 @@ import { fanStamps, stampsByPlace } from '@/scene/map2d/marks/stamp-fan';
 import { BlockNames, GroupCaptions } from '@/scene/map2d/overlay/group-captions';
 import { MapLabels } from '@/scene/map2d/overlay/map-labels';
 import { stampButtons, type DrawnRun, type InspectStampsTrigger, type SentRun } from '@/scene/map2d/overlay/map-stamps';
-import { Traffic } from '@/scene/map2d/traffic/traffic';
+import { FlightLabels, Traffic } from '@/scene/map2d/traffic/traffic';
 import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import type { MapPiece } from '@/scene/overlay/piece-label';
 import { frameOf } from './frame';
@@ -50,11 +50,16 @@ function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, 
         {tab && <BlockNames tabs={tab.boxes} name={tab.name} frame={frame} />}
         <MapLabels pieces={pieces} layout={layout} frame={frame} inspectTrigger={inspectTrigger} onActivate={onActivate} fans={fans} stamp={stampButtons({ fans, runs, frame, inspectTrigger, inspectStampsTrigger })} />
       </div>
+      {!still && (
+        <svg className="map-stage__flight-labels" aria-hidden="true" viewBox={`0 0 ${size.width} ${size.height}`} width={size.width} height={size.height} style={{ left: frame.x, top: frame.y }}>
+          <FlightLabels flows={flows} sent={sent} layout={layout} />
+        </svg>
+      )}
     </>
   );
 }
 
-/** Takes the world, the pieces the map draws, the terms the player knows, the block the player is classifying in (null when the incident has none), the piece whose card is open, whether animations are off, what inspects a piece and what the screen does when one is activated; returns the map at the width of its box: a sheet that measures its own width (`useElementSize`), draws nothing until it has a width above 0 and then lays the map out at that width (`layoutMap`, with room for the tab of an outline of a block when there is a block to name) and draws it at one unit to the pixel, an SVG for the art that screen readers skip (the boxes of the groups, the links, the marks, the pieces and the packets: with animations off their traces and labels, with animations on the packets in flight and the labels that fly beside them) and the HTML layer above it for what the player reads and presses (the names of the groups, the tab of a block once `cidr` is known, and the label of every piece), centered under the title bar. The stage fills the box that holds it: on a phone it is as tall as its drawing, and above 900 px the box scrolls down when the drawing is taller. */
+/** Takes the world, the pieces the map draws, the terms the player knows, the block the player is classifying in (null when the incident has none), the piece whose card is open, whether animations are off, what inspects a piece and what the screen does when one is activated; returns the map at the width of its box: a sheet that measures its own width (`useElementSize`), draws nothing until it has a width above 0 and then lays the map out at that width (`layoutMap`, with room for the tab of an outline of a block when there is a block to name) and draws it at one unit to the pixel, an SVG for the art that screen readers skip (the boxes of the groups, the links, the marks, the pieces and the packets: with animations off their traces and labels, with animations on the packets in flight) and the HTML layer above it for what the player reads and presses (the names of the groups, the tab of a block once `cidr` is known, and the label of every piece), centered under the title bar; with animations on, a second SVG over the layer, hidden from screen readers and taking no pointer, draws the labels that fly beside the packets, so they pass over the stamps without covering what the player presses. The stage fills the box that holds it: on a phone it is as tall as its drawing, and above 900 px the box scrolls down when the drawing is taller. */
 export function MapStage(props: MapStageProps) {
   const { ref, width } = useElementSize();
   return (

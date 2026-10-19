@@ -45,25 +45,28 @@ function flightsOf(flows: readonly DrawnRun[], sent: readonly SentRun[], layout:
 }
 
 function FlyingTraffic({ flows, sent, layout }: Omit<TrafficProps, 'fans' | 'still'>) {
-  const flights = flightsOf(flows, sent, layout);
   return (
-    <>
-      <g className="map-flights">
-        {flights.map(({ key, flying, plan, cycle }) => (
-          <FlightBody key={key} flying={flying} plan={plan} cycle={cycle} />
-        ))}
-      </g>
-      <g className="map-flight-tags">
-        {flights.flatMap(({ key, flying, plan, cycle }) => {
-          const legs = flying.way.run.ports?.legs;
-          return legs && plan.labels.length > 0 ? [<FlightTags key={key} flying={flying} legs={legs} plan={plan} cycle={cycle} bounds={layout.size} />] : [];
-        })}
-      </g>
-    </>
+    <g className="map-flights">
+      {flightsOf(flows, sent, layout).map(({ key, flying, plan, cycle }) => (
+        <FlightBody key={key} flying={flying} plan={plan} cycle={cycle} />
+      ))}
+    </g>
   );
 }
 
-/** Takes the live flows and the packets the player sent (in the order they stand), the layout, the fans of the stamps and whether animations are off; returns the packets of the map. With animations off, the still map: the trace of each packet with its shape and its label. With animations on, the packets in flight: each live flow sends a packet every 3.5 seconds, shifted 1.1 seconds for every flow before it, in as many copies as the periods its trip lasts, and each packet the player sent flies once, from the moment its group is mounted, so a new send number starts a new flight; the labels of the packets with ports fly beside them. A packet that starts at a piece the map does not draw is not drawn. */
+/** Takes the live flows and the packets the player sent, as `Traffic` does, and the layout; returns the labels of the packets with ports that are in flight, in a group (`g.map-flight-tags`) for an `svg` of its own, as large as the drawing, that `MapStage` puts over the HTML layer: the labels fly beside their packets over the stamps and the labels of the pieces, as the 3D labels do, while the packets themselves go under them. Each label has the plan and the cycle of its packet, so it moves with it; a packet with no ports has none. */
+export function FlightLabels({ flows, sent, layout }: Omit<TrafficProps, 'fans' | 'still'>) {
+  return (
+    <g className="map-flight-tags">
+      {flightsOf(flows, sent, layout).flatMap(({ key, flying, plan, cycle }) => {
+        const legs = flying.way.run.ports?.legs;
+        return legs && plan.labels.length > 0 ? [<FlightTags key={key} flying={flying} legs={legs} plan={plan} cycle={cycle} bounds={layout.size} />] : [];
+      })}
+    </g>
+  );
+}
+
+/** Takes the live flows and the packets the player sent (in the order they stand), the layout, the fans of the stamps and whether animations are off; returns the packets of the map. With animations off, the still map: the trace of each packet with its shape and its label. With animations on, the packets in flight (`g.map-flights`): each live flow sends a packet every 3.5 seconds, shifted 1.1 seconds for every flow before it, in as many copies as the periods its trip lasts, and each packet the player sent flies once, from the moment its group is mounted, so a new send number starts a new flight. Their labels are `FlightLabels`, which `MapStage` draws in an `svg` of its own over the HTML layer. A packet that starts at a piece the map does not draw is not drawn. */
 export function Traffic({ flows, sent, layout, fans, still }: TrafficProps) {
   return still ? <StillTraffic packets={stillPackets([...flows, ...sent], layout, fans)} /> : <FlyingTraffic flows={flows} sent={sent} layout={layout} />;
 }

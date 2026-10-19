@@ -11,7 +11,7 @@ import { translationAt, wayOf } from '@/scene/map2d/marks/still-packets';
 import { FlightBody } from './flight';
 import { FLOW_OFFSET, FLOW_PERIOD, flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from './flight-plan';
 import { pathData } from './still-trace';
-import { Traffic } from './traffic';
+import { FlightLabels, Traffic } from './traffic';
 
 const WORLD = officeTwoFloorsNet();
 const LAYOUT = layoutMap(WORLD, FLOORS_LABEL_PIECES, { width: 1280 });
@@ -28,9 +28,16 @@ const sentAs = (run: MapRunFixture, send: number) => ({ ...run, send });
 function trafficOf(flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[], still: boolean) {
   const fans = fanStamps(stampsByPlace([...flows, ...sent], LAYOUT.drawn), LAYOUT.marks);
   return (
-    <svg>
-      <Traffic flows={flows} sent={sent} layout={LAYOUT} fans={fans} still={still} />
-    </svg>
+    <div>
+      <svg>
+        <Traffic flows={flows} sent={sent} layout={LAYOUT} fans={fans} still={still} />
+      </svg>
+      {!still && (
+        <svg className="flight-labels">
+          <FlightLabels flows={flows} sent={sent} layout={LAYOUT} />
+        </svg>
+      )}
+    </div>
   );
 }
 
@@ -49,7 +56,8 @@ const packetsOf = (svg: ParentNode, id: string) => [...svg.querySelectorAll(`g.m
 const motionOfPacket = (packet: Element) => packet.querySelector('animateMotion') as Element;
 const glyphOf = (packet: Element, role: string) => packet.querySelector(`g.map-packet[data-role="${role}"]`);
 const animateOf = (element: Element | null) => element?.parentElement?.querySelector(':scope > animate') as Element;
-const labelsOf = (svg: ParentNode) => [...svg.querySelectorAll('.map-flight-tags g.packet-tag')];
+const labelSvgOf = (svg: Element) => svg.parentElement?.querySelector('svg.flight-labels') ?? null;
+const labelsOf = (svg: Element) => [...(labelSvgOf(svg)?.querySelectorAll('.map-flight-tags g.packet-tag') ?? [])];
 
 describe('SMIL in React', () => {
   it('React passes the attributes of an animateMotion to the DOM as they are', () => {
@@ -70,12 +78,14 @@ describe('Traffic', () => {
   it('without animations nothing is animated', () => {
     const runs = [toLucia('answered'), toTheServer('nat'), toLucia('blocked', { replied: false, reached: false, blocked: true }), toLucia('lost', { replied: false, reached: false })];
     const svg = draw(runs, [sentAs(toLucia('sent'), 1)], true);
-    expect(svg.querySelectorAll(ANIMATIONS)).toHaveLength(0);
+    expect(svg.parentElement?.querySelectorAll(ANIMATIONS)).toHaveLength(0);
+    expect(labelSvgOf(svg)).toBeNull();
     expect(svg.querySelectorAll('g.map-trace')).toHaveLength(5);
     expect(svg.querySelector('g.map-flight')).toBeNull();
     expect(svg.querySelector('g.map-flights')).toBeNull();
     const flying = draw(runs, [], false);
     expect(flying.querySelectorAll(ANIMATIONS).length).toBeGreaterThan(0);
+    expect(labelSvgOf(flying)).not.toBeNull();
     expect(flying.querySelector('g.map-trace')).toBeNull();
     expect(flying.querySelector('g.map-traffic')).toBeNull();
   });
@@ -138,16 +148,19 @@ describe('Traffic', () => {
       const { keyTimes, values } = keyframes(period, [[0, 0], [window.from, 1], [window.to, 0]]);
       expect(attributesOf(animateOf(labels[index]), 'keyTimes', 'values')).toEqual([keyTimes.join(';'), values.join(';')]);
     });
-    const tags = svg.querySelector('.map-flight-tag') as Element;
+    const tags = (labelSvgOf(svg) as Element).querySelector('.map-flight-tag') as Element;
     const ride = labelRide(routeOf(way.path, plan.end), { width: Math.max(...labels.map((label) => Number(label.querySelector('rect')?.getAttribute('width')))), height: 20 }, LAYOUT.size, period);
     expect(attributesOf(motionOfPacket(tags), 'path', 'keyTimes', 'keyPoints', 'begin')).toEqual([pathData(ride.centers), ride.keyTimes.join(';'), ride.keyPoints.join(';'), 'indefinite']);
     expect(labels[0].closest('.map-flight-tags')).not.toBeNull();
-    expect(svg.querySelector('.map-flight-tags')?.compareDocumentPosition(svg.querySelector('.map-flights') as Element)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+    expect(svg.querySelector('.map-flight-tags')).toBeNull();
+    expect(svg.querySelector('.packet-tag')).toBeNull();
+    expect(svg.compareDocumentPosition(labelSvgOf(svg) as Element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a packet with no ports wears no label, and neither does the packet whose warning its own device generates', () => {
     const svg = draw([toLucia('ping'), toItself('itself')], [sentAs(toItself('self'), 1)]);
-    expect(svg.querySelector('.map-flight-tag[data-packet="ping"]')).toBeNull();
+    expect(labelSvgOf(svg)?.querySelector('.map-flight-tag[data-packet="ping"]')).toBeNull();
+    expect(labelSvgOf(svg)?.querySelector('.map-flight-tag[data-packet="self"]')).not.toBeNull();
     expect(labelsOf(svg).map((label) => label.getAttribute('data-packet'))).not.toContain('ping');
     const selfWarned = mapRunWithPorts(WORLD, tcp(YOU, floor1.you, 80), 'warned-by-itself', undefined, { replied: false, warning: { term: 'time-exceeded', by: 'sender' } });
     expect(planOf(selfWarned).plan.end).toBe('self-warned');

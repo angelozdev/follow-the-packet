@@ -277,7 +277,8 @@ describe('MapStage', () => {
       expect(svg.querySelector('g.map-traffic')).toBeNull();
       expect(svg.querySelector('g.map-trace')).toBeNull();
       expect([...new Set([...svg.querySelectorAll('g.map-flight')].map((each) => each.getAttribute('data-packet')))]).toEqual(['answered', 'nat']);
-      expect(svg.querySelectorAll('.map-flight-tags g.packet-tag').length).toBeGreaterThan(0);
+      expect(svg.querySelector('.map-flight-tags')).toBeNull();
+      expect(box.querySelectorAll('.map-stage__flight-labels .map-flight-tags g.packet-tag').length).toBeGreaterThan(0);
       expectOverThePiecesAndUnderTheLayer(svg, box, svg.querySelector('g.map-flights') as Element);
     });
 
@@ -311,6 +312,55 @@ describe('MapStage', () => {
       const buttons = [...layerOf(box).querySelectorAll('button')].map((each) => each.getBoundingClientRect());
       expect(buttons.length).toBeGreaterThan(5);
       expect(buttons.filter(overlaps)).toEqual([]);
+    });
+  });
+
+  describe('the packets in flight', () => {
+    const { officeRouter, server } = OFFICE_FLOORS;
+    const YOU = device('your-laptop');
+    const toTheRouter = (from: string, id: string) => mapRun(FLOORS, ping(device(from), officeRouter.uplink), id);
+    const FLYING = [mapRunWithPorts(FLOORS, tcp(YOU, server.ip, 80), 'nat', officeRouter.id, { replied: true }), toTheRouter('your-laptop', 'first'), toTheRouter('lucia-laptop', 'second'), toTheRouter('marta-laptop', 'third')];
+    const LABEL_SECONDS = 0.05;
+    const SECONDS_TO_LOOK = 40;
+
+    const overSheets = (box: HTMLElement) => [...box.querySelectorAll<SVGSVGElement>('.map-stage__sheet > svg')];
+    const centerOf = ({ left, top, width, height }: DOMRect): [number, number] => [left + width / 2, top + height / 2];
+    const holds = ({ left, right, top, bottom }: DOMRect, [x, y]: [number, number]) => x > left && x < right && y > top && y < bottom;
+    const shownLabels = (box: HTMLElement) => [...box.querySelectorAll('.map-flight-tags g.packet-tag')].filter((label) => getComputedStyle(label.parentElement as Element).opacity === '1');
+
+    function crossing(box: HTMLElement): { label: Element; stamp: Element } | undefined {
+      const stamps = [...layerOf(box).querySelectorAll('.map-stamp button')];
+      for (let seconds = 0; seconds < SECONDS_TO_LOOK; seconds += LABEL_SECONDS) {
+        overSheets(box).forEach((sheet) => sheet.setCurrentTime(seconds));
+        for (const label of shownLabels(box)) {
+          const rect = (label.querySelector('rect') as Element).getBoundingClientRect();
+          const stamp = stamps.find((each) => holds(rect, centerOf(each.getBoundingClientRect())));
+          if (stamp) return { label, stamp };
+        }
+      }
+      return undefined;
+    }
+
+    it('a flying label passes above a stamp, which stays the element under the pointer', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height);
+      const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: FLYING, still: false });
+      await drawing(box);
+      overSheets(box).forEach((sheet) => sheet.pauseAnimations());
+      const found = crossing(box);
+      expect(found, 'an instant where a label covers the middle of a stamp').toBeDefined();
+      const { label, stamp } = found as { label: Element; stamp: Element };
+      const [x, y] = centerOf(stamp.getBoundingClientRect());
+      const labels = label.closest('svg') as SVGSVGElement;
+      expect(labels).not.toBe(box.querySelector('.map-stage__svg'));
+      expect(labels.getAttribute('aria-hidden')).toBe('true');
+      expect(getComputedStyle(labels).pointerEvents).toBe('none');
+      expect(layerOf(box).compareDocumentPosition(labels) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(document.elementFromPoint(x, y)?.closest('button')).toBe(stamp);
+      const painted = label.querySelector('rect') as SVGRectElement;
+      painted.style.pointerEvents = 'auto';
+      expect(document.elementFromPoint(x, y)).toBe(painted);
+      painted.style.pointerEvents = '';
+      expect(document.elementFromPoint(x, y)?.closest('button')).toBe(stamp);
     });
   });
 

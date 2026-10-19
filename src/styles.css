@@ -23,6 +23,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-stage { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; overflow-x: auto; }
 .map-stage__sheet { position: relative; display: flow-root; }
 .map-stage__svg { display: block; }
+.map-stage__flight-labels { position: absolute; pointer-events: none; }
 .map-stage .caption { position: absolute; display: flex; align-items: center; white-space: nowrap; }
 .map-tab-name { justify-content: center; font: var(--weight-regular) var(--text-xs)/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--color-on-fill); }
 .map-label { position: absolute; display: flex; align-items: flex-start; }
