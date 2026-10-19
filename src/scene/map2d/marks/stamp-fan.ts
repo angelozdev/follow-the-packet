@@ -18,9 +18,11 @@ export interface PlacedStamp {
 }
 
 export interface MoreStamp {
+  id: string;
   point: Point;
   box: Box;
   count: number;
+  hidesProblem: boolean;
   ids: string[];
 }
 
@@ -54,6 +56,17 @@ function boxAround(point: Point): Box {
   return fanBox(point, 'x', 1);
 }
 
+function moreOf({ station }: Mark, stamps: readonly StampSource[], hiding: ReadonlySet<number>, point: Point): MoreStamp {
+  return {
+    id: `more:${station}`,
+    point,
+    box: boxAround(point),
+    count: hiding.size,
+    hidesProblem: stamps.some(({ problem }, index) => problem && hiding.has(index)),
+    ids: stamps.map(({ id }) => id),
+  };
+}
+
 function fanOf(mark: Mark, stamps: readonly StampSource[]): Fan {
   const overflows = stamps.length > mark.casillas;
   const casillas = Math.min(stamps.length, mark.casillas);
@@ -68,12 +81,12 @@ function fanOf(mark: Mark, stamps: readonly StampSource[]): Fan {
     station: mark.station,
     box: fanBox(mark.point, mark.axis, casillas),
     stamps: placed,
-    ...(overflows ? { more: { point, box: boxAround(point), count: hiding.size, ids: stamps.map(({ id }) => id) } } : {}),
+    ...(overflows ? { more: moreOf(mark, stamps, hiding, point) } : {}),
     hidden: stamps.filter((_, index) => hiding.has(index)).map(({ id }) => id),
   };
 }
 
-/** Takes the stamps of each place, by the name of its station, and the marks of the layout; returns the fan of every place that has stamps, in the order of the marks. A fan opens across the link and is centered on its mark, its casillas 25 px apart in the order the stamps were given. When the stamps are more than the casillas the mark holds, the last casilla is the «+N» that counts the rest and the stamps that go into it are the ones with no problem before the ones with, the oldest first (a live flow, which has no `send`, is older than every packet the player sent); the «+N» lists the ids of every stamp of the place. Throws when a place with stamps has no mark. */
+/** Takes the stamps of each place, by the name of its station, and the marks of the layout; returns the fan of every place that has stamps, in the order of the marks. A fan opens across the link and is centered on its mark, its casillas 25 px apart in the order the stamps were given. When the stamps are more than the casillas the mark holds, the last casilla is the «+N» that counts the rest and the stamps that go into it are the ones with no problem before the ones with, the oldest first (a live flow, which has no `send`, is older than every packet the player sent); the «+N» lists the ids of every stamp of the place, has the id `more:<station>`, and says in `hidesProblem` whether a stamp with a problem is among the ones it hides (the ones it only lists but the fan draws do not count). Throws when a place with stamps has no mark. */
 export function fanStamps(stamps: StampsByPlace, marks: readonly Mark[]): Fan[] {
   const known = new Set(marks.map(({ station }) => station));
   const lost = Object.keys(stamps).find((place) => stamps[place].length > 0 && !known.has(place));

@@ -127,6 +127,34 @@ describe('fanStamps', () => {
     expect(fan.hidden.length).toBeGreaterThan(0);
   });
 
+  it('a «+N» says whether it hides a stamp with a problem, not whether one is in its list', () => {
+    expect(fanOf(stampsOf(5)).more?.hidesProblem).toBe(false);
+    const seen = fanOf([sent('blocked', 1, true), sent('b', 2), sent('c', 3), sent('d', 4), sent('e', 5)]);
+    expect(seen.more?.ids).toContain('blocked');
+    expect(shown(seen)).toContain('blocked');
+    expect(seen.more?.hidesProblem).toBe(false);
+    const mixed = fanOf([sent('a', 1, true), sent('b', 2, true), sent('c', 3, true), sent('d', 4)]);
+    expect(mixed.hidden).toEqual(['a', 'd']);
+    expect(mixed.more?.hidesProblem).toBe(true);
+    const onlyProblems = fanOf([sent('p1', 1, true), sent('p2', 2, true), sent('p3', 3, true), sent('p4', 4, true)]);
+    expect(onlyProblems.more?.hidesProblem).toBe(true);
+    const justEnough = fanOf([sent('p1', 1, true), sent('p2', 2, true), sent('ok', 3), sent('fine', 4)]);
+    expect(justEnough.hidden).toEqual(['ok', 'fine']);
+    expect(justEnough.more?.hidesProblem).toBe(false);
+  });
+
+  it('a mark of one casilla that holds two problem stamps makes a «+2» that hides a problem, and one that holds two stamps with none makes one that does not', () => {
+    expect(fanOf([sent('a', 1, true), sent('b', 2, true)], 1).more).toMatchObject({ count: 2, hidesProblem: true });
+    expect(fanOf([sent('a', 1), sent('b', 2, true)], 1).more).toMatchObject({ count: 2, hidesProblem: true });
+    expect(fanOf([sent('a', 1), sent('b', 2)], 1).more).toMatchObject({ count: 2, hidesProblem: false });
+    expect(fanOf([live('flow'), sent('a', 1), sent('b', 2, true)], 2).more).toMatchObject({ count: 2, hidesProblem: false });
+  });
+
+  it('a «+N» has an id of its own, made of the name of its place', () => {
+    const [fan] = fanStamps({ 'door:lucia': stampsOf(4) }, [markOf('door:lucia', 3)]);
+    expect(fan.more?.id).toBe('more:door:lucia');
+  });
+
   it('gives each place its own fan, in the order of the marks, and none to a place with no stamps', () => {
     const marks = [markOf('first', 3, 'y', [10, 10]), markOf('empty', 3, 'y', [50, 10]), markOf('second', 2, 'x', [90, 10]), markOf('unused', 1, 'x', [130, 10])];
     const fans = fanStamps({ second: stampsOf(3), first: stampsOf(1), empty: [] }, marks);

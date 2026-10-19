@@ -61,6 +61,18 @@ describe('collisions', () => {
       { kind: 'stamp', id: 'more:place', fan: 'place' },
     ]);
   });
+
+  it('lists the name of a group, when the layout has it, between the icons and the stamps, and lists nothing for a layout that has none', () => {
+    const fans = fanStamps({ place: stampsOf(1) }, [markAt('place', [100, 100])]);
+    const captions = { floor: boxAt(60, 82, 120, 18) };
+    expect(pairsOf(collisions({ labels: { piece: boxAt(150, 90, 20, 20) }, icons: { piece: boxAt(170, 84, 40, 40) }, captions }, fans, []))).toEqual([
+      ['label', 'piece', 'caption', 'floor'],
+      ['icon', 'piece', 'caption', 'floor'],
+      ['caption', 'floor', 'stamp', 's1'],
+    ]);
+    expect(collisions({ labels: {}, icons: {}, captions: { floor: boxAt(60, 20, 120, 18) } }, fans, [tagAt('over', boxAt(100, 24, 36, 20))]).map(({ first, second }) => [first.kind, second.kind])).toEqual([['caption', 'tag']]);
+    expect(collisions({ labels: {}, icons: {} }, fans, [])).toEqual([]);
+  });
 });
 
 const piece = (kind: PieceKind, anchorId: string, label: RowPiece['label'] = nameTag(anchorId), inOffice = false): RowPiece => ({ id: `${kind}:${anchorId}`, kind, anchorId, label, locked: false, state: 'normal', inOffice });

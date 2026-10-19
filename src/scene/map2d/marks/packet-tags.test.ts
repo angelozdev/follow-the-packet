@@ -31,11 +31,11 @@ describe('placeTags', () => {
     expect(second.at).toEqual([300, 100]);
 
     const wall = boxAt(-50, 80, 500, 40);
-    expect(only(placeTags([tagOf('tag')], [wall])).at).toEqual([200, 56]);
+    expect(only(placeTags([tagOf('tag')], [wall])).at).toEqual([200, 70]);
     const deep = boxAt(-50, 20, 500, 100);
-    expect(only(placeTags([tagOf('tag')], [deep])).at).toEqual([200, 144]);
+    expect(only(placeTags([tagOf('tag')], [deep])).at).toEqual([200, 130]);
     const tall = boxAt(-50, 46, 500, 114);
-    expect(only(placeTags([tagOf('tag')], [tall])).at).toEqual([200, 34]);
+    expect(only(placeTags([tagOf('tag')], [tall])).at).toEqual([200, 36]);
     const unreachable = boxAt(-50, -100, 500, 400);
     const stuck = only(placeTags([tagOf('tag')], [unreachable]));
     expect(stuck).toMatchObject({ at: [200, 100], clear: false });
@@ -54,7 +54,7 @@ describe('placeTags', () => {
     expect(placeTags([], [boxAt(0, 0, 10, 10)])).toEqual([]);
   });
 
-  it('slides along the path before it climbs, and climbs before it falls: three steps of 22 px up and two down', () => {
+  it('slides along the path before it climbs or falls, and climbs or falls only as far as the first height that clears', () => {
     const band = boxAt(100, 80, 200, 40);
     const slid = only(placeTags([tagOf('tag')], [band]));
     expect(slid.at).toEqual([350, 100]);
@@ -69,6 +69,29 @@ describe('placeTags', () => {
     expect(only(placeTags([tagOf('tag', upright)], [boxAt(40, 190, 120, 20)])).at).toEqual([100, 220]);
     expect(only(placeTags([tagOf('tag', upright)], [sheet])).at).toEqual([100, -10]);
     expect(only(placeTags([tagOf('tag', upright)], [sheet, boxAt(0, -60, 200, 60)])).at).toEqual([100, 410]);
+  });
+
+  it('climbs or falls to the nearest height at which an edge of its box touches an edge of what is in the way, up first when both are as near', () => {
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 90, 500, 15)])).at).toEqual([200, 115]);
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 95, 500, 20)])).at).toEqual([200, 85]);
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 80, 500, 40)])).at).toEqual([200, 70]);
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 81, 500, 39)])).at).toEqual([200, 71]);
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 80, 500, 39)])).at).toEqual([200, 129]);
+  });
+
+  it('on a slanted path it climbs from the place where its box meets the side of what is in the way', () => {
+    const slanted: Point[] = [[65, 152], [158, 91]];
+    const placed = only(placeTags([tagOf('tag', slanted, { size: { width: 126, height: LABEL_HEIGHT } })], [boxAt(208, 40, 99, 71), boxAt(60, 87, 252, 110)]));
+    expect(placed.clear).toBe(true);
+    expect(placed.at[0]).toBeCloseTo(145, 9);
+    expect(placed.at[1]).toBeCloseTo(77, 9);
+  });
+
+  it('reaches 66 px up and 44 px down, to the pixel, and not a pixel more', () => {
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 44, 500, 156)]))).toMatchObject({ at: [200, 34], clear: true });
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 43, 500, 157)]))).toMatchObject({ at: [200, 100], clear: false });
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 0, 500, 134)]))).toMatchObject({ at: [200, 144], clear: true });
+    expect(only(placeTags([tagOf('tag')], [boxAt(-50, 0, 500, 135)]))).toMatchObject({ at: [200, 100], clear: false });
   });
 
   it('puts the label of a packet beside the next one when they share a path, in the order they come', () => {
@@ -91,6 +114,29 @@ describe('placeTags with the fans of the stamps', () => {
     for (const id of fan.hidden) expect(fan.more?.ids).toContain(id);
     expect(placeTags(tags, [], []).map(({ id }) => id)).toEqual(tags.map(({ id }) => id));
     expect(placeTags(tags, [])).toEqual(placeTags(tags, [], []));
+  });
+});
+
+describe('placeTags with the label of a packet that never leaves its device', () => {
+  const short: Point[] = [[180, 100], [220, 100]];
+  const block = boxAt(150, 60, 100, 100);
+  const heavy = { width: WIDTH, height: 120 };
+  const stays = tagOf('stays', short, { size: heavy, staysInDevice: true });
+
+  it('is not drawn on the still map when it finds no clear place, and it does not push the others', () => {
+    const other = tagOf('other', short);
+    expect(placeTags([stays], [block])).toEqual([]);
+    expect(placeTags([stays, other], [block])).toEqual(placeTags([other], [block]));
+    expect(placeTags([stays, other], [block])).toMatchObject([{ id: 'other', at: [200, 50], clear: true }]);
+    expect(placeTags([other, stays], [block]).map(({ id }) => id)).toEqual(['other']);
+  });
+
+  it('is drawn like any other when it finds a place, and a label that does leave its device with no place is still listed as not clear', () => {
+    const plain = tagOf('stays', LINE, { staysInDevice: true });
+    expect(only(placeTags([plain], [boxAt(182, 82, 36, 36)]))).toMatchObject({ id: 'stays', at: [268, 100], clear: true });
+    expect(placeTags([plain], [])).toEqual(placeTags([tagOf('stays', LINE)], []));
+    expect(only(placeTags([tagOf('stays', short, { size: heavy })], [block]))).toMatchObject({ id: 'stays', at: [200, 100], clear: false });
+    expect(only(placeTags([tagOf('stays', short, { size: heavy, staysInDevice: false })], [block]))).toMatchObject({ id: 'stays', at: [200, 100], clear: false });
   });
 });
 
