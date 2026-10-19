@@ -29,7 +29,7 @@ const OFFICE_TITLE = MAP_TEXT.groups.office.text;
 
 const VARIANTS = { device: 'laptop', firewall: 'host-firewall', edge: 'router', internet: 'internet', actor: 'you' } as const;
 const BLOCK_NAME = OFFICE_FLOORS.floor1.cidr;
-const SCREEN_PROPS = { blockName: null, activePieceId: null, still: true, inspectTrigger: () => ({}), onActivate: () => undefined } satisfies Omit<MapStageProps, 'world' | 'pieces' | 'known'>;
+const SCREEN_PROPS = { blockName: null, activePieceId: null, still: true, flows: [], sent: [], inspectTrigger: () => ({}), inspectStampsTrigger: () => ({}), onActivate: () => undefined } satisfies Omit<MapStageProps, 'world' | 'pieces' | 'known'>;
 
 const piece = <Kind extends keyof typeof VARIANTS>(kind: Kind, anchorId: string, extras: Partial<MapPieceFixture> = {}): MapPieceFixture => mapPiece({ kind, variant: VARIANTS[kind] } as PieceEntity, anchorId, nameTag(anchorId), extras);
 const { officeRouter, server } = OFFICE_FLOORS;
@@ -231,7 +231,7 @@ describe('MapStage', () => {
     const marked = FLOORS_PIECES.map((each) => (each.id === 'device:your-laptop' ? { ...each, insideBlock: true as const } : each));
     const scene = (known: ReadonlySet<TermId>) => (
       <div data-testid="box" style={{ width: WIDE, position: 'relative' }}>
-        <GameScene2D world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} onActivate={() => undefined} known={known} />
+        <GameScene2D world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} known={known} />
       </div>
     );
     const view = render(scene(NOTHING_KNOWN));

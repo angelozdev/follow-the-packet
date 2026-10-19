@@ -1,4 +1,6 @@
-import { MAP_TEXT, nameTag, type EntityRef, type TermText } from '@/copy';
+import { vi } from 'vitest';
+import { MAP_TEXT, nameTag, packetLabel, type EntityRef, type TermText, type Warning } from '@/copy';
+import { reachesHost, simulate, type Network, type PacketSpec, type Trace } from '@/engine';
 import { OFFICE_FLOORS } from './fixtures';
 
 export type PieceEntity = Extract<EntityRef, { kind: 'device' | 'firewall' | 'edge' | 'internet' | 'actor' }>;
@@ -33,3 +35,46 @@ export const FLOORS_LABEL_PIECES: MapPieceFixture[] = [
   mapPiece({ kind: 'internet', variant: 'internet' }, 'internet', MAP_TEXT.internet),
   mapPiece({ kind: 'device', variant: 'internet-server' }, server.id, nameTag('servidor-internet')),
 ];
+
+export interface MapRunFixture {
+  id: string;
+  pieceId: string;
+  packet: PacketSpec;
+  trace: Trace;
+  label: TermText;
+  hiddenStop: boolean;
+  intruder: boolean;
+  reached: boolean;
+  replied: boolean;
+  blocked: boolean;
+  warning: Warning | null;
+  send?: number;
+}
+
+function firewallDropped(trace: Trace): boolean {
+  return trace.steps.some((step) => (step.stage === 'firewall-in' || step.stage === 'firewall-out') && step.verdict === 'drop');
+}
+
+/** Takes the world, the packet, the id of the run and what the test changes; returns the run of a packet as the game hands it to the scene: the trace the engine simulates, the label the packet wears, its piece id (`packet:` and its id), and the facts of its stamp as the trace gives them (it reached a host, was answered, was stopped by a firewall), with no warning, no hidden stop and no intruder. A sent run carries its `send` number in `extras`. */
+export function mapRun(world: Network, packet: PacketSpec, id: string, extras: Partial<MapRunFixture> = {}): MapRunFixture {
+  const trace = simulate(world, packet);
+  return {
+    id,
+    pieceId: `packet:${id}`,
+    packet,
+    trace,
+    label: packetLabel(packet, trace, world),
+    hiddenStop: false,
+    intruder: false,
+    reached: reachesHost(trace),
+    replied: trace.outcome === 'replied',
+    blocked: firewallDropped(trace),
+    warning: null,
+    ...extras,
+  };
+}
+
+/** Returns the props of a trigger, as the box of inspection gives them to a piece or a stamp, with a spy for each of its five handlers. */
+export function triggerSpies() {
+  return { onPointerEnter: vi.fn(), onPointerLeave: vi.fn(), onFocus: vi.fn(), onBlur: vi.fn(), onClick: vi.fn() };
+}

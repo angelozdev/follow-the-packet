@@ -1,5 +1,8 @@
+import { isProblemStamp, stampOf, type Warning } from '@/copy';
+import type { PacketSpec, Trace } from '@/engine';
 import { FAN_PITCH, fanBox, type Box, type Mark } from '@/scene/map2d/layout/arrange/geometry';
 import type { Point } from '@/scene/map2d/layout/graph';
+import { startsOnMap, stationsFor, type Drawn } from '@/scene/map2d/layout/stations';
 
 const LIVE_FLOW_AGE = Number.NEGATIVE_INFINITY;
 
@@ -10,6 +13,18 @@ export interface StampSource {
 }
 
 export type StampsByPlace = Readonly<Record<string, readonly StampSource[]>>;
+
+export interface StampedRun {
+  id: string;
+  packet: PacketSpec;
+  trace: Trace;
+  hiddenStop: boolean;
+  intruder: boolean;
+  reached: boolean;
+  blocked: boolean;
+  warning: Warning | null;
+  send?: number;
+}
 
 export interface PlacedStamp {
   id: string;
@@ -95,4 +110,18 @@ export function fanStamps(stamps: StampsByPlace, marks: readonly Mark[]): Fan[] 
     const here = stamps[mark.station] ?? [];
     return here.length === 0 ? [] : [fanOf(mark, here)];
   });
+}
+
+function sourceOf(run: StampedRun): StampSource {
+  return { id: run.id, problem: isProblemStamp(stampOf(run)), ...(run.send === undefined ? {} : { send: run.send }) };
+}
+
+/** Takes the runs the map stamps, in the order they are to stand (the live flows first and then the packets the player sent, the last send of each combination), and what the map draws; returns the stamps of each place by the name of its station, for `fanStamps`: a run stands at the last station of its path, with whether its stamp is a problem (`isProblemStamp` of `stampOf` the run) and, for a packet the player sent, its `send` number. A run that starts at a piece the map does not draw is left out, as it is not drawn, and so is one with no station. */
+export function stampsByPlace(runs: readonly StampedRun[], drawn: Drawn): StampsByPlace {
+  const places: Record<string, StampSource[]> = {};
+  for (const run of runs.filter((each) => startsOnMap(each.packet, drawn))) {
+    const place = stationsFor(run.trace, run.packet, drawn, { hiddenStop: run.hiddenStop }).at(-1);
+    if (place !== undefined) places[place] = [...(places[place] ?? []), sourceOf(run)];
+  }
+  return places;
 }

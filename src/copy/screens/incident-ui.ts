@@ -14,12 +14,17 @@ const EDGE_LABEL: Record<Network['edge'], TermText> = {
   router: '{{router}}',
 };
 
+const MORE_STAMPS = (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`;
+const HIDDEN_PROBLEM = 'Entre los escondidos hay alguno bloqueado, perdido, con un aviso o que entró y no debía.';
+
 export const MAP_TEXT = {
   firewall: FIREWALL_LABEL,
   edge: EDGE_LABEL,
   internet: '{{internet}}',
   locked: 'con candado',
-  moreStamps: (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`,
+  moreStamps: MORE_STAMPS,
+  hiddenProblem: HIDDEN_PROBLEM,
+  moreStampsWithProblem: (hidden: number, total: number): string => `${MORE_STAMPS(hidden, total)} ${HIDDEN_PROBLEM}`,
   alert: 'con alerta: entra algo que no debe',
   groups: {
     office: { text: 'Oficina' },

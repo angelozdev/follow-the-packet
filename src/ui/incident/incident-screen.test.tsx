@@ -9,13 +9,13 @@ import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIn
 import { IncidentScreen } from './incident-screen';
 import type { Frame } from './inspection-place';
 
-const scene = vi.hoisted(() => ({ drawsItsCards: true }));
+const scene = vi.hoisted(() => ({ drawsItsCards: true, drawsTheList: false }));
 
 vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
   return {
-    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, onActivate, known }: GameSceneProps & { known?: ReadonlySet<TermId> }) => (
+    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: GameSceneProps & { known?: ReadonlySet<TermId>; inspectStampsTrigger: (packetIds: readonly string[]) => ReturnType<GameSceneProps['inspectTrigger']> }) => (
       <div data-known={[...(known ?? [])].sort().join(' ')}>
         {pieces.map((piece) => (
           <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
@@ -25,12 +25,18 @@ vi.mock('@/scene/game-scene', async () => {
             {toPlainText(flow.label)}
           </button>
         ))}
+        {scene.drawsTheList && (
+          <button type="button" {...inspectStampsTrigger([...flows, ...sent].map(({ id }) => id))}>
+            {LIST_OF_THE_STAMPS}
+          </button>
+        )}
         {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
       </div>
     ),
   };
 });
 
+const LIST_OF_THE_STAMPS = 'los sellos de este lugar';
 const NOTE_FEEDBACK = 'No es IPv4: cada uno de los cuatro números va de 0 a 255.';
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const OTHER_DOOR = 'Security Group servidor1';
@@ -49,7 +55,10 @@ const TAB_STOPS_LIMIT = 80;
 
 type User = ReturnType<typeof userEvent.setup>;
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  scene.drawsTheList = false;
+});
 
 function renderWithFakeTimers() {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -665,6 +674,18 @@ describe('incident screen of a send incident', () => {
     await user.click(screen.getByRole('button', { name: 'ping de your-laptop a printer' }));
     expect(screen.getByRole('region', { name: 'ping de your-laptop a printer' })).toHaveTextContent('Llegó y volvió la respuesta.');
     expect(screen.getAllByRole('listitem')[0]).toHaveTextContent(LUCIA_TEXT.done);
+  });
+
+  it('gives the map what turns the packets of a place into the box of the list of their stamps, which the «+N» of the 2D map hovers', async () => {
+    scene.drawsTheList = true;
+    const user = userEvent.setup();
+    renderSending();
+    await user.click(screen.getByRole('button', { name: 'your-laptop' }));
+    await send(user, '192.168.1.20', 'ping');
+    await user.hover(screen.getByRole('button', { name: LIST_OF_THE_STAMPS }));
+    const list = screen.getByRole('region', { name: INSPECTION_TEXT.stampsTitle(1) });
+    expect(list).toHaveTextContent('ping de your-laptop a printer');
+    expect(list).toHaveTextContent(INSPECTION_TEXT.stampLine('arrived'));
   });
 
   it('picking another origin moves the terminal beside it, and Esc gives the focus back to the piece it stands beside', async () => {

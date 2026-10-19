@@ -6,6 +6,10 @@ export interface ReadingEntry {
   id: string;
 }
 
+export interface StampEntry extends ReadingEntry {
+  kind: 'stamp' | 'more';
+}
+
 interface Body {
   id: string;
   box: Box;
@@ -28,8 +32,8 @@ function nearestPiece(fan: Fan, pieces: readonly Body[]): string | undefined {
   return pieces.reduce<Body | undefined>((best, piece) => (best === undefined || gapBetween(fan.box, piece.box) < gapBetween(fan.box, best.box) ? piece : best), undefined)?.id;
 }
 
-function buttonsOf({ stamps, more, station }: Fan): ReadingEntry[] {
-  return [...stamps.map(({ id }): ReadingEntry => ({ kind: 'stamp', id })), ...(more ? [{ kind: 'more' as const, id: station }] : [])];
+function buttonsOf({ stamps, more }: Fan): ReadingEntry[] {
+  return [...stamps.map(({ id }): ReadingEntry => ({ kind: 'stamp', id })), ...(more ? [{ kind: 'more' as const, id: more.id }] : [])];
 }
 
 /** Takes the layout of a map (the label of every piece and its icon) and the fans of stamps that stand on it; returns the buttons of the map in the order the Tab key must walk them, which is the order a person reads it: the pieces from the top of the map to the bottom and, along one line, from the left to the right (by the center of the icon, so the name of a piece does not move it), and after each piece the stamps that stand beside it, which are the fans nearest to its icon, in the order they are laid out in the fan (from the low end of its axis to the high one, the «+N» last); a «+N» is a button of kind `more` named by its place. A map with no piece lists the stamps by the place of their fans. */

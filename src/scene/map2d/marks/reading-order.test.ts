@@ -24,7 +24,14 @@ describe('readingOrder', () => {
   it('puts the stamps of a place right after the piece that stands nearest to it, in the order of the fan, with its «+N» last', () => {
     const marks = [mark('near-top', 280, 124), mark('near-low', 120, 324)];
     const fans = fanStamps({ 'near-top': stamps('t', 5), 'near-low': stamps('l', 2) }, marks);
-    expect(idsOf(readingOrder(LAYOUT, fans))).toEqual(['piece:left', 'piece:top', 'stamp:t4', 'stamp:t5', 'more:near-top', 'piece:middle', 'piece:low', 'stamp:l1', 'stamp:l2']);
+    expect(idsOf(readingOrder(LAYOUT, fans))).toEqual(['piece:left', 'piece:top', 'stamp:t4', 'stamp:t5', 'more:more:near-top', 'piece:middle', 'piece:low', 'stamp:l1', 'stamp:l2']);
+  });
+
+  it('names a «+N» by the id its fan gives it, the one the list of collisions uses, and not by its station', () => {
+    const fans = fanStamps({ 'near-top': stamps('t', 4) }, [mark('near-top', 280, 124)]);
+    const entries = readingOrder(LAYOUT, fans).filter(({ kind }) => kind === 'more');
+    expect(entries).toEqual([{ kind: 'more', id: fans[0].more?.id }]);
+    expect(entries[0].id).not.toBe(fans[0].station);
   });
 
   it('puts the fans that are nearest to one piece after it from the top to the bottom, whatever the order they were given in', () => {

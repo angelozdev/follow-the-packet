@@ -6,8 +6,10 @@ import { LinkLines, MarkDots } from '@/scene/map2d/entities/links';
 import { Pieces } from '@/scene/map2d/pieces';
 import { blockTabBoxes } from '@/scene/map2d/layout/captions';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
+import { fanStamps, stampsByPlace } from '@/scene/map2d/marks/stamp-fan';
 import { BlockNames, GroupCaptions } from '@/scene/map2d/overlay/group-captions';
 import { MapLabels } from '@/scene/map2d/overlay/map-labels';
+import { stampButtons, type DrawnRun, type InspectStampsTrigger, type SentRun } from '@/scene/map2d/overlay/map-stamps';
 import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import type { MapPiece } from '@/scene/overlay/piece-label';
 import { frameOf } from './frame';
@@ -21,12 +23,17 @@ export interface MapStageProps {
   still: boolean;
   inspectTrigger: InspectTrigger;
   onActivate: (pieceId: string) => void;
+  flows: readonly DrawnRun[];
+  sent: readonly SentRun[];
+  inspectStampsTrigger: InspectStampsTrigger;
 }
 
-function Drawing({ world, pieces, known, blockName, activePieceId, still, inspectTrigger, onActivate, width }: MapStageProps & { width: number }) {
+function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, width }: MapStageProps & { width: number }) {
   const layout = layoutMap(world, pieces, { width, blockTab: blockName !== null });
   const { size } = layout;
   const frame = frameOf(width, size);
+  const runs = [...flows, ...sent];
+  const fans = fanStamps(stampsByPlace(runs, layout.drawn), layout.marks);
   const tab = blockName !== null && known.has('cidr') ? { name: blockName, boxes: blockTabBoxes(layout.groups, blockName) } : undefined;
   return (
     <>
@@ -39,7 +46,7 @@ function Drawing({ world, pieces, known, blockName, activePieceId, still, inspec
       <div className="html-layer">
         <GroupCaptions groups={layout.groups} known={known} frame={frame} />
         {tab && <BlockNames tabs={tab.boxes} name={tab.name} frame={frame} />}
-        <MapLabels pieces={pieces} layout={layout} frame={frame} inspectTrigger={inspectTrigger} onActivate={onActivate} />
+        <MapLabels pieces={pieces} layout={layout} frame={frame} inspectTrigger={inspectTrigger} onActivate={onActivate} fans={fans} stamp={stampButtons({ fans, runs, frame, inspectTrigger, inspectStampsTrigger })} />
       </div>
     </>
   );

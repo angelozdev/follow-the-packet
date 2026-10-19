@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isProblemStamp, stampOf } from '@/copy';
-import { classifiedBlock, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
+import { INSPECTION_TEXT, isProblemStamp, stampOf } from '@/copy';
+import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
 import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
@@ -14,7 +14,7 @@ import { crowds, holds } from '@/scene/map2d/marks/boxes';
 import { collisions } from '@/scene/map2d/marks/collisions';
 import { placeTags, type PacketTag, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
 import { readingOrder } from '@/scene/map2d/marks/reading-order';
-import { fanStamps, type Fan, type StampSource } from '@/scene/map2d/marks/stamp-fan';
+import { fanStamps, stampsByPlace, type Fan, type StampsByPlace } from '@/scene/map2d/marks/stamp-fan';
 
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
@@ -82,13 +82,9 @@ interface Analysis {
   runs: Run[];
   stations: string[][];
   fans: Fan[];
-  stamped: Record<string, StampSource[]>;
+  stamped: StampsByPlace;
   tags: PacketTag[];
   placed: PlacedTag[];
-}
-
-function stampOfRun(run: Run): StampSource {
-  return { id: run.id, problem: isProblemStamp(stampOf(run)), ...('send' in run ? { send: run.send } : {}) };
 }
 
 function tagOf(run: Run, stations: readonly string[], graph: ReturnType<typeof graphOf>): PacketTag[] {
@@ -100,14 +96,10 @@ function tagOf(run: Run, stations: readonly string[], graph: ReturnType<typeof g
 
 function analyze(state: State, width: number): Analysis {
   const { session } = state;
-  const layout = layoutMap(session.world, pieceViews(session), { width });
+  const layout = layoutMap(session.world, pieceViews(session), { width, blockTab: classifiedBlock(session) !== null });
   const runs: Run[] = [...session.runs, ...session.sent];
   const stations = runs.map((run) => stationsFor(run.trace, run.packet, layout.drawn, { hiddenStop: run.hiddenStop }));
-  const stamped: Record<string, StampSource[]> = {};
-  runs.forEach((run, index) => {
-    const place = stations[index].at(-1);
-    if (place !== undefined) stamped[place] = [...(stamped[place] ?? []), stampOfRun(run)];
-  });
+  const stamped = stampsByPlace(runs, layout.drawn);
   const fans = fanStamps(stamped, layout.marks);
   const graph = graphOf(layout);
   const tags = runs.flatMap((run, index) => tagOf(run, stations[index], graph));
@@ -274,6 +266,21 @@ describe('the sweep of the registered incidents', () => {
     for (const { fans } of sweep().analyses) for (const { more } of fans) expect(more?.count ?? 0).toBeLessThan(HUNDRED);
   });
 
+  it('the «+N» of every state opens the list of its place: the title that counts its packets and one field for each of them', () => {
+    let opened = 0;
+    for (const analysis of sweep().analyses) {
+      for (const { more } of analysis.fans) {
+        if (more === undefined) continue;
+        const list = inspect(analysis.state.session, PIECE_ID.stamps(more.ids));
+        expect(list, `${more.id}, ${where(analysis)}`).not.toBeNull();
+        expect(list?.title, `${more.id}, ${where(analysis)}`).toBe(INSPECTION_TEXT.stampsTitle(more.ids.length));
+        expect(list?.fields, `${more.id}, ${where(analysis)}`).toHaveLength(more.ids.length);
+        opened++;
+      }
+    }
+    expect(opened).toBeGreaterThan(0);
+  });
+
   it('the reading order of the map is top to bottom and left to right, by piece, with its stamps beside it', () => {
     for (const analysis of sweep().analyses) {
       const { layout, fans } = analysis;
@@ -284,7 +291,7 @@ describe('the sweep of the registered incidents', () => {
       centers.slice(1).forEach(([x, y], index) => expect(y > centers[index][1] || (y === centers[index][1] && x >= centers[index][0]), `${pieces[index + 1]} after ${pieces[index]}, ${where(analysis)}`).toBe(true));
       expect(order.length === 0 || order[0].kind === 'piece', where(analysis)).toBe(true);
       for (const fan of fans) {
-        const mine = [...fan.stamps.map(({ id }) => `stamp:${id}`), ...(fan.more ? [`more:${fan.station}`] : [])];
+        const mine = [...fan.stamps.map(({ id }) => `stamp:${id}`), ...(fan.more ? [`more:${fan.more.id}`] : [])];
         const at = order.map(({ kind, id }) => `${kind}:${id}`);
         const first = at.indexOf(mine[0]);
         expect(at.slice(first, first + mine.length), `${fan.station}, ${where(analysis)}`).toEqual(mine);
@@ -292,7 +299,7 @@ describe('the sweep of the registered incidents', () => {
       }
       for (const fan of fans.filter(({ station }) => /^(door:|router:)/.test(station) || station === 'internet')) {
         const at = order.map(({ kind, id }) => `${kind}:${id}`);
-        const first = at.indexOf(fan.stamps[0] ? `stamp:${fan.stamps[0].id}` : `more:${fan.station}`);
+        const first = at.indexOf(fan.stamps[0] ? `stamp:${fan.stamps[0].id}` : `more:${fan.more?.id}`);
         const before = order.slice(0, first).filter(({ kind }) => kind === 'piece').at(-1);
         expect(before?.id.split(':').at(-1), `${fan.station}, ${where(analysis)}`).toBe(fan.station.split(':').at(-1));
       }

@@ -18,6 +18,7 @@ export type { ServicesCard, SettingsCard } from './view/cards/settings-card';
 export type { EntryTray, TableCard, TableCell, TableRowView } from './view/cards/table-card';
 export type { FirewallCard } from './view/cards/firewall-card';
 export { inspect } from './view/inspection';
+export { PIECE_ID } from './view/piece-id';
 export type { Inspection } from './view/inspection';
 export { pieceViews } from './view/pieces';
 export { terminalCard, terminalLine } from './view/cards/terminal/terminal-card';

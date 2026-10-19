@@ -74,6 +74,20 @@ describe('packet labels', () => {
     expect(MAP_TEXT.moreStamps(12, 14)).toBe('12 sellos más. Abre la lista de los 14 sellos de este lugar.');
   });
 
+  it('names a +N that hides a problem with the name of its list and then the states that count as a problem, in the words of the stamps and with no term', () => {
+    const name = MAP_TEXT.moreStampsWithProblem(2, 5);
+    expect(name.startsWith(MAP_TEXT.moreStamps(2, 5))).toBe(true);
+    const sentence = name.slice(MAP_TEXT.moreStamps(2, 5).length).trim();
+    expect(sentence).toBe(MAP_TEXT.hiddenProblem);
+    const words = { blocked: 'bloqueado', lost: 'perdido', warned: 'aviso', intruder: 'entró y no debía' };
+    const problems = (['arrived', 'blocked', 'lost', 'intruder', 'warned'] as const).filter(isProblemStamp);
+    expect([...problems].sort()).toEqual(Object.keys(words).sort());
+    for (const word of Object.values(words)) expect(sentence.toLowerCase()).toContain(word);
+    expect(sentence.toLowerCase()).not.toContain('llegó');
+    expect(termsIn(sentence)).toEqual([]);
+    expect(toPlainText(sentence)).toBe(sentence);
+  });
+
   it('a stamp is a problem when it is blocked, lost, warned or an intruder, and not when it arrived', () => {
     expect((['blocked', 'lost', 'warned', 'intruder'] as const).map(isProblemStamp)).toEqual([true, true, true, true]);
     expect(isProblemStamp('arrived')).toBe(false);

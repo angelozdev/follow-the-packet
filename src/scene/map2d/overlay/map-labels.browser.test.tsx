@@ -26,7 +26,7 @@ const plainLabels = PIECES.filter(({ locked, state }) => !locked && state !== 'i
 async function mountStage(width: number, activePieceId: string | null = null) {
   const view = render(
     <div data-testid="box" style={{ width, position: 'relative' }}>
-      <MapStage world={WORLD} pieces={PIECES} known={NOTHING_KNOWN} blockName={null} activePieceId={activePieceId} still inspectTrigger={() => ({})} onActivate={() => undefined} />
+      <MapStage world={WORLD} pieces={PIECES} known={NOTHING_KNOWN} blockName={null} activePieceId={activePieceId} still flows={[]} sent={[]} inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} />
     </div>,
   );
   const box = view.getByTestId('box');

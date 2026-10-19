@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { OFFICE_FLOORS, actor, device, officeTwoFloorsNet, ping } from '@/testing';
+import { FLOORS_LABEL_PIECES, mapRun, type MapRunFixture } from '@/testing/map-pieces';
 import { fanBox, type FanAxis, type Mark } from '@/scene/map2d/layout/arrange/geometry';
 import type { Point } from '@/scene/map2d/layout/graph';
-import { fanStamps, type Fan, type StampSource } from './stamp-fan';
+import { layoutMap } from '@/scene/map2d/layout/map-layout';
+import { fanStamps, stampsByPlace, type Fan, type StampSource } from './stamp-fan';
 
 const CENTER: Point = [200, 100];
 const markOf = (station: string, casillas: number, axis: FanAxis = 'y', point: Point = CENTER): Mark => ({ station, point, axis, casillas });
@@ -166,5 +169,50 @@ describe('fanStamps', () => {
 
   it('refuses a stamp at a place that has no mark instead of losing it', () => {
     expect(() => fanStamps({ 'door:nobody': stampsOf(1) }, [markOf('door:somebody', 3)])).toThrow('door:nobody');
+  });
+});
+
+describe('stampsByPlace', () => {
+  const WORLD = officeTwoFloorsNet();
+  const DRAWN = layoutMap(WORLD, FLOORS_LABEL_PIECES, { width: 1000 }).drawn;
+  const MARTA_DOOR = 'door:marta-laptop';
+  const toMarta = (id: string, extras: Partial<MapRunFixture> = {}) => mapRun(WORLD, ping(device('your-laptop'), OFFICE_FLOORS.floor1.marta), id, extras);
+
+  it('puts every run at the last station of its path, flags the ones whose stamp is a problem and gives the send number only to the ones that were sent', () => {
+    const stamps = stampsByPlace([toMarta('flow'), toMarta('lost', { reached: false, replied: false }), toMarta('sent', { send: 4 })], DRAWN);
+    expect(stamps).toStrictEqual({
+      [MARTA_DOOR]: [{ id: 'flow', problem: false }, { id: 'lost', problem: true }, { id: 'sent', problem: false, send: 4 }],
+    });
+  });
+
+  it('flags the stamp of a run by its own facts: a firewall that stopped it, an intruder that got in and a warning that came back are problems, an arrival is not', () => {
+    const facts: [Partial<MapRunFixture>, boolean][] = [
+      [{}, false],
+      [{ reached: false, blocked: true }, true],
+      [{ intruder: true }, true],
+      [{ warning: { term: null, by: 'router' } }, true],
+    ];
+    const stamps = stampsByPlace(facts.map(([extras], index) => toMarta(`run-${index}`, extras)), DRAWN);
+    expect(stamps[MARTA_DOOR].map(({ problem }) => problem)).toEqual(facts.map(([, problem]) => problem));
+  });
+
+  it('keeps the runs in the order they are given, so the flows given first stand before the ones that were sent', () => {
+    const stamps = stampsByPlace([toMarta('flow-b'), toMarta('flow-a'), toMarta('sent-b', { send: 2 }), toMarta('sent-a', { send: 1 })], DRAWN);
+    expect(stamps[MARTA_DOOR].map(({ id }) => id)).toEqual(['flow-b', 'flow-a', 'sent-b', 'sent-a']);
+  });
+
+  it('leaves out the run of a packet that starts at a piece the map does not draw, whether a device or an actor, and has no place for no run', () => {
+    const fromTheGuest = mapRun(WORLD, ping(device('guest-laptop'), OFFICE_FLOORS.floor1.marta), 'guest');
+    expect(stampsByPlace([fromTheGuest, toMarta('drawn')], DRAWN)[MARTA_DOOR].map(({ id }) => id)).toEqual(['drawn']);
+    const fromTheServer = mapRun(WORLD, ping(actor(OFFICE_FLOORS.server.id), OFFICE_FLOORS.floor1.marta), 'server');
+    expect(Object.keys(stampsByPlace([fromTheServer], DRAWN))).not.toEqual([]);
+    expect(stampsByPlace([fromTheServer], { ...DRAWN, servers: [] })).toStrictEqual({});
+    expect(stampsByPlace([], DRAWN)).toStrictEqual({});
+  });
+
+  it('puts a packet that a router out of sight dropped at the doorstep of its sender, where the sender cannot tell where it died', () => {
+    const toNobody = (hiddenStop: boolean) => mapRun(WORLD, ping(device('your-laptop'), OFFICE_FLOORS.server.nobody), 'dark', { hiddenStop });
+    expect(Object.keys(stampsByPlace([toNobody(true)], DRAWN))).toEqual(['doorstep:your-laptop']);
+    expect(Object.keys(stampsByPlace([toNobody(false)], DRAWN))).not.toContain('doorstep:your-laptop');
   });
 });
