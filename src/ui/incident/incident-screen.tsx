@@ -3,7 +3,7 @@ import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
 import { caseCard, caseSummary, classifiedBlock, clockSteps, countStars, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
-import { GameScene, pieceDomId } from '@/scene';
+import { GameScene, MAP_RENDERER, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
@@ -57,7 +57,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   };
 
   return (
-    <main className="incident">
+    <main className={MAP_RENDERER === '2d' ? 'incident incident--map2d' : 'incident'}>
       <div className="incident__map" ref={watchTheMap}>
         <header className="incident__bar">
           <Button variant="text" href="#/">
@@ -73,6 +73,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           sent={session.sent}
           still={still}
           blockName={classifiedBlock(session)}
+          known={session.known}
           activePieceId={card || piece ? cardPieceId : null}
           overlay={
             (card && chips && (

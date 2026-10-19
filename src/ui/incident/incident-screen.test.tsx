@@ -2,8 +2,8 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
-import { INCIDENTS, type SendIncident } from '@/levels';
+import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
+import { INCIDENTS, knownTerms, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
@@ -15,8 +15,8 @@ vi.mock('@/scene/game-scene', async () => {
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
   return {
-    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, onActivate }: GameSceneProps) => (
-      <div>
+    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, onActivate, known }: GameSceneProps & { known?: ReadonlySet<TermId> }) => (
+      <div data-known={[...(known ?? [])].sort().join(' ')}>
         {pieces.map((piece) => (
           <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
         ))}
@@ -121,6 +121,11 @@ describe('incident screen', () => {
     expect(screen.getByText(SCREEN_TEXT.stampLegend)).toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
     expect(screen.queryByText(SCREEN_TEXT.stampLegend)).toBeNull();
+  });
+
+  it('gives the map the terms the player knows at this incident', () => {
+    const { container } = render(firstScreen());
+    expect(container.querySelector('[data-known]')?.getAttribute('data-known')).toBe([...knownTerms(INCIDENTS, FIRST.id)].sort().join(' '));
   });
 
   it('the stamp legend names every stamp state, the warning included', () => {

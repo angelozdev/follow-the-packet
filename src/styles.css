@@ -20,6 +20,14 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .locked { color: var(--color-ink-soft); }
 
 .html-layer { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
+.map-stage { position: relative; overflow-x: auto; }
+.map-stage__sheet { position: relative; display: flow-root; }
+.map-stage__svg { display: block; }
+.map-stage .caption { position: absolute; display: flex; align-items: center; white-space: nowrap; }
+.map-group { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-regular); stroke-dasharray: 6 4; }
+.map-group[data-kind='block'] { stroke: var(--color-ink); }
+.map-link { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-double); stroke-linecap: round; stroke-linejoin: round; }
+.map-mark { fill: var(--color-ink-soft); }
 
 .map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
 .map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
@@ -120,11 +128,14 @@ button.stamp { cursor: help; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
 @media (min-width: 901px) {
   .incident__inspection[data-place='left'] { place-self: end start; }
+  .incident--map2d .map-stage { position: absolute; inset: 0; overflow: auto; }
+  .incident--map2d .map-stage__sheet { min-height: 100%; }
 }
 @media (max-width: 900px) {
   .incident { grid-template-columns: 1fr; grid-template-rows: 65vh auto auto; height: auto; }
   .incident__inspection { grid-area: 2 / 1; place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
   .incident__side { grid-area: 3 / 1; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
+  .incident--map2d { grid-template-rows: auto auto auto; }
 }
 
 .catalog { padding: var(--space-xl) var(--space-lg) var(--space-3xl); }
