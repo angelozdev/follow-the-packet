@@ -18,6 +18,9 @@ const BAR = '.incident__bar';
 const PIECE_HALF_WIDTH = 40;
 const PIECE_BELOW_LABEL = 72;
 const OPAQUE = 128;
+const CANVAS = 'canvas';
+const MAP_SVG = '.map-stage__svg';
+const DRAWING_SURFACE = `${CANVAS}, ${MAP_SVG}`;
 const DRAWING = 'the drawing of the map';
 const RECORDED_LABELS = 'recordedLabels';
 
@@ -102,9 +105,10 @@ export async function mapArea(page: Page): Promise<Area> {
   return { x: map.x, y: bar.y + bar.height, width: map.width, height: map.y + map.height - (bar.y + bar.height) };
 }
 
-/** Returns the box that holds every opaque pixel of the map's canvas, or null when nothing is drawn, and whether that box touches the edge of the canvas, which cuts the drawing off. */
-export async function drawnBox(page: Page): Promise<(Area & { cutOff: boolean }) | null> {
-  return page.locator('canvas').evaluate((canvas: HTMLCanvasElement, opaque) => {
+type DrawnBox = (Area & { cutOff: boolean }) | null;
+
+async function drawnBoxOfCanvas(page: Page): Promise<DrawnBox> {
+  return page.locator(CANVAS).evaluate((canvas: HTMLCanvasElement, opaque) => {
     const copy = document.createElement('canvas');
     copy.width = canvas.width;
     copy.height = canvas.height;
@@ -129,6 +133,25 @@ export async function drawnBox(page: Page): Promise<(Area & { cutOff: boolean })
     const cutOff = x0 === 0 || y0 === 0 || x1 === copy.width - 1 || y1 === copy.height - 1;
     return { x: rect.x + x0 * scale, y: rect.y + y0 * scale, width: (x1 - x0 + 1) * scale, height: (y1 - y0 + 1) * scale, cutOff };
   }, OPAQUE);
+}
+
+async function drawnBoxOfSvg(page: Page): Promise<DrawnBox> {
+  return page.locator(MAP_SVG).evaluate((svg: SVGSVGElement) => {
+    const content = svg.getBBox();
+    const toPage = svg.getScreenCTM();
+    if (toPage === null || (content.width === 0 && content.height === 0)) return null;
+    const corner = new DOMPoint(content.x, content.y).matrixTransform(toPage);
+    const opposite = new DOMPoint(content.x + content.width, content.y + content.height).matrixTransform(toPage);
+    const { width, height } = svg.viewBox.baseVal;
+    const cutOff = content.x <= 0 || content.y <= 0 || content.x + content.width >= width || content.y + content.height >= height;
+    return { x: corner.x, y: corner.y, width: opposite.x - corner.x, height: opposite.y - corner.y, cutOff };
+  });
+}
+
+/** Returns the box that holds the drawing of the map, or null when nothing is drawn, and whether that box touches the edge of what it is drawn on, which cuts the drawing off. With the canvas of the 3D map it holds every opaque pixel of the canvas; when the page has no canvas, as with the 2D map, it is the bounding box of the content of the svg of the map (`.map-stage__svg`) taken to the page. */
+export async function drawnBox(page: Page): Promise<DrawnBox> {
+  await page.locator(DRAWING_SURFACE).first().waitFor({ state: 'attached' });
+  return (await page.locator(CANVAS).count()) > 0 ? drawnBoxOfCanvas(page) : drawnBoxOfSvg(page);
 }
 
 /** Returns the names of what the map draws outside its area: any label, stamp or floor name, and the drawing itself. */
