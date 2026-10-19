@@ -40,7 +40,7 @@ export const CATALOG_TEXT = {
   intruder: 'intruso',
   more: {
     stamps: (hidden: number) => `${hidden} sellos más`,
-    stampsWithProblem: (hidden: number) => `${hidden} sellos más, alguno con problema`,
+    stampsWithProblem: (hidden: number) => `${hidden} sellos más, alguno bloqueado, perdido, con un aviso o que entró y no debía`,
   },
   state: {
     normal: 'normal',

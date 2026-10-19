@@ -104,6 +104,16 @@ describe('the 2D entity catalog', () => {
     }
   });
 
+  it('the caption of the «+N» with a dot names the four states of the stamps it hides, as the name of its button does', () => {
+    const problemStates = MAP_TEXT.hiddenProblem.replace(/^Entre los escondidos hay |\.$/g, '');
+    expect(problemStates).toBe('alguno bloqueado, perdido, con un aviso o que entró y no debía');
+    for (const hidden of [2, 12]) expect(CATALOG_TEXT.more.stampsWithProblem(hidden)).toBe(`${hidden} sellos más, ${problemStates}`);
+    render(<CatalogScene2D still />);
+    const withDot = MORE_SPECIMENS.filter(({ hidesProblem }) => hidesProblem);
+    expect(withDot).toHaveLength(1);
+    expect(figure(CATALOG_TEXT.more.stampsWithProblem(withDot[0].hidden)).querySelector('.stamp__dot')).not.toBeNull();
+  });
+
   it('every specimen of the 2D catalog is hidden from screen readers and its caption is its name', () => {
     const { container } = render(<CatalogScene2D still />);
     const figures = screen.getAllByRole('figure');
