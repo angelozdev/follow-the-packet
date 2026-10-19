@@ -269,6 +269,8 @@ describe('MapStage', () => {
       expect([...svg.querySelectorAll('g.map-trace')].map((each) => each.getAttribute('data-packet'))).toEqual(['answered', 'nat']);
       expect([...svg.querySelectorAll('g.packet-tag')].map((each) => each.textContent)).toEqual(['TCP 51514 → 80']);
       expectOverThePiecesAndUnderTheLayer(svg, box, svg.querySelector('g.map-traffic') as Element);
+      expect(box.querySelector('.map-stage__flight-labels')).toBeNull();
+      expect(box.querySelectorAll('animate, animateMotion, animateTransform')).toHaveLength(0);
     });
 
     it('draws no trace while animations are on, and flies the packets and their labels instead', async () => {

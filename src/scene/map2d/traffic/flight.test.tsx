@@ -236,6 +236,17 @@ describe('Traffic in a browser that animates by hand', () => {
     expect(ends).toHaveBeenCalledTimes(animations);
   });
 
+  it('a send that is rendered again, with the same props or with a fresh equal array of sends, does not begin again', () => {
+    const run = toTheServer('flying');
+    const view = render(trafficOf([], [sentAs(run, 1)], false));
+    const animations = view.container.querySelectorAll(ANIMATIONS).length;
+    expect(begins).toHaveBeenCalledTimes(animations);
+    view.rerender(trafficOf([], [sentAs(run, 1)], false));
+    view.rerender(trafficOf([toLucia('flow')], [sentAs({ ...run }, 1)], false));
+    expect(begins).toHaveBeenCalledTimes(animations);
+    expect(ends).not.toHaveBeenCalled();
+  });
+
   it('a flow begins nothing by hand, and a send mounted under StrictMode begins as many times as the mount is run', () => {
     const view = render(<StrictMode>{trafficOf([toLucia('flow')], [sentAs(toLucia('sent'), 1)], false)}</StrictMode>);
     const animationsOfSend = packetsOf(view.container, 'sent')[0].querySelectorAll(ANIMATIONS).length;

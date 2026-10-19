@@ -194,6 +194,25 @@ describe('the packets in flight, in a browser', () => {
     expect(shown(appears)).toBe(false);
   });
 
+  it('a send that flies keeps its start and its place when it is rendered again', () => {
+    const run = toTheServer('flying');
+    const view = render(trafficOf([], [sentAs(run, 1)]));
+    const stage = stageOf(view.container);
+    const { plan, route } = planOf(run);
+    const tagOf = () => stage.labels.querySelector('g.map-flight-tag[data-packet="flying"]') as Element;
+    pause(stage);
+    const start = startOf(packetOf(stage.svg, 'flying'));
+    seek(stage, start + 1);
+    view.rerender(trafficOf([], [sentAs({ ...run }, 1)]));
+    view.rerender(trafficOf([], [sentAs({ ...run }, 1)]));
+    expect([startOf(packetOf(stage.svg, 'flying')), startOf(tagOf())]).toEqual([start, start]);
+    const [x, y] = shapeCenter(stage.svg, glyphOf(packetOf(stage.svg, 'flying'), 'going'));
+    const [expectedX, expectedY] = at(route, distanceAt(plan, 1));
+    expect(Math.abs(x - expectedX)).toBeLessThanOrEqual(HALF_A_PIXEL);
+    expect(Math.abs(y - expectedY)).toBeLessThanOrEqual(HALF_A_PIXEL);
+    expect(visibleLabels(stage.labels, 'flying')).toEqual([FIRST_LEG]);
+  });
+
   it('the label of a translated packet changes at the router', () => {
     const run = toTheServer('nat');
     const stage = fly([], [sentAs(run, 1)]);

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import type { PortLabels } from '@/copy';
 import type { Box } from '@/scene/map2d/layout/arrange/geometry';
 import type { Point } from '@/scene/map2d/layout/graph';
@@ -29,16 +29,14 @@ function clockOf({ begin, period, repeats }: Cycle) {
   return { begin: repeats ? `${begin}s` : 'indefinite', dur: `${period}s`, repeatCount: repeats ? 'indefinite' : 1 };
 }
 
-function beginAfter(wait: number) {
-  return (root: SVGGElement) => {
-    const animations = [...root.querySelectorAll(ANIMATIONS)].filter((each): each is SVGAnimationElement => 'beginElementAt' in each);
-    animations.forEach((animation) => animation.beginElementAt(wait));
-    return () => animations.forEach((animation) => animation.endElement());
-  };
+function beginAfter(root: SVGGElement, wait: number) {
+  const animations = [...root.querySelectorAll(ANIMATIONS)].filter((each): each is SVGAnimationElement => 'beginElementAt' in each);
+  animations.forEach((animation) => animation.beginElementAt(wait));
+  return () => animations.forEach((animation) => animation.endElement());
 }
 
 function useBeginsWhenMounted({ begin, repeats }: Cycle) {
-  return useMemo(() => (repeats ? undefined : beginAfter(begin)), [begin, repeats]);
+  return useCallback((root: SVGGElement) => (repeats ? undefined : beginAfter(root, begin)), [begin, repeats]);
 }
 
 function Animation({ cycle, name, type, calcMode, frames }: { cycle: Cycle; name: string; type?: string; calcMode: 'discrete' | 'linear'; frames: Keyframes }) {
