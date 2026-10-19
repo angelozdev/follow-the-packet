@@ -2,8 +2,9 @@ import { render, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { MAP_TEXT, nameTag, type TermId } from '@/copy';
-import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet } from '@/testing/fixtures';
-import { mapPiece, type MapPieceFixture, type PieceEntity } from '@/testing/map-pieces';
+import { OFFICE_FLOORS, device, officeNet, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
+import { mapPiece, mapRun, mapRunWithPorts, type MapPieceFixture, type PieceEntity } from '@/testing/map-pieces';
+import { tokenColor } from '@/testing/token-color';
 import { TITLE_BAR } from '@/scene/map2d/cards/placement';
 import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
@@ -244,6 +245,67 @@ describe('MapStage', () => {
     view.rerender(scene(CIDR_KNOWN));
     await expect.poll(texts).toEqual([`${OFFICE_TITLE} ${OFFICE_FLOORS.range}`, `${OFFICE_FLOORS.floor1.name} ${OFFICE_FLOORS.floor1.cidr}`, `${OFFICE_FLOORS.floor2.name} ${OFFICE_FLOORS.floor2.cidr}`, BLOCK_NAME]);
     expect(svg.querySelectorAll('rect.map-tab')).toHaveLength(1);
+  });
+
+  describe('the packets of a still scene', () => {
+    const { floor1, officeRouter, server } = OFFICE_FLOORS;
+    const YOU = device('your-laptop');
+    const ANSWERED = mapRun(FLOORS, ping(YOU, floor1.lucia), 'answered');
+    const BLOCKED = mapRun(FLOORS, ping(YOU, floor1.marta), 'blocked', { replied: false, reached: false, blocked: true });
+    const LOST = mapRun(FLOORS, ping(YOU, floor1.nobody), 'lost');
+    const INTRUDER = mapRun(FLOORS, ping(YOU, floor1.lucia), 'intruder', { intruder: true });
+    const NAT = mapRunWithPorts(FLOORS, tcp(YOU, server.ip, 80), 'nat', officeRouter.id);
+    const lineOf = (svg: Element, id: string) => svg.querySelector(`g.map-trace[data-packet="${id}"] path.map-trace__line`) as SVGPathElement;
+
+    it('draws the trace and the label of every packet over the pieces and under the layer', async () => {
+      const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [ANSWERED, NAT] });
+      const svg = await drawing(box);
+      expect([...svg.querySelectorAll('g.map-trace')].map((each) => each.getAttribute('data-packet'))).toEqual(['answered', 'nat']);
+      expect([...svg.querySelectorAll('g.packet-tag')].map((each) => each.textContent)).toEqual(['TCP 51514 → 80']);
+      const traffic = svg.querySelector('g.map-traffic') as Element;
+      const lastPiece = [...svg.querySelectorAll('g.map-piece')].at(-1) as Element;
+      expect(lastPiece.compareDocumentPosition(traffic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(svg.compareDocumentPosition(layerOf(box)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('draws no trace and no label while animations are on', async () => {
+      const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [ANSWERED, NAT], still: false });
+      const svg = await drawing(box);
+      expect(svg.querySelector('g.map-traffic')).toBeNull();
+      expect(svg.querySelector('g.packet-tag')).toBeNull();
+    });
+
+    it('draws a blocked trace in the danger colour, a lost one dashed and the others in ink, and the border of an intruder over nothing but air', async () => {
+      const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [ANSWERED, BLOCKED, LOST, INTRUDER] });
+      const svg = await drawing(box);
+      expect(getComputedStyle(lineOf(svg, 'blocked')).stroke).toBe(tokenColor('--color-danger'));
+      expect(getComputedStyle(lineOf(svg, 'answered')).stroke).toBe(tokenColor('--color-ink'));
+      expect(getComputedStyle(lineOf(svg, 'lost')).strokeDasharray).not.toBe('none');
+      expect(getComputedStyle(lineOf(svg, 'answered')).strokeDasharray).toBe('none');
+      expect(getComputedStyle(lineOf(svg, 'blocked')).strokeDasharray).toBe('none');
+      expect(getComputedStyle(lineOf(svg, 'answered')).fill).toBe('none');
+      const shapes = [...svg.querySelectorAll('g.map-trace[data-packet="intruder"] g.map-packet[data-role="going"] path')];
+      expect(shapes.map((each) => getComputedStyle(each).fill)).toEqual([tokenColor('--color-danger'), 'none']);
+      expect(shapes.map((each) => getComputedStyle(each).stroke)).toEqual([tokenColor('--color-danger'), tokenColor('--color-danger')]);
+      const answer = svg.querySelector('g.map-trace[data-packet="answered"] g.map-packet[data-role="answer"] path') as Element;
+      expect(getComputedStyle(answer).fill).toBe('none');
+      const plain = svg.querySelector('g.map-trace[data-packet="answered"] g.map-packet[data-role="going"] path') as Element;
+      expect(getComputedStyle(plain).fill).toBe(tokenColor('--color-ink'));
+    });
+
+    it('keeps every label of a packet off every shape, stamp and label of a piece as the page draws them', async () => {
+      const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [NAT, ANSWERED, BLOCKED, LOST] });
+      const svg = await drawing(box);
+      const tag = svg.querySelector('g.packet-tag rect') as SVGRectElement;
+      const label = tag.getBoundingClientRect();
+      const overlaps = (other: DOMRect) => label.left < other.right && other.left < label.right && label.top < other.bottom && other.top < label.bottom;
+      const painted = [...svg.querySelectorAll('g.map-packet path')].map((each) => each.getBoundingClientRect());
+      expect(painted.length).toBeGreaterThan(4);
+      expect(painted.filter(overlaps)).toEqual([]);
+      const buttons = [...layerOf(box).querySelectorAll('button')].map((each) => each.getBoundingClientRect());
+      expect(buttons.length).toBeGreaterThan(5);
+      expect(buttons.filter(overlaps)).toEqual([]);
+    });
   });
 
   it('below 360 px the drawing keeps 360 px, against the left edge, and the stage scrolls sideways', async () => {

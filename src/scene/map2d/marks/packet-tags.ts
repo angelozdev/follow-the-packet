@@ -1,3 +1,4 @@
+import { toPlainText, type PortLabels } from '@/copy';
 import type { Box } from '@/scene/map2d/layout/arrange/geometry';
 import { lengthOf, positionAt, type Point } from '@/scene/map2d/layout/graph';
 import type { LabelBox } from '@/scene/map2d/layout/metrics';
@@ -141,4 +142,17 @@ export function separateGlyphs(glyphs: readonly Glyph[]): PlacedGlyph[] {
   const placed: PlacedGlyph[] = [];
   for (const glyph of glyphs) placed.push({ id: glyph.id, point: freePoint(glyph, placed.map(({ point }) => point)) });
   return placed;
+}
+
+/** Takes the labels a packet wears leg by leg, how far along its path they change (undefined when they do not) and a distance along the path; returns, in plain text, the label of the leg the packet stands in at that distance: the first before the change and the last from there on. */
+export function legTextAt(legs: readonly PortLabels[], changesAt: number | undefined, distance: number): string {
+  const leg = changesAt !== undefined && distance >= changesAt ? legs[legs.length - 1] : legs[0];
+  return toPlainText(leg.request);
+}
+
+/** Takes the points of a path and the point of the router that translates the ports of the packet (undefined when the map does not draw it); returns how far along the path the first of its points that lies on the router is, or undefined when the path does not pass there. */
+export function changeDistance(path: readonly Point[], router: Point | undefined): number | undefined {
+  if (router === undefined) return undefined;
+  const at = path.findIndex(([x, y]) => x === router[0] && y === router[1]);
+  return at < 0 ? undefined : lengthOf(path)[at];
 }

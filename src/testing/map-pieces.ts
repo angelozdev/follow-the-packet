@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { MAP_TEXT, nameTag, packetLabel, type EntityRef, type TermText, type Warning } from '@/copy';
+import { MAP_TEXT, nameTag, packetLabel, packetPortLabels, type EntityRef, type PacketPorts, type TermText, type Warning } from '@/copy';
 import { reachesHost, simulate, type Network, type PacketSpec, type Trace } from '@/engine';
 import { OFFICE_FLOORS } from './fixtures';
 
@@ -48,6 +48,7 @@ export interface MapRunFixture {
   replied: boolean;
   blocked: boolean;
   warning: Warning | null;
+  ports?: PacketPorts;
   send?: number;
 }
 
@@ -72,6 +73,14 @@ export function mapRun(world: Network, packet: PacketSpec, id: string, extras: P
     warning: null,
     ...extras,
   };
+}
+
+/** Takes the world, a TCP or UDP packet, the id of the run, the router that translates its ports (none when the packet stays in the office) and what the test changes; returns its run (`mapRun`) wearing the labels it has on the map: one for each leg its ports go through, as the game gives them. */
+export function mapRunWithPorts(world: Network, packet: PacketSpec, id: string, changesAt?: string, extras: Partial<MapRunFixture> = {}): MapRunFixture {
+  const run = mapRun(world, packet, id, extras);
+  const legs = packetPortLabels(packet, run.trace);
+  if (legs === null) throw new Error(`The packet ${id} carries no ports`);
+  return { ...run, ports: { legs, ...(changesAt !== undefined && legs.length > 1 && { changesAt }) } };
 }
 
 /** Returns the props of a trigger, as the box of inspection gives them to a piece or a stamp, with a spy for each of its five handlers. */

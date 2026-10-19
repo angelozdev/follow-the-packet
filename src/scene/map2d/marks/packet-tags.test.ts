@@ -3,7 +3,7 @@ import type { Box, Mark } from '@/scene/map2d/layout/arrange/geometry';
 import { lengthOf, positionAt, type Point } from '@/scene/map2d/layout/graph';
 import { LABEL_HEIGHT } from '@/scene/map2d/layout/metrics';
 import { crowds } from './boxes';
-import { placeTags, separateGlyphs, type PacketTag } from './packet-tags';
+import { changeDistance, legTextAt, placeTags, separateGlyphs, type PacketTag } from './packet-tags';
 import { fanStamps } from './stamp-fan';
 
 const LINE: Point[] = [[0, 100], [400, 100]];
@@ -181,5 +181,37 @@ describe('separateGlyphs', () => {
     expect(crossing[0].point[1]).toBeCloseTo(100, 9);
     expect(crossing[1].point[0]).toBeCloseTo(212, 9);
     expect(separateGlyphs([])).toEqual([]);
+  });
+});
+
+describe('the text of the label of a packet along its path', () => {
+  const FIRST = { request: '{{tcp}} 51514 → 80', reply: '{{tcp}} 80 → 51514' };
+  const SECOND = { request: '{{tcp}} 40001 → 80', reply: '{{tcp}} 80 → 40001' };
+
+  it('legTextAt says, in plain text, the leg the packet stands in: the first before the distance where the ports change and the last from there on', () => {
+    expect(legTextAt([FIRST, SECOND], 100, 0)).toBe('TCP 51514 → 80');
+    expect(legTextAt([FIRST, SECOND], 100, 99.9)).toBe('TCP 51514 → 80');
+    expect(legTextAt([FIRST, SECOND], 100, 100)).toBe('TCP 40001 → 80');
+    expect(legTextAt([FIRST, SECOND], 100, 500)).toBe('TCP 40001 → 80');
+  });
+
+  it('legTextAt keeps the one leg of a packet whose ports do not change, wherever it stands', () => {
+    expect(legTextAt([FIRST], undefined, 0)).toBe('TCP 51514 → 80');
+    expect(legTextAt([FIRST], undefined, 500)).toBe('TCP 51514 → 80');
+    expect(legTextAt([FIRST, SECOND], undefined, 500)).toBe('TCP 51514 → 80');
+  });
+
+  it('changeDistance says how far along a path the point of the router that translates lies, and nothing when the path does not pass there or the map does not draw the router', () => {
+    const bent: Point[] = [[0, 0], [30, 40], [30, 140], [230, 140]];
+    expect(changeDistance(bent, [30, 40])).toBe(50);
+    expect(changeDistance(bent, [30, 140])).toBe(150);
+    expect(changeDistance(bent, [230, 140])).toBe(350);
+    expect(changeDistance(bent, [31, 40])).toBeUndefined();
+    expect(changeDistance(bent, undefined)).toBeUndefined();
+  });
+
+  it('changeDistance takes the first time the path reaches the router, also when it comes back to it', () => {
+    const there: Point[] = [[0, 0], [100, 0], [200, 0], [100, 0]];
+    expect(changeDistance(there, [100, 0])).toBe(100);
   });
 });

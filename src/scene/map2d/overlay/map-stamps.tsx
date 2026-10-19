@@ -4,12 +4,13 @@ import { StampButton, StampMore } from '@/scene/map2d/entities/stamp';
 import type { Frame } from '@/scene/map2d/frame';
 import type { Point } from '@/scene/map2d/layout/graph';
 import type { StampEntry } from '@/scene/map2d/marks/reading-order';
-import type { Fan, StampedRun } from '@/scene/map2d/marks/stamp-fan';
+import type { Fan } from '@/scene/map2d/marks/stamp-fan';
+import type { StillRun } from '@/scene/map2d/marks/still-packets';
 import type { InspectTrigger, TriggerProps } from '@/scene/overlay/inspect-trigger';
 
 export type InspectStampsTrigger = (packetIds: readonly string[]) => TriggerProps;
 
-export interface DrawnRun extends StampedRun {
+export interface DrawnRun extends StillRun {
   pieceId: string;
   label: TermText;
 }

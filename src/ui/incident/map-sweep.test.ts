@@ -1,24 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { INSPECTION_TEXT, isProblemStamp, stampOf } from '@/copy';
+import { INSPECTION_TEXT, isProblemStamp, stampOf, toPlainText } from '@/copy';
 import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
-import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
 import { LABEL_GAP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
-import { route } from '@/scene/map2d/layout/graph';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
-import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
-import { station, stationsFor } from '@/scene/map2d/layout/stations';
+import { startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
 import { crowds, holds } from '@/scene/map2d/marks/boxes';
 import { collisions } from '@/scene/map2d/marks/collisions';
-import { placeTags, type PacketTag, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
+import { changeDistance, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
 import { readingOrder } from '@/scene/map2d/marks/reading-order';
 import { fanStamps, stampsByPlace, type Fan, type StampsByPlace } from '@/scene/map2d/marks/stamp-fan';
+import { stillPackets, type StillPacket } from '@/scene/map2d/marks/still-packets';
 
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
-const DOORSTEP = 'doorstep:';
+const SAME_POINT = 1e-6;
 
 type Run = Session['runs'][number] | Session['sent'][number];
 
@@ -83,15 +81,9 @@ interface Analysis {
   stations: string[][];
   fans: Fan[];
   stamped: StampsByPlace;
-  tags: PacketTag[];
+  packets: StillPacket[];
+  tags: { id: string; stamp: string; staysInDevice: boolean }[];
   placed: PlacedTag[];
-}
-
-function tagOf(run: Run, stations: readonly string[], graph: ReturnType<typeof graphOf>): PacketTag[] {
-  if (run.ports === undefined) return [];
-  const texts = run.ports.legs.flatMap(({ request, reply }) => [request, reply]);
-  const stays = stations.at(-1)?.startsWith(DOORSTEP) === true;
-  return [{ id: run.id, stamp: run.id, path: route(graph, stations), size: { width: Math.max(...texts.map((text) => labelWidth(text))), height: LABEL_HEIGHT }, ...(stays ? { staysInDevice: true } : {}) }];
 }
 
 function analyze(state: State, width: number): Analysis {
@@ -101,11 +93,11 @@ function analyze(state: State, width: number): Analysis {
   const stations = runs.map((run) => stationsFor(run.trace, run.packet, layout.drawn, { hiddenStop: run.hiddenStop }));
   const stamped = stampsByPlace(runs, layout.drawn);
   const fans = fanStamps(stamped, layout.marks);
-  const graph = graphOf(layout);
-  const tags = runs.flatMap((run, index) => tagOf(run, stations[index], graph));
-  const stamps = fans.flatMap(({ stamps: drawn, more }) => [...drawn.map(({ box }) => box), ...(more ? [more.box] : [])]);
-  const obstacles = [...Object.values(layout.labels), ...Object.values(layout.icons), ...Object.values(captionBoxes(layout.groups)), ...stamps];
-  return { state, width, layout, runs, stations, stamped, fans, tags, placed: placeTags(tags, obstacles, fans) };
+  const packets = stillPackets(runs, layout, fans);
+  const labelled = packets.flatMap(({ id, label }) => (label ? [{ id, label }] : []));
+  const tags = labelled.map(({ id, label }) => ({ id, stamp: id, staysInDevice: label.staysInDevice }));
+  const placed = labelled.flatMap(({ label }) => (label.place ? [label.place] : []));
+  return { state, width, layout, runs, stations, stamped, fans, packets, tags, placed };
 }
 
 let swept: { states: State[]; analyses: Analysis[]; seconds: number } | undefined;
@@ -209,6 +201,95 @@ describe('the sweep of the registered incidents', () => {
       }
     }
     expect(hiding).toBeGreaterThan(0);
+  });
+
+  it('in every state of every registered incident each packet that starts on the map is drawn with its shape halfway, and no label of a packet stands over a shape, at seven widths', () => {
+    const seen = { going: 0, answer: 0, appears: 0, labels: 0 };
+    for (const analysis of sweep().analyses) {
+      const { runs, packets, layout } = analysis;
+      expect(packets.map(({ id }) => id), where(analysis)).toEqual(runs.filter((run) => startsOnMap(run.packet, layout.drawn)).map(({ id }) => id));
+      const shapes = packets.flatMap(({ glyphs }) => glyphs.map(({ box }) => box));
+      for (const packet of packets) {
+        const roles = packet.glyphs.map(({ role }) => role);
+        expect(roles.includes('going') !== (packet.end === 'self-warned'), `${packet.id}, ${where(analysis)}`).toBe(true);
+        for (const role of roles) seen[role]++;
+        const box = packet.label?.place?.box;
+        if (box === undefined) continue;
+        seen.labels++;
+        expect(shapes.filter((shape) => crowds(box, shape)), `${packet.id}, ${where(analysis)}`).toEqual([]);
+      }
+    }
+    expect(seen.going).toBeGreaterThan(0);
+    expect(seen.answer).toBeGreaterThan(0);
+    expect(seen.appears).toBeGreaterThan(0);
+    expect(seen.labels).toBeGreaterThan(0);
+  });
+
+  it('in every state of every registered incident every label of a packet lies inside the drawing, at seven widths', () => {
+    let inside = 0;
+    for (const analysis of sweep().analyses) {
+      const { width, height } = analysis.layout.size;
+      for (const { id, label } of analysis.packets) {
+        const box = label?.place?.box;
+        if (box === undefined) continue;
+        inside++;
+        expect([box.x >= 0, box.y >= 0, box.x + box.width <= width, box.y + box.height <= height], `${id}, ${where(analysis)}`).toEqual([true, true, true, true]);
+      }
+    }
+    expect(inside).toBeGreaterThan(0);
+  });
+
+  it('in every state of every registered incident no two shapes of packets stand on one point, at seven widths', () => {
+    let shapes = 0;
+    for (const analysis of sweep().analyses) {
+      const points = analysis.packets.flatMap(({ id, glyphs }) => glyphs.map(({ role, point }) => ({ at: `${id} ${role}`, point })));
+      shapes += points.length;
+      const together = points.flatMap((first, index) => points.slice(index + 1).filter((second) => Math.abs(first.point[0] - second.point[0]) <= SAME_POINT && Math.abs(first.point[1] - second.point[1]) <= SAME_POINT).map((second) => `${first.at} with ${second.at}`));
+      expect(together, where(analysis)).toEqual([]);
+    }
+    expect(shapes).toBeGreaterThan(0);
+  });
+
+  it('in every state of every registered incident the router that translates the ports of a packet stands on its path', () => {
+    let translated = 0;
+    for (const analysis of sweep().analyses) {
+      const { runs, packets, layout } = analysis;
+      for (const packet of packets) {
+        const ports = runs.find(({ id }) => id === packet.id)?.ports;
+        if (ports === undefined || ports.legs.length < 2) continue;
+        translated++;
+        expect(ports.changesAt, `${packet.id}, ${where(analysis)}`).toBeDefined();
+        expect(changeDistance(packet.path, layout.stations[station.router(ports.changesAt as string)]), `${packet.id}, ${where(analysis)}`).toBeDefined();
+      }
+    }
+    expect(translated).toBeGreaterThan(0);
+  });
+
+  it('the text of every label the still map leaves out is in the box of its packet, and in the list of its «+N» when its stamp went into one, and a label of the second leg has its ports in the box', () => {
+    const leftOut = { hidden: 0, staying: 0, secondLeg: 0 };
+    for (const analysis of sweep().analyses) {
+      const hidden = new Map(analysis.fans.flatMap((fan) => fan.hidden.map((id) => [id, fan.more?.ids ?? []] as const)));
+      for (const { id, label } of analysis.packets) {
+        if (label === undefined || label.place !== undefined) continue;
+        const seen = `${id}, ${where(analysis)}`;
+        const box = inspect(analysis.state.session, PIECE_ID.packet(id));
+        const read = [box?.title ?? '', ...(box?.fields ?? []).flatMap((field) => [field.label, ...field.lines])].map(toPlainText).join('\n');
+        expect(label.text.match(/\d+/g)?.every((figure) => read.includes(figure)), seen).toBe(true);
+        const firstLeg = analysis.runs.find((run) => run.id === id)?.ports?.legs[0].request ?? '';
+        const isFirstLeg = toPlainText(firstLeg) === label.text;
+        if (!isFirstLeg) leftOut.secondLeg++;
+        else expect(toPlainText(box?.title ?? '').startsWith(label.text), seen).toBe(true);
+        const ids = hidden.get(id);
+        if (ids === undefined) leftOut.staying++;
+        else {
+          leftOut.hidden++;
+          const list = inspect(analysis.state.session, PIECE_ID.stamps(ids));
+          if (isFirstLeg) expect(list?.fields.some((field) => toPlainText(field.label).startsWith(label.text)), seen).toBe(true);
+        }
+      }
+    }
+    expect(leftOut.hidden).toBeGreaterThan(0);
+    expect(leftOut.staying).toBeGreaterThan(0);
   });
 
   it('the name of every group lies inside its group, in every state of every registered incident', () => {

@@ -51,6 +51,15 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-bar { fill: var(--color-shade); }
 .map-bar--blocking { fill: var(--color-danger); }
 .map-bar--selected { stroke-width: var(--stroke-heavy); }
+.map-trace__line { fill: none; stroke: var(--color-ink); stroke-width: var(--stroke-heavy); stroke-linecap: round; stroke-linejoin: round; }
+.map-trace__line--blocked { stroke: var(--color-danger); }
+.map-trace__line--lost { stroke-dasharray: 7 5; stroke-linecap: butt; }
+.map-packet { color: var(--color-ink); }
+.map-packet--intruder { color: var(--color-danger); }
+.map-packet * { vector-effect: non-scaling-stroke; }
+.map-packet .map-piece__icon .entity-icon { fill: none; }
+.packet-tag rect { fill: var(--color-surface); stroke: var(--color-ink); stroke-width: var(--stroke-thin); }
+.packet-tag text { fill: var(--color-ink); dominant-baseline: central; }
 
 .map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
 .map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
