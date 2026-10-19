@@ -12,9 +12,12 @@ export const TITLE_BAR = 56;
 const FIREWALL_CARD_GAP = 110;
 const ORIGIN_CARD_GAP = 70;
 const CARD_MARGIN = 12;
-const DOCK_MARGIN = 6;
+export const DOCK_MARGIN = 6;
 const GROUND_REACH = 16;
 const MIN_DOCK_ROOM = 200;
+
+/** How many pixels a docked card needs under the lowest piece of the drawing to find the room of a card that can be used: that room, the margin of the dock and the reach of the feet of a piece. */
+export const ROOM_UNDER_THE_DRAWING = MIN_DOCK_ROOM + DOCK_MARGIN + GROUND_REACH;
 
 /** Where a card anchors on the map and how it keeps clear of it, all in pixels from the left and top edges of the map: the point it hangs from (the middle of the icon of its piece), its distance from that point, the places its side must keep clear of (as many `x` as it takes for `LABEL_REACH` on each side of them to cover every label; null when only the room on screen decides its side), and, for the dock, the same places of every piece the card may cover and of every fan of stamps that may stand on the map, with the lowest row each one reaches. */
 export interface CardPlacement {
