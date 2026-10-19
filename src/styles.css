@@ -135,7 +135,7 @@ button.stamp { cursor: help; }
   .incident { grid-template-columns: 1fr; grid-template-rows: 65vh auto auto; height: auto; }
   .incident__inspection { grid-area: 2 / 1; place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
   .incident__side { grid-area: 3 / 1; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
-  .incident--map2d { grid-template-rows: auto auto auto; }
+  .incident--map2d { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; }
 }
 
 .catalog { padding: var(--space-xl) var(--space-lg) var(--space-3xl); }

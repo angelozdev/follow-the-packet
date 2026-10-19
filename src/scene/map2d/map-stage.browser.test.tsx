@@ -11,6 +11,11 @@ import { MapStage } from './map-stage';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
+const LANDSCAPE_VIEWPORT = { width: 844, height: 390 };
+const SMALL_PHONE_VIEWPORT = { width: 320, height: 640 };
+const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+const SMALL_DESKTOP_VIEWPORT = { width: 800, height: 800 };
+const SIDE_PANEL = 380;
 const WIDE = 1000;
 const NARROW = 600;
 const TOO_NARROW = 320;
@@ -51,6 +56,22 @@ async function drawing(box: HTMLElement): Promise<SVGSVGElement> {
   await expect.poll(() => box.querySelector('svg')).not.toBeNull();
   return box.querySelector('svg') as SVGSVGElement;
 }
+
+function mountOnTheScreen(): HTMLElement {
+  const { container } = render(
+    <main className="incident incident--map2d">
+      <div className="incident__map">
+        <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} />
+      </div>
+      <aside className="incident__side" />
+    </main>,
+  );
+  return container.querySelector('.incident__map') as HTMLElement;
+}
+
+const widthOfTheSvg = (map: HTMLElement) => map.querySelector('svg')?.getBoundingClientRect().width;
+const widthOfTheLayoutAt = (width: number) => layoutMap(FLOORS, FLOORS_PIECES, { width }).size.width;
+const pageOverflow = () => document.documentElement.scrollWidth - window.innerWidth;
 
 function layerOf(box: HTMLElement): HTMLElement {
   return box.querySelector('.html-layer') as HTMLElement;
@@ -163,19 +184,49 @@ describe('MapStage', () => {
 
   it('at 390 px the map is as wide as its container and the page does not scroll sideways', async () => {
     await page.viewport(PHONE_VIEWPORT.width, PHONE_VIEWPORT.height);
-    const { container } = render(
-      <main className="incident incident--map2d">
-        <div className="incident__map">
-          <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} />
-        </div>
-      </main>,
-    );
-    const map = container.querySelector('.incident__map') as HTMLElement;
+    const map = mountOnTheScreen();
     const svg = await drawing(map);
     const { size } = layoutMap(FLOORS, FLOORS_PIECES, { width: PHONE_VIEWPORT.width });
     expect(svg.getBoundingClientRect().width).toBe(PHONE_VIEWPORT.width);
     expect(size.width).toBe(PHONE_VIEWPORT.width);
     expect(map.getBoundingClientRect().height).toBe(TITLE_BAR + size.height);
-    expect(document.documentElement.scrollWidth).toBe(window.innerWidth);
+    expect(pageOverflow()).toBe(0);
+  });
+
+  it('on a phone the map follows its column when the window narrows, and the page does not scroll sideways', async () => {
+    await page.viewport(LANDSCAPE_VIEWPORT.width, LANDSCAPE_VIEWPORT.height);
+    const map = mountOnTheScreen();
+    await drawing(map);
+    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(LANDSCAPE_VIEWPORT.width));
+    expect(widthOfTheLayoutAt(LANDSCAPE_VIEWPORT.width)).toBeGreaterThan(PHONE_VIEWPORT.width);
+    await page.viewport(PHONE_VIEWPORT.width, PHONE_VIEWPORT.height);
+    await expect.poll(() => widthOfTheSvg(map)).toBe(PHONE_VIEWPORT.width);
+    expect(map.getBoundingClientRect().width).toBe(PHONE_VIEWPORT.width);
+    expect(pageOverflow()).toBe(0);
+  });
+
+  it('on a phone narrower than 360 px the stage scrolls sideways and the page does not', async () => {
+    await page.viewport(SMALL_PHONE_VIEWPORT.width, SMALL_PHONE_VIEWPORT.height);
+    const map = mountOnTheScreen();
+    await drawing(map);
+    const stage = map.querySelector('.map-stage') as HTMLElement;
+    expect(widthOfTheSvg(map)).toBe(MIN_MAP_WIDTH);
+    expect(map.getBoundingClientRect().width).toBe(SMALL_PHONE_VIEWPORT.width);
+    expect(stage.clientWidth).toBe(SMALL_PHONE_VIEWPORT.width);
+    expect(stage.scrollWidth).toBe(MIN_MAP_WIDTH);
+    expect(pageOverflow()).toBe(0);
+  });
+
+  it('on a desktop the map follows its box when the window narrows past 900 px', async () => {
+    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height);
+    const map = mountOnTheScreen();
+    await drawing(map);
+    const wide = DESKTOP_VIEWPORT.width - SIDE_PANEL;
+    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(wide));
+    expect(map.getBoundingClientRect().width).toBe(wide);
+    await page.viewport(SMALL_DESKTOP_VIEWPORT.width, SMALL_DESKTOP_VIEWPORT.height);
+    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(SMALL_DESKTOP_VIEWPORT.width));
+    expect(map.getBoundingClientRect().width).toBe(SMALL_DESKTOP_VIEWPORT.width);
+    expect(pageOverflow()).toBe(0);
   });
 });
