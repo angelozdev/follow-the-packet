@@ -34,9 +34,13 @@ const { officeRouter, server } = OFFICE_FLOORS;
 const YOU = device('your-laptop');
 const GHOST = mapPiece({ kind: 'device', variant: 'laptop' }, 'ghost-laptop', nameTag('laptop-fantasma'));
 
+function focusAfterTheCommit(heading: HTMLElement | null): void {
+  if (heading !== null) requestAnimationFrame(() => heading.focus());
+}
+
 function TallCard() {
   return (
-    <Card role="dialog" aria-label={CARD_NAME} header={{ title: <h2 tabIndex={-1} ref={(heading) => heading?.focus()}>{CARD_NAME}</h2> }}>
+    <Card role="dialog" aria-label={CARD_NAME} header={{ title: <h2 tabIndex={-1} ref={focusAfterTheCommit}>{CARD_NAME}</h2> }}>
       <div className="chip-card">
         <div className="chip-card__body">
           <span className="caption caption--soft">{CAPTION}</span>
@@ -163,6 +167,26 @@ describe('the card of the 2D map in the browser', () => {
         view.open(id);
         await expect.poll(() => problemsOfTheCard(view.container), { message: `${name}, ${id}` }).toEqual([]);
       }
+      view.unmount();
+    }
+  });
+
+  it('when the card closes the stage and the page are back where they were when it opened, and so are the labels in the window', async () => {
+    for (const [name, size, openPieceId] of [['390 px', PHONE, ROUTER], ['1280×360', LOW_DESKTOP, YOUR_LAPTOP]] as const) {
+      const view = await mountScreen(size);
+      const stage = find(view.container, '.map-stage');
+      const label = find(view.container, `#${pieceDomId(openPieceId)}`);
+      const scrolls = () => [stage.scrollTop, document.documentElement.scrollTop];
+      const home = { scrolls: scrolls(), place: rectOf(label).toJSON() };
+
+      view.open(openPieceId);
+      await expect.poll(() => view.container.querySelector(CARD)).not.toBeNull();
+      expect(scrolls().reduce((total, offset) => total + offset, 0), `${name}, the card was brought into view`).toBeGreaterThan(0);
+
+      view.open(null);
+      await expect.poll(() => view.container.querySelector(CARD)).toBeNull();
+      expect(scrolls(), `${name}, after it closes`).toEqual(home.scrolls);
+      expect(rectOf(label).toJSON(), `${name}, the label stands where it stood in the window`).toEqual(home.place);
       view.unmount();
     }
   });
