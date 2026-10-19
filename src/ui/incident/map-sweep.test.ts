@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { isProblemStamp, stampOf } from '@/copy';
-import { isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
+import { classifiedBlock, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
 import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
-import { captionBoxes } from '@/scene/map2d/layout/captions';
+import { LABEL_GAP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
+import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
 import { route } from '@/scene/map2d/layout/graph';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
 import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
 import { station, stationsFor } from '@/scene/map2d/layout/stations';
-import { holds } from '@/scene/map2d/marks/boxes';
+import { crowds, holds } from '@/scene/map2d/marks/boxes';
 import { collisions } from '@/scene/map2d/marks/collisions';
 import { placeTags, type PacketTag, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
 import { readingOrder } from '@/scene/map2d/marks/reading-order';
@@ -223,6 +224,47 @@ describe('the sweep of the registered incidents', () => {
       const captions = captionBoxes(layout.groups);
       for (const group of layout.groups.filter(({ name }) => name.length > 0)) expect(holds(group.box, captions[group.id]), `${group.id} in ${state.incident}, ${state.name}, at ${width} px`).toBe(true);
     }
+  });
+
+  it('with the room for its tab, the outline of a block has its tab inside its floor and clear of every label, icon, name and mark, and placing a device inside moves nothing else, at seven widths', () => {
+    const owners = INCIDENTS.map(({ id }) => startSession(INCIDENTS, id)).filter((session) => classifiedBlock(session) !== null);
+    expect(owners.length).toBeGreaterThan(0);
+    const placements = (session: Session): Session[] => {
+      const ids = pieceViews(session).filter(({ kind }) => kind === 'device').map(({ anchorId }) => anchorId);
+      return Array.from({ length: 2 ** ids.length }, (_, mask) => ids.filter((_id, bit) => (mask >> bit) % 2 === 1).reduce((placed, deviceId) => sessionReducer(placed, { type: 'answerCard', deviceId, picks: { bin: 'inside' } }), session));
+    };
+    let outlines = 0;
+    for (const session of owners.flatMap(placements)) {
+      for (const width of WIDTHS) {
+        const layout = layoutMap(session.world, pieceViews(session), { width, blockTab: true });
+        const unmarked = layoutMap(session.world, pieceViews(session).map((piece) => ({ ...piece, insideBlock: undefined })), { width, blockTab: true });
+        const withoutOutlines = (each: typeof layout) => ({ ...each, groups: each.groups.filter(({ kind }) => kind !== 'block') });
+        expect(withoutOutlines(layout), `${session.incident.id}, at ${width} px`).toEqual(withoutOutlines(unmarked));
+        const tabs = blockTabBoxes(layout.groups, classifiedBlock(session) as string);
+        const seen = `${session.incident.id}, ${Object.keys(tabs).length} outlines, at ${width} px`;
+        const solids = [...Object.values(layout.labels), ...Object.values(layout.icons), ...Object.values(captionBoxes(layout.groups)), ...layout.marks.map(({ point, axis, casillas }) => fanBox(point, axis, casillas))];
+        const floors = layout.groups.filter(({ kind }) => kind === 'floor' || kind === 'subnet');
+        for (const tab of Object.values(tabs)) {
+          outlines++;
+          expect(solids.filter((solid) => overlaps(tab, solid)), seen).toEqual([]);
+          expect(floors.some(({ box }) => holds(box, tab)), seen).toBe(true);
+        }
+        expect(collisions({ ...layout, captions: { ...captionBoxes(layout.groups), ...tabs } }, [], []), seen).toEqual([]);
+      }
+    }
+    expect(outlines).toBeGreaterThan(owners.length * WIDTHS.length);
+  });
+
+  it('in every state of every registered incident no label stands in the mat of a device, whichever device is selected, at seven widths', () => {
+    let mats = 0;
+    for (const { layout, state, width } of sweep().analyses) {
+      for (const [id, icon] of Object.entries(layout.icons).filter(([key]) => key.startsWith('device:'))) {
+        const mat = { x: icon.x - LABEL_GAP, y: icon.y - LABEL_GAP, width: icon.width + 2 * LABEL_GAP, height: icon.height + 2 * LABEL_GAP };
+        mats++;
+        for (const [labelId, label] of Object.entries(layout.labels)) expect(crowds(mat, label), `${labelId} in the mat of ${id}, ${state.incident}, ${state.name}, at ${width} px`).toBe(false);
+      }
+    }
+    expect(mats).toBeGreaterThan(1000);
   });
 
   it('in no registered incident does a place hide a hundred stamps or more', () => {

@@ -5,9 +5,10 @@ import { INCIDENTS, caseWorld, solvedWorld, startWorld } from '@/levels';
 import { lengthOf, route, type Point } from '@/scene/map2d/layout/graph';
 import { characterCount, labelWidth } from '@/scene/map2d/layout/metrics';
 import { LINE_END, startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
+import { holds } from '@/scene/map2d/marks/boxes';
 import { NAME_SERVERS, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames } from '@/testing';
 import { graphOf } from './arrange/assemble';
-import { COMPACT, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
+import { BLOCK_TAB, CAPTION, COMPACT, GROUP_PAD, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
 import { SERVERS, layoutRow } from './arrange/row';
 import { layoutStack } from './arrange/stack';
 import { layoutMap } from './map-layout';
@@ -254,6 +255,28 @@ describe('layoutMap', () => {
         const outlined = layoutMap(world, marked, { width });
         expect(outlined.groups.some(({ kind }) => kind === 'block'), name).toBe(true);
         expect({ ...outlined, groups: outlined.groups.filter(({ kind }) => kind !== 'block') }, name).toEqual(plain);
+      }
+    }
+  });
+
+  it('asked for the room of the tab, a world with an outline keeps its width and its mode and starts every outline 18 px under the name of its floor', () => {
+    const scenes = SCENES.filter(({ pieces: drawn }) => drawn.some(({ kind }) => kind === 'device'));
+    expect(scenes.length).toBeGreaterThan(5);
+    for (const { name, world, pieces } of scenes) {
+      for (const width of [MIN_WIDTH, 1500]) {
+        const marked = pieces.map((each, index) => (each.kind === 'device' && index < 2 ? { ...each, insideBlock: true } : each));
+        const plain = layoutMap(world, marked, { width });
+        const roomy = layoutMap(world, marked, { width, blockTab: true });
+        expect([roomy.size.width, roomy.mode], name).toEqual([plain.size.width, plain.mode]);
+        expect(roomy.size.height, name).toBeGreaterThanOrEqual(plain.size.height);
+        const outlines = roomy.groups.filter(({ kind }) => kind === 'block');
+        expect(outlines.length, name).toBeGreaterThan(0);
+        for (const { box } of outlines) {
+          const [holder] = roomy.groups.filter((each) => each.kind !== 'block' && holds(each.box, box)).sort((a, b) => a.box.width * a.box.height - b.box.width * b.box.height);
+          expect(holder, name).toBeDefined();
+          expect(box.y - BLOCK_TAB, name).toBeGreaterThanOrEqual(holder.box.y + GROUP_PAD + CAPTION);
+        }
+        expect(layoutMap(world, marked, { width, blockTab: false }), name).toEqual(plain);
       }
     }
   });

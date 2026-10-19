@@ -1,7 +1,7 @@
-import type { TermId } from '@/copy';
+import { MAP_TEXT, type TermId } from '@/copy';
 import type { Device, Network } from '@/engine';
 import type { Point } from '@/scene/map2d/layout/graph';
-import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BOX_GAP, CAPTION, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart, type RowExtent } from './geometry';
+import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BLOCK_TAB, BOX_GAP, CAPTION, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart, type RowExtent, type TabRoom } from './geometry';
 import { busOf } from './pieces';
 
 export interface Floor {
@@ -12,7 +12,7 @@ export interface Floor {
   unplugged: string[];
 }
 
-export interface StackSpec {
+export interface StackSpec extends TabRoom {
   top: number;
   left: number;
   right: number;
@@ -46,15 +46,19 @@ function blockPart(text: string): NamePart {
   return { text, term: 'cidr' };
 }
 
+function nameOfWorld(world: Network): NamePart[] {
+  return [MAP_TEXT.groups[world.kind], blockPart(world.cidr)];
+}
+
 function sourcesOf(world: Network): FloorSource[] {
   if (world.subnets) return world.subnets.map(({ id, cidr }) => ({ id, kind: 'subnet', name: [{ text: id, term: 'vpc' }, blockPart(cidr)] }));
   if (world.lans) return world.lans.map(({ id, name, cidr }) => ({ id, kind: 'floor', name: [{ text: name }, blockPart(cidr)] }));
-  return [{ id: world.kind, kind: world.kind, name: [blockPart(world.cidr)] }];
+  return [{ id: world.kind, kind: world.kind, name: nameOfWorld(world) }];
 }
 
-/** Takes a world; returns the group that surrounds the floors of its map when there are several (the office, or the VPC): its id and kind are the kind of the world and its name the block of the world. */
+/** Takes a world; returns the group that surrounds the floors of its map when there are several (the office, or the VPC): its id and kind are the kind of the world and its name the word of that kind («Oficina», or «VPC» once the player knows the term) and the block of the world. */
 export function outerOf(world: Network): Pick<Group, 'id' | 'kind' | 'name'> {
-  return { id: world.kind, kind: world.kind, name: [blockPart(world.cidr)] };
+  return { id: world.kind, kind: world.kind, name: nameOfWorld(world) };
 }
 
 /** Takes the floors of a map; returns whether their boxes stand inside the box of the office or the VPC: when there are two or more floors, and for any subnet. */
@@ -78,17 +82,21 @@ export function shownParts(name: readonly NamePart[], known: ReadonlySet<TermId>
 
 const EVEN_ROW = (): RowExtent => ({ above: ROW_HEIGHT / 2, below: ROW_HEIGHT / 2 });
 
-function blocksOf(floor: Floor, centers: readonly number[], box: Group['box'], spec: StackSpec): Group[] {
-  const extentOf = spec.row ?? EVEN_ROW;
+function runsOf(plugged: readonly string[], inside: ReadonlySet<string>): number[][] {
   const runs: number[][] = [];
-  floor.plugged.forEach((id, index) => {
-    if (!spec.inside.has(id)) return;
-    const joins = index > 0 && spec.inside.has(floor.plugged[index - 1]);
+  plugged.forEach((id, index) => {
+    if (!inside.has(id)) return;
+    const joins = index > 0 && inside.has(plugged[index - 1]);
     if (joins) runs[runs.length - 1].push(index);
     else runs.push([index]);
   });
+  return runs;
+}
+
+function blocksOf(floor: Floor, centers: readonly number[], box: Group['box'], spec: StackSpec): Group[] {
+  const extentOf = spec.row ?? EVEN_ROW;
   const x = box.x + BLOCK_INSET_X;
-  return runs.map((run) => {
+  return runsOf(floor.plugged, spec.inside).map((run) => {
     const [first, last] = [run[0], run[run.length - 1]];
     const [top, bottom] = [centers[first] - extentOf(floor.plugged[first]).above, centers[last] + extentOf(floor.plugged[last]).below];
     return {
@@ -109,19 +117,21 @@ export function stackFloors(floors: readonly Floor[], spec: StackSpec): Stack {
   const blocks: Group[] = [];
   const buses: BusSpan[] = [];
   const rows: Record<string, number> = {};
-  const rowsFrom = (start: number, ids: readonly string[]) => {
+  const tabbedOf = (ids: readonly string[]): ReadonlySet<string> => new Set(spec.blockTab ? [...ids.slice(0, 1), ...runsOf(ids, spec.inside).map(([first]) => ids[first])] : []);
+  const rowsFrom = (start: number, ids: readonly string[], tabbed: ReadonlySet<string> = new Set()) => {
     let cursor = start;
     const centers = ids.map((id) => {
       const { above, below } = extentOf(id);
-      const center = cursor + above;
-      cursor += above + below;
+      const room = tabbed.has(id) ? BLOCK_TAB : 0;
+      const center = cursor + room + above;
+      cursor += room + above + below;
       return center;
     });
     return { centers, end: cursor };
   };
   let top = spec.top + (nested ? HEADER : 0);
   for (const floor of floors) {
-    const { centers, end } = rowsFrom(top + HEADER, floor.plugged);
+    const { centers, end } = rowsFrom(top + HEADER, floor.plugged, tabbedOf(floor.plugged));
     const box = { x: left, y: top, width: right - left, height: HEADER + (floor.plugged.length > 0 ? end - top - HEADER : ROW_HEIGHT) + GROUP_PAD };
     floor.plugged.forEach((id, index) => (rows[id] = centers[index]));
     boxes.push({ id: floor.id, kind: floor.kind, box, name: floor.name });

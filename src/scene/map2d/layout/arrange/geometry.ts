@@ -82,6 +82,10 @@ export interface RowLayout {
   drawn: Drawn;
 }
 
+export interface TabRoom {
+  blockTab?: boolean;
+}
+
 export type MapMode = 'row' | 'row-compact' | 'stack';
 
 export interface MapLayout extends RowLayout {
@@ -112,6 +116,7 @@ export const TRUNK_PITCH = 8;
 export const TRUNK_LEAD = 8;
 export const BLOCK_INSET_X = 6;
 export const BLOCK_INSET_Y = 2;
+export const BLOCK_TAB = 18;
 export const FIREWALL_LABEL_DROP = 10;
 export const HELPER_PREFIX = 'join:';
 

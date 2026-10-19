@@ -3,7 +3,7 @@ import { nameTag } from '@/copy';
 import type { Network } from '@/engine';
 import type { Point } from '@/scene/map2d/layout/graph';
 import { OFFICE_FLOORS, lab03Net, officeTwoFloorsNet } from '@/testing';
-import { BOX_GAP, CAPTION, GROUP_PAD, ICON, ROW_HEIGHT, TRUNK_LEAD, type Box, type Group, type PieceKind, type RowPiece } from './geometry';
+import { BLOCK_TAB, BOX_GAP, CAPTION, GROUP_PAD, ICON, ROW_HEIGHT, TRUNK_LEAD, type Box, type Group, type PieceKind, type RowPiece } from './geometry';
 import { floorsOf, shownParts, stackFloors, trunkLane, trunkOf, type BusSpan, type StackSpec } from './groups';
 import { classify } from './pieces';
 
@@ -158,6 +158,44 @@ describe('the outline of the block', () => {
     const plain = row(['your-laptop', false], ['lucia-laptop', false]);
     const outlined = row(['your-laptop', true], ['lucia-laptop', false]);
     expect({ ...outlined, groups: outlined.groups.filter(({ kind }) => kind !== 'block') }).toEqual(plain);
+  });
+
+  it('leaves 18 px over the first row of each floor and over each outline that starts lower, for its tab, only when it is asked to, and moves nothing else', () => {
+    const pieces = [marked('your-laptop'), piece('device', 'lucia-laptop'), marked('marta-laptop'), piece('device', 'printer')];
+    const members = new Set(['your-laptop', 'marta-laptop']);
+    const plain = stackOf(pieces, { inside: members }).stack;
+    const tabbed = stackOf(pieces, { inside: members, blockTab: true }).stack;
+    expect(BLOCK_TAB).toBe(18);
+    const moved = (id: string) => tabbed.rows[id] - plain.rows[id];
+    expect(['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer'].map(moved)).toEqual([BLOCK_TAB, BLOCK_TAB, 2 * BLOCK_TAB, 2 * BLOCK_TAB]);
+    expect(blocks(tabbed).map(({ height, width }) => [height, width])).toEqual(blocks(plain).map(({ height, width }) => [height, width]));
+    expect(blocks(tabbed).map(({ y }, index) => y - blocks(plain)[index].y)).toEqual([BLOCK_TAB, 2 * BLOCK_TAB]);
+    const [floorWith, floorWithout] = [tabbed, plain].map((stack) => groupsOf(stack.groups, 'floor')[0].box);
+    expect(floorWith.height).toBe(floorWithout.height + 2 * BLOCK_TAB);
+    expect(floorWith.y).toBe(floorWithout.y);
+    expect(floorWith.width).toBe(floorWithout.width);
+  });
+
+  it('with the room asked for, an outline that starts on the first row of a floor moves nothing: the place of everything else is the same with it and without it', () => {
+    const [first, second] = [stackOf(BOTH_FLOORS, { blockTab: true }).stack, stackOf(BOTH_FLOORS.map((each) => (['your-laptop', 'andres-laptop'].includes(each.anchorId) ? { ...each, insideBlock: true as const } : each)), { inside: new Set(['your-laptop', 'andres-laptop']), blockTab: true }).stack];
+    const apart = (stack: typeof first) => ({ ...stack, groups: stack.groups.filter(({ kind }) => kind !== 'block') });
+    expect(blocks(second)).toHaveLength(2);
+    expect(apart(second)).toEqual(apart(first));
+    expect(first.rows['your-laptop'] - stackOf(BOTH_FLOORS).stack.rows['your-laptop']).toBe(BLOCK_TAB);
+  });
+
+  it('leaves the tab under the name of its floor: no outline starts less than 18 px under the strip of the name', () => {
+    const pieces = [marked('your-laptop'), piece('device', 'lucia-laptop'), marked('marta-laptop'), marked('andres-laptop')];
+    const members = new Set(['your-laptop', 'marta-laptop', 'andres-laptop']);
+    const { stack } = stackOf(pieces, { inside: members, blockTab: true });
+    const [first, second] = groupsOf(stack.groups, 'floor');
+    const [onFirst, onSecond] = [blocks(stack).filter((block) => block.y < second.box.y), blocks(stack).filter((block) => block.y >= second.box.y)];
+    expect(onFirst).toHaveLength(2);
+    expect(onSecond).toHaveLength(1);
+    for (const [floor, outlines] of [[first, onFirst], [second, onSecond]] as const) {
+      expect(outlines[0].y - BLOCK_TAB).toBeGreaterThanOrEqual(floor.box.y + GROUP_PAD + CAPTION);
+      for (const outline of outlines) expect(inside(outline, floor.box)).toBe(true);
+    }
   });
 
   it('a mark never joins two floors: the outline of a floor stops at its own box', () => {

@@ -1,5 +1,5 @@
-import { CAPTION, GROUP_PAD, type Box, type Group } from './arrange/geometry';
-import { characterCount } from './metrics';
+import { BLOCK_TAB, CAPTION, GROUP_PAD, type Box, type Group } from './arrange/geometry';
+import { characterCount, labelWidth } from './metrics';
 
 export const CAPTION_CELL = 10;
 export const CAPTION_SEPARATOR = ' ';
@@ -13,4 +13,10 @@ function widestName({ name }: Pick<Group, 'name'>): string {
 export function captionBoxes(groups: readonly Group[]): Record<string, Box> {
   const named = groups.filter(({ name }) => name.length > 0);
   return Object.fromEntries(named.map((group): [string, Box] => [group.id, { x: group.box.x + GROUP_PAD, y: group.box.y + GROUP_PAD, width: Math.ceil(characterCount(widestName(group)) * CAPTION_CELL), height: CAPTION }]));
+}
+
+/** Takes the groups of a map and the name of the block the player is classifying in; returns, by the id of each outline of a block, the box of its tab: in the top left corner of the outline, standing over its top edge, 18 px tall (`BLOCK_TAB`) and as wide as the name is as a label. The room over the outline is the layout's when it is asked for (`blockTab`), so the tab stands under the name of its floor. A group that is not the outline of a block has none. */
+export function blockTabBoxes(groups: readonly Group[], name: string): Record<string, Box> {
+  const width = labelWidth(name);
+  return Object.fromEntries(groups.filter(({ kind }) => kind === 'block').map(({ id, box }): [string, Box] => [id, { x: box.x, y: box.y - BLOCK_TAB, width, height: BLOCK_TAB }]));
 }

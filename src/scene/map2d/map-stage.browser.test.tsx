@@ -1,13 +1,14 @@
 import { render, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
-import { nameTag, type TermId } from '@/copy';
+import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet } from '@/testing/fixtures';
+import { mapPiece, type MapPieceFixture, type PieceEntity } from '@/testing/map-pieces';
 import { TITLE_BAR } from '@/scene/map2d/cards/placement';
-import type { RowPiece } from '@/scene/map2d/layout/arrange/geometry';
-import { captionBoxes } from '@/scene/map2d/layout/captions';
+import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
-import { MapStage } from './map-stage';
+import { GameScene2D } from './game-scene';
+import { MapStage, type MapStageProps } from './map-stage';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
@@ -24,8 +25,13 @@ const HALF_A_PIXEL = 0.5;
 const GROUP_RADIUS = 14;
 const NOTHING_KNOWN: ReadonlySet<TermId> = new Set();
 const CIDR_KNOWN: ReadonlySet<TermId> = new Set<TermId>(['cidr']);
+const OFFICE_TITLE = MAP_TEXT.groups.office.text;
 
-const piece = (kind: RowPiece['kind'], anchorId: string, extras: Partial<RowPiece> = {}): RowPiece => ({ id: `${kind}:${anchorId}`, kind, anchorId, label: nameTag(anchorId), locked: false, state: 'normal', ...extras });
+const VARIANTS = { device: 'laptop', firewall: 'host-firewall', edge: 'router', internet: 'internet', actor: 'you' } as const;
+const BLOCK_NAME = OFFICE_FLOORS.floor1.cidr;
+const SCREEN_PROPS = { blockName: null, activePieceId: null, still: true, inspectTrigger: () => ({}), onActivate: () => undefined } satisfies Omit<MapStageProps, 'world' | 'pieces' | 'known'>;
+
+const piece = <Kind extends keyof typeof VARIANTS>(kind: Kind, anchorId: string, extras: Partial<MapPieceFixture> = {}): MapPieceFixture => mapPiece({ kind, variant: VARIANTS[kind] } as PieceEntity, anchorId, nameTag(anchorId), extras);
 const { officeRouter, server } = OFFICE_FLOORS;
 const FLOORS = officeTwoFloorsNet();
 const FLOORS_PIECES = [
@@ -42,10 +48,10 @@ interface Mounted {
   show: (known: ReadonlySet<TermId>) => void;
 }
 
-function mount(width: number, known: ReadonlySet<TermId> = NOTHING_KNOWN, world = FLOORS, pieces = FLOORS_PIECES): Mounted {
+function mount(width: number, known: ReadonlySet<TermId> = NOTHING_KNOWN, world = FLOORS, pieces = FLOORS_PIECES, extras: Partial<MapStageProps> = {}): Mounted {
   const stage = (each: ReadonlySet<TermId>) => (
     <div data-testid="box" style={{ width, position: 'relative' }}>
-      <MapStage world={world} pieces={pieces} known={each} />
+      <MapStage world={world} pieces={pieces} known={each} {...SCREEN_PROPS} {...extras} />
     </div>
   );
   const view = render(stage(known));
@@ -61,7 +67,7 @@ function mountOnTheScreen(): HTMLElement {
   const { container } = render(
     <main className="incident incident--map2d">
       <div className="incident__map">
-        <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} />
+        <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} {...SCREEN_PROPS} />
       </div>
       <aside className="incident__side" />
     </main>,
@@ -124,10 +130,10 @@ describe('MapStage', () => {
 
     const layer = layerOf(box);
     const captions = () => [...layer.querySelectorAll<HTMLElement>('.caption')].map((each) => each.textContent);
-    expect(captions()).toEqual([OFFICE_FLOORS.floor1.name, OFFICE_FLOORS.floor2.name]);
+    expect(captions()).toEqual([OFFICE_TITLE, OFFICE_FLOORS.floor1.name, OFFICE_FLOORS.floor2.name]);
 
     show(CIDR_KNOWN);
-    await expect.poll(captions).toEqual([OFFICE_FLOORS.range, `${OFFICE_FLOORS.floor1.name} ${OFFICE_FLOORS.floor1.cidr}`, `${OFFICE_FLOORS.floor2.name} ${OFFICE_FLOORS.floor2.cidr}`]);
+    await expect.poll(captions).toEqual([`${OFFICE_TITLE} ${OFFICE_FLOORS.range}`, `${OFFICE_FLOORS.floor1.name} ${OFFICE_FLOORS.floor1.cidr}`, `${OFFICE_FLOORS.floor2.name} ${OFFICE_FLOORS.floor2.cidr}`]);
     const reserved = captionBoxes(layout.groups);
     const svgBox = svg.getBoundingClientRect();
     for (const caption of layer.querySelectorAll<HTMLElement>('.caption')) {
@@ -164,6 +170,80 @@ describe('MapStage', () => {
     expect(getComputedStyle(links[0]).fill).toBe('none');
     const marks = [...svg.querySelectorAll<SVGCircleElement>('circle.map-mark')];
     expect(marks.map((each) => [each.cx.baseVal.value, each.cy.baseVal.value])).toEqual(layout.marks.map(({ point }) => point));
+  });
+
+  it('draws every piece the layout holds a box for over the links and under the layer, with a label button for each in the layer', async () => {
+    const { box } = mount(WIDE);
+    const svg = await drawing(box);
+    const layout = layoutMap(FLOORS, FLOORS_PIECES, { width: WIDE });
+    const drawn = [...svg.querySelectorAll('g.map-piece')];
+    expect(drawn.map((each) => each.getAttribute('data-piece'))).toEqual(FLOORS_PIECES.map(({ id }) => id).filter((id) => id in layout.icons));
+    expect(drawn.length).toBeGreaterThan(5);
+    const lastLink = [...svg.querySelectorAll('polyline.map-link')].at(-1) as Element;
+    expect(lastLink.compareDocumentPosition(drawn[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(svg.compareDocumentPosition(layerOf(box)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const labels = [...layerOf(box).querySelectorAll<HTMLElement>('button.map-button')];
+    expect(labels.map(({ id }) => id).sort()).toEqual(Object.keys(layout.labels).map((id) => `piece-${id.replaceAll(':', '-')}`).sort());
+  });
+
+  it('marks the piece whose card is open as selected', async () => {
+    const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { activePieceId: 'device:your-laptop', still: false });
+    const svg = await drawing(box);
+    expect(svg.querySelector('[data-piece="device:your-laptop"] .map-piece__mat')).not.toBeNull();
+    expect(svg.querySelectorAll('.map-piece__mat')).toHaveLength(1);
+  });
+
+  describe('the outline of a block', () => {
+    const MARKED = FLOORS_PIECES.map((each) => (['device:your-laptop', 'device:lucia-laptop'].includes(each.id) ? { ...each, insideBlock: true as const } : each));
+    const stageOf = (blockName: string | null) => mount(WIDE, NOTHING_KNOWN, FLOORS, MARKED, { blockName });
+
+    it('wears a filled tab with its block over its top edge once cidr is known, and not before, with the same room either way', async () => {
+      const { box, show } = stageOf(BLOCK_NAME);
+      const svg = await drawing(box);
+      const roomy = layoutMap(FLOORS, MARKED, { width: WIDE, blockTab: true });
+      const [[id, tab]] = Object.entries(blockTabBoxes(roomy.groups, BLOCK_NAME));
+      expect(svg.getBoundingClientRect().height).toBe(roomy.size.height);
+      expect(svg.querySelectorAll('rect.map-tab')).toHaveLength(0);
+      expect(layerOf(box).querySelector(`.caption[data-group="${id}"]`)).toBeNull();
+      show(CIDR_KNOWN);
+      await expect.poll(() => svg.querySelectorAll('rect.map-tab').length).toBe(1);
+      const drawn = svg.querySelector('rect.map-tab') as SVGRectElement;
+      expect([drawn.x.baseVal.value, drawn.y.baseVal.value, drawn.width.baseVal.value, drawn.height.baseVal.value]).toEqual([tab.x, tab.y, tab.width, tab.height]);
+      expect(getComputedStyle(drawn).fill).not.toBe('none');
+      const name = layerOf(box).querySelector(`.caption[data-group="${id}"]`) as HTMLElement;
+      expect(name.textContent).toBe(BLOCK_NAME);
+      const [inTheLayer, inTheSvg] = [name.getBoundingClientRect(), drawn.getBoundingClientRect()];
+      expect([inTheLayer.left, inTheLayer.top, inTheLayer.width, inTheLayer.height]).toEqual([inTheSvg.left, inTheSvg.top, inTheSvg.width, inTheSvg.height]);
+      expect(getComputedStyle(name).color).not.toBe(getComputedStyle(drawn).fill);
+      expect(svg.getBoundingClientRect().height).toBe(roomy.size.height);
+    });
+
+    it('leaves no room and draws no tab in an incident that has no block', async () => {
+      const { box, show } = stageOf(null);
+      const svg = await drawing(box);
+      show(CIDR_KNOWN);
+      expect(svg.getBoundingClientRect().height).toBe(layoutMap(FLOORS, MARKED, { width: WIDE }).size.height);
+      expect(svg.querySelectorAll('rect.map-tab')).toHaveLength(0);
+    });
+  });
+
+  it('the scene hands the stage what the screen gives it: the terms, the block, the open card and the stillness', async () => {
+    const marked = FLOORS_PIECES.map((each) => (each.id === 'device:your-laptop' ? { ...each, insideBlock: true as const } : each));
+    const scene = (known: ReadonlySet<TermId>) => (
+      <div data-testid="box" style={{ width: WIDE, position: 'relative' }}>
+        <GameScene2D world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} onActivate={() => undefined} known={known} />
+      </div>
+    );
+    const view = render(scene(NOTHING_KNOWN));
+    const svg = await drawing(view.getByTestId('box'));
+    const layer = layerOf(view.getByTestId('box'));
+    const texts = () => [...layer.querySelectorAll('.caption')].map((each) => each.textContent);
+    expect(texts()).toEqual([OFFICE_TITLE, OFFICE_FLOORS.floor1.name, OFFICE_FLOORS.floor2.name]);
+    expect(svg.querySelectorAll('.map-piece__mat')).toHaveLength(1);
+    expect(svg.querySelectorAll('rect.map-tab')).toHaveLength(0);
+    view.rerender(scene(CIDR_KNOWN));
+    await expect.poll(texts).toEqual([`${OFFICE_TITLE} ${OFFICE_FLOORS.range}`, `${OFFICE_FLOORS.floor1.name} ${OFFICE_FLOORS.floor1.cidr}`, `${OFFICE_FLOORS.floor2.name} ${OFFICE_FLOORS.floor2.cidr}`, BLOCK_NAME]);
+    expect(svg.querySelectorAll('rect.map-tab')).toHaveLength(1);
   });
 
   it('below 360 px the drawing keeps 360 px, against the left edge, and the stage scrolls sideways', async () => {

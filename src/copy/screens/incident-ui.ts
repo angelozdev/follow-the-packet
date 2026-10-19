@@ -21,6 +21,10 @@ export const MAP_TEXT = {
   locked: 'con candado',
   moreStamps: (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`,
   alert: 'con alerta: entra algo que no debe',
+  groups: {
+    office: { text: 'Oficina' },
+    vpc: { text: 'VPC', term: 'vpc' },
+  },
 } as const;
 
 export const INSPECTION_TEXT = {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { nameTag } from '@/copy';
+import { MAP_TEXT, nameTag } from '@/copy';
 import { OFFICE_FLOORS, lab03Net, officeTwoFloorsNet } from '@/testing';
-import { CAPTION, GROUP_PAD, type Group, type PieceKind, type RowPiece } from './arrange/geometry';
-import { CAPTION_CELL, captionBoxes } from './captions';
+import { BLOCK_TAB, CAPTION, GROUP_PAD, type Group, type PieceKind, type RowPiece } from './arrange/geometry';
+import { CAPTION_CELL, blockTabBoxes, captionBoxes } from './captions';
+import { labelWidth } from './metrics';
 import { layoutMap } from './map-layout';
 
 const piece = (kind: PieceKind, anchorId: string): RowPiece => ({ id: `${kind}:${anchorId}`, kind, anchorId, label: nameTag(anchorId), locked: false, state: 'normal' });
@@ -26,7 +27,7 @@ describe('captionBoxes', () => {
   it('its width is every part of the name joined by a space, at 10 px a character, whether or not the player knows the term of a part', () => {
     expect(CAPTION_CELL).toBe(10);
     expect(CAPTIONS[floor1.id].width).toBe(`${floor1.name} ${floor1.cidr}`.length * 10);
-    expect(CAPTIONS.office.width).toBe(OFFICE_FLOORS.range.length * 10);
+    expect(CAPTIONS.office.width).toBe(`${MAP_TEXT.groups.office.text} ${OFFICE_FLOORS.range}`.length * 10);
     const vpc = layoutMap(lab03Net(), devices('servidor1'), { width: 900 });
     expect(captionBoxes(vpc.groups)['subnet-a'].width).toBe('subnet-a 172.31.16.0/20'.length * 10);
   });
@@ -47,5 +48,34 @@ describe('captionBoxes', () => {
     const named = BOTH_FLOORS.groups.filter(({ name }) => name.length > 0).map(({ id }) => id);
     expect(Object.keys(CAPTIONS)).toEqual(named);
     expect(named).toEqual(expect.arrayContaining([floor1.id, floor2.id, 'office']));
+  });
+});
+
+describe('blockTabBoxes', () => {
+  const outlined = layoutMap(officeTwoFloorsNet(), ['your-laptop', 'lucia-laptop', 'andres-laptop'].map((id) => ({ ...piece('device', id), insideBlock: true })), { width: 1440, blockTab: true });
+  const outlines = outlined.groups.filter(({ kind }) => kind === 'block');
+  const NAME = floor1.cidr;
+
+  it('the tab of an outline stands over its top left corner, 18 px tall and as wide as its name is as a label', () => {
+    const tabs = blockTabBoxes(outlined.groups, NAME);
+    expect(outlines.length).toBeGreaterThan(1);
+    expect(Object.keys(tabs)).toEqual(outlines.map(({ id }) => id));
+    for (const { id, box } of outlines) expect(tabs[id]).toEqual({ x: box.x, y: box.y - BLOCK_TAB, width: labelWidth(NAME), height: BLOCK_TAB });
+  });
+
+  it('a group that is not the outline of a block has no tab', () => {
+    expect(Object.keys(blockTabBoxes(outlined.groups, NAME)).some((id) => id === floor1.id || id === 'office')).toBe(false);
+    expect(blockTabBoxes(BOTH_FLOORS.groups, NAME)).toEqual({});
+  });
+
+  it('with the room asked for, every tab lies inside its floor and under the strip of its name', () => {
+    const tabs = blockTabBoxes(outlined.groups, NAME);
+    const floors = outlined.groups.filter(({ kind }) => kind === 'floor');
+    for (const [id, tab] of Object.entries(tabs)) {
+      const floor = floors.find(({ box }) => tab.y >= box.y && tab.y < box.y + box.height) as Group;
+      expect(tab.y, id).toBeGreaterThanOrEqual(floor.box.y + GROUP_PAD + CAPTION);
+      expect(tab.x + tab.width, id).toBeLessThanOrEqual(floor.box.x + floor.box.width);
+      expect(tab.y + tab.height, id).toBeLessThanOrEqual(floor.box.y + floor.box.height);
+    }
   });
 });

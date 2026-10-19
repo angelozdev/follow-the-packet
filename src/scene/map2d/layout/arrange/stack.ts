@@ -40,6 +40,7 @@ import {
   type RowExtent,
   type RowLayout,
   type RowPiece,
+  type TabRoom,
 } from './geometry';
 import { isNested, outerOf, stackFloors, trunkLane, type Floor, type Stack, type StackSpec } from './groups';
 import { labelOf, type Classified } from './pieces';
@@ -274,7 +275,7 @@ function waypointsOf(runs: readonly Run[], list: readonly Placed[], from: number
   return list.flatMap((each, index) => [...bendsBetween(runs, index === 0 ? from : list[index - 1].s, each.s).map((point): Waypoint => ({ point })), named(each.item.name, pointOf(each))]);
 }
 
-function build(world: Network, pieces: readonly RowPiece[], available: number): RowLayout {
+function build(world: Network, pieces: readonly RowPiece[], available: number, { blockTab }: TabRoom): RowLayout {
   const { found, drawn, branches, mainFloors } = surveyOf(world, pieces);
   const nested = isNested(mainFloors) || branches.some((branch) => isNested(branch.floors));
   const frame = frameOf(pieces, found, available, nested, mainFloors.length);
@@ -287,6 +288,7 @@ function build(world: Network, pieces: readonly RowPiece[], available: number): 
     floorRight: frame.floorRight,
     outer: outerOf(world),
     inside,
+    blockTab,
     row: rowExtentOf(pieces),
   });
   const office = officeOf(mainFloors, branches, specFor);
@@ -336,12 +338,12 @@ function build(world: Network, pieces: readonly RowPiece[], available: number): 
   return { size, groups, ...assembled, labels: draft.labels, icons: draft.icons, drawn };
 }
 
-/** Takes a world, the pieces the map draws and the width it has; returns the map as a snake, for a width where the row does not fit: the rows of the office hang to the left of a bus on the right, with the name of each device over its icon; the main line leaves the bus down the right side and runs from right to left under the office, and goes on in the next line, which runs the other way, when a stop has no room left in the line; the servers and the clients hang from a bus at the end of the line, toward the inside of the map. The layout holds the same things as the one of the row, and its width is the one it is given, 360 px at least: it is wider only when a label is too long for a lane at that width. It never reads what the player sent. */
-export function layoutStack(world: Network, pieces: readonly RowPiece[], width: number): RowLayout {
+/** Takes a world, the pieces the map draws and the width it has; returns the map as a snake, for a width where the row does not fit: the rows of the office hang to the left of a bus on the right, with the name of each device over its icon; the main line leaves the bus down the right side and runs from right to left under the office, and goes on in the next line, which runs the other way, when a stop has no room left in the line; the servers and the clients hang from a bus at the end of the line, toward the inside of the map. The layout holds the same things as the one of the row, and its width is the one it is given, 360 px at least: it is wider only when a label is too long for a lane at that width. It never reads what the player sent. With `blockTab` it leaves 18 px over the first row of each floor, and over each outline of a block that starts lower, for the tab of an outline. */
+export function layoutStack(world: Network, pieces: readonly RowPiece[], width: number, room: TabRoom = {}): RowLayout {
   const first = Math.max(width, MIN_WIDTH);
   for (let available = first; ; available += WIDEN) {
     try {
-      return build(world, pieces, available);
+      return build(world, pieces, available, room);
     } catch (error) {
       if (!(error instanceof NoRoomError) || available - first >= MAX_WIDEN) throw error;
     }

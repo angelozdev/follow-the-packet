@@ -36,6 +36,7 @@ import {
   type Group,
   type RowLayout,
   type RowPiece,
+  type TabRoom,
 } from './geometry';
 import { floorsOf, isNested, outerOf, stackFloors, trunkLane, trunkOf, type Floor, type Stack } from './groups';
 import { classify, drawnOf, labelOf, type Classified } from './pieces';
@@ -259,8 +260,8 @@ function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, br
   joinGateway(draft, id, head, gateway);
 }
 
-/** Takes a world, the pieces the map draws and a density; returns the map in a row, left to right: the office (one box per floor, a row of 100 px for each plugged device, and a bus at the right of its boxes), the main line through the router that stands on the border of the office, the other routers, the internet and the servers and clients as lanes of 100 px centered on the line, the devices with no cable under the boxes, and the office of a gateway as a second group below. The layout holds the boxes of the groups, the links with their points, the nodes of the graph that `route` walks, where each station stands, the marks where a stamp stands (with the axis of its fan and how many casillas fit), and the boxes of the label and the icon of each piece. It never reads what the player sent: its size depends on the pieces only. `density` shortens the trunk and the lane. */
-export function layoutRow(world: Network, pieces: readonly RowPiece[], density: Density): RowLayout {
+/** Takes a world, the pieces the map draws and a density; returns the map in a row, left to right: the office (one box per floor, a row of 100 px for each plugged device, and a bus at the right of its boxes), the main line through the router that stands on the border of the office, the other routers, the internet and the servers and clients as lanes of 100 px centered on the line, the devices with no cable under the boxes, and the office of a gateway as a second group below. The layout holds the boxes of the groups, the links with their points, the nodes of the graph that `route` walks, where each station stands, the marks where a stamp stands (with the axis of its fan and how many casillas fit), and the boxes of the label and the icon of each piece. It never reads what the player sent: its size depends on the pieces only. `density` shortens the trunk and the lane, and `blockTab` leaves 18 px over the first row of each floor, and over each outline of a block that starts lower, for the tab of an outline. */
+export function layoutRow(world: Network, pieces: readonly RowPiece[], density: Density, { blockTab }: TabRoom = {}): RowLayout {
   const { found, drawn, floors, branches, mainFloors } = surveyOf(world, pieces);
   const nested = isNested(mainFloors);
   const frame = frameOf(pieces, found, nested);
@@ -273,7 +274,7 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
   const serversX = last ? Math.max(last.center + SERVERS_GAP, last.labelRight + LABEL_SEP) : floors.length === 0 ? lineStart : frame.busX + SERVERS_GAP;
   const officeRight = stops[0] && stops[0].name !== INTERNET ? stops[0].center : frame.floorRight + (nested ? GROUP_PAD : 0);
   const inside = new Set(pieces.filter(({ kind, insideBlock }) => kind === 'device' && insideBlock).map(({ anchorId }) => anchorId));
-  const stackAt = (top: number) => stackFloors(mainFloors, { top, left: OUTER, right: officeRight, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside });
+  const stackAt = (top: number) => stackFloors(mainFloors, { top, left: OUTER, right: officeRight, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside, blockTab });
   const above = Math.max(...stops.map(({ piece }) => (piece ? STOP_LABEL_RISE + labelOf(piece).height : 0)), (laneCount * LANE_HEIGHT) / 2);
   const settled = stackAt(OUTER);
   const yMain = Math.max(settled.center, OUTER + above);
@@ -299,7 +300,7 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
   let top = mainFloors.length > 0 ? main.bottom + BOX_GAP : OUTER;
   for (const branch of branches) {
     const left = frame.innerLeft - (isNested(branch.floors) ? GROUP_PAD : 0);
-    const stack = stackFloors(branch.floors, { top, left, right: stops[0].center, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside });
+    const stack = stackFloors(branch.floors, { top, left, right: stops[0].center, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside, blockTab });
     const y = branch.floors.length > 0 ? stack.center : top + ROW_HEIGHT / 2;
     placeBranch(draft, pieces, frame, branch, stack, { x: stops[0].center, y, headX: lineStart, first: station.router(found.routers[0].id), firstY: yMain });
     groups.push(...stack.groups.map((group) => (group.kind === 'block' ? group : { ...group, gateway: branch.gateway.id })));

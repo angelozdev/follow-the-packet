@@ -1,5 +1,5 @@
 import type { TermId } from '@/copy';
-import type { Group } from '@/scene/map2d/layout/arrange/geometry';
+import type { Box, Group } from '@/scene/map2d/layout/arrange/geometry';
 import { shownParts } from '@/scene/map2d/layout/arrange/groups';
 import { CAPTION_SEPARATOR, captionBoxes } from '@/scene/map2d/layout/captions';
 import type { Frame } from '@/scene/map2d/frame';
@@ -17,4 +17,13 @@ export function GroupCaptions({ groups, known, frame }: { groups: readonly Group
       </span>,
     ];
   });
+}
+
+/** Takes the box of the tab of each outline of a block (`blockTabBoxes`), the name of the block and where the drawing stands in its layer; returns the name written on every tab, as plain text in the caption style at the pixels of its box. */
+export function BlockNames({ tabs, name, frame }: { tabs: Readonly<Record<string, Box>>; name: string; frame: Frame }) {
+  return Object.entries(tabs).map(([id, box]) => (
+    <span key={id} className="caption map-tab-name" data-group={id} style={{ left: frame.x + box.x, top: frame.y + box.y, width: box.width, height: box.height }}>
+      {name}
+    </span>
+  ));
 }

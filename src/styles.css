@@ -20,10 +20,16 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .locked { color: var(--color-ink-soft); }
 
 .html-layer { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
-.map-stage { position: relative; overflow-x: auto; }
+.map-stage { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; overflow-x: auto; }
 .map-stage__sheet { position: relative; display: flow-root; }
 .map-stage__svg { display: block; }
 .map-stage .caption { position: absolute; display: flex; align-items: center; white-space: nowrap; }
+.map-tab-name { justify-content: center; font: var(--weight-regular) var(--text-xs)/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--color-on-fill); }
+.map-label { position: absolute; display: flex; align-items: flex-start; }
+.map-stage .map-button { font: var(--weight-regular) var(--text-xs)/16px var(--font-mono); text-align: start; }
+.map-stage .map-button__alert { vertical-align: top; }
+.map-stage .map-button .name-tag { font: inherit; padding: 0; border: 0; background: none; }
+.map-label[data-lines='2'] .name-tag::before { content: '\A'; white-space: pre; }
 .map-group { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-bold); stroke-linecap: round; stroke-dasharray: 0.1 5; }
 .map-group[data-kind='vpc'] { stroke-width: var(--stroke-regular); stroke-linecap: butt; stroke-linejoin: round; stroke-dasharray: 7 4; }
 .map-group[data-kind='block'] { stroke: var(--color-ink); stroke-width: var(--stroke-thin); stroke-linecap: butt; stroke-dasharray: 4 3; }
