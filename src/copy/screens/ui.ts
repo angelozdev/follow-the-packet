@@ -38,6 +38,10 @@ export const CATALOG_TEXT = {
   pieces: 'Piezas del mapa',
   icons: 'Íconos',
   intruder: 'intruso',
+  more: {
+    stamps: (hidden: number) => `${hidden} sellos más`,
+    stampsWithProblem: (hidden: number) => `${hidden} sellos más, alguno con problema`,
+  },
   state: {
     normal: 'normal',
     locked: 'con candado',

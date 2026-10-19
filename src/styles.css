@@ -20,16 +20,16 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .locked { color: var(--color-ink-soft); }
 
 .html-layer { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
-.map-stage { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; overflow-x: auto; }
+.map-stage, .catalog2d { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; overflow-x: auto; }
 .map-stage__sheet { position: relative; display: flow-root; }
 .map-stage__svg { display: block; }
 .map-stage__flight-labels { position: absolute; pointer-events: none; }
 .html-layer > .caption { position: absolute; display: flex; align-items: center; white-space: nowrap; }
 .map-tab-name { justify-content: center; font: var(--weight-regular) var(--text-xs)/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--color-on-fill); }
 .map-label { position: absolute; display: flex; align-items: flex-start; }
-.map-stage .map-button { font: var(--weight-regular) var(--text-xs)/16px var(--font-mono); text-align: start; }
-.map-stage .map-button__alert { vertical-align: top; }
-.map-stage .map-button .name-tag { font: inherit; padding: 0; border: 0; background: none; }
+.map-stage .map-button, .catalog2d .map-button { font: var(--weight-regular) var(--text-xs)/16px var(--font-mono); text-align: start; }
+.map-stage .map-button__alert, .catalog2d .map-button__alert { vertical-align: top; }
+.map-stage .map-button .name-tag, .catalog2d .map-button .name-tag { font: inherit; padding: 0; border: 0; background: none; }
 .map-label[data-lines='2'] .name-tag::before { content: '\A'; white-space: pre; }
 .map-group { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-bold); stroke-linecap: round; stroke-dasharray: 0.1 5; }
 .map-group[data-kind='vpc'] { stroke-width: var(--stroke-regular); stroke-linecap: butt; stroke-linejoin: round; stroke-dasharray: 7 4; }
@@ -195,3 +195,9 @@ button.stamp { cursor: help; }
 .catalog__specimens { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-md) var(--space-lg); }
 .catalog__specimen { margin: 0; display: grid; justify-items: start; gap: var(--space-xs); }
 .catalog__specimen--wide { width: 20rem; justify-items: stretch; }
+.catalog2d__row { display: grid; justify-content: start; }
+.catalog2d__specimen { margin: 0; display: grid; justify-items: center; align-content: start; gap: var(--space-2xs); padding-bottom: var(--space-sm); }
+.catalog2d__stage { position: relative; }
+.catalog2d__stage > svg { display: block; overflow: visible; }
+.catalog2d__label { position: absolute; left: 0; right: 0; display: flex; justify-content: center; }
+.catalog2d__caption { max-width: 100%; padding-inline: var(--space-xs); white-space: normal; text-align: center; }
