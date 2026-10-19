@@ -144,10 +144,10 @@ export function separateGlyphs(glyphs: readonly Glyph[]): PlacedGlyph[] {
   return placed;
 }
 
-/** Takes the labels a packet wears leg by leg, how far along its path they change (undefined when they do not) and a distance along the path; returns, in plain text, the label of the leg the packet stands in at that distance: the first before the change and the last from there on. */
-export function legTextAt(legs: readonly PortLabels[], changesAt: number | undefined, distance: number): string {
+/** Takes the labels a packet wears leg by leg, how far along its path they change (undefined when they do not), a distance along the path and whether the packet is the answer coming back (false when it is missing); returns, in plain text, the label of the leg the packet stands in at that distance: the first before the change and the last from there on, as the packet asks or, coming back, with the ports swapped. */
+export function legTextAt(legs: readonly PortLabels[], changesAt: number | undefined, distance: number, back = false): string {
   const leg = changesAt !== undefined && distance >= changesAt ? legs[legs.length - 1] : legs[0];
-  return toPlainText(leg.request);
+  return toPlainText(back ? leg.reply : leg.request);
 }
 
 /** Takes the points of a path and the point of the router that translates the ports of the packet (undefined when the map does not draw it); returns how far along the path the first of its points that lies on the router is, or undefined when the path does not pass there. */

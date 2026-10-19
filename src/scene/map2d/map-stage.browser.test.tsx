@@ -84,6 +84,12 @@ function layerOf(box: HTMLElement): HTMLElement {
   return box.querySelector('.html-layer') as HTMLElement;
 }
 
+function expectOverThePiecesAndUnderTheLayer(svg: SVGSVGElement, box: HTMLElement, traffic: Element): void {
+  const lastPiece = [...svg.querySelectorAll('g.map-piece')].at(-1) as Element;
+  expect(lastPiece.compareDocumentPosition(traffic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(svg.compareDocumentPosition(layerOf(box)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+}
+
 describe('MapStage', () => {
   afterEach(async () => {
     await page.viewport(INITIAL_VIEWPORT.width, INITIAL_VIEWPORT.height);
@@ -262,17 +268,17 @@ describe('MapStage', () => {
       const svg = await drawing(box);
       expect([...svg.querySelectorAll('g.map-trace')].map((each) => each.getAttribute('data-packet'))).toEqual(['answered', 'nat']);
       expect([...svg.querySelectorAll('g.packet-tag')].map((each) => each.textContent)).toEqual(['TCP 51514 → 80']);
-      const traffic = svg.querySelector('g.map-traffic') as Element;
-      const lastPiece = [...svg.querySelectorAll('g.map-piece')].at(-1) as Element;
-      expect(lastPiece.compareDocumentPosition(traffic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(svg.compareDocumentPosition(layerOf(box)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expectOverThePiecesAndUnderTheLayer(svg, box, svg.querySelector('g.map-traffic') as Element);
     });
 
-    it('draws no trace and no label while animations are on', async () => {
+    it('draws no trace while animations are on, and flies the packets and their labels instead', async () => {
       const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [ANSWERED, NAT], still: false });
       const svg = await drawing(box);
       expect(svg.querySelector('g.map-traffic')).toBeNull();
-      expect(svg.querySelector('g.packet-tag')).toBeNull();
+      expect(svg.querySelector('g.map-trace')).toBeNull();
+      expect([...new Set([...svg.querySelectorAll('g.map-flight')].map((each) => each.getAttribute('data-packet')))]).toEqual(['answered', 'nat']);
+      expect(svg.querySelectorAll('.map-flight-tags g.packet-tag').length).toBeGreaterThan(0);
+      expectOverThePiecesAndUnderTheLayer(svg, box, svg.querySelector('g.map-flights') as Element);
     });
 
     it('draws a blocked trace in the danger colour, a lost one dashed and the others in ink, and the border of an intruder over nothing but air', async () => {

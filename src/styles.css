@@ -58,6 +58,7 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-packet--intruder { color: var(--color-danger); }
 .map-packet * { vector-effect: non-scaling-stroke; }
 .map-packet .map-piece__icon .entity-icon { fill: none; }
+.map-burst { fill: none; stroke: var(--color-danger); stroke-width: var(--stroke-heavy); vector-effect: non-scaling-stroke; }
 .packet-tag rect { fill: var(--color-surface); stroke: var(--color-ink); stroke-width: var(--stroke-thin); }
 .packet-tag text { fill: var(--color-ink); dominant-baseline: central; }
 

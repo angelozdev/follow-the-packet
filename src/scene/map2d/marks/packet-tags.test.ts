@@ -201,6 +201,14 @@ describe('the text of the label of a packet along its path', () => {
     expect(legTextAt([FIRST, SECOND], undefined, 500)).toBe('TCP 51514 → 80');
   });
 
+  it('legTextAt says the answer coming back with the ports swapped, from the last leg first when the ports change on the way', () => {
+    expect(legTextAt([FIRST, SECOND], 100, 500, true)).toBe('TCP 80 → 40001');
+    expect(legTextAt([FIRST, SECOND], 100, 100, true)).toBe('TCP 80 → 40001');
+    expect(legTextAt([FIRST, SECOND], 100, 99.9, true)).toBe('TCP 80 → 51514');
+    expect(legTextAt([FIRST], undefined, 500, true)).toBe('TCP 80 → 51514');
+    expect(legTextAt([FIRST, SECOND], 100, 0, false)).toBe('TCP 51514 → 80');
+  });
+
   it('changeDistance says how far along a path the point of the router that translates lies, and nothing when the path does not pass there or the map does not draw the router', () => {
     const bent: Point[] = [[0, 0], [30, 40], [30, 140], [230, 140]];
     expect(changeDistance(bent, [30, 40])).toBe(50);

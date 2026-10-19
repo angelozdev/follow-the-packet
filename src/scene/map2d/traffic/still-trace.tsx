@@ -6,7 +6,8 @@ import { PacketTag } from './packet-tag';
 
 const LINE_MODIFIER: Partial<Record<StillPacket['end'], string>> = { blocked: 'map-trace__line--blocked', lost: 'map-trace__line--lost' };
 
-function pathData(points: readonly Point[]): string {
+/** Takes the points of a path; returns them as the data of an SVG path: a move to the first and a line to each of the others. */
+export function pathData(points: readonly Point[]): string {
   return points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x} ${y}`).join(' ');
 }
 

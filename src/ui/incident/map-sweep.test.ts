@@ -5,18 +5,25 @@ import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
 import { LABEL_GAP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
+import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
+import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
 import { startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
 import { crowds, holds } from '@/scene/map2d/marks/boxes';
 import { collisions } from '@/scene/map2d/marks/collisions';
-import { changeDistance, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
+import { changeDistance, legTextAt, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
 import { readingOrder } from '@/scene/map2d/marks/reading-order';
 import { fanStamps, stampsByPlace, type Fan, type StampsByPlace } from '@/scene/map2d/marks/stamp-fan';
-import { stillPackets, type StillPacket } from '@/scene/map2d/marks/still-packets';
+import { stillPackets, translationAt, wayOf, type StillPacket } from '@/scene/map2d/marks/still-packets';
+import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from '@/scene/map2d/traffic/flight-plan';
 
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SAME_POINT = 1e-6;
+
+const isShare = (value: number) => Number.isFinite(value) && value >= 0 && value <= 1;
+const isOrdered = (values: readonly number[]) => values.every((value, index) => isShare(value) && (index === 0 || value >= values[index - 1]));
+const isCycle = (times: readonly number[]) => times[0] === 0 && times[times.length - 1] === 1 && isOrdered(times);
 
 type Run = Session['runs'][number] | Session['sent'][number];
 
@@ -237,6 +244,41 @@ describe('the sweep of the registered incidents', () => {
       }
     }
     expect(inside).toBeGreaterThan(0);
+  });
+
+  it('in every state of every registered incident the flight of every packet has times a browser takes and its label rides inside the drawing, at seven widths', () => {
+    const seen = { flights: 0, labelled: 0, copies: 0 };
+    for (const analysis of sweep().analyses) {
+      const { layout } = analysis;
+      const graph = graphOf(layout);
+      const sizeOfTheDrawing = { width: layout.size.width, height: layout.size.height };
+      for (const run of analysis.runs.filter(({ packet }) => startsOnMap(packet, layout.drawn))) {
+        const way = wayOf(run, layout, graph);
+        const changesAt = translationAt(run, way.path, layout);
+        const plan = flightPlan(way.path, way.look.end, 0, changesAt);
+        const at = `${run.id}, ${where(analysis)}`;
+        seen.flights++;
+        for (const { period } of [...flowCycles(plan, 0), sendCycle(plan)]) {
+          const motion = motionOf(plan, period);
+          expect([isCycle(motion.keyTimes), isOrdered(motion.keyPoints), motion.keyPoints.length === motion.keyTimes.length], at).toEqual([true, true, true]);
+          for (const span of Object.values(plan.glyphs)) expect(isCycle(keyframes(period, [[0, 0], [span.from, 1], [span.to, 0]]).keyTimes), at).toBe(true);
+          const legs = run.ports?.legs;
+          if (legs === undefined || plan.labels.length === 0) continue;
+          const texts = plan.labels.map(({ distance, back }) => legTextAt(legs, changesAt, distance, back));
+          const size = { width: Math.max(...texts.map((text) => labelWidth(text))), height: LABEL_HEIGHT };
+          const ride = labelRide(routeOf(way.path, plan.end), size, sizeOfTheDrawing, period);
+          expect([isCycle(ride.keyTimes), isOrdered(ride.keyPoints), ride.keyPoints.length === ride.keyTimes.length], at).toEqual([true, true, true]);
+          for (const [x, y] of ride.centers) {
+            expect([x - size.width / 2 >= 0, x + size.width / 2 <= layout.size.width, y - size.height / 2 >= 0, y + size.height / 2 <= layout.size.height], at).toEqual([true, true, true, true]);
+          }
+          seen.labelled++;
+        }
+        seen.copies += flowCycles(plan, 0).length;
+      }
+    }
+    expect(seen.flights).toBeGreaterThan(0);
+    expect(seen.labelled).toBeGreaterThan(0);
+    expect(seen.copies).toBeGreaterThan(seen.flights);
   });
 
   it('in every state of every registered incident no two shapes of packets stand on one point, at seven widths', () => {
