@@ -24,10 +24,27 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-stage__sheet { position: relative; display: flow-root; }
 .map-stage__svg { display: block; }
 .map-stage .caption { position: absolute; display: flex; align-items: center; white-space: nowrap; }
-.map-group { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-regular); stroke-dasharray: 6 4; }
-.map-group[data-kind='block'] { stroke: var(--color-ink); }
+.map-group { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-bold); stroke-linecap: round; stroke-dasharray: 0.1 5; }
+.map-group[data-kind='vpc'] { stroke-width: var(--stroke-regular); stroke-linecap: butt; stroke-linejoin: round; stroke-dasharray: 7 4; }
+.map-group[data-kind='block'] { stroke: var(--color-ink); stroke-width: var(--stroke-thin); stroke-linecap: butt; stroke-dasharray: 4 3; }
+.map-wall { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-double); }
+.map-tab { fill: var(--color-ink-soft); }
 .map-link { fill: none; stroke: var(--color-ink-soft); stroke-width: var(--stroke-double); stroke-linecap: round; stroke-linejoin: round; }
 .map-mark { fill: var(--color-ink-soft); }
+.map-piece { color: var(--color-ink); fill: var(--color-surface); stroke: var(--color-ink); stroke-width: var(--stroke-regular); stroke-linecap: round; stroke-linejoin: round; }
+.map-piece * { vector-effect: non-scaling-stroke; }
+.map-piece__icon .entity-icon { width: 100%; height: 100%; fill: var(--color-surface); stroke-width: var(--stroke-regular); }
+.map-piece__icon ellipse { fill: none; }
+.map-piece__shade { fill: var(--color-shade); }
+.map-piece__ink { fill: var(--color-ink); }
+.map-piece__line, .map-piece__border { fill: none; }
+.map-piece__thin { stroke-width: var(--stroke-thin); }
+.map-piece__bold { stroke-width: var(--stroke-bold); }
+.map-piece__paper { stroke: var(--color-page); }
+.map-piece__mat { fill: var(--color-shade); stroke-width: var(--stroke-thin); }
+.map-bar { fill: var(--color-shade); }
+.map-bar--blocking { fill: var(--color-danger); }
+.map-bar--selected { stroke-width: var(--stroke-heavy); }
 
 .map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
 .map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
