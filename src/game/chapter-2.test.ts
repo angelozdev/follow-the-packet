@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, toPlainText, type TermId } from '@/copy';
+import { TABLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
 import { applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
@@ -27,12 +27,15 @@ import {
   OTHER_OFFICE,
   OUTSIDE_PIECES,
   PORT,
+  RECORDS_PIECES,
+  RECORD_TYPE,
   REFUSAL_PIECES,
   ROUTER,
   ROUTES_LOST,
   ROUTES_PIECES,
   SERVER,
   SERVICES_PIECES,
+  SITE_RECORDS,
   SSH_AND_FIREWALL,
   SSH_FLOW,
   SSH_FROM,
@@ -40,6 +43,8 @@ import {
   SSH_WHAT,
   TASK,
   TRANSLATION_PIECES,
+  recordMove,
+  recordRemoval,
   routeMove,
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
@@ -1618,5 +1623,257 @@ describe('02-10, asking for a name', () => {
 
   it('02-10: the right option is the second and is not the longest of the three', () => {
     expectRightOptionAt(start.incident, 1);
+  });
+});
+
+describe('02-11, the records', () => {
+  const RECORDS = '02-11';
+  const FIRST_PORT = 51514;
+  const SECOND_PORT = 51515;
+  const FIRST_PUBLIC_PORT = 40001;
+  const SECOND_PUBLIC_PORT = 40002;
+  const REFUSED = 'No se pudo agregar. ';
+  const WHERE_IT_STOPPED = 'Dónde y por qué se detuvo';
+  const DNS_FIELD = 'DNS';
+  const NXDOMAIN = 'NXDOMAIN';
+  const SERVFAIL = 'SERVFAIL';
+  const NAMES_A_NEW_TERM = /autoritativ|registro|CNAME/i;
+  const MAX_REPORT_SENTENCES = 12;
+  const NEVER_TAUGHT_HERE = /[Cc]aché|\b[Cc]ache\b|NXDOMAIN|SERVFAIL|\b[Aa]pex\b|Route 53|\bAlias\b|AAAA|IPv6/;
+  const NS_RECORD = 'NS';
+  const SOA_RECORD = 'SOA';
+  const RECORDS_TAB = 'records';
+  const PREVIOUS_INCIDENT = '02-10';
+  const UNREACHABLE = 'unreachable';
+  const REPLIED = 'replied';
+  const HOST_UNREACHABLE = 'host-unreachable';
+  const ALIAS_PROBLEM = 'cname-with-other-records';
+  const APEX_PROBLEM = 'cname-at-apex';
+  const NAME_TRAY = 'name';
+  const TYPE_TRAY = 'type';
+  const VALUE_TRAY = 'value';
+  const authoritativePiece = PIECE_ID.actor(SERVER.authoritative.id);
+  const start = startSession(INCIDENTS, RECORDS);
+  const sentTo = (session: Session, address: { id: string }, message: { id: string }): Session => sendingFrom(session, ORIGIN.you.id, address.id, message.id);
+  const ncWww = (session: Session): Session => sentTo(session, ADDRESS.www, MESSAGE.ncWeb);
+  const ncBlog = (session: Session): Session => sentTo(session, ADDRESS.blog, MESSAGE.ncWeb);
+  const digWww = (session: Session): Session => sentTo(session, ADDRESS.www, MESSAGE.dig);
+  const digBlog = (session: Session): Session => sentTo(session, ADDRESS.blog, MESSAGE.dig);
+  const placing = (session: Session, nameId: string, typeId: string, valueId: string): Session => sessionReducer(session, recordMove(nameId, typeId, valueId));
+  const withoutTheWrongA = (session: Session, name: string): Session => sessionReducer(session, recordRemoval(name, RECORD_TYPE.a, IP.nobodyOutside));
+  const aimedAtTheSite = (session: Session): Session => placing(withoutTheWrongA(session, HOSTNAME.www), SITE_RECORDS.name.www, SITE_RECORDS.type.a, SITE_RECORDS.value.server);
+  const asAnAlias = (session: Session): Session => placing(withoutTheWrongA(session, HOSTNAME.blog), SITE_RECORDS.name.blog, SITE_RECORDS.type.cname, SITE_RECORDS.value.www);
+  const repaired = asAnAlias(aimedAtTheSite(start));
+  const closed = digBlog(ncWww(repaired));
+  const recordsOf = (session: Session): TableCard | undefined => pieceCard(session, authoritativePiece)?.tabs.find((tab) => tab.id === RECORDS_TAB)?.card as TableCard | undefined;
+  const rowsOf = (session: Session) => (recordsOf(session)?.rows ?? []).map((row) => row.cells.map((cell) => plain(cell.text)));
+  const translationsOf = (session: Session) => (pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined)?.rows.map((row) => row.cells.map((cell) => plain(cell.text)));
+  const problemOf = (session: Session): string => plain(recordsOf(session)?.problem ?? '');
+  const boxOf = (session: Session, index: number): Record<string, string[]> =>
+    Object.fromEntries((inspect(session, session.sent[index].pieceId)?.fields ?? []).map(({ label, lines }) => [plain(label), lines.map((line) => plain(line))]));
+  const everyState = [start, ncWww(start), digBlog(start), digBlog(ncWww(start)), repaired, closed, aimedAtTheSite(start), asAnAlias(start), digWww(ncBlog(aimedAtTheSite(start)))];
+  const refusedAlias = placing(digBlog(ncWww(start)), SITE_RECORDS.name.blog, SITE_RECORDS.type.cname, SITE_RECORDS.value.www);
+  const refusedAtTheZone = placing(digBlog(ncWww(start)), SITE_RECORDS.name.zone, SITE_RECORDS.type.cname, SITE_RECORDS.value.www);
+
+  it('02-11: fixing the a record of www makes the nc by name come back', () => {
+    const [broken] = ncWww(start).sent;
+    expect([broken.trace.outcome, broken.trace.resolvedIp, broken.by]).toEqual([UNREACHABLE, IP.nobodyOutside, [ROUTER.destination.id]]);
+    expect(stillOpen(ncWww(start))).toEqual([TASK.webWww, TASK.digBlog]);
+    const justAdded = placing(start, SITE_RECORDS.name.www, SITE_RECORDS.type.a, SITE_RECORDS.value.server);
+    expect(rowsOf(justAdded)).toContainEqual([HOSTNAME.www, RECORD_TYPE.a, IP.server]);
+    expect(ncWww(justAdded).sent[0].trace.outcome, 'the wrong record still comes first').toBe(UNREACHABLE);
+    expect(boxOf(ncWww(justAdded), 0)[DNS_FIELD][1], 'the nc uses the first answer').toContain(`la respuesta es ${IP.nobodyOutside}.`);
+    expect(printedFrom(digWww(justAdded), ORIGIN.you.id, ADDRESS.www.id, MESSAGE.dig.id).filter((line) => /\tA\t/.test(line)), 'the dig lists both, the wrong one first').toEqual([`${HOSTNAME.www}.\t300\tIN\tA\t${IP.nobodyOutside}`, `${HOSTNAME.www}.\t300\tIN\tA\t${IP.server}`]);
+    expect(plain(start.incident.report)).toContain('En este juego, si un nombre tiene dos registros A, el nc usa el primero de la respuesta.');
+    expect(plain(start.incident.report).indexOf('mira en la caja del paquete qué contestó tu resolver.')).toBeLessThan(plain(start.incident.report).indexOf('En este juego, si un nombre tiene dos registros A'));
+    expect(plain(start.incident.takeaway)).toContain('Con dos registros A para un mismo nombre, en este juego el nc usa el primero de la respuesta: por eso había que quitar el registro equivocado y no solo agregar el correcto.');
+    const [fixed] = ncWww(aimedAtTheSite(start)).sent;
+    expect([fixed.trace.outcome, fixed.trace.resolvedIp, fixed.by]).toEqual([REPLIED, IP.server, [SERVER.internet.id]]);
+    expect(rowsOf(aimedAtTheSite(start))).toEqual([[HOSTNAME.blog, RECORD_TYPE.a, IP.nobodyOutside], [HOSTNAME.www, RECORD_TYPE.a, IP.server]]);
+    expect(stillOpen(ncWww(aimedAtTheSite(start)))).toEqual([TASK.digBlog]);
+  });
+
+  it('02-11: a cname for blog is refused while blog has an a record and the card says why', () => {
+    expect(refusedAlias.entryProblem).toEqual({ tableId: SITE_RECORDS.table, code: ALIAS_PROBLEM });
+    expect(problemOf(refusedAlias)).toBe(`${REFUSED}${plain(TABLE_TEXT.problems[ALIAS_PROBLEM])}`);
+    expect(problemOf(refusedAlias)).toContain('un nombre con un registro CNAME no puede tener otros: o es un alias, o tiene datos propios.');
+    expect(refusedAlias.world).toBe(start.world);
+    expect(rowsOf(refusedAlias)).toEqual(rowsOf(start));
+    expect(refusedAlias.sent, 'a refused record changes nothing, so the sends stay').toHaveLength(2);
+    expect(stillOpen(refusedAlias)).toEqual([TASK.webWww, TASK.digBlog]);
+    expect(problemOf(start)).toBe('');
+    expect(problemOf(asAnAlias(refusedAlias))).toBe('');
+  });
+
+  it('02-11: a cname at lucia.example is refused and the card says the zone has its own records', () => {
+    expect(refusedAtTheZone.entryProblem).toEqual({ tableId: SITE_RECORDS.table, code: APEX_PROBLEM });
+    expect(problemOf(refusedAtTheZone)).toBe(`${REFUSED}${plain(TABLE_TEXT.problems[APEX_PROBLEM])}`);
+    expect(problemOf(refusedAtTheZone)).toContain('La zona ya tiene sus propios registros en ese nombre');
+    expect(refusedAtTheZone.world).toBe(start.world);
+    expect(rowsOf(refusedAtTheZone)).toEqual(rowsOf(start));
+    expect(problemOf(refusedAtTheZone)).not.toMatch(NEVER_TAUGHT_HERE);
+    expect(plain(recordsOf(refusedAtTheZone)?.note ?? '')).toBe(plain(TABLE_TEXT.records.own));
+  });
+
+  it('02-11: removing the a record and creating the cname closes the incident with the answer through an alias', () => {
+    const aliasOnly = digBlog(asAnAlias(start));
+    const [alias] = aliasOnly.sent;
+    expect(alias.trace.dns?.answers.map(({ type, value }) => [type, value])).toEqual([[RECORD_TYPE.cname, HOSTNAME.www], [RECORD_TYPE.a, IP.nobodyOutside]]);
+    expect(stillOpen(aliasOnly), 'the alias leads to the wrong address until the record of www is fixed').toEqual([TASK.webWww, TASK.digBlog]);
+    expect(stillOpen(ncWww(aliasOnly)), 'and the answer holds the wrong address').toEqual([TASK.webWww, TASK.digBlog]);
+    const withItsOwnAddress = placing(withoutTheWrongA(aimedAtTheSite(start), HOSTNAME.blog), SITE_RECORDS.name.blog, SITE_RECORDS.type.a, SITE_RECORDS.value.server);
+    const [direct] = digBlog(withItsOwnAddress).sent;
+    expect(direct.trace.dns?.answers.map(({ type, value }) => [type, value])).toEqual([[RECORD_TYPE.a, IP.server]]);
+    expect(stillOpen(digBlog(ncWww(withItsOwnAddress))), 'the right address is not enough: the answer has to come through an alias').toEqual([TASK.digBlog]);
+    const [dig] = closed.sent.slice(-1);
+    expect(dig.trace.dns?.answers.map(({ type, name, value }) => [type, name, value])).toEqual([[RECORD_TYPE.cname, HOSTNAME.blog, HOSTNAME.www], [RECORD_TYPE.a, HOSTNAME.www, IP.server]]);
+    expect(printedFrom(closed, ORIGIN.you.id, ADDRESS.blog.id, MESSAGE.dig.id).filter((line) => /CNAME|\tA\t/.test(line))).toEqual([`${HOSTNAME.blog}.\t300\tIN\tCNAME\t${HOSTNAME.www}.`, `${HOSTNAME.www}.\t300\tIN\tA\t${IP.server}`]);
+    expect(rowsOf(repaired)).toEqual([[HOSTNAME.www, RECORD_TYPE.a, IP.server], [HOSTNAME.blog, RECORD_TYPE.cname, HOSTNAME.www]]);
+    expectClosed(closed);
+    expectClosed(ncWww(digBlog(asAnAlias(aimedAtTheSite(start)))));
+  });
+
+  it('02-11: the report names servidor-autoritativo', () => {
+    const { report } = start.incident;
+    const [before, after] = [solvedWorld(INCIDENTS, PREVIOUS_INCIDENT), startWorld(INCIDENTS, RECORDS)];
+    const zone = after.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === SERVER.authoritative.id ? (actor.dns?.zones ?? []) : [])).flatMap(({ records }) => records);
+    expect(report).toContain(`[[${SERVER.authoritative.name}]]`);
+    expect(plain(report)).toContain(`Alguien cambió registros de ${SERVER.authoritative.name}, y ${HOSTNAME.www} dejó de responder.`);
+    expect(plain(report)).toContain(`Después abre ${SERVER.authoritative.name} y corrige sus registros: ${HOSTNAME.blog} debe ser otro nombre de ${HOSTNAME.www}.`);
+    expect(changedNames(before, after)).toEqual([SERVER.authoritative.name]);
+    expect(zone.filter(({ type }) => type === RECORD_TYPE.a).map(({ name, value }) => [name, value])).toEqual([[HOSTNAME.www, IP.nobodyOutside], [HOSTNAME.blog, IP.nobodyOutside]]);
+    expect(zone.map(({ type }) => type).sort()).toEqual([RECORD_TYPE.a, RECORD_TYPE.a, NS_RECORD, SOA_RECORD]);
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+    expect(before.actors.map(({ id }) => id)).toContain(SERVER.authoritative.id);
+  });
+
+  it('02-11: draws the authoritative server only now', () => {
+    expect(drawnLabels(start)).toEqual(
+      [`device:${DEVICE.you.name}`, `device:${SERVER.resolver.name}`, `device:${SERVER.authoritative.name}`, `device:${SERVER.internet.name}`, `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'].sort(),
+    );
+    expect(start.incident.shown).toEqual(RECORDS_PIECES);
+    expect(drawnLabels(startSession(INCIDENTS, PREVIOUS_INCIDENT))).not.toContain(`device:${SERVER.authoritative.name}`);
+    const piece = pieceViews(start).find(({ id }) => id === authoritativePiece);
+    expect(piece).toMatchObject({ locked: false, configurable: true });
+    expect(pieceCard(start, authoritativePiece)).toMatchObject({ tabbed: false, first: RECORDS_TAB });
+    expect(pieceCard(start, authoritativePiece)?.tabs.map(({ id }) => id)).toEqual([RECORDS_TAB]);
+    expect(everythingRead(startSession(INCIDENTS, PREVIOUS_INCIDENT)).filter((text) => text.includes(SERVER.authoritative.name))).toEqual([]);
+  });
+
+  it('02-11: the records of the zone itself are hidden under one line', () => {
+    const world = startWorld(INCIDENTS, RECORDS);
+    const server = world.actors.find((actor) => actor.id === SERVER.authoritative.id);
+    const held = server && 'dns' in server ? (server.dns?.zones ?? []).flatMap(({ records }) => records.map(({ type }) => type)) : [];
+    expect(held).toContain(NS_RECORD);
+    expect(held).toContain(SOA_RECORD);
+    for (const session of [start, repaired, closed]) {
+      const card = recordsOf(session);
+      expect(card?.rows.flatMap((row) => row.cells.map((cell) => plain(cell.text)))).not.toContain(NS_RECORD);
+      expect(card?.rows.flatMap((row) => row.cells.map((cell) => plain(cell.text)))).not.toContain(SOA_RECORD);
+      expect(plain(card?.note ?? '')).toBe(plain(TABLE_TEXT.records.own));
+      expect(card?.title && plain(card.title)).toBe(`Registros de ${DOMAIN.site}`);
+      expect(card?.columns.map(({ id }) => id), 'the time to live waits for its term').toEqual([NAME_TRAY, TYPE_TRAY, VALUE_TRAY]);
+    }
+    expect(recordsOf(start)?.trays?.map(({ name, chips }) => [name, chips.map((chip) => plain(chip.label))])).toEqual([
+      [NAME_TRAY, [HOSTNAME.www, HOSTNAME.blog, DOMAIN.site]],
+      [TYPE_TRAY, [RECORD_TYPE.a, RECORD_TYPE.cname]],
+      [VALUE_TRAY, [IP.server, IP.nobodyOutside, HOSTNAME.www]],
+    ]);
+  });
+
+  it('02-11: introduces authoritative server, DNS record, A record and CNAME record, and uses no later term', () => {
+    const { introduces, report } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[RECORDS]));
+    expect(sorted(introduces)).toEqual(sorted(['authoritative-server', 'dns-record', 'a-record', 'cname-record']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, RECORDS))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+    expect(laterTermLeaks(builtOfChapter2().filter((incident) => orderOf(incident.id) <= orderOf(RECORDS)))).toEqual([]);
+    const earlier = INCIDENTS.filter((incident) => incident.id < RECORDS).flatMap(incidentTexts).map(plain);
+    expect(earlier.filter((text) => NAMES_A_NEW_TERM.test(text))).toEqual([]);
+    expect(['Un servidor autoritativo.', 'Un registro.', 'Un CNAME.'].filter((text) => !NAMES_A_NEW_TERM.test(text))).toEqual([]);
+    const definesBeforeNaming = (plainWords: string, tagged: string) => report.indexOf(plainWords) >= 0 && report.indexOf(plainWords) < report.indexOf(tagged);
+    expect(definesBeforeNaming('el que guarda los datos de ese dominio y da la respuesta definitiva', '{{authoritative-server|')).toBe(true);
+    expect(definesBeforeNaming('Cada dato que guarda es un', '{{dns-record|')).toBe(true);
+    expect(definesBeforeNaming('Un alias es otro nombre para lo mismo.', '{{cname-record|registro CNAME}} dice que un nombre es un alias')).toBe(true);
+    expect(plain(report).split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(MAX_REPORT_SENTENCES);
+    expect(everyState.flatMap(everythingRead).filter((text) => NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+    expect(['El caché guarda la respuesta.', 'El apex de la zona.', 'Un Alias de Route 53.', 'Dio NXDOMAIN.', 'Dio SERVFAIL.'].filter((text) => !NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+  });
+
+  it('02-11: the nc by name draws its question first and leaves from the next port', () => {
+    const asked = ncWww(start);
+    const [question, nc] = drawnSends(asked.sent);
+    expect(question.id).toBe(`${nc.id}-question`);
+    expect([question.after, nc.after]).toEqual([undefined, question.id]);
+    expect(question.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.resolver, sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(nc.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.nobodyOutside, sourcePort: SECOND_PORT, destinationPort: PORT.web });
+    expect([question.trace.translation?.outside.port, nc.trace.translation?.outside.port]).toEqual([FIRST_PUBLIC_PORT, SECOND_PUBLIC_PORT]);
+    expect(translationsOf(asked)?.slice(1)).toEqual([
+      ['UDP · consulta DNS', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`],
+      ['TCP', `${IP.you}:${SECOND_PORT}`, `${IP.officeUplink}:${SECOND_PUBLIC_PORT}`],
+    ]);
+    expect(boxOf(asked, 0)[DNS_FIELD]).toEqual([
+      `Antes de mandar el paquete, ${DEVICE.you.name} averigua la IP de ${HOSTNAME.www}.`,
+      `${DEVICE.you.name} hizo una consulta DNS por ${HOSTNAME.www} a ${SERVER.resolver.name}, su resolver: la respuesta es ${IP.nobodyOutside}.`,
+      `La consulta salió del puerto ${FIRST_PORT} y se ve en el mapa, antes de este paquete.`,
+      `Este paquete salió del puerto ${SECOND_PORT}. En este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta salió antes.`,
+    ]);
+    expect(plain(start.incident.takeaway)).toContain('Un nc a un nombre pregunta primero, como el ping de «Preguntar por un nombre»: su consulta sale de un puerto de origen y el nc, de otro, porque en este juego cada intercambio nuevo sale de un puerto nuevo.');
+    expect(drawnSends(digBlog(start).sent), 'a dig is the question itself, so it draws no other').toHaveLength(1);
+  });
+
+  it('02-11: after a record is placed the numbers start again at the first port and the first public port', () => {
+    const portsOf = (session: Session) => drawnSends(session.sent).map(({ trace }) => [trace.header?.request.sourcePort, trace.translation?.outside.port]);
+    const asked = ncWww(start);
+    const fresh = [[FIRST_PORT, FIRST_PUBLIC_PORT], [SECOND_PORT, SECOND_PUBLIC_PORT]];
+    expect(portsOf(asked)).toEqual(fresh);
+    const placed = placing(asked, SITE_RECORDS.name.www, SITE_RECORDS.type.a, SITE_RECORDS.value.server);
+    expect([placed.sent, placed.history]).toEqual([[], []]);
+    expect(translationsOf(placed)).toEqual(translationsOf(start));
+    expect(portsOf(ncWww(placed))).toEqual(fresh);
+    const removed = withoutTheWrongA(asked, HOSTNAME.blog);
+    expect([removed.sent, removed.history]).toEqual([[], []]);
+    expect(portsOf(ncWww(removed))).toEqual(fresh);
+    expect(translationsOf(ncWww(removed))?.slice(1)).toHaveLength(2);
+    expect(plain(start.incident.report)).toContain('Cuando cambias un registro, los envíos anteriores se borran, porque ya no muestran lo que contesta el servidor: los números de puertos vuelven a empezar.');
+  });
+
+  it('02-11: the question comes back with the wrong address before the nc is warned by a router', () => {
+    const asked = ncWww(start);
+    const [question, nc] = drawnSends(asked.sent);
+    expect([question.replied, question.by, question.trace.outcome]).toEqual([true, [SERVER.resolver.id], REPLIED]);
+    expect(question.trace.dns).toMatchObject({ status: 'NOERROR', viaDig: true });
+    expect(question.trace.dns?.answers.map(({ value }) => value)).toEqual([IP.nobodyOutside]);
+    expect([nc.after, nc.replied, nc.by]).toEqual([question.id, false, [ROUTER.destination.id]]);
+    expect(nc.trace.notice).toMatchObject({ kind: HOST_UNREACHABLE, fromId: ROUTER.destination.id });
+    expect(asked.sent[0].warning).toEqual({ term: HOST_UNREACHABLE, by: 'router' });
+    expect(boxOf(asked, 0)[WHERE_IT_STOPPED]).toEqual([`Un router de afuera de la oficina tiene conectada la red de ${IP.nobodyOutside}, pero ningún dispositivo tiene esa IP: descarta el paquete y avisa a quien lo envió que no pudo entregarlo.`]);
+    expect(boxOf(asked, 0)[DNS_FIELD][1]).toContain(`la respuesta es ${IP.nobodyOutside}.`);
+    expect(plain(start.incident.takeaway)).toContain(`Esa IP, ${IP.nobodyOutside}, no la tenía ningún dispositivo. Por eso un router de afuera de la oficina, el que tiene conectada la red de esa IP, avisó con un Destination Host Unreachable.`);
+    expect(drawnLabels(asked)).not.toContain(`edge:${ROUTER.destination.name}`);
+    expect(everyState.flatMap(everythingRead).filter((text) => text.includes(ROUTER.destination.name))).toEqual([]);
+  });
+
+  it('02-11: a dig of a name whose record the player took away prints the status of the tool and every text of the game says it in plain words', () => {
+    const withoutBlog = digBlog(withoutTheWrongA(start, HOSTNAME.blog));
+    const selfAlias = digWww(placing(withoutTheWrongA(start, HOSTNAME.www), SITE_RECORDS.name.www, SITE_RECORDS.type.cname, SITE_RECORDS.value.www));
+    const printed = (session: Session, address: { id: string }) => printedFrom(session, ORIGIN.you.id, address.id, MESSAGE.dig.id).join('\n');
+    expect(withoutBlog.sent[0].trace.dns?.status).toBe(NXDOMAIN);
+    expect(selfAlias.sent[0].trace.dns?.status).toBe(SERVFAIL);
+    expect(printed(withoutBlog, ADDRESS.blog)).toContain(`status: ${NXDOMAIN}`);
+    expect(printed(selfAlias, ADDRESS.www)).toContain(`status: ${SERVFAIL}`);
+    for (const session of [withoutBlog, selfAlias]) {
+      expect([...boxTexts(session), ...incidentTexts(session.incident).map(plain)].filter((text) => /NXDOMAIN|SERVFAIL/.test(text))).toEqual([]);
+    }
+    expect(boxOf(withoutBlog, 0)[DNS_FIELD]).toEqual([`Contestó ${SERVER.resolver.name}.`, `${HOSTNAME.blog} no se convirtió en una IP.`]);
+    expect(boxOf(ncBlog(withoutTheWrongA(start, HOSTNAME.blog)), 0)[WHERE_IT_STOPPED]).toEqual([`${HOSTNAME.blog} no se convirtió en una IP.`]);
+  });
+
+  it('02-11: the right option is the first and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 0);
+    const [right, ...wrong] = optionsOf(start.incident).map(({ text }) => plain(text).length);
+    expect(wrong.every((length) => length !== right)).toBe(true);
+    expect(Math.min(...wrong)).toBeLessThan(right);
+    expect(Math.max(...wrong)).toBeGreaterThan(right);
   });
 });

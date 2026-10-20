@@ -39,6 +39,20 @@ const SECOND_PUBLIC_PORT = '40002';
 const ADD_ROUTE = 'Agregar ruta';
 const IN_USE = 'en uso';
 const DEFAULT_ROW = /0\.0\.0\.0\/0/;
+const AUTHORITATIVE = 'servidor-autoritativo';
+const RECORDS_CARD = 'Registros de lucia.example';
+const NAME_TRAY = 'Nombre';
+const TYPE_TRAY = 'Tipo';
+const VALUE_TRAY = 'Valor';
+const ADD_RECORD = 'Agregar registro';
+const REMOVE_RECORD = 'Quitar';
+const WWW = 'www.lucia.example';
+const BLOG = 'blog.lucia.example';
+const SITE_IP = '198.51.100.50';
+const NOBODY_IP = '198.51.100.51';
+const CNAME = 'CNAME';
+const A_RECORD = 'A';
+const REFUSED_ALIAS = 'un nombre con un registro CNAME no puede tener otros';
 const SSH_CHIP = 'TCP · 22';
 const YOUR_LAPTOP_CHIP = 'tu-laptop (IP 192.168.1.10)';
 
@@ -208,6 +222,38 @@ export async function playAskingForAName(page: Page) {
   await confirm(terminal);
   await expect(terminal).toBeHidden();
   await submitAndFinish(page, /Porque usa UDP, que manda cada mensaje suelto/);
+}
+
+/** Picks the name, the type and the value in the three trays of the table of records that is open and presses «Agregar registro». */
+async function addRecord(records: Locator, name: string, type: string, value: string) {
+  for (const [tray, chip] of [[NAME_TRAY, name], [TYPE_TRAY, type], [VALUE_TRAY, value]]) await records.getByRole('group', { name: tray }).getByRole('button', { name: chip, exact: true }).click();
+  await records.getByRole('button', { name: ADD_RECORD, exact: true }).click();
+}
+
+/** Takes away the row of the table of records that is open and has this name, type and value. */
+async function removeRecord(records: Locator, name: string, type: string, value: string) {
+  await records.getByRole('button', { name: `${REMOVE_RECORD} ${name} ${type} ${value}` }).click();
+}
+
+/** Takes the page of the open incident 02-11; opens the card of servidor-autoritativo, which has the records as its only card and so is named after them; tries the alias of blog while it has its address record, which the table refuses with its reason, takes away the wrong address records and writes the right ones, sends the nc to www and the dig to blog from the terminal of your laptop and answers the question of Lucía until the result shows 3 stars. */
+export async function playTheRecords(page: Page) {
+  await page.getByRole('button', { name: AUTHORITATIVE, exact: true }).click();
+  const records = card(page, RECORDS_CARD);
+  await expect(records).toBeVisible();
+  await addRecord(records, BLOG, CNAME, WWW);
+  await expect(records.getByRole('status')).toContainText(REFUSED_ALIAS);
+  await removeRecord(records, BLOG, A_RECORD, NOBODY_IP);
+  await addRecord(records, BLOG, CNAME, WWW);
+  await removeRecord(records, WWW, A_RECORD, NOBODY_IP);
+  await addRecord(records, WWW, A_RECORD, SITE_IP);
+  await confirm(records);
+  await expect(records).toBeHidden();
+  const terminal = await openTerminal(page);
+  await sendNc(terminal, WWW, NC_TO_THE_WEB_PORT);
+  await sendNc(terminal, BLOG, DIG);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await submitAndFinish(page, /Porque un nombre con un CNAME no puede tener otros registros/);
 }
 
 /** The incidents of chapter 2 in game order, each with its id, its title as the roadmap shows it and the function that plays it. */

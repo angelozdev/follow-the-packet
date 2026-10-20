@@ -71,6 +71,16 @@ const ADD_ROUTE = 'Agregar ruta';
 const TRANSLATIONS_TAB = 'Tabla de traducciones';
 const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
 const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
+const AUTHORITATIVE = 'servidor-autoritativo';
+const RECORDS_CARD = 'Registros de lucia.example';
+const NAME_TRAY = 'Nombre';
+const TYPE_TRAY = 'Tipo';
+const VALUE_TRAY = 'Valor';
+const BLOG_NAME = 'blog.lucia.example';
+const WWW_NAME = 'www.lucia.example';
+const CNAME_TYPE = 'CNAME';
+const ADD_RECORD = 'Agregar registro';
+const ALIAS_REFUSED = 'No se pudo agregar.';
 const PING = 'ping';
 const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
@@ -235,6 +245,20 @@ async function reachTheTranslations(): Promise<void> {
   await click(page.getByRole('tab', { name: TRANSLATIONS_TAB, exact: true }));
 }
 
+async function pickInTray(table: Locator, tray: string, chip: string): Promise<void> {
+  await click(table.getByRole('group', { name: tray }).getByRole('button', { name: chip, exact: true }));
+}
+
+async function reachTheRefusedAlias(): Promise<void> {
+  await openByKeyboard(AUTHORITATIVE);
+  const records = card(RECORDS_CARD);
+  await pickInTray(records, NAME_TRAY, BLOG_NAME);
+  await pickInTray(records, TYPE_TRAY, CNAME_TYPE);
+  await pickInTray(records, VALUE_TRAY, WWW_NAME);
+  await click(records.getByRole('button', { name: ADD_RECORD, exact: true }));
+  await expect.element(records.getByRole('status')).toMatchTextContent(ALIAS_REFUSED);
+}
+
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await sendTo(card(TERMINAL), OFFICE_IP.andres);
@@ -250,6 +274,7 @@ const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both 
 const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, a tab of its card', level: '02-06', reach: reachYourRoutes, last: doneOf(YOUR_ROUTES_CARD) };
 const THE_EDITABLE_ROUTES: Scene = { name: 'the routing table of router-oficina, with its two routes written and its trays', level: '02-07', reach: reachTheOfficeRoutes, last: doneOf(OFFICE_ROUTES_CARD) };
 const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: doneOf(TRANSLATIONS_CARD) };
+const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: doneOf(RECORDS_CARD) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: doneOf(TERMINAL) };
 
@@ -269,10 +294,11 @@ const SCENES: Scene[] = [
   THE_ROUTES,
   THE_EDITABLE_ROUTES,
   THE_TRANSLATIONS,
+  THE_RECORDS,
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);

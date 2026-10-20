@@ -1,6 +1,7 @@
 import { nameTag } from '@/copy';
-import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type Lan, type NetworkAction, type Service } from '@/engine';
-import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WhatChip } from '@/levels/contract/incident';
+import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type Lan, type NetworkAction, type Service } from '@/engine';
+import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WhatChip } from '@/levels/contract/incident';
+import { recordEntryId } from '@/levels/contract/tables';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
@@ -124,12 +125,13 @@ export const ORIGIN = {
   home: { id: 'home', endpoint: { kind: 'actor', id: CLIENT.home.id } },
 } satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), and the name of the site, which is the first address that is not an IP (02-10). */
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), the name of the site, which is the first address that is not an IP (02-10), and the name of the blog, the second (02-11). */
 export const ADDRESS = {
   ...CHAPTER_1_ADDRESS,
   otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop },
   officePublic: { id: 'ip-office-public', address: IP.officeUplink },
   www: { id: 'name-www', address: HOSTNAME.www },
+  blog: { id: 'name-blog', address: HOSTNAME.blog },
 } as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
@@ -173,6 +175,8 @@ export const TASK = {
   forwarded: 'nc-from-outside-to-the-forwarded-port',
   digWww: 'dig-of-the-site-name',
   pingWww: 'ping-to-the-site-name',
+  webWww: 'nc-to-port-80-of-the-site-name',
+  digBlog: 'dig-of-the-blog-name',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -232,10 +236,10 @@ export function sendMoveFrom(origin: OriginChip, toId: string, messageId: string
   return { type: 'sendPacket', fromId: origin.id, toId, messageId };
 }
 
-/** Returns the task of a send incident that expects what a message sent from this terminal to a name ends in: it comes back, and the answer of the DNS holds this IP. */
-export function answerTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, ip: string): SendTask {
+/** Returns the task of a send incident that expects what a message sent from this terminal to a name ends in: it comes back, and the answer of the DNS holds this IP. With `alias` it also says whether the answer came through a CNAME (`true`) or with none (`false`). */
+export function answerTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, ip: string, alias?: boolean): SendTask {
   const { expect } = sendTaskFrom(origin, id, text, messageId, toId, 'replied');
-  return { id, text, expect: { ...expect, answer: { ip } } };
+  return { id, text, expect: { ...expect, answer: alias === undefined ? { ip } : { ip, alias } } };
 }
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */
@@ -308,6 +312,13 @@ export const FORWARDED_APP: NetworkAction[] = [
   { type: 'setForwards', routerId: ROUTER.office.id, forwards: [{ protocol: 'tcp', publicPort: PORT.app, toDeviceId: DEVICE.andres.id, toPort: PORT.app }] },
 ];
 
+export const RECORD_TYPE = { a: 'A', cname: 'CNAME' } as const satisfies Record<string, AnswerRecord['type']>;
+
+/** Returns the address record of a name in the zone of the game, with the time to live of the game. */
+function addressRecord(name: string, ip: string): AnswerRecord {
+  return { name, type: RECORD_TYPE.a, value: ip, ttl: RECORD_TTL };
+}
+
 const DNS_SERVICES: Service[] = [
   { protocol: 'udp', port: PORT.dns, listen: 'all' },
   { protocol: 'tcp', port: PORT.dns, listen: 'all' },
@@ -328,7 +339,7 @@ export const NAME_SERVERS: NetworkAction[] = [
       kind: 'server',
       latencyMs: SERVER_MS,
       services: DNS_SERVICES,
-      dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [{ name: HOSTNAME.www, type: 'A', value: IP.server, ttl: RECORD_TTL }])] },
+      dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [addressRecord(HOSTNAME.www, IP.server)])] },
     },
   },
   {
@@ -338,6 +349,13 @@ export const NAME_SERVERS: NetworkAction[] = [
   },
   { type: 'setDnsServer', deviceId: DEVICE.you.id, server: IP.resolver },
 ];
+
+/** What 02-11 changes: servidor-autoritativo points www.lucia.example and blog.lucia.example to 198.51.100.51, an IP nobody has. */
+export const WRONG_RECORDS: NetworkAction = {
+  type: 'setDns',
+  ownerId: SERVER.authoritative.id,
+  dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [addressRecord(HOSTNAME.www, IP.nobodyOutside), addressRecord(HOSTNAME.blog, IP.nobodyOutside)])] },
+};
 
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
 export const OFFICE_ROUTES = {
@@ -360,6 +378,37 @@ export const OFFICE_ROUTES_TABLE: TableSpec = {
     nextHop: [
       { id: OFFICE_ROUTES.via.provider, label: `${IP.provider} ${nameTag(ROUTER.provider.name)}`, value: ROUTER.provider.id },
       { id: OFFICE_ROUTES.via.branch, label: `${IP.branchLink} ${nameTag(ROUTER.branch.name)}`, value: ROUTER.branch.id },
+    ],
+  },
+};
+
+/** The ids of the table of records of servidor-autoritativo in 02-11 and of its chips. */
+export const SITE_RECORDS = {
+  table: 'site-records',
+  name: { www: 'record-name-www', blog: 'record-name-blog', zone: 'record-name-zone' },
+  type: { a: 'record-type-a', cname: 'record-type-cname' },
+  value: { server: 'record-value-server', nobody: 'record-value-nobody', www: 'record-value-www' },
+} as const;
+
+/** The table of records of servidor-autoritativo that 02-11 lets the player edit. */
+export const SITE_RECORDS_TABLE: TableSpec = {
+  id: SITE_RECORDS.table,
+  kind: 'records',
+  ownerId: SERVER.authoritative.id,
+  trays: {
+    name: [
+      { id: SITE_RECORDS.name.www, label: HOSTNAME.www, value: HOSTNAME.www },
+      { id: SITE_RECORDS.name.blog, label: HOSTNAME.blog, value: HOSTNAME.blog },
+      { id: SITE_RECORDS.name.zone, label: DOMAIN.site, value: DOMAIN.site },
+    ],
+    type: [
+      { id: SITE_RECORDS.type.a, label: '{{a-record|A}}', value: RECORD_TYPE.a },
+      { id: SITE_RECORDS.type.cname, label: '{{cname-record|CNAME}}', value: RECORD_TYPE.cname },
+    ],
+    value: [
+      { id: SITE_RECORDS.value.server, label: IP.server, value: IP.server },
+      { id: SITE_RECORDS.value.nobody, label: IP.nobodyOutside, value: IP.nobodyOutside },
+      { id: SITE_RECORDS.value.www, label: HOSTNAME.www, value: HOSTNAME.www },
     ],
   },
 };
@@ -388,8 +437,8 @@ export const OUTSIDE_PIECES: string[] = [CLIENT.home.id, ROUTER.office.id, DEVIC
 /** The ids of the pieces 02-10 draws: your laptop, its router, the resolver and the server of the internet. The authoritative server waits for 02-11, where its term is introduced. */
 export const NAMES_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, SERVER.resolver.id, SERVER.internet.id];
 
-/** The ids of the pieces 02-11 draws: your laptop, the resolver, the authoritative server and the server of the internet. */
-export const RECORDS_PIECES: string[] = [DEVICE.you.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.internet.id];
+/** The ids of the pieces 02-11 draws: your laptop, its router, the resolver, the authoritative server and the server of the internet. */
+export const RECORDS_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.internet.id];
 
 /** The ids of the pieces 02-12 draws: those of 02-11 and the server the site moved to. */
 export const CACHE_PIECES: string[] = [...RECORDS_PIECES, SERVER.fresh.id];
@@ -400,4 +449,14 @@ export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVIC
 /** Returns the move that writes a route in the table of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
 export function routeMove(destinationId: string, nextHopId: string): PlaceEntryMove {
   return { type: 'placeEntry', tableId: OFFICE_ROUTES.table, picks: { destination: destinationId, nextHop: nextHopId } };
+}
+
+/** Returns the move that writes a record in the table of servidor-autoritativo of 02-11: the chip picked in the tray of the name, the one picked in the tray of the type and the one picked in the tray of the value. */
+export function recordMove(nameId: string, typeId: string, valueId: string): PlaceEntryMove {
+  return { type: 'placeEntry', tableId: SITE_RECORDS.table, picks: { name: nameId, type: typeId, value: valueId } };
+}
+
+/** Returns the move that takes away the record of the table of 02-11 that has this name, type and value. */
+export function recordRemoval(name: string, type: AnswerRecord['type'], value: string): RemoveEntryMove {
+  return { type: 'removeEntry', tableId: SITE_RECORDS.table, entryId: recordEntryId({ name, type, value }) };
 }
