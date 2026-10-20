@@ -1,12 +1,10 @@
 import { render, type RenderResult } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { SCREEN_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { MAP_MARKS } from '@/scene';
 import { IncidentScreen } from './incident-screen';
-
-vi.mock('@/scene/renderer', () => ({ MAP_RENDERER: '2d' }));
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const LOW_DESKTOP = { width: 1280, height: 720 };

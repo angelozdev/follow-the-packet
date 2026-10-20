@@ -7,8 +7,6 @@ import { CHAPTERS, INCIDENTS } from '@/levels';
 import { PROGRESS_KEY, type Progress } from '@/storage';
 import { App } from './app';
 
-vi.mock('@/scene/catalog/catalog-scene', () => ({ CatalogScene: () => null }));
-
 const SOON_COUNT = CHAPTERS.length - new Set(INCIDENTS.map((i) => i.chapter)).size;
 const ROADMAP_TITLE = 'Sigue el paquete';
 const CHAPTER_1 = INCIDENTS.filter(({ chapter }) => chapter === 1);

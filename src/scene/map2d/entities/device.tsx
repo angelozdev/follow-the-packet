@@ -1,6 +1,6 @@
 import type { EntityRef, EntityVariants } from '@/copy';
 import { tokenPx } from '@/design';
-import { EntityIcon } from '@/scene/entities/entity-icon';
+import { EntityIcon } from '@/scene/entities/icons/entity-icon';
 import { LABEL_GAP, type Box } from '@/scene/map2d/layout/arrange/geometry';
 
 /** Every kind of device the map draws: the ones of a network and the server of the internet. */

@@ -74,7 +74,7 @@ function FlyingTraffic({ flows, inTheAir, layout }: FlightsProps) {
   );
 }
 
-/** Takes the live flows, the sends in the air (`useSendsInTheAir`, the same list `Traffic` gets) and the layout; returns the labels of the packets with ports that are in flight, in a group (`g.map-flight-tags`) for an `svg` of its own, as large as the drawing, that `MapStage` puts over the HTML layer: the labels fly beside their packets over the stamps and the labels of the pieces, as the 3D labels do, while the packets themselves go under them. Each label has the plan and the cycle of its packet, so it moves with it; a packet with no ports has none. */
+/** Takes the live flows, the sends in the air (`useSendsInTheAir`, the same list `Traffic` gets) and the layout; returns the labels of the packets with ports that are in flight, in a group (`g.map-flight-tags`) for an `svg` of its own, as large as the drawing, that `MapStage` puts over the HTML layer: the labels fly beside their packets over the stamps and the labels of the pieces, while the packets themselves go under them. Each label has the plan and the cycle of its packet, so it moves with it; a packet with no ports has none. */
 export function FlightLabels({ flows, inTheAir, layout }: FlightsProps) {
   return (
     <g className="map-flight-tags">

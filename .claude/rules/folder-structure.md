@@ -14,7 +14,7 @@ Answer in order; the first "yes" decides:
 4. Is it game-session state (phases, actions, reducer)? → `src/game/`
 5. Is it persistence in the browser? → `src/storage/`
 6. Is it a design token, or an interface element that screens share (a button, a choice, a card, a name tag)? → `src/design/`
-7. Does it draw the 3D map? → `src/scene/`
+7. Does it draw the map? → `src/scene/`
 8. Is it a panel, screen or control? → `src/ui/`
 9. Is it only for tests (fixtures, repo helpers)? → `src/testing/`
 

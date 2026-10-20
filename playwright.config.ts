@@ -15,7 +15,6 @@ export default defineConfig({
     baseURL: ORIGIN,
     viewport: { width: 1440, height: 900 },
     trace: 'retain-on-failure',
-    launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
   },
   webServer: {
     command: `pnpm build && pnpm preview --port ${PORT} --strictPort`,

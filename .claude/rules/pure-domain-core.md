@@ -1,6 +1,6 @@
 # Pure domain core
 
-`src/engine/` holds the network rules — the part that decides what happens to a packet. It imports no UI, rendering or framework code (`react`, `react-dom`, `three`, `@react-three/*`) and does no I/O (no `localStorage`, no network). Its functions are deterministic: the same network and packet always give the same trace. Time and randomness reach it only as explicit inputs, never as hidden reads.
+`src/engine/` holds the network rules — the part that decides what happens to a packet. It imports no UI, rendering or framework code (`react`, `react-dom`) and does no I/O (no `localStorage`, no network). Its functions are deterministic: the same network and packet always give the same trace. Time and randomness reach it only as explicit inputs, never as hidden reads.
 
 **Why:** a pure engine is tested in milliseconds without a browser, and the AWS behavior it teaches cannot be broken by a change in how the map is drawn.
 

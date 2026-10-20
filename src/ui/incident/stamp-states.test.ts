@@ -4,9 +4,10 @@ import { pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { INCIDENTS } from '@/levels';
 import { ADDRESS, DEVICE, GATEWAY, IP, MESSAGE, ORIGIN, ROUTER } from '@/levels/01-first-day/shared';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
-import { computeLayout, pathFor } from '@/scene/layout';
+import { layoutMap } from '@/scene/map2d/layout/map-layout';
+import { INTERNET, station, stationsFor } from '@/scene/map2d/layout/stations';
 import { flowLook } from '@/scene/traffic/flow-look';
-import { OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import type { Firewall } from '@/engine';
 
 type Run = Session['runs'][number] | Session['sent'][number];
@@ -15,6 +16,15 @@ const drawn = (run: Run) => {
   const look = flowLook(run);
   return { look, name: stampLabel(toPlainText(run.label), look.stamp) };
 };
+
+const MAP_WIDTH = 1060;
+
+const placed = (session: Session, run: Run) => {
+  const layout = layoutMap(session.world, pieceViews(session), { width: MAP_WIDTH, blockTab: false });
+  return { layout, stations: stationsFor(run.trace, run.packet, layout.drawn, { hiddenStop: run.hiddenStop }) };
+};
+
+const wholeWorld = (session: Session): Session => ({ ...session, known: EVERY_TERM });
 
 const sendFrom = (session: Session, toId: string) => {
   const sent = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId: 'ping' }).sent;
@@ -82,8 +92,7 @@ describe('the stamp of a packet the game computed', () => {
 describe('a packet that a firewall the player does not know yet stops', () => {
   const lostAt = (session: Session, toId: string) => {
     const run = sendFrom(session, toId);
-    const layout = computeLayout(session.world, true);
-    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop), ...drawn(run) };
+    return { run, ...placed(wholeWorld(session), run), ...drawn(run) };
   };
 
   it('a packet dropped by a firewall the player does not know yet leaves a lost stamp, not a blocked one', () => {
@@ -97,18 +106,17 @@ describe('a packet that a firewall the player does not know yet stops', () => {
 
   it('a packet stopped by a firewall the player does not know yet ends at the door of its device, with the lost stamp', () => {
     const coming = lostAt(officeSession(guardedLucia()), 'lucia');
-    expect(coming.path.at(-1)).toEqual(coming.layout.devices['lucia-laptop'].door);
+    expect(coming.stations.at(-1)).toBe(station.door('lucia-laptop'));
     expect(coming.look.stamp).toBe('lost');
     const going = lostAt(officeSession(guardedYou()), 'lucia');
-    const you = going.layout.devices['your-laptop'];
     expect(going.run.trace.steps).toContainEqual(expect.objectContaining({ stage: 'firewall-out', verdict: 'drop', at: 'your-laptop' }));
-    expect(going.path).toEqual([you.door, you.doorstep]);
+    expect(going.stations).toEqual([station.door('your-laptop'), station.doorstep('your-laptop')]);
     expect(going.look.stamp).toBe('lost');
   });
 
   it('is drawn in front of the firewall, with the blocked stamp, once the firewall is a known term', () => {
     const known = lostAt(officeSession(guardedLucia(), 'firewall'), 'lucia');
-    expect(known.path.at(-1)).toEqual(known.layout.devices['lucia-laptop'].firewall);
+    expect(known.stations.at(-1)).toBe(station.firewall('lucia-laptop'));
     expect(known.look).toMatchObject({ end: 'blocked', stamp: 'blocked' });
   });
 });
@@ -117,17 +125,16 @@ describe('the ping to laptop-marta, before and after the incident that shows its
   const stampedAt = (incidentId: string) => {
     const session = startSession(INCIDENTS, incidentId);
     const run = sendFrom(session, ADDRESS.marta.id);
-    const layout = computeLayout(session.world, pieceViews(session));
-    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop), ...drawn(run) };
+    return { run, ...placed(session, run), ...drawn(run) };
   };
 
   it('01-05 leaves a lost stamp at the door of laptop-marta and 01-11 a blocked stamp in front of its firewall', () => {
     const before = stampedAt('01-05');
-    expect(before.path.at(-1)).toEqual(before.layout.devices[DEVICE.marta.id].door);
+    expect(before.stations.at(-1)).toBe(station.door(DEVICE.marta.id));
     expect(before.look).toMatchObject({ end: 'lost', stamp: 'lost' });
     expect(before.name).not.toMatch(/firewall|Bloqueado/i);
     const after = stampedAt('01-11');
-    expect(after.path.at(-1)).toEqual(after.layout.devices[DEVICE.marta.id].firewall);
+    expect(after.stations.at(-1)).toBe(station.firewall(DEVICE.marta.id));
     expect(after.look).toMatchObject({ end: 'blocked', stamp: 'blocked' });
     expect(after.name).toBe(`Paquete: ping de ${DEVICE.you.name} a ${DEVICE.marta.name}. Bloqueado.`);
   });
@@ -152,24 +159,23 @@ describe('a warning that comes back to the sender', () => {
   };
   const sendOver = (session: Session, toId: string, messageId = 'ping') => {
     const run = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId }).sent[0];
-    const layout = computeLayout(session.world, true);
-    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop), ...drawn(run) };
+    return { run, ...placed(wholeWorld(session), run), ...drawn(run) };
   };
 
   it('a warning that the sender itself generates leaves the stamp of a warning at its own doorstep, and nothing travels back', () => {
-    const { run, layout, path, look, name } = sendOver(floorsSession(...WARNINGS), 'nobody-here');
+    const { run, stations, look, name } = sendOver(floorsSession(...WARNINGS), 'nobody-here');
     expect(run.trace.notice).toMatchObject({ kind: 'host-unreachable', fromId: 'your-laptop' });
     expect(run.warning).toEqual({ term: 'host-unreachable', by: 'sender' });
     expect(look).toMatchObject({ end: 'self-warned', stamp: 'warned' });
-    expect(path).toEqual([layout.devices['your-laptop'].door, layout.devices['your-laptop'].doorstep]);
+    expect(stations).toEqual([station.door('your-laptop'), station.doorstep('your-laptop')]);
     expect(name).toMatch(/Apareció un aviso\.$/);
   });
 
   it('a warning from a router travels back from that router and leaves the stamp of a warning where the router stands', () => {
-    const { run, layout, path, look, name } = sendOver(floorsSession(...WARNINGS), 'server', 'ping-1');
+    const { run, stations, look, name } = sendOver(floorsSession(...WARNINGS), 'server', 'ping-1');
     expect(run.trace.notice).toMatchObject({ kind: 'time-exceeded', fromId: officeRouter.id });
     expect(look).toMatchObject({ end: 'warned', stamp: 'warned' });
-    expect(path.at(-1)).toEqual(layout.routers[officeRouter.id]);
+    expect(stations.at(-1)).toBe(station.router(officeRouter.id));
     expect(name).toMatch(/Apareció un aviso\.$/);
   });
 
@@ -178,10 +184,10 @@ describe('a warning that comes back to the sender', () => {
     expect(own.run.trace.notice).toBeDefined();
     expect(own.look).toMatchObject({ end: 'lost', stamp: 'lost' });
     expect(own.name).toMatch(/Perdido\.$/);
-    expect(own.path).toEqual([own.layout.devices['your-laptop'].door, own.layout.devices['your-laptop'].doorstep]);
+    expect(own.stations).toEqual([station.door('your-laptop'), station.doorstep('your-laptop')]);
     const routed = sendOver(floorsSession('host-unreachable'), 'server', 'ping-1');
     expect(routed.look).toMatchObject({ end: 'lost', stamp: 'lost' });
-    expect(routed.path.at(-1)).toEqual(routed.layout.routers[officeRouter.id]);
+    expect(routed.stations.at(-1)).toBe(station.router(officeRouter.id));
   });
 });
 
@@ -189,16 +195,14 @@ describe('the stamp of a ping that dies at a router the map does not draw', () =
   const session = startSession(INCIDENTS, '01-08');
   const sent = sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId: ADDRESS.otherOffice.id, messageId: 'ping' });
   const [run] = sent.sent;
-  const layout = computeLayout(sent.world, pieceViews(sent));
-  const path = pathFor(run.trace, run.packet, layout, run.hiddenStop);
+  const { layout, stations } = placed(sent, run);
 
   it('01-08: the lost ping to 10.0.0.10 ends on the road between the office router and the internet, with the lost stamp', () => {
     expect(run.trace.steps.at(-1)).toMatchObject({ at: ROUTER.provider.id, verdict: 'drop', reason: { code: 'forward-private-dropped', ip: IP.otherOfficePrinter } });
-    expect(layout.routers[ROUTER.provider.id]).toBeUndefined();
-    expect(path.at(-1)?.[0]).toBeLessThan(layout.routers[ROUTER.office.id][0]);
-    expect(path.at(-1)?.[0]).toBeGreaterThan(layout.internet[0]);
-    expect(path.at(-1)?.[1]).toBe(layout.roadZ);
-    expect(path.slice(0, -1).map(([x]) => x)).not.toContain(layout.internet[0]);
+    expect(layout.drawn.routers).not.toContain(ROUTER.provider.id);
+    expect(layout.drawn.routers).toContain(ROUTER.office.id);
+    expect(stations.at(-1)).toBe(station.mid(station.router(ROUTER.office.id), INTERNET));
+    expect(stations.slice(0, -1)).not.toContain(INTERNET);
     expect(drawn(run).look).toMatchObject({ end: 'lost', stamp: 'lost' });
     expect(drawn(run).name).toMatch(/Perdido\.$/);
   });
@@ -213,29 +217,28 @@ describe('the path of a ping that a device cannot send or hands to a gateway tha
     const sent = sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId: MESSAGE.ping.id });
     const run = sent.sent.at(-1);
     if (!run) throw new Error('nothing was sent');
-    const layout = computeLayout(sent.world, pieceViews(sent));
-    return { run, layout, path: pathFor(run.trace, run.packet, layout, run.hiddenStop) };
+    return { run, ...placed(sent, run) };
   };
 
   it('01-07: with no gateway the ping to laptop-andres never leaves the doorstep of tu-laptop', () => {
-    const { run, layout, path } = pingFrom(startSession(INCIDENTS, '01-07'), ORIGIN.you.id, ADDRESS.andres.id);
+    const { run, stations } = pingFrom(startSession(INCIDENTS, '01-07'), ORIGIN.you.id, ADDRESS.andres.id);
     expect(run.trace.outcome).toBe('no-route');
-    expect(path).toEqual([layout.devices[DEVICE.you.id].door, layout.devices[DEVICE.you.id].doorstep]);
+    expect(stations).toEqual([station.door(DEVICE.you.id), station.doorstep(DEVICE.you.id)]);
   });
 
   it('01-07: with the printer as the gateway the ping ends at the door of the printer, which is drawn', () => {
     const picked = sessionReducer(startSession(INCIDENTS, '01-07'), { type: 'setSetting', deviceId: DEVICE.you.id, settingId: GATEWAY.setting, chipId: GATEWAY.printer });
-    const { run, layout, path } = pingFrom(picked, ORIGIN.you.id, ADDRESS.andres.id);
+    const { run, layout, stations } = pingFrom(picked, ORIGIN.you.id, ADDRESS.andres.id);
     expect(run.trace.steps.at(-1)).toMatchObject({ at: DEVICE.printer.id, reason: { code: 'route-gateway-not-a-router' } });
-    expect(layout.devices[DEVICE.printer.id]).toBeDefined();
-    expect(path.at(-1)).toEqual(layout.devices[DEVICE.printer.id].door);
+    expect(layout.drawn.devices).toHaveProperty([DEVICE.printer.id]);
+    expect(stations.at(-1)).toBe(station.door(DEVICE.printer.id));
   });
 
   it('01-14: the pings of case 1 and case 3 that have no gateway to leave by never leave the doorstep of the sender', () => {
     const [first, third] = [pingFrom(atCase(1), ORIGIN.you.id, ADDRESS.server.id), pingFrom(atCase(3), ORIGIN.andres.id, ADDRESS.printer.id)];
-    for (const [{ run, layout, path }, sender] of [[first, DEVICE.you.id], [third, DEVICE.andres.id]] as const) {
+    for (const [{ run, stations }, sender] of [[first, DEVICE.you.id], [third, DEVICE.andres.id]] as const) {
       expect(run.trace.steps.map((step) => step.reason.code)).toContain('route-no-gateway');
-      expect(path).toEqual([layout.devices[sender].door, layout.devices[sender].doorstep]);
+      expect(stations).toEqual([station.door(sender), station.doorstep(sender)]);
     }
   });
 });

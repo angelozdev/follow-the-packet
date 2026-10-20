@@ -60,8 +60,9 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-packet * { vector-effect: non-scaling-stroke; }
 .map-packet .map-piece__icon .entity-icon { fill: none; }
 .map-burst { fill: none; stroke: var(--color-danger); stroke-width: var(--stroke-heavy); vector-effect: non-scaling-stroke; }
+.packet-tag { pointer-events: none; }
 .packet-tag rect { fill: var(--color-surface); stroke: var(--color-ink); stroke-width: var(--stroke-thin); }
-.packet-tag text { fill: var(--color-ink); dominant-baseline: central; }
+.packet-tag text { fill: var(--color-ink); dominant-baseline: central; font: var(--weight-regular) var(--text-xs) var(--font-mono); }
 
 .map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
 .map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }

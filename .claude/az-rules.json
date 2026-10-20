@@ -101,7 +101,7 @@
       "origin": "core/prefer-established-libraries",
       "version": 1,
       "notes": [
-        "choices: zod, three via @react-three/fiber and drei, @mantine/hooks 9.7.1 (checked 2026-10-08); usehooks-ts rejected (last release 2025-02-05)",
+        "choices: zod, 2D map in hand-written SVG animated with SMIL, @mantine/hooks 9.7.1 (checked 2026-10-08); usehooks-ts rejected (last release 2025-02-05)",
         "tooltip positioning: @floating-ui/react-dom 2.1.9 (published 2026-07-11, checked 2026-10-08); Radix Tooltip not chosen while prefer-radix is undecided (backlog D)"
       ]
     },
@@ -116,7 +116,7 @@
       "origin": "core/pure-domain-core",
       "version": 1,
       "notes": [
-        "core: src/engine/; banned there: react, react-dom, three, @react-three/*, browser storage",
+        "core: src/engine/; banned there: react, react-dom, browser storage",
         "enforced: no-restricted-imports, no-restricted-globals and no-restricted-syntax on src/engine/** in pnpm lint."
       ]
     },

@@ -1,6 +1,7 @@
 import { packetShape, stampOf, type PacketShape, type StampState, type Warning } from '@/copy';
 import type { PacketSpec } from '@/engine';
-import type { PacketEnd } from '@/scene/entities';
+
+export type PacketEnd = 'replied' | 'arrived' | 'blocked' | 'lost' | 'warned' | 'self-warned';
 
 export interface FlowResult {
   packet: PacketSpec;

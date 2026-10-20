@@ -14,7 +14,7 @@ export function token(name: string): string {
   return reference === undefined ? value : token(reference);
 }
 
-/** Returns a token measured in pixels as a number, such as a line width of the 3D map; throws when the token is not in pixels. */
+/** Returns a token measured in pixels as a number, such as a radius of a piece of the map; throws when the token is not in pixels. */
 export function tokenPx(name: string): number {
   const pixels = PIXELS.exec(token(name))?.[1];
   if (pixels === undefined) throw new Error(`Design token ${name} is not in pixels`);

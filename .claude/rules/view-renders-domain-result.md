@@ -1,6 +1,6 @@
 # The view renders the domain's result
 
-The views — the 3D map in `src/scene/` and the panels in `src/ui/` — draw what the engine already computed; they never re-derive a domain decision. Whether a packet passes, where it dies and why are read from the engine's `Trace` and from the level evaluations held in the game state, never from a view's own copy of the rules.
+The views — the map in `src/scene/` and the panels in `src/ui/` — draw what the engine already computed; they never re-derive a domain decision. Whether a packet passes, where it dies and why are read from the engine's `Trace` and from the level evaluations held in the game state, never from a view's own copy of the rules.
 
 **Why:** a view that re-checks the rules becomes a second implementation of the engine. The day the engine learns something new (NACL in chapter 9), the two disagree and the map shows a packet crossing that the engine dropped — and what the map shows is what the player remembers.
 

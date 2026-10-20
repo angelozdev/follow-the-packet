@@ -30,7 +30,7 @@ const NO_FIRE_EVENT = ['@testing-library/react', '@testing-library/dom'].map((na
   importNames: ['fireEvent'],
   message: 'Use @testing-library/user-event.',
 }));
-const ENGINE_PACKAGES = { group: ['react', 'react-dom', 'three', '@react-three/*', '@mantine/*'], message: 'The engine stays free of UI, rendering and hooks.' };
+const ENGINE_PACKAGES = { group: ['react', 'react-dom', '@mantine/*'], message: 'The engine stays free of UI, rendering and hooks.' };
 
 const NO_DYNAMIC_IMPORT = { selector: 'ImportExpression', message: 'Use static imports only, so the layer rules can check them.' };
 const NO_EFFECT_CALLS = { selector: 'MemberExpression[property.name=/^use(Layout)?Effect$/]', message: 'Effects live in use-*.ts hooks.' };

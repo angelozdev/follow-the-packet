@@ -24,7 +24,7 @@ A test gives the same result in every run. Never `retries`, never a fixed wait, 
 ## Port and parallel suites
 
 - `playwright.config.ts` takes the port from `e2ePortOf` (`scripts/e2e-port.ts`): a hash of the real path of the folder that holds the config, in 4183–4282, never 5173 or 5180. The server starts with `--strictPort`, and `reuseExistingServer` is `false`: `pnpm build` runs before every suite, so a suite never runs on an old build. **Never two suites at once in the same folder** (they share `dist`).
-- `fullyParallel` is `true` and `workers` is not set, so Playwright uses half of the logical cores. The 3D map was drawn by the CPU and starved the workers of each other (a screenshot timed out at 16 workers, 2026-10-11); the 2D map is SVG.
+- `fullyParallel` is `true` and `workers` is not set, so Playwright uses half of the logical cores.
 
 ## Running only some specs
 

@@ -4,7 +4,7 @@ import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
-import { GameScene, MAP_RENDERER, pieceDomId } from '@/scene';
+import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
@@ -55,8 +55,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const [still, setStill] = useStillMode();
-  const wide = useMediaQuery(ABOVE_900_PX, undefined, MEDIA_QUERY_AT_FIRST_RENDER);
-  const helpInPanel = MAP_RENDERER === '2d' && wide;
+  const helpInPanel = useMediaQuery(ABOVE_900_PX, undefined, MEDIA_QUERY_AT_FIRST_RENDER);
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const opensCard = (pieceId: string) => playing && pieces.some((candidate) => candidate.id === pieceId && candidate.configurable);
@@ -87,7 +86,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   };
 
   return (
-    <main className={MAP_RENDERER === '2d' ? 'incident incident--map2d' : 'incident'}>
+    <main className="incident incident--map2d">
       <div className="incident__map" ref={watchTheMap}>
         <header className="incident__bar">
           <Button variant="text" href="#/">

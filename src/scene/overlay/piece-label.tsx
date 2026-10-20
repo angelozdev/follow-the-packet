@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { MAP_TEXT, parseTermText, type EntityRef, type TermSegment, type TermText } from '@/copy';
 import { NameTag } from '@/design';
-import { InkIcon } from '@/scene/ink';
+import { InkIcon } from '@/scene/entities/icons/ink-icon';
 import type { TriggerProps } from './inspect-trigger';
 
 export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
