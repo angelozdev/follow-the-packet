@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { expect, vi } from 'vitest';
-import { page, userEvent, type Locator } from 'vitest/browser';
+import { cdp, page, userEvent, type Locator } from 'vitest/browser';
 import { SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from '@/copy';
 import { isReachable } from './card-boxes';
 
@@ -29,6 +29,8 @@ const SIDE_PANEL = '.incident__side';
 const SLACK_PX = 1;
 const WATCHED = '.card, .map-card, .map-button, button.stamp, .html-layer .caption, .incident__inspection, .incident__map, .incident__bar, .incident__side';
 const MOUSE_AWAY = { x: 0, y: 0 };
+const REDUCED_MOTION = { name: 'prefers-reduced-motion', value: 'reduce' };
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 interface WheelOptions {
   within?: Locator;
@@ -103,8 +105,28 @@ export async function drawWithoutAnimations(): Promise<void> {
 }
 
 /** Moves the mouse to the top corner of the window, away from every label, so a hover left by the scene before does not open a box in this one. */
-async function moveTheMouseAway(): Promise<void> {
+export async function moveTheMouseAway(): Promise<void> {
   await userEvent.hover(document.body, { position: MOUSE_AWAY });
+}
+
+/** Makes the page read the system preference for less motion as set (`true`) or gives the browser its own back (`false`), and returns once the media query of the page says so. It stays for every later test of the same page, so a test that sets it gives it back in an `afterEach`. */
+export async function emulateReducedMotion(reduce: boolean): Promise<void> {
+  await cdp().send('Emulation.setEmulatedMedia', { features: reduce ? [REDUCED_MOTION] : [] });
+  await expect.poll(() => matchMedia(REDUCED_MOTION_QUERY).matches).toBe(reduce);
+}
+
+/** Presses the left mouse button on the centre of an element and keeps it down, so the element is `:active` while the test reads it, and returns the function that lets go and takes the mouse away. `userEvent` has no press without a release, so the three mouse events go through the protocol of the browser, at the place the element has in the page that holds the iframe of the test. */
+export async function holdTheMouseDown(target: Element): Promise<() => Promise<void>> {
+  const [box, frame] = [target.getBoundingClientRect(), window.frameElement?.getBoundingClientRect()];
+  const point = { x: (frame?.x ?? 0) + box.x + box.width / 2, y: (frame?.y ?? 0) + box.y + box.height / 2 };
+  const press = { ...point, button: 'left', clickCount: 1 } as const;
+  const session = cdp();
+  await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+  await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...press });
+  return async () => {
+    await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...press });
+    await moveTheMouseAway();
+  };
 }
 
 /** Resolves after the next frame the browser draws. */

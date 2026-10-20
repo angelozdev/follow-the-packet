@@ -7,7 +7,6 @@ const ORIGIN = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  snapshotPathTemplate: '{testDir}/snapshots/{arg}-{platform}{ext}',
   timeout: 60_000,
   fullyParallel: true,
   reporter: 'list',
