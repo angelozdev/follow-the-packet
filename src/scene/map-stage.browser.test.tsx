@@ -66,7 +66,7 @@ async function drawing(box: HTMLElement): Promise<SVGSVGElement> {
 
 function mountOnTheScreen(): HTMLElement {
   const { container } = render(
-    <main className="incident incident--map2d">
+    <main className="incident">
       <div className="incident__map">
         <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} {...SCREEN_PROPS} />
       </div>

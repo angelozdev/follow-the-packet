@@ -61,7 +61,7 @@ function TallCard({ lines = BODY_LINES }: { lines?: number }) {
 
 function Screen({ openPieceId, lines, still = true, flows = [], pieces = PIECES }: { openPieceId: string | null; lines?: number; still?: boolean; flows?: readonly MapRunFixture[]; pieces?: readonly MapPieceFixture[] }) {
   return (
-    <main className="incident incident--map2d">
+    <main className="incident">
       <div className="incident__map">
         <header className="incident__bar">
           <h1>Incidente de prueba</h1>

@@ -87,7 +87,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   };
 
   return (
-    <main className="incident incident--map2d">
+    <main className="incident">
       <div className="incident__map" ref={watchTheMap}>
         <header className="incident__bar">
           <Button variant="text" href="#/">
