@@ -212,6 +212,3 @@ export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-08', title: 'Una IP para toda la oficina', play: playOneAddressForTheWholeOffice },
   { id: '02-09', title: 'Desde afuera', play: playFromOutside },
 ];
-
-/** The id of the last incident of chapter 2 that is built: while chapter 2 is incomplete it is the one right before 04-01 in game order, so the one whose star opens 04-01. */
-export const LAST_BUILT_OF_CHAPTER_2: string = CHAPTER_2[CHAPTER_2.length - 1].id;

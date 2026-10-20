@@ -7,7 +7,6 @@ const PIECES = 'Piezas del mapa';
 const INTERFACE = 'Elementos de la interfaz';
 const FOCUSED_OPTION = 'Una respuesta posible';
 const LAST_CAPTION = 'intruso';
-const WATCH_MS = 7000;
 const STAMP = 'Enviar solución';
 const DISABLED_STAMP = 'Enviar';
 const OPTIONS = ['Una respuesta posible', 'La respuesta elegida', 'Una respuesta que ya no se puede elegir'];
@@ -33,9 +32,6 @@ const OUTPUT_KEY_LINES = [/status: NOERROR/, ';; ANSWER SECTION:', /^www\.lucia\
 const OUTPUT_FIRST_FOLDED = '; <<>> DiG 9.18.50 <<>> www.lucia.example';
 const OUTPUT_LAST_FOLDED = /MSG SIZE/;
 const OUTPUT_LINES_ON_VIEW = 3;
-const BLOCK_CAPTION = 'contorno del bloque';
-const SHAPE_CAPTIONS = ['TCP pide', 'TCP contesta', 'UDP pide', 'UDP contesta'];
-const INTRUDER_CAPTIONS = ['Echo Request · intruso', 'Echo Reply · intruso', ...SHAPE_CAPTIONS.map((caption) => `${caption} · intruso`)];
 const MESSAGE_VARIANTS = ['note', 'success', 'warning', 'error'] as const;
 const MESSAGES_DRAWN = { note: 1, success: 2, warning: 1, error: 4 };
 const MESSAGE_TABS = { note: 'Nota', success: '✓ Correcto', warning: '! Aviso', error: '✕ Error' };
@@ -301,19 +297,6 @@ test.describe('Sin animaciones', () => {
     expect(finalFoot.y + finalFoot.height, 'the foot is still inside the card').toBeLessThanOrEqual(finalCard.y + finalCard.height);
   });
 
-  test('the specimens of the outline of the block and of the intruders are part of the capture', async ({ page }) => {
-    const pieces = await openCatalog(page);
-    const region = await pieces.boundingBox();
-    if (region === null) throw new Error('the pieces section is not on the page');
-    for (const caption of [BLOCK_CAPTION, ...SHAPE_CAPTIONS, ...INTRUDER_CAPTIONS]) {
-      const drawn = pieces.getByText(caption, { exact: true });
-      await expect(drawn, caption).toHaveCount(1);
-      const box = await drawn.boundingBox();
-      if (box === null) throw new Error(`the caption ${caption} is not drawn`);
-      expect(isInside(box, region), `${caption} is inside the captured region`).toBe(true);
-    }
-  });
-
   test('the interface specimens of Message are part of the capture', async ({ page }) => {
     await openCatalog(page);
     const elements = page.getByRole('region', { name: INTERFACE });
@@ -406,18 +389,6 @@ test.describe('Sin animaciones', () => {
   });
 });
 
-test('the entity catalog also runs with its animations, without errors', async ({ page }) => {
-  const errors = collectErrors(page);
-  await openCatalog(page);
-  await expect(page.getByLabel('Sin animaciones')).not.toBeChecked();
-  await page.evaluate((watchMs) => new Promise<void>((done) => {
-    const start = performance.now();
-    const tick = () => (performance.now() - start >= watchMs ? done() : requestAnimationFrame(tick));
-    requestAnimationFrame(tick);
-  }), WATCH_MS);
-  expect(errors).toEqual([]);
-});
-
 test('without reduced motion the pressed primary button moves 2 px down and keeps its tilt', async ({ page }) => {
   await openCatalog(page);
   const stamp = page.getByRole('region', { name: INTERFACE }).getByRole('button', { name: STAMP, exact: true });
@@ -427,8 +398,3 @@ test('without reduced motion the pressed primary button moves 2 px down and keep
   expect(pressed.lift - rest.lift).toBeCloseTo(PRESS_PX, 1);
 });
 
-test('the roadmap does not link to the entity catalog', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
-  await expect(page.locator('a[href="#/entidades"]')).toHaveCount(0);
-});

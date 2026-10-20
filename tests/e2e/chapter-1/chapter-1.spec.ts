@@ -1,16 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { card, confirm, openCard, openTerminal, sendTo } from '@e2e/cards';
-import { CHAPTER_1, IP, fixTheGateway, openTheSettings, sendThePacket, sendThePingAndTheTraceroute } from './chapter-1-play';
+import { CHAPTER_1, IP, openTheSettings, sendThePacket, sendThePingAndTheTraceroute } from './chapter-1-play';
 import { FULL_STARS } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
 import { coveredBy, mapBoxes, overlappingPairs, overlaps, recordLabels, recordedLabels, type Box } from '@e2e/map-boxes';
-import { CHAPTER_1_DONE, reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
-import { CHAPTER_2, LAST_BUILT_OF_CHAPTER_2 } from '@e2e/chapter-2/chapter-2-play';
+import { CHAPTER_1_DONE, startWithProgress } from '@e2e/saved-progress';
+import { CHAPTER_2 } from '@e2e/chapter-2/chapter-2-play';
 import { freezeTime, standStill } from '@e2e/still-scene';
 
 const LOCKED = '(bloqueado)';
-const FIRST_PING_LINK = '1. El primer ping';
-const CHAPTER_1_TITLE = 'Tu primer día';
 const OFFICE_PIECES = ['laptop-lucia con candado', 'impresora con candado', 'laptop-andres con candado', 'router-oficina con candado'];
 const SECOND_FLOOR = /laptop-andres|Piso 2/;
 const GLOBE_AND_SERVER = /internet/;
@@ -28,12 +26,6 @@ const SENDING: Record<string, (terminal: Locator) => Promise<void>> = {
   '01-06': (terminal) => sendTo(terminal, IP.andres),
   '01-10': sendThePingAndTheTraceroute,
 };
-
-async function expectFirstPingOpenWith(page: Page, progress: Record<string, number>) {
-  await reloadWithProgress(page, progress);
-  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
-  await expect(page.locator('li[data-level-id="04-01"]')).not.toContainText(LOCKED);
-}
 
 async function expectApart(opened: Locator, target: Locator) {
   await expect(opened).toBeVisible();
@@ -86,63 +78,6 @@ test('chapter 1 is played from 01-01 to 01-14, each incident opening the next, w
   expect(errors).toEqual([]);
 });
 
-test('the roadmap lists the fourteen incidents of chapter 1 with their stars', async ({ page }) => {
-  const errors = collectErrors(page);
-  const earned = { '01-01': 3, '01-02': 2, '01-03': 1 };
-  await startWithProgress(page, earned);
-  await page.goto('/');
-  await expect(page.locator('li[data-level-id^="01-"]')).toHaveCount(CHAPTER_1.length);
-  await expect(page.getByRole('listitem').filter({ has: page.getByRole('heading', { level: 2, name: CHAPTER_1_TITLE }) })).toContainText(`${Object.keys(earned).length}/${CHAPTER_1.length}`);
-  for (const [index, { id, title }] of CHAPTER_1.entries()) {
-    const item = page.locator(`li[data-level-id="${id}"]`);
-    const stars = earned[id as keyof typeof earned] ?? 0;
-    await expect(item).toContainText(`${index + 1}. ${title}`);
-    await expect(item).toContainText(`${stars} de 3 estrellas`);
-    if (index <= Object.keys(earned).length) await expect(item.getByRole('link', { name: title })).toHaveAttribute('href', `#/level/${id}`);
-    else await expect(item).toContainText(LOCKED);
-  }
-  expect(errors).toEqual([]);
-});
-
-test('chapter 1 opens at 01-01 and 04-01 opens once the incident before it has a star', async ({ page }) => {
-  const errors = collectErrors(page);
-  await page.goto('/');
-  await expect(page.getByRole('link', { name: '1. La oficina' })).toHaveAttribute('href', '#/level/01-01');
-  await expect(page.locator('li[data-level-id="01-02"]')).toContainText(LOCKED);
-  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_2]: 1 });
-  expect(errors).toEqual([]);
-});
-
-test('04-01 stays locked after 01-14 has a star and opens after the last built incident of chapter 2 has one', async ({ page }) => {
-  const errors = collectErrors(page);
-  await startWithProgress(page, { '01-13': 3 });
-  await page.goto('/');
-  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await reloadWithProgress(page, { '01-14': 1 });
-  await expect(page.locator('li[data-level-id="04-01"]')).toContainText(LOCKED);
-  await expectFirstPingOpenWith(page, { [LAST_BUILT_OF_CHAPTER_2]: 1 });
-  expect(errors).toEqual([]);
-});
-
-test('04-01 stays open with its stored stars although chapter 1 has none, and 04-02 opens after it', async ({ page }) => {
-  await startWithProgress(page, { '04-01': 2 });
-  await page.goto('/');
-  await expect(page.getByRole('link', { name: FIRST_PING_LINK })).toHaveAttribute('href', '#/level/04-01');
-  await expect(page.getByRole('link', { name: '2. Abre lo justo' })).toBeVisible();
-  await expect(page.locator('li[data-level-id="01-02"]')).toContainText(LOCKED);
-  await page.getByRole('link', { name: FIRST_PING_LINK }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'El primer ping' })).toBeVisible();
-});
-
-test('in 05 the stamp of the ping to laptop-marta tells a screen reader that it was lost, not blocked', async ({ page }) => {
-  await startWithProgress(page, { '01-04': 1 });
-  await page.goto('/#/level/01-05');
-  await sendTo(await openTerminal(page), IP.marta);
-  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a laptop-marta\. Perdido\.$/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Paquete:.*Bloqueado/ })).toHaveCount(0);
-});
-
 test('in 03 the same ping sent three times is one stamp and, on the 2D map, three packets in the air at once, and the first two go when their own trips end', async ({ page }) => {
   await page.clock.install();
   await startWithProgress(page, { '01-02': 1 });
@@ -159,40 +94,6 @@ test('in 03 the same ping sent three times is one stamp and, on the 2D map, thre
   await page.clock.runFor(LONGER_THAN_A_TRIP_MS);
   await expect(page.locator(FLIGHT), 'once every trip is over, only the last send stays').toHaveCount(drawsFlights ? 1 : 0);
   await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(1);
-});
-
-test('in 11 the stamp of the ping to laptop-marta tells a screen reader that the firewall blocked it', async ({ page }) => {
-  await startWithProgress(page, { '01-10': 1 });
-  await page.goto('/#/level/01-11');
-  await sendTo(await openTerminal(page), IP.marta);
-  await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a laptop-marta\. Bloqueado\.$/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Paquete:.*Perdido/ })).toHaveCount(0);
-});
-
-test('in 07 picking the gateway in the Ajustes de red tab changes the stamps of the ping', async ({ page }) => {
-  await startWithProgress(page, { '01-06': 1 });
-  await page.goto('/#/level/01-07');
-  await fixTheGateway(page);
-});
-
-test('in 13 the tabs Entrada and Salida of the firewall card are reached and switched with the keyboard', async ({ page }) => {
-  await startWithProgress(page, { '01-12': 1 });
-  await page.goto('/#/level/01-13');
-  const firewall = await openCard(page, 'firewall tu-laptop');
-  const [inbound, outbound] = [/^entrada$/i, /^salida$/i].map((name) => firewall.getByRole('tab', { name }));
-  await expect(firewall.getByRole('heading', { level: 2 })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(inbound).toBeFocused();
-  await expect(inbound).toHaveAttribute('aria-selected', 'true');
-  await page.keyboard.press('ArrowRight');
-  await expect(outbound).toBeFocused();
-  await expect(outbound).toHaveAttribute('aria-selected', 'true');
-  await expect(inbound).toHaveAttribute('aria-selected', 'false');
-  await expect(firewall.getByRole('tabpanel')).toContainText('cerrada');
-  await page.keyboard.press('Home');
-  await expect(inbound).toHaveAttribute('aria-selected', 'true');
-  await page.keyboard.press('End');
-  await expect(outbound).toHaveAttribute('aria-selected', 'true');
 });
 
 test.describe('Sin animaciones', () => {

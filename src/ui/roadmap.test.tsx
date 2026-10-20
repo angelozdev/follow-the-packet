@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ROADMAP_TEXT } from '@/copy';
-import { TIERS, type LevelEntry } from '@/levels';
+import { INCIDENTS, TIERS, type LevelEntry } from '@/levels';
 import { Roadmap } from './roadmap';
 
 const LEVELS: LevelEntry[] = [
@@ -12,6 +12,8 @@ const LEVELS: LevelEntry[] = [
 ];
 const EARNED_STARS = 2;
 const FUNDAMENTALS = 'Nivel 1 · Fundamentos';
+const CHAPTER_1_TITLE = 'Tu primer día';
+const INCIDENTS_OF_CHAPTER_1 = 14;
 
 function levelItem(id: string): HTMLElement {
   const item = document.querySelector<HTMLElement>(`[data-level-id="${id}"]`);
@@ -59,5 +61,32 @@ describe('roadmap of the game chapters', () => {
     const marks = screen.getAllByText(ROADMAP_TEXT.optional);
     expect(marks).toHaveLength(1);
     expect(marks[0].closest('h2')).toHaveTextContent('Datos en movimiento');
+  });
+});
+
+describe('roadmap of chapter 1', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('the roadmap lists the fourteen incidents of chapter 1 with their stars', () => {
+    const consoleErrors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const earned: Record<string, number> = { '01-01': 3, '01-02': 2, '01-03': 1 };
+    const opened = Object.keys(earned).length;
+    render(<Roadmap levels={INCIDENTS} progress={earned} />);
+    const incidents = INCIDENTS.filter(({ chapter }) => chapter === 1);
+    expect(incidents).toHaveLength(INCIDENTS_OF_CHAPTER_1);
+    expect(document.querySelectorAll('li[data-level-id^="01-"]')).toHaveLength(INCIDENTS_OF_CHAPTER_1);
+    const chapter = screen.getByRole('heading', { level: 2, name: CHAPTER_1_TITLE }).closest('li');
+    expect(chapter).toHaveTextContent(`${opened}/${INCIDENTS_OF_CHAPTER_1}`);
+    incidents.forEach(({ id, order, title }, index) => {
+      const item = levelItem(id);
+      const name = `${order}. ${title}`;
+      expect(item).toHaveTextContent(name);
+      expect(item).toHaveTextContent(ROADMAP_TEXT.starsOf(earned[id] ?? 0));
+      if (index <= opened) expect(within(item).getByRole('link', { name })).toHaveAttribute('href', `#/level/${id}`);
+      else expect(item).toHaveTextContent(ROADMAP_TEXT.locked);
+    });
+    expect(consoleErrors).not.toHaveBeenCalled();
   });
 });

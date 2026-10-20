@@ -1,39 +1,48 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
+import { pieceViews, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
+import { layoutMap } from '@/scene/map2d/layout/map-layout';
+import { GLYPH_BOX } from '@/scene/map2d/marks/still-packets';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 import type { Frame } from './inspection-place';
 
-const scene = vi.hoisted(() => ({ drawsItsCards: true, drawsTheList: false }));
+const scene = vi.hoisted(() => ({ drawsItsCards: true, drawsTheList: false, drawsTheRealMap: false, sheet: { width: 1060, height: 800 } }));
 
-vi.mock('@/scene/game-scene', async () => {
+vi.mock('@mantine/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@mantine/hooks')>()),
+  useElementSize: () => ({ ref: () => undefined, ...scene.sheet }),
+}));
+
+vi.mock('@/scene/map2d/game-scene', async () => {
+  const { GameScene2D: TheRealMap } = await vi.importActual<typeof import('@/scene/map2d/game-scene')>('@/scene/map2d/game-scene');
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
-  return {
-    GameScene: ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: GameSceneProps & { known?: ReadonlySet<TermId>; inspectStampsTrigger: (packetIds: readonly string[]) => ReturnType<GameSceneProps['inspectTrigger']> }) => (
-      <div data-known={[...(known ?? [])].sort().join(' ')}>
-        {pieces.map((piece) => (
-          <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
-        ))}
-        {[...flows, ...sent].map((flow) => (
-          <button key={flow.id} type="button" {...inspectTrigger(flow.pieceId)}>
-            {toPlainText(flow.label)}
-          </button>
-        ))}
-        {scene.drawsTheList && (
-          <button type="button" {...inspectStampsTrigger([...flows, ...sent].map(({ id }) => id))}>
-            {LIST_OF_THE_STAMPS}
-          </button>
-        )}
-        {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
-      </div>
-    ),
-  };
+  type SceneProps = GameSceneProps & { known?: ReadonlySet<TermId>; inspectStampsTrigger: (packetIds: readonly string[]) => ReturnType<GameSceneProps['inspectTrigger']> };
+  const PlainScene = ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: SceneProps) => (
+    <div data-known={[...(known ?? [])].sort().join(' ')}>
+      {pieces.map((piece) => (
+        <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
+      ))}
+      {[...flows, ...sent].map((flow) => (
+        <button key={flow.id} type="button" {...inspectTrigger(flow.pieceId)}>
+          {toPlainText(flow.label)}
+        </button>
+      ))}
+      {scene.drawsTheList && (
+        <button type="button" {...inspectStampsTrigger([...flows, ...sent].map(({ id }) => id))}>
+          {LIST_OF_THE_STAMPS}
+        </button>
+      )}
+      {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
+    </div>
+  );
+  return { GameScene2D: (props: SceneProps) => (scene.drawsTheRealMap ? <TheRealMap {...props} /> : <PlainScene {...props} />) };
 });
 
 const LIST_OF_THE_STAMPS = 'los sellos de este lugar';
@@ -1196,5 +1205,315 @@ describe('incident screen of a send incident with a clock, tables and services',
     expect(message).toHaveClass('message message--error', { exact: true });
     expect(message).toHaveTextContent('Ese registro ya está en la zona.');
     expect(screen.queryAllByRole('alert').filter((alert) => !alert.classList.contains('message'))).toEqual([]);
+  });
+});
+
+describe('the incidents of the chapters on the 2D map', () => {
+  const IP = { marta: '192.168.1.12', lucia: '192.168.1.11', andres: '192.168.2.15', router: '192.168.1.1', loopback: '127.0.0.1' };
+  const LUCIA = 'laptop-lucia';
+  const SETTINGS_TAB = 'Ajustes de red';
+  const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+  const PING = 'ping';
+  const NC_TO_THE_APP = 'nc · puerto 3000';
+  const NC_TO_THE_DATABASE = 'nc · puerto 5432';
+  const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
+  const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
+  const ANY_PACKET_STAMP = /^Paquete:/;
+  const LOST_TO_MARTA = /^Paquete: ping de tu-laptop a laptop-marta\. Perdido\.$/;
+  const BLOCKED_TO_MARTA = /^Paquete: ping de tu-laptop a laptop-marta\. Bloqueado\.$/;
+  const LOST_TO_ANDRES = /^Paquete: ping de tu-laptop a 192\.168\.2\.15\. Perdido\.$/;
+  const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/;
+  const STAMP_OF_THE_APP = /^Paquete: paquete al puerto 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const STAMP_OF_THE_DATABASE = /^Paquete: paquete al puerto 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const TAG_OF_THE_APP = 'paquete al puerto 3000';
+  const TAG_OF_THE_DATABASE = 'paquete al puerto 5432';
+  const STAMP_OF_THE_FIRST_CONNECTION = /^Paquete: TCP 51514 → 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const STAMP_OF_THE_SECOND_CONNECTION = /^Paquete: TCP 51515 → 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const TAG_OF_THE_FIRST_CONNECTION = 'TCP 51514 → 3000';
+  const TAG_OF_THE_SECOND_CONNECTION = 'TCP 51515 → 5432';
+  const STAMP_OF_THE_REFUSAL = /^Paquete: TCP 51514 → 3306 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const STAMP_OF_THE_SILENCE = /^Paquete: TCP 51515 → 3000 de tu-laptop a laptop-marta\. Bloqueado\.$/;
+  const STAMP_OF_THE_WRONG_ADDRESS = /^Paquete: TCP 51516 → 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
+  const STAMP_OF_HER_OWN_APP = /^Paquete: TCP 51514 → 3000 de laptop-lucia a 127\.0\.0\.1\. Llegó\.$/;
+  const TAGS_OF_THE_FOUR_TESTS = ['TCP 51514 → 3306', 'TCP 51515 → 3000', 'TCP 51516 → 3000', 'TCP 51514 → 3000'];
+  const LABEL_BEFORE_THE_ROUTER = 'TCP 51514 → 80';
+  const LABEL_AFTER_THE_ROUTER = 'TCP 40001 → 80';
+  const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo que no debe';
+  const OFFICE_ROUTER_PIECE = 'router:office-router';
+  const SAME_POINT = 1e-6;
+  const SYSTEM_PREFERS_STILL = '(prefers-reduced-motion: reduce)';
+  const NEXT_INCIDENT = 'Siguiente incidente';
+  const OPENING_RULE_ANSWER = /solo hace falta permitir la ida/;
+  const REPLY_RULE = /^Quitar la regla ICMP · Echo Reply/;
+  const PING_TASK = 'vuelva a hacer';
+
+  beforeEach(() => {
+    scene.drawsTheRealMap = true;
+  });
+
+  afterEach(() => {
+    scene.drawsTheRealMap = false;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function renderIncident(id: string, nextId: string | null = null) {
+    return render(<IncidentScreen incidents={INCIDENTS} incidentId={id} nextId={nextId} onFinish={vi.fn()} />);
+  }
+
+  async function openTheTerminal(user: User, laptop = 'tu-laptop') {
+    await user.click(screen.getByRole('button', { name: laptop }));
+    return screen.getByRole('dialog', { name: `Terminal de ${laptop}` });
+  }
+
+  async function sendMessage(user: User, terminal: HTMLElement, message: string) {
+    await user.click(within(terminal).getByRole('button', { name: message }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  async function sendTo(user: User, terminal: HTMLElement, ip: string) {
+    await user.click(within(terminal).getByRole('button', { name: ip }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  async function sendNc(user: User, terminal: HTMLElement, ip: string, message: string) {
+    await user.click(within(terminal).getByRole('button', { name: ip }));
+    await sendMessage(user, terminal, message);
+  }
+
+  async function confirm(user: User, card: HTMLElement) {
+    await user.click(within(card).getByRole('button', { name: TASK_CARD_TEXT.done }));
+  }
+
+  async function drawWithoutAnimations(user: User) {
+    await user.click(screen.getByLabelText(SCREEN_TEXT.motion));
+  }
+
+  async function sendTheSolution(user: User) {
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+  }
+
+  const packetTags = () => [...document.querySelectorAll('.packet-tag')].map(({ textContent }) => textContent);
+
+  type Point = [number, number];
+
+  function distanceBetween([x, y]: Point, [toX, toY]: Point): number {
+    return Math.hypot(toX - x, toY - y);
+  }
+
+  function distanceAlong(path: Point[], point: Point): number {
+    let walked = 0;
+    for (const [index, to] of path.slice(1).entries()) {
+      const from = path[index];
+      const segment = distanceBetween(from, to);
+      const detour = distanceBetween(from, point) + distanceBetween(point, to) - segment;
+      if (Math.abs(detour) < SAME_POINT) return walked + distanceBetween(from, point);
+      walked += segment;
+    }
+    throw new Error(`the point ${point} is not on the path`);
+  }
+
+  function pathOf(trace: Element): Point[] {
+    const numbers = (trace.querySelector('.map-trace__line')?.getAttribute('d') ?? '').match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    return Array.from({ length: numbers.length / 2 }, (_, index): Point => [numbers[2 * index], numbers[2 * index + 1]]);
+  }
+
+  function goingShapeOf(trace: Element): Point {
+    const icon = trace.querySelector('.map-packet[data-role="going"] > svg');
+    const [x, y] = ['x', 'y'].map((name) => Number(icon?.getAttribute(name)));
+    return [x + GLYPH_BOX / 2, y + GLYPH_BOX / 2];
+  }
+
+  function centerOfPiece(incidentId: string, pieceId: string): Point {
+    const session = startSession(INCIDENTS, incidentId);
+    const box = layoutMap(session.world, pieceViews(session), { width: scene.sheet.width }).icons[pieceId];
+    return [box.x + box.width / 2, box.y + box.height / 2];
+  }
+
+  it('in 05 the stamp of the ping to laptop-marta tells a screen reader that it was lost, not blocked', async () => {
+    const user = userEvent.setup();
+    renderIncident('01-05');
+    await sendTo(user, await openTheTerminal(user), IP.marta);
+    expect(screen.getByRole('button', { name: LOST_TO_MARTA })).toBeVisible();
+    expect(screen.queryAllByRole('button', { name: /^Paquete:.*Bloqueado/ })).toHaveLength(0);
+  });
+
+  it('in 11 the stamp of the ping to laptop-marta tells a screen reader that the firewall blocked it', async () => {
+    const user = userEvent.setup();
+    renderIncident('01-11');
+    await sendTo(user, await openTheTerminal(user), IP.marta);
+    expect(screen.getByRole('button', { name: BLOCKED_TO_MARTA })).toBeVisible();
+    expect(screen.queryAllByRole('button', { name: /^Paquete:.*Perdido/ })).toHaveLength(0);
+  });
+
+  it('in 07 picking the gateway in the Ajustes de red tab changes the stamps of the ping', async () => {
+    const user = userEvent.setup();
+    renderIncident('01-07');
+    await sendTo(user, await openTheTerminal(user), IP.andres);
+    expect(screen.getByRole('button', { name: LOST_TO_ANDRES })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: SETTINGS_TAB }));
+    const settings = screen.getByRole('dialog', { name: SETTINGS_CARD });
+    await user.click(within(settings).getByRole('button', { name: IP.router }));
+    expect(screen.queryAllByRole('button', { name: ANY_PACKET_STAMP })).toHaveLength(0);
+    await confirm(user, settings);
+    expect(settings).not.toBeInTheDocument();
+    await sendTo(user, await openTheTerminal(user), IP.andres);
+    expect(screen.getByRole('button', { name: ARRIVED_AT_ANDRES })).toBeVisible();
+  });
+
+  it('in 13 the tabs Entrada and Salida of the firewall card are reached and switched with the keyboard', async () => {
+    const user = userEvent.setup();
+    renderIncident('01-13');
+    await user.click(screen.getByRole('button', { name: 'firewall tu-laptop' }));
+    const firewall = screen.getByRole('dialog', { name: 'firewall tu-laptop' });
+    const [inbound, outbound] = [/^entrada$/i, /^salida$/i].map((name) => within(firewall).getByRole('tab', { name }));
+    expect(within(firewall).getByRole('heading', { level: 2 })).toHaveFocus();
+    await user.tab();
+    expect(inbound).toHaveFocus();
+    expect(inbound).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{ArrowRight}');
+    expect(outbound).toHaveFocus();
+    expect(outbound).toHaveAttribute('aria-selected', 'true');
+    expect(inbound).toHaveAttribute('aria-selected', 'false');
+    expect(within(firewall).getByRole('tabpanel')).toHaveTextContent('cerrada');
+    await user.keyboard('{Home}');
+    expect(inbound).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{End}');
+    expect(outbound).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('in 02-01 the packet of an nc wears the port it goes to, and the ping wears no label', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-01');
+    await drawWithoutAnimations(user);
+    const terminal = await openTheTerminal(user);
+    await sendMessage(user, terminal, PING);
+    await sendMessage(user, terminal, NC_TO_THE_APP);
+    await confirm(user, terminal);
+    expect(terminal).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_APP })).toBeVisible();
+    expect(packetTags()).toEqual([TAG_OF_THE_APP]);
+    await sendMessage(user, await openTheTerminal(user), NC_TO_THE_DATABASE);
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
+    expect(packetTags()).toEqual([TAG_OF_THE_APP, TAG_OF_THE_DATABASE]);
+  });
+
+  it('in 02-02 the packet of an nc wears TCP and both ports, and the second connection leaves from the next port', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-02');
+    await drawWithoutAnimations(user);
+    const first = await openTheTerminal(user);
+    await sendMessage(user, first, NC_TO_THE_APP);
+    await confirm(user, first);
+    expect(first).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_FIRST_CONNECTION })).toBeVisible();
+    expect(packetTags()).toEqual([TAG_OF_THE_FIRST_CONNECTION]);
+    await sendMessage(user, await openTheTerminal(user), NC_TO_THE_DATABASE);
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_SECOND_CONNECTION })).toBeVisible();
+    expect(packetTags()).toEqual([TAG_OF_THE_FIRST_CONNECTION, TAG_OF_THE_SECOND_CONNECTION]);
+  });
+
+  it('in 02-03 a refusal leaves the stamp Llegó and a silence leaves Bloqueado, and the four tests wear TCP and both ports', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-03');
+    await drawWithoutAnimations(user);
+    const yours = await openTheTerminal(user);
+    await sendNc(user, yours, IP.lucia, NC_TO_THE_CLOSED_PORT);
+    await sendNc(user, yours, IP.marta, NC_TO_THE_APP);
+    await sendNc(user, yours, IP.lucia, NC_TO_THE_APP);
+    await confirm(user, yours);
+    expect(yours).not.toBeInTheDocument();
+    const hers = await openTheTerminal(user, LUCIA);
+    await sendNc(user, hers, IP.loopback, NC_TO_THE_APP);
+    await confirm(user, hers);
+    expect(hers).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: STAMP_OF_HER_OWN_APP })).toBeVisible();
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_REFUSAL })).toBeVisible();
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_SILENCE })).toBeVisible();
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_WRONG_ADDRESS })).toBeVisible();
+    expect(packetTags()).toEqual(TAGS_OF_THE_FOUR_TESTS);
+  });
+
+  it('the still drawing of a translated packet shows the label of the leg where the packet stands', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-08');
+    await drawWithoutAnimations(user);
+    const terminal = await openTheTerminal(user);
+    await sendMessage(user, terminal, NC_TO_THE_WEB_PORT);
+    await confirm(user, terminal);
+    expect(terminal).not.toBeInTheDocument();
+    const trace = document.querySelector('.map-trace');
+    if (trace === null) throw new Error('the map drew no trace');
+    const path = pathOf(trace);
+    const standsBeforeTheRouter = distanceAlong(path, goingShapeOf(trace)) < distanceAlong(path, centerOfPiece('02-08', OFFICE_ROUTER_PIECE));
+    expect(packetTags()).toEqual([standsBeforeTheRouter ? LABEL_BEFORE_THE_ROUTER : LABEL_AFTER_THE_ROUTER]);
+  });
+
+  it('starts checked from the system preference, and both incidents still reach 3 stars', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === SYSTEM_PREFERS_STILL, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    const consoleErrors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    const finish = async (answer: RegExp) => {
+      await sendTheSolution(user);
+      await user.click(screen.getByRole('button', { name: answer }));
+      await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
+      expect(screen.getByText(ROADMAP_TEXT.starsOf(FULL_STARS))).toBeVisible();
+    };
+    const first = renderIncident(FIRST.id, '04-02');
+    expect(screen.getByLabelText(SCREEN_TEXT.motion)).toBeChecked();
+    await confirm(user, await placeRule(user, SG_SERVIDOR1));
+    await finish(RIGHT_ANSWER);
+    expect(screen.getByRole('link', { name: NEXT_INCIDENT })).toHaveAttribute('href', '#/level/04-02');
+    first.unmount();
+    renderIncident('04-02');
+    expect(screen.getByLabelText(SCREEN_TEXT.motion)).toBeChecked();
+    expect(screen.getAllByRole('listitem').find((task) => task.textContent?.includes(PING_TASK))).toHaveTextContent(LUCIA_TEXT.pending);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    await user.click(within(card).getByRole('button', { name: REPLY_RULE }));
+    await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
+    await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
+    await confirm(user, card);
+    await finish(OPENING_RULE_ANSWER);
+    expect(consoleErrors).not.toHaveBeenCalled();
+  });
+
+  it('an intrusion shows its alert inside the label of the device', async () => {
+    const user = userEvent.setup();
+    renderIncident(FIRST.id);
+    await drawWithoutAnimations(user);
+    const card = await placeRule(user, ANYWHERE);
+    await confirm(user, card);
+    expect(screen.getByRole('button', { name: ATTACKED_SERVER })).toBeVisible();
+  });
+
+  it('focus goes to the card heading when a Security Group opens, and back to it on Escape', async () => {
+    const user = userEvent.setup();
+    renderIncident(FIRST.id);
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    expect(within(card).getByRole('heading', { level: 2 })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(card).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: SG_SERVIDOR2 })).toHaveFocus();
+  });
+
+  it('sending with Anywhere-IPv4 open gets Lucía\'s reply, and with the card still open the fix closes it and focuses the question', async () => {
+    const consoleErrors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    renderIncident(FIRST.id);
+    const card = await placeRule(user, ANYWHERE);
+    await sendTheSolution(user);
+    expect(screen.getByRole('status')).toHaveTextContent(LUCIA_TEXT.intruding);
+    expect(screen.queryByRole('heading', { name: QUESTION })).toBeNull();
+    await user.click(within(card).getByRole('button', { name: /^Quitar la regla/ }));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
+    await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
+    await sendTheSolution(user);
+    expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
+    expect(card).not.toBeInTheDocument();
+    expect(consoleErrors).not.toHaveBeenCalled();
   });
 });

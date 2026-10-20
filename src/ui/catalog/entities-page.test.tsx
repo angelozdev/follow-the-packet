@@ -1,13 +1,22 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CATALOG_TEXT, ENTITY_REFS, INTERFACE_TEXT, LUCIA_TEXT, RESULT_TEXT, SCREEN_TEXT, TERMINAL_TEXT, entityName, toPlainText } from '@/copy';
 import { EntitiesPage } from './entities-page';
 
-vi.mock('@/scene/catalog/catalog-scene', () => ({
-  CatalogScene: ({ still }: { still: boolean }) => <p>{still ? 'still' : 'moving'}</p>,
-}));
+const catalog = vi.hoisted(() => ({ drawsItsSpecimens: false }));
+
+vi.mock('@/scene/map2d/catalog/catalog-scene', async () => {
+  const { CatalogScene2D } = await vi.importActual<typeof import('@/scene/map2d/catalog/catalog-scene')>('@/scene/map2d/catalog/catalog-scene');
+  return {
+    CatalogScene2D: ({ still }: { still: boolean }) => (catalog.drawsItsSpecimens ? <CatalogScene2D still={still} /> : <p>{still ? 'still' : 'moving'}</p>),
+  };
+});
+
+const BLOCK_CAPTION = 'contorno del bloque';
+const SHAPE_CAPTIONS = ['TCP pide', 'TCP contesta', 'UDP pide', 'UDP contesta'];
+const INTRUDER_CAPTIONS = ['Echo Request · intruso', 'Echo Reply · intruso', ...SHAPE_CAPTIONS.map((caption) => `${caption} · intruso`)];
 
 describe('entities page', () => {
   it('names every entity in every variant beside its icon, and every stamp', () => {
@@ -49,5 +58,35 @@ describe('entities page', () => {
     expect(pieces).toHaveTextContent('moving');
     await user.click(screen.getByLabelText(SCREEN_TEXT.motion));
     expect(pieces).toHaveTextContent('still');
+  });
+});
+
+describe('entities page with the scene of the catalog', () => {
+  beforeEach(() => {
+    catalog.drawsItsSpecimens = true;
+  });
+
+  afterEach(() => {
+    catalog.drawsItsSpecimens = false;
+    vi.restoreAllMocks();
+  });
+
+  it('the specimens of the outline of the block and of the intruders are in the catalog', () => {
+    render(<EntitiesPage />);
+    const pieces = within(screen.getByRole('region', { name: CATALOG_TEXT.pieces }));
+    for (const caption of [BLOCK_CAPTION, ...SHAPE_CAPTIONS, ...INTRUDER_CAPTIONS]) {
+      const specimen = pieces.getByRole('figure', { name: caption });
+      expect(specimen.querySelector('svg'), caption).not.toBeNull();
+      expect(pieces.getAllByText(caption, { exact: true }), caption).toHaveLength(1);
+    }
+  });
+
+  it('the entity catalog also runs with its animations, without errors', () => {
+    const consoleErrors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(<EntitiesPage />);
+    expect(screen.getByLabelText(SCREEN_TEXT.motion)).not.toBeChecked();
+    const pieces = screen.getByRole('region', { name: CATALOG_TEXT.pieces });
+    expect(pieces.querySelectorAll('animateTransform').length).toBeGreaterThan(0);
+    expect(consoleErrors).not.toHaveBeenCalled();
   });
 });

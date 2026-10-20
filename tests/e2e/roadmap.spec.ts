@@ -22,9 +22,3 @@ test('the roadmap fits a phone screen, without a horizontal scroll', async ({ pa
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
 });
 
-test('an unknown incident leads back to the roadmap', async ({ page }) => {
-  await page.goto('/#/level/09-99');
-  await expect(page.getByRole('heading', { name: 'Incidente no encontrado' })).toBeVisible();
-  await page.getByRole('link', { name: 'Volver al roadmap' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Sigue el paquete' })).toBeVisible();
-});

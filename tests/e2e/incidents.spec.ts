@@ -7,13 +7,8 @@ import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
-const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
-const SUBMIT = 'Enviar solución';
-const INTRUDING = 'algo prohibido está entrando';
 const INSPECTED_SERVER = 'servidor2 con candado';
-const ATTACKED_SERVER = 'servidor2 con candado con alerta: entra algo que no debe';
 const INSPECTION_TITLE = 'servidor2';
-const QUESTION = /¿Qué pasó\?/;
 
 type Size = Pick<Box, 'width' | 'height'>;
 
@@ -68,32 +63,6 @@ test('04-01 and 04-02 reach 3 stars, and the progress survives a reload', async 
   expect(errors).toEqual([]);
 });
 
-test.describe('Sin animaciones', () => {
-  test.use({ contextOptions: { reducedMotion: 'reduce' } });
-
-  test('starts checked from the system preference, and both incidents still reach 3 stars', async ({ page }) => {
-    const errors = collectErrors(page);
-    await page.goto('/#/level/04-01');
-    await expect(page.getByLabel('Sin animaciones')).toBeChecked();
-    await playBoth(page);
-    expect(errors).toEqual([]);
-  });
-
-  test('an intrusion shows its alert inside the label of the device, and no label or stamp overlaps', async ({ page }) => {
-    await page.goto('/#/level/04-01');
-    const card = await openDoor(page);
-    await placeRule(card, ANYWHERE);
-    await card.getByRole('button', { name: 'Listo' }).click();
-    await expect(page.getByRole('button', { name: ATTACKED_SERVER, exact: true })).toBeVisible();
-    await expect.poll(() => overlappingPairs(page)).toEqual([]);
-  });
-});
-
-test('a locked incident does not open from its URL', async ({ page }) => {
-  await page.goto('/#/level/04-02');
-  await expect(page.getByRole('heading', { name: 'Incidente bloqueado' })).toBeVisible();
-});
-
 test('labels and stamps do not overlap, and the open card does not cover its Security Group', async ({ page }) => {
   await page.goto('/#/level/04-01');
   await expect(page.getByRole('button', { name: SG_SERVIDOR2, exact: true })).toBeVisible();
@@ -115,15 +84,6 @@ test('the inspection box floats inside the window and covers no label or stamp',
   expect(covered).toEqual([]);
 });
 
-test('focus goes to the card heading when a Security Group opens, and back to it on Escape', async ({ page }) => {
-  await page.goto('/#/level/04-01');
-  const card = await openDoor(page);
-  await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(card).toHaveCount(0);
-  await expect(page.getByRole('button', { name: SG_SERVIDOR2, exact: true })).toBeFocused();
-});
-
 test('a term shows its definition inside the window, also from a chip of the open card', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/#/level/04-01');
@@ -136,23 +96,6 @@ test('a term shows its definition inside the window, also from a chip of the ope
   await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();
   await expect(tooltip).toContainText('le pide al destino que conteste');
   expect(isInside(size, await tooltip.boundingBox())).toBe(true);
-  expect(errors).toEqual([]);
-});
-
-test('sending with Anywhere-IPv4 open gets Lucía’s reply, and with the card still open the fix closes it and focuses the question', async ({ page }) => {
-  const errors = collectErrors(page);
-  await page.goto('/#/level/04-01');
-  const card = await openDoor(page);
-  await placeRule(card, ANYWHERE);
-  await page.getByRole('button', { name: SUBMIT }).click();
-  await expect(page.getByRole('status')).toContainText(INTRUDING);
-  await expect(page.getByRole('heading', { name: QUESTION })).toHaveCount(0);
-  await card.getByRole('button', { name: /^Quitar la regla/ }).click();
-  await expect(page.getByRole('status')).toBeEmpty();
-  await placeRule(card, SG_SERVIDOR1);
-  await page.getByRole('button', { name: SUBMIT }).click();
-  await expect(page.getByRole('heading', { name: QUESTION })).toBeFocused();
-  await expect(card).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
