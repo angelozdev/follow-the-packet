@@ -26,8 +26,7 @@ const MAPS: MapSize[] = [
 const FULL_HD: MapSize = { window: '1920×1080', width: 1540, height: 1080 };
 const TERMINAL_HEIGHT = { office: 321, yours: 468, home: 495 };
 const DOCK_MARGIN = 6;
-const FEET = 16;
-const ROOM_UNDER_THE_DRAWING = 200 + DOCK_MARGIN + FEET;
+const ROOM_UNDER_THE_DRAWING = 200 + 2 * DOCK_MARGIN;
 const piece = (kind: PieceKind, anchorId: string, label: RowPiece['label'] = nameTag(anchorId)): RowPiece => ({ id: `${kind}:${anchorId}`, kind, anchorId, label, locked: false, state: 'normal' });
 const YOUR_LAPTOP = piece('device', 'your-laptop');
 const HOME = piece('actor', 'attacker');
@@ -143,7 +142,7 @@ describe('the terminal card in the office with the outside drawn', () => {
 });
 
 describe('the room of a card docked in the corner', () => {
-  const roomUnder = (lowest: number, map = { height: 800 }) => map.height - DOCK_MARGIN - lowest - FEET;
+  const roomUnder = (lowest: number, map = { height: 800 }) => map.height - DOCK_MARGIN - lowest - DOCK_MARGIN;
   const standing = (x: number, bottom: number) => ({ x, bottom });
 
   it('is the height from the corner up to the feet of the lowest piece that the card spans', () => {

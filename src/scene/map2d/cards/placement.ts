@@ -13,11 +13,10 @@ const FIREWALL_CARD_GAP = 110;
 const ORIGIN_CARD_GAP = 70;
 const CARD_MARGIN = 12;
 export const DOCK_MARGIN = 6;
-const GROUND_REACH = 16;
 const MIN_DOCK_ROOM = 200;
 
-/** How many pixels a docked card needs under the lowest piece of the drawing to find the room of a card that can be used: that room, the margin of the dock and the reach of the feet of a piece. */
-export const ROOM_UNDER_THE_DRAWING = MIN_DOCK_ROOM + DOCK_MARGIN + GROUND_REACH;
+/** How many pixels a docked card needs under the lowest piece of the drawing to find the room of a card that can be used: that room and the margin of the dock, which it keeps from the edge of the map under it and from the piece above it. */
+export const ROOM_UNDER_THE_DRAWING = MIN_DOCK_ROOM + 2 * DOCK_MARGIN;
 
 /** Where a card anchors on the map and how it keeps clear of it, all in pixels from the left and top edges of the map: the point it hangs from (the middle of the icon of its piece), its distance from that point, the places its side must keep clear of (as many `x` as it takes for `LABEL_REACH` on each side of them to cover every label; null when only the room on screen decides its side), and, for the dock, the same places of every piece the card may cover and of every fan of stamps that may stand on the map, with the lowest row each one reaches. */
 export interface CardPlacement {
@@ -104,11 +103,11 @@ function underTheDock({ x }: { x: number }): boolean {
   return x + LABEL_REACH > DOCK_MARGIN && x - LABEL_REACH < DOCK_MARGIN + CARD_WIDTH;
 }
 
-/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it covers no piece: the height from the corner up to the lowest row a piece the card spans reaches, and `GROUND_REACH` more (`x` is where the piece stands, read as `LABEL_REACH` on each side, and `bottom` the pixel row its body ends at). It is null when no piece stands above the card, and never less than `MIN_DOCK_ROOM`, so a window too short for the map keeps a card that can be used. */
+/** Returns how tall a card docked in the bottom left corner may be, in pixels, so that it covers no piece: the height from the corner up to the lowest row a piece the card spans reaches, and `DOCK_MARGIN` more, the same margin the card keeps from the edges of the map (`x` is where the piece stands, read as `LABEL_REACH` on each side, and `bottom` the pixel row its body ends at). It is null when no piece stands above the card, and never less than `MIN_DOCK_ROOM`, so a window too short for the map keeps a card that can be used. */
 export function dockRoom(pieces: readonly { x: number; bottom: number }[], map: { height: number }): number | null {
   const spanned = pieces.filter(underTheDock);
   if (spanned.length === 0) return null;
-  const lowest = Math.max(...spanned.map(({ bottom }) => bottom + GROUND_REACH));
+  const lowest = Math.max(...spanned.map(({ bottom }) => bottom + DOCK_MARGIN));
   return atLeastUsable(map.height - DOCK_MARGIN - lowest);
 }
 
