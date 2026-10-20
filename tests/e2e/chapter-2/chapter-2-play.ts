@@ -8,6 +8,8 @@ const NC_TO_THE_DATABASE = 'nc · puerto 5432';
 const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
 const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
 const NC_TO_THE_UNMAPPED_PORT = 'nc · puerto 40009';
+const DIG = 'dig';
+const PING = 'ping';
 const LUCIA = 'laptop-lucia';
 const SERVICES_TAB = 'Servicios';
 const SERVICES_CARD = 'Servicios de laptop-lucia';
@@ -198,7 +200,17 @@ async function playFromOutside(page: Page) {
   await submitAndFinish(page, /no había ninguna fila para ese puerto/);
 }
 
-/** How each incident of chapter 2 is played with the mouse, in game order. Each content task adds the incident it builds: its title as the roadmap shows it and the moves that earn the stars. */
+/** Takes the page of the open incident 02-10; sends the dig and the ping to the name of the site from the terminal of your laptop, closes the terminal and answers the question of Lucía until the result shows 3 stars. */
+export async function playAskingForAName(page: Page) {
+  const terminal = await openTerminal(page);
+  await sendMessage(terminal, DIG);
+  await sendMessage(terminal, PING);
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+  await submitAndFinish(page, /Porque usa UDP, que manda cada mensaje suelto/);
+}
+
+/** The incidents of chapter 2 in game order, each with its id, its title as the roadmap shows it and the function that plays it. */
 export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-01', title: 'Un equipo, muchos servicios', play: playOneMachineManyServices },
   { id: '02-02', title: 'Abrir una conexión', play: playOpeningAConnection },

@@ -5,7 +5,7 @@ Playwright tests against the production build (`pnpm e2e`, on its own port from 
 ## The six tests
 
 - `chapter-1/chapter-1.spec.ts`: `chapter 1 is played from 01-01 to 01-14, each incident opening the next, with 3 stars each`. It ends on the roadmap: 04-01 still locked, and the first incident of chapter 2 open.
-- `chapter-2/chapter-2.spec.ts`: `chapter 2 is played from 02-01 to 02-09, each incident opening the next, with 3 stars each`. It plays `CHAPTER_2` (`chapter-2/chapter-2-play.ts`), so the task that builds 02-10 to 02-14 only adds them to that list and to the title.
+- `chapter-2/chapter-2.spec.ts`: `chapter 2 is played from 02-01 to 02-09, each incident opening the next, with 3 stars each`. It plays `CHAPTER_2` (`chapter-2/chapter-2-play.ts`), so Task 34 appends 02-10 to 02-14 (their play functions are written by the content tasks 29 to 33) to that list and to the title.
 - `incidents.spec.ts`: `04-01 and 04-02 reach 3 stars, and the progress survives a reload`.
 - `roadmap.spec.ts`: `the roadmap loads every chapter, grouped by level, without console errors`. `SOON_CHAPTER_COUNT` drops by one with each chapter that gets its first incident.
 - `progress.spec.ts`: `the stars saved in the browser come back after a reload and open what they should`: an incident opened by the star before it, one opened by its own stars although the one before has none (`04-01`, and `01-14` after `01-13`), and ones still locked.

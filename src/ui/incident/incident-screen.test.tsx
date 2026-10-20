@@ -192,7 +192,7 @@ describe('incident screen', () => {
 
   it('the inspection box starts with what the piece is and leaves out fields whose term comes later', async () => {
     const user = userEvent.setup();
-    renderFirst();
+    render(<IncidentScreen incidents={INCIDENTS.filter(({ chapter }) => chapter !== 2)} incidentId={FIRST.id} nextId="04-02" onFinish={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
     const box = screen.getByRole('region', { name: 'servidor2' });
     expect(within(box).getByRole('heading', { name: 'servidor2' }).querySelector('svg.entity-icon')).toBeInTheDocument();

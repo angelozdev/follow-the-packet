@@ -20,6 +20,8 @@ import {
   IP,
   LUCIA_SERVICES,
   MESSAGE,
+  NAMES_PIECES,
+  NAME_SERVERS,
   OFFICE_ROUTES,
   ORIGIN,
   OTHER_OFFICE,
@@ -41,13 +43,14 @@ import {
   routeMove,
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
+import { drawnSends } from './flow-runs';
 import { isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
 import { terminalLine } from './view/cards/terminal/terminal-card';
 import { identifyCard } from './view/cards/identify-card';
 import { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
 import { pieceCard } from './view/cards/piece-card';
-import { servicesCard } from './view/cards/settings-card';
+import { servicesCard, settingsCard } from './view/cards/settings-card';
 import type { TableCard } from './view/cards/table-card';
 import { toolOutput } from './view/cards/terminal/output-card';
 import { inspect } from './view/inspection';
@@ -1380,5 +1383,240 @@ describe('02-09, from outside', () => {
     expect(sorted(introduces)).toEqual(['port-forwarding']);
     expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, FROM_OUTSIDE))).toEqual([]);
     expect(laterTermLeaks([start.incident])).toEqual([]);
+  });
+});
+
+describe('02-10, asking for a name', () => {
+  const ASKING = '02-10';
+  const FIRST_PORT = 51514;
+  const SECOND_PORT = 51515;
+  const FIRST_PUBLIC_PORT = 40001;
+  const SECOND_PUBLIC_PORT = 40002;
+  const NETWORK_SETTINGS = 'Ajustes de red';
+  const GREETING = 'Saludo de tres pasos';
+  const DNS_FIELD = 'DNS';
+  const EXCHANGE = 'Consulta y respuesta';
+  const LOCAL_HEADER = 'Encabezado de ida (en tu red local)';
+  const LOCAL_BACK_HEADER = 'Encabezado de vuelta (en tu red local)';
+  const TRANSLATION = 'Traducción';
+  const ICMP_HAS_NO_PORTS = 'ICMP no usa puertos: en el juego solo cambia la IP de origen.';
+  const DNS_QUESTION_ROW = 'UDP · consulta DNS';
+  const FIXED_ROW = ['TCP · fija', `${IP.andres}:${PORT.app}`, `${IP.officeUplink}:${PORT.app}`];
+  const questionRow = (sourcePort: number, publicPort: number) => [DNS_QUESTION_ROW, `${IP.you}:${sourcePort}`, `${IP.officeUplink}:${publicPort}`];
+  const FIRST_ROW = questionRow(FIRST_PORT, FIRST_PUBLIC_PORT);
+  const SECOND_ROW = questionRow(SECOND_PORT, SECOND_PUBLIC_PORT);
+  const ASKS_ONLY_ONCE = /una sola vez|solo una vez|una única vez|la única (?:consulta|pregunta)|una sola (?:consulta|pregunta)|solo una (?:consulta|pregunta)|pregunta (?:solo )?una vez/i;
+  const start = startSession(INCIDENTS, ASKING);
+  const askWith = (session: Session, messageId: string): Session => sendingFrom(session, ORIGIN.you.id, ADDRESS.www.id, messageId);
+  const digged = askWith(start, MESSAGE.dig.id);
+  const pinged = askWith(start, MESSAGE.ping.id);
+  const digThenPing = askWith(digged, MESSAGE.ping.id);
+  const pingThenDig = askWith(pinged, MESSAGE.dig.id);
+  const lastRun = (session: Session) => session.sent.at(-1)!;
+  const translationsOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined;
+  const tableOf = (session: Session) => (translationsOf(session)?.rows ?? []).map((row) => row.cells.map((cell) => plain(cell.text)));
+  const portsOf = (session: Session) => drawnSends(session.sent).map(({ trace }) => trace.header?.request.sourcePort);
+  const wholeWorld = (world: Network) => [...world.devices.map(({ id }) => id), ...(world.routers ?? []).map(({ id }) => id), ...world.actors.map(({ id }) => id)];
+
+  it('02-10: dig sends one query by udp to port 53 of the resolver and gets one answer', () => {
+    const run = lastRun(digged);
+    expect(run.trace.outcome).toBe('replied');
+    expect(run.trace.destinationId).toBe(SERVER.resolver.id);
+    expect(run.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.resolver, sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(run.trace.header?.reply).toMatchObject({ source: IP.resolver, destination: IP.you, sourcePort: PORT.dns, destinationPort: FIRST_PORT });
+    expect(run.packet).toMatchObject({ protocol: 'udp', port: PORT.dns });
+    expect(run.trace.translation?.protocol).toBe('udp');
+    expect(run.trace.exchange).toEqual([
+      { from: 'client', kind: 'query' },
+      { from: 'server', kind: 'response' },
+    ]);
+    expect(run.trace.dns).toMatchObject({ name: HOSTNAME.www, status: 'NOERROR', viaDig: true, usedHostsFile: false });
+    expect(run.trace.question).toBeUndefined();
+    expect(run.by).toEqual([SERVER.resolver.id]);
+    expect(stillOpen(digged)).toEqual([TASK.pingWww]);
+  });
+
+  it('02-10: the box of the dig has no greeting', () => {
+    const box = lastBox(digged);
+    const [you, resolver] = [DEVICE.you.name, SERVER.resolver.name];
+    expect(Object.keys(box)).not.toContain(GREETING);
+    expect(box[EXCHANGE]).toEqual([`1. consulta, de ${you} a ${resolver}`, `2. respuesta, de ${resolver} a ${you}`]);
+    expect(box[DNS_FIELD]).toEqual([`Contestó ${resolver}.`, `${HOSTNAME.www} A ${IP.server}`]);
+    expect(box[LOCAL_HEADER]).toEqual([`${IP.you}:${FIRST_PORT} → ${IP.resolver}:${PORT.dns}`, 'TTL al salir: 64']);
+    expect(box[LOCAL_BACK_HEADER]).toEqual([`${IP.resolver}:${PORT.dns} → ${IP.you}:${FIRST_PORT}`]);
+    expect(boxTexts(digged).filter((text) => /SYN|saludo/i.test(text))).toEqual([]);
+    expect(lastRun(digged).trace.exchange).toHaveLength(2);
+  });
+
+  it('02-10: dig and ping both resolve www.lucia.example to 198.51.100.50', () => {
+    const [dig, ping] = digThenPing.sent;
+    expect(dig.trace.dns?.answers.map(({ value }) => value)).toEqual([IP.server]);
+    expect(ping.trace.dns?.answers.map(({ value }) => value)).toEqual([IP.server]);
+    expect([dig.trace.dns?.name, ping.trace.dns?.name]).toEqual([HOSTNAME.www, HOSTNAME.www]);
+    expect([dig.trace.destinationId, ping.trace.destinationId]).toEqual([SERVER.resolver.id, SERVER.internet.id]);
+    expect([ping.trace.resolvedIp, ping.question?.trace.dns?.answers.map(({ value }) => value)]).toEqual([IP.server, [IP.server]]);
+    expect([dig.trace.outcome, ping.trace.outcome]).toEqual(['replied', 'replied']);
+    expect(stillOpen(start)).toEqual([TASK.digWww, TASK.pingWww]);
+    expect(stillOpen(digged)).toEqual([TASK.pingWww]);
+    expect(stillOpen(pinged)).toEqual([TASK.digWww]);
+    expectClosed(digThenPing);
+    expectClosed(pingThenDig);
+  });
+
+  it('02-10: the settings card of tu-laptop shows the dns server and says DHCP gave it', () => {
+    const settings = settingsCard(start, PIECE_ID.device(DEVICE.you.id));
+    expect(settings?.title && plain(settings.title)).toBe(`${NETWORK_SETTINGS} de ${DEVICE.you.name}`);
+    expect(settings?.settings).toEqual([]);
+    expect(settings?.dns && { label: plain(settings.dns.label), value: plain(settings.dns.value), note: plain(settings.dns.note) }).toEqual({ label: 'Servidor DNS', value: `${IP.resolver} ${SERVER.resolver.name}`, note: 'Lo prestó DHCP.' });
+    const card = pieceCard(start, PIECE_ID.device(DEVICE.you.id));
+    expect(card).toMatchObject({ tabbed: true, first: 'terminal' });
+    expect(card?.tabs.map(({ id }) => id)).toEqual(['terminal', 'settings', 'routes']);
+    expect(plain(start.incident.report)).toContain(`abre ${DEVICE.you.name} y su pestaña «${NETWORK_SETTINGS}»`);
+    const withoutTheTerm = { ...start, known: new Set([...start.known].filter((term) => term !== 'dhcp')) };
+    expect(settingsCard(withoutTheTerm, PIECE_ID.device(DEVICE.you.id))).toBeNull();
+  });
+
+  it('02-10: the report names tu-laptop', () => {
+    const { report } = start.incident;
+    const [before, after] = [solvedWorld(INCIDENTS, '02-09'), startWorld(INCIDENTS, ASKING)];
+    expect(report).toContain(`[[${DEVICE.you.name}]]`);
+    expect(plain(report)).toMatch(new RegExp(`^Ahora ${DEVICE.you.name} puede usar un nombre de dominio, como ${HOSTNAME.www}, en vez de una IP\\.`));
+    expect(plain(report)).toContain(`Apareció en «${NETWORK_SETTINGS}» de ${DEVICE.you.name} porque se lo prestó DHCP.`);
+    expect(plain(report)).toContain(`Ese servidor es su resolver. Es ${SERVER.resolver.name}, en ${IP.resolver}.`);
+    expect(changedNames(before, after)).toEqual([DEVICE.you.name]);
+    expect(after.devices.find((device) => device.id === DEVICE.you.id)?.dnsServer).toBe(IP.resolver);
+    expect(before.devices.find((device) => device.id === DEVICE.you.id)?.dnsServer).toBeUndefined();
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+  });
+
+  it('02-10: the resolver and the authoritative server are servers of the internet that listen on UDP and TCP 53, and the zone holds www', () => {
+    const [before, after] = [solvedWorld(INCIDENTS, '02-09'), startWorld(INCIDENTS, ASKING)];
+    expect(after.actors.map(({ id }) => id)).toEqual([...before.actors.map(({ id }) => id), SERVER.resolver.id, SERVER.authoritative.id]);
+    const [authoritative, resolver] = [SERVER.authoritative.id, SERVER.resolver.id].map((id) => after.actors.find((actor) => actor.id === id));
+    const listening = [{ protocol: 'udp', port: PORT.dns, listen: 'all' }, { protocol: 'tcp', port: PORT.dns, listen: 'all' }];
+    expect(authoritative).toMatchObject({ kind: 'server', ip: IP.authoritative, services: listening, dns: { role: 'authoritative' } });
+    expect(resolver).toMatchObject({ kind: 'server', ip: IP.resolver, services: listening, dns: { role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }] } });
+    const records = authoritative && 'dns' in authoritative ? authoritative.dns?.zones?.flatMap((zone) => zone.records.filter((record) => record.type === 'A')) : [];
+    expect(records).toEqual([{ name: HOSTNAME.www, type: 'A', value: IP.server, ttl: 300 }]);
+    const destination = after.routers?.find((router) => router.id === ROUTER.destination.id);
+    expect(destination?.interfaces).toEqual([
+      ...(before.routers?.find((router) => router.id === ROUTER.destination.id)?.interfaces ?? []),
+      { ip: IP.destinationResolver, faces: SERVER.resolver.id },
+      { ip: IP.destinationAuthoritative, faces: SERVER.authoritative.id },
+    ]);
+    expect(NAME_SERVERS.map(({ type }) => type)).toEqual(['addActor', 'addActor', 'updateRouter', 'setDnsServer']);
+    const [dig, ping] = digThenPing.sent;
+    expect([dig, ping].map(({ trace }) => trace.steps.some((step) => step.at === ROUTER.destination.id))).toEqual([true, true]);
+    expect(wholeWorld(after)).toEqual(expect.arrayContaining([SERVER.resolver.id, SERVER.authoritative.id]));
+  });
+
+  it('02-10: draws the resolver and not the authoritative server', () => {
+    expect(drawnLabels(start)).toEqual([`device:${DEVICE.you.name}`, `device:${SERVER.resolver.name}`, `device:${SERVER.internet.name}`, `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'].sort());
+    expect(start.incident.shown).not.toContain(SERVER.authoritative.id);
+    expect(wholeWorld(startWorld(INCIDENTS, ASKING))).toContain(SERVER.authoritative.id);
+    expect(NAMES_PIECES.filter((id) => !wholeWorld(startWorld(INCIDENTS, ASKING)).includes(id))).toEqual([]);
+    expect(everythingRead(digThenPing).filter((text) => text.includes(SERVER.authoritative.name))).toEqual([]);
+  });
+
+  it('02-10: every address of the chapter is in a documentation block and every name is under .example', () => {
+    const world = startWorld(INCIDENTS, ASKING);
+    const zones = world.actors.flatMap((actor) => (actor.kind === 'server' ? (actor.dns?.zones ?? []) : []));
+    const records = zones.flatMap((zone) => zone.records);
+    const chipAddresses = start.incident.mechanic === 'send' ? start.incident.send.to.map(({ address }) => address) : [];
+    const addresses = [
+      ...world.actors.map(({ ip }) => ip),
+      ...(world.routers ?? []).flatMap((router) => router.interfaces.map(({ ip }) => ip)),
+      ...world.devices.flatMap((device) => [device.privateIp, device.dnsServer ?? device.privateIp]),
+      ...records.flatMap((record) => (record.type === 'A' ? [record.value] : [])),
+      ...chipAddresses.filter((address) => /^[\d.]+$/.test(address)),
+    ];
+    expect(addresses).toContain(IP.resolver);
+    expect(publicOutsideDocumentation(addresses)).toEqual([]);
+    const names = [...zones.map(({ name }) => name), ...records.map(({ name }) => name), ...chipAddresses.filter((address) => /[a-z]/i.test(address))];
+    expect(names).toContain(HOSTNAME.www);
+    expect(outsideDocumentationTld(names)).toEqual([]);
+    expect(plain(start.incident.takeaway)).toContain(`Los nombres de este juego, como ${HOSTNAME.www}, son ficticios: ninguno existe en el DNS real.`);
+  });
+
+  it('02-10: introduces domain name, DNS, DNS query, resolver, UDP, dig and DHCP, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[ASKING]));
+    expect(sorted(introduces)).toEqual(sorted(['domain-name', 'dns', 'dns-query', 'resolver', 'udp', 'dig', 'dhcp']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, ASKING))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+    expect(laterTermLeaks(builtOfChapter2().filter((incident) => orderOf(incident.id) < orderOf(ASKING)))).toEqual([]);
+    const chapterOneAndTwoBefore = INCIDENTS.filter((incident) => incident.id < ASKING).flatMap(incidentTexts).map(plain);
+    expect(chapterOneAndTwoBefore.filter((text) => /\b(?:UDP|DNS|dig)\b/.test(text))).toEqual([]);
+  });
+
+  it('02-10: ping by name draws the question to the resolver first, with its own source port, and the ping after it', () => {
+    const [question, ping] = drawnSends(pinged.sent);
+    expect(ping.id).toBe(lastRun(pinged).id);
+    expect(question.id).toBe(`${ping.id}-question`);
+    expect(ping.after).toBe(question.id);
+    expect(question.after).toBeUndefined();
+    expect(question.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.resolver, sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(question.trace.translation?.outside).toMatchObject({ ip: IP.officeUplink, port: FIRST_PUBLIC_PORT });
+    expect([question.replied, question.by, question.trace.dns?.viaDig]).toEqual([true, [SERVER.resolver.id], true]);
+    expect(ping.trace.header?.request.sourcePort).toBeUndefined();
+    expect(ping.trace.question?.packet).toMatchObject({ protocol: 'udp', port: PORT.dns, sourcePort: FIRST_PORT });
+    expect(question.trace.question).toBeUndefined();
+    expect([ping.send, question.send]).toEqual([1, 1]);
+    expect(portsOf(digThenPing)).toEqual([FIRST_PORT, SECOND_PORT, undefined]);
+    expect(portsOf(pingThenDig)).toEqual([FIRST_PORT, undefined, SECOND_PORT]);
+    expect(drawnSends(digThenPing.sent).map(({ trace }) => trace.translation?.outside.port)).toEqual([FIRST_PUBLIC_PORT, SECOND_PUBLIC_PORT, undefined]);
+    expect(drawnSends(pingThenDig.sent).map(({ trace }) => trace.translation?.outside.port)).toEqual([FIRST_PUBLIC_PORT, undefined, SECOND_PUBLIC_PORT]);
+  });
+
+  it('02-10: the question of a ping leaves a row in the translation table and the ping leaves none', () => {
+    expect(tableOf(start)).toEqual([FIXED_ROW]);
+    expect(tableOf(pinged)).toEqual([FIXED_ROW, FIRST_ROW]);
+    expect(lastRun(pinged).trace.translation).toMatchObject({ protocol: 'icmp', isNew: false });
+    expect(tableOf(askWith(pinged, MESSAGE.ping.id))).toEqual([FIXED_ROW, FIRST_ROW, SECOND_ROW]);
+    expect(tableOf(digged)).toEqual([FIXED_ROW, FIRST_ROW]);
+    expect(tableOf(pingThenDig)).toEqual([FIXED_ROW, FIRST_ROW, SECOND_ROW]);
+    expect(lastBox(pinged)[TRANSLATION]).toEqual([`${IP.you} → ${IP.officeUplink}`, ICMP_HAS_NO_PORTS]);
+  });
+
+  it('02-10: the takeaway says that each question takes a new source port and leaves a row, and that the ping leaves none', () => {
+    const takeaway = plain(start.incident.takeaway);
+    expect(takeaway).toContain('Un ping a un nombre manda primero su consulta DNS y, cuando la respuesta vuelve, sale el ping.');
+    expect(takeaway).toContain('En este juego, cada consulta, la de un ping y la de un dig, sale de un puerto de origen nuevo: por eso la segunda no repite el de la primera.');
+    expect(takeaway).toContain(`Como el resolver está fuera de la oficina, ${ROUTER.office.name} la traduce y deja una fila en la tabla de traducciones.`);
+    expect(takeaway).toContain('El ping en sí no deja fila: ICMP no usa puertos, y en esta tabla cada fila lleva uno.');
+    expect(portsOf(pingThenDig).filter((port) => port !== undefined)).toEqual([FIRST_PORT, SECOND_PORT]);
+  });
+
+  it('02-10: the ping after a dig gets its answer from the cache of the resolver and still sends its question', () => {
+    const [dig, ping] = digThenPing.sent;
+    expect(dig.trace.dns?.fromCache).toBe(false);
+    expect(ping.question?.trace.dns).toMatchObject({ fromCache: true, status: 'NOERROR', viaDig: true });
+    expect(ping.question?.trace.header?.request).toMatchObject({ sourcePort: SECOND_PORT, destinationPort: PORT.dns });
+    expect(ping.question?.trace.translation?.outside).toMatchObject({ port: SECOND_PUBLIC_PORT });
+    expect(ping.trace.outcome).toBe('replied');
+    expect(pinged.sent[0].question?.trace.dns?.fromCache).toBe(false);
+    expect(everythingRead(digThenPing).filter((text) => /caché|cache/i.test(text))).toEqual([]);
+  });
+
+  it('02-10: the incident draws the resolver, so the question has somewhere to go', () => {
+    const world = startWorld(INCIDENTS, ASKING);
+    const resolver = world.actors.find((actor) => actor.ip === world.devices.find((device) => device.id === DEVICE.you.id)?.dnsServer);
+    expect(resolver?.id).toBe(SERVER.resolver.id);
+    expect(start.incident.shown).toContain(resolver?.id);
+    expect(drawnLabels(pingThenDig)).toContain(`device:${SERVER.resolver.name}`);
+    for (const session of [digged, pinged, digThenPing, pingThenDig]) {
+      for (const sent of drawnSends(session.sent)) expect(sent.by.every((id) => start.incident.shown?.includes(id))).toBe(true);
+    }
+    expect(drawnSends(pinged.sent)[0].trace.destinationId).toBe(SERVER.resolver.id);
+  });
+
+  it('02-10: no text says the computer asks only once', () => {
+    expect(['La computadora pregunta una sola vez.', 'Solo una consulta sale de tu laptop.', 'Pregunta solo una vez al resolver.', 'Es la única pregunta.'].filter((text) => !ASKS_ONLY_ONCE.test(text))).toEqual([]);
+    for (const session of [start, digged, pinged, digThenPing, pingThenDig]) expect(everythingRead(session).filter((text) => ASKS_ONLY_ONCE.test(text))).toEqual([]);
+    expect(incidentTexts(start.incident).map(plain).filter((text) => ASKS_ONLY_ONCE.test(text))).toEqual([]);
+  });
+
+  it('02-10: the right option is the second and is not the longest of the three', () => {
+    expectRightOptionAt(start.incident, 1);
   });
 });

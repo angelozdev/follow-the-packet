@@ -1,9 +1,10 @@
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, type Lan, type NetworkAction, type Service } from '@/engine';
+import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type Lan, type NetworkAction, type Service } from '@/engine';
 import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WhatChip } from '@/levels/contract/incident';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
+  DESTINATION_INTERFACES,
   FLOOR as CHAPTER_1_FLOOR,
   FLOW as CHAPTER_1_FLOW,
   FROM as CHAPTER_1_FROM,
@@ -16,6 +17,7 @@ import {
   ORIGIN as CHAPTER_1_ORIGIN,
   ROUTER as CHAPTER_1_ROUTER,
   SERVER as CHAPTER_1_SERVER,
+  SERVER_MS,
   WHAT as CHAPTER_1_WHAT,
   addressChip,
   backToOffice,
@@ -122,11 +124,12 @@ export const ORIGIN = {
   home: { id: 'home', endpoint: { kind: 'actor', id: CLIENT.home.id } },
 } satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1) and the public IP of router-oficina, which is where a client outside the office writes to (02-09). */
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), and the name of the site, which is the first address that is not an IP (02-10). */
 export const ADDRESS = {
   ...CHAPTER_1_ADDRESS,
   otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop },
   officePublic: { id: 'ip-office-public', address: IP.officeUplink },
+  www: { id: 'name-www', address: HOSTNAME.www },
 } as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
@@ -141,7 +144,8 @@ export const MESSAGE = {
   ncMysql: ncMessage(PORT.mysql),
   ncWeb: ncMessage(PORT.web),
   ncUnmapped: ncMessage(PORT.unmapped),
-} as const;
+  dig: { id: 'dig', label: '{{dig}}', command: 'dig' },
+} as const satisfies Record<string, MessageChip>;
 
 export const TASK = {
   ping: 'ping-to-lucia',
@@ -167,6 +171,8 @@ export const TASK = {
   webFromLucia: 'nc-to-port-80-from-laptop-lucia',
   unsolicited: 'nc-from-outside-to-a-port-with-no-row',
   forwarded: 'nc-from-outside-to-the-forwarded-port',
+  digWww: 'dig-of-the-site-name',
+  pingWww: 'ping-to-the-site-name',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -224,6 +230,12 @@ export function sendTaskFrom(origin: OriginChip, id: string, text: string, messa
 /** Returns the move that sends a message from this terminal to an address, for the reference solution of a send incident. `sendMove` of chapter 1 is this one for your laptop. */
 export function sendMoveFrom(origin: OriginChip, toId: string, messageId: string): SendMove {
   return { type: 'sendPacket', fromId: origin.id, toId, messageId };
+}
+
+/** Returns the task of a send incident that expects what a message sent from this terminal to a name ends in: it comes back, and the answer of the DNS holds this IP. */
+export function answerTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, ip: string): SendTask {
+  const { expect } = sendTaskFrom(origin, id, text, messageId, toId, 'replied');
+  return { id, text, expect: { ...expect, answer: { ip } } };
 }
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */
@@ -294,6 +306,37 @@ export const FORWARDED_APP: NetworkAction[] = [
   { type: 'addActor', actor: { id: CLIENT.home.id, name: CLIENT.home.name, ip: IP.home, kind: 'home' } },
   { type: 'setServices', ownerId: DEVICE.andres.id, services: [APP] },
   { type: 'setForwards', routerId: ROUTER.office.id, forwards: [{ protocol: 'tcp', publicPort: PORT.app, toDeviceId: DEVICE.andres.id, toPort: PORT.app }] },
+];
+
+const DNS_SERVICES: Service[] = [
+  { protocol: 'udp', port: PORT.dns, listen: 'all' },
+  { protocol: 'tcp', port: PORT.dns, listen: 'all' },
+];
+
+/** What 02-10 changes: servidor-dns, the resolver, and servidor-autoritativo, which holds the zone lucia.example, appear in the internet; both listen on UDP and TCP port 53 and the resolver knows which server to ask for the zone. The zone has one address, `www.lucia.example` A 198.51.100.50 (the server of the internet), with the time to live of the game. router-destino gets one interface for each (an update replaces the list, so it restates the two it had), and tu-laptop gets the resolver as its DNS server, the one DHCP lent it. The servers are new pieces, so the text does not have to name them; tu-laptop already existed and its Ajustes de red now show a DNS server, so the report names it. */
+export const NAME_SERVERS: NetworkAction[] = [
+  {
+    type: 'addActor',
+    actor: { id: SERVER.resolver.id, name: SERVER.resolver.name, ip: IP.resolver, kind: 'server', latencyMs: SERVER_MS, services: DNS_SERVICES, dns: { role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }] } },
+  },
+  {
+    type: 'addActor',
+    actor: {
+      id: SERVER.authoritative.id,
+      name: SERVER.authoritative.name,
+      ip: IP.authoritative,
+      kind: 'server',
+      latencyMs: SERVER_MS,
+      services: DNS_SERVICES,
+      dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [{ name: HOSTNAME.www, type: 'A', value: IP.server, ttl: RECORD_TTL }])] },
+    },
+  },
+  {
+    type: 'updateRouter',
+    routerId: ROUTER.destination.id,
+    interfaces: [...DESTINATION_INTERFACES, { ip: IP.destinationResolver, faces: SERVER.resolver.id }, { ip: IP.destinationAuthoritative, faces: SERVER.authoritative.id }],
+  },
+  { type: 'setDnsServer', deviceId: DEVICE.you.id, server: IP.resolver },
 ];
 
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */

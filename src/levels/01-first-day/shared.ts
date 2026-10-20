@@ -10,7 +10,7 @@ const ANY_IPV4 = '0.0.0.0/0';
 export const HOP_MS = 1;
 const PROVIDER_MS = 8;
 const DESTINATION_MS = 12;
-const SERVER_MS = 20;
+export const SERVER_MS = 20;
 const SERVER_RANGE = '198.51.100.0/24';
 const LOCALHOST = 'localhost';
 const SINGLE_ADDRESS = '/32';
@@ -227,6 +227,12 @@ export function backToOffice(next: string): Route {
 /** The routes of the router of the provider while its stretch works: the server range goes on to the router in front of the server, and what is for the office goes back to the office router. */
 const PROVIDER_ROUTES: Route[] = [{ to: SERVER_RANGE, next: ROUTER.destination.id }, backToOffice(ROUTER.office.id)];
 
+/** The two interfaces of the router in front of the server: the one that faces the router of the provider and the one that faces the server of the internet. An update of this router replaces the list, so a block that wires another server to it restates these two first. */
+export const DESTINATION_INTERFACES: Router['interfaces'] = [
+  { ip: IP.destination, faces: ROUTER.provider.id },
+  { ip: IP.destinationServer, faces: SERVER.id },
+];
+
 /** What 01-08 adds to the world: the way out of the office and the internet beyond it, a router of the provider after the office router and one in front of the server, and the server that answers a ping. The office router gets an interface towards the provider, and its only route sends everything outside the office there. The way a packet leaves the office is a black box: nothing here says how its source changes. */
 export const INTERNET: NetworkAction[] = [
   { type: 'addActor', actor: { id: SERVER.id, name: SERVER.name, ip: IP.server, kind: 'server', latencyMs: SERVER_MS } },
@@ -249,10 +255,7 @@ export const INTERNET: NetworkAction[] = [
     router: {
       id: ROUTER.destination.id,
       name: ROUTER.destination.name,
-      interfaces: [
-        { ip: IP.destination, faces: ROUTER.provider.id },
-        { ip: IP.destinationServer, faces: SERVER.id },
-      ],
+      interfaces: DESTINATION_INTERFACES,
       routes: [backToOffice(ROUTER.provider.id)],
       latencyMs: DESTINATION_MS,
       sendsUnreachable: true,
