@@ -3,8 +3,8 @@ import { nameTag } from '@/copy';
 import type { Network } from '@/engine';
 import type { Point } from '@/scene/layout/graph';
 import { OFFICE_FLOORS, lab03Net, officeTwoFloorsNet } from '@/testing';
-import { BLOCK_TAB, BOX_GAP, CAPTION, GROUP_PAD, ICON, ROW_HEIGHT, TRUNK_LEAD, type Box, type Group, type PieceKind, type RowPiece } from './geometry';
-import { floorsOf, shownParts, stackFloors, trunkLane, trunkOf, type BusSpan, type StackSpec } from './groups';
+import { BLOCK_TAB, BOX_GAP, CAPTION, DROP_GAP, GROUP_PAD, ICON, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Box, type Group, type PieceKind, type RowPiece } from './geometry';
+import { channelRanks, channelX, floorsOf, shownParts, stackFloors, trunkLane, trunkLeads, trunkOf, type BusSpan, type StackSpec } from './groups';
 import { classify } from './pieces';
 
 const piece = (kind: PieceKind, anchorId: string, extras: Partial<RowPiece> = {}): RowPiece => ({ id: `${kind}:${anchorId}`, kind, anchorId, label: nameTag(anchorId), locked: false, state: 'normal', ...extras });
@@ -209,9 +209,9 @@ describe('trunkOf', () => {
   const span = (id: string, top: number, bottom: number): BusSpan => ({ id, x: 400, top, bottom });
   const HEAD: Point = [444, 300];
 
-  it('with several floors the trunks run in parallel, 8 px apart, and join at the head', () => {
+  it('with several floors the trunks run in parallel, one pitch apart, and join at the head', () => {
     const lanes = [0, 1].map((index) => trunkLane(index, 2, HEAD[1]));
-    expect(lanes).toEqual([HEAD[1] - 4, HEAD[1] + 4]);
+    expect(lanes).toEqual([HEAD[1] - TRUNK_PITCH / 2, HEAD[1] + TRUNK_PITCH / 2]);
     const above = trunkOf(span('upper', 100, 250), lanes[0], HEAD);
     const below = trunkOf(span('lower', 340, 380), lanes[1], HEAD);
     expect(above.leave).toEqual([400, 250]);
@@ -224,5 +224,35 @@ describe('trunkOf', () => {
     expect(trunkLane(0, 1, HEAD[1])).toBe(HEAD[1]);
     expect(trunkOf(span('only', 200, 400), HEAD[1], HEAD)).toEqual({ leave: [400, 300], bends: [] });
     expect(trunkOf(span('only', 200, 400), HEAD[1] - 4, HEAD)).toEqual({ leave: [400, 296], bends: [[HEAD[0], 296]] });
+  });
+});
+
+describe('the channel of a trunk', () => {
+  const span = (id: string, top: number, bottom: number): BusSpan => ({ id, x: 400, top, bottom });
+
+  it('runs DROP_GAP outside the wall of its floor, and outside any wall that stands in its way', () => {
+    expect(channelX(414, [414, 470])).toBe(414 + DROP_GAP);
+    expect(channelX(414, [414, 428, 470])).toBe(428 + DROP_GAP);
+    expect(channelX(414, [414, 428, 443])).toBe(443 + DROP_GAP);
+  });
+
+  it('is TRUNK_LEAD from the bus for every floor of an office that reaches the router, and one wall farther for an office that does not', () => {
+    const lanes = (center: number) => [0, 1].map((index) => trunkLane(index, 2, center));
+    const reaching = stackOf(BOTH_FLOORS);
+    expect(trunkLeads(reaching.stack, 414, lanes(reaching.stack.center))).toEqual([TRUNK_LEAD, TRUNK_LEAD]);
+    const bare = stackOf(BOTH_FLOORS, { right: 428 });
+    expect(trunkLeads(bare.stack, 414, lanes(bare.stack.center))).toEqual([TRUNK_LEAD + GROUP_PAD, TRUNK_LEAD + GROUP_PAD]);
+  });
+
+  it('is one TRUNK_PITCH farther out for each trunk that turns the same way and has less to travel, so none crosses another', () => {
+    const above = [span('a', 100, 200), span('b', 250, 350), span('c', 400, 500)];
+    expect(channelRanks(above, [684, 700, 716])).toEqual([2, 1, 0]);
+    const below = [span('a', 800, 900), span('b', 950, 1050), span('c', 1100, 1200)];
+    expect(channelRanks(below, [684, 700, 716])).toEqual([0, 1, 2]);
+  });
+
+  it('is the first for a trunk that leaves along its lane, and trunks that turn opposite ways share the first', () => {
+    expect(channelRanks([span('a', 100, 200), span('b', 250, 750), span('c', 800, 900)], [684, 700, 716])).toEqual([0, 0, 0]);
+    expect(channelRanks([span('a', 100, 200), span('b', 800, 900)], [684, 716])).toEqual([0, 0]);
   });
 });

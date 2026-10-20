@@ -30,6 +30,7 @@ import {
   STOP_LABEL_RISE,
   STOP_PITCH,
   STUB,
+  TRUNK_PITCH,
   fanBox,
   type Box,
   type Density,
@@ -38,7 +39,7 @@ import {
   type RowPiece,
   type TabRoom,
 } from './geometry';
-import { floorsOf, isNested, outerOf, stackFloors, trunkLane, trunkOf, type Floor, type Stack } from './groups';
+import { floorsOf, isNested, outerOf, stackFloors, trunkLane, trunkLeads, trunkOf, type Floor, type Stack } from './groups';
 import { classify, drawnOf, labelOf, type Classified } from './pieces';
 
 export interface Frame {
@@ -249,12 +250,12 @@ export function surveyOf(world: Network, pieces: readonly RowPiece[]): Survey {
   return { found, drawn: drawnOf(world, found), floors, branches, mainFloors: floors.filter((floor) => !branches.some((branch) => branch.floors.includes(floor))) };
 }
 
-function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, branch: Branch, stack: Stack, gateway: { x: number; y: number; headX: number; first: string; firstY: number }) {
+function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, branch: Branch, stack: Stack, gateway: { x: number; y: number; headX: number; first: string; firstY: number }, leads: readonly number[]) {
   const id = branch.gateway.id;
   const head: Head = { name: headOf(id), point: [gateway.headX, gateway.y] };
   branch.floors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, stack);
-    placeBus(draft, frame, floor, stack, trunkLane(index, branch.floors.length, gateway.y), head);
+    placeBus(draft, frame, floor, stack, trunkLane(index, branch.floors.length, gateway.y), head, leads[index]);
   });
   place(draft, pieceFor(pieces, 'edge', id), box(gateway.x - ICON / 2, gateway.y - ICON / 2, ICON, ICON), ({ width, height }) => box(gateway.x + ICON / 2 + LABEL_GAP, gateway.y - height / 2, width, height));
   joinGateway(draft, id, head, gateway);
@@ -279,11 +280,21 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
   const settled = stackAt(OUTER);
   const yMain = Math.max(settled.center, OUTER + above);
   const main = stackAt(OUTER + yMain - settled.center);
+  const mainLeads = trunkLeads(main, frame.floorRight, mainFloors.map((_, index) => trunkLane(index, mainFloors.length, yMain)));
+  let top = mainFloors.length > 0 ? main.bottom + BOX_GAP : OUTER;
+  const seated = branches.map((branch) => {
+    const left = frame.innerLeft - (isNested(branch.floors) ? GROUP_PAD : 0);
+    const stack = stackFloors(branch.floors, { top, left, right: stops[0].center, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside, blockTab });
+    const y = branch.floors.length > 0 ? stack.center : top + ROW_HEIGHT / 2;
+    top = (branch.floors.length > 0 ? stack.bottom : top + ROW_HEIGHT) + BOX_GAP;
+    return { branch, stack, y, leads: trunkLeads(stack, frame.floorRight, branch.floors.map((_, index) => trunkLane(index, branch.floors.length, y))) };
+  });
+  const headX = floors.length === 0 ? lineStart : Math.max(lineStart, frame.busX + Math.max(...mainLeads, ...seated.flatMap(({ leads }) => leads)) + TRUNK_PITCH / 2);
   const draft: Draft = { roads: [], marks: [], labels: {}, icons: {} };
-  const head: Head = { name: hasLine ? HEAD : LINE_END, point: [lineStart, yMain] };
+  const head: Head = { name: hasLine ? HEAD : LINE_END, point: [headX, yMain] };
   mainFloors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, main);
-    placeBus(draft, frame, floor, main, trunkLane(index, mainFloors.length, yMain), head);
+    placeBus(draft, frame, floor, main, trunkLane(index, mainFloors.length, yMain), head, mainLeads[index]);
   });
   if (stops.length > 0) {
     draft.roads.push({ kind: 'line', via: [named(HEAD, head.point), ...stops.map(({ name, center }) => named(name, [center, yMain])), ...(laneCount > 0 ? [named(SERVERS, [serversX, yMain])] : [])] });
@@ -297,14 +308,9 @@ export function layoutRow(world: Network, pieces: readonly RowPiece[], density: 
   const beforeEnd = lastJunction ?? last?.name ?? (mainFloors.length > 0 ? station.bus(mainFloors[0].id) : undefined);
   if (beforeEnd !== undefined) draft.marks.push({ station: LINE_END, facing: beforeEnd, back: 0 });
   const groups: Group[] = [...main.groups];
-  let top = mainFloors.length > 0 ? main.bottom + BOX_GAP : OUTER;
-  for (const branch of branches) {
-    const left = frame.innerLeft - (isNested(branch.floors) ? GROUP_PAD : 0);
-    const stack = stackFloors(branch.floors, { top, left, right: stops[0].center, busX: frame.busX, floorRight: frame.floorRight, outer: outerOf(world), inside, blockTab });
-    const y = branch.floors.length > 0 ? stack.center : top + ROW_HEIGHT / 2;
-    placeBranch(draft, pieces, frame, branch, stack, { x: stops[0].center, y, headX: lineStart, first: station.router(found.routers[0].id), firstY: yMain });
+  for (const { branch, stack, y, leads } of seated) {
+    placeBranch(draft, pieces, frame, branch, stack, { x: stops[0].center, y, headX, first: station.router(found.routers[0].id), firstY: yMain }, leads);
     groups.push(...stack.groups.map((group) => (group.kind === 'block' ? group : { ...group, gateway: branch.gateway.id })));
-    top = (branch.floors.length > 0 ? stack.bottom : top + ROW_HEIGHT) + BOX_GAP;
   }
   const assembled = assemble({ roads: draft.roads, legs: legsOf(drawn), marks: draft.marks, obstacles: [...Object.values(draft.labels), ...Object.values(draft.icons)] });
   const boxes = [...groups.map(({ box: each }) => each), ...Object.values(draft.labels), ...Object.values(draft.icons), ...assembled.marks.map(({ point, axis, casillas }) => fanBox(point, axis, casillas))];

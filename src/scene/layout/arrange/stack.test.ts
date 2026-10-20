@@ -51,7 +51,7 @@ describe('layoutStack', () => {
     expect(lane[1]).toBeGreaterThan(line);
   });
 
-  it('with two floors their trunks run in parallel, 8 px apart, to the router', () => {
+  it('with two floors their trunks run in parallel, one pitch apart, to the router', () => {
     const layout = layoutStack(WORLD, WHOLE_ROAD, 900);
     const [first, second] = [floor1.id, floor2.id].map((floor) => wayOf(layout, station.bus(floor), 'join:head'));
     const drop = (way: Point[]) => Math.max(...way.map(([x]) => x));

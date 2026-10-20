@@ -1,5 +1,6 @@
 import type { Network } from '@/engine';
 import type { Point } from '@/scene/layout/graph';
+import { captionWidth } from '@/scene/layout/captions';
 import { LINE_END, station } from '@/scene/layout/stations';
 import { assemble, type Waypoint } from './assemble';
 import {
@@ -7,7 +8,6 @@ import {
   BLOCK_BUS_GAP,
   BLOCK_INSET_Y,
   BOX_GAP,
-  DROP_GAP,
   FAN_CLEARANCE,
   FAN_HALF,
   FIREWALL_MARK_AT,
@@ -33,16 +33,16 @@ import {
   STOP_LABEL_RISE,
   STOP_PITCH,
   STUB,
-  TRUNK_LEAD,
   TRUNK_PITCH,
   fanBox,
   type Box,
+  type NamePart,
   type RowExtent,
   type RowLayout,
   type RowPiece,
   type TabRoom,
 } from './geometry';
-import { isNested, outerOf, stackFloors, trunkLane, type Floor, type Stack, type StackSpec } from './groups';
+import { channelX, isNested, outerOf, stackFloors, trunkLane, type Floor, type Stack, type StackSpec } from './groups';
 import { labelOf, type Classified } from './pieces';
 import {
   HEAD,
@@ -67,6 +67,10 @@ import {
   type Frame,
   type Head,
 } from './row';
+
+interface SnakeFrame extends Frame {
+  dropBase: number;
+}
 
 interface Run {
   y: number;
@@ -121,16 +125,18 @@ const rowExtentOf =
     return { above: NAME_ABOVE + 2 * BLOCK_INSET_Y, below: STOP_LABEL_RISE + (firewall ? labelOf(firewall).height + FAN_CLEARANCE : 0) };
   };
 
-function frameOf(pieces: readonly RowPiece[], found: Classified, available: number, nested: boolean, trunks: number): Frame & { dropBase: number } {
+function frameOf(pieces: readonly RowPiece[], found: Classified, available: number, nested: boolean, trunks: number, names: readonly (readonly NamePart[])[]): SnakeFrame {
   const widest = (kind: RowPiece['kind']) => Math.max(0, ...found.devices.map(({ id }) => widthOf(pieceFor(pieces, kind, id))));
   const firewalls = widest('firewall');
   const link = Math.max(LINK_MIN, widest('device') - ICON + BLOCK_BUS_GAP, firewalls > 0 ? Math.max(FIREWALL_MARK_AT + MARK_SPACING, firewalls + BLOCK_BUS_GAP) : 0);
   const innerLeft = OUTER + (nested ? GROUP_PAD : 0);
   const iconLeft = innerLeft + GROUP_PAD;
   const doorX = iconLeft + ICON;
-  const edge = (nested ? 2 : 1) * GROUP_PAD;
-  const busX = Math.max(available - FAN_HALF - TRUNK_PITCH * Math.max(0, trunks - 1) - DROP_GAP - edge, doorX + link);
-  return { innerLeft, iconLeft, doorX, busX, floorRight: busX + GROUP_PAD, dropBase: busX + edge + DROP_GAP };
+  const lead = channelX(GROUP_PAD, [(nested ? 2 : 1) * GROUP_PAD]);
+  const [outerName, ...floorNames] = names;
+  const nameRoom = Math.max(...floorNames.map((name) => innerLeft + captionWidth(name)), nested ? innerLeft - 2 * GROUP_PAD + captionWidth(outerName) : 0);
+  const busX = Math.max(available - FAN_HALF - TRUNK_PITCH * Math.max(0, trunks - 1) - lead, doorX + link, nameRoom);
+  return { innerLeft, iconLeft, doorX, busX, floorRight: busX + GROUP_PAD, dropBase: busX + lead };
 }
 
 function runsOf(y0: number, xHead: number, available: number): Run[] {
@@ -213,13 +219,14 @@ function placeStops(draft: Draft, stops: readonly Placed[], from: string) {
   });
 }
 
-function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: Frame, branch: Branch, stack: Stack, gateway: { x: number; y: number; first: string; firstY: number }) {
+function placeBranch(draft: Draft, pieces: readonly RowPiece[], frame: SnakeFrame, branch: Branch, stack: Stack, gateway: { x: number; y: number; first: string; firstY: number }) {
   const id = branch.gateway.id;
   const count = branch.floors.length;
-  const head: Head = { name: headOf(id), point: [frame.busX + TRUNK_LEAD - (count > 1 ? TRUNK_PITCH : 0), gateway.y] };
+  const lead = frame.dropBase - frame.busX;
+  const head: Head = { name: headOf(id), point: [frame.busX + lead - (count > 1 ? TRUNK_PITCH : 0), gateway.y] };
   branch.floors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, stack, SNAKE_LABELS);
-    placeBus(draft, frame, floor, stack, trunkLane(count - 1 - index, count, gateway.y), head, TRUNK_LEAD + TRUNK_PITCH * (count - 1 - index));
+    placeBus(draft, frame, floor, stack, trunkLane(count - 1 - index, count, gateway.y), head, lead + TRUNK_PITCH * (count - 1 - index));
   });
   place(draft, pieceFor(pieces, 'edge', id), box(gateway.x - ICON / 2, gateway.y - ICON / 2, ICON, ICON), ({ width, height }) => box(gateway.x - ICON / 2 - LABEL_GAP - width, gateway.y - height / 2, width, height));
   joinGateway(draft, id, head, gateway);
@@ -250,12 +257,13 @@ function officeOf(mainFloors: readonly Floor[], branches: readonly Branch[], spe
   return { main, branches: placedBranches };
 }
 
-function firstBehindOf({ branches }: Office, frame: Frame, xHead: number, hasFloors: boolean): number {
+function firstBehindOf({ branches }: Office, frame: SnakeFrame, xHead: number, hasFloors: boolean): number {
   const clearOfGateway = ICON / 2 + STAMP / 2;
+  const lead = frame.dropBase - frame.busX;
   const reach = branches.flatMap(({ branch, stack, y }) => {
-    const headX = frame.busX + TRUNK_LEAD - (branch.floors.length > 1 ? TRUNK_PITCH : 0);
+    const headX = frame.busX + lead - (branch.floors.length > 1 ? TRUNK_PITCH : 0);
     return stack.buses.map((bus, index) => {
-      const trunk = TRUNK_LEAD + TRUNK_PITCH * (branch.floors.length - 1 - index) + y - bus.bottom;
+      const trunk = lead + TRUNK_PITCH * (branch.floors.length - 1 - index) + y - bus.bottom;
       return xHead - headX + Math.max(2 * clearOfGateway + LINE_PITCH - trunk, trunk + 2 * MID_CLEAR - LINE_PITCH);
     });
   });
@@ -278,7 +286,8 @@ function waypointsOf(runs: readonly Run[], list: readonly Placed[], from: number
 function build(world: Network, pieces: readonly RowPiece[], available: number, { blockTab }: TabRoom): RowLayout {
   const { found, drawn, branches, mainFloors } = surveyOf(world, pieces);
   const nested = isNested(mainFloors) || branches.some((branch) => isNested(branch.floors));
-  const frame = frameOf(pieces, found, available, nested, mainFloors.length);
+  const inner = Math.max(0, ...branches.map(({ floors }) => floors.length));
+  const frame = frameOf(pieces, found, available, nested, mainFloors.length + inner, [outerOf(world).name, ...[...mainFloors, ...branches.flatMap(({ floors }) => floors)].map(({ name }) => name)]);
   const inside = new Set(pieces.filter(({ kind, insideBlock }) => kind === 'device' && insideBlock).map(({ anchorId }) => anchorId));
   const specFor = (group: readonly Floor[], top: number): StackSpec => ({
     top,
@@ -294,11 +303,12 @@ function build(world: Network, pieces: readonly RowPiece[], available: number, {
   const office = officeOf(mainFloors, branches, specFor);
   const laneCount = found.servers.length + found.clients.length;
   const hasLine = found.edge || found.routers.length > 0 || found.internet || laneCount > 0;
-  const xHead = mainFloors.length > 0 ? frame.dropBase - (mainFloors.length > 1 ? TRUNK_PITCH : 0) : available - OUTER;
+  const mainLead = frame.dropBase + TRUNK_PITCH * inner - frame.busX;
+  const xHead = mainFloors.length > 0 ? frame.busX + mainLead - (mainFloors.length > 1 ? TRUNK_PITCH : 0) : available - OUTER;
   const lanes = lanesOf(pieces, found);
   const items = itemsOf(world, pieces, found, lanes, available, firstBehindOf(office, frame, xHead, mainFloors.length > 0));
   const firstStop = placeItems(items, runsOf(0, xHead, available), available)[0]?.s ?? 0;
-  const yLine = lineHeightOf(office, frame.dropBase - frame.busX, mainFloors.length, firstStop);
+  const yLine = lineHeightOf(office, mainLead, mainFloors.length, firstStop);
   const runs = runsOf(yLine, xHead, available);
   const placed = placeItems(items, runs, available);
   const stops = placed.filter(({ item }) => item.name !== SERVERS && item.name !== LINE_END);
@@ -306,7 +316,7 @@ function build(world: Network, pieces: readonly RowPiece[], available: number, {
   const head: Head = { name: hasLine ? HEAD : LINE_END, point: [xHead, yLine] };
   mainFloors.forEach((floor, index) => {
     placeDevices(draft, pieces, frame, floor, office.main, SNAKE_LABELS);
-    placeBus(draft, frame, floor, office.main, trunkLane(mainFloors.length - 1 - index, mainFloors.length, yLine), head, frame.dropBase + TRUNK_PITCH * (mainFloors.length - 1 - index) - frame.busX);
+    placeBus(draft, frame, floor, office.main, trunkLane(mainFloors.length - 1 - index, mainFloors.length, yLine), head, mainLead + TRUNK_PITCH * (mainFloors.length - 1 - index));
   });
   const lineEnd = placed.find(({ item }) => item.name === LINE_END);
   const servers = placed.find(({ item }) => item.name === SERVERS);

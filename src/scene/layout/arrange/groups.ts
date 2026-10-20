@@ -1,7 +1,7 @@
 import { MAP_TEXT, type TermId } from '@/copy';
 import type { Device, Network } from '@/engine';
 import type { Point } from '@/scene/layout/graph';
-import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BLOCK_TAB, BOX_GAP, CAPTION, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart, type RowExtent, type TabRoom } from './geometry';
+import { BLOCK_BUS_GAP, BLOCK_INSET_X, BLOCK_INSET_Y, BLOCK_TAB, BOX_GAP, CAPTION, DROP_GAP, GROUP_PAD, ROW_HEIGHT, TRUNK_LEAD, TRUNK_PITCH, type Group, type GroupKind, type NamePart, type RowExtent, type TabRoom } from './geometry';
 import { busOf } from './pieces';
 
 export interface Floor {
@@ -154,7 +154,7 @@ export function stackFloors(floors: readonly Floor[], spec: StackSpec): Stack {
   };
 }
 
-/** Takes the place of a trunk among `count` trunks that run side by side to the same head, and the height of the main line; returns the height of its lane: the lanes are 8 px apart and centered on the line. */
+/** Takes the place of a trunk among `count` trunks that run side by side to the same head, and the height of the main line; returns the height of its lane: the lanes are `TRUNK_PITCH` apart (12 px of room between two cables) and centered on the line. */
 export function trunkLane(index: number, count: number, yMain: number): number {
   return yMain + (index - (count - 1) / 2) * TRUNK_PITCH;
 }
@@ -169,4 +169,22 @@ export function trunkOf(span: BusSpan, lane: number, head: Point, lead: number =
   const turns: Point[] = leave[1] === lane ? [] : [[span.x + lead, leave[1]], [span.x + lead, lane]];
   const bends = [...turns, [head[0], lane] as Point].filter((bend, index, all) => !isSame(bend, index === 0 ? leave : all[index - 1]) && !isSame(bend, head));
   return { leave, bends };
+}
+
+/** Takes the x of the right wall of a floor and the x of the right edge of every box around the floors; returns the x of the first channel a trunk can run in: `DROP_GAP` outside the wall of the floor, and again `DROP_GAP` outside any wall that stands in its way (the box of an office or a VPC with no router on its border). Every channel keeps 12 px of room, edge to edge, from the walls it runs beside. */
+export function channelX(floorRight: number, walls: readonly number[]): number {
+  return [...walls].sort((a, b) => a - b).reduce((channel, wall) => (Math.abs(wall - channel) < DROP_GAP ? wall + DROP_GAP : channel), floorRight + DROP_GAP);
+}
+
+/** Takes the span of the bus of each floor and the height of the lane its trunk runs in; returns which channel each trunk runs in, counted outward from the first (0): a trunk that has to turn to reach its lane runs next to the trunks that turn the same way and have less to travel, so none crosses another (the farther from the line, the farther out). A trunk that leaves along its lane does not turn and gets 0. */
+export function channelRanks(spans: readonly BusSpan[], lanes: readonly number[]): number[] {
+  const reach = spans.map(({ top, bottom }, index) => lanes[index] - Math.min(Math.max(lanes[index], top), bottom));
+  return reach.map((own) => (own === 0 ? 0 : reach.filter((other) => Math.sign(other) === Math.sign(own) && Math.abs(other) < Math.abs(own)).length));
+}
+
+/** Takes the stack of a group of floors, the x of the wall of its floors and the height of the lane of each trunk; returns, for each floor, how far from its bus its trunk first runs: its channel (`channelX` over the boxes of the group) plus `TRUNK_PITCH` for each channel before it. */
+export function trunkLeads(stack: Stack, floorRight: number, lanes: readonly number[]): number[] {
+  const channel = channelX(floorRight, stack.groups.map(({ box }) => box.x + box.width));
+  const ranks = channelRanks(stack.buses, lanes);
+  return stack.buses.map(({ x }, index) => channel - x + TRUNK_PITCH * ranks[index]);
 }

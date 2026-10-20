@@ -184,7 +184,7 @@ El modo sale de lo que cabe, no de un ancho fijo. Se prueba la fila con su densi
 ### La fila
 
 - Los pisos se apilan en la caja de la oficina. Cada equipo es una fila de 100 px de alto, con su firewall, su etiqueta y la reserva de su abanico. Los equipos sin cable van fuera de las cajas, a la derecha de la última.
-- El bus de cada piso sale al router por un tronco. Con varios pisos, los troncos corren en paralelo, 8 px entre sí, y se juntan en el router.
+- El bus de cada piso sale al router por un tronco. Con varios pisos, los troncos corren en paralelo, 16 px entre centros (12 px de aire de borde a borde, con el trazo de 4 px; cambiado en M24 bis, antes 8 px entre sí), y se juntan en el router. El tronco de un piso cruza el muro de su piso y corre por un canal fuera del muro más externo de su grupo, a 12 px de borde a borde del muro (cambiado en M24 bis: antes corría entre el bus y el muro, a 3 px); el bus se queda a 11 px del muro de su propio piso.
 - Router, globo y bus de los servidores van sobre la línea principal; los servidores y los clientes son carriles de 100 px de alto, centrados en ella.
 - El mapa de una gateway de otra oficina (el router de la sucursal del 02-07) se pone como un segundo grupo bajo la oficina, con su propio bus, unido por el enlace privado. No está prototipado ni medido.
 - Si hay más filas que alto de ventana, el mapa se desplaza hacia abajo dentro de su caja. Hoy el mayor piso tiene 5 equipos. Un piso de 8 equipos mide 878 px de alto en el prototipo.

@@ -34,8 +34,8 @@ export interface Density {
   lane: number;
 }
 
-export const NORMAL: Density = { trunk: 44, lane: 66 };
-export const COMPACT: Density = { trunk: 32, lane: 52 };
+export const NORMAL: Density = { trunk: 56, lane: 66 };
+export const COMPACT: Density = { trunk: 48, lane: 52 };
 
 export type GroupKind = 'office' | 'floor' | 'vpc' | 'subnet' | 'block';
 
@@ -112,8 +112,10 @@ export const FAN_CLEARANCE = 4;
 export const LABEL_SEP = 8;
 export const STUB = MARK_SPACING;
 export const DOORSTEP = MARK_BACK + MARK_SPACING;
-export const TRUNK_PITCH = 8;
-export const TRUNK_LEAD = 8;
+export const CABLE_STROKE = 4;
+export const WALL_STROKE = 2;
+export const CABLE_CLEARANCE = 12;
+export const TRUNK_PITCH = CABLE_CLEARANCE + CABLE_STROKE;
 export const BLOCK_INSET_X = 6;
 export const BLOCK_INSET_Y = 2;
 export const BLOCK_TAB = 18;
@@ -134,7 +136,8 @@ export const FAN_HALF = (STAMP + FAN_PITCH * (CASILLAS - 1)) / 2;
 export const STOP_LABEL_RISE = FAN_HALF + FAN_CLEARANCE;
 export const LINE_PITCH = STOP_LABEL_RISE + LABEL_HEIGHT + FAN_HALF + FAN_CLEARANCE;
 export const NAME_ABOVE = STOP_LABEL_RISE + LABEL_HEIGHT;
-export const DROP_GAP = 6;
+export const DROP_GAP = CABLE_CLEARANCE + (CABLE_STROKE + WALL_STROKE) / 2;
+export const TRUNK_LEAD = GROUP_PAD + DROP_GAP;
 export const GATEWAY_DROP = BOX_GAP + ICON / 2;
 export const SNAKE_LANE = 44;
 export const SNAKE_BUS_WALL = 24;
