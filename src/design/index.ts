@@ -7,4 +7,4 @@ export { NameTag } from './primitives/name-tag';
 export { Card } from './primitives/panels/card';
 export { Table } from './primitives/panels/table';
 export { Tabs } from './primitives/panels/tabs';
-export { token, tokenPx } from './tokens';
+export { tokenPx } from './tokens';
