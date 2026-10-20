@@ -997,7 +997,7 @@
 **Pasos:**
 - [x] Cambiar el valor por defecto en un commit de una línea.
 - [x] Regrabar las dos capturas con `pnpm exec playwright test entities --update-snapshots=all` y revisar el diff: la de piezas cambia por completo (es otro arte); la de la interfaz solo cambia si el catálogo ganó o perdió una fila.
-- [ ] `pnpm check` completo: pasa sin las 7 pruebas que el spec marca como «se borran», que ya no pasan y se borran en M19 a M23.
+- [x] `pnpm check` completo: pasa sin las 7 pruebas que el spec marca como «se borran», que ya no pasan y se borran en M19 a M23. (sustituido por la lista de rojos conocidos del Cierre de M18, «Rojos que quedan»: 35 rojos fijos, medidos por archivo sobre `5638e01` con el 2D por defecto; la regla del estudiante del 2026-10-19 y «Abiertas» (6) de M17 dejan sin efecto a «esas 7». Esta tarea no corrió `pnpm check` completo: es la puerta del orquestador.)
 
 **Cierre:** `pnpm check` completo con esas 7 como único rojo conocido, anotado en el cuerpo del commit para quien haga `bisect`. **Commits:** `feat(scene): make the 2D map the one the game draws` y `test(e2e): record the captures of the 2D catalog`.
 

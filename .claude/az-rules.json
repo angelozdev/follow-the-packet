@@ -83,7 +83,7 @@
       "origin": "core/no-magic-strings",
       "version": 1,
       "notes": [
-        "constants: chapter shared.ts once levels exist, design tokens in src/design/tokens.css (read by src/scene/theme.ts), src/storage/progress.ts (PROGRESS_KEY, MAX_STARS), src/copy/"
+        "constants: chapter shared.ts once levels exist, design tokens in src/design/tokens.css (read by src/styles.css), src/storage/progress.ts (PROGRESS_KEY, MAX_STARS), src/copy/"
       ]
     },
     "no-raw-effects": {
