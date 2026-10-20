@@ -127,25 +127,25 @@ describe('the card anchor', () => {
   });
 
   it('the card keeps its place when the container changes size and the layout changes mode', () => {
-    expect(sceneAt(ROW).layout.mode).not.toBe(sceneAt(PHONE).layout.mode);
-    const view = render(anchorOf(FIREWALL, ROW));
+    expect(sceneAt(STACK).layout.mode).not.toBe(sceneAt(ROW).layout.mode);
+    const view = render(anchorOf(FIREWALL, STACK));
     const holder = holderOf(view.container);
     const inside = view.getByRole('button');
     const placeOf = () => [Number.parseFloat(holder.style.left), Number.parseFloat(holder.style.top)];
     expect(holder).toHaveClass('map-card--right');
-    expect(placeOf()).toEqual(iconCenter(FIREWALL, ROW));
+    expect(placeOf()).toEqual(iconCenter(FIREWALL, STACK));
 
-    view.rerender(anchorOf(FIREWALL, PHONE));
+    view.rerender(anchorOf(FIREWALL, ROW));
     expect(holderOf(view.container)).toBe(holder);
     expect(view.getByRole('button')).toBe(inside);
     expect(holder).toHaveClass('map-card--dock');
     expect(holder).not.toHaveClass('map-card--right');
-    expect(placeOf()).toEqual(iconCenter(FIREWALL, PHONE));
+    expect(placeOf()).toEqual(iconCenter(FIREWALL, ROW));
 
-    view.rerender(anchorOf(FIREWALL, ROW));
+    view.rerender(anchorOf(FIREWALL, STACK));
     expect(holderOf(view.container)).toBe(holder);
     expect(holder).toHaveClass('map-card--right');
-    expect(placeOf()).toEqual(iconCenter(FIREWALL, ROW));
+    expect(placeOf()).toEqual(iconCenter(FIREWALL, STACK));
   });
 
   it('is the element the inspection box watches, with the width and the room the stylesheet reads', () => {

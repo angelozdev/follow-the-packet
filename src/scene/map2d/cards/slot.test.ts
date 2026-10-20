@@ -3,7 +3,7 @@ import { officeTwoFloorsNet } from '@/testing/fixtures';
 import { FLOORS_LABEL_PIECES } from '@/testing/map-pieces';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
 import type { Point } from '@/scene/map2d/layout/graph';
-import { CARD_WIDTH, LABEL_REACH, ROOM_UNDER_THE_DRAWING, TITLE_BAR, cardPlacement, dockOffset, sideHeight, type CardPlacement } from './placement';
+import { CARD_WIDTH, LABEL_REACH, ROOM_UNDER_THE_DRAWING, TITLE_BAR, cardPlacement, cardSpan, dockOffset, sideHeight, type CardPlacement } from './placement';
 import { cardSlot } from './slot';
 
 const WORLD = officeTwoFloorsNet();
@@ -45,6 +45,29 @@ describe('where a card sits in the layer', () => {
     expect((placement.anchor[0] + shift[0]) * 2).toBeLessThan(layer.width);
     expect((placement.anchor[0] + shift[0]) * 2).toBeGreaterThan(drawing);
     expect(cardSlot(placement, shift, layer, TALL_WINDOW).position).toBe('right');
+  });
+
+  it('docks a card that picks its side by the screen when that side is not clear of a label, and never takes the other side', () => {
+    const layer = { width: 1400, height: 900 };
+    const shift: Point = [0, TITLE_BAR];
+    const blocked: CardPlacement = { anchor: [450, 100], gap: 110, avoid: [700], pieces: [], screenPicksSide: true };
+    const free: CardPlacement = { ...blocked, avoid: [] };
+    const terminal: CardPlacement = { anchor: [450, 100], gap: 70, avoid: [700], pieces: [] };
+    expect([blocked, free, terminal].map((placement) => cardSlot(placement, shift, layer, TALL_WINDOW).position)).toEqual(['dock', 'right', 'left']);
+  });
+
+  it('keeps the card of a firewall off the x span of the label of every other piece at every width, docking when no side is clear', () => {
+    let beside = 0;
+    for (const width of [768, 900, 1060, 1280, 1440, 1920]) {
+      const { slot, layout, shift } = slotOf('firewall:your-firewall', width);
+      if (slot.position === 'dock') continue;
+      const [near, far] = cardSpan(slot.position, slot.anchor[0], slot.gap);
+      const others = Object.entries(layout.labels).filter(([id]) => id !== 'firewall:your-firewall');
+      const covered = others.filter(([, { x, width: wide }]) => x + shift[0] < far && near < x + shift[0] + wide).map(([id]) => id);
+      expect(covered, `${width}`).toEqual([]);
+      beside++;
+    }
+    expect(beside).toBeGreaterThan(0);
   });
 
   it('hangs a docked card from the bottom left corner of the layer, whatever the height of the card', () => {

@@ -207,8 +207,10 @@ describe('where a card opens', () => {
     const net = lab03Net();
     const layout = layoutMap(net, piecesOf(net, true), { width: 900 });
     const placement = cardPlacement({ id: 'firewall:servidor2', kind: 'firewall' }, [{ id: 'device:servidor1' }], layout);
-    expect(placement).toMatchObject({ gap: 110, avoid: null });
+    expect(placement).toMatchObject({ gap: 110, screenPicksSide: true });
+    expect(placement.avoid).toEqual(reachPoints(layout.labels['device:servidor1']));
     expect(CARD_WIDTH).toBe(300);
+    expect([terminalSide(450, [700], 1400, 110), terminalSide(450, [700], 1400, 110, false), terminalSide(450, [], 1400, 110, false)]).toEqual(['left', 'dock', 'right']);
   });
 
   it('the card of a firewall docks, like a terminal, when neither side stays inside a map as narrow as a phone', () => {
@@ -272,9 +274,12 @@ describe('the cards of the placement against the boxes of the layout', () => {
     const net = officeTwoFloorsNet();
     const guard = piece('firewall', 'your-laptop');
     const pieces = [...piecesOf(net, true), guard];
-    const placement = cardPlacement(guard, pieces, layoutMap(net, pieces, { width: 1280 }));
+    const layout = layoutMap(net, pieces, { width: 1280 });
+    const placement = cardPlacement(guard, pieces, layout);
     const [near, far] = cardSpan('right', placement.anchor[0], placement.gap);
-    expect(placement.avoid).toBeNull();
+    const others = pieces.filter(({ id }) => id !== guard.id && layout.labels[id] !== undefined && layout.icons[id] !== undefined);
+    expect(others.length).toBeGreaterThan(0);
+    expect(placement.avoid).toEqual(others.flatMap(({ id }) => reachPoints(layout.labels[id])));
     expect([placement.gap, near - placement.anchor[0], far - near]).toEqual([110, 110, CARD_WIDTH]);
   });
 

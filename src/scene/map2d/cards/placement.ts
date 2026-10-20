@@ -25,6 +25,7 @@ export interface CardPlacement {
   gap: number;
   avoid: number[] | null;
   pieces: { x: number; bottom: number }[];
+  screenPicksSide?: true;
 }
 
 interface Reach {
@@ -53,13 +54,14 @@ function reachOf(box: Box): { x: number; bottom: number }[] {
   return reachPoints(box).map((x) => ({ x, bottom: box.y + box.height }));
 }
 
-/** Takes the piece whose card opens, the other pieces of the map and the layout; returns how the card anchors. The card of a firewall keeps its wide gap and takes the side with more room that keeps it inside the map, or docks in the corner when neither does. The terminal of a device or an actor sits closer, just past its icon and the stamp that stands before it, and avoids the labels of every piece, its own included, so it never hides what the player has to read; it docks when it cannot. The gap is measured from the middle of the icon of the piece, and a docked card keeps clear of the pieces and of the fans that may stand beside them. */
+/** Takes the piece whose card opens, the other pieces of the map and the layout; returns how the card anchors. The card of a firewall keeps its wide gap, avoids the labels of the other pieces (its own excluded) and takes the side with more room when that side keeps it inside the map and clear of them (`screenPicksSide`: the screen picks the side, never the labels), or docks in the corner when it does not. The terminal of a device or an actor sits closer, just past its icon and the stamp that stands before it, and avoids the labels of every piece, its own included, so it never hides what the player has to read; it docks when it cannot. The gap is measured from the middle of the icon of the piece, and a docked card keeps clear of the pieces and of the fans that may stand beside them. */
 export function cardPlacement(piece: { id: string; kind: PieceKind }, others: readonly { id: string }[], layout: Pick<RowLayout, 'labels' | 'icons' | 'marks'>): CardPlacement {
   const ids = [piece.id, ...others.map(({ id }) => id)].filter((id) => layout.labels[id] !== undefined && layout.icons[id] !== undefined);
   const anchor = middleOf(layout.icons[piece.id]);
   const pieces = [...ids.flatMap((id) => reachOf(hullOf(layout.labels[id], layout.icons[id]))), ...layout.marks.flatMap(({ point, axis, casillas }) => reachOf(fanBox(point, axis, casillas)))];
-  if (piece.kind === 'firewall') return { anchor, gap: FIREWALL_CARD_GAP, avoid: null, pieces };
-  return { anchor, gap: ORIGIN_CARD_GAP, avoid: ids.flatMap((id) => reachPoints(layout.labels[id])), pieces };
+  const labelsOf = (named: readonly string[]) => named.flatMap((id) => reachPoints(layout.labels[id]));
+  if (piece.kind === 'firewall') return { anchor, gap: FIREWALL_CARD_GAP, avoid: labelsOf(ids.filter((id) => id !== piece.id)), pieces, screenPicksSide: true };
+  return { anchor, gap: ORIGIN_CARD_GAP, avoid: labelsOf(ids), pieces };
 }
 
 /** Returns the horizontal span in pixels, from the map's left edge, that a card covers on a side of its anchor. */
@@ -110,10 +112,10 @@ export function dockRoom(pieces: readonly { x: number; bottom: number }[], map: 
   return atLeastUsable(map.height - DOCK_MARGIN - lowest);
 }
 
-/** Picks where a terminal opens, with every `x` in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each read as `LABEL_REACH` on both sides), else the other side when that one does, else the dock in the bottom left corner. A map too narrow to hold the card keeps the side with more room. */
-export function terminalSide(anchorX: number, avoidXs: readonly number[], room: number, gap: number): CardPosition {
+/** Picks where a terminal opens, with every `x` in pixels from the map's left edge: the side with more room when it keeps the card inside the map and clear of the labels at `avoidXs` (each read as `LABEL_REACH` on both sides), else the other side when that one does (unless `otherSideToo` is false: then only the side with more room is tried), else the dock in the bottom left corner. A map too narrow to hold the card keeps the side with more room. */
+export function terminalSide(anchorX: number, avoidXs: readonly number[], room: number, gap: number, otherSideToo = true): CardPosition {
   const sides: CardSide[] = anchorX * 2 > room ? ['left', 'right'] : ['right', 'left'];
-  const clear = sides.find((side) => opensClear(side, anchorX, avoidXs, room, gap));
+  const clear = sides.slice(0, otherSideToo ? sides.length : 1).find((side) => opensClear(side, anchorX, avoidXs, room, gap));
   if (clear !== undefined) return clear;
   return room >= CARD_WIDTH + 2 * DOCK_MARGIN ? 'dock' : sides[0];
 }
