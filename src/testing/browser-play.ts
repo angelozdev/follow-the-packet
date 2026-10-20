@@ -5,7 +5,7 @@ import { page, userEvent, type Locator } from 'vitest/browser';
 import { SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT } from '@/copy';
 import { isReachable } from './card-boxes';
 
-export const LONGER_THAN_THE_GRACE_MS = 800;
+const LONGER_THAN_THE_GRACE_MS = 800;
 
 export const OFFICE_IP = {
   you: '192.168.1.10',
@@ -103,12 +103,12 @@ export async function drawWithoutAnimations(): Promise<void> {
 }
 
 /** Moves the mouse to the top corner of the window, away from every label, so a hover left by the scene before does not open a box in this one. */
-export async function moveTheMouseAway(): Promise<void> {
+async function moveTheMouseAway(): Promise<void> {
   await userEvent.hover(document.body, { position: MOUSE_AWAY });
 }
 
 /** Resolves after the next frame the browser draws. */
-export function nextFrame(): Promise<void> {
+function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 

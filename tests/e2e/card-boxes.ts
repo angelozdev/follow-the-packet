@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { cardsOutsideTheMap as cardsOutsideTheMapInPage, inspectionBoxOverCards as inspectionBoxOverCardsInPage, isReachable as isReachableInPage } from '@/testing/card-boxes';
+import { cardsOutsideTheMap as cardsOutsideTheMapInPage, isReachable as isReachableInPage } from '@/testing/card-boxes';
 
 const WHEEL_PX = 300;
 const MAX_TURNS = 40;
@@ -12,11 +12,22 @@ export async function cardsOutsideTheMap(page: Page): Promise<string[]> {
 
 /** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the map that it covers. */
 export async function inspectionBoxOverCards(page: Page): Promise<{ shown: boolean; covered: string[] }> {
-  return page.evaluate(inspectionBoxOverCardsInPage);
+  return page.evaluate(() => {
+    const EPSILON = 0.5;
+    const box = document.querySelector('.incident__inspection > .card');
+    if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
+    const taken = box.getBoundingClientRect();
+    const covered = [...document.querySelectorAll('.map-card .card')].flatMap((card) => {
+      const { left, top, right, bottom } = card.getBoundingClientRect();
+      const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
+      return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the map'}`] : [];
+    });
+    return { shown: true, covered };
+  });
 }
 
 /** True when the element lies wholly in the window and is what a click lands on at its middle and at a quarter of its width from each side, so nothing covers it and no ancestor cuts it off. */
-export async function isReachable(page: Page, target: Locator): Promise<boolean> {
+export async function isReachable(target: Locator): Promise<boolean> {
   if ((await target.boundingBox()) === null) return false;
   return target.evaluate(isReachableInPage);
 }
@@ -37,7 +48,7 @@ interface WheelOptions {
 export async function reachWithWheel(page: Page, target: Locator, { within, wheelPx = WHEEL_PX }: WheelOptions = {}): Promise<boolean> {
   const [panel, viewport] = await Promise.all([(within ?? page.locator(SIDE_PANEL)).boundingBox(), page.viewportSize()]);
   if (panel === null || viewport === null) throw new Error('the scroller is not on the page');
-  const readable = async () => (await isReachable(page, target)) && (within === undefined || (await isInside(target, within)));
+  const readable = async () => (await isReachable(target)) && (within === undefined || (await isInside(target, within)));
   const shownTop = Math.max(panel.y, 0);
   const shownBottom = Math.min(panel.y + panel.height, viewport.height);
   await page.mouse.move(panel.x + panel.width / 2, (shownTop + shownBottom) / 2);

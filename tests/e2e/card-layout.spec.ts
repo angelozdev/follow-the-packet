@@ -462,7 +462,7 @@ async function problemsOfTheCardsOfTheMap(page: Page, eachFrame: (page: Page) =>
     for (const scene of MAP_SCENES) {
       await playWithTheClockPaused(page, scene, eachFrame);
       problems.push(...(await cardsOutsideTheMap(page)).map((problem) => `${name}, ${scene.name}: ${problem}`));
-      if (!(await isReachable(page, scene.last(page)))) problems.push(`${name}, ${scene.name}: its foot is out of reach`);
+      if (!(await isReachable(scene.last(page)))) problems.push(`${name}, ${scene.name}: its foot is out of reach`);
     }
   }
   return problems;

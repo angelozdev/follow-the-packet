@@ -1,5 +1,5 @@
-export const MIN_GAP_PX = 4;
-export const MIN_BUTTON_GAP_PX = 6;
+const MIN_GAP_PX = 4;
+const MIN_BUTTON_GAP_PX = 6;
 export const INSPECTION_HELP = '.incident__inspection > p, .incident__help-line';
 
 /** Returns one line per defect in the cards on the page: content a card cuts off or lets spill, two cards that overlap, a card over a line of the inspection help (the paragraphs under the map at 900 px and under, and the lines of the note in the side panel above it), a primary button that touches what is above it, buttons that touch each other, and a last button that touches the bottom edge of its card. A gap above a stamp and from a card's bottom edge counts when it is at least `gap` pixels, and a gap between two buttons when it is at least `buttonGap`. */
@@ -144,20 +144,6 @@ export function cardsOutsideTheMap(): string[] {
     if (bottom > map.bottom + EPSILON) problems.push(`${name} sticks out of the map by ${(bottom - map.bottom).toFixed(1)}px below`);
     return problems;
   });
-}
-
-/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the map that it covers. Self-contained, so a Playwright test can pass it to `page.evaluate`. */
-export function inspectionBoxOverCards(): { shown: boolean; covered: string[] } {
-  const EPSILON = 0.5;
-  const box = document.querySelector('.incident__inspection > .card');
-  if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
-  const taken = box.getBoundingClientRect();
-  const covered = [...document.querySelectorAll('.map-card .card')].flatMap((card) => {
-    const { left, top, right, bottom } = card.getBoundingClientRect();
-    const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
-    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the map'}`] : [];
-  });
-  return { shown: true, covered };
 }
 
 /** True when the element lies wholly in the window and is what a click lands on at its middle and at a quarter of its width from each side, so nothing covers it and no ancestor cuts it off. Self-contained, so a Playwright test can pass it to `locator.evaluate`. */

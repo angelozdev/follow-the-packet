@@ -16,11 +16,6 @@ export function overlaps(a: Area | null, b: Area | null): boolean {
   return a !== null && b !== null && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-/** True when the box lies wholly inside the area. */
-export function isInside(area: Area, box: Area): boolean {
-  return box.x >= area.x && box.y >= area.y && box.x + box.width <= area.x + area.width && box.y + box.height <= area.y + area.height;
-}
-
 /** Returns the box of every label of a piece, every stamp and every floor name on the map, named as a screen reader reads it. Self-contained, so a Playwright test can pass it to `page.evaluate`. */
 export function mapBoxes(): Box[] {
   return [...document.querySelectorAll('.map-button, button.stamp, .html-layer .caption:not(.caption--soft)')].map((element) => {
@@ -39,7 +34,7 @@ function boxOf(name: string, element: Element): Box {
 }
 
 /** Returns the box of the drawing of every piece of the 2D map, named after its label: `the piece of <label>`. */
-export function pieceBoxes(): Box[] {
+function pieceBoxes(): Box[] {
   return [...document.querySelectorAll(DRAWN_PIECES)].map((drawing) => {
     const label = labelOfDrawing(drawing);
     return boxOf(`the piece of ${(label?.getAttribute('aria-label') ?? label?.textContent ?? '').replace(/\s+/g, ' ').trim()}`, drawing);
@@ -65,7 +60,7 @@ function neighboursInAFan(a: Box, b: Box, fanPitch: number): boolean {
 }
 
 /** Returns every pair of the boxes that overlap, as "a / b". With `fanPitch`, two stamps whose centres stand one pitch apart are left out: they are neighbours in the fan of a place, which the 2D map overlaps on purpose. */
-export function pairsThatOverlap(boxes: Box[], fanPitch?: number): string[] {
+function pairsThatOverlap(boxes: Box[], fanPitch?: number): string[] {
   return boxes.flatMap((a, index) =>
     boxes
       .slice(index + 1)
