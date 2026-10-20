@@ -1,3 +1,4 @@
+import { useMediaQuery } from '@mantine/hooks';
 import { useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
@@ -16,6 +17,33 @@ import { TaskCard } from './map-cards/task-card';
 import { ResultCard } from './side-cards/result-card';
 import { useInspection } from './use-inspection';
 
+const ABOVE_900_PX = '(min-width: 901px)';
+const MEDIA_QUERY_AT_FIRST_RENDER = { getInitialValueInEffect: false };
+
+interface InspectHelpProps {
+  line: 'p' | 'span';
+  className: string;
+  cardOpen: boolean;
+}
+
+/** The two lines of the inspect help: what hovering or focusing a piece or a stamp does (with no card open, also the sentence about pinning the box) and the legend of the stamps. `line` is the element of each line and `className` its class, so the same words sit in a paragraph under the map or inside a note of the side panel. */
+function InspectHelp({ line: Line, className, cardOpen }: InspectHelpProps) {
+  return (
+    <>
+      <Line className={className}>
+        {SCREEN_TEXT.inspectHelp}
+        {!cardOpen && (
+          <>
+            {' '}
+            <span>{SCREEN_TEXT.inspectPinHelp}</span>
+          </>
+        )}
+      </Line>
+      <Line className={className}>{SCREEN_TEXT.stampLegend}</Line>
+    </>
+  );
+}
+
 interface IncidentScreenProps {
   incidents: Incident[];
   incidentId: string;
@@ -27,6 +55,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const [still, setStill] = useStillMode();
+  const wide = useMediaQuery(ABOVE_900_PX, undefined, MEDIA_QUERY_AT_FIRST_RENDER);
+  const helpInPanel = MAP_RENDERER === '2d' && wide;
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const opensCard = (pieceId: string) => playing && pieces.some((candidate) => candidate.id === pieceId && candidate.configurable);
@@ -103,18 +133,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         {inspection ? (
           <InspectionBox inspection={inspection} pinned={pinned} heading={heading} onClose={release} />
         ) : (
-          <>
-            <p className="muted">
-              {SCREEN_TEXT.inspectHelp}
-              {!cardOpen && (
-                <>
-                  {' '}
-                  <span>{SCREEN_TEXT.inspectPinHelp}</span>
-                </>
-              )}
-            </p>
-            <p className="muted">{SCREEN_TEXT.stampLegend}</p>
-          </>
+          !helpInPanel && <InspectHelp line="p" className="muted" cardOpen={cardOpen} />
         )}
       </div>
       <aside className="incident__side">
@@ -122,6 +141,11 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         {noRoom && (
           <Message variant="note" words={MESSAGE_TEXT} role="status">
             {SCREEN_TEXT.noRoomForTheBox}
+          </Message>
+        )}
+        {helpInPanel && (
+          <Message variant="note" words={MESSAGE_TEXT}>
+            <InspectHelp line="span" className="incident__help-line" cardOpen={cardOpen} />
           </Message>
         )}
         {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}

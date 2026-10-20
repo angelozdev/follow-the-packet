@@ -161,6 +161,8 @@ button.stamp { cursor: help; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__inspection > p { margin: 0; }
+.incident__help-line { display: block; }
+.incident__help-line + .incident__help-line { margin-top: var(--space-xs); }
 .incident__inspection[data-hold] { visibility: hidden; }
 .inspection__fields { margin: 0; }
 .inspection__fields > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-sm); }
