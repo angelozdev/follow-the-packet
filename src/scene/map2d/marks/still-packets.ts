@@ -7,12 +7,14 @@ import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
 import { startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
 import { flowLook, type FlowLook } from '@/scene/traffic/flow-look';
 import { changeDistance, legTextAt, placeTags, separateGlyphs, type PacketTag, type PlacedTag } from './packet-tags';
+import { grown } from './boxes';
 import type { Fan, StampedRun } from './stamp-fan';
 
 export const GLYPH_BOX = 40;
 export const REPLY_MARK_DISTANCE = 24;
 
 const OUTSIDE = 1000;
+const STAMP_CLEARANCE = 0.5;
 
 const DOORSTEP_PREFIX = station.doorstep('');
 const ANSWERED_ENDS: readonly FlowLook['end'][] = ['replied', 'warned'];
@@ -118,7 +120,7 @@ function labelRequest({ run, look, stations, path, length }: Way, layout: MapLay
 }
 
 function obstaclesOf(layout: MapLayout, fans: readonly Fan[], glyphs: readonly StillGlyph[]): Box[] {
-  const stamps = fans.flatMap(({ stamps: drawn, more }) => [...drawn.map(({ box }) => box), ...(more ? [more.box] : [])]);
+  const stamps = fans.flatMap(({ stamps: drawn, more }) => [...drawn.map(({ box }) => grown(box, STAMP_CLEARANCE)), ...(more ? [grown(more.box, STAMP_CLEARANCE)] : [])]);
   return [...Object.values(layout.labels), ...Object.values(layout.icons), ...Object.values(captionBoxes(layout.groups)), ...stamps, ...glyphs.map(({ box }) => box), ...outsideOf(layout.size)];
 }
 

@@ -3,13 +3,13 @@ import { INSPECTION_TEXT, isProblemStamp, stampOf, toPlainText } from '@/copy';
 import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
-import { LABEL_GAP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
+import { LABEL_GAP, STAMP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
 import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
 import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
 import { startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
-import { crowds, holds } from '@/scene/map2d/marks/boxes';
+import { crowds, grown, holds } from '@/scene/map2d/marks/boxes';
 import { collisions } from '@/scene/map2d/marks/collisions';
 import { changeDistance, legTextAt, type PlacedTag } from '@/scene/map2d/marks/packet-tags';
 import { readingOrder } from '@/scene/map2d/marks/reading-order';
@@ -20,6 +20,9 @@ import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCy
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SAME_POINT = 1e-6;
+const STAMP_FACE = 32;
+const STAMP_TILT = (8 * Math.PI) / 180;
+const TILT_OVERHANG = (STAMP_FACE * (Math.cos(STAMP_TILT) + Math.sin(STAMP_TILT)) - STAMP) / 2;
 
 const isShare = (value: number) => Number.isFinite(value) && value >= 0 && value <= 1;
 const isOrdered = (values: readonly number[]) => values.every((value, index) => isShare(value) && (index === 0 || value >= values[index - 1]));
@@ -166,6 +169,18 @@ describe('the sweep of the registered incidents', () => {
         where(analysis),
       ).toEqual([]);
     }
+  });
+
+  it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at seven widths', () => {
+    let compared = 0;
+    for (const analysis of sweep().analyses) {
+      const stamps = analysis.fans.flatMap(({ stamps: drawn, more }) => [...drawn.map(({ box }) => box), ...(more ? [more.box] : [])]);
+      for (const { id, box } of analysis.placed) {
+        expect(stamps.filter((stamp) => crowds(box, grown(stamp, TILT_OVERHANG))).length, `${id}, ${where(analysis)}`).toBe(0);
+        compared++;
+      }
+    }
+    expect(compared).toBeGreaterThan(0);
   });
 
   it('every label of a packet is placed, or left out because its stamp went into a «+N» or because its packet never leaves its device and finds no place', () => {

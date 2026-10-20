@@ -11,3 +11,8 @@ export function crowds(a: Box, b: Box): boolean {
 export function holds(outer: Box, inner: Box): boolean {
   return inner.x >= outer.x - NOISE && inner.y >= outer.y - NOISE && inner.x + inner.width <= outer.x + outer.width + NOISE && inner.y + inner.height <= outer.y + outer.height + NOISE;
 }
+
+/** Takes a box and a distance in pixels; returns the box with that distance added on each of its four sides. */
+export function grown({ x, y, width, height }: Box, by: number): Box {
+  return { x: x - by, y: y - by, width: width + 2 * by, height: height + 2 * by };
+}

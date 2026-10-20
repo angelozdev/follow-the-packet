@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Box } from '@/scene/map2d/layout/arrange/geometry';
-import { crowds, holds } from './boxes';
+import { crowds, grown, holds } from './boxes';
 
 const box = (x: number, y: number, width: number, height: number): Box => ({ x, y, width, height });
 
@@ -41,5 +41,15 @@ describe('holds', () => {
     const outer = box(0, 0, 100, 50);
     expect(holds(outer, box(-1e-9, 0, 100 + 2e-9, 50))).toBe(true);
     expect(holds(outer, box(0, -1e-9, 100, 50 + 2e-9))).toBe(true);
+  });
+});
+
+describe('grown', () => {
+  it('adds the distance on each of the four sides of a box, so a box that only touched another one then crowds it', () => {
+    const base = box(10, 20, 40, 30);
+    expect(grown(base, 0.5)).toEqual(box(9.5, 19.5, 41, 31));
+    expect(grown(base, 0)).toEqual(base);
+    expect(crowds(box(50, 20, 10, 30), base)).toBe(false);
+    expect(crowds(box(50, 20, 10, 30), grown(base, 0.5))).toBe(true);
   });
 });
