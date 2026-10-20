@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
-import { INSPECTION_TEXT, TERMS } from '@/copy';
+import { INSPECTION_TEXT, MAP_TEXT, TERMS } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import {
   OFFICE_IP,
@@ -8,14 +8,17 @@ import {
   card,
   confirm,
   holdTheGrace,
+  moveTheMouseAway,
   moveTheMouseTo,
   openTerminal,
   passTheGrace,
   passTime,
   releaseTheGrace,
+  sendMessage,
   sendTo,
   showTheScreen,
   standStill,
+  tapAt,
   type Point,
 } from '@/testing/browser-play';
 import { inspectionBoxOverCards } from '@/testing/card-boxes';
@@ -24,6 +27,16 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const SLOW_TEST_MS = 60_000;
 const INCIDENT = '01-08';
+const REFUSED_OR_SILENT = '02-03';
+const LUCIA_LAPTOP = 'laptop-lucia';
+const LOOPBACK = '127.0.0.1';
+const NC_TO_THE_APP = 'nc · puerto 3000';
+const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
+const STAMPS_AT_LUCIA = 4;
+const HIDDEN_AT_LUCIA = 2;
+const PACKET_STAMP = /^Paquete:/;
+const LISTED_PACKET = 'dl > div';
+const SOURCE_OF_THE_PACKET = /^TCP \d+ → /;
 const PINNED = 'Fijada';
 const PIECE_LABEL = '.map-button';
 const INSPECTION_CARD = '.incident__inspection > .card';
@@ -118,6 +131,24 @@ async function sendTheLostPing(): Promise<Locator> {
 
 function boxOfTheLostPing(): Locator {
   return page.getByRole('region', { name: LOST_PING_BOX, exact: true });
+}
+
+async function sendNc(terminal: Locator, ip: string, message: string): Promise<void> {
+  await userEvent.click(terminal.getByRole('button', { name: ip, exact: true }));
+  await sendMessage(terminal, message);
+}
+
+async function stackFourStampsAtLucia(): Promise<Locator> {
+  const terminal = await openTerminal(LUCIA_LAPTOP);
+  for (const ip of [OFFICE_IP.lucia, LOOPBACK]) for (const message of [NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT]) await sendNc(terminal, ip, message);
+  await confirm(terminal);
+  await expect.element(terminal).not.toBeInTheDocument();
+  await moveTheMouseAway();
+  return page.getByRole('button', { name: MAP_TEXT.moreStamps(HIDDEN_AT_LUCIA, STAMPS_AT_LUCIA), exact: true });
+}
+
+function listOfTheFour(): Locator {
+  return page.getByRole('region', { name: INSPECTION_TEXT.stampsTitle(STAMPS_AT_LUCIA), exact: true });
 }
 
 afterEach(async () => {
@@ -262,5 +293,69 @@ describe('at the desktop window', () => {
     await expect.element(tip).not.toBeInTheDocument();
     await passTheGrace();
     await expect.element(tip, { message: 'Escape closes it for good' }).not.toBeInTheDocument();
+  });
+});
+
+describe('the «+N» of 02-03 at the desktop window', () => {
+  beforeEach(() => page.viewport(DESKTOP_WINDOW.width, DESKTOP_WINDOW.height));
+
+  it('in 02-03 a fourth stamp at laptop-lucia turns the last casilla into «+2», and hovering it lists the four', { timeout: SLOW_TEST_MS }, async () => {
+    await show(REFUSED_OR_SILENT);
+    const more = await stackFourStampsAtLucia();
+    await expect.element(more).toBeVisible();
+    await expect.element(more).toHaveTextContent(`+${HIDDEN_AT_LUCIA}`);
+    await expect.poll(() => page.getByRole('button', { name: PACKET_STAMP }).elements().length, { message: 'the fan draws the stamps that fit, one less than the casillas, and the «+2»' }).toBe(STAMPS_AT_LUCIA - HIDDEN_AT_LUCIA);
+
+    await userEvent.hover(more);
+
+    const list = listOfTheFour();
+    await expect.element(list).toBeVisible();
+    await expect.element(list, { message: 'a hover is a preview: no «Fijada»' }).not.toMatchTextContent(INSPECTION_TEXT.pinned);
+    const fields = [...list.element().querySelectorAll(LISTED_PACKET)].map((field) => [field.querySelector('dt')?.textContent?.replace(SOURCE_OF_THE_PACKET, ''), field.querySelector('dd')?.textContent]);
+    expect(fields, 'one field for each stamp of the place, the drawn ones too, the newest first, with how it ended').toEqual([
+      [`3306 de ${LUCIA_LAPTOP} a ${LOOPBACK}`, INSPECTION_TEXT.stampLine('arrived')],
+      [`3000 de ${LUCIA_LAPTOP} a ${LOOPBACK}`, INSPECTION_TEXT.stampLine('arrived')],
+      [`3306 de ${LUCIA_LAPTOP} a ${OFFICE_IP.lucia}`, INSPECTION_TEXT.stampLine('arrived')],
+      [`3000 de ${LUCIA_LAPTOP} a ${OFFICE_IP.lucia}`, INSPECTION_TEXT.stampLine('arrived')],
+    ]);
+  });
+
+  it('in 02-03 the list of «+2» opens with the keyboard focus and Escape gives the focus back', { timeout: SLOW_TEST_MS }, async () => {
+    await show(REFUSED_OR_SILENT);
+    const more = await stackFourStampsAtLucia();
+    await expect.element(more).toBeVisible();
+    more.element().focus();
+
+    await userEvent.keyboard('{Enter}');
+
+    const list = listOfTheFour();
+    await expect.element(list, { message: 'Enter pins the list' }).toMatchTextContent(INSPECTION_TEXT.pinned);
+    await expect.element(list.getByRole('heading', { name: INSPECTION_TEXT.stampsTitle(STAMPS_AT_LUCIA) }), { message: 'Enter moves the focus to the heading of the list' }).toHaveFocus();
+
+    holdTheGrace();
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(list).not.toBeInTheDocument();
+    await expect.element(more, { message: 'Escape gives the focus back to «+2»' }).toHaveFocus();
+    await passTheGrace();
+    expect(list.query(), 'the focus that comes back does not reopen the list').toBeNull();
+  });
+
+  it('in 02-03 a tap on «+2» pins the list and a tap outside releases it', { timeout: SLOW_TEST_MS }, async () => {
+    await show(REFUSED_OR_SILENT);
+    const more = await stackFourStampsAtLucia();
+    await expect.element(more).toBeVisible();
+    holdTheGrace();
+
+    await tapAt(centerOf(more.element()));
+
+    const list = listOfTheFour();
+    await expect.element(list, { message: 'a tap pins the list' }).toMatchTextContent(INSPECTION_TEXT.pinned);
+    await passTheGrace();
+    await expect.element(list, { message: 'the pinned list stays after the finger lifts' }).toBeVisible();
+
+    await tapAt(OUTSIDE_POINT);
+
+    await expect.element(list, { message: 'a tap outside releases it' }).not.toBeInTheDocument();
   });
 });

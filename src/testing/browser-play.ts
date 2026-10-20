@@ -132,6 +132,13 @@ export async function moveTheMouseTo(point: Point): Promise<void> {
   await cdp().send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...inThePageOfTheFrame(point) });
 }
 
+/** Taps a point of the window of the test with a finger, through the protocol of the browser: a touch that starts and ends at the point, so the page sees a touch pointer, and the click that a tap makes, at the point that adds the place of the iframe of the test in the page that holds it. */
+export async function tapAt(point: Point): Promise<void> {
+  const session = cdp();
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [inThePageOfTheFrame(point)] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
 /** Presses the left mouse button on the centre of an element and keeps it down, so the element is `:active` while the test reads it, and returns the function that lets go and takes the mouse away. `userEvent` has no press without a release, so the three mouse events go through the protocol of the browser, at the place the element has in the page that holds the iframe of the test. */
 export async function holdTheMouseDown(target: Element): Promise<() => Promise<void>> {
   const box = target.getBoundingClientRect();
