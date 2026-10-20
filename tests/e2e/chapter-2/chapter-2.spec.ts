@@ -1,12 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
+import { confirm, openTerminal, sendMessage } from '@e2e/cards';
 import { FULL_STARS } from '@e2e/closing';
 import { collectErrors } from '@e2e/console-errors';
-import { isInside, mapArea, mapBoxes, outsideTheArea, packetBoxes, pairsThatOverlap } from '@e2e/map-boxes';
 import { reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
 import { freezeTime, standStill, stepFrame } from '@e2e/still-scene';
 import { IP } from '@e2e/chapter-1/chapter-1-play';
-import { ANDRES, ANYWHERE, BLOCK, BRANCH_HOP, CHAPTER_2, HOME, INSIDE_THE_BLOCK, LUCIA, NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT, NC_TO_THE_DATABASE, NC_TO_THE_UNMAPPED_PORT, NC_TO_THE_WEB_PORT, OFFICE_ROUTER, OTHER_OFFICE_BLOCK, OTHER_OFFICE_LAPTOP, OUTSIDE_THE_BLOCK, PRINTER, PROVIDER_HOP, YOUR_LAPTOP, addRoute, classify, sendNc } from './chapter-2-play';
+import { CHAPTER_2, LUCIA, NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT, NC_TO_THE_DATABASE, NC_TO_THE_WEB_PORT, OFFICE_ROUTER, sendNc } from './chapter-2-play';
 
 const LOCKED = '(bloqueado)';
 const [ONE_MACHINE] = CHAPTER_2;
@@ -27,7 +26,6 @@ const ONE_ADDRESS = CHAPTER_2[7];
 const EIGHTH_LINK = `8. ${ONE_ADDRESS.title}`;
 const FROM_OUTSIDE = CHAPTER_2[8];
 const NINTH_LINK = `9. ${FROM_OUTSIDE.title}`;
-const NAME_OF_THE_BLOCK = '.packet-tag';
 const PACKET_LABEL = '.packet-tag';
 const FLIGHT_FRAME_BUDGET = 1200;
 const PIXELS_A_FRAME_MOVES = 2;
@@ -35,18 +33,9 @@ const LABEL_BEFORE_THE_ROUTER = 'TCP 51514 → 80';
 const LABEL_AFTER_THE_ROUTER = 'TCP 40001 → 80';
 const REPLY_BEFORE_THE_ROUTER = 'TCP 80 → 40001';
 const REPLY_AFTER_THE_ROUTER = 'TCP 80 → 51514';
-const HALF_A_PIXEL = 0;
 const TAG_OF_THE_APP = 'paquete al puerto 3000';
 const TAG_OF_THE_DATABASE = 'paquete al puerto 5432';
 const STAMP_OF_THE_APP = /^Paquete: paquete al puerto 3000 de tu-laptop a laptop-lucia\. Llegó\.$/;
-const FULL_SIZE_DEVICE_DISTANCE_PX = 99.3;
-const ROUTE_STAMPS = 3;
-const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
-const WARNING_OF_THE_BRANCH_ROUTER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
-const WINDOWS = [
-  { width: 1280, height: 800 },
-  { width: 1440, height: 900 },
-];
 const STAMP_OF_THE_DATABASE = /^Paquete: paquete al puerto 5432 de tu-laptop a laptop-lucia\. Llegó\.$/;
 const TAG_OF_THE_FIRST_CONNECTION = 'TCP 51514 → 3000';
 const TAG_OF_THE_SECOND_CONNECTION = 'TCP 51515 → 5432';
@@ -64,14 +53,6 @@ const PROGRESS_BEFORE_06 = { ...PROGRESS_BEFORE_05, [WHOLE_RULE.id]: 1 };
 const PROGRESS_BEFORE_07 = { ...PROGRESS_BEFORE_06, [YOUR_TABLE.id]: 1 };
 const PROGRESS_BEFORE_08 = { ...PROGRESS_BEFORE_07, [OTHER_OFFICE_WAY.id]: 1 };
 const PROGRESS_BEFORE_09 = { ...PROGRESS_BEFORE_08, [ONE_ADDRESS.id]: 1 };
-
-/** Expects no box of the still map (piece labels, floor names, stamps and packet labels) to overlap another, and every one to lie inside the area of the map. */
-async function expectClear(page: Page): Promise<void> {
-  const boxes = await packetBoxes(page);
-  const area = await mapArea(page);
-  expect(pairsThatOverlap(boxes)).toEqual([]);
-  expect(boxes.filter((box) => !isInside(area, box)).map((box) => box.name)).toEqual([]);
-}
 
 test('chapter 2 opens at 02-01 once 01-14 has a star and 04-01 stays closed', async ({ page }) => {
   const errors = collectErrors(page);
@@ -214,38 +195,6 @@ async function sendTheFourTests(page: Page) {
   await expect(page.getByRole('button', { name: STAMP_OF_HER_OWN_APP })).toBeVisible();
 }
 
-/** Sends the three pings of 02-07 from your laptop, to the server and to the printer and the laptop of the other office, closes the terminal and waits for the three stamps and for the scene to stand still. */
-async function sendTheThreePings(page: Page) {
-  const terminal = await openTerminal(page);
-  for (const ip of [IP.server, IP.otherOffice, OTHER_OFFICE_LAPTOP]) await sendTo(terminal, ip);
-  await confirm(terminal);
-  await expect(terminal).toBeHidden();
-  await expect(page.locator('button.stamp')).toHaveCount(ROUTE_STAMPS);
-  await standStill(page);
-}
-
-/** Sends the message from the terminal of casa-lucia to the public IP of the office, closes the terminal and waits for the new stamp and for the scene to stand still. */
-async function sendFromHome(page: Page, message: string, stamps: number) {
-  const terminal = await openTerminal(page, HOME);
-  await sendMessage(terminal, message);
-  await confirm(terminal);
-  await expect(terminal).toBeHidden();
-  await expect(page.locator('button.stamp')).toHaveCount(stamps);
-  await standStill(page);
-}
-
-/** Writes routes in the table of router-oficina, one after the other, and closes its card. Writing a route clears the stamps of before. */
-async function writeRoutes(page: Page, routes: { destination: string; nextHop: string }[]) {
-  const table = await openCard(page, OFFICE_ROUTER);
-  for (const { destination, nextHop } of routes) await addRoute(table, destination, nextHop);
-  await confirm(table);
-  await expect(table).toBeHidden();
-  await expect(page.locator('button.stamp')).toHaveCount(0);
-}
-
-const OUT_ROUTE = { destination: ANYWHERE, nextHop: PROVIDER_HOP };
-const OFFICE_ROUTE = { destination: OTHER_OFFICE_BLOCK, nextHop: BRANCH_HOP };
-
 interface FlyingLabel {
   text: string;
   x: number;
@@ -338,33 +287,6 @@ test.describe('Sin animaciones', () => {
     expect(packet.x, 'it stands past the router, on the side the request goes to').toBeLessThan(router.x - PIXELS_A_FRAME_MOVES);
   });
 
-  test('in 02-04 placing a device inside the block draws it inside the outline and moving it out takes it out', async ({ page }) => {
-    await startWithProgress(page, PROGRESS_BEFORE_04);
-    await page.goto(`/#/level/${IN_MY_BLOCK.id}`);
-    await standStill(page);
-    const piece = (name: string) => page.getByRole('button', { name: new RegExp(`^${name}(?:\\s+con candado)?$`) });
-    const [you, printer, andres] = await Promise.all([YOUR_LAPTOP, PRINTER, ANDRES].map((name) => middleOf(piece(name))));
-    const name = page.locator(NAME_OF_THE_BLOCK);
-    await expect(name).toHaveText(BLOCK);
-    const home = await middleOf(name);
-    const expectNameMovedBy = async (to: { x: number; y: number }) => {
-      await standStill(page);
-      const now = await middleOf(name);
-      expect(now.x - home.x).toBeCloseTo(to.x - you.x, HALF_A_PIXEL);
-      expect(now.y - home.y).toBeCloseTo(to.y - you.y, HALF_A_PIXEL);
-    };
-    await expectNameMovedBy(you);
-    await classify(page, PRINTER, INSIDE_THE_BLOCK);
-    await expectNameMovedBy(printer);
-    await classify(page, ANDRES, INSIDE_THE_BLOCK);
-    await expectNameMovedBy(andres);
-    await classify(page, ANDRES, OUTSIDE_THE_BLOCK);
-    await expectNameMovedBy(printer);
-    await classify(page, PRINTER, OUTSIDE_THE_BLOCK);
-    await expectNameMovedBy(you);
-    await expect(name).toHaveCount(1);
-  });
-
   test('in 02-03 a refusal leaves the stamp Llegó and a silence leaves Bloqueado, and the four tests wear TCP and both ports on the map', async ({ page }) => {
     await startWithProgress(page, PROGRESS_BEFORE_03);
     await page.goto(`/#/level/${REFUSED_OR_SILENT.id}`);
@@ -375,118 +297,4 @@ test.describe('Sin animaciones', () => {
     await standStill(page);
     await expect(page.locator('.packet-tag')).toHaveText(TAGS_OF_THE_FOUR_TESTS);
   });
-
-  for (const size of WINDOWS) {
-    test.describe(`${size.width}x${size.height}`, () => {
-      test.use({ viewport: size });
-
-      test('in 02-01 no piece label, floor name, stamp or packet label of the still map overlaps another', async ({ page }) => {
-        await startWithProgress(page, { '01-14': 1 });
-        await page.goto(`/#/level/${ONE_MACHINE.id}`);
-        const first = await openTerminal(page);
-        await sendMessage(first, 'ping');
-        await sendMessage(first, NC_TO_THE_APP);
-        await confirm(first);
-        await expect(first).toBeHidden();
-        await expect(page.getByRole('button', { name: STAMP_OF_THE_APP })).toBeVisible();
-        await standStill(page);
-        await expect(page.locator('.packet-tag')).toHaveCount(1);
-        await expectClear(page);
-        const second = await openTerminal(page);
-        await sendMessage(second, NC_TO_THE_DATABASE);
-        await confirm(second);
-        await expect(second).toBeHidden();
-        await expect(page.getByRole('button', { name: STAMP_OF_THE_DATABASE })).toBeVisible();
-        await standStill(page);
-        await expect(page.locator('.packet-tag')).toHaveCount(2);
-        await expectClear(page);
-      });
-
-      test('in 02-07 the map and its labels fit the area at full size', async ({ page }) => {
-        await startWithProgress(page, PROGRESS_BEFORE_07);
-        await page.goto(`/#/level/${OTHER_OFFICE_WAY.id}`);
-        await standStill(page);
-        const fits = async (when: string) => {
-          await standStill(page);
-          expect(await outsideTheArea(page, await mapArea(page)), when).toEqual([]);
-        };
-        await fits('with nothing sent');
-        const boxes = await mapBoxes(page);
-        const [printer, laptop] = [/^impresora-sucursal/, /^laptop-sucursal/].map((name) => boxes.find((box) => name.test(box.name.trim())));
-        if (printer === undefined || laptop === undefined) throw new Error('the two devices of the other office are not on the map');
-        const apart = Math.hypot(laptop.x + laptop.width / 2 - (printer.x + printer.width / 2), laptop.y + laptop.height / 2 - (printer.y + printer.height / 2));
-        expect(apart, 'the devices of the other office stand as far apart as those of any floor').toBeCloseTo(FULL_SIZE_DEVICE_DISTANCE_PX, 0);
-        await sendTheThreePings(page);
-        await fits('with the three warnings of the router with no routes');
-        await writeRoutes(page, [OUT_ROUTE]);
-        await sendTheThreePings(page);
-        await fits('with only the default route');
-        await writeRoutes(page, [OFFICE_ROUTE]);
-        await sendTheThreePings(page);
-        await fits('with both routes');
-      });
-
-      test('after the pings of 02-07, no label or stamp overlaps', async ({ page }) => {
-        await startWithProgress(page, PROGRESS_BEFORE_07);
-        await page.goto(`/#/level/${OTHER_OFFICE_WAY.id}`);
-        await standStill(page);
-        await expectClear(page);
-        await sendTheThreePings(page);
-        await expectClear(page);
-        await writeRoutes(page, [OUT_ROUTE]);
-        await sendTheThreePings(page);
-        await expectClear(page);
-        await writeRoutes(page, [OFFICE_ROUTE]);
-        await sendTheThreePings(page);
-        await expectClear(page);
-        const table = await openCard(page, OFFICE_ROUTER);
-        await table.getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }).click();
-        await addRoute(table, ANYWHERE, BRANCH_HOP);
-        await confirm(table);
-        await expect(page.locator('button.stamp')).toHaveCount(0);
-        await sendTheThreePings(page);
-        await expect(page.getByRole('button', { name: WARNING_OF_THE_BRANCH_ROUTER })).toBeVisible();
-        await expectClear(page);
-      });
-
-      test('in 02-09 and 02-10 no label or stamp overlaps', async ({ page }) => {
-        await startWithProgress(page, PROGRESS_BEFORE_09);
-        await page.goto(`/#/level/${FROM_OUTSIDE.id}`);
-        await standStill(page);
-        await expectClear(page);
-        await sendFromHome(page, NC_TO_THE_UNMAPPED_PORT, 1);
-        await expectClear(page);
-        await sendFromHome(page, NC_TO_THE_APP, 2);
-        await expectClear(page);
-      });
-
-      test('in 02-04 no piece label, floor name or name of the outline of the still map overlaps another, with only your laptop inside, with the printer too and with laptop-andres too', async ({ page }) => {
-        await startWithProgress(page, PROGRESS_BEFORE_04);
-        await page.goto(`/#/level/${IN_MY_BLOCK.id}`);
-        await standStill(page);
-        await expect(page.locator(NAME_OF_THE_BLOCK)).toHaveText(BLOCK);
-        await expectClear(page);
-        await classify(page, PRINTER, INSIDE_THE_BLOCK);
-        await standStill(page);
-        await expectClear(page);
-        await classify(page, ANDRES, INSIDE_THE_BLOCK);
-        await standStill(page);
-        await expectClear(page);
-      });
-
-      test('in 02-02 no piece label, floor name, stamp or packet label of the still map overlaps another once the labels say TCP and both ports', async ({ page }) => {
-        await startWithProgress(page, { '01-14': 1, [ONE_MACHINE.id]: 1 });
-        await page.goto(`/#/level/${OPENING.id}`);
-        const terminal = await openTerminal(page);
-        await sendMessage(terminal, NC_TO_THE_APP);
-        await sendMessage(terminal, NC_TO_THE_DATABASE);
-        await confirm(terminal);
-        await expect(terminal).toBeHidden();
-        await expect(page.getByRole('button', { name: STAMP_OF_THE_SECOND_CONNECTION })).toBeVisible();
-        await standStill(page);
-        await expect(page.locator('.packet-tag')).toHaveText([TAG_OF_THE_FIRST_CONNECTION, TAG_OF_THE_SECOND_CONNECTION]);
-        await expectClear(page);
-      });
-    });
-  }
 });

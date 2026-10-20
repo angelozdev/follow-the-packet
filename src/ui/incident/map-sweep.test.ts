@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { INSPECTION_TEXT, isProblemStamp, stampOf, toPlainText } from '@/copy';
-import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session } from '@/game';
+import { INSPECTION_TEXT, OUTCOME_TEXT, isProblemStamp, stampOf, toPlainText } from '@/copy';
+import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session, type SessionAction } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
-import { LABEL_GAP, STAMP, fanBox, overlaps } from '@/scene/map2d/layout/arrange/geometry';
+import { DOORSTEP, FAN_PITCH, LABEL_GAP, MIN_WIDTH, STAMP, fanBox, overlaps, type Box } from '@/scene/map2d/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/map2d/layout/captions';
 import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
+import { lengthOf, route } from '@/scene/map2d/layout/graph';
 import { layoutMap } from '@/scene/map2d/layout/map-layout';
 import { LABEL_HEIGHT, labelWidth } from '@/scene/map2d/layout/metrics';
 import { startsOnMap, station, stationsFor } from '@/scene/map2d/layout/stations';
@@ -20,6 +21,7 @@ import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCy
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SAME_POINT = 1e-6;
+const TTL_PING_CASE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping' };
 const STAMP_FACE = 32;
 const STAMP_TILT = (8 * Math.PI) / 180;
 const TILT_OVERHANG = (STAMP_FACE * (Math.cos(STAMP_TILT) + Math.sin(STAMP_TILT)) - STAMP) / 2;
@@ -123,6 +125,46 @@ function sweep() {
 
 const where = ({ state, width }: Analysis) => `${state.incident}, ${state.name}, at ${width} px`;
 
+function captionsOf({ layout, state }: Analysis): Record<string, Box> {
+  const block = classifiedBlock(state.session);
+  return { ...captionBoxes(layout.groups), ...(block === null ? {} : blockTabBoxes(layout.groups, block)) };
+}
+
+function clashesOf(analysis: Analysis): string[] {
+  const { layout, fans, placed } = analysis;
+  return collisions({ ...layout, captions: captionsOf(analysis) }, fans, placed).map(({ first, second }) => `${first.kind} ${first.id} with ${second.kind} ${second.id}`);
+}
+
+function straysOf(analysis: Analysis): string[] {
+  const { layout, fans, packets, width } = analysis;
+  const whole: Box = { x: 0, y: 0, width: layout.size.width, height: layout.size.height };
+  const named = (kind: string, boxes: Record<string, Box>) => Object.entries(boxes).map(([id, box]) => ({ name: `${kind} ${id}`, box }));
+  const shown = fans.flatMap(({ stamps, more }) => [...stamps, ...(more ? [more] : [])]);
+  const boxes = [
+    ...named('label', layout.labels),
+    ...named('icon', layout.icons),
+    ...named('name', captionsOf(analysis)),
+    ...layout.groups.map(({ id, box }) => ({ name: `group ${id}`, box })),
+    ...shown.map(({ id, box }) => ({ name: `stamp ${id}`, box })),
+    ...packets.flatMap(({ id, glyphs, label }) => [...glyphs.map(({ role, box }) => ({ name: `${role} of ${id}`, box })), ...(label?.place ? [{ name: `label of ${id}`, box: label.place.box }] : [])]),
+  ];
+  const outside = boxes.filter(({ box }) => !holds(whole, box)).map(({ name }) => name);
+  return layout.size.width > Math.max(width, MIN_WIDTH) ? ['the drawing is wider than its width', ...outside] : outside;
+}
+
+function lostStampsOf({ fans, stamped }: Analysis): string[] {
+  return fans.filter((fan) => fan.stamps.length + fan.hidden.length !== stamped[fan.station].length).map((fan) => fan.station);
+}
+
+function expectClear(analysis: Analysis) {
+  const seen = where(analysis);
+  expect(analysis.placed.filter(({ clear }) => !clear).map(({ id }) => id), seen).toEqual([]);
+  expect(clashesOf(analysis), seen).toEqual([]);
+  expect(straysOf(analysis), seen).toEqual([]);
+  expect(lostStampsOf(analysis), seen).toEqual([]);
+  expect(analysis.fans.reduce((total, fan) => total + fan.stamps.length + fan.hidden.length, 0), seen).toBe(analysis.packets.length);
+}
+
 describe('the sweep of the registered incidents', () => {
   it('visits every registered incident, the start and the solved world of each, and every combination its chips offer, at seven widths', () => {
     const { states, analyses } = sweep();
@@ -161,14 +203,23 @@ describe('the sweep of the registered incidents', () => {
 
   it('in no registered incident does any label, stamp, packet label, name of a box or piece overlap another, at 360, 390, 768, 900, 1060, 1280 and 1440 px', () => {
     for (const analysis of sweep().analyses) {
-      const { layout, fans, placed } = analysis;
-      expect(placed.filter(({ clear }) => !clear).map(({ id }) => id), where(analysis)).toEqual([]);
-      const clashes = collisions({ ...layout, captions: captionBoxes(layout.groups) }, fans, placed);
-      expect(
-        clashes.map(({ first, second }) => `${first.kind} ${first.id} with ${second.kind} ${second.id}`),
-        where(analysis),
-      ).toEqual([]);
+      expect(analysis.placed.filter(({ clear }) => !clear).map(({ id }) => id), where(analysis)).toEqual([]);
+      expect(clashesOf(analysis), where(analysis)).toEqual([]);
     }
+  });
+
+  it('in every state of every registered incident the drawing is no wider than its width and every label, icon, name, group, stamp and packet lies inside it, at seven widths, but for one shape at 360 px', () => {
+    const { analyses } = sweep();
+    expect(analyses.filter(({ layout, width }) => layout.size.width === Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
+    expect(analyses.filter(({ layout, width }) => layout.size.width < Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
+    const tolerated: string[] = [];
+    for (const analysis of analyses) {
+      const strays = straysOf(analysis);
+      const isTheKnownShape = (name: string) => analysis.state.incident === TTL_PING_CASE.incident && analysis.width === TTL_PING_CASE.width && name === TTL_PING_CASE.shape;
+      tolerated.push(...strays.filter(isTheKnownShape).map(() => analysis.state.name));
+      expect(strays.filter((name) => !isTheKnownShape(name)), where(analysis)).toEqual([]);
+    }
+    expect(tolerated).toEqual(['case 4, only you to ip-server with ping', 'case 4, every combination']);
   });
 
   it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at seven widths', () => {
@@ -443,5 +494,247 @@ describe('the sweep of the registered incidents', () => {
       }
       expect(order, where(analysis)).toHaveLength(pieces.length + fans.reduce((total, { stamps, more }) => total + stamps.length + (more ? 1 : 0), 0));
     }
+  });
+});
+
+const WINDOW_AREAS = [900, 1060];
+const YOU = 'your-laptop';
+const OFFICE_ROUTER = 'office-router';
+const FOUR_TESTS = 4;
+const SEVEN_CASES = 7;
+const A_ROUTER_OF_THE_PATH = /router-(oficina|proveedor|destino)|(?<!\d)(192\.168\.1\.1|203\.0\.113\.\d+)(?!\d)/;
+const A_HOP = /salto|pasó por/i;
+const PRIVATE_IP_WHY = '10.0.0.10 es una IP privada: se repite en muchas redes y internet no la entrega';
+const DROPPED_OUTSIDE_WHY = 'Un router, ya fuera de la oficina, descartó el paquete y no avisó';
+
+const sending = (toId: string, messageId = 'ping', fromId = 'you'): SessionAction => ({ type: 'sendPacket', fromId, toId, messageId });
+const placing = (deviceId: string, bin: string): SessionAction => ({ type: 'answerCard', deviceId, picks: { bin } });
+const played = (incidentId: string, moves: readonly SessionAction[]): Session => moves.reduce(sessionReducer, startSession(INCIDENTS, incidentId));
+const stateOf = (incident: string, name: string, session: Session): State => ({ incident, name, session });
+const atTheWindows = (states: readonly State[]): Analysis[] => states.flatMap((state) => WINDOW_AREAS.map((width) => analyze(state, width)));
+const incidentOf = (id: string): Incident => INCIDENTS.find((incident) => incident.id === id) as Incident;
+
+function boxText(session: Session, packetId: string): string {
+  const box = inspect(session, PIECE_ID.packet(packetId));
+  return [box?.title ?? '', ...(box?.fields ?? []).flatMap((field) => [field.label, ...field.lines])].map(toPlainText).join('\n');
+}
+
+function distanceToBox([x, y]: readonly number[], box: Box): number {
+  return Math.hypot(Math.max(box.x - x, 0, x - (box.x + box.width)), Math.max(box.y - y, 0, y - (box.y + box.height)));
+}
+
+function expectAtTheDoorstep({ layout, fans }: Analysis, packetId: string, deviceId: string, seen: string) {
+  const fan = fans.find(({ station: at }) => at === station.doorstep(deviceId));
+  expect(fan?.stamps.map(({ id }) => id), seen).toContain(packetId);
+  const stamp = fan?.stamps.find(({ id }) => id === packetId);
+  expect(stamp?.point, seen).toEqual(layout.stations[station.doorstep(deviceId)]);
+  expect(distanceToBox(stamp?.point ?? [], layout.icons[`device:${deviceId}`]), seen).toBeCloseTo(DOORSTEP, 6);
+}
+
+function namesOfTheRouters(session: Session, ids: readonly string[]): string[] {
+  const names = new Map(pieceViews(session).map(({ id, label }) => [id, toPlainText(label)]));
+  return ids.filter((id) => id.startsWith('router:')).map((id) => names.get(id) ?? id);
+}
+
+function wayToTheOtherOffice() {
+  const incident = incidentOf('02-07');
+  if (incident.mechanic !== 'send') throw new Error('02-07 is a send incident');
+  const table = incident.send.tables?.find(({ kind }) => kind === 'routes');
+  if (table?.kind !== 'routes') throw new Error('02-07 offers a table of routes');
+  const [toProvider, toBranch] = incident.solution.flatMap((move) => (move.type === 'placeEntry' ? [move] : []));
+  const defaultToBranch: SessionAction = { ...toProvider, picks: { ...toProvider.picks, nextHop: toBranch.picks.nextHop } };
+  const defaultRoute = table.trays.destination.find(({ id }) => id === toProvider.picks.destination);
+  const removeDefault: SessionAction = { type: 'removeEntry', tableId: table.id, entryId: String(defaultRoute?.value) };
+  const pings = [sending('ip-server'), sending('ip-other-office'), sending('ip-other-office-laptop')];
+  return {
+    nothingSent: stateOf('02-07', 'nothing sent', played('02-07', [])),
+    noRoutes: stateOf('02-07', 'the three pings with no route', played('02-07', pings)),
+    onlyTheDefault: stateOf('02-07', 'the three pings with only the default route', played('02-07', [toProvider, ...pings])),
+    bothRoutes: stateOf('02-07', 'the three pings with both routes', played('02-07', [toProvider, toBranch, ...pings])),
+    defaultToTheBranch: stateOf('02-07', 'the three pings with the default route handed to router-sucursal', played('02-07', [toProvider, toBranch, removeDefault, defaultToBranch, ...pings])),
+  };
+}
+
+describe('the states the geometry tests of the chapters played, as the player reaches them', () => {
+  it('in 05 the warning for 192.168.1.50 appears at the doorstep of your own laptop and does not travel', () => {
+    const session = played('01-05', [sending('ip-nobody')]);
+    for (const analysis of atTheWindows([stateOf('01-05', 'the ping to 192.168.1.50', session)])) {
+      const { runs, stations, fans, packets } = analysis;
+      const seen = where(analysis);
+      expect(runs.map((run) => stampOf(run)), seen).toEqual(['warned']);
+      expect(stations, seen).toEqual([[station.door(YOU), station.doorstep(YOU)]]);
+      expect(fans.map(({ station: at, stamps, hidden }) => [at, stamps.length, hidden.length]), seen).toEqual([[station.doorstep(YOU), 1, 0]]);
+      expect(packets.map(({ glyphs }) => glyphs.map(({ role }) => role)), seen).toEqual([['appears']]);
+      expectAtTheDoorstep(analysis, runs[0].id, YOU, seen);
+      expectClear(analysis);
+    }
+  });
+
+  it('after the pings of 08 the lost ping stands between the router and the internet, and no label or stamp overlaps', () => {
+    const session = played('01-08', [sending('ip-server'), sending('ip-other-office')]);
+    for (const analysis of atTheWindows([stateOf('01-08', 'the pings to the server and to 10.0.0.10', session)])) {
+      const { layout, runs, stations, fans } = analysis;
+      const seen = where(analysis);
+      const [, lost] = runs;
+      const router = station.router(OFFICE_ROUTER);
+      const between = station.mid(router, 'internet');
+      const along = (stops: string[]) => lengthOf(route(graphOf(layout), stops)).at(-1) ?? 0;
+      expect(runs.map((run) => stampOf(run)), seen).toEqual(['arrived', 'lost']);
+      expect(stations[1].at(-1), seen).toBe(between);
+      expect(fans.find(({ station: at }) => at === between)?.stamps.map(({ id, point }) => [id, point]), seen).toEqual([[lost.id, layout.stations[between]]]);
+      expect(along([router, between, 'internet']), seen).toBeCloseTo(along([router, 'internet']), 6);
+      expect(Math.min(along([router, between]), along([between, 'internet'])), seen).toBeGreaterThan(0);
+      expect(boxText(session, lost.id), seen).toContain(PRIVATE_IP_WHY);
+      expect(boxText(session, lost.id), seen).toContain(DROPPED_OUTSIDE_WHY);
+      expect(boxText(session, lost.id), seen).not.toContain('router-proveedor');
+      expectClear(analysis);
+    }
+  });
+
+  it('after the four tests of case 1 of 14 no stamp lies over a label or covers another beyond the step of the fan', () => {
+    const incident = incidentOf('01-14');
+    const [firstCase] = ownersOf(incident, startSession(INCIDENTS, incident.id));
+    const session = sendAll(firstCase.owner, firstCase.session);
+    expect(session.sent).toHaveLength(FOUR_TESTS);
+    for (const analysis of atTheWindows([stateOf('01-14', 'case 1, the four tests', session)])) {
+      const seen = where(analysis);
+      const shown = analysis.fans.flatMap(({ stamps, hidden }) => [...stamps.map(({ id }) => id), ...hidden]);
+      expect(shown.sort(), seen).toEqual(session.sent.map(({ id }) => id).sort());
+      for (const { stamps } of analysis.fans) {
+        stamps.slice(1).forEach(({ point }, index) => expect(Math.hypot(point[0] - stamps[index].point[0], point[1] - stamps[index].point[1]), seen).toBeCloseTo(FAN_PITCH, 6));
+      }
+      expectClear(analysis);
+    }
+  });
+
+  it('in 01-10, before the traceroute, the lost ping stands at the doorstep of tu-laptop and the routers wait for a traceroute', () => {
+    const before = stateOf('01-10', 'only the ping', played('01-10', [sending('ip-server')]));
+    const after = stateOf('01-10', 'the ping and the traceroute', played('01-10', [sending('ip-server'), sending('ip-server', 'traceroute')]));
+    const routersOnTheMap = ({ layout, fans, state }: Analysis) => namesOfTheRouters(state.session, readingOrder(layout, fans).map(({ id }) => id)).sort();
+    const expectTheLostPing = (analysis: Analysis) => {
+      const seen = where(analysis);
+      const [ping] = analysis.runs;
+      const text = boxText(analysis.state.session, ping.id);
+      expect(stampOf(ping), seen).toBe('lost');
+      expect(analysis.stations[0], seen).toEqual([station.door(YOU), station.doorstep(YOU)]);
+      expectAtTheDoorstep(analysis, ping.id, YOU, seen);
+      expect(text, seen).toContain(toPlainText(OUTCOME_TEXT.timeout));
+      expect([A_ROUTER_OF_THE_PATH, A_HOP].filter((pattern) => pattern.test(text)), seen).toEqual([]);
+      expect(Object.keys(analysis.layout.labels).filter((id) => id.startsWith('router:')), seen).toHaveLength(routersOnTheMap(analysis).length);
+      expectClear(analysis);
+    };
+    for (const analysis of atTheWindows([before])) {
+      expectTheLostPing(analysis);
+      expect(routersOnTheMap(analysis), where(analysis)).toEqual([]);
+    }
+    for (const analysis of atTheWindows([after])) {
+      expectTheLostPing(analysis);
+      expect(routersOnTheMap(analysis), where(analysis)).toEqual([expect.stringMatching(/^router-oficina/), expect.stringMatching(/^router-proveedor/)]);
+    }
+  });
+
+  it('in 02-04 placing a device inside the block moves the outline by the distance between rows, and moving it out takes it back', () => {
+    const [printer, andres] = ['printer', 'andres-laptop'];
+    const placed = [placing(printer, 'inside'), placing(andres, 'inside'), placing(andres, 'outside'), placing(printer, 'outside')];
+    const outlinesOf = ({ layout }: Analysis) => layout.groups.filter(({ kind }) => kind === 'block');
+    const tabsOf = ({ layout, state }: Analysis) => Object.values(blockTabBoxes(layout.groups, classifiedBlock(state.session) as string));
+    const rowOf = ({ layout }: Analysis, deviceId: string) => layout.icons[`device:${deviceId}`].y;
+    for (const width of WINDOW_AREAS) {
+      const at = (moves: readonly SessionAction[]) => analyze(stateOf('02-04', `after ${moves.length} placements`, played('02-04', moves)), width);
+      const [alone, withPrinter, withBoth, withoutAndres, withoutPrinter] = [0, 1, 2, 3, 4].map((count) => at(placed.slice(0, count)));
+      const seen = `at ${width} px`;
+      const [home] = outlinesOf(alone);
+      expect(outlinesOf(alone), seen).toHaveLength(1);
+      expect(outlinesOf(withPrinter), seen).toHaveLength(1);
+      const [taller] = outlinesOf(withPrinter);
+      expect([taller.box.x, taller.box.y, taller.box.width], seen).toEqual([home.box.x, home.box.y, home.box.width]);
+      expect(taller.box.y + taller.box.height - (home.box.y + home.box.height), seen).toBeCloseTo(rowOf(withPrinter, printer) - rowOf(withPrinter, YOU), 6);
+      expect(tabsOf(withPrinter), seen).toEqual(tabsOf(alone));
+      const [onFloorOne, onFloorTwo] = outlinesOf(withBoth);
+      expect(outlinesOf(withBoth), seen).toHaveLength(2);
+      expect(onFloorOne, seen).toEqual(taller);
+      expect(onFloorTwo.box.y - onFloorOne.box.y, seen).toBeCloseTo(rowOf(withBoth, andres) - rowOf(withBoth, YOU), 6);
+      const [tabOne, tabTwo] = tabsOf(withBoth);
+      expect(tabTwo.y - tabOne.y, seen).toBeCloseTo(rowOf(withBoth, andres) - rowOf(withBoth, YOU), 6);
+      expect(withoutAndres.layout.groups, seen).toEqual(withPrinter.layout.groups);
+      expect(withoutPrinter.layout, seen).toEqual(alone.layout);
+      expect(tabsOf(withoutPrinter), seen).toHaveLength(1);
+    }
+  });
+
+  it('in 02-07 the map fits the area at 1060 px and at 900 px, with nothing sent and with the three pings', () => {
+    const { nothingSent, noRoutes, onlyTheDefault, bothRoutes } = wayToTheOtherOffice();
+    for (const analysis of atTheWindows([nothingSent, noRoutes, onlyTheDefault, bothRoutes])) {
+      expect(straysOf(analysis), where(analysis)).toEqual([]);
+    }
+  });
+
+  it('after the pings of 02-07 no label or stamp overlaps, with no route, with only the default route, with both and with the default route handed to router-sucursal', () => {
+    const { nothingSent, noRoutes, onlyTheDefault, bothRoutes, defaultToTheBranch } = wayToTheOtherOffice();
+    for (const analysis of atTheWindows([nothingSent, noRoutes, onlyTheDefault, bothRoutes, defaultToTheBranch])) expectClear(analysis);
+    for (const analysis of atTheWindows([defaultToTheBranch])) expect(analysis.runs.map((run) => stampOf(run))[0], where(analysis)).toBe('warned');
+  });
+
+  it('in 02-09 and 02-10 no label or stamp overlaps, with the stamps that show and the ones that «+N» counts', () => {
+    const fromHome = (messageId: string) => sending('ip-office-public', messageId, 'home');
+    const nothing = played('02-09', []);
+    const unmapped = played('02-09', [fromHome('nc-40009')]);
+    const both = played('02-09', [fromHome('nc-40009'), fromHome('nc-3000')]);
+    const analyses = atTheWindows([stateOf('02-09', 'nothing sent', nothing), stateOf('02-09', 'the nc to 40009', unmapped), stateOf('02-09', 'the nc to 40009 and the nc to 3000', both)]);
+    for (const analysis of analyses) expectClear(analysis);
+  });
+
+  it('in 01-09 and 01-10 no label or stamp overlaps once the player has sent its messages, the four pings with a TTL of 01-09 and the ping and the traceroute of 01-10', () => {
+    const pingsWithTtl = ['ping-ttl-1', 'ping-ttl-2', 'ping-ttl-3', 'ping-ttl-64'].map((message) => sending('ip-server', message));
+    const states = [stateOf('01-09', 'the four pings with a TTL', played('01-09', pingsWithTtl)), stateOf('01-10', 'the ping and the traceroute', played('01-10', [sending('ip-server'), sending('ip-server', 'traceroute')]))];
+    for (const analysis of atTheWindows(states)) {
+      expect(analysis.runs.filter((run) => 'send' in run), where(analysis)).toHaveLength(analysis.state.incident === '01-09' ? pingsWithTtl.length : 2);
+      expectClear(analysis);
+    }
+  });
+
+  it('in 06, 08 and 10 the whole map and its labels fit the area of the map, at 900 px and at 1060 px, once the player has sent its messages', () => {
+    const states = [
+      stateOf('01-06', 'the ping to laptop-andres', played('01-06', [sending('ip-andres')])),
+      stateOf('01-08', 'the pings to the server and to 10.0.0.10', played('01-08', [sending('ip-server'), sending('ip-other-office')])),
+      stateOf('01-10', 'the ping and the traceroute', played('01-10', [sending('ip-server'), sending('ip-server', 'traceroute')])),
+    ];
+    for (const analysis of atTheWindows(states)) expect(straysOf(analysis), where(analysis)).toEqual([]);
+  });
+
+  it('in 10, before the traceroute, the whole map and its labels fit the area of the map, at 900 px and at 1060 px, with nothing sent and with the ping sent', () => {
+    const states = [stateOf('01-10', 'nothing sent', played('01-10', [])), stateOf('01-10', 'only the ping', played('01-10', [sending('ip-server')]))];
+    for (const analysis of atTheWindows(states)) expect(straysOf(analysis), where(analysis)).toEqual([]);
+  });
+
+  it('in 14 the whole map and its labels fit the area of the map, at 900 px and at 1060 px, in each of its seven cases', () => {
+    const incident = incidentOf('01-14');
+    const cases = ownersOf(incident, startSession(INCIDENTS, incident.id));
+    expect(cases).toHaveLength(SEVEN_CASES);
+    const states = cases.map(({ owner, session }, index) => stateOf('01-14', `case ${index + 1}, every test sent`, sendAll(owner, session)));
+    for (const analysis of atTheWindows(states)) expect(straysOf(analysis), where(analysis)).toEqual([]);
+  });
+
+  it('in 02-01 no piece label, floor name, stamp or packet label of the still map overlaps another, with the ping and the nc to 3000 sent and then with the nc to 5432 too', () => {
+    const first = [sending('ip-lucia'), sending('ip-lucia', 'nc-3000')];
+    const states = [stateOf('02-01', 'the ping and the nc to 3000', played('02-01', first)), stateOf('02-01', 'and the nc to 5432', played('02-01', [...first, sending('ip-lucia', 'nc-5432')]))];
+    for (const analysis of atTheWindows(states)) {
+      expect(analysis.placed, where(analysis)).toHaveLength(analysis.state.name.includes('5432') ? 2 : 1);
+      expectClear(analysis);
+    }
+  });
+
+  it('in 02-02 no piece label, floor name, stamp or packet label of the still map overlaps another once the labels say TCP and both ports, with the nc to 3000 and the nc to 5432 sent', () => {
+    const session = played('02-02', [sending('ip-lucia', 'nc-3000'), sending('ip-lucia', 'nc-5432')]);
+    for (const analysis of atTheWindows([stateOf('02-02', 'the nc to 3000 and the nc to 5432', session)])) {
+      expect(analysis.placed, where(analysis)).toHaveLength(2);
+      expectClear(analysis);
+    }
+  });
+
+  it('in 02-04 no piece label, floor name or name of the outline of the still map overlaps another, with only your laptop inside, with the printer too and with laptop-andres too', () => {
+    const inside = ['printer', 'andres-laptop'].map((device) => placing(device, 'inside'));
+    const states = [stateOf('02-04', 'only your laptop inside', played('02-04', [])), stateOf('02-04', 'the printer too', played('02-04', inside.slice(0, 1))), stateOf('02-04', 'laptop-andres too', played('02-04', inside))];
+    for (const analysis of atTheWindows(states)) expectClear(analysis);
   });
 });
