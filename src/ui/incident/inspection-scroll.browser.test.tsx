@@ -23,6 +23,10 @@ const DOCKED_CARD_WINDOW = { width: 1440, height: 900 };
 const LAPTOP = 'tu-laptop';
 const BODY_OF_A_CARD = '.map-card .chip-card__body';
 const HIDDEN_PX_ALLOWED = 1;
+const PHONE = { width: 390, height: 844 };
+const HOLDER = '.incident__inspection';
+const PINNED_BOX = '.incident__inspection > .card';
+const SOMETHING_TO_INSPECT = /^internet$/;
 
 function rectOf(selector: string): DOMRect | null {
   return document.querySelector(selector)?.getBoundingClientRect() ?? null;
@@ -100,5 +104,43 @@ describe('a card docked in the corner of the 2D map', () => {
     await userEvent.click(page.getByRole('button', { name: 'Enviar', exact: true }));
     await expect.poll(() => document.querySelector('.map-card')?.textContent).toMatch(/ping 192\.168\.2\.15/);
     expect(hiddenOfTheBody(), 'after a ping').toBeLessThanOrEqual(HIDDEN_PX_ALLOWED);
+  });
+});
+
+describe('the inspection box on a phone, under the map', () => {
+  afterEach(async () => {
+    await page.viewport(INITIAL_VIEWPORT.width, INITIAL_VIEWPORT.height);
+    window.scrollTo(0, 0);
+  });
+
+  it('comes into view when it is pinned and not when it only previews', async () => {
+    await page.viewport(PHONE.width, PHONE.height);
+    const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST_INCIDENT} nextId={null} onFinish={() => undefined} />);
+    await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBeGreaterThan(0);
+    const holder = view.container.querySelector(HOLDER) as HTMLElement;
+    const label = page.getByRole('button', { name: SOMETHING_TO_INSPECT });
+    const below = () => holder.getBoundingClientRect().bottom - window.innerHeight;
+
+    await userEvent.hover(label);
+    await expect.poll(() => rectOf(PINNED_BOX), { message: 'the preview shows in the holder under the map' }).not.toBeNull();
+    const scrolledByTheHover = window.scrollY;
+    expect(below(), 'the holder is under the fold, as the phone lays it out').toBeGreaterThan(0);
+
+    await userEvent.click(label);
+    await expect.poll(() => holder.textContent, { message: 'the click pins the box' }).toMatch(/Fijada/);
+    await expect.poll(below, { message: 'the pinned box is scrolled into view' }).toBeLessThanOrEqual(EPSILON);
+    expect(holder.getBoundingClientRect().top, 'the whole box, from its top').toBeGreaterThanOrEqual(-EPSILON);
+    expect(window.scrollY).toBeGreaterThan(scrolledByTheHover);
+  });
+  it('leaves the page to the card when the same click opens a card', async () => {
+    await page.viewport(PHONE.width, PHONE.height);
+    const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={INCIDENT} nextId={null} onFinish={() => undefined} />);
+    await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBeGreaterThan(0);
+    const holder = view.container.querySelector(HOLDER) as HTMLElement;
+
+    await userEvent.click(page.getByRole('button', { name: CARD_OF }));
+    await expect.poll(() => rectOf(CARD), { message: 'the card opens' }).not.toBeNull();
+    await expect.poll(() => holder.textContent, { message: 'the click also pins the box' }).toMatch(/Fijada/);
+    expect(holder.getBoundingClientRect().bottom - window.innerHeight, 'the holder stays where the phone lays it out').toBeGreaterThan(0);
   });
 });
