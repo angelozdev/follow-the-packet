@@ -4,9 +4,9 @@ import { page } from 'vitest/browser';
 import { pieceViews, startSession, type Session } from '@/game';
 import type { PieceView } from '@/game/view/pieces';
 import { INCIDENTS, caseWorld } from '@/levels';
-import { layoutMap } from '@/scene/map2d/layout/map-layout';
-import { CELL, LABEL_PAD } from '@/scene/map2d/layout/metrics';
-import { MapStage } from '@/scene/map2d/map-stage';
+import { layoutMap } from '@/scene/layout/map-layout';
+import { CELL, LABEL_PAD } from '@/scene/layout/metrics';
+import { MapStage } from '@/scene/map-stage';
 import { pieceDomId } from '@/scene/overlay/piece-label';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };

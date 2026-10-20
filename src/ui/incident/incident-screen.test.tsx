@@ -6,8 +6,8 @@ import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT,
 import { pieceViews, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
-import { layoutMap } from '@/scene/map2d/layout/map-layout';
-import { GLYPH_BOX } from '@/scene/map2d/marks/still-packets';
+import { layoutMap } from '@/scene/layout/map-layout';
+import { GLYPH_BOX } from '@/scene/marks/still-packets';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 import type { Frame } from './inspection-place';
@@ -19,8 +19,8 @@ vi.mock('@mantine/hooks', async (importOriginal) => ({
   useElementSize: () => ({ ref: () => undefined, ...scene.sheet }),
 }));
 
-vi.mock('@/scene/map2d/game-scene', async () => {
-  const { GameScene2D: TheRealMap } = await vi.importActual<typeof import('@/scene/map2d/game-scene')>('@/scene/map2d/game-scene');
+vi.mock('@/scene/game-scene', async () => {
+  const { GameScene2D: TheRealMap } = await vi.importActual<typeof import('@/scene/game-scene')>('@/scene/game-scene');
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
   type SceneProps = GameSceneProps & { known?: ReadonlySet<TermId>; inspectStampsTrigger: (packetIds: readonly string[]) => ReturnType<GameSceneProps['inspectTrigger']> };

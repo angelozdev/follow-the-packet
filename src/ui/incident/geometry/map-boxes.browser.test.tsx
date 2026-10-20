@@ -4,8 +4,8 @@ import { page, userEvent, type Locator } from 'vitest/browser';
 import { classifiedBlock, pieceViews, sessionReducer, startSession } from '@/game';
 import { runFlows } from '@/game/flow-runs';
 import { INCIDENTS, caseWorld, sendCombinations } from '@/levels';
-import { FAN_PITCH } from '@/scene/map2d/layout/arrange/geometry';
-import { MapStage } from '@/scene/map2d/map-stage';
+import { FAN_PITCH } from '@/scene/layout/arrange/geometry';
+import { MapStage } from '@/scene/map-stage';
 import { coveredBy, drawingOf, mapBoxes, overlappingPairs, overlaps, type Area } from '@/testing/map-boxes';
 import {
   OFFICE_IP,

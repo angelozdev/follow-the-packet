@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { ENTITY_REFS, ENTITY_TERMS, type EntityKind, type EntityRef, type EntityVariants, type StampState } from '@/copy';
-import { CATALOG_ROWS } from '@/scene/map2d/catalog/catalog-cells';
+import { CATALOG_ROWS } from '@/scene/catalog/catalog-cells';
 import { EntityIcon } from './entity-icon';
 import { PACKET_SHAPES } from './packet';
 import { StampIcon } from './stamp';

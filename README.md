@@ -10,7 +10,7 @@ Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live
     pnpm exec playwright install chromium
     pnpm dev
 
-The map is flat SVG, animated with SMIL, built in `src/scene/map2d/`. It needs no build flag and no graphics library.
+The map is flat SVG, animated with SMIL, built in `src/scene/`. It needs no build flag and no graphics library.
 
 ## Check
 
