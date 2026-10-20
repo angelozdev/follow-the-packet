@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
+import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { pieceViews, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
@@ -20,11 +20,10 @@ vi.mock('@mantine/hooks', async (importOriginal) => ({
 }));
 
 vi.mock('@/scene/game-scene', async () => {
-  const { GameScene2D: TheRealMap } = await vi.importActual<typeof import('@/scene/game-scene')>('@/scene/game-scene');
+  const { GameScene: TheRealMap } = await vi.importActual<typeof import('@/scene/game-scene')>('@/scene/game-scene');
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
-  type SceneProps = GameSceneProps & { known?: ReadonlySet<TermId>; inspectStampsTrigger: (packetIds: readonly string[]) => ReturnType<GameSceneProps['inspectTrigger']> };
-  const PlainScene = ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: SceneProps) => (
+  const PlainScene = ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: GameSceneProps) => (
     <div data-known={[...(known ?? [])].sort().join(' ')}>
       {pieces.map((piece) => (
         <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
@@ -42,7 +41,7 @@ vi.mock('@/scene/game-scene', async () => {
       {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
     </div>
   );
-  return { GameScene2D: (props: SceneProps) => (scene.drawsTheRealMap ? <TheRealMap {...props} /> : <PlainScene {...props} />) };
+  return { GameScene: (props: GameSceneProps) => (scene.drawsTheRealMap ? <TheRealMap {...props} /> : <PlainScene {...props} />) };
 });
 
 const LIST_OF_THE_STAMPS = 'los sellos de este lugar';

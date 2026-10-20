@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { CATALOG_COLUMNS, STAGE } from './catalog-cells';
-import { CatalogScene2D } from './catalog-scene';
+import { CatalogScene } from './catalog-scene';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const PHONE_VIEWPORT = { width: 390, height: 844 };
@@ -14,7 +14,7 @@ function mount(still: boolean) {
   return render(
     <main className="catalog">
       <section className="catalog__section">
-        <CatalogScene2D still={still} />
+        <CatalogScene still={still} />
       </section>
     </main>,
   );

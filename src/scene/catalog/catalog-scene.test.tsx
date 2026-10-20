@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { CATALOG_TEXT, ENTITY_REFS, MAP_TEXT, entityName, toPlainText, type EntityRef } from '@/copy';
 import { MORE_SPECIMENS } from '@/scene/entities/stamp';
 import { CASILLAS } from '@/scene/layout/arrange/geometry';
-import { CatalogScene2D } from './catalog-scene';
+import { CatalogScene } from './catalog-scene';
 
 type PieceEntity = Extract<EntityRef, { kind: 'device' | 'firewall' | 'edge' | 'internet' | 'actor' }>;
 type State = keyof typeof CATALOG_TEXT.state;
@@ -47,7 +47,7 @@ function morePair(hidden: number, hidesProblem: boolean) {
 
 describe('the 2D entity catalog', () => {
   it('the catalog draws every entity in every variant and state with its caption', () => {
-    render(<CatalogScene2D still />);
+    render(<CatalogScene still />);
     for (const entity of ENTITY_REFS) {
       if (entity.kind === 'network') {
         const drawn = figure(nameOf(entity));
@@ -80,7 +80,7 @@ describe('the 2D entity catalog', () => {
   });
 
   it('the catalog draws a trace with its stamp for every way a packet ends', () => {
-    render(<CatalogScene2D still />);
+    render(<CatalogScene still />);
     for (const { caption, end, stamp } of TRACES) {
       const drawn = figure(caption);
       expect(has(drawn, `g.map-trace[data-end="${end}"]`), caption).toBe(true);
@@ -89,7 +89,7 @@ describe('the 2D entity catalog', () => {
   });
 
   it('the specimens of «+2» and «+12» are in the catalog', () => {
-    render(<CatalogScene2D still />);
+    render(<CatalogScene still />);
     const specimens = MORE_SPECIMENS.map(({ hidden, hidesProblem }) => morePair(hidden, hidesProblem));
     expect(specimens.map(({ hidden }) => hidden)).toEqual([2, 12, 2]);
     expect(new Set(specimens.map(({ caption }) => caption)).size).toBe(3);
@@ -108,14 +108,14 @@ describe('the 2D entity catalog', () => {
     const problemStates = MAP_TEXT.hiddenProblem.replace(/^Entre los escondidos hay |\.$/g, '');
     expect(problemStates).toBe('alguno bloqueado, perdido, con un aviso o que entró y no debía');
     for (const hidden of [2, 12]) expect(CATALOG_TEXT.more.stampsWithProblem(hidden)).toBe(`${hidden} sellos más, ${problemStates}`);
-    render(<CatalogScene2D still />);
+    render(<CatalogScene still />);
     const withDot = MORE_SPECIMENS.filter(({ hidesProblem }) => hidesProblem);
     expect(withDot).toHaveLength(1);
     expect(figure(CATALOG_TEXT.more.stampsWithProblem(withDot[0].hidden)).querySelector('.stamp__dot')).not.toBeNull();
   });
 
   it('every specimen of the 2D catalog is hidden from screen readers and its caption is its name', () => {
-    const { container } = render(<CatalogScene2D still />);
+    const { container } = render(<CatalogScene still />);
     const figures = screen.getAllByRole('figure');
     expect(figures.length).toBe(ROW_SIZES.reduce((total, size) => total + size, 0));
     for (const each of figures) {
@@ -136,7 +136,7 @@ describe('the 2D entity catalog', () => {
   });
 
   it('the catalog lines up in 5 columns and each family starts its own row', () => {
-    const { container } = render(<CatalogScene2D still />);
+    const { container } = render(<CatalogScene still />);
     const rows = [...container.querySelectorAll<HTMLElement>('.catalog2d__row')];
     expect(rows.map((row) => row.querySelectorAll('figure').length)).toEqual(ROW_SIZES);
     expect(Math.max(...ROW_SIZES)).toBe(COLUMNS);
@@ -146,7 +146,7 @@ describe('the 2D entity catalog', () => {
   });
 
   it('draws the states that move with animations on, and as still marks with them off', () => {
-    const moving = render(<CatalogScene2D still={false} />);
+    const moving = render(<CatalogScene still={false} />);
     const alert = figure(captionOf({ kind: 'device', variant: 'laptop' }, 'alert'));
     const selectedBar = figure(captionOf({ kind: 'firewall', variant: 'security-group' }, 'selected'));
     expect(has(alert, 'animateTransform'), 'a laptop under attack shakes').toBe(true);
@@ -154,7 +154,7 @@ describe('the 2D entity catalog', () => {
     expect(has(selectedBar, 'animateTransform'), 'a selected bar pulses').toBe(true);
     expect(has(selectedBar, '.map-bar--selected')).toBe(false);
     moving.unmount();
-    render(<CatalogScene2D still />);
+    render(<CatalogScene still />);
     expect(document.querySelectorAll('animateTransform')).toHaveLength(0);
   });
 });

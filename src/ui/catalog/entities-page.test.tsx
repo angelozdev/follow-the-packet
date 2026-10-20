@@ -8,9 +8,9 @@ import { EntitiesPage } from './entities-page';
 const catalog = vi.hoisted(() => ({ drawsItsSpecimens: false }));
 
 vi.mock('@/scene/catalog/catalog-scene', async () => {
-  const { CatalogScene2D } = await vi.importActual<typeof import('@/scene/catalog/catalog-scene')>('@/scene/catalog/catalog-scene');
+  const { CatalogScene } = await vi.importActual<typeof import('@/scene/catalog/catalog-scene')>('@/scene/catalog/catalog-scene');
   return {
-    CatalogScene2D: ({ still }: { still: boolean }) => (catalog.drawsItsSpecimens ? <CatalogScene2D still={still} /> : <p>{still ? 'still' : 'moving'}</p>),
+    CatalogScene: ({ still }: { still: boolean }) => (catalog.drawsItsSpecimens ? <CatalogScene still={still} /> : <p>{still ? 'still' : 'moving'}</p>),
   };
 });
 

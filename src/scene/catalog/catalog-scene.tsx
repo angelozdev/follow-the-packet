@@ -5,7 +5,7 @@ const ROW_STYLE = { gridTemplateColumns: `repeat(${CATALOG_COLUMNS}, ${STAGE.wid
 const captionId = (cellId: string) => `catalog-caption-${cellId}`;
 
 /** Takes whether animations are off; returns the whole entity catalog as a grid of specimens, one row for each entity or variant: every specimen is a figure that holds its drawing (hidden from screen readers and from the keyboard, since it is only to look at) and its caption, which names the figure. With animations on, the pieces that move shake or pulse. */
-export function CatalogScene2D({ still }: { still: boolean }) {
+export function CatalogScene({ still }: { still: boolean }) {
   return (
     <div className="catalog__canvas catalog2d">
       {CATALOG_ROWS.map((row) => (

@@ -8,7 +8,7 @@ import { tokenColor } from '@/testing/token-color';
 import { TITLE_BAR } from '@/scene/cards/placement';
 import { blockTabBoxes, captionBoxes } from '@/scene/layout/captions';
 import { layoutMap } from '@/scene/layout/map-layout';
-import { GameScene2D } from './game-scene';
+import { GameScene } from './game-scene';
 import { MapStage, type MapStageProps } from './map-stage';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -238,7 +238,7 @@ describe('MapStage', () => {
     const marked = FLOORS_PIECES.map((each) => (each.id === 'device:your-laptop' ? { ...each, insideBlock: true as const } : each));
     const scene = (known: ReadonlySet<TermId>) => (
       <div data-testid="box" style={{ width: WIDE, position: 'relative' }}>
-        <GameScene2D world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} known={known} />
+        <GameScene world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} known={known} />
       </div>
     );
     const view = render(scene(NOTHING_KNOWN));

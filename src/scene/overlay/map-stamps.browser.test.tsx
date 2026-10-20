@@ -7,7 +7,7 @@ import { FLOORS_LABEL_PIECES, mapRun, triggerSpies, type MapRunFixture } from '@
 import { StampMore } from '@/scene/entities/stamp';
 import { FAN_PITCH, type Mark } from '@/scene/layout/arrange/geometry';
 import { layoutMap } from '@/scene/layout/map-layout';
-import { GameScene2D } from '@/scene/game-scene';
+import { GameScene } from '@/scene/game-scene';
 import { MapStage } from '@/scene/map-stage';
 import { fanStamps, stampsByPlace } from '@/scene/marks/stamp-fan';
 import { readingOrder } from '@/scene/marks/reading-order';
@@ -194,7 +194,7 @@ describe('the stamps of the 2D map', () => {
     const asked = new Set<string>();
     const view = render(
       <div data-testid="box" style={{ width: WIDTH, position: 'relative' }}>
-        <GameScene2D world={WORLD} pieces={PIECES} flows={flows} sent={sent} still activePieceId={null} overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={(packetIds) => (asked.add(packetIds.join('|')), lists)} onActivate={() => undefined} />
+        <GameScene world={WORLD} pieces={PIECES} flows={flows} sent={sent} still activePieceId={null} overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={(packetIds) => (asked.add(packetIds.join('|')), lists)} onActivate={() => undefined} />
       </div>,
     );
     const drawn = await stampsDrawn(view, 3);
