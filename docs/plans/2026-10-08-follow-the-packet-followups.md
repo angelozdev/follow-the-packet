@@ -99,6 +99,7 @@ Cada punto cita la regla de `.claude/rules/` que lo exige. Lo que hoy no cumple 
 
 - `design-tokens` y `primitive-semantic-tokens`: decididas en el plan del design system (2026-10-09). El proyecto sigue su idea (paleta y roles de color; escalas de letra, espacio y línea) y la escribe en `projects/follow-the-packet/DESIGN.md`. No entran como reglas de `.claude/rules/`: el estudiante dejó fuera las guardas (archivo de regla, test sobre el CSS y regla de ESLint).
 - `prefer-radix`: sin decidir.
+- **Menú de acciones de una pieza (clic derecho), 2026-10-19.** Idea del estudiante: tomar acciones sobre una entidad con clic derecho. Propuesta aprobada por el estudiante: el clic o el toque sigue siendo la entrada principal (abre la tarjeta de la pieza, con un botón «Acciones», como en la consola de AWS); el clic derecho, mantener presionado en el teléfono y la tecla Menú son atajos a esa misma lista; ninguna acción existe solo en el clic derecho, porque el teléfono no lo tiene, no se ve y el teclado y el lector de pantalla necesitan otro camino. Cuándo: solo en el mapa 2D, después de la Tarea M24 (borrar el 3D), y cuando un capítulo lo necesite (p. ej. el 6, VPC, o el 7, balanceador). Falta elegir la primera acción.
 
 ## Bloque E: primera prueba humana del prototipo (2026-10-08)
 
