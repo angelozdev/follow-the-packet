@@ -59,4 +59,44 @@ describe('the place of the inspection box', () => {
     expect(place(inTheTopOfTheTallest)).toBe('left');
     expect(inspectionPlace({ map: MAP, ...SIZE, tallest: 120, card: inTheTopOfTheTallest, current: null })).toBe('right');
   });
+  describe('with the marks of the map', () => {
+    const inTheRightPlace = { left: 700, top: 800, right: 780, bottom: 820 };
+    const inTheLeftPlace = { left: 40, top: 800, right: 120, bottom: 820 };
+    const withMarks = (marks: Frame[], card: Frame | null = null, current: 'right' | 'left' | null = null) => inspectionPlace({ map: MAP, ...SIZE, card, current, marks });
+
+    it('takes the left place when a mark stands where the box ends, which the least box covers', () => {
+      expect(withMarks([inTheRightPlace])).toBe('left');
+      expect(withMarks([inTheLeftPlace])).toBe('right');
+    });
+
+    it('leaves a mark that stands above the least height of the box to the height of the box, and keeps the place it has', () => {
+      const above = { left: 700, top: 600, right: 780, bottom: 620 };
+      expect(withMarks([above])).toBe('right');
+      expect(withMarks([above], null, 'left')).toBe('left');
+    });
+
+    it('counts a mark closer than the gap to the least box and not one that is exactly the gap away', () => {
+      const leastTop = RIGHT_PLACE.bottom - 120;
+      const mark = (bottom: number) => ({ left: 700, top: bottom - 20, right: 780, bottom });
+      expect(withMarks([mark(leastTop - 8)])).toBe('right');
+      expect(withMarks([mark(leastTop - 8 + 1)])).toBe('left');
+    });
+
+    it('moves to the place that is free of marks even when the box has the other one', () => {
+      expect(withMarks([inTheLeftPlace], null, 'left')).toBe('right');
+      expect(withMarks([inTheRightPlace], null, 'right')).toBe('left');
+    });
+
+    it('keeps the order of the places when the marks cover both or none, so a place with a mark in it is still a place', () => {
+      expect(withMarks([inTheRightPlace, inTheLeftPlace])).toBe('right');
+      expect(withMarks([inTheRightPlace, inTheLeftPlace], null, 'left')).toBe('left');
+      expect(withMarks([])).toBe('right');
+    });
+
+    it('never takes a place the card touches because it is free of marks, and has none when the card touches both', () => {
+      const cardOnTheRight = { left: 535, top: 203, right: 835, bottom: 589 };
+      expect(withMarks([inTheLeftPlace], cardOnTheRight)).toBe('left');
+      expect(withMarks([inTheRightPlace], { left: 300, top: 600, right: 700, bottom: 880 })).toBeNull();
+    });
+  });
 });
