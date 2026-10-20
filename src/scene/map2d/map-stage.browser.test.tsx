@@ -284,6 +284,25 @@ describe('MapStage', () => {
       expectOverThePiecesAndUnderTheLayer(svg, box, svg.querySelector('g.map-flights') as Element);
     });
 
+    it('a send sent again while it flies draws a second packet and a second label from the one list the stage gives both, and animations turned off and on again forget the first', async () => {
+      const again = mapRunWithPorts(FLOORS, tcp(YOU, server.ip, 80), 'again', officeRouter.id, { replied: true });
+      const stage = (send: number, still: boolean) => (
+        <div data-testid="box" style={{ width: WIDE, position: 'relative' }}>
+          <MapStage world={FLOORS} pieces={FLOORS_PIECES} known={NOTHING_KNOWN} {...SCREEN_PROPS} still={still} sent={[{ ...again, send }]} />
+        </div>
+      );
+      const view = render(stage(1, false));
+      const box = view.getByTestId('box');
+      const flights = () => box.querySelectorAll('.map-stage__svg g.map-flight[data-packet="again"]').length;
+      const labels = () => box.querySelectorAll('.map-stage__flight-labels g.map-flight-tag[data-packet="again"]').length;
+      await expect.poll(flights).toBe(1);
+      view.rerender(stage(2, false));
+      expect([flights(), labels()]).toEqual([2, 2]);
+      view.rerender(stage(2, true));
+      view.rerender(stage(2, false));
+      expect([flights(), labels()]).toEqual([1, 1]);
+    });
+
     it('draws a blocked trace in the danger colour, a lost one dashed and the others in ink, and the border of an intruder over nothing but air', async () => {
       const { box } = mount(WIDE, NOTHING_KNOWN, FLOORS, FLOORS_PIECES, { flows: [ANSWERED, BLOCKED, LOST, INTRUDER] });
       const svg = await drawing(box);

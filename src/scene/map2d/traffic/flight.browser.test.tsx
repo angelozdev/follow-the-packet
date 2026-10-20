@@ -11,7 +11,7 @@ import { changeDistance } from '@/scene/map2d/marks/packet-tags';
 import { fanStamps, stampsByPlace } from '@/scene/map2d/marks/stamp-fan';
 import { wayOf } from '@/scene/map2d/marks/still-packets';
 import { distanceAt, flightPlan, routeOf } from './flight-plan';
-import { FlightLabels, Traffic } from './traffic';
+import { FlightLabels, Traffic, useSendsInTheAir } from './traffic';
 
 const WORLD = officeTwoFloorsNet();
 const LAYOUT = layoutMap(WORLD, FLOORS_LABEL_PIECES, { width: 1280 });
@@ -35,20 +35,23 @@ interface Stage {
   labels: SVGSVGElement;
 }
 
-function trafficOf(flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[], layout = LAYOUT) {
+function Stage({ flows, sent, layout }: { flows: readonly MapRunFixture[]; sent: readonly ReturnType<typeof sentAs>[]; layout: typeof LAYOUT }) {
+  const inTheAir = useSendsInTheAir(sent, layout, false);
   const fans = fanStamps(stampsByPlace([...flows, ...sent], layout.drawn), layout.marks);
   const box = { width: layout.size.width, height: layout.size.height, viewBox: `0 0 ${layout.size.width} ${layout.size.height}` };
   return (
     <div style={{ position: 'relative' }}>
       <svg {...box}>
-        <Traffic flows={flows} sent={sent} layout={layout} fans={fans} still={false} />
+        <Traffic flows={flows} sent={sent} inTheAir={inTheAir} layout={layout} fans={fans} still={false} />
       </svg>
       <svg {...box} className="flight-labels" style={{ position: 'absolute', left: 0, top: 0 }}>
-        <FlightLabels flows={flows} sent={sent} layout={layout} />
+        <FlightLabels flows={flows} inTheAir={inTheAir} layout={layout} />
       </svg>
     </div>
   );
 }
+
+const trafficOf = (flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[], layout = LAYOUT) => <Stage flows={flows} sent={sent} layout={layout} />;
 
 const stageOf = (container: ParentNode): Stage => ({ svg: container.querySelector('svg:not(.flight-labels)') as SVGSVGElement, labels: container.querySelector('svg.flight-labels') as SVGSVGElement });
 

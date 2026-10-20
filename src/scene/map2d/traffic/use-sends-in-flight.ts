@@ -24,10 +24,11 @@ function arrived(ledger: Ledger, sent: readonly SentRun[], now: number, secondsO
   const stands = new Set(sent.map(flightKeyOf));
   const ids = new Set(sent.map(({ id }) => id));
   const kept = ledger.entries.filter(({ run, over }) => ids.has(run.id) && !(over && !stands.has(flightKeyOf(run))));
+  const remembered = [...ledger.newest].filter(([id]) => ids.has(id));
   const fresh = sent.filter(({ id, send }) => send > (ledger.newest.get(id) ?? 0));
-  if (fresh.length === 0 && kept.length === ledger.entries.length) return ledger;
+  if (fresh.length === 0 && kept.length === ledger.entries.length && remembered.length === ledger.newest.size) return ledger;
   const entries = fresh.map((run): Entry => ({ run, endsAt: now + secondsOf(run) * MS_PER_SECOND, over: false }));
-  return { entries: [...kept, ...entries], newest: new Map([...ledger.newest, ...fresh.map(({ id, send }): [string, number] => [id, send])]) };
+  return { entries: [...kept, ...entries], newest: new Map([...remembered, ...fresh.map(({ id, send }): [string, number] => [id, send])]) };
 }
 
 function finishedBy(ledger: Ledger, deadline: number): Ledger {
@@ -42,7 +43,7 @@ function inFlight(ledger: Ledger, sent: readonly SentRun[]): SentRun[] {
   return [...recorded, ...sent.filter((run) => !known.has(flightKeyOf(run)))];
 }
 
-/** Takes the runs the player sent (the last of each combination of chips, as the session keeps them) and the seconds a run is on the map; returns the runs to draw in flight: those of `sent` and, besides, each earlier send of a combination that a newer send has replaced, until its own trip ends (`secondsOf` after it was first seen, on a timer), as the 3D map keeps one packet for each send. They come in the order they first stood, so a flight never changes place among the others when a new one joins or an old one goes, and an earlier send keeps the run it left with. A combination that leaves `sent` takes its flights with it, and a send that has ended while it is still the last of its combination stays in the list, finished and invisible, as before. */
+/** Takes the runs the player sent (the last of each combination of chips, as the session keeps them) and the seconds a run is on the map; returns the runs to draw in flight: those of `sent` and, besides, each earlier send of a combination that a newer send has replaced, until its own trip ends (`secondsOf` after it was first seen, on a timer), as the 3D map keeps one packet for each send. They come in the order they first stood, so a flight never changes place among the others when a new one joins or an old one goes, and an earlier send keeps the run it left with. A combination that leaves `sent` takes its flights with it and is forgotten (the list `sent` given empty forgets all), and a send that has ended while it is still the last of its combination stays in the list, finished and invisible, as before. */
 export function useSendsInFlight(sent: readonly SentRun[], secondsOf: (run: SentRun) => number): SentRun[] {
   const [ledger, setLedger] = useState(NOTHING_SENT);
 

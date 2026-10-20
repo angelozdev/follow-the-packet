@@ -11,7 +11,7 @@ import { translationAt, wayOf } from '@/scene/map2d/marks/still-packets';
 import { FlightBody } from './flight';
 import { FLOW_OFFSET, FLOW_PERIOD, flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from './flight-plan';
 import { pathData } from './still-trace';
-import { FlightLabels, Traffic } from './traffic';
+import { FlightLabels, Traffic, useSendsInTheAir } from './traffic';
 
 const WORLD = officeTwoFloorsNet();
 const LAYOUT = layoutMap(WORLD, FLOORS_LABEL_PIECES, { width: 1280 });
@@ -25,21 +25,24 @@ const toTheServer = (id: string) => mapRunWithPorts(WORLD, tcp(YOU, server.ip, 8
 const toItself = (id: string) => mapRunWithPorts(WORLD, tcp(YOU, floor1.you, 80), id);
 const sentAs = (run: MapRunFixture, send: number) => ({ ...run, send });
 
-function trafficOf(flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[], still: boolean) {
+function Stage({ flows, sent, still }: { flows: readonly MapRunFixture[]; sent: readonly ReturnType<typeof sentAs>[]; still: boolean }) {
+  const inTheAir = useSendsInTheAir(sent, LAYOUT, still);
   const fans = fanStamps(stampsByPlace([...flows, ...sent], LAYOUT.drawn), LAYOUT.marks);
   return (
     <div>
       <svg>
-        <Traffic flows={flows} sent={sent} layout={LAYOUT} fans={fans} still={still} />
+        <Traffic flows={flows} sent={sent} inTheAir={inTheAir} layout={LAYOUT} fans={fans} still={still} />
       </svg>
       {!still && (
         <svg className="flight-labels">
-          <FlightLabels flows={flows} sent={sent} layout={LAYOUT} />
+          <FlightLabels flows={flows} inTheAir={inTheAir} layout={LAYOUT} />
         </svg>
       )}
     </div>
   );
 }
+
+const trafficOf = (flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[], still: boolean) => <Stage flows={flows} sent={sent} still={still} />;
 
 function draw(flows: readonly MapRunFixture[], sent: readonly ReturnType<typeof sentAs>[] = [], still = false): SVGSVGElement {
   return render(trafficOf(flows, sent, still)).container.querySelector('svg') as SVGSVGElement;

@@ -13,7 +13,7 @@ import { CardAnchor } from '@/scene/map2d/overlay/card-anchor';
 import { BlockNames, GroupCaptions } from '@/scene/map2d/overlay/group-captions';
 import { MapLabels } from '@/scene/map2d/overlay/map-labels';
 import { stampButtons, type DrawnRun, type InspectStampsTrigger, type SentRun } from '@/scene/map2d/overlay/map-stamps';
-import { FlightLabels, Traffic } from '@/scene/map2d/traffic/traffic';
+import { FlightLabels, Traffic, useSendsInTheAir } from '@/scene/map2d/traffic/traffic';
 import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import type { MapPiece } from '@/scene/overlay/piece-label';
 import { frameOf } from './frame';
@@ -38,6 +38,7 @@ function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, 
   const { size } = layout;
   const frame = frameOf(width, size);
   const runs = [...flows, ...sent];
+  const inTheAir = useSendsInTheAir(sent, layout, still);
   const fans = fanStamps(stampsByPlace(runs, layout.drawn), layout.marks);
   const open = overlay ? pieces.find(({ id }) => id === activePieceId && layout.icons[id] !== undefined) : undefined;
   const room = open ? ROOM_UNDER_THE_DRAWING : 0;
@@ -50,7 +51,7 @@ function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, 
         <LinkLines links={layout.links} />
         <MarkDots marks={layout.marks} />
         <Pieces pieces={pieces} icons={layout.icons} activePieceId={activePieceId} still={still} />
-        <Traffic flows={flows} sent={sent} layout={layout} fans={fans} still={still} />
+        <Traffic flows={flows} sent={sent} inTheAir={inTheAir} layout={layout} fans={fans} still={still} />
       </svg>
       <div className="html-layer">
         <GroupCaptions groups={layout.groups} known={known} frame={frame} />
@@ -64,7 +65,7 @@ function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, 
       </div>
       {!still && (
         <svg className="map-stage__flight-labels" aria-hidden="true" viewBox={`0 0 ${size.width} ${size.height}`} width={size.width} height={size.height} style={{ left: frame.x, top: frame.y }}>
-          <FlightLabels flows={flows} sent={sent} layout={layout} />
+          <FlightLabels flows={flows} inTheAir={inTheAir} layout={layout} />
         </svg>
       )}
     </>
