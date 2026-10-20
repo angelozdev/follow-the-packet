@@ -155,6 +155,30 @@ describe('the packets in flight, in a browser', () => {
     expect(shown(glyphOf(packet, 'going')) || shown(glyphOf(packet, 'answer'))).toBe(false);
   });
 
+  it('a send sent again while it flies leaves the first packet on its way and starts a second from zero, under StrictMode too', () => {
+    const run = toTheServer('again');
+    const view = render(<StrictMode>{trafficOf([], [sentAs(run, 1)])}</StrictMode>);
+    const stage = stageOf(view.container);
+    const { svg } = stage;
+    const { plan, route } = planOf(run);
+    pause(stage);
+    const start = startOf(packetOf(svg, 'again'));
+    seek(stage, start + 2);
+    view.rerender(<StrictMode>{trafficOf([], [sentAs(run, 2)])}</StrictMode>);
+    const flights = [...svg.querySelectorAll('g.map-flight[data-packet="again"]')];
+    const tags = [...stage.labels.querySelectorAll('g.map-flight-tag[data-packet="again"]')];
+    expect([flights.length, tags.length]).toEqual([2, 2]);
+    expect(flights.map(startOf)).toEqual([expect.closeTo(start, 6), expect.closeTo(start + 2, 6)]);
+    expect(tags.map(startOf)).toEqual([expect.closeTo(start, 6), expect.closeTo(start + 2, 6)]);
+    for (const [first, second] of [[2, 0], [3, 1]]) {
+      seek(stage, start + 2 + second);
+      const [early, late] = flights.map((flight) => shapeCenter(svg, glyphOf(flight, 'going')));
+      expect(distanceBetween(early, at(route, distanceAt(plan, first)))).toBeLessThanOrEqual(HALF_A_PIXEL);
+      expect(distanceBetween(late, at(route, distanceAt(plan, second)))).toBeLessThanOrEqual(HALF_A_PIXEL);
+      expect(flights.map((flight) => shown(glyphOf(flight, 'going')))).toEqual([true, true]);
+    }
+  });
+
   it('a blocked packet bursts at the end of its path, a lost one shrinks away there and the warning of its own device appears there, each for half a second', () => {
     const blocked = toLucia('blocked', { replied: false, reached: false, blocked: true });
     const lost = toLucia('lost', { replied: false, reached: false });

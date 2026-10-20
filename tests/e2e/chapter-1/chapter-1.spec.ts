@@ -6,6 +6,7 @@ import { collectErrors } from '@e2e/console-errors';
 import { coveredBy, mapArea, mapBoxes, outsideTheArea, overlappingPairs, overlaps, recordLabels, recordedLabels, type Box } from '@e2e/map-boxes';
 import { CHAPTER_1_DONE, reloadWithProgress, startWithProgress } from '@e2e/saved-progress';
 import { CHAPTER_2, LAST_BUILT_OF_CHAPTER_2 } from '@e2e/chapter-2/chapter-2-play';
+import { freezeTime, standStill } from '@e2e/still-scene';
 
 const LOCKED = '(bloqueado)';
 const FIRST_PING_LINK = '1. El primer ping';
@@ -19,6 +20,10 @@ const LAPTOP_REACH_PX = { across: 56, down: 88 };
 const A_ROUTER_OF_THE_PATH = /router-(oficina|proveedor|destino)|(?<!\d)(192\.168\.1\.1|203\.0\.113\.\d+)(?!\d)/;
 const A_HOP = /salto|pasó por/i;
 const THE_PING_TO_THE_SERVER = `ping de tu-laptop a ${IP.server}`;
+const SAME_PING_SENDS = 3;
+const FLIGHT = 'g.map-flight';
+const MAP_SVG = '.map-stage__svg';
+const LONGER_THAN_A_TRIP_MS = 20_000;
 const WINDOWS = [
   { width: 1280, height: 800 },
   { width: 1440, height: 900 },
@@ -170,6 +175,24 @@ test('in 05 the stamp of the ping to laptop-marta tells a screen reader that it 
   await sendTo(await openTerminal(page), IP.marta);
   await expect(page.getByRole('button', { name: /^Paquete: ping de tu-laptop a laptop-marta\. Perdido\.$/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Paquete:.*Bloqueado/ })).toHaveCount(0);
+});
+
+test('in 03 the same ping sent three times is one stamp and, on the 2D map, three packets in the air at once, and the first two go when their own trips end', async ({ page }) => {
+  await page.clock.install();
+  await startWithProgress(page, { '01-02': 1 });
+  await page.goto('/#/level/01-03');
+  const terminal = await openTerminal(page);
+  await standStill(page);
+  await freezeTime(page);
+  const drawsFlights = (await page.locator(MAP_SVG).count()) > 0;
+  for (let send = 1; send <= SAME_PING_SENDS; send += 1) {
+    await sendTo(terminal, IP.printer);
+    await expect(page.locator(FLIGHT), `after send ${send}`).toHaveCount(drawsFlights ? send : 0);
+  }
+  await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(1);
+  await page.clock.runFor(LONGER_THAN_A_TRIP_MS);
+  await expect(page.locator(FLIGHT), 'once every trip is over, only the last send stays').toHaveCount(drawsFlights ? 1 : 0);
+  await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(1);
 });
 
 test('in 11 the stamp of the ping to laptop-marta tells a screen reader that the firewall blocked it', async ({ page }) => {

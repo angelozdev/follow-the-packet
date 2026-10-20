@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { StrictMode } from 'react';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OFFICE_FLOORS, device, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
 import { FLOORS_LABEL_PIECES, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
 import { graphOf } from '@/scene/map2d/layout/arrange/assemble';
@@ -124,17 +124,47 @@ describe('Traffic', () => {
   });
 
   it('a send is a group that begins when it is mounted and that a new send number mounts again', () => {
-    const [first, second] = [toLucia('first'), toLucia('second')];
+    const first = toLucia('first');
     const view = render(trafficOf([], [sentAs(first, 1)], false));
     const [packet] = packetsOf(view.container, 'first');
     expect(attributesOf(motionOfPacket(packet), 'begin', 'repeatCount')).toEqual(['indefinite', '1']);
     view.rerender(trafficOf([], [sentAs(first, 1)], false));
-    expect(packetsOf(view.container, 'first')[0]).toBe(packet);
+    expect(packetsOf(view.container, 'first')).toEqual([packet]);
+    view.rerender(trafficOf([], [sentAs(first, 2)], false));
+    const [earlier, later] = packetsOf(view.container, 'first');
+    expect(earlier).toBe(packet);
+    expect(later).not.toBe(packet);
+    expect(attributesOf(motionOfPacket(later), 'begin', 'repeatCount')).toEqual(['indefinite', '1']);
+    view.rerender(trafficOf([], [sentAs(first, 3)], false));
+    expect(packetsOf(view.container, 'first')).toHaveLength(3);
+  });
+
+  it('a combination that leaves the sent list takes its flights with it, and the others stay', () => {
+    const [first, second] = [toLucia('first'), toLucia('second')];
+    const view = render(trafficOf([], [sentAs(first, 1), sentAs(second, 2)], false));
+    view.rerender(trafficOf([], [sentAs(first, 3), sentAs(second, 2)], false));
+    expect(packetsOf(view.container, 'first')).toHaveLength(2);
     view.rerender(trafficOf([], [sentAs(second, 2)], false));
     expect(packetsOf(view.container, 'first')).toHaveLength(0);
     expect(packetsOf(view.container, 'second')).toHaveLength(1);
-    view.rerender(trafficOf([], [sentAs(first, 3)], false));
-    expect(packetsOf(view.container, 'first')[0]).not.toBe(packet);
+    view.rerender(trafficOf([], [], false));
+    expect(view.container.querySelectorAll('g.map-flight')).toHaveLength(0);
+  });
+
+  it('a new send joins the flights in the air without moving or mounting again any of them', () => {
+    const [first, second] = [toLucia('first'), toLucia('second')];
+    const view = render(trafficOf([], [sentAs(first, 1), sentAs(second, 2)], false));
+    const flights = view.container.querySelector('g.map-flights') as Element;
+    const before = [...flights.children];
+    const watcher = new MutationObserver(() => undefined);
+    watcher.observe(flights, { childList: true });
+    view.rerender(trafficOf([], [sentAs(first, 3), sentAs(second, 2)], false));
+    const records = watcher.takeRecords();
+    watcher.disconnect();
+    expect(records.flatMap(({ removedNodes }) => [...removedNodes])).toEqual([]);
+    expect(records.flatMap(({ addedNodes }) => [...addedNodes])).toHaveLength(1);
+    expect(before.every((flight) => flight.isConnected)).toBe(true);
+    expect(flights.children).toHaveLength(3);
   });
 
   it('a translated packet wears a label for each leg and direction, each shown while the packet is in that leg, and beside the packet', () => {
@@ -252,5 +282,56 @@ describe('Traffic in a browser that animates by hand', () => {
     const animationsOfSend = packetsOf(view.container, 'sent')[0].querySelectorAll(ANIMATIONS).length;
     expect(begins).toHaveBeenCalledTimes(2 * animationsOfSend);
     expect(ends).toHaveBeenCalledTimes(animationsOfSend);
+  });
+});
+
+describe('the sends of one combination, sent again while the first still flies', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const labelsOfTheSend = (container: ParentNode) => container.querySelectorAll('svg.flight-labels g.map-flight-tag[data-packet="nat"]');
+  const packetsOfTheSend = (container: ParentNode) => container.querySelectorAll('g.map-flight[data-packet="nat"]');
+  const pass = (milliseconds: number) => act(() => vi.advanceTimersByTime(milliseconds));
+
+  it('each send flies until its own trip ends, with its label beside it, and the last one stays once its trip is over', () => {
+    const run = toTheServer('nat');
+    const trip = Math.ceil(planOf(run).plan.duration * 1000);
+    const view = render(trafficOf([], [sentAs(run, 1)], false));
+    const [first] = packetsOfTheSend(view.container);
+    pass(trip / 2);
+    view.rerender(trafficOf([], [sentAs(run, 2)], false));
+    const [, second] = packetsOfTheSend(view.container);
+    expect([packetsOfTheSend(view.container).length, labelsOfTheSend(view.container).length]).toEqual([2, 2]);
+    pass(trip / 2 + 1);
+    expect([...packetsOfTheSend(view.container)]).toEqual([second]);
+    expect(labelsOfTheSend(view.container)).toHaveLength(1);
+    expect(second).not.toBe(first);
+    pass(trip);
+    expect([...packetsOfTheSend(view.container)]).toEqual([second]);
+  });
+
+  it('three sends of the same ping in a row are three packets in the air at once, and each goes in its own time', () => {
+    const run = toLucia('ping');
+    const trip = Math.ceil(planOf(run).plan.duration * 1000);
+    const view = render(trafficOf([], [sentAs(run, 1)], false));
+    pass(trip / 4);
+    view.rerender(trafficOf([], [sentAs(run, 2)], false));
+    pass(trip / 4);
+    view.rerender(trafficOf([], [sentAs(run, 3)], false));
+    expect(packetsOf(view.container, 'ping')).toHaveLength(3);
+    pass(trip / 2 + 1);
+    expect(packetsOf(view.container, 'ping')).toHaveLength(2);
+    pass(trip / 4);
+    expect(packetsOf(view.container, 'ping')).toHaveLength(1);
+  });
+
+  it('an earlier send stays the same group while the list is drawn again', () => {
+    const run = toTheServer('nat');
+    const view = render(trafficOf([], [sentAs(run, 1)], false));
+    const [first] = packetsOfTheSend(view.container);
+    view.rerender(trafficOf([], [sentAs(run, 2)], false));
+    view.rerender(trafficOf([], [sentAs(run, 2)], false));
+    expect(packetsOfTheSend(view.container)).toHaveLength(2);
+    expect(packetsOfTheSend(view.container)[0]).toBe(first);
   });
 });
