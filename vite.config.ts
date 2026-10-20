@@ -18,6 +18,7 @@ export default defineConfig({
           exclude: [...configDefaults.exclude, BROWSER_TESTS],
           setupFiles: ['./src/testing/setup.ts'],
           environment: 'node',
+          env: { VITE_MAP_RENDERER: '3d' },
           css: { include: [/\/design\/tokens\.css/] },
         },
       },

@@ -10,7 +10,7 @@ Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live
     pnpm exec playwright install chromium
     pnpm dev
 
-The map is the 3D one by default. The 2D map, built in `src/scene/map2d/` and not finished yet, is chosen at build time with the flag `VITE_MAP_RENDERER=2d`, for the dev server (`VITE_MAP_RENDERER=2d pnpm dev --port <a free port>`) and for the build that `pnpm e2e` serves (`VITE_MAP_RENDERER=2d pnpm e2e`).
+The map is the 2D one by default (flat SVG, built in `src/scene/map2d/`). The 3D map stays in the tree until the plan deletes it and is chosen at build time with the flag `VITE_MAP_RENDERER=3d`, for the dev server (`VITE_MAP_RENDERER=3d pnpm dev --port <a free port>`) and for the build that `pnpm e2e` serves (`VITE_MAP_RENDERER=3d pnpm e2e`).
 
 ## Check
 
