@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag } from '@/copy';
+import { tokenPx } from '@/design';
 import { applyAction, facesALan, isClientActor, simulate, type Network } from '@/engine';
 import { INCIDENTS, caseWorld, solvedWorld, startWorld } from '@/levels';
 import { lengthOf, route, type Point } from '@/scene/layout/graph';
@@ -8,7 +9,7 @@ import { LINE_END, startsOnMap, station, stationsFor } from '@/scene/layout/stat
 import { holds } from '@/scene/marks/boxes';
 import { NAME_SERVERS, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames } from '@/testing';
 import { graphOf } from './arrange/assemble';
-import { BLOCK_TAB, CAPTION, COMPACT, GROUP_PAD, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
+import { BLOCK_TAB, CABLE_CLEARANCE, CABLE_STROKE, CAPTION, COMPACT, GROUP_PAD, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, WALL_STROKE, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
 import { SERVERS, layoutRow } from './arrange/row';
 import { layoutStack } from './arrange/stack';
 import { layoutMap } from './map-layout';
@@ -53,6 +54,83 @@ const SCENES: { name: string; world: Network; pieces: RowPiece[] }[] = [
   { name: 'a road with no office', world: FLOORS, pieces: drawnWhole(FLOORS).filter(({ kind }) => kind === 'edge' || kind === 'internet') },
 ];
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
+
+interface Run {
+  axis: 'x' | 'y';
+  at: number;
+  from: number;
+  to: number;
+  width: number;
+}
+
+interface Cable extends Run {
+  name: string;
+  floor: string | undefined;
+  bus: boolean;
+}
+
+interface Wall extends Run {
+  name: string;
+  group: string;
+}
+
+const WALL_CORNER = 14;
+const EPSILON = 1e-6;
+const BUS_STATION = /^(?:road|bus|bus-end):(.+)$/;
+
+function runsOf(points: readonly Point[], width: number): Run[] {
+  return points.slice(1).flatMap(([x, y], index): Run[] => {
+    const [fromX, fromY] = points[index];
+    if (fromX === x && fromY === y) return [];
+    if (fromX === x) return [{ axis: 'x', at: x, from: Math.min(fromY, y), to: Math.max(fromY, y), width }];
+    if (fromY === y) return [{ axis: 'y', at: y, from: Math.min(fromX, x), to: Math.max(fromX, x), width }];
+    throw new Error(`The stretch ${fromX},${fromY} to ${x},${y} is slanted`);
+  });
+}
+
+function floorOfBus({ from, to }: RowLayout['links'][number], { devices }: RowLayout['drawn']): string | undefined {
+  const named = [from, to].flatMap((station) => BUS_STATION.exec(station)?.[1] ?? []);
+  return named.map((id) => devices[id] ?? id)[0];
+}
+
+function cablesOf(layout: RowLayout): Cable[] {
+  return layout.links.flatMap((link) => {
+    const floor = link.kind === 'bus' ? floorOfBus(link, layout.drawn) : undefined;
+    return runsOf(link.points, CABLE_STROKE).map((run) => ({ ...run, name: `${link.kind} ${link.from} / ${link.to}`, floor, bus: link.kind === 'bus' }));
+  });
+}
+
+function wallsOf(layout: RowLayout): Wall[] {
+  return layout.groups.flatMap(({ id, box: { x, y, width, height } }) => {
+    const sides: [Run['axis'], number, number, number][] = [['x', x, y, y + height], ['x', x + width, y, y + height], ['y', y, x, x + width], ['y', y + height, x, x + width]];
+    return sides.map(([axis, at, from, to]) => ({ axis, at, from: from + WALL_CORNER, to: to - WALL_CORNER, width: WALL_STROKE, name: `wall of ${id}`, group: id }));
+  });
+}
+
+function sideBySide(first: Run, second: Run): number | undefined {
+  const along = Math.min(first.to, second.to) - Math.max(first.from, second.from);
+  const across = Math.abs(first.at - second.at);
+  return first.axis === second.axis && across > EPSILON && along > EPSILON ? across - (first.width + second.width) / 2 : undefined;
+}
+
+function crowdedCables(layout: RowLayout): string[] {
+  const cables = cablesOf(layout);
+  const walls = wallsOf(layout);
+  const tooClose = (gap: number | undefined) => gap !== undefined && gap < CABLE_CLEARANCE - EPSILON;
+  const pairs = cables.flatMap((cable, index) => cables.slice(index + 1).filter((other) => tooClose(sideBySide(cable, other))).map((other) => `${cable.name} and ${other.name}`));
+  const ownWall = (cable: Cable, wall: Wall) => cable.bus && cable.floor === wall.group;
+  const beside = cables.flatMap((cable) => walls.filter((wall) => !ownWall(cable, wall) && tooClose(sideBySide(cable, wall))).map((wall) => `${cable.name} and the ${wall.name}`));
+  return [...pairs, ...beside];
+}
+
+function spacingFailures(name: string, world: Network, pieces: readonly RowPiece[]): string[] {
+  const forms: [string, () => RowLayout][] = [
+    ['row', () => layoutRow(world, pieces, NORMAL)],
+    ['row-compact', () => layoutRow(world, pieces, COMPACT)],
+    ...WIDTHS.map((width): [string, () => RowLayout] => [`stack at ${width}`, () => layoutStack(world, pieces, width)]),
+  ];
+  return forms.flatMap(([form, layout]) => crowdedCables(layout()).map((pair) => `${name} in ${form}: ${pair}`));
+}
 
 const spreads = (boxes: readonly { name: string; box: Box }[]) => boxes.flatMap((first, index) => boxes.slice(index + 1).filter((second) => overlaps(first.box, second.box)).map((second): [string, string] => [first.name, second.name]));
 
@@ -302,5 +380,17 @@ describe('layoutMap', () => {
       }),
     );
     expect([...new Set(failures)]).toEqual([]);
+  });
+
+  it('in every registered world, in the row, the compact row and the snake, cables running side by side keep 12 px edge to edge and a trunk keeps 12 px from every wall it runs beside', () => {
+    expect(CABLE_CLEARANCE).toBe(12);
+    const registered = registeredWorlds().map(({ id, world }) => ({ name: id, world, pieces: drawnWhole(world) }));
+    expect(registered.length).toBeGreaterThanOrEqual(INCIDENTS.length * 2);
+    const failures = [...registered, ...SCENES].flatMap(({ name, world, pieces }) => spacingFailures(name, world, pieces));
+    expect([...new Set(failures)]).toEqual([]);
+  });
+
+  it('the strokes the cables are measured with are the ones the stylesheet draws', () => {
+    expect([tokenPx('--stroke-double'), tokenPx('--stroke-bold')]).toEqual([CABLE_STROKE, WALL_STROKE]);
   });
 });
