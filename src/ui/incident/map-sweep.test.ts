@@ -21,7 +21,7 @@ import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCy
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SAME_POINT = 1e-6;
-const OVERHANGING_SHAPE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping' };
+const OVERHANGING_SHAPE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping', overhang: 4 };
 const STAMP_FACE = 32;
 const STAMP_TILT = (8 * Math.PI) / 180;
 const TILT_OVERHANG = (STAMP_FACE * (Math.cos(STAMP_TILT) + Math.sin(STAMP_TILT)) - STAMP) / 2;
@@ -152,6 +152,12 @@ function straysOf(analysis: Analysis): string[] {
   return layout.size.width > Math.max(width, MIN_WIDTH) ? ['the drawing is wider than its width', ...outside] : outside;
 }
 
+function overhangOf({ layout, packets }: Analysis, shape: string): number {
+  const found = packets.flatMap(({ id, glyphs }) => glyphs.map(({ role, box }) => ({ name: `${role} of ${id}`, box }))).find(({ name }) => name === shape);
+  const { x, y, width, height } = found?.box ?? { x: 0, y: 0, width: 0, height: 0 };
+  return Math.max(0, -x, -y, x + width - layout.size.width, y + height - layout.size.height);
+}
+
 function lostStampsOf({ fans, stamped }: Analysis): string[] {
   return fans.filter((fan) => fan.stamps.length + fan.hidden.length !== stamped[fan.station].length).map((fan) => fan.station);
 }
@@ -212,14 +218,15 @@ describe('the sweep of the registered incidents', () => {
     const { analyses } = sweep();
     expect(analyses.filter(({ layout, width }) => layout.size.width === Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
     expect(analyses.filter(({ layout, width }) => layout.size.width < Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
-    const tolerated: string[] = [];
+    const tolerated: { state: string; overhang: number }[] = [];
     for (const analysis of analyses) {
       const strays = straysOf(analysis);
       const isTheKnownShape = (name: string) => analysis.state.incident === OVERHANGING_SHAPE.incident && analysis.width === OVERHANGING_SHAPE.width && name === OVERHANGING_SHAPE.shape;
-      tolerated.push(...strays.filter(isTheKnownShape).map(() => analysis.state.name));
+      tolerated.push(...strays.filter(isTheKnownShape).map(() => ({ state: analysis.state.name, overhang: overhangOf(analysis, OVERHANGING_SHAPE.shape) })));
       expect(strays.filter((name) => !isTheKnownShape(name)), where(analysis)).toEqual([]);
     }
-    expect(tolerated).toEqual(['case 4, only you to ip-server with ping', 'case 4, every combination']);
+    const states = ['case 4, only you to ip-server with ping', 'case 4, every combination'];
+    expect(tolerated).toEqual(states.map((state) => ({ state, overhang: expect.closeTo(OVERHANGING_SHAPE.overhang, 6) })));
   });
 
   it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at seven widths', () => {
