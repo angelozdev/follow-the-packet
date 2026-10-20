@@ -23,6 +23,7 @@ const YOUR_LAPTOP = 'tu-laptop';
 const MAP_LABEL = 'button.map-button';
 const STILL_FRAMES = 5;
 const FRAME_BUDGET = 1200;
+export const GENTLE_WHEEL_PX = 60;
 const WHEEL_PX = 300;
 const MAX_TURNS = 40;
 const SIDE_PANEL = '.incident__side';
@@ -32,6 +33,11 @@ const MOUSE_AWAY = { x: 0, y: 0 };
 const REDUCED_MOTION = { name: 'prefers-reduced-motion', value: 'reduce' };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 interface WheelOptions {
   within?: Locator;
   wheelPx?: number;
@@ -40,6 +46,7 @@ interface WheelOptions {
 interface StillOptions {
   quietFrames?: number;
   frameBudget?: number;
+  onFrame?: () => void | Promise<void>;
 }
 
 /** Returns the name of a label of two lines (the term and the name of the resource, as «Security Group servidor2») as a pattern that both engines of the locators match: the line break that the label draws with CSS is a space for the engine that runs in Playwright and the characters «\\a» for the one that runs in the page, which reads `.element()` and `expect.element`. */
@@ -115,10 +122,20 @@ export async function emulateReducedMotion(reduce: boolean): Promise<void> {
   await expect.poll(() => matchMedia(REDUCED_MOTION_QUERY).matches).toBe(reduce);
 }
 
+function inThePageOfTheFrame({ x, y }: Point): Point {
+  const frame = window.frameElement?.getBoundingClientRect();
+  return { x: (frame?.x ?? 0) + x, y: (frame?.y ?? 0) + y };
+}
+
+/** Moves the mouse to a point of the window of the test, through the protocol of the browser, so the pointer leaves what it was over and reaches what is at the point as a hand does: the point adds the place of the iframe of the test in the page that holds it, which is the corner when the window of the test is the iframe. */
+export async function moveTheMouseTo(point: Point): Promise<void> {
+  await cdp().send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...inThePageOfTheFrame(point) });
+}
+
 /** Presses the left mouse button on the centre of an element and keeps it down, so the element is `:active` while the test reads it, and returns the function that lets go and takes the mouse away. `userEvent` has no press without a release, so the three mouse events go through the protocol of the browser, at the place the element has in the page that holds the iframe of the test. */
 export async function holdTheMouseDown(target: Element): Promise<() => Promise<void>> {
-  const [box, frame] = [target.getBoundingClientRect(), window.frameElement?.getBoundingClientRect()];
-  const point = { x: (frame?.x ?? 0) + box.x + box.width / 2, y: (frame?.y ?? 0) + box.y + box.height / 2 };
+  const box = target.getBoundingClientRect();
+  const point = inThePageOfTheFrame({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
   const press = { ...point, button: 'left', clickCount: 1 } as const;
   const session = cdp();
   await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
@@ -144,8 +161,8 @@ function sceneAsItStands(): string {
   ]);
 }
 
-/** Waits until the scene stands still, and only then returns, so the boxes are measured on a scene that no longer changes: the boxes of the cards, labels, stamps and the inspection box, the attributes that decide who takes the pointer and how many CSS animations run are the same in `quietFrames` frames in a row (five unless told). It counts frames and not milliseconds, so a slow machine takes longer and reads the same; it never moves the mouse, and a scene that has not settled after `frameBudget` frames (1200 unless told) throws. */
-export async function standStill({ quietFrames = STILL_FRAMES, frameBudget = FRAME_BUDGET }: StillOptions = {}): Promise<void> {
+/** Waits until the scene stands still, and only then returns, so the boxes are measured on a scene that no longer changes: the boxes of the cards, labels, stamps and the inspection box, the attributes that decide who takes the pointer and how many CSS animations run are the same in `quietFrames` frames in a row (five unless told). It counts frames and not milliseconds, so a slow machine takes longer and reads the same; it never moves the mouse, it calls `onFrame` (when given) after it has read each frame, and a scene that has not settled after `frameBudget` frames (1200 unless told) throws. */
+export async function standStill({ quietFrames = STILL_FRAMES, frameBudget = FRAME_BUDGET, onFrame }: StillOptions = {}): Promise<void> {
   let before = '';
   let calm = 0;
   for (let frame = 0; frame < frameBudget; frame++) {
@@ -153,6 +170,7 @@ export async function standStill({ quietFrames = STILL_FRAMES, frameBudget = FRA
     const now = sceneAsItStands();
     calm = now === before ? calm + 1 : 0;
     before = now;
+    await onFrame?.();
     if (calm >= quietFrames) return;
   }
   throw new Error(`the scene did not stand still in ${frameBudget} frames`);
@@ -163,11 +181,21 @@ export function holdTheGrace(): void {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 }
 
+/** Holds the timers of the page that wait for a time to pass and its date, so the time of the game goes by only in `passTime`: a timer armed from the date (the end of the trip of a packet in the air) falls due when the test says. Animation frames are left as they are. */
+export function holdTheClock(): void {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+}
+
+/** Lets `ms` of the time the held timers wait for go by, so the ones that fall due in it end. */
+export async function passTime(ms: number): Promise<void> {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
 /** Lets more time pass than the grace of the inspection box takes, so every timer armed along the way has ended. */
 export async function passTheGrace(): Promise<void> {
-  await act(async () => {
-    vi.advanceTimersByTime(LONGER_THAN_THE_GRACE_MS);
-  });
+  await passTime(LONGER_THAN_THE_GRACE_MS);
 }
 
 /** Records every error the page logs or throws from now on; `stop` gives the console back. */
@@ -212,4 +240,19 @@ export async function reachWithWheel(target: Locator, { within, wheelPx = WHEEL_
     await nextFrame();
   }
   return readable();
+}
+
+/** Takes the inspection box on show and turns the mouse wheel over its body, a little at a time, until its last line comes into view, and checks what the player needs of it: the last line starts out of reach, the wheel scrolls the body, the band of the box stays in the window and above the body, and the last line ends inside the body. */
+export async function bringTheLastLineIntoView(box: Locator): Promise<void> {
+  const body = box.element().querySelector('.card__body') as HTMLElement;
+  const last = page.elementLocator([...box.element().querySelectorAll('dd')].at(-1) as HTMLElement);
+  expect(isReachable(last.element()), 'the last line starts out of reach').toBe(false);
+  expect(await reachWithWheel(last, { within: page.elementLocator(body), wheelPx: GENTLE_WHEEL_PX }), 'the last line comes into view').toBe(true);
+  expect(body.scrollTop, 'the wheel scrolled the body').toBeGreaterThan(0);
+  const band = box.element().querySelector('.card__band')?.getBoundingClientRect();
+  const [text, within] = [last.element().getBoundingClientRect(), body.getBoundingClientRect()];
+  if (band === undefined) throw new Error('the inspection box lost its band');
+  expect(band.top, 'the band stays in the window').toBeGreaterThanOrEqual(0);
+  expect(band.bottom, 'the band stays above the body').toBeLessThanOrEqual(within.top + 1);
+  expect(text.bottom, 'the last line ends inside the body').toBeLessThanOrEqual(within.bottom + 1);
 }

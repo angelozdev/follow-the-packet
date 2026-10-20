@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { INCIDENTS } from '@/levels';
-import { cardProblems, cardsOutsideTheMap, INSPECTION_HELP, isReachable } from '@/testing/card-boxes';
+import { cardProblems, cardsOutsideTheMap, INSPECTION_HELP, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
 import {
+  GENTLE_WHEEL_PX,
   OFFICE_IP,
+  bringTheLastLineIntoView,
   card,
   confirm,
   holdTheGrace,
@@ -75,7 +77,6 @@ const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
 const ANYWHERE_CHIP = /Anywhere-IPv4/;
 const PINNED = 'Fijada';
-const GENTLE_WHEEL_PX = 60;
 const PHONE_WINDOW = { width: 390, height: 844 };
 const HOLDER = '.incident__inspection';
 const SCROLLING_INSPECTION = '.incident__inspection[data-scrolls]';
@@ -89,10 +90,10 @@ const LOW_WINDOWS = [
   { name: '1280×720', size: { width: 1280, height: 720 } },
 ];
 const LOW_MAP_WINDOWS = [
-  { name: '1280×360', size: { width: 1280, height: 360 } },
-  { name: '1000×700', size: { width: 1000, height: 700 } },
-  { name: '700×600', size: { width: 700, height: 600 } },
-  { name: '844×460', size: { width: 844, height: 460 } },
+  { name: '1280×360', size: { width: 1280, height: 360 }, boxShows: true },
+  { name: '1000×700', size: { width: 1000, height: 700 }, boxShows: false },
+  { name: '700×600', size: { width: 700, height: 600 }, boxShows: true },
+  { name: '844×460', size: { width: 844, height: 460 }, boxShows: true },
 ];
 const INSPECTION_WINDOWS = [
   { name: '1280×800', size: { width: 1280, height: 800 } },
@@ -441,20 +442,6 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
   });
 });
 
-async function bringTheLastLineIntoView(box: Locator): Promise<void> {
-  const body = box.element().querySelector('.card__body') as HTMLElement;
-  const last = page.elementLocator([...box.element().querySelectorAll('dd')].at(-1) as HTMLElement);
-  expect(isReachable(last.element()), 'the last line starts out of reach').toBe(false);
-  expect(await reachWithWheel(last, { within: page.elementLocator(body), wheelPx: GENTLE_WHEEL_PX }), 'the last line comes into view').toBe(true);
-  expect(body.scrollTop, 'the wheel scrolled the body').toBeGreaterThan(0);
-  const band = box.element().querySelector('.card__band')?.getBoundingClientRect();
-  const [text, within] = [last.element().getBoundingClientRect(), body.getBoundingClientRect()];
-  if (band === undefined) throw new Error('the inspection box lost its band');
-  expect(band.top, 'the band stays in the window').toBeGreaterThanOrEqual(0);
-  expect(band.bottom, 'the band stays above the body').toBeLessThanOrEqual(within.top + 1);
-  expect(text.bottom, 'the last line ends inside the body').toBeLessThanOrEqual(within.bottom + 1);
-}
-
 describe.each([...LOW_WINDOWS, ...LOW_MAP_WINDOWS])('$name', ({ size }) => {
   useWindow(size);
 
@@ -488,5 +475,33 @@ describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size }) => {
       }
     }
     expect(problems).toEqual([]);
+  });
+});
+
+describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size, boxShows }) => {
+  useWindow(size);
+
+  it('the inspection box covers no card of the map, right after the click and at rest, in a low or narrow window', { timeout: SLOW_TEST_MS }, async () => {
+    const covered = new Set<string>();
+    let framesWithABox = 0;
+    for (const scene of MAP_SCENES) {
+      const sample = () => {
+        const seen = inspectionBoxOverCards();
+        if (seen.shown) framesWithABox += 1;
+        for (const problem of seen.covered) covered.add(`${name}, ${scene.name}: ${problem}`);
+      };
+      holdTheGrace();
+      const view = await show(scene.level);
+      await standStill();
+      await scene.reach();
+      sample();
+      await standStill({ onFrame: sample });
+      await passTheGrace();
+      await standStill({ onFrame: sample });
+      view.unmount();
+      releaseTheGrace();
+    }
+    expect([...covered]).toEqual([]);
+    expect(framesWithABox > 0, 'the box was up in some of the frames exactly where this window leaves it room, so the test looked at something').toBe(boxShows);
   });
 });

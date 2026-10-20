@@ -3,37 +3,35 @@ import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e
 import { submitAndFinish } from '@e2e/closing';
 import { IP, type PlayedIncident } from '@e2e/chapter-1/chapter-1-play';
 
-export const NC_TO_THE_APP = 'nc · puerto 3000';
-export const NC_TO_THE_DATABASE = 'nc · puerto 5432';
-export const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
-export const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
-export const NC_TO_THE_UNMAPPED_PORT = 'nc · puerto 40009';
-export const LUCIA = 'laptop-lucia';
-export const SERVICES_TAB = 'Servicios';
-export const SERVICES_CARD = 'Servicios de laptop-lucia';
+const NC_TO_THE_APP = 'nc · puerto 3000';
+const NC_TO_THE_DATABASE = 'nc · puerto 5432';
+const NC_TO_THE_CLOSED_PORT = 'nc · puerto 3306';
+const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
+const NC_TO_THE_UNMAPPED_PORT = 'nc · puerto 40009';
+const LUCIA = 'laptop-lucia';
+const SERVICES_TAB = 'Servicios';
+const SERVICES_CARD = 'Servicios de laptop-lucia';
 const EVERY_IP_CHIP = 'Todas las IPs (0.0.0.0)';
-export const YOUR_LAPTOP = 'tu-laptop';
-export const BLOCK = '192.168.1.0/24';
+const YOUR_LAPTOP = 'tu-laptop';
+const BLOCK = '192.168.1.0/24';
 const MASK = '255.255.255.0';
-export const CLASSIFY_TAB = 'Clasificar';
-export const INSIDE_THE_BLOCK = `Dentro de ${BLOCK}`;
-export const OUTSIDE_THE_BLOCK = 'Fuera';
-export const PRINTER = 'impresora';
-export const ANDRES = 'laptop-andres';
+const CLASSIFY_TAB = 'Clasificar';
+const INSIDE_THE_BLOCK = `Dentro de ${BLOCK}`;
+const OUTSIDE_THE_BLOCK = 'Fuera';
+const PRINTER = 'impresora';
+const ANDRES = 'laptop-andres';
 const LUCIA_FIREWALL = 'firewall laptop-lucia';
-export const ROUTES_TAB = 'Tabla de rutas';
-export const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
-export const OFFICE_ROUTER = 'router-oficina';
-export const OFFICE_ROUTES_CARD = 'Tabla de rutas de router-oficina';
-export const ANYWHERE = '0.0.0.0/0';
-export const OTHER_OFFICE_BLOCK = '10.0.0.0/16';
-export const OTHER_OFFICE_LAPTOP = '10.0.0.20';
-export const PROVIDER_HOP = '203.0.113.1 router-proveedor';
-export const BRANCH_HOP = '172.16.0.2 router-sucursal';
-export const TRANSLATIONS_TAB = 'Tabla de traducciones';
-export const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
-export const HOME = 'casa-lucia';
-export const OFFICE_PUBLIC_IP = '203.0.113.10';
+const ROUTES_TAB = 'Tabla de rutas';
+const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
+const OFFICE_ROUTER = 'router-oficina';
+const ANYWHERE = '0.0.0.0/0';
+const OTHER_OFFICE_BLOCK = '10.0.0.0/16';
+const OTHER_OFFICE_LAPTOP = '10.0.0.20';
+const PROVIDER_HOP = '203.0.113.1 router-proveedor';
+const BRANCH_HOP = '172.16.0.2 router-sucursal';
+const TRANSLATIONS_TAB = 'Tabla de traducciones';
+const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
+const HOME = 'casa-lucia';
 const FIRST_PUBLIC_PORT = '40001';
 const SECOND_PUBLIC_PORT = '40002';
 const ADD_ROUTE = 'Agregar ruta';
@@ -58,7 +56,7 @@ async function playOpeningAConnection(page: Page) {
 }
 
 /** Picks the address and the message in the open terminal and sends the packet. */
-export async function sendNc(terminal: Locator, ip: string, message: string) {
+async function sendNc(terminal: Locator, ip: string, message: string) {
   await terminal.getByRole('button', { name: ip, exact: true }).click();
   await sendMessage(terminal, message);
 }
@@ -88,20 +86,20 @@ async function playRefusedOrSilent(page: Page) {
 }
 
 /** Opens the card of your laptop from its label, on the tab «Clasificar», and returns it. */
-export async function openTheClassifyCard(page: Page): Promise<Locator> {
+async function openTheClassifyCard(page: Page): Promise<Locator> {
   const card = await openCard(page, YOUR_LAPTOP);
   await page.getByRole('tab', { name: CLASSIFY_TAB, exact: true }).click();
   return card;
 }
 
 /** Picks the item up in the card that classifies and presses the button that puts it in the bin, which can be the bin it is already in or the other one. */
-export async function placeInBin(card: Locator, item: string, bin: string) {
+async function placeInBin(card: Locator, item: string, bin: string) {
   await card.getByRole('button', { name: new RegExp(`^${item}`) }).click();
   await card.getByRole('button', { name: `Poner ${item} en ${bin}`, exact: true }).click();
 }
 
 /** Opens the card that classifies, puts the item in the bin and closes the card with «Listo». */
-export async function classify(page: Page, item: string, bin: string) {
+async function classify(page: Page, item: string, bin: string) {
   const card = await openTheClassifyCard(page);
   await placeInBin(card, item, bin);
   await confirm(card);
@@ -142,14 +140,14 @@ async function playYourRoutingTable(page: Page) {
 }
 
 /** Picks a destination and a next hop in the table of routes that is open, and presses «Agregar ruta». */
-export async function addRoute(routes: Locator, destination: string, nextHop: string) {
+async function addRoute(routes: Locator, destination: string, nextHop: string) {
   await routes.getByRole('button', { name: destination, exact: true }).click();
   await routes.getByRole('button', { name: nextHop, exact: true }).click();
   await routes.getByRole('button', { name: ADD_ROUTE, exact: true }).click();
 }
 
 /** Writes the two routes that give router-oficina a way out and a way to the other office, in the table of its card. */
-export async function giveRouterOficinaItsWays(page: Page) {
+async function giveRouterOficinaItsWays(page: Page) {
   const routes = await openCard(page, OFFICE_ROUTER);
   await addRoute(routes, ANYWHERE, PROVIDER_HOP);
   await addRoute(routes, OTHER_OFFICE_BLOCK, BRANCH_HOP);

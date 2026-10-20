@@ -343,6 +343,8 @@ La lista exacta sale de `pnpm exec playwright test --list` (2026-10-12, en `a4f6
 
 Serían 11 solo si la prueba de la rueda de M1 fallara con las 5 pruebas que la usan; el código del proveedor sugiere que no falla, y no se corrió.
 
+**Medido con la Tarea M23 (2026-10-20).** Cada cifra es una sola medición, no un promedio, con la máquina a una carga de 2 a 3 y nada más corriendo en la carpeta. La e2e quedó en estas 6 pruebas y la corrida entera tardó 18 s de reloj (18,4 s según Playwright), contra los 2,1 min de B0. `pnpm check:fast` tardó 19 s (Vitest 3530 pruebas en 132 archivos, jscpd con 0 clones), `pnpm test:browser` 117 s de reloj (116 s según Vitest; 240 pruebas en 19 archivos) y `pnpm check`, que es esa secuencia, unos 154 s, o sea 2 min 34 s, contra los 2 min 20 s de B0. La e2e pasó de 2,1 min a 18 s, pero el `pnpm check` entero creció unos 14 s, porque la capa del navegador, que en B0 no existía, ahora tarda unos 2 min.
+
 ### Tiempo del `pnpm check`
 
 - **Hoy** (medido el 2026-10-12 sobre `11587fc`): `check:fast` 11,3 s y la e2e 2,1 min, o sea unos 2 min 20 s. La e2e es el 92 %.

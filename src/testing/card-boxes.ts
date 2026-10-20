@@ -126,7 +126,7 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
   return problems;
 }
 
-/** Returns one line per card of the map that sticks out of it above or below, which cuts its band or its foot off, and per card beside its piece that rises under the title bar that floats over the top of the map: the map holds a card whatever the window, and a card taller than the map scrolls its body. Self-contained, so a Playwright test can pass it to `page.evaluate`. */
+/** Returns one line per card of the map that sticks out of it above or below, which cuts its band or its foot off, and per card beside its piece that rises under the title bar that floats over the top of the map: the map holds a card whatever the window, and a card taller than the map scrolls its body. */
 export function cardsOutsideTheMap(): string[] {
   const EPSILON = 0.5;
   const map = document.querySelector('.incident__map')?.getBoundingClientRect();
@@ -154,4 +154,18 @@ export function isReachable(element: Element): boolean {
     const hit = document.elementFromPoint(left + width * fraction, top + height / 2);
     return hit !== null && element.contains(hit);
   });
+}
+
+/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the map that it covers. */
+export function inspectionBoxOverCards(): { shown: boolean; covered: string[] } {
+  const EPSILON = 0.5;
+  const box = document.querySelector('.incident__inspection > .card');
+  if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
+  const taken = box.getBoundingClientRect();
+  const covered = [...document.querySelectorAll('.map-card .card')].flatMap((card) => {
+    const { left, top, right, bottom } = card.getBoundingClientRect();
+    const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
+    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the map'}`] : [];
+  });
+  return { shown: true, covered };
 }

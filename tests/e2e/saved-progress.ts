@@ -9,7 +9,7 @@ function chapterDone(chapter: number): Record<string, number> {
   return Object.fromEntries(Array.from({ length: INCIDENTS_PER_CHAPTER }, (_, index) => [`${prefix}-${String(index + 1).padStart(2, '0')}`, MAX_STARS]));
 }
 
-export const CHAPTER_1_DONE: Record<string, number> = chapterDone(1);
+const CHAPTER_1_DONE: Record<string, number> = chapterDone(1);
 
 /** Chapter 1 and chapter 2 done, `01-01` to `02-14` with three stars: the progress that opens 04-01 once chapter 2 is registered, and still every incident of chapter 1. */
 export const CHAPTER_2_DONE: Record<string, number> = { ...CHAPTER_1_DONE, ...chapterDone(2) };

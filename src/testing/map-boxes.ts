@@ -16,7 +16,7 @@ export function overlaps(a: Area | null, b: Area | null): boolean {
   return a !== null && b !== null && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-/** Returns the box of every label of a piece, every stamp and every floor name on the map, named as a screen reader reads it. Self-contained, so a Playwright test can pass it to `page.evaluate`. */
+/** Returns the box of every label of a piece, every stamp and every floor name on the map, named as a screen reader reads it. */
 export function mapBoxes(): Box[] {
   return [...document.querySelectorAll('.map-button, button.stamp, .html-layer .caption:not(.caption--soft)')].map((element) => {
     const rect = element.getBoundingClientRect();

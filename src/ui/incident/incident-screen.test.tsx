@@ -61,6 +61,7 @@ const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened
 const BEFORE_THE_GRACE_ENDS_MS = 100;
 const AFTER_THE_GRACE_ENDS_MS = 1000;
 const TAB_STOPS_LIMIT = 80;
+const TAP = '[TouchA]';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -312,6 +313,22 @@ describe('a floating inspection box can be pinned', () => {
     expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
     expect(piece).not.toHaveAttribute('data-pinned');
+  });
+
+  it('with touch, a tap pins the box and a tap outside releases it', async () => {
+    const user = renderWithFakeTimers();
+    const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
+
+    await user.pointer({ keys: TAP, target: stamp });
+
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    expect(box, 'the pinned box stays after the finger lifts').toBeInTheDocument();
+
+    await user.pointer({ keys: TAP, target: screen.getByRole('heading', { level: 1 }) });
+
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
   });
 
   it('a box that is only a preview shows neither «Fijada» nor «Cerrar»', async () => {

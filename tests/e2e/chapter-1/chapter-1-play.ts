@@ -18,8 +18,8 @@ export const IP = {
   otherOffice: '10.0.0.10',
 } as const;
 
-export const SETTINGS_TAB = 'Ajustes de red';
-export const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+const SETTINGS_TAB = 'Ajustes de red';
+const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
 
 const NOTE_FEEDBACK = 'cada uno de los cuatro números va de 0 a 255';
 const NOTE_RULE = 'La nota de Lucía estaba mal';
@@ -31,8 +31,8 @@ const TRACEROUTE_MESSAGES = [PING_MESSAGE, 'traceroute'];
 const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/;
 const LOST_TO_ANDRES = /^Paquete: ping de tu-laptop a 192\.168\.2\.15\. Perdido\.$/;
 const ARRIVED_AT_SERVER = /^Paquete: ping de tu-laptop a servidor-internet\. Llegó\.$/;
-export const LOST_TO_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
-export const LOST_TO_SERVER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/;
+const LOST_TO_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
+const LOST_TO_SERVER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Perdido\.$/;
 const WARNED_BY_ROUTER = /^Paquete: ping de tu-laptop a 198\.51\.100\.50\. Apareció un aviso\.$/;
 
 export interface PlayedIncident {
@@ -41,14 +41,14 @@ export interface PlayedIncident {
   play: (page: Page) => Promise<void>;
 }
 
-export interface WatchCase {
+interface WatchCase {
   laptop?: string;
   sends: string[];
   messages?: string[];
   cause: RegExp;
 }
 
-export const WATCH_CASES: WatchCase[] = [
+const WATCH_CASES: WatchCase[] = [
   { sends: [IP.loopback, IP.you, IP.router, IP.server], cause: /Porque tu-laptop no tiene puerta de enlace predeterminada/ },
   { sends: [IP.typo, IP.printer], cause: /la IP está mal escrita y nadie la tiene/ },
   { laptop: 'laptop-andres', sends: [IP.loopback, IP.andres, IP.secondFloorRouter, IP.printer], cause: /Porque laptop-andres no tiene puerta de enlace predeterminada/ },
@@ -64,17 +64,12 @@ async function sendEach(terminal: Locator, messages: string[]) {
 }
 
 /** Sends only the ping of 01-10 from the open terminal: the player has not run a traceroute yet. */
-export async function sendOnlyThePing(terminal: Locator) {
+async function sendOnlyThePing(terminal: Locator) {
   await sendMessage(terminal, PING_MESSAGE);
 }
 
-/** Sends a ping and then a traceroute from the open terminal. */
-export async function sendThePingAndTheTraceroute(terminal: Locator) {
-  await sendEach(terminal, TRACEROUTE_MESSAGES);
-}
-
 /** Sends the packet of 01-02 to the printer: the terminal writes the line it will send before it goes. */
-export async function sendThePacket(page: Page) {
+async function sendThePacket(page: Page) {
   const terminal = await openTerminal(page);
   await terminal.getByRole('button', { name: IP.printer, exact: true }).click();
   await expect(terminal).toContainText(`paquete de tu-laptop a ${IP.printer}`);
@@ -132,7 +127,7 @@ async function playTheRouter(page: Page) {
 }
 
 /** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the tab «Ajustes de red» of the card of the laptop, which is open on its terminal, and sends it again, which now arrives: the pick clears the stamps of the old world. */
-export async function fixTheGateway(page: Page) {
+async function fixTheGateway(page: Page) {
   await sendTo(await openTerminal(page), IP.andres);
   await expect(page.getByRole('button', { name: LOST_TO_ANDRES })).toBeVisible();
   await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
@@ -205,7 +200,7 @@ async function playInAndOut(page: Page) {
 }
 
 /** Opens the terminal of the origin of a case of 01-14 and sends the tests the player runs in it. */
-export async function sendTheTestsOfTheCase(page: Page, { laptop, sends, messages = [] }: WatchCase): Promise<Locator> {
+async function sendTheTestsOfTheCase(page: Page, { laptop, sends, messages = [] }: WatchCase): Promise<Locator> {
   const terminal = await openTerminal(page, laptop);
   for (const ip of sends) await sendTo(terminal, ip);
   await sendEach(terminal, messages);
