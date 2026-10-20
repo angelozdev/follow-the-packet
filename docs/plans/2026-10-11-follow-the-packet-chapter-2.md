@@ -2850,15 +2850,15 @@ Commit 4, documentos:
 **Pasos:**
 
 Commit 1, motor:
-- [ ] Escribir primero las pruebas nuevas de `question.test.ts` y reescribir las dos existentes de abajo: con el código de hoy fallan.
-- [ ] Pasar el contador de puertos a `Carried` y sacar `withSourcePort` de `sequence.ts`. La secuencia solo pasa el estado.
-- [ ] Crear la etapa `port` y registrarla en `PIPELINE` después de `dns`.
-- [ ] Reemplazar `sendQuery` por `sendQuestion(ctx, packet)`: corre la consulta con la tabla, el contador y el reloj del envío, y los devuelve. `createDnsStage` lo recibe como hoy recibía `sendQuery` (la etapa no importa el `simulate` que la contiene).
-- [ ] En `askResolver`, mandar la consulta con una función que llame a `sendQuestion` y guarde `{ packet, trace }` en `ctx.question`. `resolve` sigue sin saber del pipeline.
-- [ ] Armar `question.trace.dns` desde `Resolution.dns` con `viaDig: true`.
-- [ ] `finish` suma `question` solo si existe.
-- [ ] Correr todo el motor y el capítulo 1 sin editar más que lo listado. Si otra prueba falla por el campo nuevo, se detiene y se pregunta: el campo está aprobado (O-2 = A), pero una falla en una traza del capítulo 1 o del 4 sería un error.
-- [ ] Actualizar los comentarios y las guías que dicen la regla vieja. Se buscaron con `grep` el 2026-10-12 (`sendQuery`, `NOTHING_CARRIED`, `empty state`, `uses no source port`, `leaves no row`, `never leaves its sender`, `uses up a port`, `always gets 40001`):
+- [x] Escribir primero las pruebas nuevas de `question.test.ts` y reescribir las dos existentes de abajo: con el código de hoy fallan.
+- [x] Pasar el contador de puertos a `Carried` y sacar `withSourcePort` de `sequence.ts`. La secuencia solo pasa el estado.
+- [x] Crear la etapa `port` y registrarla en `PIPELINE` después de `dns`.
+- [x] Reemplazar `sendQuery` por `sendQuestion(ctx, packet)`: corre la consulta con la tabla, el contador y el reloj del envío, y los devuelve. `createDnsStage` lo recibe como hoy recibía `sendQuery` (la etapa no importa el `simulate` que la contiene).
+- [x] En `askResolver`, mandar la consulta con una función que llame a `sendQuestion` y guarde `{ packet, trace }` en `ctx.question`. `resolve` sigue sin saber del pipeline.
+- [x] Armar `question.trace.dns` desde `Resolution.dns` con `viaDig: true`.
+- [x] `finish` suma `question` solo si existe.
+- [x] Correr todo el motor y el capítulo 1 sin editar más que lo listado. Si otra prueba falla por el campo nuevo, se detiene y se pregunta: el campo está aprobado (O-2 = A), pero una falla en una traza del capítulo 1 o del 4 sería un error.
+- [x] Actualizar los comentarios y las guías que dicen la regla vieja. Se buscaron con `grep` el 2026-10-12 (`sendQuery`, `NOTHING_CARRIED`, `empty state`, `uses no source port`, `leaves no row`, `never leaves its sender`, `uses up a port`, `always gets 40001`):
   - `src/engine/simulation/simulate.ts`: el comentario de `sendQuery` («the question is not one of the player's sends, so it neither uses up a source port nor leaves a row»), el de `simulate` («a resolver answers from no cache but its own initial one») y el de `Carried`.
   - `src/engine/simulation/trace.ts`: el comentario de `DnsTrace.viaDig` («says the lookup was a `dig`»): en `Trace.question.trace.dns` también es verdadero.
   - `src/engine/dns/CLAUDE.md`: el final de la viñeta «The cache» («that question still uses no source port of the sender and leaves no row in the table»), «The tcpdump lines and the legs of the question are not merged…» (pasa a decir que no se mezclan porque la consulta tiene su propia traza), «The question of a lookup is not one of the player's sends» (se reescribe entera) y «Sin verificar» (suma lo de «Fuentes y rigor», abajo: AAAA, PTR, `search`, reintentos, caché del equipo, orden de `nsswitch`, con sus fuentes).
@@ -2868,22 +2868,22 @@ Commit 1, motor:
   - `src/engine/CLAUDE.md`: si cuenta la lista de campos de la traza, suma `question`.
 
 Commit 2, vista y textos:
-- [ ] Pruebas primero (lista abajo).
-- [ ] `SentPacket.question` y `drawnSends`; `hideStopsOutOfSight` y `inspect` la encuentran.
-- [ ] `dnsField` elige el constructor de `dig` por `dns.viaDig`, así que la caja de la consulta lo usa sin una bandera aparte. Se actualiza su comentario («That question is not drawn and leaves no row…» deja de ser cierto).
-- [ ] La tercera línea del campo «DNS» (textos de abajo).
-- [ ] La tabla: filas de las consultas, orden y fila «en uso».
-- [ ] La marca de la fila (textos de abajo). O-6 = A (decidida el 2026-10-12): ya no espera nada.
+- [x] Pruebas primero (lista abajo).
+- [x] `SentPacket.question` y `drawnSends`; `hideStopsOutOfSight` y `inspect` la encuentran.
+- [x] `dnsField` elige el constructor de `dig` por `dns.viaDig`, así que la caja de la consulta lo usa sin una bandera aparte. Se actualiza su comentario («That question is not drawn and leaves no row…» deja de ser cierto).
+- [x] La tercera línea del campo «DNS» (textos de abajo).
+- [x] La tabla: filas de las consultas, orden y fila «en uso».
+- [x] La marca de la fila (textos de abajo). O-6 = A (decidida el 2026-10-12): ya no espera nada.
 
 Commit 3, escena:
-- [ ] Pruebas primero.
-- [ ] `pathFor`: los cinco motivos de arriba salen a `STAYS_IN_DEVICE`.
-- [ ] `useSendOnce` con espera y `travelSeconds`.
-- [ ] `Traffic` lee `after` y lo traduce a la espera; `incident-screen.tsx` pasa `drawnSends(session.sent)`.
-- [ ] Sin animaciones, comprobar que la consulta y el paquete se dibujan a la vez y que ninguna etiqueta pisa a otra con `spreadTags`.
+- [x] Pruebas primero.
+- [x] `pathFor`: los cinco motivos de arriba salen a `STAYS_IN_DEVICE`.
+- [x] `useSendOnce` con espera y `travelSeconds`. (En el 2D, M25: no hay `useSendOnce`, `schedule.ts` ni `travelSeconds`; la espera la da `answerBackAt` de `flight-plan.ts` y la usan `waitOf` y `sendSeconds` de `traffic.tsx`.)
+- [x] `Traffic` lee `after` y lo traduce a la espera; `incident-screen.tsx` pasa `drawnSends(session.sent)`.
+- [x] Sin animaciones, comprobar que la consulta y el paquete se dibujan a la vez y que ninguna etiqueta pisa a otra con `spreadTags`.
 
 Commit 4, documentos:
-- [ ] La fila del puerto del spec, sus dos filas nuevas, las fuentes y la nota de la guía de e2e.
+- [x] La fila del puerto del spec, sus dos filas nuevas, las fuentes y la nota de la guía de e2e.
 
 **Textos nuevos** (borrador; la redacción final la hace quien ejecuta, en lenguaje llano y con los términos que el jugador conoce):
 - Tercera línea del campo «DNS» de un `ping` o un `nc` por nombre, con `port` conocido: «La consulta salió del {{port|puerto}} 51514 y se ve en el mapa, antes de este {{packet|paquete}}.» Sin `port`: «La consulta se ve en el mapa, antes de este {{packet|paquete}}.»
