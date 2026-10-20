@@ -208,7 +208,7 @@ export function placeLanes(draft: Draft, lanes: readonly RowPiece[], { busX, jun
 }
 
 /** Takes the routers of other offices and the floors of the map; returns, for each gateway, the floors it faces that no gateway before it claimed. */
-export function branchesOf(gateways: readonly Router[], floors: readonly Floor[]): Branch[] {
+function branchesOf(gateways: readonly Router[], floors: readonly Floor[]): Branch[] {
   const claimed = new Set<string>();
   return gateways.map((gateway) => {
     const faced = floors.filter(({ id }) => !claimed.has(id) && gateway.interfaces.some(({ faces }) => faces === id));

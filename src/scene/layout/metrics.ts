@@ -4,8 +4,8 @@ export const CELL = 7.2;
 export const LABEL_PAD = 14;
 export const LABEL_HEIGHT = 20;
 export const LINE_HEIGHT = 16;
-export const LOCK_WIDTH = 22;
-export const ALERT_WIDTH = 23;
+const LOCK_WIDTH = 22;
+const ALERT_WIDTH = 23;
 export const MAX_NAME_LENGTH = 32;
 
 export interface LabelExtras {
