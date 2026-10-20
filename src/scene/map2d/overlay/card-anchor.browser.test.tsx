@@ -15,6 +15,8 @@ const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight 
 const PHONE = { width: 390, height: 844 };
 const TOO_NARROW_FOR_A_CARD = { width: 300, height: 640 };
 const LOW_DESKTOP = { width: 1280, height: 360 };
+const WIDE_DESKTOP = { width: 1440, height: 900 };
+const WIDE_AND_LOW = { width: 1440, height: 500 };
 const DESKTOP = { width: 1280, height: 800 };
 const NOTHING_KNOWN: ReadonlySet<TermId> = new Set();
 const CARD_NAME = 'Terminal de prueba';
@@ -24,6 +26,7 @@ const CARD = '.map-card';
 const LAYER = '.html-layer';
 const EPSILON = 0.5;
 const BODY_LINES = 18;
+const SHORT_CARD_LINES = 1;
 const FOOT_HIT_POINTS = [0.5, 0.25, 0.75];
 const INSPECTION_LAYER = 35;
 const TITLE_BAR_LAYER = 40;
@@ -38,13 +41,13 @@ function focusAfterTheCommit(heading: HTMLElement | null): void {
   if (heading !== null) requestAnimationFrame(() => heading.focus());
 }
 
-function TallCard() {
+function TallCard({ lines = BODY_LINES }: { lines?: number }) {
   return (
     <Card role="dialog" aria-label={CARD_NAME} header={{ title: <h2 tabIndex={-1} ref={focusAfterTheCommit}>{CARD_NAME}</h2> }}>
       <div className="chip-card">
         <div className="chip-card__body">
           <span className="caption caption--soft">{CAPTION}</span>
-          {Array.from({ length: BODY_LINES }, (_, line) => (
+          {Array.from({ length: lines }, (_, line) => (
             <p key={line}>Línea {line + 1} de lo que muestra la tarjeta</p>
           ))}
         </div>
@@ -56,7 +59,7 @@ function TallCard() {
   );
 }
 
-function Screen({ openPieceId, still = true, flows = [], pieces = PIECES }: { openPieceId: string | null; still?: boolean; flows?: readonly MapRunFixture[]; pieces?: readonly MapPieceFixture[] }) {
+function Screen({ openPieceId, lines, still = true, flows = [], pieces = PIECES }: { openPieceId: string | null; lines?: number; still?: boolean; flows?: readonly MapRunFixture[]; pieces?: readonly MapPieceFixture[] }) {
   return (
     <main className="incident incident--map2d">
       <div className="incident__map">
@@ -75,7 +78,7 @@ function Screen({ openPieceId, still = true, flows = [], pieces = PIECES }: { op
           inspectTrigger={() => ({})}
           inspectStampsTrigger={() => ({})}
           onActivate={() => undefined}
-          overlay={openPieceId === null ? null : <TallCard />}
+          overlay={openPieceId === null ? null : <TallCard lines={lines} />}
         />
       </div>
       <div className="incident__inspection" />
@@ -88,10 +91,11 @@ async function mountScreen(size: { width: number; height: number }, props: Parti
   await page.viewport(size.width, size.height);
   const view = render(<Screen openPieceId={null} {...props} />);
   await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBe(PIECES.length);
-  const open = (openPieceId: string | null) => view.rerender(<Screen {...props} openPieceId={openPieceId} />);
+  const open = (openPieceId: string | null, lines?: number) => view.rerender(<Screen {...props} openPieceId={openPieceId} lines={lines} />);
   return { ...view, open };
 }
 
+const twoFrames = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 const find = <Element extends HTMLElement | SVGElement>(container: ParentNode, selector: string) => container.querySelector(selector) as Element;
 const rectOf = (element: Element) => element.getBoundingClientRect();
 const overlap = (a: DOMRect, b: DOMRect) => a.left < b.right - EPSILON && b.left < a.right - EPSILON && a.top < b.bottom - EPSILON && b.top < a.bottom - EPSILON;
@@ -169,6 +173,40 @@ describe('the card of the 2D map in the browser', () => {
       }
       view.unmount();
     }
+  });
+
+  it('a card that grows after it opens is brought into view again, so its foot stays in reach', async () => {
+    for (const [name, size] of [['1440×900', WIDE_DESKTOP], ['1440×500', WIDE_AND_LOW]] as const) {
+      const view = await mountScreen(size);
+      for (const { id } of PIECES) {
+        view.open(id, SHORT_CARD_LINES);
+        await expect.poll(() => view.container.querySelector(CARD)).not.toBeNull();
+        await twoFrames();
+        view.open(id);
+        await expect.poll(() => problemsOfTheCard(view.container), { message: `${name}, ${id}` }).toEqual([]);
+        view.open(null);
+        await expect.poll(() => view.container.querySelector(CARD)).toBeNull();
+      }
+      view.unmount();
+    }
+  });
+
+  it('a card docked under a drawing that grows is brought into view again', async () => {
+    const [router, internet, farServer] = [ROUTER, 'internet:internet', 'device:internet-server'];
+    const before = PIECES.filter(({ id }) => ![router, internet, farServer].includes(id));
+    await page.viewport(LOW_DESKTOP.width, LOW_DESKTOP.height);
+    const view = render(<Screen openPieceId={YOUR_LAPTOP} lines={SHORT_CARD_LINES} pieces={before} />);
+    await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBe(before.length);
+    await expect.poll(() => view.container.querySelector(CARD)).not.toBeNull();
+    const svg = find<SVGSVGElement>(view.container, 'svg');
+    const small = rectOf(svg).height;
+    await expect.poll(() => problemsOfTheCard(view.container)).toEqual([]);
+
+    view.rerender(<Screen openPieceId={YOUR_LAPTOP} lines={SHORT_CARD_LINES} pieces={PIECES} />);
+
+    await expect.poll(() => rectOf(svg).height).toBeGreaterThan(small);
+    await expect.poll(() => problemsOfTheCard(view.container)).toEqual([]);
+    view.unmount();
   });
 
   it('when the card closes the stage and the page are back where they were when it opened, and so are the labels in the window', async () => {
