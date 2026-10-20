@@ -779,7 +779,7 @@ describe('the box of a packet with ports and names', () => {
   });
 
   it('the dns field of a send by name says which port its question left from and that the question is on the map, each part once its term is known', () => {
-    const OWN_PORT = 'Este paquete salió del puerto 51515, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.';
+    const OWN_PORT = 'Este paquete salió del puerto 51515. En este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta salió antes.';
     const lines = (session: Session) => field(session, 'DNS')?.slice(1);
     const nc = sentTo(base, 'www', 'nc');
     expect(nc.sent[0].trace.header?.request.sourcePort).toBe(51515);
@@ -787,13 +787,13 @@ describe('the box of a packet with ports and names', () => {
     const beforeSourcePort = lines(sentTo(without(base, 'source-port'), 'www', 'nc'));
     expect(beforeSourcePort?.at(-1)).toBe('La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.');
     expect(beforeSourcePort?.some((line) => line.startsWith('Este paquete salió'))).toBe(false);
-    expect(lines(sentTo(without(base, 'port'), 'www', 'nc'))?.slice(-2)).toEqual(['La consulta se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51515, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.']);
+    expect(lines(sentTo(without(base, 'port'), 'www', 'nc'))?.slice(-2)).toEqual(['La consulta se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51515. En este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta salió antes.']);
     expect(lines(sentTo(without(base, 'port', 'source-port'), 'www', 'nc'))?.at(-1)).toBe('La consulta se ve en el mapa, antes de este paquete.');
     expect(lines(sentTo(without(base, 'packet'), 'www', 'nc'))?.some((line) => line.includes('antes de este paquete'))).toBe(true);
     const ping = sentTo(base, 'www', 'ping');
     expect(lines(ping)?.some((line) => line.startsWith('Este paquete salió'))).toBe(false);
     const second = sentTo(ping, 'www', 'nc');
-    expect(lines(second)?.slice(-2)).toEqual(['La consulta salió del puerto 51515 y se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51516, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.']);
+    expect(lines(second)?.slice(-2)).toEqual(['La consulta salió del puerto 51515 y se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51516. En este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta salió antes.']);
     const unresolved = sentTo(base, 'missing', 'nc');
     expect(lines(unresolved)).toEqual([`Antes de mandar el paquete, tu-laptop averigua la IP de nadie.${zone}.`, 'La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.']);
     for (const missing of ['port', 'source-port', 'packet', 'dns-query', 'resolver', 'dns'] as const) {

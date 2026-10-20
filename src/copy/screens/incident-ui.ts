@@ -134,7 +134,7 @@ export const INSPECTION_TEXT = {
       const before = `se ve en el mapa, antes de este ${word(known, 'packet', 'paquete')}.`;
       return known.has('port') && port !== undefined ? `La consulta salió del {{port|puerto}} ${port} y ${before}` : `La consulta ${before}`;
     },
-    ownPort: (port: number, known: ReadonlySet<TermId>): TermText => `Este paquete salió del ${word(known, 'port', 'puerto')} ${port}, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.`,
+    ownPort: (port: number, known: ReadonlySet<TermId>): TermText => `Este paquete salió del ${word(known, 'port', 'puerto')} ${port}. En este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta salió antes.`,
   },
   dnsAnswer: {
     record: (name: string, type: 'A' | 'CNAME', value: string, known: ReadonlySet<TermId>): TermText => `${name} ${word(known, type === 'A' ? 'a-record' : 'cname-record', type)} ${value}`,

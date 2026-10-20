@@ -144,9 +144,9 @@ describe('translationsCard', () => {
     const asked = play(START, nc('www'), send('www', 'dig'));
     const first = (session: Session) => translationsCard(session, OFFICE_ROUTER)?.rows.map((row) => row.cells[0].text);
     expect(first(asked)).toEqual(['{{udp|UDP}} · {{dns-query|consulta DNS}}', '{{tcp|TCP}}', '{{udp|UDP}} · {{dns-query|consulta DNS}}']);
-    expect(plain(translationsCard(without(asked, 'dns-query'), OFFICE_ROUTER))?.map(([protocol]) => protocol)).toEqual(['UDP · consulta DNS', 'TCP', 'UDP · consulta DNS']);
-    expect(first(without(asked, 'dns-query'))).toEqual(['{{udp|UDP}} · consulta DNS', '{{tcp|TCP}}', '{{udp|UDP}} · consulta DNS']);
-    expect(first(without(asked, 'dns-query', 'udp'))?.[0]).toBe('UDP · consulta DNS');
+    expect(plain(translationsCard(without(asked, 'dns-query'), OFFICE_ROUTER))?.map(([protocol]) => protocol)).toEqual(['UDP', 'TCP', 'UDP']);
+    expect(first(without(asked, 'dns-query'))).toEqual(['{{udp|UDP}}', '{{tcp|TCP}}', '{{udp|UDP}}']);
+    expect(first(without(asked, 'dns-query', 'udp'))?.[0]).toBe('UDP');
     expect(translationsCard(asked, OFFICE_ROUTER)?.rows.every((row) => row.cells.every((cell) => cell.code))).toBe(true);
   });
 

@@ -177,10 +177,10 @@ function fixedRows(session: Session, router: Router, usedKey: string | undefined
   return forwardRows(session.world, router).map((row) => translationRow(session, `fixed|${translationKey(row)}`, row, translationKey(row) === usedKey, mark));
 }
 
-/** The word a row made by a run wears: «consulta DNS» when the run is a UDP datagram to port 53, the question of a send by name or a `dig`, once `dns-query` is known. */
+/** The word a row made by a run wears: «consulta DNS» when the run is a UDP datagram to port 53, the question of a send by name or a `dig`, and only once `dns-query` is known; before, the row says its protocol and nothing more. */
 function markOf(session: Session, { trace }: SentPacket): TermText | undefined {
   const asksTheResolver = trace.translation?.protocol === 'udp' && trace.header?.request.destinationPort === DNS_PORT;
-  return asksTheResolver ? word(session.known, 'dns-query', TABLE_TEXT.translations.dnsQuery) : undefined;
+  return asksTheResolver && session.known.has('dns-query') ? word(session.known, 'dns-query', TABLE_TEXT.translations.dnsQuery) : undefined;
 }
 
 /** The row the last send touched last: the one its packet made or used, or, for a packet that has none of its own (a ping, a name nobody resolved), the one its question made. */
