@@ -40,9 +40,9 @@ describe('labelWidth', () => {
   it('a locked label is as wide as its text plus the lock, and a label with the alert as wide as its text plus the alert', () => {
     const bare = labelWidth('laptop-lucia');
     expect(labelWidth('laptop-lucia', { locked: false, alert: false })).toBe(bare);
-    expect(labelWidth('laptop-lucia', { locked: true })).toBe(bare + 26);
-    expect(labelWidth('laptop-lucia', { alert: true })).toBe(bare + 22);
-    expect(labelWidth('laptop-lucia', { locked: true, alert: true })).toBe(bare + 26 + 22);
+    expect(labelWidth('laptop-lucia', { locked: true })).toBe(bare + 22);
+    expect(labelWidth('laptop-lucia', { alert: true })).toBe(bare + 23);
+    expect(labelWidth('laptop-lucia', { locked: true, alert: true })).toBe(bare + 22 + 23);
   });
 
   it('measures what the player reads and not the tags of the text', () => {

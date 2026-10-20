@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx", "src/testing/browser-setup.ts", "vite.config.ts"],
+  "include": ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx", "src/testing/browser-setup.ts", "src/testing/browser-play.ts", "vite.config.ts"],
   "exclude": []
 }

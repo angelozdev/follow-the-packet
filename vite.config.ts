@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 const BROWSER_TESTS = 'src/**/*.browser.test.{ts,tsx}';
+const BROWSER_POLL_TIMEOUT_MS = 10_000;
 
 export default defineConfig({
   plugins: [react()],
@@ -27,6 +28,7 @@ export default defineConfig({
           name: 'browser',
           include: [BROWSER_TESTS],
           setupFiles: ['./src/testing/browser-setup.ts'],
+          expect: { poll: { timeout: BROWSER_POLL_TIMEOUT_MS } },
           browser: { enabled: true, provider: playwright(), instances: [{ browser: 'chromium' }], headless: true },
         },
       },

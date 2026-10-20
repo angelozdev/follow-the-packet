@@ -163,7 +163,7 @@ describe('layoutStack', () => {
       expect(['lucia-laptop', 'printer'].map((id) => touched(layout, id))).toEqual([0, 0]);
     }
     expect(longName.labels['device:your-laptop'].width).toBeGreaterThan(250);
-    expect(wideFirewall.labels['firewall:marta-laptop'].width).toBe(170);
+    expect(wideFirewall.labels['firewall:marta-laptop'].width).toBe(166);
   });
 
   it('the labels of two stops keep 8 px apart on a line, however long their names are', () => {

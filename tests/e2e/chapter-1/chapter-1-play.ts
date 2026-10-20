@@ -26,7 +26,6 @@ const NOTE_RULE = 'La nota de Lucía estaba mal';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const LUCIA_CHIP = 'laptop-lucia (IP 192.168.1.11)';
 const OUTBOUND_TAB = /^salida$/i;
-const PING_TTLS = [1, 2, 3, 64];
 const PING_MESSAGE = 'ping';
 const TRACEROUTE_MESSAGES = [PING_MESSAGE, 'traceroute'];
 const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\.$/;
@@ -62,11 +61,6 @@ export const WATCH_CASES: WatchCase[] = [
 /** Sends a list of messages from the open terminal, one after the other. */
 async function sendEach(terminal: Locator, messages: string[]) {
   for (const message of messages) await sendMessage(terminal, message);
-}
-
-/** Sends the pings that leave your laptop with each TTL the incident offers. */
-export async function sendThePingsWithTtl(terminal: Locator) {
-  await sendEach(terminal, PING_TTLS.map((ttl) => `ping con TTL ${ttl}`));
 }
 
 /** Sends only the ping of 01-10 from the open terminal: the player has not run a traceroute yet. */
@@ -135,15 +129,6 @@ async function playTheRouter(page: Page) {
   await sendTo(terminal, IP.andres);
   await expect(page.getByRole('button', { name: ARRIVED_AT_ANDRES })).toBeVisible();
   await submitAndFinish(page, /está en otra red local y a esa solo se llega por el router/);
-}
-
-/** Opens the card of tu-laptop from its only button and goes to its tab «Ajustes de red», which is not the one it opens on, and returns the card. */
-export async function openTheSettings(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'tu-laptop', exact: true }).click();
-  await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
-  const settings = page.getByRole('dialog', { name: SETTINGS_CARD });
-  await expect(settings).toBeVisible();
-  return settings;
 }
 
 /** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the tab «Ajustes de red» of the card of the laptop, which is open on its terminal, and sends it again, which now arrives: the pick clears the stamps of the old world. */

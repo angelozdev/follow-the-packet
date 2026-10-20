@@ -14,5 +14,5 @@
     "types": ["vite/client", "node"]
   },
   "include": ["src", "tests", "scripts", "playwright.config.ts"],
-  "exclude": ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx"]
+  "exclude": ["src/**/*.browser.test.ts", "src/**/*.browser.test.tsx", "src/testing/browser-play.ts"]
 }

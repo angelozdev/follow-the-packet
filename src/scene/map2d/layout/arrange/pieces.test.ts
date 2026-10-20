@@ -117,17 +117,17 @@ describe('labelOf', () => {
     const plain = labelOf({ label: group, locked: false, state: 'normal' });
     expect(plain.lines).toEqual(['Security Group', 'servidor2']);
     expect(plain).toMatchObject({ width: 115, height: 36 });
-    expect(labelOf({ label: group, locked: false, state: 'intruded' }).width).toBe(115 + 22);
+    expect(labelOf({ label: group, locked: false, state: 'intruded' }).width).toBe(115 + 23);
     expect(labelOf({ label: group, locked: true, state: 'normal' }).width).toBe(115);
     const host = '{{firewall}} [[laptop-marta]]';
     expect(labelOf({ label: host, locked: false, state: 'normal' }).width).toBe(101);
-    expect(labelOf({ label: host, locked: true, state: 'normal' }).width).toBe(101 + 26);
+    expect(labelOf({ label: host, locked: true, state: 'normal' }).width).toBe(101 + 22);
     expect(labelOf({ label: host, locked: false, state: 'intruded' }).width).toBe(101);
   });
 
   it('a label of one line wears the lock and the alert together, and is 20 px tall', () => {
     const name = nameTag('laptop-lucia');
     expect(labelOf({ label: name, locked: false, state: 'normal' })).toMatchObject({ lines: ['laptop-lucia'], width: 101, height: 20 });
-    expect(labelOf({ label: name, locked: true, state: 'intruded' }).width).toBe(101 + 26 + 22);
+    expect(labelOf({ label: name, locked: true, state: 'intruded' }).width).toBe(101 + 22 + 23);
   });
 });

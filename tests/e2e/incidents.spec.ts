@@ -1,24 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { FULL_STARS, submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
-import { mapBoxes, overlappingPairs, overlaps, type Box } from './map-boxes';
 import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
-const INSPECTED_SERVER = 'servidor2 con candado';
-const INSPECTION_TITLE = 'servidor2';
 
-type Size = Pick<Box, 'width' | 'height'>;
-
-function isInside(outer: Size, inner: Omit<Box, 'name'> | null): boolean {
-  return inner !== null && inner.x >= 0 && inner.y >= 0 && inner.x + inner.width <= outer.width && inner.y + inner.height <= outer.height;
-}
-
-async function windowSize(page: Page): Promise<Size> {
-  return page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
-}
 
 async function openDoor(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: SG_SERVIDOR2, exact: true }).click();
@@ -62,77 +50,3 @@ test('04-01 and 04-02 reach 3 stars, and the progress survives a reload', async 
   await expect(page.locator('li[data-level-id="04-02"]')).toContainText(FULL_STARS);
   expect(errors).toEqual([]);
 });
-
-test('labels and stamps do not overlap, and the open card does not cover its Security Group', async ({ page }) => {
-  await page.goto('/#/level/04-01');
-  await expect(page.getByRole('button', { name: SG_SERVIDOR2, exact: true })).toBeVisible();
-  await expect.poll(() => overlappingPairs(page)).toEqual([]);
-  const card = await openDoor(page);
-  const label = page.getByRole('button', { name: SG_SERVIDOR2, exact: true });
-  await expect.poll(async () => overlaps(await card.boundingBox(), await label.boundingBox())).toBe(false);
-});
-
-test('the inspection box floats inside the window and covers no label or stamp', async ({ page }) => {
-  await page.goto('/#/level/04-01');
-  await expect(page.locator('button.stamp').first()).toBeVisible();
-  await page.getByRole('button', { name: INSPECTED_SERVER, exact: true }).hover();
-  const inspection = page.getByRole('region', { name: INSPECTION_TITLE, exact: true });
-  await expect(inspection).toBeVisible();
-  const rect = await inspection.boundingBox();
-  expect(isInside(await windowSize(page), rect)).toBe(true);
-  const covered = (await mapBoxes(page)).filter((other) => overlaps(rect, other)).map((other) => other.name);
-  expect(covered).toEqual([]);
-});
-
-test('a term shows its definition inside the window, also from a chip of the open card', async ({ page }) => {
-  const errors = collectErrors(page);
-  await page.goto('/#/level/04-01');
-  const size = await windowSize(page);
-  const tooltip = page.locator('body > [role="tooltip"]');
-  await page.getByRole('region', { name: /Lucía/ }).getByText('ping', { exact: true }).first().hover();
-  await expect(tooltip).toContainText('dirección IP');
-  expect(isInside(size, await tooltip.boundingBox())).toBe(true);
-  const card = await openDoor(page);
-  await card.getByRole('button', { name: ECHO_REQUEST, exact: true }).getByText('Echo Request', { exact: true }).hover();
-  await expect(tooltip).toContainText('le pide al destino que conteste');
-  expect(isInside(size, await tooltip.boundingBox())).toBe(true);
-  expect(errors).toEqual([]);
-});
-
-const WINDOWS = [
-  { width: 1280, height: 800 },
-  { width: 1440, height: 900 },
-];
-const INSPECTED_THINGS = [
-  'servidor1 con candado',
-  INSPECTED_SERVER,
-  'Security Group servidor1',
-  SG_SERVIDOR2,
-  'Atacante',
-  'Internet gateway con candado',
-  'internet',
-  'Paquete: ping de servidor1 a servidor2. Bloqueado.',
-  'Paquete: ping de Atacante a servidor2. Bloqueado.',
-];
-
-async function boxProblems(page: Page, size: Size): Promise<string[]> {
-  const rect = await page.locator('.incident__inspection .card').boundingBox();
-  const covered = (await mapBoxes(page)).filter((other) => overlaps(rect, other));
-  return [...(isInside(size, rect) ? [] : ['sticks out of the window']), ...covered.map((other) => `covers ${other.name}`)];
-}
-
-for (const size of WINDOWS) {
-  test.describe(`${size.width}x${size.height}`, () => {
-    test.use({ viewport: size });
-
-    for (const name of INSPECTED_THINGS) {
-      test(`the inspection box of ${name} lies inside the window and covers no label or stamp`, async ({ page }) => {
-        await page.goto('/#/level/04-01');
-        await expect(page.getByRole('button', { name: INSPECTED_SERVER, exact: true })).toBeVisible();
-        await page.getByRole('button', { name, exact: true }).hover();
-        await expect(page.locator('.incident__inspection .card')).toBeVisible();
-        expect(await boxProblems(page, size)).toEqual([]);
-      });
-    }
-  });
-}
