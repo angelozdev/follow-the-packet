@@ -21,7 +21,7 @@ import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCy
 const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SAME_POINT = 1e-6;
-const TTL_PING_CASE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping' };
+const OVERHANGING_SHAPE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping' };
 const STAMP_FACE = 32;
 const STAMP_TILT = (8 * Math.PI) / 180;
 const TILT_OVERHANG = (STAMP_FACE * (Math.cos(STAMP_TILT) + Math.sin(STAMP_TILT)) - STAMP) / 2;
@@ -215,7 +215,7 @@ describe('the sweep of the registered incidents', () => {
     const tolerated: string[] = [];
     for (const analysis of analyses) {
       const strays = straysOf(analysis);
-      const isTheKnownShape = (name: string) => analysis.state.incident === TTL_PING_CASE.incident && analysis.width === TTL_PING_CASE.width && name === TTL_PING_CASE.shape;
+      const isTheKnownShape = (name: string) => analysis.state.incident === OVERHANGING_SHAPE.incident && analysis.width === OVERHANGING_SHAPE.width && name === OVERHANGING_SHAPE.shape;
       tolerated.push(...strays.filter(isTheKnownShape).map(() => analysis.state.name));
       expect(strays.filter((name) => !isTheKnownShape(name)), where(analysis)).toEqual([]);
     }
