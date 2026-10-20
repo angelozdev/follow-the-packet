@@ -23,7 +23,12 @@ export interface FlowRun extends PacketRun {
   kind: FlowKind;
 }
 
-export interface SentPacket extends PacketRun {
+/** The run of the question that a send by name put to its resolver before the packet: it has the id of the send followed by `-question`, its own packet and trace (the UDP datagram to port 53 and its trip), its labels with ports, its warning, its stamp and its box, built like the run of any packet. */
+export interface Asking {
+  question?: PacketRun;
+}
+
+export interface SentPacket extends PacketRun, Asking {
   fromId: string;
   toId: string;
   messageId: string;
@@ -31,6 +36,13 @@ export interface SentPacket extends PacketRun {
   at: number;
   route?: TracerouteResult;
 }
+
+/** A send as the map draws it: the packet that asked, or its question, which has the send number, the second and the chips of the send. `after` is the id of the run this one waits for: the packet that asked waits for its question. */
+export interface DrawnSend extends SentPacket {
+  after?: string;
+}
+
+const QUESTION_SUFFIX = '-question';
 
 /** One send of the player as it happened: the chips it names, the number of the send and the second of the game clock it left at. A list of them, in order, is all it takes to simulate the sends again. */
 export interface Dispatch {
@@ -59,12 +71,15 @@ export function routerOutOfSight(incident: Incident, run: PacketRun): string | u
   return revealsRoutersByTraceroute(incident) && !traced ? silentRouterStop(run.trace) : undefined;
 }
 
-/** Returns the runs with `hiddenStop` set for every packet whose stop the player cannot place: one that a firewall the player does not know stopped, as always, and one that vanished at a router out of sight (`routerOutOfSight`), whether or not a traceroute has drawn that router since, because a ping alone never reveals where it died. The same array when nothing changes. */
-export function hideStopsOutOfSight<T extends PacketRun>(incident: Incident, runs: T[]): T[] {
-  const hidden = runs.map((run) => {
-    const hiddenStop = hiddenByFirewall(run.trace, run.blocked) || routerOutOfSight(incident, run) !== undefined;
-    return hiddenStop === run.hiddenStop ? run : { ...run, hiddenStop };
-  });
+function withHiddenStop<T extends PacketRun & Asking>(incident: Incident, run: T): T {
+  const hiddenStop = hiddenByFirewall(run.trace, run.blocked) || routerOutOfSight(incident, run) !== undefined;
+  const question = run.question && withHiddenStop(incident, run.question);
+  return hiddenStop === run.hiddenStop && question === run.question ? run : { ...run, hiddenStop, ...(question && { question }) };
+}
+
+/** Returns the runs with `hiddenStop` set for every packet whose stop the player cannot place: one that a firewall the player does not know stopped, as always, and one that vanished at a router out of sight (`routerOutOfSight`), whether or not a traceroute has drawn that router since, because a ping alone never reveals where it died. The question of a send by name is a packet like any other and is looked at the same way. The same array when nothing changes. */
+export function hideStopsOutOfSight<T extends PacketRun & Asking>(incident: Incident, runs: T[]): T[] {
+  const hidden = runs.map((run) => withHiddenStop(incident, run));
   return hidden.every((run, index) => run === runs[index]) ? runs : hidden;
 }
 
@@ -142,7 +157,8 @@ type Plan = { dispatch: Dispatch; packet: PacketSpec } | { dispatch: Dispatch; p
 
 function sentRun(world: Network, known: ReadonlySet<TermId>, { move: { fromId, toId, messageId }, send, at }: Dispatch, packet: PacketSpec, trace: Trace, route?: TracerouteResult): SentPacket {
   const run = runOf(world, known, `sent-${fromId}-${toId}-${messageId}`, packet, false, trace);
-  return { ...run, ...(route && { route, label: tracerouteLabel(packet, trace, world, known) }), fromId, toId, messageId, send, at };
+  const question = route === undefined && trace.question ? runOf(world, known, `${run.id}${QUESTION_SUFFIX}`, trace.question.packet, false, trace.question.trace) : undefined;
+  return { ...run, ...(question && { question }), ...(route && { route, label: tracerouteLabel(packet, trace, world, known) }), fromId, toId, messageId, send, at };
 }
 
 /** True when the incident, or the case of a diagnose, offers the three chips of a send. */
@@ -157,7 +173,7 @@ function planOf(offers: SendOwner, dispatch: Dispatch): Plan[] {
   return probe ? [{ dispatch, probe }] : [];
 }
 
-/** Simulates the sends of the player in the order they were made, each as the send number and the second of the game clock it carries, and returns one run per send the incident, or the case of a diagnose, offers (a send of chips it does not offer is left out). The single packets go through `simulateSequence`, so what one send leaves behind (the source port of its device, the rows of the translation table, what the resolver remembered) reaches the next one, and each is measured against its own second. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe; it is labelled as a traceroute, not as the ping its last probe is. A traceroute sends no TCP or UDP packet and asks no resolver, so it neither uses a port nor leaves a row in the sequence. Every run has an id that names its combination, so a later send of the same chips has the same id as an earlier one. */
+/** Simulates the sends of the player in the order they were made, each as the send number and the second of the game clock it carries, and returns one run per send the incident, or the case of a diagnose, offers (a send of chips it does not offer is left out). The single packets go through `simulateSequence`, so what one send leaves behind (the source port of its device, the rows of the translation table, what the resolver remembered) reaches the next one, and each is measured against its own second. A traceroute runs its probes (`route`) and is kept as the run of the last probe it sent, the one that ended it, so its outcome and whoever answered are those of that probe; it is labelled as a traceroute, not as the ping its last probe is. A traceroute sends no TCP or UDP packet and asks no resolver for the map (no incident sends one to a name), so it neither uses a port nor leaves a row in the sequence and draws no question. Every run has an id that names its combination, so a later send of the same chips has the same id as an earlier one. */
 export function sendSequence(world: Network, offers: SendOwner, dispatches: readonly Dispatch[], known: ReadonlySet<TermId>): SentPacket[] {
   const plans = dispatches.flatMap((dispatch) => planOf(offers, dispatch));
   const single = plans.flatMap((plan) => ('packet' in plan ? [{ plan, send: { packet: plan.packet, at: plan.dispatch.at } }] : []));
@@ -179,6 +195,16 @@ export function sendPacket(world: Network, offers: SendOwner, move: SendMove, se
 /** Returns the last run of each combination of chips, in the order of the first send of each: a later send of the same chips replaces the earlier one and takes its place in the run, not in the list. */
 export function lastOfEach(runs: readonly SentPacket[]): SentPacket[] {
   return [...new Map(runs.map((run) => [run.id, run])).values()];
+}
+
+/** Takes the last send of each combination and returns what the map draws, in order: for each send by name, its question first, as a run of the same send, and then the packet, which waits for it (`after`); every other send as it is. */
+export function drawnSends(sent: readonly SentPacket[]): DrawnSend[] {
+  return sent.flatMap((run): DrawnSend[] => {
+    const { question } = run;
+    if (!question) return [run];
+    const { fromId, toId, messageId, send, at } = run;
+    return [{ ...question, fromId, toId, messageId, send, at }, { ...run, after: question.id }];
+  });
 }
 
 /** Returns the send a run stands for, to simulate it again. */

@@ -1,6 +1,7 @@
 export { canAskHint, clockSteps, hintsOf, isIntruding, sessionReducer, startSession, starsOf } from './session';
 export type { Rejection, Session, SessionAction, TableProblem } from './session';
-export type { SentPacket } from './flow-runs';
+export { drawnSends } from './flow-runs';
+export type { DrawnSend, SentPacket } from './flow-runs';
 export { countStars } from './stars';
 export type { Stars } from './stars';
 export { taskHolds } from './tasks';

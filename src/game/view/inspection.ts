@@ -1,6 +1,6 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, packetShape, roundTripText, stampOf, type EntityRef, type TermId, type TermText } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketSpec, type Router, type ServerActor, type Service } from '@/engine';
-import { routerOutOfSight, type PacketRun, type SentPacket } from '@/game/flow-runs';
+import { drawnSends, routerOutOfSight, type Asking, type PacketRun, type SentPacket } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
@@ -203,7 +203,7 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
 }
 
 /** The box of a packet, in the order the packet lives it: what it is, its message, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the routers it crossed, the result and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
-function packet(session: Session, run: PacketRun): Inspection {
+function packet(session: Session, run: PacketRun & Asking): Inspection {
   const step = stopStep(run.trace);
   const { hops, destinationId } = run.trace;
   const traced = 'route' in run && run.route !== undefined;
@@ -226,9 +226,9 @@ function packet(session: Session, run: PacketRun): Inspection {
   };
 }
 
-/** Returns the runs of the given ids, the newest first: what the player sent, the last send first, and then the live flows of the incident, the last one of the incident first, since a flow has no send and is older than every packet the player sends. Null when an id names no run any more, or when there is none. */
+/** Returns the runs of the given ids, the newest first: what the player sent, the last send first (its packet before its question, which left first), and then the live flows of the incident, the last one of the incident first, since a flow has no send and is older than every packet the player sends. Null when an id names no run any more, or when there is none. */
 function newestFirst(session: Session, ids: readonly string[]): PacketRun[] | null {
-  const sentOldestFirst: SentPacket[] = [...session.sent].sort((a, b) => a.send - b.send);
+  const sentOldestFirst: SentPacket[] = drawnSends([...session.sent].sort((a, b) => a.send - b.send));
   const wanted = new Set(ids);
   const listed = [...session.runs, ...sentOldestFirst].filter((run) => wanted.has(run.id)).reverse();
   return listed.length > 0 && listed.length === wanted.size ? listed : null;
@@ -270,7 +270,7 @@ export function inspect(session: Session, pieceId: string): Inspection | null {
       return found && drawsRouter(session, found.id) ? router(session, found) : null;
     }
     case 'packet': {
-      const found = [...runs, ...sent].find((run) => run.id === ref.id);
+      const found = [...runs, ...drawnSends(sent)].find((run) => run.id === ref.id);
       return found ? packet(session, found) : null;
     }
     case 'stamps':

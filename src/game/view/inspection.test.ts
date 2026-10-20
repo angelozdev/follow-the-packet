@@ -635,6 +635,7 @@ describe('the box of a packet with ports and names', () => {
   const sentTo = (session: Session, toId: string, messageId: string): Session => sessionReducer(session, { type: 'sendPacket', fromId: 'you', toId, messageId });
   const fields = (session: Session) => plain(inspect(session, session.sent.at(-1)!.pieceId))?.fields ?? [];
   const field = (session: Session, label: string) => fields(session).find(([name]) => name === label);
+  const fieldOf = (pieceId: string, session: Session, label: string) => plain(inspect(session, pieceId))?.fields.find(([name]) => name === label);
   const yourFirewall = (outbound: Rule[]): NetworkAction => ({ type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound } });
 
   it('the box of a packet draws the icon of its protocol: the filled shape of tcp or udp, and the dot of a ping', () => {
@@ -729,10 +730,11 @@ describe('the box of a packet with ports and names', () => {
 
   it('the dns field of a ping or an nc by name says the device asked its resolver first, or that its hosts file answered', () => {
     const LEAD = `Antes de mandar el paquete, tu-laptop averigua la IP de www.${zone}.`;
+    const ON_THE_MAP = 'La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.';
     const asked = sentTo(base, 'www', 'ping');
     expect(asked.sent[0].trace.steps[0]).toMatchObject({ stage: 'dns', reason: { code: 'dns-answered' } });
-    expect(field(asked, 'DNS')).toEqual(['DNS', LEAD, `tu-laptop hizo una consulta DNS por www.${zone} a ${resolver.id}, su resolver: la respuesta es ${NAME_SERVERS.site}.`]);
-    expect(field(sentTo(without(base, 'dns-query', 'resolver'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop preguntó por www.${zone} a ${resolver.id}: la respuesta es ${NAME_SERVERS.site}.`]);
+    expect(field(asked, 'DNS')).toEqual(['DNS', LEAD, `tu-laptop hizo una consulta DNS por www.${zone} a ${resolver.id}, su resolver: la respuesta es ${NAME_SERVERS.site}.`, ON_THE_MAP]);
+    expect(field(sentTo(without(base, 'dns-query', 'resolver'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop preguntó por www.${zone} a ${resolver.id}: la respuesta es ${NAME_SERVERS.site}.`, ON_THE_MAP]);
     const hosted = inWorld(base, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: NAME_SERVERS.site }] });
     expect(field(sentTo(hosted, 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop encontró www.${zone} en su archivo hosts: es ${NAME_SERVERS.site}. No preguntó a nadie.`]);
     expect(field(sentTo(without(hosted, 'hosts-file'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop ya sabía que www.${zone} es ${NAME_SERVERS.site}: no preguntó a nadie.`]);
@@ -740,11 +742,86 @@ describe('the box of a packet with ports and names', () => {
     expect(field(sentTo(base, 'lucia', 'ping'), 'DNS')).toBeUndefined();
     const failed = sentTo(base, 'missing', 'ping');
     expect(failed.sent[0].trace.outcome).toBe('unresolved');
-    expect(field(failed, 'DNS')).toEqual(['DNS', `Antes de mandar el paquete, tu-laptop averigua la IP de nadie.${zone}.`]);
+    expect(field(failed, 'DNS')).toEqual(['DNS', `Antes de mandar el paquete, tu-laptop averigua la IP de nadie.${zone}.`, ON_THE_MAP]);
     expect(field(failed, 'Dónde y por qué se detuvo')?.[1]).toContain('NXDOMAIN');
     const nc = sentTo(inWorld(base, { type: 'setServices', ownerId: server.id, services: [tcpApp] }), 'www', 'nc');
     expect(field(nc, 'DNS')?.[1]).toBe(LEAD);
     expect(field(nc, 'Saludo de tres pasos')?.[1]).toBe('1. SYN, de tu-laptop a servidor-internet');
+  });
+
+  it('the stamp of a question opens the box of a udp datagram to port 53 with the answer printed as the box of a dig prints it', () => {
+    const asked = sentTo(base, 'www', 'ping');
+    const { question } = asked.sent[0];
+    const box = plain(inspect(asked, question!.pieceId));
+    expect(question!.pieceId).toBe(PIECE_ID.packet(`${asked.sent[0].id}-question`));
+    expect(box?.title).toBe(toPlainText(question!.label));
+    expect(box?.fields.map(([label]) => label)).toEqual([
+      'Qué es',
+      'DNS',
+      'Encabezado de ida (en tu red local)',
+      'Encabezado de vuelta (en tu red local)',
+      'Encabezado de ida (en internet)',
+      'Encabezado de vuelta (en internet)',
+      'Ruta que usó',
+      'Traducción',
+      'Consulta y respuesta',
+      'Saltos',
+      'Resultado',
+      'Tiempo de ida y vuelta',
+    ]);
+    expect(box?.fields.find(([label]) => label === 'Encabezado de ida (en tu red local)')?.[1]).toBe('192.168.1.10:51514 → 198.51.100.8:53');
+    expect(box?.fields.find(([label]) => label === 'Traducción')).toEqual(['Traducción', '192.168.1.10:51514 → 203.0.113.10:40001', 'Cambió la IP y el puerto de origen (traducción de puertos).', 'Es una fila nueva de la tabla de traducciones.']);
+    expect(box?.fields.find(([label]) => label === 'Consulta y respuesta')).toEqual(['Consulta y respuesta', `1. consulta, de tu-laptop a ${resolver.id}`, `2. respuesta, de ${resolver.id} a tu-laptop`]);
+    const dug = sentTo(base, 'www', 'dig');
+    expect(field(asked, 'DNS')).not.toEqual(fieldOf(dug.sent[0].pieceId, dug, 'DNS'));
+    expect(box?.fields.find(([label]) => label === 'DNS')).toEqual(fieldOf(dug.sent[0].pieceId, dug, 'DNS'));
+    expect(inspect(sentTo(base, 'lucia', 'ping'), PIECE_ID.packet('sent-you-lucia-ping-question'))).toBeNull();
+  });
+
+  it('the dns field of a send by name says which port its question left from and that the question is on the map, each part once its term is known', () => {
+    const OWN_PORT = 'Este paquete salió del puerto 51515, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.';
+    const lines = (session: Session) => field(session, 'DNS')?.slice(1);
+    const nc = sentTo(base, 'www', 'nc');
+    expect(nc.sent[0].trace.header?.request.sourcePort).toBe(51515);
+    expect(lines(nc)?.slice(-2)).toEqual(['La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.', OWN_PORT]);
+    const beforeSourcePort = lines(sentTo(without(base, 'source-port'), 'www', 'nc'));
+    expect(beforeSourcePort?.at(-1)).toBe('La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.');
+    expect(beforeSourcePort?.some((line) => line.startsWith('Este paquete salió'))).toBe(false);
+    expect(lines(sentTo(without(base, 'port'), 'www', 'nc'))?.slice(-2)).toEqual(['La consulta se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51515, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.']);
+    expect(lines(sentTo(without(base, 'port', 'source-port'), 'www', 'nc'))?.at(-1)).toBe('La consulta se ve en el mapa, antes de este paquete.');
+    expect(lines(sentTo(without(base, 'packet'), 'www', 'nc'))?.some((line) => line.includes('antes de este paquete'))).toBe(true);
+    const ping = sentTo(base, 'www', 'ping');
+    expect(lines(ping)?.some((line) => line.startsWith('Este paquete salió'))).toBe(false);
+    const second = sentTo(ping, 'www', 'nc');
+    expect(lines(second)?.slice(-2)).toEqual(['La consulta salió del puerto 51515 y se ve en el mapa, antes de este paquete.', 'Este paquete salió del puerto 51516, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.']);
+    const unresolved = sentTo(base, 'missing', 'nc');
+    expect(lines(unresolved)).toEqual([`Antes de mandar el paquete, tu-laptop averigua la IP de nadie.${zone}.`, 'La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.']);
+    for (const missing of ['port', 'source-port', 'packet', 'dns-query', 'resolver', 'dns'] as const) {
+      const unaware = sentTo(without(base, missing), 'www', 'nc');
+      const shown = inspect(unaware, unaware.sent[0].pieceId)?.fields ?? [];
+      expect(unknownTerms(shown.flatMap((each) => [each.label, ...each.lines, ...(each.notes ?? [])]), unaware.known), missing).toEqual([]);
+    }
+  });
+
+  it('no line of the box says the computer asks only once', () => {
+    const ONLY_ONCE = /una sola|solo una|sola consulta|la única|la unica|único|unica pregunta|solo preguntó|una vez/i;
+    for (const [toId, messageId] of [['www', 'ping'], ['www', 'nc'], ['missing', 'ping']] as const) {
+      const session = sentTo(base, toId, messageId);
+      const { sent } = session;
+      const ids = [sent[0].pieceId, sent[0].question!.pieceId];
+      const boxes = ids.map((id) => plain(inspect(session, id)));
+      expect(boxes.flatMap((box) => box?.fields.flat() ?? []).filter((line) => ONLY_ONCE.test(line))).toEqual([]);
+      const together = plain(inspect(session, PIECE_ID.stamps([sent[0].question!.id, sent[0].id])));
+      expect(together?.fields.flat().filter((line) => ONLY_ONCE.test(line))).toEqual([]);
+    }
+  });
+
+  it('the list of the stamps of a place lists the question of a send by name beside its packet, the packet first because it is newer', () => {
+    const asked = sentTo(base, 'www', 'ping');
+    const [run] = asked.sent;
+    const listed = plain(inspect(asked, PIECE_ID.stamps([run.question!.id, run.id])));
+    expect(listed?.title).toBe('2 sellos juntos');
+    expect(listed?.fields.map(([label]) => label)).toEqual([toPlainText(run.label), toPlainText(run.question!.label)]);
   });
 });
 

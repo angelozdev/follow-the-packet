@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ROUTE_DEFAULT, applyAction, simulateSequence } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, simulateSequence, type Network } from '@/engine';
 import { packetFromChips, startWorld } from '@/levels';
-import type { TermId } from '@/copy';
+import { stampOf, type TermId } from '@/copy';
 import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
-import { lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch } from './flow-runs';
+import { drawnSends, hideStopsOutOfSight, lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
+import { PIECE_ID } from './view/piece-id';
 
 const FIRST_PORT = 51514;
 const FIRST_PUBLIC_PORT = 40001;
@@ -113,5 +114,100 @@ describe('a datagram that got a Port Unreachable', () => {
     const toPrinter = withDevice(WORLD, 'your-laptop', { dnsServer: OFFICE_FLOORS.floor1.printer });
     const run = sendPacket(toPrinter, NAMES, { type: 'sendPacket', fromId: 'you', toId: 'www', messageId: 'dig' }, 1, EVERY_TERM)!;
     expect([run.trace.outcome, run.reached, run.warning]).toEqual(['unreachable', true, { term: 'port-unreachable', by: 'host' }]);
+  });
+});
+
+describe('the question of a send by name', () => {
+  const { provider, officeRouter, server } = OFFICE_FLOORS;
+  const ROUTED = { ...NAMES, send: { ...NAMES.send, message: [...NAMES.send.message, { id: 'trace', label: '{{traceroute}}', command: 'traceroute' as const, icmpType: 8 as const }] } };
+  const run = (toId: string, messageId: string, world: Network = WORLD, known: ReadonlySet<TermId> = EVERY_TERM): SentPacket => sendSequence(world, NAMES, [dispatch(messageId, toId, 1, 0)], known)[0];
+  const closedOut = applyAction(WORLD, { type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] } });
+
+  it('a send by name has a question run with its own id and stamp, and the run of the packet keeps its trace', () => {
+    const asked = run('www', 'ping');
+    const { question } = asked;
+    expect(question).toMatchObject({
+      id: 'sent-you-www-ping-question',
+      pieceId: PIECE_ID.packet('sent-you-www-ping-question'),
+      packet: { to: resolver.ip, protocol: 'udp', port: 53, sourcePort: FIRST_PORT },
+      replied: true,
+      reached: true,
+      blocked: false,
+      hiddenStop: false,
+      warning: null,
+      intruder: false,
+      by: [resolver.id],
+    });
+    expect(stampOf(question!)).toBe('arrived');
+    expect(asked.id).toBe('sent-you-www-ping');
+    expect(asked.trace.question?.trace).toBe(question?.trace);
+    expect(asked.trace).toEqual(simulateSequence(WORLD, [{ packet: packetFromChips(NAMES, dispatch('ping', 'www', 1, 0).move)!, at: 0 }])[0]);
+  });
+
+  it('the question run is labelled with its ports, the private source port before the router and the public one after it', () => {
+    expect(run('www', 'ping').question?.ports).toEqual({
+      legs: [
+        { request: '{{udp}} 51514 → 53', reply: '{{udp}} 53 → 51514' },
+        { request: '{{udp}} 40001 → 53', reply: '{{udp}} 53 → 40001' },
+      ],
+      changesAt: officeRouter.id,
+    });
+    expect(run('www', 'nc').ports?.legs.map(({ request }) => request)).toEqual(['{{tcp}} 51515 → 3000', '{{tcp}} 40002 → 3000']);
+  });
+
+  it('a send addressed by IP has no question run', () => {
+    for (const [toId, messageId] of [['lucia', 'ping'], ['lucia', 'nc'], ['server', 'ping'], ['www', 'dig']] as const) expect(run(toId, messageId)).not.toHaveProperty('question');
+  });
+
+  it('a firewall the player does not know stops the question without blocking it', () => {
+    const known = run('www', 'nc', closedOut).question!;
+    expect(known).toMatchObject({ blocked: true, hiddenStop: false, replied: false, reached: false });
+    expect(stampOf(known)).toBe('blocked');
+    const without = new Set([...EVERY_TERM].filter((term) => term !== 'firewall'));
+    const hidden = run('www', 'nc', closedOut, without);
+    expect(hidden.question).toMatchObject({ blocked: false, hiddenStop: true });
+    expect(stampOf(hidden.question!)).toBe('lost');
+    expect(hidden.trace.steps.map((step) => step.reason.code)).toEqual(['dns-resolver-silent']);
+    expect(hidden).toMatchObject({ blocked: false, hiddenStop: false });
+  });
+
+  it('a router out of sight that drops the question in silence hides its stop as it does for any packet', () => {
+    const silent: Network = { ...WORLD, routers: (WORLD.routers ?? []).map((router) => (router.id === provider.id ? { ...router, sendsUnreachable: false, routes: router.routes.filter(({ to }) => to !== server.range) } : router)) };
+    const waiting = { ...ROUTED, revealRoutersByTraceroute: true };
+    const runs = sendSequence(silent, waiting, [dispatch('ping', 'www', 1, 0)], EVERY_TERM);
+    expect(runs[0].question).toMatchObject({ replied: false, hiddenStop: false });
+    expect(runs[0].question?.trace.notice).toBeUndefined();
+    const hidden = hideStopsOutOfSight(waiting, runs);
+    expect(hidden[0].question?.hiddenStop).toBe(true);
+    expect(hidden[0].hiddenStop).toBe(false);
+    expect(hideStopsOutOfSight(waiting, hidden)).toBe(hidden);
+    expect(hideStopsOutOfSight(NAMES, runs)).toBe(runs);
+  });
+
+  it('drawnSends puts the question of each send before the packet that asked and makes the packet wait for it', () => {
+    const sends = [dispatch('ping', 'www', 1, 0), dispatch('ping', 'lucia', 2, 1), dispatch('nc', 'www', 3, 2)];
+    const drawn = drawnSends(lastOfEach(sendSequence(WORLD, NAMES, sends, EVERY_TERM)));
+    expect(drawn.map((each) => each.id)).toEqual(['sent-you-www-ping-question', 'sent-you-www-ping', 'sent-you-lucia-ping', 'sent-you-www-nc-question', 'sent-you-www-nc']);
+    expect(drawn.map((each) => each.after)).toEqual([undefined, 'sent-you-www-ping-question', undefined, undefined, 'sent-you-www-nc-question']);
+    expect(drawn.map((each) => each.send)).toEqual([1, 1, 2, 3, 3]);
+    expect(drawn.map((each) => each.at)).toEqual([0, 0, 1, 2, 2]);
+    expect(drawn[0]).toMatchObject({ fromId: 'you', toId: 'www', messageId: 'ping', packet: { port: 53, sourcePort: FIRST_PORT } });
+    expect(drawnSends([])).toEqual([]);
+  });
+
+  it('a traceroute has no question run', () => {
+    const [trace, ping] = sendSequence(WORLD, ROUTED, [dispatch('trace', 'www', 1, 0), dispatch('ping', 'lucia', 2, 1)], EVERY_TERM);
+    expect(trace.route?.lines.length).toBeGreaterThan(0);
+    expect(trace).not.toHaveProperty('question');
+    expect(drawnSends([trace, ping]).map((each) => each.id)).toEqual([trace.id, ping.id]);
+  });
+
+  it('only the last send of each combination keeps its question on the map while every send keeps its row in the history', () => {
+    const history = sendSequence(WORLD, NAMES, [dispatch('ping', 'www', 1, 0), dispatch('ping', 'www', 2, 10)], EVERY_TERM);
+    expect(history.map((each) => each.question?.packet.sourcePort)).toEqual([FIRST_PORT, FIRST_PORT + 1]);
+    expect(history.map((each) => each.question?.trace.translation?.outside.port)).toEqual([FIRST_PUBLIC_PORT, FIRST_PUBLIC_PORT + 1]);
+    const onTheMap = drawnSends(lastOfEach(history));
+    expect(onTheMap.map((each) => [each.id, each.send])).toEqual([['sent-you-www-ping-question', 2], ['sent-you-www-ping', 2]]);
+    expect(onTheMap[0].packet.sourcePort).toBe(FIRST_PORT + 1);
   });
 });

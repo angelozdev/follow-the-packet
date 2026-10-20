@@ -1,6 +1,6 @@
 import { INSPECTION_TEXT, describeReason, deviceName, endpointName, type TermId, type TermText } from '@/copy';
 import { ROUTE_DEFAULT, stopStep, type DnsTrace, type ExchangeMessage, type PacketHeader, type PacketSpec, type RouteDecision, type Trace, type Translation } from '@/engine';
-import type { PacketRun } from '@/game/flow-runs';
+import type { Asking, PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { placesOf, routerPlace } from './router-place';
 
@@ -173,15 +173,26 @@ function dig(session: Session, run: PacketRun, dns: DnsTrace): TermText[] {
   return [text.from(resolver), ...answer[dns.status], ...origin, ...ttl];
 }
 
-function system(session: Session, run: PacketRun, dns: DnsTrace): TermText[] {
+/** The lines about the question a send by name put to its resolver, when the map draws it: which port it left from and that it is on the map before the packet and, for a packet that has a port of its own, why that port is not the first (the question took it). Each part waits for its term (`port`, `source-port`). */
+function questionLines(session: Session, run: PacketRun & Asking): TermText[] {
+  const { question } = run;
+  if (!question) return [];
+  const { known } = session;
+  const text = INSPECTION_TEXT.dnsQuestion;
+  const ownPort = run.trace.header?.request.sourcePort;
+  return [text.onTheMap(question.packet.sourcePort, known), ...(ownPort !== undefined && known.has('source-port') ? [text.ownPort(ownPort, known)] : [])];
+}
+
+function system(session: Session, run: PacketRun & Asking, dns: DnsTrace): TermText[] {
   const step = run.trace.steps.find((candidate) => candidate.stage === 'dns');
   if (!step || step.reason.code === 'dns-unresolved') return [];
   const lead = INSPECTION_TEXT.dnsLead(endpointName(run.packet.from, session.world), dns.name);
-  return step === stopStep(run.trace) ? [lead] : [lead, describeReason(step.reason, session.world, session.known, placesOf(session))];
+  const reason = step === stopStep(run.trace) ? [] : [describeReason(step.reason, session.world, session.known, placesOf(session))];
+  return [lead, ...reason, ...questionLines(session, run)];
 }
 
-/** The field with what happened to the name a packet was sent to, once `dns` is known. A `ping` or an `nc` by name asks first and sends after: it says that the device resolved the name before sending the packet, and how, with the sentence of the reason of that step: it asked its resolver, or its hosts file answered and nobody was asked. That question is not drawn and leaves no row in the translation table, so this is where it shows. A lookup that failed has its cause in the line where the packet stopped, and is not said twice. A `dig` is the question itself, and one from a device with no resolver sends nothing, so it has no field; otherwise the field lists what the resolver answered, with the records, whether the answer came from its cache (once `dns-cache` is known) and its TTL (once `dns-ttl` is known). */
-export function dnsField(session: Session, run: PacketRun): InspectionField[] {
+/** The field with what happened to the name a packet was sent to, once `dns` is known. A `ping` or an `nc` by name asks first and sends after: it says that the device resolved the name before sending the packet, and how, with the sentence of the reason of that step: it asked its resolver, or its hosts file answered and nobody was asked. The question is drawn on the map before the packet and leaves its row in the translation table, so the field adds the port it left from and says it is on the map (`questionLines`). A lookup that failed has its cause in the line where the packet stopped, and is not said twice. A `dig` is the question itself, and one from a device with no resolver sends nothing, so it has no field; otherwise the field lists what the resolver answered, with the records, whether the answer came from its cache (once `dns-cache` is known) and its TTL (once `dns-ttl` is known). */
+export function dnsField(session: Session, run: PacketRun & Asking): InspectionField[] {
   const { dns } = run.trace;
   if (!dns || !session.known.has('dns')) return [];
   const sent = run.trace.resolvedIp !== null;

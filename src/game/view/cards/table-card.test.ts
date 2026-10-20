@@ -121,8 +121,44 @@ describe('translationsCard', () => {
     expect(plain(card)).toEqual([
       ['TCP', '192.168.1.10:51514', `${officeRouter.uplink}:40001`],
       ['TCP', '192.168.1.10:51516', `${officeRouter.uplink}:40002`],
-      ['UDP', '192.168.1.10:51517', `${officeRouter.uplink}:40003`],
+      ['UDP · consulta DNS', '192.168.1.10:51517', `${officeRouter.uplink}:40003`],
     ]);
+  });
+
+  it('the translations card lists the row of a question before the row of the packet that asked', () => {
+    const asked = play(START, nc('www'), send('www', 'ping'), nc('missing'), nc('server'));
+    expect(asked.history).toHaveLength(4);
+    expect(plain(translationsCard(asked, OFFICE_ROUTER))).toEqual([
+      ['UDP · consulta DNS', '192.168.1.10:51514', `${officeRouter.uplink}:40001`],
+      ['TCP', '192.168.1.10:51515', `${officeRouter.uplink}:40002`],
+      ['UDP · consulta DNS', '192.168.1.10:51516', `${officeRouter.uplink}:40003`],
+      ['UDP · consulta DNS', '192.168.1.10:51517', `${officeRouter.uplink}:40004`],
+      ['TCP', '192.168.1.10:51518', `${officeRouter.uplink}:40005`],
+    ]);
+    const again = play(asked, nc('www'));
+    expect(again.sent).toHaveLength(4);
+    expect(translationsCard(again, OFFICE_ROUTER)?.rows).toHaveLength(7);
+  });
+
+  it('a row made by a datagram to port 53 wears the words consulta DNS once dns-query is known', () => {
+    const asked = play(START, nc('www'), send('www', 'dig'));
+    const first = (session: Session) => translationsCard(session, OFFICE_ROUTER)?.rows.map((row) => row.cells[0].text);
+    expect(first(asked)).toEqual(['{{udp|UDP}} · {{dns-query|consulta DNS}}', '{{tcp|TCP}}', '{{udp|UDP}} · {{dns-query|consulta DNS}}']);
+    expect(plain(translationsCard(without(asked, 'dns-query'), OFFICE_ROUTER))?.map(([protocol]) => protocol)).toEqual(['UDP · consulta DNS', 'TCP', 'UDP · consulta DNS']);
+    expect(first(without(asked, 'dns-query'))).toEqual(['{{udp|UDP}} · consulta DNS', '{{tcp|TCP}}', '{{udp|UDP}} · consulta DNS']);
+    expect(first(without(asked, 'dns-query', 'udp'))?.[0]).toBe('UDP · consulta DNS');
+    expect(translationsCard(asked, OFFICE_ROUTER)?.rows.every((row) => row.cells.every((cell) => cell.code))).toBe(true);
+  });
+
+  it('the row in use is the one the last send touched last: the packet\'s if it has one, else the one of its question', () => {
+    const question = 'udp|192.168.1.10:51514|' + `${officeRouter.uplink}:40001`;
+    const packet = 'tcp|192.168.1.10:51515|' + `${officeRouter.uplink}:40002`;
+    expect(used(translationsCard(play(START, nc('www')), OFFICE_ROUTER))).toEqual([packet]);
+    expect(used(translationsCard(play(START, send('www', 'ping')), OFFICE_ROUTER))).toEqual([question]);
+    expect(used(translationsCard(play(START, nc('missing')), OFFICE_ROUTER))).toEqual([question]);
+    expect(used(translationsCard(play(START, nc('www'), send('lucia', 'ping')), OFFICE_ROUTER))).toEqual([]);
+    expect(used(translationsCard(play(START, send('www', 'dig')), OFFICE_ROUTER))).toEqual([question]);
+    expect(translationsCard(play(START, nc('www'), send('www', 'ping')), OFFICE_ROUTER)?.rows.map((row) => row.inUse)).toEqual([false, false, true]);
   });
 
   it('keeps a row that a later send of the same chips replaced in the list of the last sends', () => {

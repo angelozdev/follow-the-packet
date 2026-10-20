@@ -1,7 +1,7 @@
 import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
-import { ROUTE_DEFAULT, cacheAfter, forwardRows, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute, type Translation } from '@/engine';
+import { DNS_PORT, ROUTE_DEFAULT, cacheAfter, forwardRows, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute, type Translation } from '@/engine';
 import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
-import type { SentPacket } from '@/game/flow-runs';
+import { drawnSends, type SentPacket } from '@/game/flow-runs';
 import { canEdit, currentCase, type Session } from '@/game/session';
 import { PIECE_ID, parsePieceId } from '@/game/view/piece-id';
 import { routerWithIp } from '@/game/view/revealed-routers';
@@ -164,25 +164,38 @@ function makesRow(run: SentPacket): boolean {
   return run.route === undefined && translation !== undefined && translation.protocol !== 'icmp' && translation.isNew && !translation.fixed;
 }
 
-/** One row of the table of translations. A fixed one (a port forward) wears the word «fija» after its protocol, so what makes it different from the rows packets made is a word and not only its place in the list. */
-function translationRow(session: Session, id: string, { protocol, inside, outside }: TranslationEnds, inUse: boolean, fixed: boolean): TableRowView {
+/** One row of the table of translations. The word after its protocol, when it has one (`mark`), is what makes the row different from the others: «fija» for a port forward, which no packet made, and «consulta DNS» for a datagram to port 53, so what a row is for is a word and not only its place in the list. */
+function translationRow(session: Session, id: string, { protocol, inside, outside }: TranslationEnds, inUse: boolean, mark?: TermText): TableRowView {
   const name = word(session.known, protocol, protocol.toUpperCase());
-  const first = fixed ? `${name} · ${word(session.known, 'port-forwarding', TABLE_TEXT.translations.fixed)}` : name;
+  const first = mark ? `${name} · ${mark}` : name;
   return { id, entryId: null, cells: [code(first), code(`${inside.ip}:${inside.port}`), code(`${outside.ip}:${outside.port}`)], inUse };
 }
 
 /** The fixed rows of the router, the ones its port forwards give (`forwardRows`), in the order of the forwards. The id starts with `fixed|`, so a fixed row and a row that a packet made never share a key. */
 function fixedRows(session: Session, router: Router, usedKey: string | undefined): TableRowView[] {
-  return forwardRows(session.world, router).map((row) => translationRow(session, `fixed|${translationKey(row)}`, row, translationKey(row) === usedKey, true));
+  const mark = word(session.known, 'port-forwarding', TABLE_TEXT.translations.fixed);
+  return forwardRows(session.world, router).map((row) => translationRow(session, `fixed|${translationKey(row)}`, row, translationKey(row) === usedKey, mark));
 }
 
-/** Returns the «Tabla de traducciones» card of the router of the office, read only and shown once `translation-table` is known. It lists first the fixed rows of the router, one for each port forward of the world (`forwardRows`), marked «fija»: the world gave them, no packet made them. Then, one row for each TCP or UDP packet the player sent since the world last changed that made one (`Session.history`, in the order they were made, because `sent` keeps only the last send of each combination of chips and would lose rows), with the private IP:port, the public IP:port, and the row the last packet sent used marked, a fixed one too when a forward delivered the packet. A ping makes no row (ICMP has no ports) and neither does a packet a fixed forward delivered: the forward was there before it. Null for a piece that is no router, a router that does not translate, and an incident that is not a send. */
+/** The word a row made by a run wears: «consulta DNS» when the run is a UDP datagram to port 53, the question of a send by name or a `dig`, once `dns-query` is known. */
+function markOf(session: Session, { trace }: SentPacket): TermText | undefined {
+  const asksTheResolver = trace.translation?.protocol === 'udp' && trace.header?.request.destinationPort === DNS_PORT;
+  return asksTheResolver ? word(session.known, 'dns-query', TABLE_TEXT.translations.dnsQuery) : undefined;
+}
+
+/** The row the last send touched last: the one its packet made or used, or, for a packet that has none of its own (a ping, a name nobody resolved), the one its question made. */
+function lastTouched(session: Session): Translation | undefined {
+  const last = lastRun(session);
+  return [last?.trace.translation, last?.question?.trace.translation].find((translation) => translation !== undefined && translation.protocol !== 'icmp');
+}
+
+/** Returns the «Tabla de traducciones» card of the router of the office, read only and shown once `translation-table` is known. It lists first the fixed rows of the router, one for each port forward of the world (`forwardRows`), marked «fija»: the world gave them, no packet made them. Then, one row for each TCP or UDP packet the player sent since the world last changed that made one, and for each question a send by name put to its resolver before its packet (`Session.history`, in the order they were made, the row of the question first, because `sent` keeps only the last send of each combination of chips and would lose rows), with the private IP:port, the public IP:port, and the row the last send touched last marked: the one of its packet, or, when the packet has none, the one of its question, a fixed one too when a forward delivered the packet. A row made by a datagram to port 53 (a question or a `dig`) wears «consulta DNS» once that term is known. A ping makes no row (ICMP has no ports) and neither does a packet a fixed forward delivered: the forward was there before it. Null for a piece that is no router, a router that does not translate, and an incident that is not a send. */
 export function translationsCard(session: Session, pieceId: string): TableCard | null {
   const holder = holderOf(session, pieceId);
   if (!holder || !('interfaces' in holder) || sendIncident(session) === null || !session.known.has('translation-table') || !translates(session.world, holder)) return null;
-  const last = lastRun(session);
-  const used = last?.trace.translation && last.trace.translation.protocol !== 'icmp' ? translationKey(last.trace.translation) : undefined;
-  const ownRows = session.history.filter((run) => makesRow(run) && holder.interfaces.some((face) => face.ip === run.trace.translation?.outside.ip));
+  const touched = lastTouched(session);
+  const used = touched && translationKey(touched);
+  const ownRows = drawnSends(session.history).filter((run) => makesRow(run) && holder.interfaces.some((face) => face.ip === run.trace.translation?.outside.ip));
   return {
     kind: 'translations',
     tableId: null,
@@ -196,9 +209,9 @@ export function translationsCard(session: Session, pieceId: string): TableCard |
     ],
     rows: [
       ...fixedRows(session, holder, used),
-      ...ownRows.map(({ trace }) => {
-        const key = translationKey(trace.translation!);
-        return translationRow(session, key, trace.translation!, key === used, false);
+      ...ownRows.map((run) => {
+        const key = translationKey(run.trace.translation!);
+        return translationRow(session, key, run.trace.translation!, key === used, markOf(session, run));
       }),
     ],
     empty: TABLE_TEXT.translations.empty,

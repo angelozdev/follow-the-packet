@@ -129,6 +129,13 @@ export const INSPECTION_TEXT = {
   },
   dns: '{{dns}}',
   dnsLead: (device: TermText, name: string): TermText => `Antes de mandar el paquete, ${device} averigua la IP de ${name}.`,
+  dnsQuestion: {
+    onTheMap: (port: number | undefined, known: ReadonlySet<TermId>): TermText => {
+      const before = `se ve en el mapa, antes de este ${word(known, 'packet', 'paquete')}.`;
+      return known.has('port') && port !== undefined ? `La consulta salió del {{port|puerto}} ${port} y ${before}` : `La consulta ${before}`;
+    },
+    ownPort: (port: number, known: ReadonlySet<TermId>): TermText => `Este paquete salió del ${word(known, 'port', 'puerto')} ${port}, el siguiente al de la consulta: en este juego cada intercambio nuevo sale de un puerto nuevo, y la consulta va antes.`,
+  },
   dnsAnswer: {
     record: (name: string, type: 'A' | 'CNAME', value: string, known: ReadonlySet<TermId>): TermText => `${name} ${word(known, type === 'A' ? 'a-record' : 'cname-record', type)} ${value}`,
     from: (resolver: TermText): TermText => `Contestó ${resolver}.`,
@@ -274,6 +281,7 @@ export const TABLE_TEXT = {
     inside: '{{ip-port|IP:puerto}} privado',
     outside: '{{ip-port|IP:puerto}} público',
     fixed: 'fija',
+    dnsQuery: 'consulta DNS',
     empty: 'Todavía no hay filas. Aparece una cuando un {{packet|paquete}} con {{port|puertos}} sale hacia {{internet}}. Un {{ping}} no usa {{port|puertos}}: en esta tabla no deja fila.',
   },
   records: {
