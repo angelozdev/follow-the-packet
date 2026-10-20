@@ -1,5 +1,4 @@
 import { EMPTY_CACHE, entriesOf } from '@/engine/dns/cache';
-import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { DnsCacheEntry, Network, PacketSpec } from '@/engine/network/types';
 import { run, type Carried } from './simulate';
 import type { Trace } from './trace';
@@ -10,44 +9,20 @@ export interface Send {
   at: number;
 }
 
-/** What a sequence carries from one send to the next: for each sender, by id, the ephemeral source port its next TCP or UDP packet leaves from, and what the pipeline hands on (the translation table of the NAT and the cache of the resolvers). */
-interface SequenceState extends Carried {
-  nextSourcePort: Readonly<Record<string, number>>;
-}
-
-interface Advance {
-  state: SequenceState;
-  trace: Trace;
-}
-
-const emptyState = (): SequenceState => ({ nextSourcePort: {}, nat: [], dnsCache: EMPTY_CACHE });
-
-/** Gives a TCP or UDP packet that has no source port the next one of its sender and moves that sender on by one. A packet that brings its own port keeps it and leaves the counter as it was, like a port a program binds by hand; an ICMP message has no ports. Returns the packet to simulate and the state after it. */
-function withSourcePort(state: SequenceState, packet: PacketSpec): { state: SequenceState; packet: PacketSpec } {
-  if (packet.protocol === 'icmp' || packet.sourcePort !== undefined) return { state, packet };
-  const sender = packet.from.id;
-  const sourcePort = state.nextSourcePort[sender] ?? DEFAULT_SOURCE_PORT;
-  return { state: { ...state, nextSourcePort: { ...state.nextSourcePort, [sender]: sourcePort + 1 } }, packet: { ...packet, sourcePort } };
-}
-
-/** Simulates one send of the sequence from the state the previous sends left, at the second it leaves at, and returns its trace with the state for the next one. */
-function advance(net: Network, state: SequenceState, { packet, at }: Send): Advance {
-  const next = withSourcePort(state, packet);
-  const { trace, carried } = run(net, next.packet, next.state, at);
-  return { state: { ...next.state, ...carried }, trace };
-}
+const emptyState = (): Carried => ({ nextSourcePort: {}, nat: [], dnsCache: EMPTY_CACHE });
 
 interface Played {
   traces: Trace[];
-  state: SequenceState;
+  state: Carried;
 }
 
+/** Runs the sends in order, each from the state the previous one left at the second it leaves at, and returns their traces with the state after the last one. */
 function play(net: Network, sends: readonly Send[]): Played {
   const traces: Trace[] = [];
   let state = emptyState();
-  for (const send of sends) {
-    const step = advance(net, state, send);
-    state = step.state;
+  for (const { packet, at } of sends) {
+    const step = run(net, packet, state, at);
+    state = step.carried;
     traces.push(step.trace);
   }
   return { traces, state };

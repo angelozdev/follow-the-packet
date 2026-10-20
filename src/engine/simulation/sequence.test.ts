@@ -12,6 +12,7 @@ const GIVEN_PORT = 40000;
 const FIRST = DEFAULT_SOURCE_PORT;
 const SECOND = DEFAULT_SOURCE_PORT + 1;
 const THIRD = DEFAULT_SOURCE_PORT + 2;
+const FOURTH = DEFAULT_SOURCE_PORT + 3;
 
 const you = device('your-laptop');
 const printer = device('printer');
@@ -134,7 +135,7 @@ describe('the cache of a resolver in a sequence', () => {
     expect(secondsLeft([{ packet: dig(you, WWW), at: 1000 }, { packet: dig(you, WWW), at: 1100 }, { packet: dig(you, WWW), at: 1299 }, { packet: dig(you, WWW), at: 1300 }])).toEqual([undefined, 200, 1, undefined]);
   });
 
-  it('a lookup by name fills the cache of the resolver and uses neither a port of its sender nor a row of the table, while the dig that follows has both', () => {
+  it('a lookup by name fills the cache of the resolver and its question uses a port of the sender and a row of the table, before the packet that asked', () => {
     const traces = simulateSequence(names, [
       { packet: tcp(you, WWW, 80), at: 0 },
       { packet: dig(you, WWW), at: 5 },
@@ -142,13 +143,15 @@ describe('the cache of a resolver in a sequence', () => {
     ]);
     const [byName, asked, byIp] = traces;
     expect(byName.dns?.fromCache).toBe(false);
-    expect(byName.header?.request.sourcePort).toBe(FIRST);
-    expect(byName.translation?.outside.port).toBe(40001);
+    expect(byName.question?.packet.sourcePort).toBe(FIRST);
+    expect(byName.question?.trace.translation?.outside.port).toBe(40001);
+    expect(byName.header?.request.sourcePort).toBe(SECOND);
+    expect(byName.translation?.outside.port).toBe(40002);
     expect(asked.dns).toMatchObject({ fromCache: true, ttlLeft: 295 });
-    expect(asked.header?.request).toMatchObject({ destination: resolver.ip, sourcePort: SECOND, destinationPort: DNS_PORT });
-    expect(asked.translation).toMatchObject({ protocol: 'udp', inside: { port: SECOND }, outside: { port: 40002 } });
-    expect(byIp.header?.request.sourcePort).toBe(THIRD);
-    expect(byIp.translation?.outside.port).toBe(40003);
+    expect(asked.header?.request).toMatchObject({ destination: resolver.ip, sourcePort: THIRD, destinationPort: DNS_PORT });
+    expect(asked.translation).toMatchObject({ protocol: 'udp', inside: { port: THIRD }, outside: { port: 40003 } });
+    expect(byIp.header?.request.sourcePort).toBe(FOURTH);
+    expect(byIp.translation?.outside.port).toBe(40004);
   });
 
   it('an answer that holds no address and a send that asks nobody leave the cache as it was', () => {

@@ -3,7 +3,7 @@ import type { NatTable, Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Device, Endpoint, Network, PacketSpec, Router, Service } from '@/engine/network/types';
-import type { DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Reason, Step, TcpdumpLine } from './trace';
+import type { DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Question, Reason, Step, TcpdumpLine } from './trace';
 
 /** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
 export interface Delivery {
@@ -31,6 +31,9 @@ export interface Delivered {
   port: number;
 }
 
+/** The ephemeral source port each sender uses next, by the id of the sender. A sender with no entry starts at `DEFAULT_SOURCE_PORT`. */
+export type SourcePorts = Readonly<Record<string, number>>;
+
 export interface SimContext {
   net: Network;
   packet: PacketSpec;
@@ -46,6 +49,8 @@ export interface SimContext {
   notice?: Notice;
   routes?: RouteDecision[];
   nat: NatTable;
+  /** The ephemeral source port each sender uses next; the `port` stage and the question of a lookup by name take theirs from here. */
+  nextSourcePort: SourcePorts;
   /** What the resolvers remembered before this send; a lookup that a resolver answers puts the new entries here. */
   dnsCache: DnsCache;
   /** The second of the game clock this send leaves at; a loose `simulate` leaves at 0. */
@@ -54,6 +59,8 @@ export interface SimContext {
   asking?: string;
   translation?: Translation;
   dns?: DnsTrace;
+  /** The question this send put to its resolver before the packet itself, when it put one. */
+  question?: Question;
   hops: Hop[];
   legsMs: number[];
   steps: Step[];

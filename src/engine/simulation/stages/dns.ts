@@ -1,12 +1,15 @@
 import { hostsLine, hostsTrace } from '@/engine/dns/hosts';
-import { resolve, type LookupMode, type Resolution, type SendPacket } from '@/engine/dns/resolve';
+import { resolve, type LookupMode, type Resolution } from '@/engine/dns/resolve';
 import { resolveName } from '@/engine/network/naming/dns';
-import type { Device } from '@/engine/network/types';
+import type { Device, Network, PacketSpec } from '@/engine/network/types';
 import { CONTINUE, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
-import type { Reason } from '@/engine/simulation/trace';
+import type { Question, Reason, Trace } from '@/engine/simulation/trace';
 
 type Answered = Extract<Resolution, { answered: true }>;
 type Unanswered = Extract<Resolution, { answered: false }>;
+
+/** Sends the question of a lookup as a datagram of the send that asks, and returns it as it left with its trace. */
+export type SendQuestion = (ctx: SimContext, packet: PacketSpec) => Question;
 
 function lookUpEc2Name(ctx: SimContext): StageResult {
   const { packet, source, net } = ctx;
@@ -41,17 +44,25 @@ function followAnswer(ctx: SimContext, device: Device, resolution: Answered): St
   return CONTINUE;
 }
 
-/** Ends the lookup of a device that has a resolver and got no answer. With none set, it ends as it always did for an office, with `dns-unresolved` and nothing sent. Otherwise the question went out and one of two things happened: a host got it and did not answer it as a resolver (`dns-no-resolver`, which names that host), or no host got it, because a firewall or a router dropped it or warned, or nobody has the IP (`dns-resolver-silent`). The warning that came back, if one did, is in `Resolution.query`. */
+/** Ends the lookup of a device that has a resolver and got no answer. With none set, it ends as it always did for an office, with `dns-unresolved` and nothing sent. Otherwise the question went out and one of two things happened: a host got it and did not answer it as a resolver (`dns-no-resolver`, which names that host), or no host got it, because a firewall or a router dropped it or warned, or nobody has the IP (`dns-resolver-silent`). The warning that came back, if one did, is in `Resolution.query`, which the stage keeps as `Trace.question`. */
 function failUnanswered(ctx: SimContext, device: Device, resolution: Unanswered): StageResult {
   if (device.dnsServer === undefined) return fail(ctx, { code: 'dns-unresolved', name: ctx.packet.to, fromInside: true });
   const asked = { deviceId: device.id, name: ctx.packet.to, ip: device.dnsServer };
   return fail(ctx, resolution.notAResolver ? { code: 'dns-no-resolver', ...asked, hostId: resolution.notAResolver } : { code: 'dns-resolver-silent', ...asked });
 }
 
-/** A device of an office asks the resolver of its network settings. Whatever a resolver answers is stored at the resolver, also when the question was made by a `ping` or an `nc`: the cache goes on with the send. */
-function askResolver(ctx: SimContext, device: Device, send: SendPacket, mode: LookupMode): StageResult {
-  const resolution = resolve(ctx.net, device, ctx.packet.to, mode, send, { now: ctx.now, cache: ctx.dnsCache });
+/** A device of an office asks the resolver of its network settings. Whatever a resolver answers is stored at the resolver, also when the question was made by a `ping` or an `nc`: the cache goes on with the send. The question the device sent, if it sent one, is kept in `ctx.question` with the answer of the lookup as the trace of a `dig` carries it (`viaDig`), and writes no step, hop or leg in the trace of the packet that asked. */
+function askResolver(ctx: SimContext, device: Device, send: SendQuestion, mode: LookupMode): StageResult {
+  const sent: Question[] = [];
+  const carry = (_: Network, packet: PacketSpec): Trace => {
+    const question = send(ctx, packet);
+    sent.push(question);
+    return question.trace;
+  };
+  const resolution = resolve(ctx.net, device, ctx.packet.to, mode, carry, { now: ctx.now, cache: ctx.dnsCache });
   ctx.dns = resolution.dns;
+  const [question] = sent;
+  if (question) ctx.question = { packet: question.packet, trace: { ...question.trace, dns: { ...resolution.dns, viaDig: true } } };
   if (!resolution.answered) return failUnanswered(ctx, device, resolution);
   ctx.dnsCache = resolution.cache;
   return followAnswer(ctx, device, resolution);
@@ -67,15 +78,15 @@ function readHostsFile(ctx: SimContext, device: Device, ip: string): StageResult
 }
 
 /** A `dig` is the question itself: it reads no hosts file and its destination is the resolver, so the datagram goes there like any packet and the pipeline takes the answer once it has been there (`asking`). With no resolver set there is nowhere to send it, and it ends as any lookup with none. */
-function askAsDig(ctx: SimContext, device: Device, send: SendPacket): StageResult {
+function askAsDig(ctx: SimContext, device: Device, send: SendQuestion): StageResult {
   if (device.dnsServer === undefined) return askResolver(ctx, device, send, 'dig');
   ctx.destIp = device.dnsServer;
   ctx.asking = ctx.packet.to;
   return CONTINUE;
 }
 
-/** Builds the stage that turns a name into an IP; it takes `send` to carry the question to the resolver as a packet, so the stage does not import the pipeline that contains it. A device of an office looks the name up like the system does (`ping`, `nc`): the hosts file first and then its resolver (`askResolver`); a `dig` goes straight to the resolver (`askAsDig`). Every other sender, in a VPC or on the internet, resolves EC2 names as it always did. A destination that is already an IP passes with no step. */
-export function createDnsStage(send: SendPacket): Stage {
+/** Builds the stage that turns a name into an IP; it takes `send` to carry the question to the resolver as a datagram of the send that asks, so the stage does not import the pipeline that contains it. A device of an office looks the name up like the system does (`ping`, `nc`): the hosts file first and then its resolver (`askResolver`); a `dig` goes straight to the resolver (`askAsDig`). Every other sender, in a VPC or on the internet, resolves EC2 names as it always did. A destination that is already an IP passes with no step. */
+export function createDnsStage(send: SendQuestion): Stage {
   return (ctx) => {
     if (ctx.destIp !== undefined) return CONTINUE;
     const { source, net, packet } = ctx;

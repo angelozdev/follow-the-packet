@@ -225,15 +225,17 @@ describe('a device with no resolver', () => {
 });
 
 describe('the question in a sequence', () => {
-  it('does not use up the source port of the sender nor leave a row in the translation table', () => {
+  it('uses a source port of the sender and leaves a row in the translation table, before the packet that asked', () => {
     const [byName, byIp] = simulateSequence(net, [
       { packet: { from: you, to: WWW, protocol: 'tcp', port: 80 }, at: 0 },
       { packet: { from: you, to: site, protocol: 'tcp', port: 80 }, at: 0 },
     ]);
-    expect(byName.header?.request).toMatchObject({ sourcePort: 51514, destination: site });
-    expect(byName.translation?.outside.port).toBe(40001);
-    expect(byIp.header?.request).toMatchObject({ sourcePort: 51515 });
-    expect(byIp.translation?.outside.port).toBe(40002);
+    expect(byName.question?.packet.sourcePort).toBe(51514);
+    expect(byName.question?.trace.translation?.outside.port).toBe(40001);
+    expect(byName.header?.request).toMatchObject({ sourcePort: 51515, destination: site });
+    expect(byName.translation?.outside.port).toBe(40002);
+    expect(byIp.header?.request).toMatchObject({ sourcePort: 51516 });
+    expect(byIp.translation?.outside.port).toBe(40003);
   });
 
   it('gives the same traces for the same sends', () => {

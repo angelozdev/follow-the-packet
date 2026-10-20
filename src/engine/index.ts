@@ -40,7 +40,7 @@ export type { CachedRow, Send } from './simulation/sequence';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/paths/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/paths/traceroute';
 export { OUTCOMES } from './simulation/trace';
-export type { Checkpoint, DnsStatus, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, PacketHeader, Reason, Step, Trace } from './simulation/trace';
+export type { Checkpoint, DnsStatus, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, PacketHeader, Question, Reason, Step, Trace } from './simulation/trace';
 export { routingTableOf } from './network/addressing/routing-table';
 export type { RouteDecision, RouteKind, TableRoute } from './network/addressing/routing-table';
 export { forwardRows, translates } from './nat/translation';

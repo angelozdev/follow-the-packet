@@ -19,7 +19,7 @@ export interface Memory {
 
 const START_OF_GAME: Memory = { now: 0, cache: EMPTY_CACHE };
 
-/** Sends a packet through the network and returns its trace. The question to the resolver is a packet like any other, so whatever sends it decides how: the pipeline passes its own, and `resolve` knows nothing of the pipeline. */
+/** Sends a packet through the network and returns its trace. The question to the resolver is a packet like any other, so whatever sends it decides how: the pipeline passes one that sends it as a datagram of the same send, with its own source port and its own row of the translation table, and `resolve` knows nothing of the pipeline. */
 export type SendPacket = (net: Network, packet: PacketSpec) => Trace;
 
 /** What the authoritative servers say about a name when a resolver asks them. `serverId` is the one that gave the last word or the one that failed. */
@@ -120,7 +120,7 @@ export function answerFrom(net: Network, query: Trace, name: string, mode: Looku
   };
 }
 
-/** Looks a name up for a device: sends the question to the resolver of its network settings (`dnsServer`) as a UDP datagram to port 53, through whatever `send` carries it with (the rules, routes, NAT and services of the engine), and, when the resolver answers, takes the answer (`answerFrom`). A device with no `dnsServer` sends nothing and gets `NO-RESOLVER`; so does one whose question was not answered, because a firewall dropped it, no route led to the address, a router warned or the host there is no resolver. Then `query` is the trace of the packet that carried the question. The hosts file is not read here: it comes before the question and belongs to the `dns` stage. */
+/** Looks a name up for a device: sends the question to the resolver of its network settings (`dnsServer`) as a UDP datagram to port 53, through whatever `send` carries it with (the rules, routes, NAT and services of the engine), and, when the resolver answers, takes the answer (`answerFrom`). A device with no `dnsServer` sends nothing and gets `NO-RESOLVER`; so does one whose question was not answered, because a firewall dropped it, no route led to the address, a router warned or the host there is no resolver. Then `query` is the trace of the packet that carried the question, which the pipeline also keeps as `Trace.question`. The hosts file is not read here: it comes before the question and belongs to the `dns` stage. */
 export function resolve(net: Network, device: Device, name: string, mode: LookupMode, send: SendPacket, memory: Memory = START_OF_GAME): Resolution {
   if (device.dnsServer === undefined) return { answered: false, dns: traceOf(name, mode, 'NO-RESOLVER') };
   const query = send(net, { from: { kind: 'device', id: device.id }, to: device.dnsServer, protocol: 'udp', port: DNS_PORT });

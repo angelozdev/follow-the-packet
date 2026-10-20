@@ -1,6 +1,6 @@
 import type { Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
-import type { AnswerRecord, FirewallKind, IcmpType, Service, SoaRecord } from '@/engine/network/types';
+import type { AnswerRecord, FirewallKind, IcmpType, PacketSpec, Service, SoaRecord } from '@/engine/network/types';
 
 export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
@@ -119,7 +119,7 @@ export const DNS_STATUSES = ['NOERROR', 'NXDOMAIN', 'SERVFAIL', 'NO-RESOLVER'] a
 /** What came back for a name: the status of the answer (`NOERROR` also covers a name that exists and has no address, whose `answers` hold no A record) or `NO-RESOLVER` when nobody answered the question. */
 export type DnsStatus = (typeof DNS_STATUSES)[number];
 
-/** What happened to a name a packet was sent to. `answers` are the records of the answer in order, the aliases first and the addresses after them, each with its TTL (the seconds it has left, when the answer came from the cache); `fromCache` says the resolver answered from its cache and then `ttlLeft` is the seconds the answer has left, those of the record that expires first, and it is absent from every other trace; `usedHostsFile` says the hosts file of the device answered and nothing was asked, so `answers` is empty and the address is the `resolvedIp` of the trace; `viaDig` says the lookup was a `dig`. `soa` is the SOA of the zone that gave a negative answer (a name that does not exist, or one that exists and holds no address), with the TTL of that answer, the smaller of the SOA's own and its MINIMUM (RFC 2308 §3), and is absent from every other status. */
+/** What happened to a name a packet was sent to. `answers` are the records of the answer in order, the aliases first and the addresses after them, each with its TTL (the seconds it has left, when the answer came from the cache); `fromCache` says the resolver answered from its cache and then `ttlLeft` is the seconds the answer has left, those of the record that expires first, and it is absent from every other trace; `usedHostsFile` says the hosts file of the device answered and nothing was asked, so `answers` is empty and the address is the `resolvedIp` of the trace; `viaDig` says the lookup was a `dig`, which is also what the question of a lookup by name carries in `Trace.question` (the trace of that datagram is the one of a `dig`). `soa` is the SOA of the zone that gave a negative answer (a name that does not exist, or one that exists and holds no address), with the TTL of that answer, the smaller of the SOA's own and its MINIMUM (RFC 2308 §3), and is absent from every other status. */
 export interface DnsTrace {
   name: string;
   status: DnsStatus;
@@ -139,6 +139,12 @@ export interface TcpdumpLine {
   summary: string;
 }
 
+/** The question a send by name put to its resolver before the packet itself: the UDP datagram to port 53 as it left, with the source port it took, and its whole trace (the header with ports, the exchange of query and answer, the row of the translation table, the hops and the warning, and `dns` as a `dig` carries it). The packet that asked has no step, hop or leg of it. */
+export interface Question {
+  packet: PacketSpec;
+  trace: Trace;
+}
+
 export interface Trace {
   steps: Step[];
   outcome: Outcome;
@@ -153,5 +159,6 @@ export interface Trace {
   routes?: RouteDecision[];
   translation?: Translation;
   dns?: DnsTrace;
+  question?: Question;
   rttMs?: number;
 }

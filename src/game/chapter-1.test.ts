@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TERMINAL_TEXT, TERMS, roundTripText, stampLabel, termsIn, toPlainText, type TermText } from '@/copy';
-import { applyAction, extraOpenings, networkSchema, simulate, stopStep } from '@/engine';
+import { applyAction, extraOpenings, networkSchema, simulate, simulateSequence, stopStep } from '@/engine';
 import { INCIDENTS, caseWorld, isGuided, revealsRoutersByTraceroute, sendCombinations, solvedWorld, startWorld, type DiagnoseIncident, type Flow, type Incident } from '@/levels';
 import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts } from '@/levels/ladder';
+import { chapter1Worlds } from '@/testing';
 import { ADDRESS, CARD, DEVICE, FIREWALL, FLOOR, FLOW, FROM, GATEWAY, GUARD_PIECES, HIDDEN_FIREWALL, IP, MESSAGE, ORIGIN, PING_WITH_TTL, ROUTER, REPAIRED_STRETCH, RULE_PIECES, SERVER, TASK, TO, WHAT } from '@/levels/01-first-day/shared';
 import type { FlowRun, SentPacket } from './flow-runs';
 import { firewallCard } from './view/cards/firewall-card';
@@ -1902,5 +1903,15 @@ describe('the changes to the world that chapter 1 explains', () => {
   it('no text of 01-06, 01-08, 01-10, 01-11 or 01-14 says that a router got confused, and none says ruta or tabla, which chapter 2 teaches', () => {
     const texts = [YOUR_NETWORK, THE_NETWORK_OF_NETWORKS, SEEING_THE_PATH, THE_GUARD, FINAL_WATCH].flatMap((id) => incidentTexts(incidentOf(id)).map((text) => toPlainText(text)));
     expect(texts.filter((text) => A_ROUTER_THAT_IS_CONFUSED_OR_A_ROUTE.test(text))).toEqual([]);
+  });
+});
+
+describe('the question of a lookup by name', () => {
+  it('no trace of chapter 1 carries a question', () => {
+    const worlds = chapter1Worlds();
+    const traces = worlds.flatMap(({ world, packets }) => [...packets.map((packet) => simulate(world, packet)), ...simulateSequence(world, packets.map((packet) => ({ packet, at: 0 })))]);
+    expect(traces.length).toBeGreaterThan(0);
+    expect(traces.some((trace) => trace.outcome === 'replied')).toBe(true);
+    for (const trace of traces) expect(trace).not.toHaveProperty('question');
   });
 });
