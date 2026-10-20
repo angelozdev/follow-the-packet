@@ -124,6 +124,20 @@ describe('flightPlan', () => {
     expect(answerBackAt(afterWaiting)).toBe(8);
     expect(distanceAt(afterWaiting, 0)).toBe(0);
   });
+
+  it('a packet that waits for another leaves when the answer of the other is back at its sender', () => {
+    const questions = [['replied', 6], ['warned', 6], ['arrived', 3], ['blocked', 3], ['lost', 3], ['self-warned', 0]] as const;
+    for (const [end, seconds] of questions) {
+      const question = flightPlan(PATH, end, 0);
+      const asked = flightPlan(PATH, 'replied', answerBackAt(question));
+      expect(asked.begin, end).toBe(seconds);
+      expect(sendCycle(asked), end).toEqual({ begin: seconds, period: asked.duration, repeats: false });
+      expect(distanceAt(asked, 0), end).toBe(0);
+    }
+    const answered = flightPlan(PATH, 'replied', 0);
+    expect(answerBackAt(answered)).toBeLessThan(answered.duration);
+    expect(flightPlan(PATH, 'replied', answerBackAt(flightPlan(PATH, 'replied', 2))).begin).toBe(8);
+  });
 });
 
 describe('flowCycles', () => {

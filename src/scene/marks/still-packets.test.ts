@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, device, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
-import { FLOORS_LABEL_PIECES, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
+import { applyAction, simulate } from '@/engine';
+import { nameTag } from '@/copy';
+import { NAME_SERVERS, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
+import { FLOORS_LABEL_PIECES, mapPiece, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
 import { graphOf } from '@/scene/layout/arrange/assemble';
 import { lengthOf, positionAt, route, type Point } from '@/scene/layout/graph';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { stationsFor } from '@/scene/layout/stations';
 import { crowds } from './boxes';
+import { collisions } from './collisions';
 import { fanStamps, stampsByPlace } from './stamp-fan';
 import { GLYPH_BOX, REPLY_MARK_DISTANCE, stillPackets, type StillPacket } from './still-packets';
 
@@ -208,5 +211,45 @@ describe('stillPackets', () => {
     expect(gone.length).toBeGreaterThan(0);
     expect(gone.every(({ label }) => label?.staysInDevice)).toBe(true);
     expect(packets.find(({ id }) => id === 'nat')?.label?.place?.clear).toBe(true);
+  });
+});
+
+describe('the question of a send by name on the still map', () => {
+  const { zone, resolver } = NAME_SERVERS;
+  const NAMES = officeWithNames();
+  const PIECES = [...FLOORS_LABEL_PIECES, mapPiece({ kind: 'device', variant: 'internet-server' }, resolver.id, nameTag(resolver.id))];
+  const NAMES_LAYOUT = layoutMap(NAMES, PIECES, { width: 1280 });
+  const toName = (world: typeof NAMES, name: string, messageId: string, send: number) => {
+    const packet = messageId === 'ping' ? ping(YOU, name) : tcp(YOU, name, 3000);
+    const asked = simulate(world, packet);
+    const question = mapRunWithPorts(world, asked.question!.packet, `${messageId}-question`, officeRouter.id, { send, replied: asked.question!.trace.outcome === 'replied' });
+    const sent = asked.header?.request.sourcePort === undefined ? mapRun(world, packet, messageId, { send }) : mapRunWithPorts(world, packet, messageId, officeRouter.id, { send });
+    return [question, sent];
+  };
+
+  it('draws the question and the packet that asked at once, each with its own shape, path and label, and no label covers another thing', () => {
+    const [question, packet] = toName(NAMES, `www.${zone}`, 'nc', 1);
+    const packets = draw([question, packet], NAMES_LAYOUT);
+    expect(packets.map(({ id }) => id)).toEqual(['nc-question', 'nc']);
+    expect(packets.map(({ glyphs }) => glyphOf({ glyphs } as StillPacket, 'going')?.variant)).toEqual(['udp-request', 'tcp-request']);
+    expect(glyphOf(packets[0], 'answer')?.variant).toBe('udp-reply');
+    expect(packets[0].path.at(-1)).toEqual(NAMES_LAYOUT.stations[`door:${resolver.id}`]);
+    expect(packets.map(({ label }) => label?.text)).toEqual([expect.stringMatching(/^UDP 5151[45] → 53$/), expect.stringMatching(/^TCP 5151[45] → 3000$/)]);
+    const fans = fanStamps(stampsByPlace([question, packet], NAMES_LAYOUT.drawn), NAMES_LAYOUT.marks);
+    const placed = packets.flatMap(({ label }) => (label?.place ? [label.place] : []));
+    expect(placed).toHaveLength(2);
+    expect(collisions({ labels: NAMES_LAYOUT.labels, icons: NAMES_LAYOUT.icons }, fans, placed)).toEqual([]);
+    expect(fans.flatMap(({ stamps }) => stamps.map(({ id }) => id)).sort()).toEqual(['nc', 'nc-question']);
+  });
+
+  it('keeps the packet of a lookup that failed at the doorstep of its sender, with the stamp of a packet that reached nobody, while its question goes to the resolver', () => {
+    const broken = applyAction(NAMES, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.server.nobody });
+    const [question, packet] = toName(broken, `www.${zone}`, 'nc', 1);
+    expect(packet.trace.steps.map((step) => step.reason.code)).toEqual(['dns-resolver-silent']);
+    const [asking, asked] = draw([question, packet], NAMES_LAYOUT);
+    expect(asked.path).toHaveLength(2);
+    expect(asked.end).toBe('lost');
+    expect(asking.path.length).toBeGreaterThan(asked.path.length);
+    expect(asking.end).toBe('lost');
   });
 });

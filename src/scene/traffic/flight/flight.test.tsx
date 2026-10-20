@@ -9,7 +9,7 @@ import { layoutMap } from '@/scene/layout/map-layout';
 import { fanStamps, stampsByPlace } from '@/scene/marks/stamp-fan';
 import { translationAt, wayOf } from '@/scene/marks/still-packets';
 import { FlightBody } from './flight';
-import { FLOW_OFFSET, FLOW_PERIOD, flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from './flight-plan';
+import { FLOW_OFFSET, FLOW_PERIOD, answerBackAt, flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from './flight-plan';
 import { pathData } from '@/scene/traffic/still-trace';
 import { FlightLabels, Traffic, useSendsInTheAir } from '@/scene/traffic/traffic';
 
@@ -23,7 +23,8 @@ const SVG = 'http://www.w3.org/2000/svg';
 const toLucia = (id: string, extras: Partial<MapRunFixture> = {}) => mapRun(WORLD, ping(YOU, floor1.lucia), id, extras);
 const toTheServer = (id: string) => mapRunWithPorts(WORLD, tcp(YOU, server.ip, 80), id, officeRouter.id, { replied: true });
 const toItself = (id: string) => mapRunWithPorts(WORLD, tcp(YOU, floor1.you, 80), id);
-const sentAs = (run: MapRunFixture, send: number) => ({ ...run, send });
+const sentAs = (run: MapRunFixture, send: number, after?: string) => ({ ...run, send, ...(after !== undefined && { after }) });
+const questionOf = (id: string) => mapRunWithPorts(WORLD, { from: YOU, to: server.ip, protocol: 'udp', port: 53, sourcePort: 51514 }, id, officeRouter.id, { replied: true });
 
 function Stage({ flows, sent, still }: { flows: readonly MapRunFixture[]; sent: readonly ReturnType<typeof sentAs>[]; still: boolean }) {
   const inTheAir = useSendsInTheAir(sent, LAYOUT, still);
@@ -280,6 +281,18 @@ describe('Traffic in a browser that animates by hand', () => {
     expect(ends).not.toHaveBeenCalled();
   });
 
+  it('a packet that comes after its question begins its animations once the answer of the question is back at its sender, and the question begins at once', () => {
+    const question = questionOf('asked-question');
+    const waitsFor = answerBackAt(planOf(question).plan);
+    expect(waitsFor).toBeGreaterThan(0);
+    const view = render(trafficOf([], [sentAs(question, 1), sentAs(toLucia('asked'), 1, 'asked-question')], false));
+    const waits = (id: string) => begins.mock.calls.flatMap(([wait], call) => (packetsOf(view.container, id)[0].contains(begins.mock.contexts[call] as Element) ? [wait] : []));
+    expect(waits('asked-question').length).toBeGreaterThan(2);
+    expect(waits('asked-question').every((wait) => wait === 0)).toBe(true);
+    expect(waits('asked').length).toBeGreaterThan(2);
+    expect(waits('asked').every((wait) => wait === waitsFor)).toBe(true);
+  });
+
   it('a flow begins nothing by hand, and a send mounted under StrictMode begins as many times as the mount is run', () => {
     const view = render(<StrictMode>{trafficOf([toLucia('flow')], [sentAs(toLucia('sent'), 1)], false)}</StrictMode>);
     const animationsOfSend = packetsOf(view.container, 'sent')[0].querySelectorAll(ANIMATIONS).length;
@@ -326,6 +339,27 @@ describe('the sends of one combination, sent again while the first still flies',
     expect(packetsOf(view.container, 'ping')).toHaveLength(2);
     pass(trip / 4);
     expect(packetsOf(view.container, 'ping')).toHaveLength(1);
+  });
+
+  it('a send that waits for its question flies after the wait and its trip, and the question of an earlier send stays until the packet that waits for it is over', () => {
+    const question = questionOf('ask');
+    const packet = toLucia('answer');
+    const [asking, answering] = [planOf(question).plan, planOf(packet).plan];
+    const wait = answerBackAt(asking);
+    const sends = (send: number) => [sentAs(question, send), sentAs(packet, send, 'ask')];
+    const view = render(trafficOf([], sends(1), false));
+    const [firstQuestion] = packetsOf(view.container, 'ask');
+    const [firstPacket] = packetsOf(view.container, 'answer');
+    pass((asking.duration * 1000) / 2);
+    view.rerender(trafficOf([], sends(2), false));
+    expect([packetsOf(view.container, 'ask').length, packetsOf(view.container, 'answer').length]).toEqual([2, 2]);
+    pass((asking.duration * 1000) / 2 + 1);
+    expect(packetsOf(view.container, 'ask')).toHaveLength(2);
+    expect(packetsOf(view.container, 'answer')).toHaveLength(2);
+    expect(packetsOf(view.container, 'answer')[0]).toBe(firstPacket);
+    expect(packetsOf(view.container, 'ask')[0]).toBe(firstQuestion);
+    pass((wait + answering.duration - asking.duration) * 1000);
+    expect([packetsOf(view.container, 'ask').length, packetsOf(view.container, 'answer').length]).toEqual([1, 1]);
   });
 
   it('an earlier send stays the same group while the list is drawn again', () => {

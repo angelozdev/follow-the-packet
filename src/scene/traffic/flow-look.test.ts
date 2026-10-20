@@ -2,8 +2,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { PacketSpec } from '@/engine';
+import { applyAction, reachesHost, simulate, type Network, type PacketSpec } from '@/engine';
 import { replyShape } from '@/copy';
+import { NAME_SERVERS, OFFICE_FLOORS, device, officeWithNames, ping } from '@/testing';
 import { flowLook, type FlowResult } from './flow-look';
 
 const PING: PacketSpec = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.20', protocol: 'icmp', icmpType: 8 };
@@ -95,5 +96,26 @@ describe('flowLook', () => {
 
   it('a datagram that got a Port Unreachable the player cannot name yet keeps looking as it reached the host', () => {
     expect(flowLook(flow({ packet: UDP, reached: true, warning: null }))).toMatchObject({ end: 'arrived', stamp: 'arrived' });
+  });
+
+  it('the question of a send is drawn with the shapes of udp and ends replied, warned or lost like any packet', () => {
+    const names = officeWithNames();
+    const questionIn = (world: Network) => simulate(world, ping(device('your-laptop'), `www.${NAME_SERVERS.zone}`)).question!;
+    const resultOf = ({ packet, trace }: ReturnType<typeof questionIn>, extras: Partial<FlowResult> = {}) => flow({ packet, reached: reachesHost(trace), replied: trace.outcome === 'replied', ...extras });
+    const answered = questionIn(names);
+    expect(answered.packet).toMatchObject({ protocol: 'udp', port: 53 });
+    const replied = flowLook(resultOf(answered));
+    expect(replied).toEqual({ message: 'udp-request', intruder: false, end: 'replied', stamp: 'arrived' });
+    expect(replyShape(replied.message)).toBe('udp-reply');
+    const toThePrinter = questionIn(applyAction(names, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.printer }));
+    expect(toThePrinter.trace.notice).toMatchObject({ kind: 'port-unreachable', fromId: 'printer' });
+    expect(flowLook(resultOf(toThePrinter, { warning: { term: 'port-unreachable', by: 'host' } }))).toEqual({ message: 'udp-request', intruder: false, end: 'warned', stamp: 'warned' });
+    const toNobody = questionIn(applyAction(names, { type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.server.nobody }));
+    expect(flowLook(resultOf(toNobody, { warning: { term: 'host-unreachable', by: 'router' } }))).toMatchObject({ message: 'udp-request', end: 'warned', stamp: 'warned' });
+    const closed = applyAction(names, { type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] } });
+    const silenced = questionIn(closed);
+    expect(silenced.trace.outcome).toBe('timeout');
+    expect(flowLook(resultOf(silenced))).toEqual({ message: 'udp-request', intruder: false, end: 'lost', stamp: 'lost' });
+    expect(flowLook(resultOf(silenced, { blocked: true }))).toMatchObject({ message: 'udp-request', end: 'blocked', stamp: 'blocked' });
   });
 });

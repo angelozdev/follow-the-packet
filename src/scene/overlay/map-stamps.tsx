@@ -17,6 +17,7 @@ export interface DrawnRun extends StillRun {
 
 export interface SentRun extends DrawnRun {
   send: number;
+  after?: string;
 }
 
 interface StampButtonsProps {

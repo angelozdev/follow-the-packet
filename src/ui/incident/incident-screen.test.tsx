@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
@@ -1115,16 +1115,32 @@ describe('incident screen of a send incident with a clock, tables and services',
     render(<IncidentScreen incidents={[incident]} incidentId={incident.id} nextId={null} onFinish={vi.fn()} />);
   }
 
-  async function digTheName(user: User) {
+  const digTheName = (user: User) => sendByName(user, 'dig');
+
+  async function sendByName(user: User, message: string) {
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
     await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
     await user.click(within(terminal).getByRole('button', { name: WWW }));
-    await user.click(within(terminal).getByRole('button', { name: 'dig' }));
+    await user.click(within(terminal).getByRole('button', { name: message }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
   }
 
   const clock = () => within(screen.getByRole('region', { name: CLOCK })).getByText(/min \d\d s$/);
+
+  it('a ping by name puts the question of the resolver on the map before the packet, each with its own box', async () => {
+    const user = userEvent.setup();
+    renderNames();
+    await sendByName(user, 'ping');
+    const question = screen.getByRole('button', { name: 'UDP 51514 → 53 de tu-laptop a servidor-dns' });
+    const packet = screen.getByRole('button', { name: 'ping de tu-laptop a servidor-internet' });
+    expect(question.compareDocumentPosition(packet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.hover(packet);
+    await waitFor(() => expect(document.body.textContent).toContain('La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.'));
+    await user.hover(question);
+    await waitFor(() => expect(document.body.textContent).toContain('Consulta y respuesta'));
+    expect(document.body.textContent).not.toContain('La consulta salió del puerto');
+  });
 
   it('the clock card shows only in an incident that has a clock', () => {
     renderNames();

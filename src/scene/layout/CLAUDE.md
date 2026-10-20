@@ -12,7 +12,7 @@ Where things go on the 2D map, as pure functions: no React, no DOM, no clock, no
   | Station | Where | Says |
   |---|---|---|
   | `door:<id>` | the edge of a device, a server or a client that faces its link | it arrived at the piece, or it starts there |
-  | `doorstep:<device>` | 62 px from the edge, on the link | it never left the device |
+  | `doorstep:<device>` | 62 px from the edge, on the link | it never left the device: a ping to itself, an invalid address, no cable or gateway, and a name its lookup could not turn into an IP (`dns-nxdomain`, `dns-servfail`, `dns-no-address`, `dns-no-resolver`, `dns-resolver-silent`; a device with no resolver keeps `dns-unresolved` and the road it had in chapter 1) |
   | `firewall:<device>` | the bar | a firewall the player knows stopped it |
   | `road:<device>` | where the link meets the bus | it was lost in the road of its network |
   | `bus-end:<bus>` | a stub of 40 px past the last device of that bus | nobody has the IP (a device sending in a VPC) |

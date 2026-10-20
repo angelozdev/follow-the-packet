@@ -320,3 +320,56 @@ describe('stationsFor', () => {
     expect(startsOnMap(ping(actor(CASA_LUCIA.id), floor1.lucia), map)).toBe(false);
   });
 });
+
+describe('pathFor of a send by name', () => {
+  const { zone, downZone, resolver } = NAME_SERVERS;
+  const WWW = `www.${zone}`;
+  const names = officeWithNames();
+  const NAMES_ROAD = drawn({ devices: DEVICES_ON_FLOORS, routers: [officeRouter.id, provider.id, backbone.id], internet: true, servers: [server.id, resolver.id] });
+  const toName = (world: Network, name: string) => {
+    const packet = ping(device('your-laptop'), name);
+    return { packet, trace: simulate(world, packet) };
+  };
+  const stationsOfName = (world: Network, name: string, hiddenStop = false) => {
+    const sent = toName(world, name);
+    return stationsFor(sent.trace, sent.packet, NAMES_ROAD, { hiddenStop });
+  };
+  const withResolver = (server: string | undefined) => applyAction(names, { type: 'setDnsServer', deviceId: 'your-laptop', ...(server !== undefined && { server }) });
+  const LOOKUPS_THAT_FAILED: [string, Network, string][] = [
+    ['dns-nxdomain', names, `noexiste.${zone}`],
+    ['dns-servfail', names, `www.${downZone}`],
+    ['dns-no-address', names, zone],
+    ['dns-no-resolver', withResolver(floor1.printer), WWW],
+    ['dns-resolver-silent', withResolver(server.nobody), WWW],
+  ];
+
+  it('a packet that stopped at its lookup stays at the doorstep of its sender, as a packet that never left', () => {
+    for (const [code, world, name] of LOOKUPS_THAT_FAILED) {
+      const { trace } = toName(world, name);
+      expect(trace.outcome, code).toBe('unresolved');
+      expect(trace.steps.map((step) => step.reason.code), code).toEqual([code]);
+      expect(stationsOfName(world, name), code).toEqual(AT_YOUR_DOORSTEP);
+      expect(stationsOfName(world, name, true), code).toEqual(AT_YOUR_DOORSTEP);
+    }
+    expect(stationsOfName(names, WWW)).toEqual([...YOU_TO_ROAD, 'router:router-office', 'router:router-provider', 'router:router-backbone', 'door:internet-server']);
+  });
+
+  it('a packet of an office with no resolver keeps the path it had in chapter 1', () => {
+    for (const world of [withResolver(undefined), officeNet()]) {
+      const { trace } = toName(world, WWW);
+      expect(trace.steps.map((step) => step.reason.code)).toEqual(['dns-unresolved']);
+      expect(stationsOfName(world, WWW)).toEqual(YOU_TO_ROAD);
+    }
+  });
+
+  it('the path of a question runs to the resolver and back', () => {
+    const { question } = toName(names, WWW).trace;
+    expect(question?.trace.outcome).toBe('replied');
+    expect(question?.trace.header?.reply).toMatchObject({ source: resolver.ip, destination: floor1.you });
+    expect(stationsFor(question!.trace, question!.packet, NAMES_ROAD)).toEqual([...YOU_TO_ROAD, 'router:router-office', 'router:router-provider', 'router:router-backbone', `door:${resolver.id}`]);
+    const closed = applyAction(withResolver(resolver.ip), { type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] } });
+    const silenced = toName(closed, WWW).trace.question;
+    expect(silenced?.trace.outcome).toBe('timeout');
+    expect(stationsFor(silenced!.trace, silenced!.packet, NAMES_ROAD)).toEqual(['door:your-laptop', 'firewall:your-laptop']);
+  });
+});

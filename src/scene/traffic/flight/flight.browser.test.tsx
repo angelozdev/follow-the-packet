@@ -1,8 +1,10 @@
 import { render } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, device, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
-import { FLOORS_LABEL_PIECES, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
+import { applyAction, simulate } from '@/engine';
+import { nameTag } from '@/copy';
+import { NAME_SERVERS, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
+import { FLOORS_LABEL_PIECES, mapPiece, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
 import { graphOf } from '@/scene/layout/arrange/assemble';
 import { lengthOf, positionAt, type Point } from '@/scene/layout/graph';
 import { layoutMap } from '@/scene/layout/map-layout';
@@ -10,7 +12,7 @@ import { station } from '@/scene/layout/stations';
 import { changeDistance } from '@/scene/marks/packet-tags';
 import { fanStamps, stampsByPlace } from '@/scene/marks/stamp-fan';
 import { wayOf } from '@/scene/marks/still-packets';
-import { distanceAt, flightPlan, routeOf } from './flight-plan';
+import { answerBackAt, distanceAt, flightPlan, routeOf } from './flight-plan';
 import { FlightLabels, Traffic, useSendsInTheAir } from '@/scene/traffic/traffic';
 
 const WORLD = officeTwoFloorsNet();
@@ -28,7 +30,7 @@ const FRAME = 0.05;
 
 const toLucia = (id: string, extras: Partial<MapRunFixture> = {}) => mapRun(WORLD, ping(YOU, floor1.lucia), id, extras);
 const toTheServer = (id: string) => mapRunWithPorts(WORLD, tcp(YOU, server.ip, 80), id, officeRouter.id, { replied: true });
-const sentAs = (run: MapRunFixture, send: number) => ({ ...run, send });
+const sentAs = (run: MapRunFixture, send: number, after?: string) => ({ ...run, send, ...(after !== undefined && { after }) });
 
 interface Stage {
   svg: SVGSVGElement;
@@ -287,5 +289,49 @@ describe('the packets in flight, in a browser', () => {
       expect(box.top, `${seconds}`).toBeGreaterThanOrEqual(frame.top - HALF_A_PIXEL);
       expect(box.bottom, `${seconds}`).toBeLessThanOrEqual(frame.bottom + HALF_A_PIXEL);
     }
+  });
+});
+
+describe('the question of a send by name, in a browser', () => {
+  const { zone, resolver } = NAME_SERVERS;
+  const WWW = `www.${zone}`;
+  const NAMES = officeWithNames();
+  const NAMES_LAYOUT = layoutMap(NAMES, [...FLOORS_LABEL_PIECES, mapPiece({ kind: 'device', variant: 'internet-server' }, resolver.id, nameTag(resolver.id))], { width: 1280 });
+  const byHosts = applyAction(NAMES, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: WWW, ip: server.ip }] });
+
+  it('a ping by name draws the question to the resolver first, and the ping by hosts draws none', () => {
+    const asked = simulate(NAMES, ping(YOU, WWW));
+    const question = mapRunWithPorts(NAMES, asked.question!.packet, 'ask', officeRouter.id, { replied: true });
+    const packet = mapRun(NAMES, ping(YOU, WWW), 'answer', { replied: true });
+    const stage = fly([], [sentAs(question, 1), sentAs(packet, 1, 'ask')], NAMES_LAYOUT);
+    const { svg } = stage;
+    pause(stage);
+    const asking = planOf(question, NAMES_LAYOUT);
+    const [questionPacket, pingPacket] = [packetOf(svg, 'ask'), packetOf(svg, 'answer')];
+    const start = startOf(questionPacket);
+    expect(startOf(pingPacket) - start).toBeCloseTo(answerBackAt(asking.plan), 3);
+    expect(asking.way.path.at(-1)).toEqual(NAMES_LAYOUT.stations[station.door(resolver.id)]);
+    const [going, answer] = ['going', 'answer'].map((role) => glyphOf(questionPacket, role));
+    seek(stage, start + asking.plan.turn - FRAME);
+    expect(shown(going) && !shown(answer)).toBe(true);
+    expect(distanceBetween(shapeCenter(svg, going), asking.way.path.at(-1)!)).toBeLessThanOrEqual(FRAME * 120 + HALF_A_PIXEL);
+    expect(['going', 'answer'].some((role) => shown(glyphOf(pingPacket, role)))).toBe(false);
+    seek(stage, start + asking.plan.travel - FRAME);
+    expect(shown(answer) && !shown(going)).toBe(true);
+    expect(['going', 'answer'].some((role) => shown(glyphOf(pingPacket, role)))).toBe(false);
+    expect(distanceBetween(shapeCenter(svg, answer), asking.route[0])).toBeLessThanOrEqual(FRAME * 120 + HALF_A_PIXEL);
+    seek(stage, start + asking.plan.travel + FRAME);
+    expect(shown(going) || shown(answer)).toBe(false);
+    expect(shown(glyphOf(pingPacket, 'going'))).toBe(true);
+    const sending = planOf(packet, NAMES_LAYOUT);
+    expect(distanceBetween(shapeCenter(svg, glyphOf(pingPacket, 'going')), at(sending.route, distanceAt(sending.plan, FRAME)))).toBeLessThanOrEqual(HALF_A_PIXEL);
+
+    const direct = fly([], [sentAs(mapRun(byHosts, ping(YOU, WWW), 'by-hosts', { replied: true }), 1)], NAMES_LAYOUT);
+    pause(direct);
+    expect(simulate(byHosts, ping(YOU, WWW))).not.toHaveProperty('question');
+    expect(direct.svg.querySelectorAll('g.map-flight')).toHaveLength(1);
+    const directPacket = packetOf(direct.svg, 'by-hosts');
+    seek(direct, startOf(directPacket) + FRAME);
+    expect(shown(glyphOf(directPacket, 'going'))).toBe(true);
   });
 });

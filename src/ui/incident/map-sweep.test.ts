@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { INSPECTION_TEXT, OUTCOME_TEXT, isProblemStamp, stampOf, toPlainText } from '@/copy';
-import { PIECE_ID, classifiedBlock, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session, type SessionAction } from '@/game';
+import { PIECE_ID, classifiedBlock, drawnSends, inspect, isIntruding, pieceViews, sessionReducer, startSession, type Session, type SessionAction } from '@/game';
 import { runFlows } from '@/game/flow-runs';
+import { applyAction, type NetworkAction } from '@/engine';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
+import { NAME_SERVERS, OFFICE_FLOORS, namesSendIncident } from '@/testing';
 import { DOORSTEP, FAN_PITCH, LABEL_GAP, MIN_WIDTH, STAMP, fanBox, overlaps, type Box } from '@/scene/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/layout/captions';
 import { graphOf } from '@/scene/layout/arrange/assemble';
@@ -101,7 +103,7 @@ interface Analysis {
 function analyze(state: State, width: number): Analysis {
   const { session } = state;
   const layout = layoutMap(session.world, pieceViews(session), { width, blockTab: classifiedBlock(session) !== null });
-  const runs: Run[] = [...session.runs, ...session.sent];
+  const runs: Run[] = [...session.runs, ...drawnSends(session.sent)];
   const stations = runs.map((run) => stationsFor(run.trace, run.packet, layout.drawn, { hiddenStop: run.hiddenStop }));
   const stamped = stampsByPlace(runs, layout.drawn);
   const fans = fanStamps(stamped, layout.marks);
@@ -743,5 +745,78 @@ describe('the states the geometry tests of the chapters played, as the player re
     const inside = ['printer', 'andres-laptop'].map((device) => placing(device, 'inside'));
     const states = [stateOf('02-04', 'only your laptop inside', played('02-04', [])), stateOf('02-04', 'the printer too', played('02-04', inside.slice(0, 1))), stateOf('02-04', 'laptop-andres too', played('02-04', inside))];
     for (const analysis of atTheWindows(states)) expectClear(analysis);
+  });
+});
+
+describe('the sweep of the sends by name', () => {
+  const { zone, resolver, authoritative } = NAME_SERVERS;
+  const base = namesSendIncident();
+  const shown = ['your-laptop', 'lucia-laptop', 'printer', OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.provider.id, resolver.id, OFFICE_FLOORS.server.id];
+  const NAMES = { ...base, shown, send: { ...base.send, message: base.send.message.filter(({ command }) => command !== 'dig'), to: [...base.send.to, { id: 'apex', address: zone }] } };
+  const closedOut: NetworkAction = { type: 'addFirewall', deviceId: 'your-laptop', firewall: { id: 'fw-you', name: 'tu-laptop', kind: 'host-firewall', inbound: [], outbound: [] } };
+  const WORLDS: [string, NetworkAction[]][] = [
+    ['a resolver that answers', []],
+    ['an authoritative server that fails', [{ type: 'setDns', ownerId: authoritative.id, dns: { role: 'authoritative', zones: [], failing: true } }]],
+    ['an address with no resolver behind it', [{ type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.floor1.printer }]],
+    ['an address nobody has', [{ type: 'setDnsServer', deviceId: 'your-laptop', server: OFFICE_FLOORS.server.nobody }]],
+    ['a firewall that stops the question', [closedOut, { type: 'setDnsServer', deviceId: 'your-laptop', server: resolver.ip }]],
+    ['a hosts file that answers', [{ type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: OFFICE_FLOORS.server.ip }] }]],
+  ];
+  const SEND_SETS = [
+    ['a ping to www and a ping to lucia', [['www', 'ping'], ['lucia', 'ping']]],
+    ['an nc to www', [['www', 'nc']]],
+    ['a ping to a name that does not exist', [['missing', 'ping']]],
+    ['an nc to a name that does not exist', [['missing', 'nc']]],
+    ['a ping to a name with no address', [['apex', 'ping']]],
+    ['an nc to a name with no address', [['apex', 'nc']]],
+  ] as const;
+  const TOGETHER = ['three sends by name together', [['www', 'ping'], ['www', 'nc'], ['missing', 'ping']]] as const;
+  const stateOf = ([world, actions]: (typeof WORLDS)[number], [sends, combinations]: readonly [string, readonly (readonly [string, string])[]]): State => {
+    const start = startSession([NAMES], NAMES.id);
+    const edited = { ...start, world: actions.reduce(applyAction, start.world) };
+    const session = combinations.reduce((sent, [toId, messageId]) => sessionReducer(sent, { type: 'sendPacket', fromId: 'you', toId, messageId }), edited);
+    return { incident: NAMES.id, name: `${world}, ${sends}`, session };
+  };
+  const states = [...WORLDS.flatMap((world) => SEND_SETS.map((sends) => stateOf(world, sends))), stateOf(WORLDS[0], TOGETHER)];
+  const analyses = states.flatMap((state) => WIDTHS.map((width) => analyze(state, width)));
+  const questionsOf = ({ runs }: Analysis) => runs.filter(({ id }) => id.endsWith('-question'));
+
+  it('draws the question of every send by name before its packet, in every world, and none for a send by IP or by hosts', () => {
+    expect(states).toHaveLength(WORLDS.length * SEND_SETS.length + 1);
+    for (const analysis of analyses) {
+      const seen = where(analysis);
+      const ids = analysis.runs.map(({ id }) => id);
+      const byName = ids.filter((id) => /-(www|missing|apex)-(ping|nc)$/.test(id));
+      const asked = analysis.state.name.startsWith('a hosts file that answers') ? byName.filter((id) => !id.includes('-www-')) : byName;
+      expect(questionsOf(analysis).map(({ id }) => id), seen).toEqual(asked.map((id) => `${id}-question`));
+      for (const id of asked) expect(ids.indexOf(`${id}-question`), seen).toBe(ids.indexOf(id) - 1);
+    }
+  });
+
+  it('the packet of a lookup that failed stays at the doorstep of tu-laptop and the question that was answered ends at the resolver, in every world and at seven widths', () => {
+    let stuck = 0;
+    let answered = 0;
+    for (const analysis of analyses) {
+      analysis.runs.forEach((run, index) => {
+        const seen = `${run.id}, ${where(analysis)}`;
+        const stations = analysis.stations[index];
+        if (!run.id.endsWith('-question') && run.trace.steps.some((step) => step.reason.code.startsWith('dns-') && step.verdict === 'drop' && step.reason.code !== 'dns-unresolved')) {
+          expect(stations, seen).toEqual([station.door('your-laptop'), station.doorstep('your-laptop')]);
+          stuck++;
+        }
+        if (run.id.endsWith('-question') && run.trace.outcome === 'replied') {
+          expect(stations.at(-1), seen).toBe(station.door(resolver.id));
+          answered++;
+        }
+      });
+    }
+    expect(stuck).toBeGreaterThan(0);
+    expect(answered).toBeGreaterThan(0);
+  });
+
+  it('no label, stamp, packet label, name of a box or piece overlaps another, nothing leaves the drawing and no stamp is lost, in every world, at seven widths', () => {
+    expect(analyses).toHaveLength(states.length * WIDTHS.length);
+    for (const analysis of analyses) expectClear(analysis);
+    expect(analyses.some(({ packets }) => packets.some(({ id }) => id.endsWith('-question')))).toBe(true);
   });
 });

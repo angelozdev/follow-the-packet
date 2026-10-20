@@ -1,8 +1,8 @@
 import { useMediaQuery } from '@mantine/hooks';
-import { useReducer, useState } from 'react';
+import { useMemo, useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
-import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
 import { MotionToggle } from '@/ui/motion-toggle';
@@ -58,6 +58,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const helpInPanel = useMediaQuery(ABOVE_900_PX, undefined, MEDIA_QUERY_AT_FIRST_RENDER);
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
+  const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
   const opensCard = (pieceId: string) => playing && pieces.some((candidate) => candidate.id === pieceId && candidate.configurable);
   const chips = session.incident.mechanic === 'filter' ? session.incident.chips : null;
   const card = playing && chips && cardPieceId ? firewallCard(session, cardPieceId) : null;
@@ -99,7 +100,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           world={session.world}
           pieces={pieces}
           flows={session.runs}
-          sent={session.sent}
+          sent={sent}
           still={still}
           blockName={classifiedBlock(session)}
           known={session.known}
