@@ -34,6 +34,6 @@ A test gives the same result in every run. Never `retries`, never a fixed wait, 
 
 ## When to run what
 
-- Each task: `pnpm check:fast` (types, lint, structure, jscpd and Vitest, no browser) and, for a change that touches a screen, `pnpm test:browser`. The seven e2e run when a task closes a block, before a merge, and with `pnpm check`, which is `pnpm check:fast`, `pnpm test:browser` and `pnpm e2e`.
+- Each task: `pnpm check:fast` (types, lint, structure, jscpd and Vitest, no browser) and, for a change that touches a screen, `pnpm test:browser`. The seven e2e run when a task closes a block, before a merge, and with `pnpm check`, which is `pnpm check:fast`, `pnpm test:browser` and `pnpm e2e`. At the close of chapter 2 (the full `pnpm check` of Task 34, 2026-10-21) the seven passed in 12.5 s by Playwright's own count; `pnpm test:browser` ran 268 tests in 20 files and Vitest 3670 tests in 130 files.
 - A failing e2e is compared with the base: the last commit whose full `pnpm check` passed. If it fails there too, it is not of the task: write it in the backlog (`docs/plans/2026-10-08-follow-the-packet-followups.md`) and do not chase it. If it passes there, the regression belongs to the block: fix it inside the block.
 - Never two suites at once in the same folder.
