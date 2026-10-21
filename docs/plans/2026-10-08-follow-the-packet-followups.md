@@ -195,7 +195,7 @@ Lo dejaron el plan `docs/plans/2026-10-10-follow-the-packet-chapter-1-fourteen.m
 
 ## Bloque K: lo que dejó el capítulo 2 en catorce subcapítulos (2026-10-21)
 
-Lo dejaron el plan `docs/plans/2026-10-11-follow-the-packet-chapter-2.md` (sus decisiones D-16 y D-17, y las Tareas 18 y 33), su [spec](../specs/2026-10-11-follow-the-packet-chapter-2-design.md) y la guía `projects/follow-the-packet/src/copy/tools/CLAUDE.md`. Ninguno impide jugar el capítulo 2. La prueba humana del capítulo entero es del estudiante y todavía no se hizo: lo que anote se agrega aquí después de hacerla. Lo que el estudiante cambie al revisar la página [«Decisiones para revisar»](https://claude.ai/artifact/S47onHqd5VxdpHMUTewZZe) (139 entradas, página privada) se agrega a la tarea que lo aplicó o a este bloque.
+Lo dejaron el plan `docs/plans/2026-10-11-follow-the-packet-chapter-2.md` (sus decisiones D-16 y D-17, y las Tareas 18 y 33), su [spec](../specs/2026-10-11-follow-the-packet-chapter-2-design.md) y la guía `projects/follow-the-packet/src/copy/tools/CLAUDE.md`. Ninguno impide jugar el capítulo 2. La prueba humana del capítulo entero es del estudiante y todavía no se hizo: lo que anote se agrega aquí después de hacerla. Lo que el estudiante cambie al revisar la página [«Decisiones para revisar»](https://claude.ai/artifact/S47onHqd5VxdpHMUTewZZe) (149 entradas, hasta la revisión final; página privada) se agrega a la tarea que lo aplicó o a este bloque.
 
 | # | Hallazgo | Destino |
 |---|----------|---------|
