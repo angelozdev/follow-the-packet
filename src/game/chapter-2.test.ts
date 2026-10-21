@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TABLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
-import { applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, type Network } from '@/engine';
+import { RECORD_TTL, applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
@@ -11,6 +11,7 @@ import {
   BLOCK,
   BLOCK_CARD,
   BRANCH_LAN,
+  CACHE_PIECES,
   CLIENT,
   DEVICE,
   DOMAIN,
@@ -23,6 +24,7 @@ import {
   NAMES_PIECES,
   NAME_SERVERS,
   OFFICE_ROUTES,
+  OLD_ANSWER_SECONDS,
   ORIGIN,
   OTHER_OFFICE,
   OUTSIDE_PIECES,
@@ -36,6 +38,7 @@ import {
   SERVER,
   SERVICES_PIECES,
   SITE_RECORDS,
+  SITE_RECORDS_TABLE,
   SSH_AND_FIREWALL,
   SSH_FLOW,
   SSH_FROM,
@@ -43,13 +46,15 @@ import {
   SSH_WHAT,
   TASK,
   TRANSLATION_PIECES,
+  WAIT,
   recordMove,
   recordRemoval,
   routeMove,
+  waitMove,
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
 import { drawnSends } from './flow-runs';
-import { isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
+import { clockSteps, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
 import { terminalLine } from './view/cards/terminal/terminal-card';
 import { identifyCard } from './view/cards/identify-card';
@@ -1875,5 +1880,200 @@ describe('02-11, the records', () => {
     expect(wrong.every((length) => length !== right)).toBe(true);
     expect(Math.min(...wrong)).toBeLessThan(right);
     expect(Math.max(...wrong)).toBeGreaterThan(right);
+  });
+});
+
+describe('02-12, still the old ip', () => {
+  const STILL = '02-12';
+  const FIRST_PORT = 51514;
+  const SECOND_PORT = 51515;
+  const FIRST_PUBLIC_PORT = 40001;
+  const SECOND_PUBLIC_PORT = 40002;
+  const CACHE_TAB = 'cache';
+  const DNS_FIELD = 'DNS';
+  const LOCAL_HEADER = 'Encabezado de ida (en tu red local)';
+  const NEVER_TAUGHT_HERE = /NXDOMAIN|SERVFAIL|Port Unreachable|archivo hosts|\bhosts\b|AAAA|IPv6/;
+  const NAMES_A_NEW_TERM = /caché|\bcache\b|TTL de DNS/i;
+  const SECONDS_IN_A_MINUTE = 60;
+  const SECOND_BEFORE_IT_RUNS_OUT = OLD_ANSWER_SECONDS - 1;
+  const PREVIOUS_INCIDENT = '02-11';
+  const NOT_A_STEP = 90;
+  const start = startSession(INCIDENTS, STILL);
+  const dig = (session: Session): Session => sendingFrom(session, ORIGIN.you.id, ADDRESS.www.id, MESSAGE.dig.id);
+  const waiting = (session: Session, seconds: number): Session => sessionReducer(session, waitMove(seconds));
+  const afterOneMinute = waiting(start, WAIT.oneMinute.seconds);
+  const afterFiveMinutes = waiting(start, WAIT.fiveMinutes.seconds);
+  const digged = dig(start);
+  const diggedAfterOneMinute = dig(waiting(digged, WAIT.oneMinute.seconds));
+  const diggedAfterFiveMinutes = dig(waiting(digged, WAIT.fiveMinutes.seconds));
+  const everyState = [start, digged, waiting(digged, WAIT.oneMinute.seconds), diggedAfterOneMinute, waiting(digged, WAIT.fiveMinutes.seconds), diggedAfterFiveMinutes];
+  const cacheOf = (session: Session): TableCard | undefined => pieceCard(session, PIECE_ID.actor(SERVER.resolver.id))?.tabs.find((tab) => tab.id === CACHE_TAB)?.card as TableCard | undefined;
+  const cacheRows = (session: Session) => (cacheOf(session)?.rows ?? []).map((row) => row.cells.map((cell) => plain(cell.text)));
+  const boxOf = (session: Session): Record<string, string[]> =>
+    Object.fromEntries((inspect(session, session.sent[0].pieceId)?.fields ?? []).map(({ label, lines }) => [plain(label), lines.map((line) => plain(line))]));
+  const oldRow = (secondsLeft: number) => [HOSTNAME.www, RECORD_TYPE.a, IP.server, `${secondsLeft} s`];
+  const newRow = [HOSTNAME.www, RECORD_TYPE.a, IP.freshServer, `${RECORD_TTL} s`];
+  const answersOf = (session: Session) => session.sent[0].trace.dns?.answers.map(({ type, value }) => [type, value]);
+  const sendIncidentOf = (session: Session) => session.incident as Extract<Incident, { mechanic: 'send' }>;
+  const playedThrough = (session: Session): Session => sendIncidentOf(session).solution.reduce((state, move) => sessionReducer(state, move), session);
+
+  it('02-12: dig answers the old ip from the cache with the seconds left', () => {
+    const [run] = digged.sent;
+    expect(run.trace.outcome).toBe('replied');
+    expect(run.trace.dns).toMatchObject({ status: 'NOERROR', viaDig: true, fromCache: true, ttlLeft: OLD_ANSWER_SECONDS });
+    expect(answersOf(digged)).toEqual([[RECORD_TYPE.a, IP.server]]);
+    expect(boxOf(digged)[DNS_FIELD]).toEqual([`Contestó ${SERVER.resolver.name}.`, `${HOSTNAME.www} ${RECORD_TYPE.a} ${IP.server}`, `La respuesta salió de la caché de ${SERVER.resolver.name}.`, `TTL: quedan ${OLD_ANSWER_SECONDS} s.`]);
+    expect(printedFrom(digged, ORIGIN.you.id, ADDRESS.www.id, MESSAGE.dig.id).filter((line) => /\tA\t/.test(line))).toEqual([`${HOSTNAME.www}.\t${OLD_ANSWER_SECONDS}\tIN\tA\t${IP.server}`]);
+    expect(stillOpen(digged), 'the old address is not the one the task asks for').toEqual([TASK.digNewIp]);
+    expect(cacheRows(start)).toEqual([oldRow(OLD_ANSWER_SECONDS)]);
+    expect(cacheRows(digged), 'a dig answered from the cache does not renew it').toEqual([oldRow(OLD_ANSWER_SECONDS)]);
+    expect(cacheRows(afterOneMinute)).toEqual([oldRow(OLD_ANSWER_SECONDS - SECONDS_IN_A_MINUTE)]);
+    expect(boxOf(diggedAfterOneMinute)[DNS_FIELD].at(-1), 'the seconds left go down with the clock, and asking again does not reset them').toBe(`TTL: quedan ${OLD_ANSWER_SECONDS - SECONDS_IN_A_MINUTE} s.`);
+    expect(answersOf(diggedAfterOneMinute)).toEqual([[RECORD_TYPE.a, IP.server]]);
+    expect(stillOpen(diggedAfterOneMinute)).toEqual([TASK.digNewIp]);
+  });
+
+  it('02-12: waiting five minutes makes the cache run out and dig gives the new ip', () => {
+    expect(cacheRows(afterFiveMinutes), 'the cache has nothing left after the wait').toEqual([]);
+    expect(plain(cacheOf(afterFiveMinutes)?.empty ?? '')).toBe(plain(TABLE_TEXT.cache.empty));
+    expect(waiting(digged, WAIT.fiveMinutes.seconds).sent, 'waiting erases no stamp').toEqual(digged.sent);
+    expect(stillOpen(waiting(digged, WAIT.fiveMinutes.seconds)), 'and the old answer does not count for the task').toEqual([TASK.digNewIp]);
+    expect(diggedAfterFiveMinutes.sent[0].trace.dns).toMatchObject({ status: 'NOERROR', viaDig: true, fromCache: false });
+    expect(answersOf(diggedAfterFiveMinutes)).toEqual([[RECORD_TYPE.a, IP.freshServer]]);
+    expect(boxOf(diggedAfterFiveMinutes)[DNS_FIELD]).toEqual([`Contestó ${SERVER.resolver.name}.`, `${HOSTNAME.www} ${RECORD_TYPE.a} ${IP.freshServer}`, `${SERVER.resolver.name} no la tenía en su caché y la buscó.`, `TTL: ${RECORD_TTL} s.`]);
+    expect(cacheRows(diggedAfterFiveMinutes), 'the new answer is kept with its own time to live').toEqual([newRow]);
+    expectClosed(diggedAfterFiveMinutes);
+    const asksOnTheNextDig = `siguiente dig ya no encontró la respuesta vieja en la caché: ${SERVER.resolver.name} preguntó a ${SERVER.authoritative.name} y recibió ${IP.freshServer}`;
+    expect(plain(start.incident.takeaway), 'the resolver asks on the next dig, with the whole time to live of the new answer').toContain(`${asksOnTheNextDig}, con su TTL entero, ${RECORD_TTL} s.`);
+    expect(plain(optionsOf(start.incident)[2].feedback)).toContain(`${asksOnTheNextDig}.`);
+    expect([start.incident.takeaway, optionsOf(start.incident)[2].feedback].map(plain).filter((text) => text.includes('preguntó de nuevo')), 'nothing says the resolver asked again by itself when the time ran out').toEqual([]);
+    const fourMinutes = [0, 1, 2, 3].reduce((session) => waiting(session, WAIT.oneMinute.seconds), start);
+    expect(fourMinutes.clock).toBe(OLD_ANSWER_SECONDS);
+    expect(cacheRows([0, 1, 2].reduce((session) => waiting(session, WAIT.oneMinute.seconds), start)), 'at second 180 the answer is alive').toEqual([oldRow(SECONDS_IN_A_MINUTE)]);
+    expect(cacheRows(fourMinutes), 'it is gone at the very second its time runs out').toEqual([]);
+    expect(answersOf(dig(fourMinutes))).toEqual([[RECORD_TYPE.a, IP.freshServer]]);
+    expect(SECOND_BEFORE_IT_RUNS_OUT).toBeLessThan(WAIT.fiveMinutes.seconds);
+    expectClosed(playedThrough(start));
+    expect(waiting(start, NOT_A_STEP), 'a time that is no step of the clock changes nothing').toBe(start);
+  });
+
+  it('02-12: a move that changes the world clears the sends and not the clock', () => {
+    const withRecords = INCIDENTS.map((incident) => (incident.id === STILL && incident.mechanic === 'send' ? { ...incident, send: { ...incident.send, tables: [SITE_RECORDS_TABLE] } } : incident));
+    const editable = startSession(withRecords, STILL);
+    const addedRecord = recordMove(SITE_RECORDS.name.www, SITE_RECORDS.type.a, SITE_RECORDS.value.nobody);
+    expect(sessionReducer(start, addedRecord), 'the incident itself offers no move that changes the world, so the test gives it a table').toBe(start);
+    const waited = waiting(dig(waiting(dig(editable), WAIT.oneMinute.seconds)), WAIT.oneMinute.seconds);
+    expect([waited.sent.length, waited.history.length, waited.clock, waited.sends]).toEqual([1, 2, 2 * SECONDS_IN_A_MINUTE, 2]);
+    expect(waiting(waited, WAIT.oneMinute.seconds).world, 'waiting changes no world').toBe(waited.world);
+    const changed = sessionReducer(waited, addedRecord);
+    expect(changed.world).not.toBe(waited.world);
+    expect([changed.sent, changed.history]).toEqual([[], []]);
+    expect([changed.clock, changed.sends, changed.phase]).toEqual([2 * SECONDS_IN_A_MINUTE, 2, 'playing']);
+    expect(cacheRows(changed), 'the cache of the world is measured against the clock that stayed').toEqual([oldRow(OLD_ANSWER_SECONDS - 2 * SECONDS_IN_A_MINUTE)]);
+    const again = dig(changed);
+    expect(boxOf(again)[DNS_FIELD].at(-1)).toBe(`TTL: quedan ${OLD_ANSWER_SECONDS - 2 * SECONDS_IN_A_MINUTE} s.`);
+    expect(drawnSends(again.sent).map(({ trace }) => [trace.header?.request.sourcePort, trace.translation?.outside.port])).toEqual([[FIRST_PORT, FIRST_PUBLIC_PORT]]);
+    expect(again.sends).toBe(3);
+  });
+
+  it('02-12: the text separates the ttl of dns, in seconds, from the ttl of ip, which counts hops', () => {
+    const [aboutTheServer, aboutTheIpTtl, aboutTheCache] = optionsOf(start.incident);
+    expect(plain(aboutTheIpTtl.feedback)).toContain('El TTL de IP va en el encabezado de un paquete y cada router le resta al menos 1: cuenta saltos. El TTL de DNS viene en la respuesta y cuenta segundos. La caja decía «quedan N s»: eran segundos, no saltos.');
+    expect(plain(aboutTheCache.feedback)).toContain('los segundos que una respuesta puede quedar guardada');
+    expect(plain(start.incident.takeaway)).toContain('El TTL de DNS se cuenta en segundos y el TTL de IP cuenta saltos: no son lo mismo.');
+    expect(plain(TERMS['dns-ttl'].definition)).toContain('No es el TTL de IP, que cuenta saltos.');
+    expect(plain(aboutTheServer.feedback)).not.toMatch(/TTL/);
+    const box = inspect(digged, digged.sent[0].pieceId);
+    const lineOf = (label: string) => box?.fields.find((field) => plain(field.label) === label)?.lines.map(plain) ?? [];
+    expect(lineOf(DNS_FIELD).at(-1), 'the TTL of DNS in the box is a count of seconds').toBe(`TTL: quedan ${OLD_ANSWER_SECONDS} s.`);
+    expect(lineOf(LOCAL_HEADER), 'and the TTL of IP of the same packet is another number in another field').toContain('TTL al salir: 64');
+    const sentences = everyState.flatMap(everythingRead).flatMap((text) => text.split(/(?<=[.!?])\s+/));
+    expect(sentences.filter((sentence) => /TTL de DNS/.test(sentence) && /salto/.test(sentence) && !/TTL de IP/.test(sentence))).toEqual([]);
+    expect(sentences.filter((sentence) => /TTL de IP/.test(sentence) && /segundo/.test(sentence) && !/DNS/.test(sentence))).toEqual([]);
+  });
+
+  it('02-12: the report names servidor-autoritativo and servidor-dns', () => {
+    const { report } = start.incident;
+    const [before, after] = [solvedWorld(INCIDENTS, PREVIOUS_INCIDENT), startWorld(INCIDENTS, STILL)];
+    const serverOf = (id: string) => after.actors.find((actor) => actor.id === id && actor.kind === 'server');
+    const zone = after.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === SERVER.authoritative.id ? (actor.dns?.zones ?? []) : [])).flatMap(({ records }) => records);
+    expect(report).toContain(`[[${SERVER.authoritative.name}]]`);
+    expect(report).toContain(`[[${SERVER.resolver.name}]]`);
+    expect(plain(report)).toContain(`Después cambió el registro de ${HOSTNAME.www} en ${SERVER.authoritative.name}: ahora apunta a esa IP.`);
+    expect(plain(report)).toContain(`Antes de la mudanza, ${SERVER.resolver.name}, tu resolver, ya había contestado una pregunta por ${HOSTNAME.www}.`);
+    expect(plain(report)).toContain('El tiempo del juego solo pasa cuando tú esperas, con las fichas de «Reloj del juego».');
+    expect(plain(report), 'the report leaves the cause for the question').not.toMatch(NAMES_A_NEW_TERM);
+    expect(changedNames(before, after), 'router-destino only gains the wiring of the new server').toEqual([SERVER.authoritative.name, SERVER.resolver.name]);
+    expect(zone.filter(({ type }) => type !== 'NS' && type !== 'SOA').map(({ name, type, value }) => [name, type, value])).toEqual([[HOSTNAME.www, RECORD_TYPE.a, IP.freshServer], [HOSTNAME.blog, RECORD_TYPE.cname, HOSTNAME.www]]);
+    const resolver = serverOf(SERVER.resolver.id);
+    expect(resolver?.kind === 'server' ? resolver.dns : undefined).toMatchObject({ role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }], cache: [{ name: HOSTNAME.www, type: RECORD_TYPE.a, value: IP.server, expiresAt: OLD_ANSWER_SECONDS }] });
+    const fresh = serverOf(SERVER.fresh.id);
+    expect(fresh).toMatchObject({ ip: IP.freshServer, services: [{ protocol: 'tcp', port: PORT.web }, { protocol: 'tcp', port: PORT.secureWeb }] });
+    expect((after.routers ?? []).find(({ id }) => id === ROUTER.destination.id)?.interfaces).toContainEqual({ ip: IP.destinationFreshServer, faces: SERVER.fresh.id });
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+    expect(before.actors.map(({ id }) => id)).not.toContain(SERVER.fresh.id);
+    expect(everythingRead(startSession(INCIDENTS, PREVIOUS_INCIDENT)).filter((text) => text.includes(SERVER.fresh.name))).toEqual([]);
+  });
+
+  it('02-12: draws the moved site and the pieces the question and the answer cross', () => {
+    expect(drawnLabels(start)).toEqual(
+      [
+        `device:${DEVICE.you.name}`,
+        `device:${SERVER.resolver.name}`,
+        `device:${SERVER.authoritative.name}`,
+        `device:${SERVER.internet.name}`,
+        `device:${SERVER.fresh.name}`,
+        `edge:${ROUTER.office.name}`,
+        `firewall:firewall ${DEVICE.you.name}`,
+        'internet:internet',
+      ].sort(),
+    );
+    expect(start.incident.shown).toEqual(CACHE_PIECES);
+    expect(drawnLabels(startSession(INCIDENTS, PREVIOUS_INCIDENT))).not.toContain(`device:${SERVER.fresh.name}`);
+    expect(pieceViews(start).find(({ id }) => id === PIECE_ID.actor(SERVER.fresh.id))).toMatchObject({ locked: true, configurable: false });
+    expect(pieceViews(start).find(({ id }) => id === PIECE_ID.actor(SERVER.resolver.id))).toMatchObject({ locked: false, configurable: true });
+    expect(pieceCard(start, PIECE_ID.actor(SERVER.resolver.id))).toMatchObject({ tabbed: false, first: CACHE_TAB });
+    expect(pieceCard(start, PIECE_ID.actor(SERVER.resolver.id))?.tabs.map(({ id }) => id)).toEqual([CACHE_TAB]);
+    expect(plain(cacheOf(start)?.title ?? '')).toBe(`Caché de ${SERVER.resolver.name}`);
+    expect(cacheOf(start)?.columns.map(({ id }) => id)).toEqual(['name', 'type', 'value', 'left']);
+    expect(cacheOf(start)?.trays, 'the cache is read only').toBeNull();
+    expect(cacheOf(startSession(INCIDENTS, PREVIOUS_INCIDENT)), 'and waits for its term').toBeUndefined();
+    expect(clockSteps(start).map(({ label, seconds }) => [label, seconds])).toEqual([['Esperar 1 min', SECONDS_IN_A_MINUTE], ['Esperar 5 min', WAIT.fiveMinutes.seconds]]);
+    expect(clockSteps(startSession(INCIDENTS, PREVIOUS_INCIDENT)), 'only an incident with a clock has one').toEqual([]);
+  });
+
+  it('02-12: introduces DNS cache and DNS TTL, and uses no later term', () => {
+    const { introduces } = start.incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[STILL]));
+    expect(sorted(introduces)).toEqual(sorted(['dns-cache', 'dns-ttl']));
+    expect(unknownTerms(incidentTexts(start.incident), knownTerms(INCIDENTS, STILL))).toEqual([]);
+    expect(laterTermLeaks([start.incident])).toEqual([]);
+    expect(laterTermLeaks(builtOfChapter2().filter((incident) => orderOf(incident.id) <= orderOf(STILL)))).toEqual([]);
+    const earlier = INCIDENTS.filter((incident) => incident.id < STILL).flatMap(incidentTexts).map(plain);
+    expect(earlier.filter((text) => NAMES_A_NEW_TERM.test(text))).toEqual([]);
+    expect(['El caché guarda la respuesta.', 'La cache del resolver.', 'El TTL de DNS baja.'].filter((text) => !NAMES_A_NEW_TERM.test(text))).toEqual([]);
+    expect(everyState.flatMap(everythingRead).filter((text) => NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+    expect(['Dio NXDOMAIN.', 'Dio SERVFAIL.', 'Un Port Unreachable.', 'El archivo hosts.', 'Una consulta AAAA.', 'Con IPv6.'].filter((text) => !NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+  });
+
+  it('02-12: offers only dig, so no send of the incident asks a question', () => {
+    const { send } = sendIncidentOf(start);
+    expect(send.message).toEqual([MESSAGE.dig]);
+    expect([send.from, send.to]).toEqual([[ORIGIN.you], [ADDRESS.www]]);
+    for (const session of everyState) {
+      for (const sent of drawnSends(session.sent)) expect(sent.id.endsWith('-question') || sent.after !== undefined, 'a dig is the question itself, so it draws none before it').toBe(false);
+      for (const run of session.sent) expect(run.question).toBeUndefined();
+    }
+    expect(drawnSends(diggedAfterFiveMinutes.sent)).toHaveLength(1);
+    expect(sessionReducer(start, { type: 'sendPacket', fromId: ORIGIN.you.id, toId: ADDRESS.www.id, messageId: MESSAGE.ping.id }).sent, 'a ping is not offered, so the session sends none').toEqual([]);
+  });
+
+  it('02-12: the numbers go on with each dig and the right option is the third and is not the longest of the three', () => {
+    expect(drawnSends(diggedAfterOneMinute.sent).map(({ trace }) => [trace.header?.request.sourcePort, trace.translation?.outside.port])).toEqual([[SECOND_PORT, SECOND_PUBLIC_PORT]]);
+    expectRightOptionAt(start.incident, 2);
+    const [wrongOne, wrongTwo, right] = optionsOf(start.incident).map(({ text }) => plain(text).length);
+    expect([wrongOne, wrongTwo, right].filter((length) => length === right)).toHaveLength(1);
+    expect(Math.min(wrongOne, wrongTwo)).toBeLessThan(right);
+    expect(Math.max(wrongOne, wrongTwo)).toBeGreaterThan(right);
   });
 });

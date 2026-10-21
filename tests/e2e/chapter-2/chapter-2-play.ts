@@ -53,6 +53,11 @@ const NOBODY_IP = '198.51.100.51';
 const CNAME = 'CNAME';
 const A_RECORD = 'A';
 const REFUSED_ALIAS = 'un nombre con un registro CNAME no puede tener otros';
+const SEND = 'Enviar';
+const RESOLVER = 'servidor-dns';
+const CACHE_CARD = 'Caché de servidor-dns';
+const FIVE_MINUTES = 'Esperar 5 min';
+const NEW_SITE_IP = '198.51.100.60';
 const SSH_CHIP = 'TCP · 22';
 const YOUR_LAPTOP_CHIP = 'tu-laptop (IP 192.168.1.10)';
 
@@ -254,6 +259,27 @@ export async function playTheRecords(page: Page) {
   await confirm(terminal);
   await expect(terminal).toBeHidden();
   await submitAndFinish(page, /Porque un nombre con un CNAME no puede tener otros registros/);
+}
+
+/** Sends the dig for the site from the terminal of your laptop, which has one message and one address and so draws no tray for either, and closes the terminal. */
+async function digTheSite(page: Page) {
+  const terminal = await openTerminal(page);
+  await terminal.getByRole('button', { name: SEND, exact: true }).click();
+  await confirm(terminal);
+  await expect(terminal).toBeHidden();
+}
+
+/** Takes the page of the open incident 02-12; sends the dig, which the cache of servidor-dns answers with the old IP, waits five minutes with the chip of the card «Reloj del juego», sends the dig again, reads the new IP in the card of servidor-dns, which has the cache as its only card and so is named after it, and answers the question of Lucía until the result shows 3 stars. */
+export async function playStillTheOldIp(page: Page) {
+  await digTheSite(page);
+  await page.getByRole('button', { name: FIVE_MINUTES, exact: true }).click();
+  await digTheSite(page);
+  await page.getByRole('button', { name: RESOLVER, exact: true }).click();
+  const cache = card(page, CACHE_CARD);
+  await expect(cache.getByRole('row', { name: new RegExp(NEW_SITE_IP) })).toBeVisible();
+  await confirm(cache);
+  await expect(cache).toBeHidden();
+  await submitAndFinish(page, /guarda la respuesta en caché hasta que vence su TTL/);
 }
 
 /** The incidents of chapter 2 in game order, each with its id, its title as the roadmap shows it and the function that plays it. */

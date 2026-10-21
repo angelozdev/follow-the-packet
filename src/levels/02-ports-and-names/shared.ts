@@ -1,6 +1,6 @@
 import { nameTag } from '@/copy';
-import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type Lan, type NetworkAction, type Service } from '@/engine';
-import type { ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WhatChip } from '@/levels/contract/incident';
+import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type Lan, type NetworkAction, type RouterInterface, type Service, type ServerActor } from '@/engine';
+import type { ClockStep, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WaitMove, WhatChip } from '@/levels/contract/incident';
 import { recordEntryId } from '@/levels/contract/tables';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
@@ -177,6 +177,7 @@ export const TASK = {
   pingWww: 'ping-to-the-site-name',
   webWww: 'nc-to-port-80-of-the-site-name',
   digBlog: 'dig-of-the-blog-name',
+  digNewIp: 'dig-of-the-site-name-after-the-move',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -319,16 +320,31 @@ function addressRecord(name: string, ip: string): AnswerRecord {
   return { name, type: RECORD_TYPE.a, value: ip, ttl: RECORD_TTL };
 }
 
+/** Returns the alias record that makes a name another name for `target`, with the time to live of the game. */
+function aliasRecord(name: string, target: string): AnswerRecord {
+  return { name, type: RECORD_TYPE.cname, value: target, ttl: RECORD_TTL };
+}
+
 const DNS_SERVICES: Service[] = [
   { protocol: 'udp', port: PORT.dns, listen: 'all' },
   { protocol: 'tcp', port: PORT.dns, listen: 'all' },
+];
+
+/** The `dns` of the resolver before it stores anything: its role and the server it asks for the zone of the game. */
+const RESOLVER_DNS: NonNullable<ServerActor['dns']> = { role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }] };
+
+/** The interfaces of router-destino once servidor-dns and servidor-autoritativo hang from it. */
+const NAME_SERVER_INTERFACES: RouterInterface[] = [
+  ...DESTINATION_INTERFACES,
+  { ip: IP.destinationResolver, faces: SERVER.resolver.id },
+  { ip: IP.destinationAuthoritative, faces: SERVER.authoritative.id },
 ];
 
 /** What 02-10 changes: servidor-dns, the resolver, and servidor-autoritativo, which holds the zone lucia.example, appear in the internet; both listen on UDP and TCP port 53 and the resolver knows which server to ask for the zone. The zone has one address, `www.lucia.example` A 198.51.100.50 (the server of the internet), with the time to live of the game. router-destino gets one interface for each (an update replaces the list, so it restates the two it had), and tu-laptop gets the resolver as its DNS server, the one DHCP lent it. The servers are new pieces, so the text does not have to name them; tu-laptop already existed and its Ajustes de red now show a DNS server, so the report names it. */
 export const NAME_SERVERS: NetworkAction[] = [
   {
     type: 'addActor',
-    actor: { id: SERVER.resolver.id, name: SERVER.resolver.name, ip: IP.resolver, kind: 'server', latencyMs: SERVER_MS, services: DNS_SERVICES, dns: { role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }] } },
+    actor: { id: SERVER.resolver.id, name: SERVER.resolver.name, ip: IP.resolver, kind: 'server', latencyMs: SERVER_MS, services: DNS_SERVICES, dns: RESOLVER_DNS },
   },
   {
     type: 'addActor',
@@ -342,11 +358,7 @@ export const NAME_SERVERS: NetworkAction[] = [
       dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [addressRecord(HOSTNAME.www, IP.server)])] },
     },
   },
-  {
-    type: 'updateRouter',
-    routerId: ROUTER.destination.id,
-    interfaces: [...DESTINATION_INTERFACES, { ip: IP.destinationResolver, faces: SERVER.resolver.id }, { ip: IP.destinationAuthoritative, faces: SERVER.authoritative.id }],
-  },
+  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: NAME_SERVER_INTERFACES },
   { type: 'setDnsServer', deviceId: DEVICE.you.id, server: IP.resolver },
 ];
 
@@ -356,6 +368,30 @@ export const WRONG_RECORDS: NetworkAction = {
   ownerId: SERVER.authoritative.id,
   dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [addressRecord(HOSTNAME.www, IP.nobodyOutside), addressRecord(HOSTNAME.blog, IP.nobodyOutside)])] },
 };
+
+/** The second of the game clock at which the old answer of www.lucia.example expires in the cache of servidor-dns. */
+export const OLD_ANSWER_SECONDS = 240;
+
+/** What 02-12 changes: the site moves to servidor-nuevo, servidor-autoritativo answers its IP for www.lucia.example, and servidor-dns still holds the old answer until second 240 of the game clock. */
+export const MOVED_SITE: NetworkAction[] = [
+  {
+    type: 'addActor',
+    actor: { id: SERVER.fresh.id, name: SERVER.fresh.name, ip: IP.freshServer, kind: 'server', latencyMs: SERVER_MS, services: [tcpService(PORT.web), tcpService(PORT.secureWeb)] },
+  },
+  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: [...NAME_SERVER_INTERFACES, { ip: IP.destinationFreshServer, faces: SERVER.fresh.id }] },
+  {
+    type: 'setDns',
+    ownerId: SERVER.authoritative.id,
+    dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.site, [addressRecord(HOSTNAME.www, IP.freshServer), aliasRecord(HOSTNAME.blog, HOSTNAME.www)])] },
+  },
+  { type: 'setDns', ownerId: SERVER.resolver.id, dns: { ...RESOLVER_DNS, cache: [{ name: HOSTNAME.www, type: RECORD_TYPE.a, value: IP.server, expiresAt: OLD_ANSWER_SECONDS }] } },
+];
+
+/** The steps of the clock of 02-12: wait one minute or five. */
+export const WAIT = {
+  oneMinute: { id: 'one-minute', label: 'Esperar 1 min', seconds: 60 },
+  fiveMinutes: { id: 'five-minutes', label: 'Esperar 5 min', seconds: 300 },
+} as const satisfies Record<string, ClockStep>;
 
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
 export const OFFICE_ROUTES = {
@@ -449,6 +485,11 @@ export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVIC
 /** Returns the move that writes a route in the table of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
 export function routeMove(destinationId: string, nextHopId: string): PlaceEntryMove {
   return { type: 'placeEntry', tableId: OFFICE_ROUTES.table, picks: { destination: destinationId, nextHop: nextHopId } };
+}
+
+/** Returns the move that moves the clock of the game on by this many seconds, one of the steps the incident offers. */
+export function waitMove(seconds: number): WaitMove {
+  return { type: 'wait', seconds };
 }
 
 /** Returns the move that writes a record in the table of servidor-autoritativo of 02-11: the chip picked in the tray of the name, the one picked in the tray of the type and the one picked in the tray of the value. */

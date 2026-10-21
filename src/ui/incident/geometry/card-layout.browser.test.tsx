@@ -81,6 +81,11 @@ const WWW_NAME = 'www.lucia.example';
 const CNAME_TYPE = 'CNAME';
 const ADD_RECORD = 'Agregar registro';
 const ALIAS_REFUSED = 'No se pudo agregar.';
+const SEND = 'Enviar';
+const RESOLVER = 'servidor-dns';
+const CACHE_CARD = 'Caché de servidor-dns';
+const ONE_MINUTE = 'Esperar 1 min';
+const CLOCK_NOTE = 'El tiempo pasa para todo el mapa.';
 const PING = 'ping';
 const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
@@ -259,6 +264,19 @@ async function reachTheRefusedAlias(): Promise<void> {
   await expect.element(records.getByRole('status')).toMatchTextContent(ALIAS_REFUSED);
 }
 
+async function waitAMinute(): Promise<void> {
+  await click(button(ONE_MINUTE));
+}
+
+async function reachTheCacheAfterAMinute(): Promise<void> {
+  await waitAMinute();
+  const terminal = await openTerminal();
+  await click(terminal.getByRole('button', { name: SEND, exact: true }));
+  await confirm(terminal);
+  await expect.element(terminal).not.toBeInTheDocument();
+  await openByKeyboard(RESOLVER);
+}
+
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await sendTo(card(TERMINAL), OFFICE_IP.andres);
@@ -275,6 +293,8 @@ const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, 
 const THE_EDITABLE_ROUTES: Scene = { name: 'the routing table of router-oficina, with its two routes written and its trays', level: '02-07', reach: reachTheOfficeRoutes, last: doneOf(OFFICE_ROUTES_CARD) };
 const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: doneOf(TRANSLATIONS_CARD) };
 const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: doneOf(RECORDS_CARD) };
+const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: doneOf(CACHE_CARD) };
+const THE_CLOCK: Scene = { name: 'the clock of the game below the card of Lucía, after a minute of waiting', level: '02-12', reach: waitAMinute, last: () => page.getByText(CLOCK_NOTE) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: doneOf(TERMINAL) };
 
@@ -295,10 +315,12 @@ const SCENES: Scene[] = [
   THE_EDITABLE_ROUTES,
   THE_TRANSLATIONS,
   THE_RECORDS,
+  THE_CACHE,
+  THE_CLOCK,
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);
