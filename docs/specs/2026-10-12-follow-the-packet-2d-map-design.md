@@ -218,7 +218,7 @@ Todas las etiquetas del mapa van en monoespaciada (cambia la tipografía del nom
 
 **La etiqueta que no cabe se corta (decidido por el estudiante el 2026-10-20, sobre un prototipo dibujado: https://claude.ai/artifact/LHnMUK5woLg2uJ1hKTSnfv).** Una etiqueta de una línea que haría el mapa más ancho que su pantalla se corta a los caracteres que caben y termina en «…», con su candado; la cantidad la decide el espacio, nunca un número fijo; no baja de 12 caracteres (debajo de eso la serpiente se ensancha como antes); una etiqueta de más de una línea (la del firewall) nunca se corta; el nombre completo sigue siendo el nombre accesible de la pieza («servidor-autoritativo-noticias con candado») y la caja de INSPECCIÓN lo muestra entero al pasar el mouse y al enfocar. Con el candado, `servidor-autoritativo-noticias` (30 caracteres) se dibuja `servidor-autoritativo-not…` a 360 px y entero desde 382 px.
 
-**Una prueba en el navegador** (Vitest en modo navegador) compara el ancho del modelo con el de cada etiqueta de pieza del DOM, de todos los incidentes registrados: el DOM nunca mide más que el modelo, y lo supera en menos de 2 px. Si cambia la fuente, falla esa prueba y no el mapa en silencio.
+**Una prueba en el navegador** (Vitest en modo navegador) compara el ancho del modelo con el de cada etiqueta de pieza del DOM, de todos los incidentes registrados: el DOM mide como mucho 1 px más que el modelo (la fuente de reserva del navegador de las pruebas avanza 0,602 em y IBM Plex Mono, la que recibe el jugador, 0,600 em) y como mucho 2 px menos. Si cambia la fuente, falla esa prueba y no el mapa en silencio.
 
 ### Colisiones
 
