@@ -1,7 +1,8 @@
 import { Fragment } from 'react';
-import { MAP_TEXT, parseTermText, type EntityRef, type TermSegment, type TermText } from '@/copy';
+import { MAP_TEXT, parseTermText, toPlainText, type EntityRef, type TermSegment, type TermText } from '@/copy';
 import { NameTag } from '@/design';
 import { InkIcon } from '@/scene/entities/icons/ink-icon';
+import { labelFitting } from '@/scene/layout/label-cut';
 import type { TriggerProps } from './inspect-trigger';
 
 export type MapPieceKind = 'device' | 'firewall' | 'edge' | 'internet' | 'actor';
@@ -39,9 +40,11 @@ function buttonClass(segments: TermSegment[], locked: boolean): string {
   return ['map-button', isOnlyName(segments) && 'map-button--name', locked && 'map-button--locked'].filter(Boolean).join(' ');
 }
 
-/** The label of a piece: one button that opens its card, whatever the number of cards the piece has, with its name, its lock and its alert; the props of its trigger inspect the piece (its click goes with the one that opens the card). */
-export function PieceLabel({ piece, trigger, onActivate }: { piece: MapPiece; trigger: TriggerProps; onActivate: (pieceId: string) => void }) {
-  const segments = parseTermText(piece.label);
+/** The label of a piece: one button that opens its card, whatever the number of cards the piece has, with its name, its lock and its alert; the props of its trigger inspect the piece (its click goes with the one that opens the card). Given the width of the box the layout holds for it (`boxWidth`), a label of one line whose text does not fit it shows the first characters and an ellipsis, hidden from screen readers, and the button is read by the whole text, so its accessible name never changes. */
+export function PieceLabel({ piece, boxWidth, trigger, onActivate }: { piece: MapPiece; boxWidth?: number; trigger: TriggerProps; onActivate: (pieceId: string) => void }) {
+  const shown = boxWidth === undefined ? piece.label : labelFitting(piece.label, { locked: piece.locked, alert: piece.state === 'intruded' }, boxWidth);
+  const segments = parseTermText(shown);
+  const isCut = shown !== piece.label;
   return (
     <button
       type="button"
@@ -60,7 +63,16 @@ export function PieceLabel({ piece, trigger, onActivate }: { piece: MapPiece; tr
           </span>{' '}
         </>
       )}
-      <Segments segments={segments} />
+      {isCut ? (
+        <>
+          <span aria-hidden="true">
+            <Segments segments={segments} />
+          </span>
+          <span className="sr-only">{toPlainText(piece.label)}</span>
+        </>
+      ) : (
+        <Segments segments={segments} />
+      )}
       {piece.locked && (
         <>
           {' '}
