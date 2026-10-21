@@ -1278,6 +1278,11 @@ describe('the incidents of the chapters on the 2D map', () => {
   const OPENING_RULE_ANSWER = /solo hace falta permitir la ida/;
   const REPLY_RULE = /^Quitar la regla ICMP · Echo Reply/;
   const PING_TASK = 'vuelva a hacer';
+  const DIG = 'dig';
+  const SHOP = 'tienda.lucia.example';
+  const STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER = /^Paquete: UDP \d+ → 53 de tu-laptop a servidor-dns\./;
+  const STAMP_OF_THE_PING_TO_THE_SHOP = /^Paquete: ping de tu-laptop a servidor-internet\./;
+  const TAG_OF_THE_QUESTION = 'UDP 51514 → 53';
 
   beforeEach(() => {
     scene.drawsTheRealMap = true;
@@ -1464,6 +1469,27 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(screen.getByRole('button', { name: STAMP_OF_THE_SILENCE })).toBeVisible();
     expect(screen.getByRole('button', { name: STAMP_OF_THE_WRONG_ADDRESS })).toBeVisible();
     expect(packetTags()).toEqual(TAGS_OF_THE_FOUR_TESTS);
+  });
+
+  it('02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-13');
+    await drawWithoutAnimations(user);
+    const terminal = await openTheTerminal(user);
+    await sendNc(user, terminal, SHOP, DIG);
+    expect(screen.getAllByRole('button', { name: STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER })).toHaveLength(1);
+    expect(packetTags()).toEqual([TAG_OF_THE_QUESTION]);
+    await sendNc(user, terminal, SHOP, PING);
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_PING_TO_THE_SHOP })).toBeVisible();
+    expect(screen.getAllByRole('button', { name: STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER })).toHaveLength(1);
+    expect(packetTags()).toEqual([TAG_OF_THE_QUESTION]);
+    cleanup();
+    renderIncident('02-13');
+    await drawWithoutAnimations(user);
+    await sendNc(user, await openTheTerminal(user), SHOP, PING);
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_PING_TO_THE_SHOP })).toBeVisible();
+    expect(screen.queryAllByRole('button', { name: STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER })).toHaveLength(0);
+    expect(packetTags()).toEqual([]);
   });
 
   it('the still drawing of a translated packet shows the label of the leg where the packet stands', async () => {

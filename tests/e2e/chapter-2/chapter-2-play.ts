@@ -58,6 +58,9 @@ const RESOLVER = 'servidor-dns';
 const CACHE_CARD = 'Caché de servidor-dns';
 const FIVE_MINUTES = 'Esperar 5 min';
 const NEW_SITE_IP = '198.51.100.60';
+const MISSING_NAME = 'noexiste.lucia.example';
+const NEWS_NAME = 'www.noticias.example';
+const SHOP_NAME = 'tienda.lucia.example';
 const SSH_CHIP = 'TCP · 22';
 const YOUR_LAPTOP_CHIP = 'tu-laptop (IP 192.168.1.10)';
 
@@ -280,6 +283,22 @@ export async function playStillTheOldIp(page: Page) {
   await confirm(cache);
   await expect(cache).toBeHidden();
   await submitAndFinish(page, /guarda la respuesta en caché hasta que vence su TTL/);
+}
+
+/** Takes the page of the open incident 02-13; sends from the terminal of your laptop the dig to the name that does not exist, to the one whose server failed and to the shop, and the ping to the shop, and from the terminal of laptop-andres the dig to the site, whose resolver is the printer; each terminal has a tray of addresses and a tray of messages, and the play closes it before it opens the next; then answers the question of Lucía until the result shows 3 stars. */
+export async function playItDoesNotResolve(page: Page) {
+  const yours = await openTerminal(page);
+  await sendNc(yours, MISSING_NAME, DIG);
+  await sendNc(yours, NEWS_NAME, DIG);
+  await sendNc(yours, SHOP_NAME, DIG);
+  await sendNc(yours, SHOP_NAME, PING);
+  await confirm(yours);
+  await expect(yours).toBeHidden();
+  const andres = await openTerminal(page, ANDRES);
+  await sendNc(andres, WWW, DIG);
+  await confirm(andres);
+  await expect(andres).toBeHidden();
+  await submitAndFinish(page, /Porque el ping usa el archivo hosts y el dig no/);
 }
 
 /** The incidents of chapter 2 in game order, each with its id, its title as the roadmap shows it and the function that plays it. */

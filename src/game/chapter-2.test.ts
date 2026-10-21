@@ -14,7 +14,9 @@ import {
   CACHE_PIECES,
   CLIENT,
   DEVICE,
+  DNS_STATUS,
   DOMAIN,
+  FAILURES_PIECES,
   FIREWALL,
   FLOORS_PIECES,
   HOSTNAME,
@@ -2075,5 +2077,245 @@ describe('02-12, still the old ip', () => {
     expect([wrongOne, wrongTwo, right].filter((length) => length === right)).toHaveLength(1);
     expect(Math.min(wrongOne, wrongTwo)).toBeLessThan(right);
     expect(Math.max(wrongOne, wrongTwo)).toBeGreaterThan(right);
+  });
+});
+
+describe('02-13, it does not resolve', () => {
+  const FAILURES = '02-13';
+  const PREVIOUS_INCIDENT = '02-12';
+  const FIRST_PORT = 51514;
+  const FIRST_PUBLIC_PORT = 40001;
+  const DNS_FIELD = 'DNS';
+  const WHERE_IT_STOPPED = 'Dónde y por qué se detuvo';
+  const NOERROR = 'NOERROR';
+  const REPLIED = 'replied';
+  const UNREACHABLE = 'unreachable';
+  const PORT_UNREACHABLE = 'port-unreachable';
+  const SENTENCES = /(?<=[.!?])\s+/;
+  const SAYS_IT_DOES_NOT_EXIST = /\bno exist(?:e|a|ía)\b/i;
+  const NEVER_TAUGHT_HERE = /AAAA|IPv6|Route 53|\bAlias\b|\bapex\b/;
+  const NAMES_A_TERM_OF_THE_BLOCK = /NXDOMAIN|SERVFAIL|Port Unreachable|archivo hosts|\bhosts\b/;
+  const MAX_REPORT_SENTENCES = 12;
+  const CONNECTION_REFUSED = `;; communications error to ${IP.printer}#${PORT.dns}: connection refused`;
+  const start = startSession(INCIDENTS, FAILURES);
+  const incident = start.incident as Extract<Incident, { mechanic: 'send' }>;
+  const world = startWorld(INCIDENTS, FAILURES);
+  const youSend = (session: Session, address: { id: string }, message: { id: string }): Session => sendingFrom(session, ORIGIN.you.id, address.id, message.id);
+  const andresSend = (session: Session, address: { id: string }, message: { id: string }): Session => sendingFrom(session, ORIGIN.andres.id, address.id, message.id);
+  const digMissing = youSend(start, ADDRESS.missing, MESSAGE.dig);
+  const digNews = youSend(start, ADDRESS.news, MESSAGE.dig);
+  const digShop = youSend(start, ADDRESS.shop, MESSAGE.dig);
+  const pingShop = youSend(start, ADDRESS.shop, MESSAGE.ping);
+  const digFromAndres = andresSend(start, ADDRESS.www, MESSAGE.dig);
+  const closed = andresSend(youSend(youSend(youSend(youSend(start, ADDRESS.missing, MESSAGE.dig), ADDRESS.news, MESSAGE.dig), ADDRESS.shop, MESSAGE.dig), ADDRESS.shop, MESSAGE.ping), ADDRESS.www, MESSAGE.dig);
+  const everySend = incident.send.from.flatMap((from) => incident.send.to.flatMap((to) => incident.send.message.map((message) => sendingFrom(start, from.id, to.id, message.id))));
+  const everyState = [start, digMissing, digNews, digShop, pingShop, digFromAndres, youSend(digShop, ADDRESS.shop, MESSAGE.ping), ...everySend];
+  const boxOf = (session: Session): Record<string, string[]> => lastBox(session);
+  const runOf = (session: Session) => session.sent[0];
+  const printed = (session: Session, from: { id: string }, address: { id: string }): string[] => printedFrom(session, from.id, address.id, MESSAGE.dig.id);
+  const sentencesOf = (texts: string[]): string[] => texts.flatMap((text) => text.split(SENTENCES));
+  const claimsTheShopDoesNotExist = (sentence: string): boolean => sentence.includes(HOSTNAME.shop) && SAYS_IT_DOES_NOT_EXIST.test(sentence);
+  const dnsOwnLine = `${DNS_STATUS.nonexistent}: ${HOSTNAME.shop} no existe.`;
+  const translationRows = (session: Session) => (pieceCard(session, PIECE_ID.router(ROUTER.office.id))?.tabs.find((tab) => tab.id === 'translations')?.card as TableCard | undefined)?.rows.map((row) => row.cells.map((cell) => plain(cell.text))) ?? [];
+  const serverOf = (id: string) => world.actors.find((actor) => actor.id === id && actor.kind === 'server');
+  const dnsOf = (id: string) => {
+    const server = serverOf(id);
+    return server?.kind === 'server' ? server.dns : undefined;
+  };
+  const resolverIdOf = (originId: string): string | undefined => {
+    const dnsServer = world.devices.find((device) => device.id === originId)?.dnsServer;
+    return [...world.devices.map(({ id, privateIp }) => ({ id, ip: privateIp })), ...world.actors.map(({ id, ip }) => ({ id, ip }))].find(({ ip }) => ip === dnsServer)?.id;
+  };
+
+  it('02-13: dig of a name that does not exist ends in NXDOMAIN', () => {
+    const run = runOf(digMissing);
+    expect(run.trace.outcome).toBe(REPLIED);
+    expect(run.trace.dns).toMatchObject({ name: HOSTNAME.missing, status: DNS_STATUS.nonexistent, answers: [], viaDig: true, fromCache: false });
+    expect(run.trace.dns?.soa?.name, 'an authoritative NXDOMAIN carries the SOA of the zone').toBe(DOMAIN.site);
+    expect(run.by).toEqual([SERVER.resolver.id]);
+    expect(run.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.resolver, sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(boxOf(digMissing)[DNS_FIELD]).toEqual([`Contestó ${SERVER.resolver.name}.`, `${DNS_STATUS.nonexistent}: ${HOSTNAME.missing} no existe.`]);
+    expect(printed(digMissing, ORIGIN.you, ADDRESS.missing).join('\n')).toContain(`status: ${DNS_STATUS.nonexistent}`);
+    expect(stillOpen(digMissing)).toEqual([TASK.digNews, TASK.digShop, TASK.pingShop, TASK.digFromAndres]);
+    expect(stillOpen(youSend(start, ADDRESS.missing, MESSAGE.ping)), 'a ping to the same name does not close the dig task').toEqual(stillOpen(start));
+  });
+
+  it('02-13: dig of a name in the zone whose server fails ends in SERVFAIL', () => {
+    const run = runOf(digNews);
+    expect(run.trace.outcome).toBe(REPLIED);
+    expect(run.trace.dns).toMatchObject({ name: HOSTNAME.newsWww, status: DNS_STATUS.failed, answers: [], viaDig: true });
+    expect(run.trace.dns?.soa, 'a server that failed says nothing about the zone').toBeUndefined();
+    expect(run.by).toEqual([SERVER.resolver.id]);
+    expect(boxOf(digNews)[DNS_FIELD]).toEqual([`Contestó ${SERVER.resolver.name}.`, `${DNS_STATUS.failed}: no se pudo averiguar ${HOSTNAME.newsWww}. No dice si el nombre existe.`]);
+    expect(printed(digNews, ORIGIN.you, ADDRESS.news).join('\n')).toContain(`status: ${DNS_STATUS.failed}`);
+    expect(stillOpen(digNews)).toEqual([TASK.digMissing, TASK.digShop, TASK.pingShop, TASK.digFromAndres]);
+    expect(dnsOf(SERVER.news.id)).toMatchObject({ role: 'authoritative', failing: true });
+    expect(dnsOf(SERVER.news.id)?.zones?.map(({ name }) => name)).toEqual([DOMAIN.news]);
+    expect(dnsOf(SERVER.resolver.id)?.upstreams).toEqual([{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }, { zone: DOMAIN.news, serverId: SERVER.news.id }]);
+    const healthy = youSend(start, ADDRESS.www, MESSAGE.dig);
+    expect(runOf(healthy).trace.dns, 'the resolver is fine: only the zone whose server failed ends in SERVFAIL, and the old answer of 02-12 is gone').toMatchObject({ status: NOERROR, fromCache: false });
+    expect(runOf(healthy).trace.dns?.answers.map(({ type, value }) => [type, value])).toEqual([[RECORD_TYPE.a, IP.freshServer]]);
+    expect(dnsOf(SERVER.resolver.id)?.cache, 'the cache of 02-12 does not carry into 02-13').toBeUndefined();
+  });
+
+  it('02-13: dig of tienda.lucia.example ends in NXDOMAIN while ping of the same name comes back', () => {
+    const [dig, ping] = youSend(digShop, ADDRESS.shop, MESSAGE.ping).sent;
+    expect([dig.trace.outcome, dig.trace.dns?.status, dig.trace.dns?.usedHostsFile, dig.trace.destinationId]).toEqual([REPLIED, DNS_STATUS.nonexistent, false, SERVER.resolver.id]);
+    expect([ping.trace.outcome, ping.by, ping.trace.destinationId, ping.trace.resolvedIp]).toEqual([REPLIED, [SERVER.internet.id], SERVER.internet.id, IP.server]);
+    expect(ping.trace.dns).toMatchObject({ name: HOSTNAME.shop, usedHostsFile: true, viaDig: false });
+    expect(world.devices.find((device) => device.id === DEVICE.you.id)?.hosts).toEqual([{ name: HOSTNAME.shop, ip: IP.server }]);
+    expect(dnsOf(SERVER.authoritative.id)?.zones?.flatMap((zone) => zone.records.map(({ name }) => name))).not.toContain(HOSTNAME.shop);
+    expect(boxOf(pingShop)[DNS_FIELD]).toEqual([`Antes de mandar el paquete, ${DEVICE.you.name} averigua la IP de ${HOSTNAME.shop}.`, `${DEVICE.you.name} encontró ${HOSTNAME.shop} en su archivo hosts: es ${IP.server}. No preguntó a nadie.`]);
+    expect(stillOpen(digShop)).toEqual([TASK.digMissing, TASK.digNews, TASK.pingShop, TASK.digFromAndres]);
+    expect(stillOpen(pingShop)).toEqual([TASK.digMissing, TASK.digNews, TASK.digShop, TASK.digFromAndres]);
+    expectClosed(closed);
+  });
+
+  it('02-13: the dig from laptop-andres ends in Port Unreachable from the printer', () => {
+    const run = runOf(digFromAndres);
+    expect([run.trace.outcome, run.by, run.trace.destinationId]).toEqual([UNREACHABLE, [DEVICE.printer.id], DEVICE.printer.id]);
+    expect(run.trace.notice).toMatchObject({ kind: PORT_UNREACHABLE, fromId: DEVICE.printer.id, fromIp: IP.printer });
+    expect(run.warning).toEqual({ term: PORT_UNREACHABLE, by: 'host' });
+    expect(run.trace.header?.request).toMatchObject({ source: IP.andres, destination: IP.printer, destinationPort: PORT.dns });
+    expect(world.devices.find((device) => device.id === DEVICE.andres.id)?.dnsServer).toBe(IP.printer);
+    expect(world.devices.find((device) => device.id === DEVICE.printer.id)?.host.services.some(({ protocol, port }) => protocol === 'udp' && port === PORT.dns), 'nothing listens on UDP 53 in the printer').toBe(false);
+    expect(printed(digFromAndres, ORIGIN.andres, ADDRESS.www)).toEqual([CONNECTION_REFUSED, CONNECTION_REFUSED, CONNECTION_REFUSED, '', `; <<>> DiG 9.18.50 <<>> ${HOSTNAME.www}`, ';; global options: +cmd', ';; no servers could be reached']);
+    expect(boxOf(digFromAndres)[WHERE_IT_STOPPED]).toEqual([`Llega por UDP al puerto ${PORT.dns}, pero ningún programa escucha ahí: ${DEVICE.printer.name} avisa con Port Unreachable.`]);
+    expect(stillOpen(digFromAndres)).toEqual([TASK.digMissing, TASK.digNews, TASK.digShop, TASK.pingShop]);
+    expect(plain(incident.takeaway)).toContain('En este juego, el dig lo muestra como «connection refused».');
+  });
+
+  it('02-13: no text reads a failed dig as proof that the name does not exist when the hosts file is the cause', () => {
+    const faulty = [`El dig dio NXDOMAIN: ${HOSTNAME.shop} no existe.`, `${HOSTNAME.shop} no existe, por eso el dig falló.`, `Como el dig no encontró ${HOSTNAME.shop}, ese nombre no existía.`];
+    expect(faulty.filter(claimsTheShopDoesNotExist), 'the check catches a sentence that reads the failed dig as proof').toHaveLength(faulty.length);
+    expect(claimsTheShopDoesNotExist(`${HOSTNAME.shop} llegó por el archivo hosts, aunque el DNS no lo tiene.`)).toBe(false);
+    expect(sentencesOf(incidentTexts(incident).map(plain)).filter(claimsTheShopDoesNotExist), 'nothing the incident writes says it').toEqual([]);
+    const claims = sentencesOf(everyState.flatMap(everythingRead)).filter(claimsTheShopDoesNotExist);
+    expect([...new Set(claims)], 'the only sentence is the DNS’s own line in the box of the dig').toEqual([dnsOwnLine]);
+    expect(boxOf(digShop)[DNS_FIELD]).toContain(dnsOwnLine);
+    expect(boxTexts(pingShop).filter(claimsTheShopDoesNotExist)).toEqual([]);
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('Por eso un dig que falla no prueba que el nombre no exista para el dispositivo: el archivo hosts puede tener una respuesta que el DNS no tiene.');
+    expect(takeaway).toContain(`${DEVICE.you.name} tiene una línea para ${HOSTNAME.shop} en su archivo hosts.`);
+    const right = optionsOf(incident)[1];
+    expect(plain(right.feedback)).toContain(`En ${DEVICE.you.name}, alguien puso en ese archivo una línea: ${HOSTNAME.shop} es ${IP.server}.`);
+    expect(plain(right.feedback)).toContain('el DNS no tiene ese nombre');
+  });
+
+  it('02-13: the report names tu-laptop, laptop-andres, servidor-dns and servidor-autoritativo-noticias', () => {
+    const { report } = incident;
+    const [before, after] = [solvedWorld(INCIDENTS, PREVIOUS_INCIDENT), world];
+    for (const name of [DEVICE.you.name, DEVICE.andres.name, SERVER.resolver.name, SERVER.news.name]) expect(report).toContain(`[[${name}]]`);
+    expect(plain(report)).toContain(`Alguien cambió la configuración de ${SERVER.resolver.name}, tu resolver: ahora, para los nombres de ${DOMAIN.news}, le pregunta a ${SERVER.news.name}.`);
+    expect(plain(report)).toContain(`Ese servidor autoritativo guarda los datos de ${DOMAIN.news}, pero falló y no contesta.`);
+    expect(plain(report)).toContain(`Alguien cambió la configuración de ${DEVICE.you.name}.`);
+    expect(plain(report)).toContain(`Y ahora el servidor DNS de ${DEVICE.andres.name} es la impresora, ${IP.printer}.`);
+    expect(plain(report), 'the hosts file is the cause the question asks for, and the report leaves it there').not.toMatch(/hosts/);
+    expect(plain(report), 'the report states only the fact about laptop-andres and adds no cause').not.toMatch(/DHCP|prestó/);
+    expect(plain(report).split(SENTENCES).length).toBeLessThanOrEqual(MAX_REPORT_SENTENCES);
+    expect(changedNames(before, after), 'servidor-autoritativo-noticias is a piece the action only adds, and router-destino only gains its wiring').toEqual([DEVICE.andres.name, SERVER.resolver.name, DEVICE.you.name]);
+    expect(after.actors.map(({ id }) => id)).toEqual([...before.actors.map(({ id }) => id), SERVER.news.id]);
+    expect(serverOf(SERVER.news.id)).toMatchObject({ ip: IP.newsAuthoritative, kind: 'server' });
+    expect((after.routers ?? []).find(({ id }) => id === ROUTER.destination.id)?.interfaces).toContainEqual({ ip: IP.destinationNewsAuthoritative, faces: SERVER.news.id });
+    expect(before.devices.find((device) => device.id === DEVICE.you.id)?.hosts).toBeUndefined();
+    expect(networkSchema.safeParse(after).error).toBeUndefined();
+    const settings = settingsCard(start, PIECE_ID.device(DEVICE.andres.id));
+    expect(settings?.dns && { label: plain(settings.dns.label), value: plain(settings.dns.value), note: plain(settings.dns.note) }).toEqual({ label: 'Servidor DNS', value: `${IP.printer} ${DEVICE.printer.name}`, note: 'Lo prestó DHCP.' });
+  });
+
+  it('02-13: the NXDOMAIN demo uses a subdomain that does not exist and not a name under .invalid', () => {
+    const names = [HOSTNAME.missing, ...incident.send.to.map(({ address }) => address)];
+    expect(HOSTNAME.missing.endsWith(`.${DOMAIN.site}`)).toBe(true);
+    expect(HOSTNAME.missing.slice(0, -DOMAIN.site.length - 1)).toMatch(/^[a-z]+$/);
+    expect(names.filter((name) => /(?:^|\.)invalid$/.test(name))).toEqual([]);
+    expect(everyState.flatMap(everythingRead).filter((text) => /\.invalid\b/.test(text))).toEqual([]);
+    expect(incident.send.to.map(({ address }) => address)).toContain(HOSTNAME.missing);
+    expect(dnsOf(SERVER.authoritative.id)?.zones?.flatMap((zone) => zone.records.map(({ name }) => name))).not.toContain(HOSTNAME.missing);
+    expect(runOf(digMissing).trace.dns?.soa?.name, 'the resolver asked the authoritative server of the zone and it answered, not a rule for .invalid').toBe(DOMAIN.site);
+    expect(printed(digMissing, ORIGIN.you, ADDRESS.missing).join('\n')).toContain(`${DOMAIN.site}.`);
+    expect(outsideDocumentationTld(names)).toEqual([]);
+    expect(publicOutsideDocumentation([...world.actors.map(({ ip }) => ip), IP.destinationNewsAuthoritative])).toEqual([]);
+  });
+
+  it('02-13: introduces NXDOMAIN, SERVFAIL, Port Unreachable and hosts file, and uses no later term', () => {
+    const { introduces } = incident;
+    expect(sorted(introduces)).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[FAILURES]));
+    expect(sorted(introduces)).toEqual(sorted(['nxdomain', 'servfail', 'port-unreachable', 'hosts-file']));
+    expect(unknownTerms(incidentTexts(incident), knownTerms(INCIDENTS, FAILURES))).toEqual([]);
+    expect(laterTermLeaks([incident])).toEqual([]);
+    expect(laterTermLeaks(builtOfChapter2().filter((built) => orderOf(built.id) <= orderOf(FAILURES)))).toEqual([]);
+    const earlier = INCIDENTS.filter((built) => built.id < FAILURES).flatMap(incidentTexts).map(plain);
+    expect(earlier.filter((text) => NAMES_A_TERM_OF_THE_BLOCK.test(text)), 'no earlier incident names a term of this one').toEqual([]);
+    expect(['Dio NXDOMAIN.', 'Dio SERVFAIL.', 'Un Port Unreachable.', 'El archivo hosts.', 'Las líneas del hosts.'].filter((text) => !NAMES_A_TERM_OF_THE_BLOCK.test(text))).toEqual([]);
+    expect(everyState.flatMap(everythingRead).filter((text) => NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+    expect(['Con IPv6.', 'Una consulta AAAA.', 'El apex de la zona.', 'Un Alias de Route 53.'].filter((text) => !NEVER_TAUGHT_HERE.test(text))).toEqual([]);
+    for (const term of introduces) expect(plain(TERMS[term].definition)).not.toMatch(/IPv6|AAAA/);
+  });
+
+  it('02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none', () => {
+    const [dig] = drawnSends(digShop.sent);
+    const [ping] = drawnSends(pingShop.sent);
+    expect([drawnSends(digShop.sent), drawnSends(pingShop.sent)].map((sends) => sends.length), 'a dig is the question itself and a ping that the hosts file answers asks none').toEqual([1, 1]);
+    expect([dig.after, dig.id.endsWith('-question'), dig.trace.destinationId, dig.by]).toEqual([undefined, false, SERVER.resolver.id, [SERVER.resolver.id]]);
+    expect(dig.trace.header?.request).toMatchObject({ source: IP.you, destination: IP.resolver, sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(digShop.sent[0].packet).toMatchObject({ protocol: 'udp', port: PORT.dns });
+    expect([ping.after, ping.id.endsWith('-question'), ping.trace.question, ping.trace.destinationId]).toEqual([undefined, false, undefined, SERVER.internet.id]);
+    expect(pingShop.sent[0].question).toBeUndefined();
+    expect(ping.trace.header?.request.sourcePort, 'the ping uses no port and so draws no datagram').toBeUndefined();
+    expect(drawnSends(youSend(digShop, ADDRESS.shop, MESSAGE.ping).sent).map(({ trace }) => trace.destinationId)).toEqual([SERVER.resolver.id, SERVER.internet.id]);
+    expect(translationRows(digShop).slice(1), 'the dig leaves a row in the table of translations').toEqual([['UDP · consulta DNS', `${IP.you}:${FIRST_PORT}`, `${IP.officeUplink}:${FIRST_PUBLIC_PORT}`]]);
+    expect(translationRows(pingShop).slice(1), 'and the ping leaves none').toEqual([]);
+    expect(boxOf(pingShop)[DNS_FIELD].join(' ')).not.toContain('La consulta salió del puerto');
+    expect(drawnSends(youSend(start, ADDRESS.missing, MESSAGE.ping).sent).map(({ id }) => id.endsWith('-question')), 'a ping to a name nobody has asks first').toEqual([true, false]);
+  });
+
+  it('02-13: every send of the incident that goes by name has the resolver in its shown list', () => {
+    const shown = incident.shown ?? [];
+    expect(shown).toEqual(FAILURES_PIECES);
+    expect(everySend).toHaveLength(incident.send.from.length * incident.send.to.length * incident.send.message.length);
+    expect(incident.send.to.every(({ address }) => /[a-z]/i.test(address)), 'every address of the incident is a name').toBe(true);
+    for (const origin of incident.send.from) {
+      const resolverId = resolverIdOf(origin.endpoint.id);
+      expect(resolverId, `${origin.id} has a resolver in the world`).toBeDefined();
+      expect(shown, `${origin.id} asks ${resolverId}`).toContain(resolverId);
+    }
+    expect(resolverIdOf(DEVICE.you.id)).toBe(SERVER.resolver.id);
+    expect(everySend.flatMap(everythingRead).filter((text) => text.includes(SERVER.fresh.name)), 'servidor-nuevo answers a ping to www and is not drawn, so no text names it').toEqual([]);
+    expect(resolverIdOf(DEVICE.andres.id), 'the resolver of laptop-andres is the printer, which has no DNS service').toBe(DEVICE.printer.id);
+    for (const session of everySend) {
+      for (const sent of drawnSends(session.sent).filter(({ id, trace }) => id.endsWith('-question') || trace.dns?.viaDig)) expect(sent.by.filter((id) => !shown.includes(id)), `${sent.id} is a question and its resolver is drawn`).toEqual([]);
+    }
+  });
+
+  it('02-13: draws the failed site, the printer that is a resolver and the router the questions cross', () => {
+    expect(drawnLabels(start)).toEqual(
+      [
+        `device:${DEVICE.you.name}`,
+        `device:${DEVICE.andres.name}`,
+        `device:${DEVICE.printer.name}`,
+        `device:${SERVER.resolver.name}`,
+        `device:${SERVER.authoritative.name}`,
+        `device:${SERVER.news.name}`,
+        `device:${SERVER.internet.name}`,
+        `edge:${ROUTER.office.name}`,
+        `firewall:firewall ${DEVICE.you.name}`,
+        'internet:internet',
+      ].sort(),
+    );
+    expect(drawnLabels(startSession(INCIDENTS, PREVIOUS_INCIDENT))).not.toContain(`device:${SERVER.news.name}`);
+    expect(pieceViews(start).find(({ id }) => id === PIECE_ID.actor(SERVER.news.id))).toMatchObject({ locked: true, configurable: false });
+    expect(pieceCard(start, PIECE_ID.actor(SERVER.news.id)), 'the failed server opens no card').toBeFalsy();
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.andres.id))?.tabs.map(({ id }) => id)).toEqual(['terminal', 'settings', 'routes']);
+    expect(everythingRead(start).filter((text) => /caído|apagado|desconectado/i.test(text)), 'the failure is told by the report and the boxes, not by a mark').toEqual([]);
+  });
+
+  it('02-13: the right option is the second and is not the longest of the three', () => {
+    expectRightOptionAt(incident, 1);
+    const [wrongOne, right, wrongTwo] = optionsOf(incident).map(({ text }) => plain(text).length);
+    expect(Math.min(wrongOne, wrongTwo)).toBeLessThan(right);
+    expect(Math.max(wrongOne, wrongTwo)).toBeGreaterThan(right);
+    expect(optionsOf(incident).map(({ feedback }) => plain(feedback)).filter((text) => /^(?:No[.:]|No es eso\.|Eso es\b|Correcto\.)/.test(text))).toEqual([]);
+    expect(plain(optionsOf(incident)[0].feedback)).toContain(`${DEVICE.you.name} tiene un solo resolver, ${SERVER.resolver.name}: el dig le preguntó a él. El ping ni siquiera hizo una consulta DNS.`);
+    expect(closed.sent).toHaveLength(5);
   });
 });

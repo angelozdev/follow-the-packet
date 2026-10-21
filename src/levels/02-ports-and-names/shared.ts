@@ -1,5 +1,5 @@
 import { nameTag } from '@/copy';
-import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type Lan, type NetworkAction, type RouterInterface, type Service, type ServerActor } from '@/engine';
+import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type DnsStatus, type HostLine, type Lan, type NetworkAction, type RouterInterface, type Service, type ServerActor } from '@/engine';
 import type { ClockStep, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WaitMove, WhatChip } from '@/levels/contract/incident';
 import { recordEntryId } from '@/levels/contract/tables';
 import {
@@ -125,13 +125,16 @@ export const ORIGIN = {
   home: { id: 'home', endpoint: { kind: 'actor', id: CLIENT.home.id } },
 } satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), the name of the site, which is the first address that is not an IP (02-10), and the name of the blog, the second (02-11). */
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), the name of the site, which is the first address that is not an IP (02-10), the name of the blog, the second (02-11), and, in 02-13, a name that does not exist, the name of a site whose server fails and the name of the shop, which only the hosts file of your laptop knows. */
 export const ADDRESS = {
   ...CHAPTER_1_ADDRESS,
   otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop },
   officePublic: { id: 'ip-office-public', address: IP.officeUplink },
   www: { id: 'name-www', address: HOSTNAME.www },
   blog: { id: 'name-blog', address: HOSTNAME.blog },
+  missing: { id: 'name-missing', address: HOSTNAME.missing },
+  news: { id: 'name-news', address: HOSTNAME.newsWww },
+  shop: { id: 'name-shop', address: HOSTNAME.shop },
 } as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
@@ -178,6 +181,11 @@ export const TASK = {
   webWww: 'nc-to-port-80-of-the-site-name',
   digBlog: 'dig-of-the-blog-name',
   digNewIp: 'dig-of-the-site-name-after-the-move',
+  digMissing: 'dig-of-a-name-that-does-not-exist',
+  digNews: 'dig-of-a-name-whose-server-fails',
+  digShop: 'dig-of-the-shop-name',
+  pingShop: 'ping-to-the-shop-name',
+  digFromAndres: 'dig-from-laptop-andres',
 } as const;
 
 /** The block of the local network of your laptop, the first floor of the office, and its subnet mask: the /24 written as an IP (24 bits in 1 and 8 in 0). */
@@ -241,6 +249,15 @@ export function sendMoveFrom(origin: OriginChip, toId: string, messageId: string
 export function answerTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, ip: string, alias?: boolean): SendTask {
   const { expect } = sendTaskFrom(origin, id, text, messageId, toId, 'replied');
   return { id, text, expect: { ...expect, answer: alias === undefined ? { ip } : { ip, alias } } };
+}
+
+/** The status a dig prints when the resolver could not give an address: the name does not exist (`NXDOMAIN`) or the server that holds its zone failed (`SERVFAIL`). It is the literal output of the tool, the declared exception of D-5. */
+export const DNS_STATUS = { nonexistent: 'NXDOMAIN', failed: 'SERVFAIL' } as const satisfies Record<string, DnsStatus>;
+
+/** Returns the task of a send incident that expects what a message sent from this terminal to a name ends in: the resolver answered, and the status of its answer is this one, with no address. */
+export function statusTaskFrom(origin: OriginChip, id: string, text: string, messageId: string, toId: string, status: (typeof DNS_STATUS)[keyof typeof DNS_STATUS]): SendTask {
+  const { expect } = sendTaskFrom(origin, id, text, messageId, toId, 'replied');
+  return { id, text, expect: { ...expect, status } };
 }
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */
@@ -330,8 +347,19 @@ const DNS_SERVICES: Service[] = [
   { protocol: 'tcp', port: PORT.dns, listen: 'all' },
 ];
 
+type Upstreams = NonNullable<NonNullable<ServerActor['dns']>['upstreams']>;
+
+/** The authoritative server a resolver asks for the zone of the site (02-10), and the one it asks for the zone of the news site (02-13). */
+const SITE_UPSTREAM: Upstreams[number] = { zone: DOMAIN.site, serverId: SERVER.authoritative.id };
+const NEWS_UPSTREAM: Upstreams[number] = { zone: DOMAIN.news, serverId: SERVER.news.id };
+
+/** Returns the `dns` of a resolver that asks these authoritative servers and stores nothing yet. */
+function resolverDns(upstreams: Upstreams): NonNullable<ServerActor['dns']> {
+  return { role: 'resolver', upstreams };
+}
+
 /** The `dns` of the resolver before it stores anything: its role and the server it asks for the zone of the game. */
-const RESOLVER_DNS: NonNullable<ServerActor['dns']> = { role: 'resolver', upstreams: [{ zone: DOMAIN.site, serverId: SERVER.authoritative.id }] };
+const RESOLVER_DNS = resolverDns([SITE_UPSTREAM]);
 
 /** The interfaces of router-destino once servidor-dns and servidor-autoritativo hang from it. */
 const NAME_SERVER_INTERFACES: RouterInterface[] = [
@@ -372,13 +400,16 @@ export const WRONG_RECORDS: NetworkAction = {
 /** The second of the game clock at which the old answer of www.lucia.example expires in the cache of servidor-dns. */
 export const OLD_ANSWER_SECONDS = 240;
 
+/** The interfaces of router-destino once servidor-nuevo hangs from it too (02-12). */
+const MOVED_SITE_INTERFACES: RouterInterface[] = [...NAME_SERVER_INTERFACES, { ip: IP.destinationFreshServer, faces: SERVER.fresh.id }];
+
 /** What 02-12 changes: the site moves to servidor-nuevo, servidor-autoritativo answers its IP for www.lucia.example, and servidor-dns still holds the old answer until second 240 of the game clock. */
 export const MOVED_SITE: NetworkAction[] = [
   {
     type: 'addActor',
     actor: { id: SERVER.fresh.id, name: SERVER.fresh.name, ip: IP.freshServer, kind: 'server', latencyMs: SERVER_MS, services: [tcpService(PORT.web), tcpService(PORT.secureWeb)] },
   },
-  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: [...NAME_SERVER_INTERFACES, { ip: IP.destinationFreshServer, faces: SERVER.fresh.id }] },
+  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: MOVED_SITE_INTERFACES },
   {
     type: 'setDns',
     ownerId: SERVER.authoritative.id,
@@ -392,6 +423,32 @@ export const WAIT = {
   oneMinute: { id: 'one-minute', label: 'Esperar 1 min', seconds: 60 },
   fiveMinutes: { id: 'five-minutes', label: 'Esperar 5 min', seconds: 300 },
 } as const satisfies Record<string, ClockStep>;
+
+/** The hosts file of tu-laptop in 02-13: one line, which sends the name of the shop to the server of the internet. servidor-internet still has that IP after 02-12, which moved only www. */
+const SHOP_HOSTS: HostLine[] = [{ name: HOSTNAME.shop, ip: IP.server }];
+
+/** The interfaces of router-destino once servidor-autoritativo-noticias hangs from it too (02-13). */
+const NEWS_INTERFACES: RouterInterface[] = [...MOVED_SITE_INTERFACES, { ip: IP.destinationNewsAuthoritative, faces: SERVER.news.id }];
+
+/** What 02-13 changes: servidor-autoritativo-noticias, which holds the zone noticias.example, appears in the internet and fails, so it answers nothing; servidor-dns learns that it is the server to ask for that zone (an update replaces the `dns`, so it restates the zone of the site and holds no cache: the answer 02-12 left in it is not carried over); tu-laptop gets a hosts file with one line, tienda.lucia.example to 198.51.100.50; and laptop-andres uses the printer as its DNS server, which has no program on port 53. router-destino gets the interface of the new server (an update replaces the list, so it restates those it had). The new server is a piece, so the text does not have to name it, but the report does, because it is the cause of a SERVFAIL. */
+export const NAME_FAILURES: NetworkAction[] = [
+  {
+    type: 'addActor',
+    actor: {
+      id: SERVER.news.id,
+      name: SERVER.news.name,
+      ip: IP.newsAuthoritative,
+      kind: 'server',
+      latencyMs: SERVER_MS,
+      services: DNS_SERVICES,
+      dns: { role: 'authoritative', zones: [zoneOf(DOMAIN.news, [])], failing: true },
+    },
+  },
+  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: NEWS_INTERFACES },
+  { type: 'setDns', ownerId: SERVER.resolver.id, dns: resolverDns([SITE_UPSTREAM, NEWS_UPSTREAM]) },
+  { type: 'setHosts', deviceId: DEVICE.you.id, hosts: SHOP_HOSTS },
+  { type: 'setDnsServer', deviceId: DEVICE.andres.id, server: IP.printer },
+];
 
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
 export const OFFICE_ROUTES = {
@@ -479,8 +536,8 @@ export const RECORDS_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, SERVER
 /** The ids of the pieces 02-12 draws: those of 02-11 and the server the site moved to. */
 export const CACHE_PIECES: string[] = [...RECORDS_PIECES, SERVER.fresh.id];
 
-/** The ids of the pieces 02-13 draws: your laptop, laptop-andres and the printer that is its resolver, the resolver, both authoritative servers and the server of the internet. */
-export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVICE.printer.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.news.id, SERVER.internet.id];
+/** The ids of the pieces 02-13 draws: your laptop, laptop-andres and the printer that is its resolver, the router between the floors, which also translates the questions that leave the office, the resolver, both authoritative servers and the server of the internet. */
+export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVICE.printer.id, ROUTER.office.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.news.id, SERVER.internet.id];
 
 /** Returns the move that writes a route in the table of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
 export function routeMove(destinationId: string, nextHopId: string): PlaceEntryMove {

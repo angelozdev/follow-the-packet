@@ -12,7 +12,7 @@ import { pieceDomId } from '@/scene/overlay/piece-label';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const WIDE = 1500;
-const SUBPIXEL_PX = 0.5;
+const FALLBACK_FONT_DRIFT_PX = 1;
 const MODEL_SLACK_PX = 2;
 const LONG_RUN = 100;
 const FONT_SIZE_PX = 12;
@@ -107,8 +107,8 @@ describe('the labels of the map in the browser of the tests', () => {
       expect(measured.some(({ locked, lines }) => locked && lines === 2), 'a label of two lines with the lock').toBe(true);
       expect(measured.some(({ alert, lines }) => alert && lines === 2), 'a label of two lines with the alert').toBe(true);
       expect(measured.some(({ locked, alert, lines }) => locked && alert && lines === 1), 'a label of one line with both').toBe(true);
-      const outside = measured.filter(({ dom, model }) => dom > model + SUBPIXEL_PX || dom < model - MODEL_SLACK_PX).map(({ incident, id, locked, alert, dom, model }) => `${incident} ${id}${locked ? ' locked' : ''}${alert ? ' alert' : ''}: ${dom.toFixed(2)} px drawn, ${model} px in the model`);
-      expect(outside).toEqual([]);
+      const outside = measured.filter(({ dom, model }) => dom > model + FALLBACK_FONT_DRIFT_PX || dom < model - MODEL_SLACK_PX).map(({ incident, id, locked, alert, dom, model }) => `${incident} ${id}${locked ? ' locked' : ''}${alert ? ' alert' : ''}: ${dom.toFixed(2)} px drawn, ${model} px in the model`);
+      expect(outside, `at most ${FALLBACK_FONT_DRIFT_PX} px over the model: the fallback monospaced font of the browser of the tests advances 0.602 em and IBM Plex Mono, which the player gets, advances ${ADVANCE_EM} em, so the drift grows with the characters of the name (0.77 px at the 32 of the longest)`).toEqual([]);
     },
   );
 
