@@ -1,14 +1,15 @@
 # tests/e2e
 
-Playwright tests against the production build (`pnpm e2e`, on its own port from 4183 to 4282: see «Port and parallel suites»). Since Task M23 of the 2D plan there are six, and they play the game as a student does: through the router, the roadmap and the progress saved in the browser. Whatever measures a box, a style or a click inside one screen is not here: it runs in Vitest, in jsdom (`src/**/*.test.tsx`) or in headless Chromium (`src/**/*.browser.test.tsx`, `pnpm test:browser`). A test belongs here only when it needs the real build.
+Playwright tests against the production build (`pnpm e2e`, on its own port from 4183 to 4282: see «Port and parallel suites»). Since Task M23 of the 2D plan there were six; Task 33 of the chapter 2 plan added a seventh, and they play the game as a student does: through the router, the roadmap and the progress saved in the browser. Whatever measures a box, a style or a click inside one screen is not here: it runs in Vitest, in jsdom (`src/**/*.test.tsx`) or in headless Chromium (`src/**/*.browser.test.tsx`, `pnpm test:browser`). A test belongs here only when it needs the real build.
 
-## The six tests
+## The seven tests
 
 - `chapter-1/chapter-1.spec.ts`: `chapter 1 is played from 01-01 to 01-14, each incident opening the next, with 3 stars each`. It ends on the roadmap: 04-01 still locked, and the first incident of chapter 2 open.
 - `chapter-2/chapter-2.spec.ts`: `chapter 2 is played from 02-01 to 02-09, each incident opening the next, with 3 stars each`. It plays `CHAPTER_2` (`chapter-2/chapter-2-play.ts`), so Task 34 appends 02-10 to 02-14 (their play functions are written by the content tasks 29 to 33) to that list and to the title.
 - `incidents.spec.ts`: `04-01 and 04-02 reach 3 stars, and the progress survives a reload`.
 - `roadmap.spec.ts`: `the roadmap loads every chapter, grouped by level, without console errors`. `SOON_CHAPTER_COUNT` drops by one with each chapter that gets its first incident.
 - `progress.spec.ts`: `the stars saved in the browser come back after a reload and open what they should`: an incident opened by the star before it, one opened by its own stars although the one before has none (`04-01`, and `01-14` after `01-13`), and ones still locked.
+- `progress.spec.ts` also holds `04-01 opens once 02-14 has a star` (Task 33): it starts the page with `CHAPTER_2_DONE` minus the stars of `02-14` (`startWithProgress`), sees `02-14` open and `04-01` locked, saves one star on `02-14` and reloads, sees `04-01` open and enters it from the roadmap. Task 34 lists a near-identical `04-01 opens after 02-14 has a star`: it is this test, not another.
 - `phone.spec.ts`: `the first incident is played with a touch at 390×844: no horizontal scroll and every piece within reach`. It taps (`hasTouch`), it does not click, and it takes the `isReachable` of `src/testing/card-boxes.ts` to the page for each label of the map.
 
 ## Helpers
@@ -28,11 +29,11 @@ A test gives the same result in every run. Never `retries`, never a fixed wait, 
 
 ## Running only some specs
 
-- One spec: `pnpm e2e tests/e2e/progress.spec.ts`. One test: add `-g "<part of its title>"`. Repeat it to prove it does not flake: `--repeat-each=10`. List without running: `--list`, which must show exactly the six titles above.
+- One spec: `pnpm e2e tests/e2e/progress.spec.ts`. One test: add `-g "<part of its title>"`. Repeat it to prove it does not flake: `--repeat-each=10`. List without running: `--list`, which must show exactly the seven titles above.
 - `--only-changed` is not used: it follows the files that the tests import, and these tests open the game in the browser and import almost none of its code (a change in `src/ui/incident/use-inspection.ts` selects 0 tests and ends with exit code 0, verified on 2026-10-11).
 
 ## When to run what
 
-- Each task: `pnpm check:fast` (types, lint, structure, jscpd and Vitest, no browser) and, for a change that touches a screen, `pnpm test:browser`. The six e2e run when a task closes a block, before a merge, and with `pnpm check`, which is `pnpm check:fast`, `pnpm test:browser` and `pnpm e2e`.
+- Each task: `pnpm check:fast` (types, lint, structure, jscpd and Vitest, no browser) and, for a change that touches a screen, `pnpm test:browser`. The seven e2e run when a task closes a block, before a merge, and with `pnpm check`, which is `pnpm check:fast`, `pnpm test:browser` and `pnpm e2e`.
 - A failing e2e is compared with the base: the last commit whose full `pnpm check` passed. If it fails there too, it is not of the task: write it in the backlog (`docs/plans/2026-10-08-follow-the-packet-followups.md`) and do not chase it. If it passes there, the regression belongs to the block: fix it inside the block.
 - Never two suites at once in the same folder.

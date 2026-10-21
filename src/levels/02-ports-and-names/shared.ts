@@ -1,7 +1,7 @@
 import { nameTag } from '@/copy';
 import { RECORD_TTL, ROUTE_DEFAULT, zoneOf, type AnswerRecord, type DnsStatus, type HostLine, type Lan, type NetworkAction, type RouterInterface, type Service, type ServerActor } from '@/engine';
-import type { ClockStep, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WaitMove, WhatChip } from '@/levels/contract/incident';
-import { recordEntryId } from '@/levels/contract/tables';
+import type { CaseSpec, ClockStep, ExpectedOutcome, Flow, FlowKind, FromChip, MessageChip, OriginChip, PlaceEntryMove, RemoveEntryMove, SendMove, SendTask, SettingSpec, TableSpec, WaitMove, WhatChip } from '@/levels/contract/incident';
+import { recordEntryId, routeEntryId } from '@/levels/contract/tables';
 import {
   ADDRESS as CHAPTER_1_ADDRESS,
   DEVICE as CHAPTER_1_DEVICE,
@@ -11,6 +11,7 @@ import {
   FROM as CHAPTER_1_FROM,
   HOP_MS,
   IP as CHAPTER_1_IP,
+  LOOP_PIECES,
   LUCIA_FIREWALL,
   MESSAGE as CHAPTER_1_MESSAGE,
   NAME as CHAPTER_1_NAME,
@@ -19,13 +20,14 @@ import {
   ROUTER as CHAPTER_1_ROUTER,
   SERVER as CHAPTER_1_SERVER,
   SERVER_MS,
+  SERVER_RANGE,
   WHAT as CHAPTER_1_WHAT,
   addressChip,
   backToOffice,
   officeDevice,
 } from '@/levels/01-first-day/shared';
 
-export { CONCEPT, FIREWALL, LESSON, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
+export { CONCEPT, FIREWALL, LESSON, LOOP, LOOP_CAUSE, PING_WITH_TTL, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
 
 export const PORT = {
   ssh: 22,
@@ -125,7 +127,7 @@ export const ORIGIN = {
   home: { id: 'home', endpoint: { kind: 'actor', id: CLIENT.home.id } },
 } satisfies Record<string, OriginChip>;
 
-/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), the name of the site, which is the first address that is not an IP (02-10), the name of the blog, the second (02-11), and, in 02-13, a name that does not exist, the name of a site whose server fails and the name of the shop, which only the hosts file of your laptop knows. */
+/** The address chips chapter 2 sends to: those of chapter 1, one id and one address each, the laptop of the other office (the printer of the other office is `otherOffice`, from chapter 1), the public IP of router-oficina, which is where a client outside the office writes to (02-09), the name of the site, which is the first address that is not an IP (02-10), the name of the blog, the second (02-11), and, in 02-13, a name that does not exist, the name of a site whose server fails and the name of the shop, which only the hosts file of your laptop knows. In 02-14 it also has the name of the site with one letter too many. */
 export const ADDRESS = {
   ...CHAPTER_1_ADDRESS,
   otherLaptop: { id: 'ip-other-office-laptop', address: IP.otherOfficeLaptop },
@@ -135,6 +137,7 @@ export const ADDRESS = {
   missing: { id: 'name-missing', address: HOSTNAME.missing },
   news: { id: 'name-news', address: HOSTNAME.newsWww },
   shop: { id: 'name-shop', address: HOSTNAME.shop },
+  mistyped: { id: 'name-mistyped', address: HOSTNAME.typo },
 } as const;
 
 /** Returns the message of an `nc -vz -w 3` to this port, such as `nc · puerto 3000`: the port is part of the chip and not a tray of its own, so the terminal keeps its three trays. */
@@ -144,6 +147,7 @@ function ncMessage(port: number): MessageChip {
 
 export const MESSAGE = {
   ...CHAPTER_1_MESSAGE,
+  ncSsh: ncMessage(PORT.ssh),
   ncApp: ncMessage(PORT.app),
   ncDatabase: ncMessage(PORT.database),
   ncMysql: ncMessage(PORT.mysql),
@@ -450,6 +454,18 @@ export const NAME_FAILURES: NetworkAction[] = [
   { type: 'setDnsServer', deviceId: DEVICE.andres.id, server: IP.printer },
 ];
 
+/** What case 1 of 02-14 changes: the program of servidor-nuevo that answers on TCP port 80 now listens only on 127.0.0.1, the address of the server itself. www.lucia.example points to that server since 02-12. */
+export const SITE_ON_LOOPBACK: NetworkAction = { type: 'setListenAddress', ownerId: SERVER.fresh.id, protocol: 'tcp', port: PORT.web, listen: 'loopback' };
+
+/** What case 3 of 02-14 changes: the hosts file of tu-laptop has an old line for tienda.lucia.example, 198.51.100.70, an IP nobody has, and servidor-autoritativo gets an A record for that name that points to 198.51.100.50, the server of the internet. */
+export const STALE_SHOP: NetworkAction[] = [
+  { type: 'setHosts', deviceId: DEVICE.you.id, hosts: [{ name: HOSTNAME.shop, ip: IP.staleHost }] },
+  { type: 'addRecord', serverId: SERVER.authoritative.id, record: addressRecord(HOSTNAME.shop, IP.server) },
+];
+
+/** What case 4 of 02-14 changes: router-oficina loses its default route and keeps the others, so it has a route to the other office and none to the rest of the world. */
+export const DEFAULT_ROUTE_LOST: NetworkAction = { type: 'removeRoute', routerId: ROUTER.office.id, to: ROUTE_DEFAULT };
+
 /** The ids of the table of routes of router-oficina in 02-07 and of its chips: the destinations the player may write (everything, the other office or only its printer) and the routers each may be handed to (the provider or router-sucursal). */
 export const OFFICE_ROUTES = {
   table: 'office-routes',
@@ -471,6 +487,30 @@ export const OFFICE_ROUTES_TABLE: TableSpec = {
     nextHop: [
       { id: OFFICE_ROUTES.via.provider, label: `${IP.provider} ${nameTag(ROUTER.provider.name)}`, value: ROUTER.provider.id },
       { id: OFFICE_ROUTES.via.branch, label: `${IP.branchLink} ${nameTag(ROUTER.branch.name)}`, value: ROUTER.branch.id },
+    ],
+  },
+};
+
+/** The ids of the table of routes of router-proveedor that case 5 of 02-14 lets the player edit and of its chips: the destinations (everything, or the block of the servers of the internet) and the routers each may be handed to (router-oficina or router-destino). */
+export const PROVIDER_ROUTES_FIX = {
+  table: 'provider-routes',
+  to: { anywhere: 'to-anywhere', servers: 'to-servers' },
+  via: { office: 'via-office', destination: 'via-destination' },
+} as const;
+
+/** The table of routes of router-proveedor that the fix of case 5 of 02-14 lets the player edit. A destination is written as the table shows it and a next hop as the IP of the router it is handed to, with its name. */
+export const PROVIDER_ROUTES_TABLE: TableSpec = {
+  id: PROVIDER_ROUTES_FIX.table,
+  kind: 'routes',
+  ownerId: ROUTER.provider.id,
+  trays: {
+    destination: [
+      { id: PROVIDER_ROUTES_FIX.to.anywhere, label: '0.0.0.0/0', value: ROUTE_DEFAULT },
+      { id: PROVIDER_ROUTES_FIX.to.servers, label: SERVER_RANGE, value: SERVER_RANGE },
+    ],
+    nextHop: [
+      { id: PROVIDER_ROUTES_FIX.via.office, label: `${IP.officeUplink} ${nameTag(ROUTER.office.name)}`, value: ROUTER.office.id },
+      { id: PROVIDER_ROUTES_FIX.via.destination, label: `${IP.destination} ${nameTag(ROUTER.destination.name)}`, value: ROUTER.destination.id },
     ],
   },
 };
@@ -539,9 +579,27 @@ export const CACHE_PIECES: string[] = [...RECORDS_PIECES, SERVER.fresh.id];
 /** The ids of the pieces 02-13 draws: your laptop, laptop-andres and the printer that is its resolver, the router between the floors, which also translates the questions that leave the office, the resolver, both authoritative servers and the server of the internet. */
 export const FAILURES_PIECES: string[] = [DEVICE.you.id, DEVICE.andres.id, DEVICE.printer.id, ROUTER.office.id, SERVER.resolver.id, SERVER.authoritative.id, SERVER.news.id, SERVER.internet.id];
 
-/** Returns the move that writes a route in the table of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
-export function routeMove(destinationId: string, nextHopId: string): PlaceEntryMove {
-  return { type: 'placeEntry', tableId: OFFICE_ROUTES.table, picks: { destination: destinationId, nextHop: nextHopId } };
+/** The ids of the pieces case 2 of 02-14 draws, and the base of the lists of cases 1 and 3, which send by name too: your laptop, the router that translates its questions, and the resolver, where every question goes. */
+export const NAME_TEST_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, SERVER.resolver.id];
+
+/** The ids of the pieces case 1 of 02-14 draws: those of the name tests and servidor-nuevo, which is where www.lucia.example points and which refuses the `nc` on port 80. */
+export const LOOPBACK_SITE_PIECES: string[] = [...NAME_TEST_PIECES, SERVER.fresh.id];
+
+/** The ids of the pieces case 3 of 02-14 draws: the name tests, the authoritative server whose record the report names, and the server of the internet whose IP the `dig` gives. */
+export const STALE_SHOP_PIECES: string[] = [...NAME_TEST_PIECES, SERVER.authoritative.id, SERVER.internet.id];
+
+/** The ids of the pieces case 4 of 02-14 draws: your laptop, the router that lost its default route, the router and the printer of the other office that the pings still reach, and the server they no longer reach. */
+export const LOST_WAY_PIECES: string[] = [DEVICE.you.id, ROUTER.office.id, ROUTER.branch.id, DEVICE.branchPrinter.id, SERVER.internet.id];
+
+/** The ids of the pieces case 5 of 02-14 draws: those of the loop of 01-09 and router-destino, which the chips of the fix name as the next hop of the block of the servers. */
+export const LOOP_FIX_PIECES: string[] = [...LOOP_PIECES, ROUTER.destination.id];
+
+/** The ids of the pieces case 7 of 02-14 draws: laptop-andres, the router between the floors and the printer that is its DNS server. */
+export const PRINTER_DNS_PIECES: string[] = [DEVICE.andres.id, ROUTER.office.id, DEVICE.printer.id];
+
+/** Returns the move that writes a route in a table of routes, by default the one of router-oficina of 02-07: the chip picked in the tray of the destination and the one picked in the tray of the next hop. */
+export function routeMove(destinationId: string, nextHopId: string, tableId: string = OFFICE_ROUTES.table): PlaceEntryMove {
+  return { type: 'placeEntry', tableId, picks: { destination: destinationId, nextHop: nextHopId } };
 }
 
 /** Returns the move that moves the clock of the game on by this many seconds, one of the steps the incident offers. */
@@ -558,3 +616,14 @@ export function recordMove(nameId: string, typeId: string, valueId: string): Pla
 export function recordRemoval(name: string, type: AnswerRecord['type'], value: string): RemoveEntryMove {
   return { type: 'removeEntry', tableId: SITE_RECORDS.table, entryId: recordEntryId({ name, type, value }) };
 }
+
+/** The fix of case 5 of 02-14: the table of routes of router-proveedor, and the task that the ping to servidor-internet comes back. Its reference solution takes the default route away, which sent everything back to router-oficina, writes the block of the servers towards router-destino and sends the ping again, because every change of the world clears the sends. */
+export const LOOP_FIX: NonNullable<CaseSpec['fix']> = {
+  tables: [PROVIDER_ROUTES_TABLE],
+  tasks: [sendTaskFrom(ORIGIN.you, TASK.serverPing, `Que el {{ping}} a ${NAME.server} vuelva.`, MESSAGE.ping.id, ADDRESS.server.id, 'replied', SERVER.internet.id)],
+  solution: [
+    { type: 'removeEntry', tableId: PROVIDER_ROUTES_FIX.table, entryId: routeEntryId({ to: ROUTE_DEFAULT }) },
+    routeMove(PROVIDER_ROUTES_FIX.to.servers, PROVIDER_ROUTES_FIX.via.destination, PROVIDER_ROUTES_FIX.table),
+    sendMoveFrom(ORIGIN.you, ADDRESS.server.id, MESSAGE.ping.id),
+  ],
+};

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { LevelEntry } from '@/levels';
-import { PROGRESS_KEY, isUnlocked, loadProgress, saveStars } from './progress';
+import { INCIDENTS, type LevelEntry } from '@/levels';
+import { PROGRESS_KEY, isUnlocked, loadProgress, saveStars, type Progress } from './progress';
 
 const OLD_KEY = 'follow-the-packet:progress:v1';
 
@@ -99,6 +99,15 @@ describe('progress along the chapters of the game', () => {
     expect(isUnlocked(FIRST_OF_CHAPTER_2, { [LAST_OF_CHAPTER_1.id]: 1 }, CHAIN)).toBe(true);
     expect(isUnlocked(FIRST_OF_CHAPTER_4, { [LAST_OF_CHAPTER_1.id]: 3 }, CHAIN)).toBe(false);
     expect(isUnlocked(FIRST_OF_CHAPTER_4, { [LAST_OF_CHAPTER_2.id]: 1 }, CHAIN)).toBe(true);
+  });
+
+  it('in the registered course 04-01 opens once 02-14 has a star, and not with 02-13 or 01-14', () => {
+    const course = INCIDENTS.map(({ id, chapter, order, title, role }): LevelEntry => ({ id, chapter, order, title, role }));
+    const first = course.find(({ id }) => id === FIRST_OF_CHAPTER_4.id);
+    expect(first && course.at(course.indexOf(first) - 1)?.id).toBe(LAST_OF_CHAPTER_2.id);
+    const without: Progress[] = [{ '01-14': 3 }, { '02-13': 3 }, {}];
+    expect(first && without.map((progress) => isUnlocked(first, progress, course))).toEqual([false, false, false]);
+    expect(first && isUnlocked(first, { [LAST_OF_CHAPTER_2.id]: 1 }, course)).toBe(true);
   });
 
   it('an incident with a star stays open even when the one before it has none', () => {

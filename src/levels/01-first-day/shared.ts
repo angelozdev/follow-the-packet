@@ -11,7 +11,7 @@ export const HOP_MS = 1;
 const PROVIDER_MS = 8;
 const DESTINATION_MS = 12;
 export const SERVER_MS = 20;
-const SERVER_RANGE = '198.51.100.0/24';
+export const SERVER_RANGE = '198.51.100.0/24';
 const LOCALHOST = 'localhost';
 const SINGLE_ADDRESS = '/32';
 

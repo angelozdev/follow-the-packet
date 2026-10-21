@@ -86,6 +86,18 @@ const RESOLVER = 'servidor-dns';
 const CACHE_CARD = 'Caché de servidor-dns';
 const ONE_MINUTE = 'Esperar 1 min';
 const CLOCK_NOTE = 'El tiempo pasa para todo el mapa.';
+const RIGHT_CAUSES_BEFORE_THE_LOOP = [
+  /Porque el servicio escucha solo en 127\.0\.0\.1/,
+  /Porque el nombre está mal escrito y no existe/,
+  /Porque el archivo hosts de tu-laptop tiene una línea vieja/,
+  /Porque router-oficina no tiene ruta por defecto/,
+];
+const THIRD_CAUSE_OF_THE_LOOP = /router-oficina descarta lo que va al servidor/;
+const PROVIDER = 'router-proveedor';
+const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
+const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
+const SERVERS_BLOCK = '198.51.100.0/24';
+const DESTINATION_HOP = '203.0.113.2 router-destino';
 const PING = 'ping';
 const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
@@ -239,6 +251,27 @@ async function reachTheOfficeRoutes(): Promise<void> {
   await addRoute(table, OTHER_OFFICE_BLOCK, BRANCH_HOP);
 }
 
+async function reachTheLoopCase(): Promise<void> {
+  for (const cause of RIGHT_CAUSES_BEFORE_THE_LOOP) {
+    await openTheCaseQuestion();
+    await click(button(cause, false));
+    await click(button(NEXT_CASE));
+  }
+}
+
+async function openTheQuestionOfTheLoopCase(): Promise<void> {
+  await reachTheLoopCase();
+  await openTheCaseQuestion();
+}
+
+async function reachTheProviderRoutes(): Promise<void> {
+  await reachTheLoopCase();
+  await openByKeyboard(PROVIDER);
+  const routes = card(PROVIDER_ROUTES_CARD);
+  await click(routes.getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }));
+  await addRoute(routes, SERVERS_BLOCK, DESTINATION_HOP);
+}
+
 async function reachTheTranslations(): Promise<void> {
   for (const laptop of [YOUR_LAPTOP, LUCIA]) {
     const terminal = await openTerminal(laptop);
@@ -291,6 +324,7 @@ const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing plac
 const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: doneOf(YOUR_LAPTOP) };
 const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, a tab of its card', level: '02-06', reach: reachYourRoutes, last: doneOf(YOUR_ROUTES_CARD) };
 const THE_EDITABLE_ROUTES: Scene = { name: 'the routing table of router-oficina, with its two routes written and its trays', level: '02-07', reach: reachTheOfficeRoutes, last: doneOf(OFFICE_ROUTES_CARD) };
+const THE_PROVIDER_ROUTES: Scene = { name: 'the routes of router-proveedor, the fix of the loop, with the default route taken away and a route written', level: '02-14', reach: reachTheProviderRoutes, last: doneOf(PROVIDER_ROUTES_CARD) };
 const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: doneOf(TRANSLATIONS_CARD) };
 const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: doneOf(RECORDS_CARD) };
 const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: doneOf(CACHE_CARD) };
@@ -305,6 +339,7 @@ const SCENES: Scene[] = [
   { name: 'the result', level: '01-11', reach: finishTheGuard, last: () => page.getByRole('link', { name: BACK_TO_ROADMAP, exact: true }) },
   { name: 'the case, with its question open', level: '01-14', reach: openTheCaseQuestion, last: () => button(THIRD_CAUSE_OF_CASE_1, false) },
   { name: 'the case, answered', level: '01-14', reach: answerTheCaseQuestion, last: () => button(NEXT_CASE) },
+  { name: 'the case with a fix, its tasks and its question open', level: '02-14', reach: openTheQuestionOfTheLoopCase, last: () => button(THIRD_CAUSE_OF_THE_LOOP, false) },
   THE_TERMINAL,
   { name: 'the terminal with a piece inspected', level: '01-11', reach: inspectBesideTheTerminal, last: doneOf(TERMINAL) },
   THE_PRINTER,
@@ -313,6 +348,7 @@ const SCENES: Scene[] = [
   THE_SERVICES,
   THE_ROUTES,
   THE_EDITABLE_ROUTES,
+  THE_PROVIDER_ROUTES,
   THE_TRANSLATIONS,
   THE_RECORDS,
   THE_CACHE,
@@ -320,7 +356,7 @@ const SCENES: Scene[] = [
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);

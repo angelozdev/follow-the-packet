@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TABLE_TEXT, TERMS, toPlainText, type TermId } from '@/copy';
-import { RECORD_TTL, applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, type Network } from '@/engine';
-import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
-import { changedNames } from '@/levels/contract/changes';
+import { RECORD_TTL, applyAction, extraOpenings, ipInCidr, isLoopbackIpv4, maskOf, networkSchema, stopStep, type Network } from '@/engine';
+import { INCIDENTS, caseWorld, isGuided, sendCombinations, solvedWorld, startWorld, type CaseSpec, type Incident } from '@/levels';
+import { SERVER_RANGE } from '@/levels/01-first-day/shared';
+import { changedNames, unnamedChanges } from '@/levels/contract/changes';
+import { routersCrossedByTraceroutes } from '@/levels/contract/chips';
 import { incidentTexts, knownTerms, namedTerms, unknownTerms } from '@/levels/ladder';
 import {
   ADDRESS,
@@ -13,6 +15,7 @@ import {
   BRANCH_LAN,
   CACHE_PIECES,
   CLIENT,
+  DEFAULT_ROUTE_LOST,
   DEVICE,
   DNS_STATUS,
   DOMAIN,
@@ -21,6 +24,8 @@ import {
   FLOORS_PIECES,
   HOSTNAME,
   IP,
+  LOOP,
+  LOOP_FIX,
   LUCIA_SERVICES,
   MESSAGE,
   NAMES_PIECES,
@@ -30,7 +35,9 @@ import {
   ORIGIN,
   OTHER_OFFICE,
   OUTSIDE_PIECES,
+  PING_WITH_TTL,
   PORT,
+  PROVIDER_ROUTES_FIX,
   RECORDS_PIECES,
   RECORD_TYPE,
   REFUSAL_PIECES,
@@ -39,6 +46,7 @@ import {
   ROUTES_PIECES,
   SERVER,
   SERVICES_PIECES,
+  SITE_ON_LOOPBACK,
   SITE_RECORDS,
   SITE_RECORDS_TABLE,
   SSH_AND_FIREWALL,
@@ -46,6 +54,7 @@ import {
   SSH_FROM,
   SSH_PIECES,
   SSH_WHAT,
+  STALE_SHOP,
   TASK,
   TRANSLATION_PIECES,
   WAIT,
@@ -56,8 +65,9 @@ import {
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
 import { drawnSends } from './flow-runs';
-import { clockSteps, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
+import { caseClosed, clockSteps, currentCase, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
 import { taskHolds } from './tasks';
+import { caseCard, caseSummary } from './view/cards/case-card';
 import { terminalLine } from './view/cards/terminal/terminal-card';
 import { identifyCard } from './view/cards/identify-card';
 import { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
@@ -108,6 +118,8 @@ const EXCUSED_USES: ExcusedUse[] = [
 const DOCUMENTATION_BLOCKS = ['192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'];
 const PRIVATE_BLOCKS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 const DOCUMENTATION_TLD = '.example';
+const CHAPTER_OF_THE_VPC = 4;
+const LATER_TOPICS = /\b(HTTPS?|TLS|certificados?|URLs?|stateful|stateless|NACLs?|subnets?|Route 53|Alias|IPv6|ARP|MAC|VPN)\b/;
 
 const sorted = <Value extends string>(values: Value[]): Value[] => [...values].sort();
 const orderOf = (id: string): number => Number(id.slice(id.indexOf('-') + 1));
@@ -228,6 +240,31 @@ describe('the term ladder of chapter 2 in its incidents', () => {
 
   it('introduces, incident by incident, the terms of the approved design', () => {
     for (const incident of builtOfChapter2()) expect(sorted(incident.introduces), incident.id).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[incident.id] ?? []));
+  });
+
+  it('introduces exactly the 53 terms of the approved design, each in its incident', () => {
+    const chapter = builtOfChapter2();
+    expect(chapter.map(({ id }) => id)).toEqual(Object.keys(TERMS_OF_THE_APPROVED_DESIGN));
+    const introduced = chapter.flatMap((incident) => incident.introduces);
+    expect(introduced).toHaveLength(APPROVED_TERM_COUNT);
+    expect(new Set(introduced).size).toBe(APPROVED_TERM_COUNT);
+    expect(sorted(introduced)).toEqual(sorted(APPROVED_TERMS));
+    for (const incident of chapter) expect(sorted(incident.introduces), incident.id).toEqual(sorted(TERMS_OF_THE_APPROVED_DESIGN[incident.id]));
+    expect(INCIDENTS.filter((incident) => incident.chapter !== CHAPTER).flatMap((incident) => incident.introduces).filter((term) => APPROVED_TERMS.includes(term))).toEqual([]);
+  });
+
+  it('cidr, dns and nat are introduced by chapter 2 and by no incident of chapter 4', () => {
+    const introducing = (term: TermId) => INCIDENTS.filter((incident) => incident.introduces.includes(term)).map(({ id }) => id);
+    expect([introducing('cidr'), introducing('dns'), introducing('nat')]).toEqual([['02-04'], ['02-10'], ['02-08']]);
+    expect(INCIDENTS.filter((incident) => incident.chapter === CHAPTER_OF_THE_VPC).flatMap((incident) => incident.introduces).filter((term) => ['cidr', 'dns', 'nat'].includes(term))).toEqual([]);
+  });
+
+  it('names no topic of the chapters that come later, in any text of chapter 2', () => {
+    const chapter = builtOfChapter2();
+    const definitions = chapter.flatMap((incident) => incident.introduces.map((term) => TERMS[term].definition));
+    const texts = [...chapter.flatMap(incidentTexts).map(plain), ...definitions.map(plain)];
+    expect(texts.filter((text) => LATER_TOPICS.test(text))).toEqual([]);
+    expect(['Entra por HTTPS.', 'Usa un certificado TLS.', 'Es una URL.', 'Un NACL.', 'Una subnet.', 'En Route 53.', 'Con IPv6.', 'Por ARP.', 'Con una MAC.', 'Por una VPN.', 'El firewall es stateful.'].filter((text) => !LATER_TOPICS.test(text))).toEqual([]);
   });
 
   it('no term of the approved design is missing: the ids of the table of the spec equal the ids that 02-01 to 02-14 introduce', () => {
@@ -2317,5 +2354,379 @@ describe('02-13, it does not resolve', () => {
     expect(optionsOf(incident).map(({ feedback }) => plain(feedback)).filter((text) => /^(?:No[.:]|No es eso\.|Eso es\b|Correcto\.)/.test(text))).toEqual([]);
     expect(plain(optionsOf(incident)[0].feedback)).toContain(`${DEVICE.you.name} tiene un solo resolver, ${SERVER.resolver.name}: el dig le preguntó a él. El ping ni siquiera hizo una consulta DNS.`);
     expect(closed.sent).toHaveLength(5);
+  });
+});
+
+describe('02-14, on call', () => {
+  const ON_CALL = '02-14';
+  const PREVIOUS_INCIDENT = '02-13';
+  const CASE_COUNT = 7;
+  const [WWW_CASE, TYPO_CASE, SHOP_CASE, WAY_CASE, LOOP_CASE, FIREWALL_CASE, PRINTER_CASE] = [1, 2, 3, 4, 5, 6, 7];
+  const FIRST_PORT = 51514;
+  const FIRST_PUBLIC_PORT = 40001;
+  const REPLIED = 'replied';
+  const UNREACHABLE = 'unreachable';
+  const DNS_FIELD = 'DNS';
+  const HANDSHAKE_FIELD = 'Saludo de tres pasos';
+  const TRANSLATION_FIELD = 'Traducción';
+  const TRANSLATED_PORT = /:\d+ → .+:\d+$/;
+  const ROUTERS_THAT_WARN_BY_TTL = [[ROUTER.office, IP.router], [ROUTER.provider, IP.provider], [ROUTER.office, IP.router]] as const;
+  const PORTS_OF_THE_FOUR = [FIRST_PORT, FIRST_PORT + 1, FIRST_PORT + 2, FIRST_PORT + 3];
+  const RIGHT_PLACES = [1, 2, 0, 2, 0, 1, 2];
+  const SWITCHED_OFF_OR_DOWN = /apagad|ca[ií]d[oa]|encendid|prendid|desconectad/i;
+  const WEB_VERBS = /\b(abr\w+|entr\w+|carg\w+|naveg\w+|visit\w+|ingres\w+|acced\w+)\b/i;
+  const A_TEST_THAT_DOES_NOT_COME_BACK = [/\b(ping|nc|dig)\b.*\b(no vuelve|no vuelven|no conecta|no obtiene respuesta)\b/i, /\bning[uú]n ping\b.*\bvuelv/i];
+  const NAME_OF_A_PIECE = /\[\[([^\]]+)\]\]/g;
+  const FIRST_SENTENCE_OF_THE_STEPS = 'Haz tres pruebas, en orden';
+  const incident = INCIDENTS.find((candidate) => candidate.id === ON_CALL);
+  if (incident?.mechanic !== 'diagnose') throw new Error(`${ON_CALL} is not a diagnose incident`);
+  const { cases } = incident.diagnose;
+  const before = solvedWorld(INCIDENTS, PREVIOUS_INCIDENT);
+  const startOfTheWatch = startWorld(INCIDENTS, ON_CALL);
+  const start = startSession(INCIDENTS, ON_CALL);
+
+  const caseOf = (session: Session): CaseSpec => {
+    const spec = currentCase(session);
+    if (!spec) throw new Error('the session is not on a case');
+    return spec;
+  };
+  const rightPlace = (spec: CaseSpec): number => spec.cause.options.findIndex(({ correct }) => correct);
+  const nameRight = (session: Session): Session => sessionReducer(session, { type: 'nameCause', index: rightPlace(caseOf(session)) });
+  const repaired = (session: Session): Session => (caseOf(session).fix?.solution ?? []).reduce(sessionReducer, session);
+  const closeCase = (session: Session): Session => sessionReducer(nameRight(repaired(session)), { type: 'nextCase' });
+  const atCase = (number: number): Session => Array.from({ length: number - 1 }).reduce<Session>(closeCase, start);
+  const worldOfCase = (number: number): Network => caseWorld(startOfTheWatch, cases[number - 1]);
+  const sendAll = (session: Session): Session => sendCombinations(caseOf(session)).reduce((sent, { fromId, toId, messageId }) => sendingFrom(sent, fromId, toId, messageId), session);
+  const outcomesOf = (session: Session): string[] => session.sent.map((run) => run.trace.outcome);
+  const youSend = (session: Session, address: { id: string }, message: { id: string }): Session => sendingFrom(session, ORIGIN.you.id, address.id, message.id);
+  const printed = (session: Session, address: { id: string }, message: { id: string }): string[] => printedFrom(session, ORIGIN.you.id, address.id, message.id);
+  const stopCodesOf = (session: Session): string => [...new Set(session.sent.filter((run) => !run.replied).map((run) => stopStep(run.trace)?.reason.code ?? 'no-stop'))].sort().join(',');
+  const testsOf = (session: Session): string[] => (caseCard(session)?.origins ?? []).flatMap((origin) => origin.tests.map((test) => plain(test.line)));
+  const translatedBy = (session: Session): string[] => drawnSends(session.sent).flatMap(({ pieceId }) => (inspect(session, pieceId)?.fields ?? []).filter(({ label }) => plain(label) === TRANSLATION_FIELD).map(({ lines }) => plain(lines[0])).filter((line) => TRANSLATED_PORT.test(line)));
+  const textsOf = (spec: CaseSpec): string[] => [spec.report, ...spec.hints, spec.cause.question, ...spec.cause.options.flatMap((option) => [option.text, option.feedback])];
+  const rightFeedbackOf = (spec: CaseSpec): string[] => spec.cause.options.filter(({ correct }) => correct).map(({ feedback }) => feedback);
+  const resolverIdOf = (session: Session, originId: string): string | undefined => {
+    const dnsServer = session.world.devices.find((device) => device.id === originId)?.dnsServer;
+    return [...session.world.devices.map(({ id, privateIp }) => ({ id, ip: privateIp })), ...session.world.actors.map(({ id, ip }) => ({ id, ip }))].find(({ ip }) => ip === dnsServer)?.id;
+  };
+  const hostsOf = (world: Network, deviceId: string) => world.devices.find((device) => device.id === deviceId)?.hosts;
+  const recordNamesOf = (world: Network): string[] => world.actors.flatMap((actor) => (actor.kind === 'server' ? (actor.dns?.zones ?? []).flatMap((zone) => zone.records.map(({ name }) => name)) : []));
+  const routesOf = (world: Network, routerId: string) => world.routers?.find(({ id }) => id === routerId)?.routes;
+  const serviceOf = (world: Network, ownerId: string, port: number) => world.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === ownerId ? (actor.services ?? []) : [])).find((service) => service.port === port);
+
+  it('02-14: case 1 shows the three tests in order and the third is refused', () => {
+    const first = atCase(WWW_CASE);
+    expect(testsOf(first)).toEqual([`dig ${HOSTNAME.www}`, `ping ${HOSTNAME.www}`, `nc -vz -w 3 ${HOSTNAME.www} ${PORT.web}`]);
+    const report = plain(cases[0].report);
+    expect([report.indexOf('dig'), report.indexOf('ping', report.indexOf(FIRST_SENTENCE_OF_THE_STEPS)), report.lastIndexOf('nc')].every((place, index, places) => place > 0 && (index === 0 || place > places[index - 1]))).toBe(true);
+    const tested = [MESSAGE.dig, MESSAGE.ping, MESSAGE.ncWeb].reduce((session, message) => youSend(session, ADDRESS.www, message), first);
+    expect(outcomesOf(tested)).toEqual([REPLIED, REPLIED, 'refused']);
+    const [dig, ping, nc] = tested.sent;
+    expect(dig.trace.dns).toMatchObject({ name: HOSTNAME.www, status: 'NOERROR', viaDig: true });
+    expect(dig.trace.dns?.answers.map(({ value }) => value)).toEqual([IP.freshServer]);
+    expect([ping.trace.destinationId, nc.trace.destinationId]).toEqual([SERVER.fresh.id, SERVER.fresh.id]);
+    expect(nc).toMatchObject({ replied: false, reached: true, blocked: false, warning: null, by: [SERVER.fresh.id] });
+    expect(lastBox(tested)[HANDSHAKE_FIELD]).toEqual([`1. SYN, de ${DEVICE.you.name} a ${SERVER.fresh.name}`, `2. RST, de ${SERVER.fresh.name} a ${DEVICE.you.name}`]);
+    expect(printed(tested, ADDRESS.www, MESSAGE.ncWeb).at(-1)).toBe('Ncat: Connection refused.');
+    expect(serviceOf(tested.world, SERVER.fresh.id, PORT.web)).toMatchObject({ protocol: 'tcp', listen: 'loopback' });
+    expect(caseCard(tested)?.origins[0].tests.every((test) => test.sent)).toBe(true);
+  });
+
+  it('02-14: case 1 numbers the dig, the question of the ping, the question of the nc and the nc from 51514 to 51517, and each leaves its row from 40001', () => {
+    const tested = [MESSAGE.dig, MESSAGE.ping, MESSAGE.ncWeb].reduce((session, message) => youSend(session, ADDRESS.www, message), atCase(WWW_CASE));
+    expect(drawnSends(tested.sent).flatMap(({ trace }) => trace.header?.request.sourcePort ?? [])).toEqual(PORTS_OF_THE_FOUR);
+    expect(translatedBy(tested)).toEqual(PORTS_OF_THE_FOUR.map((port, step) => `${IP.you}:${port} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT + step}`));
+  });
+
+  it('02-14: case 2 ends in NXDOMAIN, the question goes to the resolver and nothing goes to the server', () => {
+    const tested = [MESSAGE.dig, MESSAGE.ncWeb].reduce((session, message) => youSend(session, ADDRESS.mistyped, message), atCase(TYPO_CASE));
+    const [dig, nc] = tested.sent;
+    expect(outcomesOf(tested)).toEqual([REPLIED, 'unresolved']);
+    expect(dig.trace.dns).toMatchObject({ name: HOSTNAME.typo, status: DNS_STATUS.nonexistent, answers: [], viaDig: true });
+    expect(printed(tested, ADDRESS.mistyped, MESSAGE.dig).join('\n')).toContain(`status: ${DNS_STATUS.nonexistent}`);
+    expect(nc.trace.dns).toMatchObject({ status: DNS_STATUS.nonexistent });
+    expect(nc.question?.trace.destinationId, 'the question of the nc goes to the resolver').toBe(SERVER.resolver.id);
+    expect(nc.question?.by).toEqual([SERVER.resolver.id]);
+    expect([nc.replied, nc.reached, nc.trace.destinationId, nc.trace.header, nc.trace.hops]).toEqual([false, false, null, undefined, undefined]);
+    expect(drawnSends(tested.sent).filter(({ trace }) => trace.destinationId !== null).map(({ trace }) => trace.destinationId), 'only the resolver is ever the destination of a packet').toEqual([SERVER.resolver.id, SERVER.resolver.id]);
+    expect(tested.sent.flatMap((run) => [run, ...(run.question ? [run.question] : [])]).filter((run) => run.trace.destinationId === SERVER.fresh.id || run.trace.destinationId === SERVER.internet.id), 'nothing goes to a server of the site').toEqual([]);
+    expect(lastBox(tested)['Resultado']).toEqual(['No salió: el nombre no se pudo convertir en una IP.']);
+  });
+
+  it('02-14: case 3 gets the good ip from dig and sends the ping to the one in the hosts file', () => {
+    const tested = [MESSAGE.dig, MESSAGE.ping].reduce((session, message) => youSend(session, ADDRESS.shop, message), atCase(SHOP_CASE));
+    const [dig, ping] = tested.sent;
+    expect(dig.trace.dns?.answers.map(({ value }) => value)).toEqual([IP.server]);
+    expect(ping.trace.dns).toMatchObject({ name: HOSTNAME.shop, usedHostsFile: true, viaDig: false });
+    expect([ping.trace.outcome, ping.trace.header?.request.destination, ping.trace.notice?.kind, ping.warning?.term]).toEqual([UNREACHABLE, IP.staleHost, 'host-unreachable', 'host-unreachable']);
+    expect(ping.by, 'a router of the internet warns: nobody has the old IP').toEqual([ROUTER.destination.id]);
+    expect(lastBox(tested)[DNS_FIELD]).toEqual([`Antes de mandar el paquete, ${DEVICE.you.name} averigua la IP de ${HOSTNAME.shop}.`, `${DEVICE.you.name} encontró ${HOSTNAME.shop} en su archivo hosts: es ${IP.staleHost}. No preguntó a nadie.`]);
+    expect(hostsOf(tested.world, DEVICE.you.id)).toEqual([{ name: HOSTNAME.shop, ip: IP.staleHost }]);
+    expect(recordNamesOf(tested.world)).toContain(HOSTNAME.shop);
+    expect(tested.world.devices.some(({ privateIp }) => privateIp === IP.staleHost) || tested.world.actors.some(({ ip }) => ip === IP.staleHost), 'nobody has the old IP').toBe(false);
+  });
+
+  it('02-14: case 4 warns Destination Net Unreachable from router-oficina', () => {
+    const tested = sendAll(atCase(WAY_CASE));
+    const [server, branch] = tested.sent;
+    expect(outcomesOf(tested)).toEqual([UNREACHABLE, REPLIED]);
+    expect(server.trace.notice).toMatchObject({ kind: 'net-unreachable', fromId: ROUTER.office.id, fromIp: IP.router });
+    expect(server).toMatchObject({ replied: false, reached: false, blocked: false, by: [ROUTER.office.id], warning: { term: 'net-unreachable' } });
+    expect(branch).toMatchObject({ replied: true, by: [DEVICE.branchPrinter.id] });
+    expect(routesOf(tested.world, ROUTER.office.id)).toEqual([{ to: BRANCH_LAN.cidr, next: ROUTER.branch.id }]);
+    expect(routesOf(before, ROUTER.office.id)?.map(({ to }) => to)).toContain('default');
+    expect(tested.world.firewalls.find(({ id }) => id === FIREWALL.you)?.outbound.map(({ what }) => what.kind), 'the firewall of your laptop lets everything out').toEqual(['all']);
+  });
+
+  it('02-14: case 5 alternates two routers in its Time Exceeded and closes only with the cause named and the fix done', () => {
+    const looped = atCase(LOOP_CASE);
+    const byTtl = ([1, 2, 3] as const).map((ttl) => youSend(looped, ADDRESS.server, PING_WITH_TTL[ttl]).sent[0].trace.notice);
+    expect(byTtl).toEqual(ROUTERS_THAT_WARN_BY_TTL.map(([router, ip]) => ({ kind: 'time-exceeded', fromId: router.id, fromIp: ip })));
+    const traced = youSend(looped, ADDRESS.server, MESSAGE.traceroute).sent[0];
+    const ips = traced.route?.lines.map((line) => line.ip);
+    expect(new Set(ips)).toEqual(new Set([IP.router, IP.provider]));
+    expect(ips?.every((ip, index) => ip !== ips[index - 1])).toBe(true);
+    const pinged = youSend(looped, ADDRESS.server, MESSAGE.ping);
+    expect(pinged.sent[0]).toMatchObject({ replied: false, trace: { outcome: 'ttl-exceeded' } });
+    const taskIsDone = (session: Session) => caseCard(session)?.repair?.tasks.map(({ done }) => done);
+    expect(taskIsDone(pinged), 'the task of the fix fails before the solution').toEqual([false]);
+    expect(caseCard(pinged)?.repair?.tables.map(({ title }) => plain(title))).toEqual([`Tabla de rutas de ${ROUTER.provider.name}`]);
+    expect(routesOf(looped.world, ROUTER.provider.id)).toEqual([{ to: 'default', next: ROUTER.office.id }]);
+    const namedOnly = nameRight(pinged);
+    expect([caseClosed(namedOnly), taskIsDone(namedOnly)]).toEqual([false, [false]]);
+    const fixedOnly = repaired(looped);
+    expect([caseClosed(fixedOnly), taskIsDone(fixedOnly)]).toEqual([false, [true]]);
+    expect(routesOf(fixedOnly.world, ROUTER.provider.id)).toEqual([{ to: SERVER_RANGE, next: ROUTER.destination.id }]);
+    expect([caseClosed(nameRight(fixedOnly)), caseClosed(repaired(namedOnly))]).toEqual([true, true]);
+    expect(nameRight(fixedOnly).sent[0]).toMatchObject({ replied: true, by: [SERVER.internet.id] });
+  });
+
+  it('02-14: case 5 is not repaired by a route that keeps sending the servers back to router-oficina', () => {
+    const looped = atCase(LOOP_CASE);
+    const sendBack = sessionReducer(looped, routeMove(PROVIDER_ROUTES_FIX.to.servers, PROVIDER_ROUTES_FIX.via.office, PROVIDER_ROUTES_FIX.table));
+    expect(routesOf(sendBack.world, ROUTER.provider.id)?.map(({ to }) => to)).toEqual(['default', SERVER_RANGE]);
+    expect(youSend(sendBack, ADDRESS.server, MESSAGE.ping).sent[0].trace.outcome).toBe('ttl-exceeded');
+    expect(caseClosed(nameRight(youSend(sendBack, ADDRESS.server, MESSAGE.ping)))).toBe(false);
+    const toTheServers = sessionReducer(looped, routeMove(PROVIDER_ROUTES_FIX.to.servers, PROVIDER_ROUTES_FIX.via.destination, PROVIDER_ROUTES_FIX.table));
+    expect(youSend(toTheServers, ADDRESS.server, MESSAGE.ping).sent[0].replied, 'the block of the servers towards router-destino also ends the loop for them, with the default route kept').toBe(true);
+  });
+
+  it('02-14: case 6 is silent towards one port only and the firewall of laptop-lucia is visible', () => {
+    const tested = [MESSAGE.ncSsh, MESSAGE.ncApp].reduce((session, message) => youSend(session, ADDRESS.lucia, message), atCase(FIREWALL_CASE));
+    const [ssh, app] = tested.sent;
+    expect(outcomesOf(tested)).toEqual([REPLIED, 'timeout']);
+    expect(ssh).toMatchObject({ replied: true, by: [DEVICE.lucia.id] });
+    expect(app).toMatchObject({ replied: false, reached: false, blocked: true, warning: null, by: [FIREWALL.lucia] });
+    expect(stopStep(app.trace)).toMatchObject({ stage: 'firewall-in', at: DEVICE.lucia.id, verdict: 'drop' });
+    expect(lastBox(tested)['Dónde y por qué se detuvo']).toEqual([`Se queda en el firewall de ${DEVICE.lucia.name}: ninguna regla lo deja entrar.`]);
+    expect(drawnLabels(tested)).toContain(`firewall:firewall ${DEVICE.lucia.name}`);
+    expect(tested.world.firewalls.find(({ id }) => id === FIREWALL.lucia)?.inbound.map(({ what }) => what)).toEqual([{ kind: 'tcp', fromPort: PORT.ssh, toPort: PORT.ssh }]);
+    expect(serviceOf({ ...tested.world, actors: [] }, DEVICE.lucia.id, PORT.app), 'the actors are not devices').toBeUndefined();
+    expect(tested.world.devices.find(({ id }) => id === DEVICE.lucia.id)?.host.services).toContainEqual({ protocol: 'tcp', port: PORT.app, listen: 'all' });
+  });
+
+  it('02-14: case 7 ends in Port Unreachable from the printer', () => {
+    const tested = sendingFrom(atCase(PRINTER_CASE), ORIGIN.andres.id, ADDRESS.www.id, MESSAGE.dig.id);
+    const [dig] = tested.sent;
+    expect([dig.trace.outcome, dig.by, dig.trace.destinationId]).toEqual([UNREACHABLE, [DEVICE.printer.id], DEVICE.printer.id]);
+    expect(dig.trace.notice).toMatchObject({ kind: 'port-unreachable', fromId: DEVICE.printer.id, fromIp: IP.printer });
+    expect(dig.warning).toEqual({ term: 'port-unreachable', by: 'host' });
+    expect(worldOfCase(PRINTER_CASE).devices.find(({ id }) => id === DEVICE.andres.id)?.dnsServer).toBe(IP.printer);
+    expect(worldOfCase(PRINTER_CASE).devices.find(({ id }) => id === DEVICE.printer.id)?.host.services.some(({ protocol, port }) => protocol === 'udp' && port === PORT.dns)).toBe(false);
+    expect(lastBox(tested)['Dónde y por qué se detuvo']).toEqual([`Llega por UDP al puerto ${PORT.dns}, pero ningún programa escucha ahí: ${DEVICE.printer.name} avisa con Port Unreachable.`]);
+    expect(printedFrom(tested, ORIGIN.andres.id, ADDRESS.www.id, MESSAGE.dig.id).at(-1)).toBe(';; no servers could be reached');
+    expect(lastBox(tested)[DNS_FIELD]).toEqual([`${DEVICE.printer.name} no contestó como un resolver.`]);
+    expect((inspect(tested, PIECE_ID.device(DEVICE.printer.id))?.fields ?? []).find(({ label }) => plain(label) === 'Servicios')?.lines.map(plain), 'nothing listens in the printer').toEqual(['Ninguno.']);
+  });
+
+  it('02-14: naming the right cause of the seven cases earns three stars', () => {
+    const finished = Array.from({ length: CASE_COUNT }).reduce<Session>(closeCase, start);
+    expect(finished.phase).toBe('explaining');
+    expect(finished.caseResults).toHaveLength(CASE_COUNT);
+    expect(starsOf(finished)).toEqual({ closed: true, middle: true, explained: true });
+    expect(caseSummary(finished)).toEqual({ total: CASE_COUNT, missed: [] });
+    expect(sessionReducer(finished, { type: 'showResult' }).phase).toBe('result');
+    expect(starsOf(Array.from({ length: CASE_COUNT }).reduce<Session>((session) => sessionReducer(nameRight(session), { type: 'nextCase' }), start)), 'without the fix of case 5 the watch does not end').toMatchObject({ closed: false });
+  });
+
+  it('02-14: a wrong name first costs the explained star and a hint costs the middle one, but neither stops the close', () => {
+    const wrongFirst = (session: Session) => sessionReducer(session, { type: 'nameCause', index: caseOf(session).cause.options.findIndex(({ correct }) => !correct) });
+    const play = (slip: (number: number, session: Session) => Session) => Array.from({ length: CASE_COUNT }).reduce<Session>((session, _, index) => closeCase(slip(index + 1, session)), start);
+    expect(starsOf(play((number, session) => (number === LOOP_CASE ? wrongFirst(session) : session)))).toEqual({ closed: true, middle: true, explained: false });
+    expect(starsOf(play((number, session) => (number === WWW_CASE ? sessionReducer(session, { type: 'showHint' }) : session)))).toEqual({ closed: true, middle: false, explained: true });
+  });
+
+  it('02-14: each case has a different cause', () => {
+    const stops = Array.from({ length: CASE_COUNT }, (_, index) => stopCodesOf(sendAll(atCase(index + 1))));
+    expect(stops.filter((codes) => codes === '')).toEqual([]);
+    expect(new Set(stops).size, stops.join(' | ')).toBe(CASE_COUNT);
+    const rights = cases.map((spec) => plain(spec.cause.options[rightPlace(spec)].text));
+    expect(new Set(rights).size).toBe(CASE_COUNT);
+    expect(cases.map((spec) => spec.id)).toEqual(Array.from({ length: CASE_COUNT }, (_, index) => `case-${index + 1}`));
+  });
+
+  it('02-14: each case starts from the world before the incident plus its own changes, not from the case before', () => {
+    expect(incident.changes).toEqual([]);
+    expect(startOfTheWatch).toEqual(before);
+    expect(solvedWorld(INCIDENTS, ON_CALL)).toEqual(startOfTheWatch);
+    const worlds = cases.map((_, index) => worldOfCase(index + 1));
+    expect(worlds).toEqual(cases.map((spec) => (spec.changes ?? []).reduce(applyAction, before)));
+    expect(worlds.map((world) => changedNames(before, world))).toEqual([[SERVER.fresh.name], [], [SERVER.authoritative.name, DEVICE.you.name], [ROUTER.office.name], [ROUTER.provider.name], [], []]);
+    expect(cases.map((spec) => spec.changes)).toEqual([[SITE_ON_LOOPBACK], undefined, STALE_SHOP, [DEFAULT_ROUTE_LOST], LOOP, undefined, undefined]);
+    expect(serviceOf(worlds[1], SERVER.fresh.id, PORT.web)?.listen, 'case 2 does not keep the loopback of case 1').toBe('all');
+    expect(hostsOf(worlds[3], DEVICE.you.id), 'case 4 does not keep the hosts line of case 3').toEqual(hostsOf(before, DEVICE.you.id));
+    expect(recordNamesOf(worlds[3])).toEqual(recordNamesOf(before));
+    expect(routesOf(worlds[4], ROUTER.office.id), 'case 5 does not keep the lost default route of case 4').toEqual(routesOf(before, ROUTER.office.id));
+    expect(routesOf(worlds[5], ROUTER.provider.id), 'case 6 does not keep the loop of case 5').toEqual(routesOf(before, ROUTER.provider.id));
+    expect(worlds.flatMap((world) => networkSchema.safeParse(world).error?.issues.map((issue) => issue.message) ?? [])).toEqual([]);
+  });
+
+  it('02-14: no report and no correct option names a switched-off device as the cause', () => {
+    const spoken = cases.flatMap((spec) => [spec.report, ...spec.cause.options.filter(({ correct }) => correct).flatMap((option) => [option.text, option.feedback])]).map(plain);
+    expect(spoken.filter((text) => SWITCHED_OFF_OR_DOWN.test(text))).toEqual([]);
+    expect(['Porque servidor-internet está caído.', 'Porque la impresora está apagada.', 'Porque el router está desconectado.'].every((text) => SWITCHED_OFF_OR_DOWN.test(text))).toBe(true);
+    const everyText = [...incidentTexts(incident), ...Array.from({ length: CASE_COUNT }, (_, index) => everythingRead(sendAll(atCase(index + 1)))).flat()].map(plain);
+    expect(everyText.filter((text) => /apagad|desconectad/i.test(text))).toEqual([]);
+  });
+
+  it('02-14: every case report names a ping, an nc or a dig that does not come back and none uses a verb of the web', () => {
+    const reports = cases.map((spec) => plain(spec.report));
+    expect(reports).toHaveLength(CASE_COUNT);
+    expect(reports.filter((report) => !A_TEST_THAT_DOES_NOT_COME_BACK.some((pattern) => pattern.test(report)))).toEqual([]);
+    expect(reports.filter((report) => WEB_VERBS.test(report))).toEqual([]);
+    expect(WEB_VERBS.test('Abre la página.') && WEB_VERBS.test('No carga el sitio.')).toBe(true);
+    expect(plain(incident.report)).not.toMatch(WEB_VERBS);
+  });
+
+  it('02-14: every change a case makes is named in its report or in the feedback of its right cause', () => {
+    for (const [index, spec] of cases.entries()) {
+      const after = worldOfCase(index + 1);
+      expect(unnamedChanges(before, after, [spec.report, ...rightFeedbackOf(spec)]), spec.id).toEqual([]);
+    }
+    const [loopback, , shop, way, loop] = cases.map((spec) => [spec.report, ...rightFeedbackOf(spec)].map(plain).join(' '));
+    expect(loopback).toContain(`Alguien cambió la configuración de ${SERVER.fresh.name}: su servicio del puerto ${PORT.web} ahora tiene como dirección de escucha 127.0.0.1.`);
+    expect(shop).toContain(`Alguien agregó a ${SERVER.authoritative.name} un registro A de ese nombre. Y alguien cambió la configuración de ${DEVICE.you.name}.`);
+    expect(way).toContain(`Alguien cambió la configuración de ${ROUTER.office.name}: le quitó la ruta por defecto y solo conserva la ruta a ${BRANCH_LAN.cidr}`);
+    expect(loop).toContain(`Alguien cambió la configuración de ${ROUTER.provider.name}: ahora todo lo que recibe se lo devuelve a ${ROUTER.office.name}.`);
+    expect(LOOP).toEqual(cases[LOOP_CASE - 1].changes);
+  });
+
+  it('02-14: case 1 draws the dig and the question of the ping and of the nc by name, each with its stamp at the resolver', () => {
+    const tested = [MESSAGE.dig, MESSAGE.ping, MESSAGE.ncWeb].reduce((session, message) => youSend(session, ADDRESS.www, message), atCase(WWW_CASE));
+    const drawn = drawnSends(tested.sent);
+    expect(drawn.map(({ id }) => id.replace(`sent-you-${ADDRESS.www.id}-`, ''))).toEqual(['dig', 'ping-question', 'ping', 'nc-80-question', 'nc-80']);
+    expect(drawn.filter(({ trace }) => trace.destinationId === SERVER.resolver.id).map(({ id }) => id.replace(`sent-you-${ADDRESS.www.id}-`, '')), 'three stamps at the resolver: the dig and the two questions').toEqual(['dig', 'ping-question', 'nc-80-question']);
+    expect(drawn.filter(({ after }) => after !== undefined).map(({ after, id }) => [after, id.replace('sent-you-name-www-', '')])).toEqual([
+      ['sent-you-name-www-ping-question', 'ping'],
+      ['sent-you-name-www-nc-80-question', 'nc-80'],
+    ]);
+    expect(drawn.find(({ id }) => id.endsWith('-ping'))?.trace.destinationId).toBe(SERVER.fresh.id);
+    expect(drawn.find(({ id }) => id.endsWith('-nc-80'))?.trace.destinationId).toBe(SERVER.fresh.id);
+    expect(drawn.map(({ trace }) => trace.dns?.fromCache)).toEqual([false, true, true, true, true]);
+    expect(youSend(atCase(WWW_CASE), ADDRESS.www, MESSAGE.ping).sent[0].question?.trace.header?.request.sourcePort, 'asked first, the ping question takes the first port').toBe(FIRST_PORT);
+  });
+
+  it('02-14: case 2 draws the question and its answer and the nc stays at its doorstep without a port', () => {
+    const tested = [MESSAGE.dig, MESSAGE.ncWeb].reduce((session, message) => youSend(session, ADDRESS.mistyped, message), atCase(TYPO_CASE));
+    const drawn = drawnSends(tested.sent);
+    expect(drawn.map(({ id }) => id.replace('sent-you-name-mistyped-', ''))).toEqual(['dig', 'nc-80-question', 'nc-80']);
+    expect(drawn.map(({ trace }) => trace.destinationId)).toEqual([SERVER.resolver.id, SERVER.resolver.id, null]);
+    expect(drawn[0].trace.header?.request).toMatchObject({ sourcePort: FIRST_PORT, destinationPort: PORT.dns });
+    expect(drawn[1].trace.header?.request).toMatchObject({ sourcePort: FIRST_PORT + 1, destinationPort: PORT.dns });
+    expect(drawn[2].trace.header, 'the nc never got a port').toBeUndefined();
+    expect(drawn[2].after).toBe(drawn[1].id);
+    expect(translatedBy(tested)).toEqual([0, 1].map((step) => `${IP.you}:${FIRST_PORT + step} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT + step}`));
+  });
+
+  it('02-14: case 3 draws a question for the dig and none for the ping, which the hosts file answered', () => {
+    const digged = youSend(atCase(SHOP_CASE), ADDRESS.shop, MESSAGE.dig);
+    const pinged = youSend(atCase(SHOP_CASE), ADDRESS.shop, MESSAGE.ping);
+    expect([drawnSends(digged.sent), drawnSends(pinged.sent)].map((sends) => sends.length), 'a dig is the question itself and a ping that the hosts file answers asks none').toEqual([1, 1]);
+    expect([drawnSends(digged.sent)[0].trace.destinationId, drawnSends(digged.sent)[0].after]).toEqual([SERVER.resolver.id, undefined]);
+    expect([drawnSends(pinged.sent)[0].trace.question, pinged.sent[0].question, drawnSends(pinged.sent)[0].trace.header?.request.sourcePort]).toEqual([undefined, undefined, undefined]);
+    expect(translatedBy(digged)).toEqual([`${IP.you}:${FIRST_PORT} → ${IP.officeUplink}:${FIRST_PUBLIC_PORT}`]);
+    expect(translatedBy(pinged), 'and the ping leaves none').toEqual([]);
+    expect(drawnSends(youSend(digged, ADDRESS.shop, MESSAGE.ping).sent).map(({ trace }) => trace.destinationId)).toEqual([SERVER.resolver.id, null]);
+  });
+
+  it('02-14: every case that sends by name has the resolver in its shown list', () => {
+    const byName = cases.map((spec, index) => ({ spec, session: atCase(index + 1) })).filter(({ spec }) => spec.send.to.some(({ address }) => /[a-z]/i.test(address)));
+    expect(byName.map(({ spec }) => spec.id)).toEqual(['case-1', 'case-2', 'case-3', 'case-7']);
+    for (const { spec, session } of byName) {
+      const resolverIds = spec.send.from.map((origin) => resolverIdOf(session, origin.endpoint.id));
+      expect(resolverIds.filter((id) => id === undefined), spec.id).toEqual([]);
+      for (const id of resolverIds) expect(spec.shown, `${spec.id} asks ${id}`).toContain(id);
+      const sent = sendAll(session);
+      for (const run of drawnSends(sent.sent).filter(({ id, trace }) => id.endsWith('-question') || trace.dns?.viaDig)) expect(run.by.filter((id) => !spec.shown?.includes(id)), `${spec.id}: ${run.id}`).toEqual([]);
+    }
+    expect(resolverIdOf(atCase(PRINTER_CASE), DEVICE.andres.id), 'the resolver of laptop-andres is the printer').toBe(DEVICE.printer.id);
+  });
+
+  it('02-14: each case draws only the pieces it uses', () => {
+    expect(incident.shown).toBeUndefined();
+    expect(cases.map((spec) => spec.shown?.length)).not.toContain(undefined);
+    const drawn = Array.from({ length: CASE_COUNT }, (_, index) => drawnLabels(atCase(index + 1)));
+    const device = (...names: string[]) => names.map((name) => `device:${name}`);
+    const youAndTheRouter = [...device(DEVICE.you.name, SERVER.resolver.name), `edge:${ROUTER.office.name}`, `firewall:firewall ${DEVICE.you.name}`];
+    expect(drawn).toEqual(
+      [
+        [...youAndTheRouter, ...device(SERVER.fresh.name), 'internet:internet'],
+        [...youAndTheRouter, 'internet:internet'],
+        [...youAndTheRouter, ...device(SERVER.authoritative.name, SERVER.internet.name), 'internet:internet'],
+        [...device(DEVICE.you.name, DEVICE.branchPrinter.name, SERVER.internet.name), `edge:${ROUTER.office.name}`, `edge:${ROUTER.branch.name}`, `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'],
+        [...device(DEVICE.you.name, SERVER.internet.name), `edge:${ROUTER.office.name}`, `edge:${ROUTER.provider.name}`, `edge:${ROUTER.destination.name}`, `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'],
+        [...device(DEVICE.you.name, DEVICE.lucia.name), `firewall:firewall ${DEVICE.you.name}`, `firewall:firewall ${DEVICE.lucia.name}`],
+        [...device(DEVICE.andres.name, DEVICE.printer.name), `edge:${ROUTER.office.name}`],
+      ].map((labels) => [...labels].sort()),
+    );
+  });
+
+  it('02-14: every piece a text of a case names is drawn in that case', () => {
+    for (const [index, spec] of cases.entries()) {
+      const drawnNames = drawnLabels(atCase(index + 1)).map((label) => label.slice(label.indexOf(':') + 1));
+      const named = textsOf(spec).flatMap((text) => [...text.matchAll(NAME_OF_A_PIECE)].map(([, name]) => name));
+      expect(named.filter((name) => !drawnNames.includes(name)), spec.id).toEqual([]);
+      expect(named.length, spec.id).toBeGreaterThan(0);
+    }
+  });
+
+  it('02-14: the routers that the traceroute of case 5 crosses are in its list of shown pieces, and case 5 is the only case that offers a traceroute', () => {
+    const shown = cases[LOOP_CASE - 1].shown ?? [];
+    const crossed = routersCrossedByTraceroutes(cases[LOOP_CASE - 1], worldOfCase(LOOP_CASE));
+    expect(crossed).toEqual([ROUTER.office.id, ROUTER.provider.id]);
+    expect(crossed.filter((id) => !shown.includes(id))).toEqual([]);
+    expect(shown, 'the chips of the fix name router-destino').toContain(ROUTER.destination.id);
+    expect(cases.filter((spec) => spec.send.message.some((chip) => chip.command === 'traceroute')).map((spec) => spec.id)).toEqual(['case-5']);
+  });
+
+  it('02-14: the fix of case 5 fails before its reference solution and holds after it, and only case 5 has a fix', () => {
+    const { fix } = cases[LOOP_CASE - 1];
+    expect(fix).toEqual(LOOP_FIX);
+    expect(cases.filter((spec) => spec.fix).map((spec) => spec.id)).toEqual(['case-5']);
+    expect(fix?.tables.map(({ ownerId, kind }) => [ownerId, kind])).toEqual([[ROUTER.provider.id, 'routes']]);
+    const looped = youSend(atCase(LOOP_CASE), ADDRESS.server, MESSAGE.ping);
+    expect(fix?.tasks.every((task) => !taskHolds(task, looped.runs, looped.sent))).toBe(true);
+    const solved = repaired(atCase(LOOP_CASE));
+    expect(fix?.tasks.every((task) => taskHolds(task, solved.runs, solved.sent))).toBe(true);
+    expect(solved.history, 'the solution ends with the ping, because every change of the world clears the sends').toHaveLength(1);
+  });
+
+  it('02-14: the right option is where its sheet puts it and between the other two by length', () => {
+    expect(cases.map(rightPlace)).toEqual(RIGHT_PLACES);
+    for (const spec of cases) {
+      const lengths = spec.cause.options.map(({ text }) => plain(text).length);
+      const right = lengths[rightPlace(spec)];
+      const others = lengths.filter((_, index) => index !== rightPlace(spec));
+      expect([Math.min(...others) < right, right < Math.max(...others)], `${spec.id}: ${lengths.join(', ')}`).toEqual([true, true]);
+      expect(spec.cause.options.map(({ feedback }) => plain(feedback)).filter((text) => /^(?:No[.:]|No es eso\.|Eso es\b|Correcto\.)/.test(text)), spec.id).toEqual([]);
+      expect(plain(spec.cause.question).match(/\?/g), spec.id).toHaveLength(1);
+      expect(spec.hints, spec.id).toHaveLength(2);
+    }
+  });
+
+  it('02-14: introduces no term and uses none that is later', () => {
+    expect(incident.introduces).toEqual([]);
+    expect(unknownTerms(incidentTexts(incident), knownTerms(INCIDENTS, ON_CALL))).toEqual([]);
+    expect(laterTermLeaks([incident])).toEqual([]);
   });
 });

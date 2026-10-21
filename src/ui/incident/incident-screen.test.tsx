@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { pieceViews, startSession } from '@/game';
-import { INCIDENTS, knownTerms, type SendIncident } from '@/levels';
+import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GLYPH_BOX } from '@/scene/marks/still-packets';
@@ -1279,10 +1279,17 @@ describe('the incidents of the chapters on the 2D map', () => {
   const REPLY_RULE = /^Quitar la regla ICMP · Echo Reply/;
   const PING_TASK = 'vuelva a hacer';
   const DIG = 'dig';
+  const ON_CALL = '02-14';
   const SHOP = 'tienda.lucia.example';
   const STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER = /^Paquete: UDP \d+ → 53 de tu-laptop a servidor-dns\./;
   const STAMP_OF_THE_PING_TO_THE_SHOP = /^Paquete: ping de tu-laptop a servidor-internet\./;
   const TAG_OF_THE_QUESTION = 'UDP 51514 → 53';
+  const STAMP_OF_THE_PING_TO_THE_NEW_SERVER = /^Paquete: ping de tu-laptop a servidor-nuevo\. Llegó\.$/;
+  const STAMP_OF_THE_REFUSED_NC = /^Paquete: TCP 51517 → 80 de tu-laptop a servidor-nuevo\. Llegó\.$/;
+  const STAMP_OF_THE_NC_WITH_NO_PORT = /^Paquete: TCP 80 de tu-laptop a wwww\.lucia\.example\. Perdido\.$/;
+  const STAMP_OF_THE_PING_TO_THE_STALE_SHOP = /^Paquete: ping de tu-laptop a tienda\.lucia\.example\. Apareció un aviso\.$/;
+  const TAGS_OF_THE_NAME_TESTS = ['UDP 51514 → 53', 'UDP 51515 → 53', 'UDP 51516 → 53', 'TCP 51517 → 80'];
+  const TAGS_OF_THE_TWO_QUESTIONS = ['UDP 51514 → 53', 'UDP 51515 → 53'];
 
   beforeEach(() => {
     scene.drawsTheRealMap = true;
@@ -1489,6 +1496,63 @@ describe('the incidents of the chapters on the 2D map', () => {
     await sendNc(user, await openTheTerminal(user), SHOP, PING);
     expect(screen.getByRole('button', { name: STAMP_OF_THE_PING_TO_THE_SHOP })).toBeVisible();
     expect(screen.queryAllByRole('button', { name: STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER })).toHaveLength(0);
+    expect(packetTags()).toEqual([]);
+  });
+
+  async function nameTheRightCauseAndGoOn(user: User, spec: CaseSpec) {
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.know }));
+    const right = toPlainText(spec.cause.options.find(({ correct }) => correct)?.text ?? '');
+    await user.click(screen.getByRole('button', { name: (name) => name.includes(right) }));
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.next }));
+  }
+
+  async function renderOnCallAtCase(user: User, number: number) {
+    const onCall = INCIDENTS.find(({ id }) => id === ON_CALL) as DiagnoseIncident;
+    renderIncident(ON_CALL);
+    await drawWithoutAnimations(user);
+    for (const spec of onCall.diagnose.cases.slice(0, number - 1)) await nameTheRightCauseAndGoOn(user, spec);
+  }
+
+  const stampsOf = (pattern: RegExp) => screen.queryAllByRole('button', { name: pattern });
+
+  it('02-14: case 1 draws the dig and the question of the ping and of the nc by name, each with its stamp at the resolver', async () => {
+    const user = userEvent.setup();
+    await renderOnCallAtCase(user, 1);
+    const terminal = await openTheTerminal(user);
+    for (const message of [DIG, PING, NC_TO_THE_WEB_PORT]) await sendMessage(user, terminal, message);
+    expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER), 'the dig and the two questions').toHaveLength(3);
+    expect(stampsOf(STAMP_OF_THE_PING_TO_THE_NEW_SERVER)).toHaveLength(1);
+    expect(stampsOf(STAMP_OF_THE_REFUSED_NC)).toHaveLength(1);
+    expect(packetTags()).toEqual(TAGS_OF_THE_NAME_TESTS);
+  });
+
+  it('02-14: case 2 draws the question and its answer and the nc stays at its doorstep without a port', async () => {
+    const user = userEvent.setup();
+    await renderOnCallAtCase(user, 2);
+    const terminal = await openTheTerminal(user);
+    for (const message of [DIG, NC_TO_THE_WEB_PORT]) await sendMessage(user, terminal, message);
+    expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER), 'the dig and the question of the nc').toHaveLength(2);
+    expect(stampsOf(STAMP_OF_THE_NC_WITH_NO_PORT)).toHaveLength(1);
+    expect(stampsOf(/^Paquete: TCP \d+ → 80/), 'no nc ever leaves the laptop').toHaveLength(0);
+    expect(packetTags()).toEqual(TAGS_OF_THE_TWO_QUESTIONS);
+  });
+
+  it('02-14: case 3 draws a question for the dig and none for the ping, which the hosts file answered', async () => {
+    const user = userEvent.setup();
+    await renderOnCallAtCase(user, 3);
+    const terminal = await openTheTerminal(user);
+    await sendMessage(user, terminal, DIG);
+    expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER)).toHaveLength(1);
+    expect(packetTags()).toEqual([TAG_OF_THE_QUESTION]);
+    await sendMessage(user, terminal, PING);
+    expect(stampsOf(STAMP_OF_THE_PING_TO_THE_STALE_SHOP)).toHaveLength(1);
+    expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER)).toHaveLength(1);
+    expect(packetTags()).toEqual([TAG_OF_THE_QUESTION]);
+    cleanup();
+    await renderOnCallAtCase(user, 3);
+    await sendMessage(user, await openTheTerminal(user), PING);
+    expect(stampsOf(STAMP_OF_THE_PING_TO_THE_STALE_SHOP)).toHaveLength(1);
+    expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER)).toHaveLength(0);
     expect(packetTags()).toEqual([]);
   });
 

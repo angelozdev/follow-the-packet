@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
-import { submitAndFinish } from '@e2e/closing';
+import { closeCase, submitAndFinish } from '@e2e/closing';
 import { IP, type PlayedIncident } from '@e2e/chapter-1/chapter-1-play';
 
 const NC_TO_THE_APP = 'nc · puerto 3000';
@@ -63,6 +63,14 @@ const NEWS_NAME = 'www.noticias.example';
 const SHOP_NAME = 'tienda.lucia.example';
 const SSH_CHIP = 'TCP · 22';
 const YOUR_LAPTOP_CHIP = 'tu-laptop (IP 192.168.1.10)';
+const NC_TO_SSH = 'nc · puerto 22';
+const TRACEROUTE = 'traceroute';
+const PROVIDER = 'router-proveedor';
+const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
+const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
+const SERVERS_BLOCK = '198.51.100.0/24';
+const DESTINATION_HOP = '203.0.113.2 router-destino';
+const LOOP_CASE_INDEX = 4;
 
 async function playOneMachineManyServices(page: Page) {
   const terminal = await openTerminal(page);
@@ -299,6 +307,61 @@ export async function playItDoesNotResolve(page: Page) {
   await confirm(andres);
   await expect(andres).toBeHidden();
   await submitAndFinish(page, /Porque el ping usa el archivo hosts y el dig no/);
+}
+
+/** Sends each message, one after the other, from the open terminal, which has a single address and so draws no tray for it. */
+async function sendMessages(terminal: Locator, messages: string[]) {
+  for (const message of messages) await sendMessage(terminal, message);
+}
+
+/** Sends a ping to each address, one after the other, from the open terminal, which has a single message and so draws no tray for it. */
+async function sendPingsTo(terminal: Locator, addresses: string[]) {
+  for (const address of addresses) await sendTo(terminal, address);
+}
+
+/** Opens the card of the routes of router-proveedor, the only card of the piece in this case, takes away the default route that sends everything back to router-oficina, writes the block of the servers towards router-destino and closes it. */
+async function repairTheLoop(page: Page) {
+  await page.getByRole('button', { name: PROVIDER, exact: true }).click();
+  const routes = card(page, PROVIDER_ROUTES_CARD);
+  await expect(routes).toBeVisible();
+  await routes.getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }).click();
+  await addRoute(routes, SERVERS_BLOCK, DESTINATION_HOP);
+  await confirm(routes);
+  await expect(routes).toBeHidden();
+}
+
+interface OnCallCase {
+  from: string;
+  send: (terminal: Locator) => Promise<void>;
+  cause: RegExp;
+}
+
+const ON_CALL_CASES: OnCallCase[] = [
+  { from: YOUR_LAPTOP, send: (terminal) => sendMessages(terminal, [DIG, PING, NC_TO_THE_WEB_PORT]), cause: /Porque el servicio escucha solo en 127\.0\.0\.1/ },
+  { from: YOUR_LAPTOP, send: (terminal) => sendMessages(terminal, [DIG, NC_TO_THE_WEB_PORT]), cause: /Porque el nombre está mal escrito y no existe/ },
+  { from: YOUR_LAPTOP, send: (terminal) => sendMessages(terminal, [DIG, PING]), cause: /Porque el archivo hosts de tu-laptop tiene una línea vieja/ },
+  { from: YOUR_LAPTOP, send: (terminal) => sendPingsTo(terminal, [IP.server, IP.otherOffice]), cause: /Porque router-oficina no tiene ruta por defecto/ },
+  { from: YOUR_LAPTOP, send: (terminal) => sendMessages(terminal, [PING, TRACEROUTE]), cause: /Porque el paquete da vueltas entre dos routers/ },
+  { from: YOUR_LAPTOP, send: (terminal) => sendMessages(terminal, [NC_TO_SSH, NC_TO_THE_APP]), cause: /Porque el firewall de laptop-lucia no deja entrar el 3000/ },
+  { from: ANDRES, send: (terminal) => terminal.getByRole('button', { name: SEND, exact: true }).click(), cause: /Porque la impresora es su servidor DNS y no atiende DNS/ },
+];
+
+/** Takes the page of the open incident 02-14; in each of its seven cases sends the tests from the terminal of the origin, closes the terminal and names the cause; in the fifth, the loop, it also repairs the routes of router-proveedor from its card and pings again, because writing a route clears the stamps; after the seventh it opens the result, which must show 3 stars. Each terminal draws a tray only where its case offers more than one address or more than one message: the terminal of `laptop-andres` in case 7 has one of each and shows only «Enviar». */
+export async function playOnCallItDoesNotConnect(page: Page) {
+  for (const [index, { from, send, cause }] of ON_CALL_CASES.entries()) {
+    const terminal = await openTerminal(page, from);
+    await send(terminal);
+    await confirm(terminal);
+    await expect(terminal).toBeHidden();
+    if (index === LOOP_CASE_INDEX) {
+      await repairTheLoop(page);
+      const again = await openTerminal(page, from);
+      await sendMessages(again, [PING]);
+      await confirm(again);
+      await expect(again).toBeHidden();
+    }
+    await closeCase(page, cause, index === ON_CALL_CASES.length - 1);
+  }
 }
 
 /** The incidents of chapter 2 in game order, each with its id, its title as the roadmap shows it and the function that plays it. */
