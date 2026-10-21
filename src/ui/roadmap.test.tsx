@@ -14,6 +14,24 @@ const EARNED_STARS = 2;
 const FUNDAMENTALS = 'Nivel 1 · Fundamentos';
 const CHAPTER_1_TITLE = 'Tu primer día';
 const INCIDENTS_OF_CHAPTER_1 = 14;
+const CHAPTER_2_TITLE = 'Puertos y nombres';
+const TITLES_OF_CHAPTER_2 = [
+  'Un equipo, muchos servicios',
+  'Abrir una conexión',
+  'Rechazo o silencio',
+  '¿Está en mi bloque?',
+  'La regla completa',
+  'Tu tabla de rutas',
+  'Un camino a la otra oficina',
+  'Una IP para toda la oficina',
+  'Desde afuera',
+  'Preguntar por un nombre',
+  'Los registros',
+  'Todavía la vieja IP',
+  'No resuelve',
+  'Guardia: no conecta',
+];
+const FIRST_OF_CHAPTER_4 = '04-01';
 
 function levelItem(id: string): HTMLElement {
   const item = document.querySelector<HTMLElement>(`[data-level-id="${id}"]`);
@@ -87,6 +105,33 @@ describe('roadmap of chapter 1', () => {
       if (index <= opened) expect(within(item).getByRole('link', { name })).toHaveAttribute('href', `#/level/${id}`);
       else expect(item).toHaveTextContent(ROADMAP_TEXT.locked);
     });
+    expect(consoleErrors).not.toHaveBeenCalled();
+  });
+});
+
+describe('roadmap of chapter 2', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('the roadmap lists the fourteen incidents of chapter 2 with their stars', () => {
+    const consoleErrors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const earned: Record<string, number> = { '01-14': 1, '02-01': 3, '02-02': 2, '02-03': 1 };
+    const starred = ['02-01', '02-02', '02-03'];
+    render(<Roadmap levels={INCIDENTS} progress={earned} />);
+    const incidents = INCIDENTS.filter(({ chapter }) => chapter === 2);
+    expect(incidents.map(({ id, order, title }) => [id, order, title])).toEqual(TITLES_OF_CHAPTER_2.map((title, index) => [`02-${String(index + 1).padStart(2, '0')}`, index + 1, title]));
+    expect(document.querySelectorAll('li[data-level-id^="02-"]')).toHaveLength(TITLES_OF_CHAPTER_2.length);
+    expect(screen.getByRole('heading', { level: 2, name: CHAPTER_2_TITLE }).closest('li')).toHaveTextContent(`${starred.length}/${TITLES_OF_CHAPTER_2.length}`);
+    const opened = incidents.filter(({ id }) => starred.includes(id) || id === '02-04');
+    for (const { id, order, title } of incidents) {
+      const item = levelItem(id);
+      expect(item).toHaveTextContent(`${order}. ${title}`);
+      expect(item).toHaveTextContent(ROADMAP_TEXT.starsOf(earned[id] ?? 0));
+      if (opened.some((open) => open.id === id)) expect(within(item).getByRole('link', { name: `${order}. ${title}` })).toHaveAttribute('href', `#/level/${id}`);
+      else expect(item).toHaveTextContent(ROADMAP_TEXT.locked);
+    }
+    expect(levelItem(FIRST_OF_CHAPTER_4), 'the first incident of chapter 4 waits for a star on 02-14').toHaveTextContent(ROADMAP_TEXT.locked);
     expect(consoleErrors).not.toHaveBeenCalled();
   });
 });

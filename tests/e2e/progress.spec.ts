@@ -1,15 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ROADMAP_TEXT } from '@/copy';
 import { PROGRESS_KEY } from '@/storage/progress';
-import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
+import { CHAPTER_2_DONE, FIRST_OF_CHAPTER_4, FIRST_OF_CHAPTER_4_TITLE, startWithProgress } from './saved-progress';
 
 const SAVED = { '01-01': 3, '01-02': 1, '01-14': 2, '04-01': 3 };
 const OPEN_BY_THE_STAR_BEFORE = ['01-02', '01-03', '02-01', '04-02'];
 const OPEN_BY_ITS_OWN_STARS = ['01-14', '04-01'];
 const STILL_LOCKED = ['01-04', '01-13', '02-02'];
 const LAST_OF_CHAPTER_2 = '02-14';
-const FIRST_OF_CHAPTER_4 = '04-01';
-const FIRST_OF_CHAPTER_4_TITLE = 'El primer ping';
 const ONE_STAR = 1;
 
 function incident(page: Page, id: string) {

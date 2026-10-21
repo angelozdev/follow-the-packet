@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { pieceViews, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type SendIncident } from '@/levels';
 import type { GameSceneProps } from '@/scene';
@@ -61,6 +61,9 @@ const BEFORE_THE_GRACE_ENDS_MS = 100;
 const AFTER_THE_GRACE_ENDS_MS = 1000;
 const TAB_STOPS_LIMIT = 80;
 const TAP = '[TouchA]';
+const CLOCK = CLOCK_TEXT.title;
+const DIG_ANSWER = TERMINAL_TEXT.output.label.dig;
+const FIVE_MINUTES = 'Esperar 5 min';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -1104,11 +1107,8 @@ describe('the standard of warnings and errors', () => {
 describe('incident screen of a send incident with a clock, tables and services', () => {
   const NAMES = namesSendIncident();
   const WWW = 'www.lucia.example';
-  const CLOCK = 'Reloj del juego';
   const ONE_MINUTE = 'Esperar 1 min';
-  const FIVE_MINUTES = 'Esperar 5 min';
   const RESOLVER = 'servidor-dns';
-  const DIG_ANSWER = 'Salida de dig';
 
   function renderNames(incident = NAMES) {
     render(<IncidentScreen incidents={[incident]} incidentId={incident.id} nextId={null} onFinish={vi.fn()} />);
@@ -1241,7 +1241,7 @@ describe('incident screen of a send incident with a clock, tables and services',
 });
 
 describe('the incidents of the chapters on the 2D map', () => {
-  const IP = { marta: '192.168.1.12', lucia: '192.168.1.11', andres: '192.168.2.15', router: '192.168.1.1', loopback: '127.0.0.1' };
+  const IP = { marta: '192.168.1.12', lucia: '192.168.1.11', andres: '192.168.2.15', router: '192.168.1.1', loopback: '127.0.0.1', server: '198.51.100.50', freshServer: '198.51.100.60' };
   const LUCIA = 'laptop-lucia';
   const SETTINGS_TAB = 'Ajustes de red';
   const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
@@ -1290,6 +1290,24 @@ describe('the incidents of the chapters on the 2D map', () => {
   const STAMP_OF_THE_PING_TO_THE_STALE_SHOP = /^Paquete: ping de tu-laptop a tienda\.lucia\.example\. Apareció un aviso\.$/;
   const TAGS_OF_THE_NAME_TESTS = ['UDP 51514 → 53', 'UDP 51515 → 53', 'UDP 51516 → 53', 'TCP 51517 → 80'];
   const TAGS_OF_THE_TWO_QUESTIONS = ['UDP 51514 → 53', 'UDP 51515 → 53'];
+  const ANSWER_FROM_THE_CACHE = /www\.lucia\.example\.\s*240\s*IN\s*A\s*198\.51\.100\.50/;
+  const PROVIDER = 'router-proveedor';
+  const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
+  const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
+  const SERVERS_BLOCK = '198.51.100.0/24';
+  const DESTINATION_HOP = '203.0.113.2 router-destino';
+  const LOOP_CASE = 5;
+  const TRACEROUTE = 'traceroute';
+  const ADD_ROUTE = 'Agregar ruta';
+  const STAMP_OF_THE_LOOPING_PING = 'Paquete: ping de tu-laptop a 198.51.100.50. Apareció un aviso.';
+  const STAMP_OF_THE_LOOPING_TRACEROUTE = 'Paquete: traceroute de tu-laptop a 198.51.100.50. Apareció un aviso.';
+  const STAMP_OF_THE_PING_THAT_COMES_BACK = 'Paquete: ping de tu-laptop a servidor-internet. Llegó.';
+  const FIX_NOT_DONE = '☐ Que el ping a servidor-internet vuelva. (sin cumplir)';
+  const FIX_DONE = '✓ Que el ping a servidor-internet vuelva. (cumplida)';
+  const SERVICES_TAB = 'Servicios';
+  const SERVICES_CARD = 'Servicios de laptop-lucia';
+  const ONLY_THIS_DEVICE = 'Solo este dispositivo (127.0.0.1)';
+  const EVERY_IP = 'Todas las IPs (0.0.0.0)';
 
   beforeEach(() => {
     scene.drawsTheRealMap = true;
@@ -1478,6 +1496,45 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(packetTags()).toEqual(TAGS_OF_THE_FOUR_TESTS);
   });
 
+  it('in 02-12 waiting from the clock card changes the answer of dig', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-12');
+    await drawWithoutAnimations(user);
+    const terminal = await openTheTerminal(user);
+    const send = () => user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+    const answerOfTheDig = () => screen.getByRole('group', { name: DIG_ANSWER }).textContent;
+    await send();
+    const old = answerOfTheDig();
+    expect(old).toMatch(ANSWER_FROM_THE_CACHE);
+    expect(old).not.toContain(IP.freshServer);
+    await user.click(within(screen.getByRole('region', { name: CLOCK })).getByRole('button', { name: FIVE_MINUTES }));
+    expect(answerOfTheDig(), 'waiting alone changes nothing the terminal printed').toBe(old);
+    await send();
+    const answered = answerOfTheDig();
+    expect(answered).not.toBe(old);
+    expect(answered).toContain(IP.freshServer);
+    expect(answered).not.toContain(IP.server);
+  });
+
+  it('in 02-03 the services card opens from the label of laptop-lucia and switches the address', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-03');
+    await drawWithoutAnimations(user);
+    const yours = await openTheTerminal(user);
+    await sendNc(user, yours, IP.lucia, NC_TO_THE_APP);
+    await confirm(user, yours);
+    expect(screen.getByRole('button', { name: STAMP_OF_THE_FIRST_CONNECTION })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: LUCIA }));
+    await user.click(screen.getByRole('tab', { name: SERVICES_TAB }));
+    const services = screen.getByRole('dialog', { name: SERVICES_CARD });
+    const onlyHere = within(services).getByRole('button', { name: ONLY_THIS_DEVICE });
+    const everywhere = within(services).getByRole('button', { name: EVERY_IP });
+    expect([onlyHere, everywhere].map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    await user.click(everywhere);
+    expect([onlyHere, everywhere].map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+    expect(screen.queryAllByRole('button', { name: ANY_PACKET_STAMP }), 'a setting that changes the world clears the stamps').toHaveLength(0);
+  });
+
   it('02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none', async () => {
     const user = userEvent.setup();
     renderIncident('02-13');
@@ -1554,6 +1611,38 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(stampsOf(STAMP_OF_THE_PING_TO_THE_STALE_SHOP)).toHaveLength(1);
     expect(stampsOf(STAMP_OF_ANY_QUESTION_TO_THE_RESOLVER)).toHaveLength(0);
     expect(packetTags()).toEqual([]);
+  });
+
+  it('in 02-14 case 5 can be repaired from the routes card', async () => {
+    const user = userEvent.setup();
+    await renderOnCallAtCase(user, LOOP_CASE);
+    const onCall = INCIDENTS.find(({ id }) => id === ON_CALL) as DiagnoseIncident;
+    const stamps = () => screen.queryAllByRole('button', { name: ANY_PACKET_STAMP }).map((stamp) => stamp.getAttribute('aria-label'));
+    const fixTask = () => Array.from(screen.getByRole('region', { name: CASE_TEXT.title(LOOP_CASE, onCall.diagnose.cases.length) }).querySelectorAll('.tasks li'), ({ textContent }) => textContent).at(-1);
+    const terminal = await openTheTerminal(user);
+    for (const message of [PING, TRACEROUTE]) await sendMessage(user, terminal, message);
+    await confirm(user, terminal);
+    expect(stamps()).toEqual([STAMP_OF_THE_LOOPING_PING, STAMP_OF_THE_LOOPING_TRACEROUTE]);
+    expect(fixTask()).toBe(FIX_NOT_DONE);
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.know }));
+    const right = toPlainText(onCall.diagnose.cases[LOOP_CASE - 1].cause.options.find(({ correct }) => correct)?.text ?? '');
+    await user.click(screen.getByRole('button', { name: (name) => name.includes(right) }));
+    expect(screen.getByText(CASE_TEXT.causeNamed), 'the cause is named and the case waits for the fix').toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
+    await user.click(screen.getByRole('button', { name: PROVIDER }));
+    const routes = screen.getByRole('dialog', { name: PROVIDER_ROUTES_CARD });
+    await user.click(within(routes).getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }));
+    await user.click(within(routes).getByRole('button', { name: SERVERS_BLOCK }));
+    await user.click(within(routes).getByRole('button', { name: DESTINATION_HOP }));
+    await user.click(within(routes).getByRole('button', { name: ADD_ROUTE }));
+    await user.keyboard('{Escape}');
+    expect(stamps(), 'writing a route clears the stamps').toEqual([]);
+    expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
+    await sendMessage(user, await openTheTerminal(user), PING);
+    expect(stamps()).toEqual([STAMP_OF_THE_PING_THAT_COMES_BACK]);
+    expect(fixTask()).toBe(FIX_DONE);
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.next }));
+    expect(screen.getByRole('region', { name: CASE_TEXT.title(LOOP_CASE + 1, onCall.diagnose.cases.length) })).toBeInTheDocument();
   });
 
   it('the still drawing of a translated packet shows the label of the leg where the packet stands', async () => {

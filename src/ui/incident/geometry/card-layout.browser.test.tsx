@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { INCIDENTS } from '@/levels';
 import { cardProblems, cardsOutsideTheMap, INSPECTION_HELP, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
+import { coveredBy } from '@/testing/map-boxes';
 import {
   GENTLE_WHEEL_PX,
   OFFICE_IP,
@@ -26,6 +27,7 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const SLOW_TEST_MS = 300_000;
 const HTML_LAYER = '.html-layer';
+const MAP_CARD = '.map-card .card';
 const DRAWING = '.map-stage__svg';
 const SUBMIT = 'Enviar solución';
 const SEE_RESULT = 'Ver resultado';
@@ -99,6 +101,7 @@ const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
 const SERVERS_BLOCK = '198.51.100.0/24';
 const DESTINATION_HOP = '203.0.113.2 router-destino';
 const PING = 'ping';
+const DIG = 'dig';
 const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
@@ -121,6 +124,10 @@ const LOW_MAP_WINDOWS = [
   { name: '1000×700', size: { width: 1000, height: 700 }, boxShows: false },
   { name: '700×600', size: { width: 700, height: 600 }, boxShows: true },
   { name: '844×460', size: { width: 844, height: 460 }, boxShows: true },
+];
+const FULL_WINDOWS = [
+  { name: '1280×800', size: { width: 1280, height: 800 } },
+  { name: '1440×900', size: { width: 1440, height: 900 } },
 ];
 const INSPECTION_WINDOWS = [
   { name: '1280×800', size: { width: 1280, height: 800 } },
@@ -310,6 +317,10 @@ async function reachTheCacheAfterAMinute(): Promise<void> {
   await openByKeyboard(RESOLVER);
 }
 
+async function digTheName(): Promise<void> {
+  await sendMessage(await openTerminal(), DIG);
+}
+
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await sendTo(card(TERMINAL), OFFICE_IP.andres);
@@ -319,6 +330,7 @@ const THE_TERMINAL: Scene = { name: 'the terminal', level: '01-11', reach: sendO
 const THE_PRINTER: Scene = { name: 'the card of the printer', level: '01-01', reach: opening(PRINTER), last: doneOf(PRINTER) };
 const THE_SETTINGS: Scene = { name: 'the network settings', level: '01-07', reach: reachTheSettings, last: doneOf(SETTINGS_CARD) };
 const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the card of the laptop', level: '01-07', reach: sendFromTheTabbedTerminal, last: doneOf(TERMINAL) };
+const THE_NAMES_TERMINAL: Scene = { name: 'the terminal, the first of the three tabs of the card of tu-laptop, with the answer of a dig', level: '02-10', reach: digTheName, last: doneOf(TERMINAL) };
 const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: doneOf(SERVICES_CARD) };
 const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing placed yet', level: '02-04', reach: reachTheClassifyCard, last: doneOf(YOUR_LAPTOP) };
 const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: doneOf(YOUR_LAPTOP) };
@@ -345,6 +357,7 @@ const SCENES: Scene[] = [
   THE_PRINTER,
   THE_SETTINGS,
   THE_TABBED_TERMINAL,
+  THE_NAMES_TERMINAL,
   THE_SERVICES,
   THE_ROUTES,
   THE_EDITABLE_ROUTES,
@@ -356,7 +369,9 @@ const SCENES: Scene[] = [
   THE_FIREWALL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+
+const TABLES_OUTPUT_AND_SERVICES = [THE_TRACEROUTE, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);
@@ -559,6 +574,21 @@ describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size }) => {
       }
     }
     expect(problems).toEqual([]);
+  });
+});
+
+describe.each(FULL_WINDOWS)('$name', ({ name, size }) => {
+  useWindow(size);
+
+  it('the cards of tables, output and services cover no piece of the map', { timeout: SLOW_TEST_MS }, async () => {
+    const covered: string[] = [];
+    for (const scene of TABLES_OUTPUT_AND_SERVICES) {
+      await inTheScene(scene, 'at-rest', () => {
+        const opened = (document.querySelector(MAP_CARD) as Element).getBoundingClientRect();
+        covered.push(...coveredBy(opened).map((piece) => `${name}, ${scene.name}: the card covers ${piece}`));
+      });
+    }
+    expect(covered).toEqual([]);
   });
 });
 

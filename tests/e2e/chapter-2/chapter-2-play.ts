@@ -375,4 +375,9 @@ export const CHAPTER_2: PlayedIncident[] = [
   { id: '02-07', title: 'Un camino a la otra oficina', play: playAWayToTheOtherOffice },
   { id: '02-08', title: 'Una IP para toda la oficina', play: playOneAddressForTheWholeOffice },
   { id: '02-09', title: 'Desde afuera', play: playFromOutside },
+  { id: '02-10', title: 'Preguntar por un nombre', play: playAskingForAName },
+  { id: '02-11', title: 'Los registros', play: playTheRecords },
+  { id: '02-12', title: 'Todavía la vieja IP', play: playStillTheOldIp },
+  { id: '02-13', title: 'No resuelve', play: playItDoesNotResolve },
+  { id: '02-14', title: 'Guardia: no conecta', play: playOnCallItDoesNotConnect },
 ];

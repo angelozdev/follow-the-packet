@@ -3,10 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { MAP_TEXT } from '@/copy';
 import { pieceViews, startSession } from '@/game';
+import { INCIDENTS } from '@/levels';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { MapStage } from '@/scene/map-stage';
 import { pieceDomId } from '@/scene/overlay/piece-label';
-import { showTheScreen } from '@/testing/browser-play';
+import { confirm, openTerminal, sendMessage, showTheScreen, standStill } from '@/testing/browser-play';
 import { namesSendIncident } from '@/testing/incidents';
 import { NAME_SERVERS } from '@/testing/fixtures';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
@@ -21,6 +22,10 @@ const NEWS_SERVER = NAME_SERVERS.down.id;
 const NEWS_PIECE = `actor:${NEWS_SERVER}`;
 const FULL_NAME = `${NEWS_SERVER} ${MAP_TEXT.locked}`;
 const CUT_NAME = 'servidor-autoritativo-not…';
+const NAMES_INCIDENT = '02-13';
+const NEWS_NAME = 'www.noticias.example';
+const DIG = 'dig';
+const STAGE = '.map-stage';
 
 const incident = namesSendIncident();
 const session = startSession([incident], incident.id);
@@ -46,6 +51,14 @@ async function showTheCutLabelOnThePhone() {
   const label = page.getByRole('button', { name: FULL_NAME, exact: true });
   await expect.element(label).toBeVisible();
   return label;
+}
+
+const sidewaysOverflow = () => document.documentElement.scrollWidth - window.innerWidth;
+
+function expectNothingToScrollSideways(seen: string): void {
+  const stage = document.querySelector(STAGE) as HTMLElement;
+  expect(sidewaysOverflow(), `${seen}: the page does not scroll sideways`).toBe(0);
+  expect(stage.scrollWidth, `${seen}: nor does the stage of the map`).toBeLessThanOrEqual(stage.clientWidth);
 }
 
 afterEach(async () => {
@@ -91,5 +104,25 @@ describe('the incident screen at 360 px', () => {
     const label = await showTheCutLabelOnThePhone();
     label.element().focus();
     await expect.element(page.getByRole('region', { name: NEWS_SERVER, exact: true })).toBeVisible();
+  });
+});
+
+describe('the screen of 02-13 at 360 px', () => {
+  it('in 02-13 at 360 px the incident screen does not scroll sideways', { timeout: SLOW_TEST_MS }, async () => {
+    await page.viewport(PHONE.width, PHONE.height);
+    await showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId={NAMES_INCIDENT} nextId={null} onFinish={() => undefined} />);
+    const label = page.getByRole('button', { name: FULL_NAME, exact: true });
+    await expect.element(label).toBeVisible();
+    expect(label.element().querySelector('[aria-hidden="true"] .name-tag')?.textContent, 'the long name is cut').toBe(CUT_NAME);
+    expectNothingToScrollSideways('at the start');
+    const terminal = await openTerminal();
+    await userEvent.click(terminal.getByRole('button', { name: NEWS_NAME, exact: true }));
+    await sendMessage(terminal, DIG);
+    await standStill();
+    expectNothingToScrollSideways('with the terminal open and the dig to the news server sent');
+    await confirm(terminal);
+    await expect.element(terminal).not.toBeInTheDocument();
+    await standStill();
+    expectNothingToScrollSideways('with the terminal closed');
   });
 });

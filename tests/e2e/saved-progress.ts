@@ -3,6 +3,9 @@ import { MAX_STARS, PROGRESS_KEY } from '@/storage/progress';
 
 const INCIDENTS_PER_CHAPTER = 14;
 
+export const FIRST_OF_CHAPTER_4 = '04-01';
+export const FIRST_OF_CHAPTER_4_TITLE = 'El primer ping';
+
 /** Returns the saved progress that gives three stars to the fourteen incidents of a chapter, from `NN-01` to `NN-14`. */
 function chapterDone(chapter: number): Record<string, number> {
   const prefix = String(chapter).padStart(2, '0');

@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { SCREEN_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { openCard, openTerminal, showTheScreen, standStill } from '@/testing/browser-play';
+import { inspectionBoxOverCards } from '@/testing/card-boxes';
+import { card, moveTheMouseTo, openCard, openTerminal, showTheScreen, standStill, type Point } from '@/testing/browser-play';
 import { overlaps } from '@/testing/map-boxes';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
@@ -15,6 +16,15 @@ const VISITOR_LAPTOP = 'laptop-visita';
 const OFFICE_ROUTER = 'router-oficina';
 const PINNED_MARK = 'data-pinned';
 const DESKTOP_WINDOW = { width: 1440, height: 900 };
+const FULL_WINDOWS = [
+  { name: '1280×800', size: { width: 1280, height: 800 } },
+  { name: '1440×900', size: DESKTOP_WINDOW },
+];
+const LUCIA = 'laptop-lucia';
+const MAP_LABELS = 'button.map-button';
+const ROUTES_CARD = 'Tabla de rutas de router-oficina';
+const TRANSLATIONS_TAB = 'Tabla de traducciones';
+const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
 const TIGHT_WINDOW = { width: 1000, height: 700 };
 const HEADING = 'h2';
 const CONTAINS = { exact: false };
@@ -23,6 +33,27 @@ const CARD_AND_ITS_FREE_SIDE = [
   { name: 'the terminal of 01-08, docked at the left of the map', level: '01-08', open: () => openTerminal(), over: OFFICE_ROUTER, takes: 'right' },
   { name: 'the card of the firewall of 01-13, docked at the left of the map', level: '01-13', open: () => openCard(FIREWALL), over: YOUR_LAPTOP, takes: 'right' },
   { name: 'the card of the printer of 01-01, in the middle of the map', level: '01-01', open: () => openCard(PRINTER), over: VISITOR_LAPTOP, takes: 'left' },
+] as const;
+
+function centreOf(element: Element): Point {
+  const { x, y, width, height } = element.getBoundingClientRect();
+  return { x: x + width / 2, y: y + height / 2 };
+}
+
+async function openTheTableOfTheRouter(tab?: string): Promise<Locator> {
+  await userEvent.click(page.getByRole('button', { name: labelOf(OFFICE_ROUTER) }));
+  if (tab !== undefined) await userEvent.click(page.getByRole('tab', { name: tab, exact: true }));
+  const opened = card(tab === undefined ? ROUTES_CARD : TRANSLATIONS_CARD);
+  await expect.element(opened).toBeVisible();
+  return opened;
+}
+
+const OPEN_CARDS = [
+  { level: '02-07', name: 'the terminal of tu-laptop', open: () => openTerminal() },
+  { level: '02-07', name: 'the routes of router-oficina', open: () => openTheTableOfTheRouter() },
+  { level: '02-08', name: 'the terminal of tu-laptop', open: () => openTerminal() },
+  { level: '02-08', name: 'the terminal of laptop-lucia', open: () => openTerminal(LUCIA) },
+  { level: '02-08', name: 'the translations of router-oficina', open: () => openTheTableOfTheRouter(TRANSLATIONS_TAB) },
 ] as const;
 
 function show(level: string) {
@@ -97,5 +128,33 @@ describe('at a tight window', () => {
     await expect.element(piece, { message: 'and the piece wears no pin' }).not.toHaveAttribute(PINNED_MARK);
     await expect.element(terminal, { message: 'the terminal stays open' }).toBeVisible();
     await expect.element(reason, { message: 'and the reason stays while the card does' }).toBeVisible();
+  });
+});
+
+describe('the inspection box in the incidents of the routes and the translations', () => {
+  it('in 02-07 and 02-08 the inspection box of a piece covers no open card, at 1280×800 and at 1440×900', { timeout: SLOW_TEST_MS }, async () => {
+    const covered: string[] = [];
+    const hoversWithABox = new Map<string, number>();
+    for (const { name: windowName, size } of FULL_WINDOWS) {
+      await page.viewport(size.width, size.height);
+      for (const { level, name, open } of OPEN_CARDS) {
+        const scene = `${windowName}, ${level}, ${name}`;
+        hoversWithABox.set(scene, 0);
+        const view = await show(level);
+        await standStill();
+        const opened = await open();
+        await letGoOfItsBox(opened);
+        for (const piece of document.querySelectorAll(MAP_LABELS)) {
+          await moveTheMouseTo(centreOf(piece));
+          await standStill();
+          const seen = inspectionBoxOverCards();
+          if (seen.shown) hoversWithABox.set(scene, (hoversWithABox.get(scene) ?? 0) + 1);
+          covered.push(...seen.covered.map((problem) => `${scene}, ${piece.getAttribute('aria-label') ?? piece.textContent}: ${problem}`));
+        }
+        view.unmount();
+      }
+    }
+    expect(covered).toEqual([]);
+    expect([...hoversWithABox].filter(([, hovers]) => hovers === 0).map(([scene]) => scene), 'every open card leaves the box a place, so each scene shows it for some piece').toEqual([]);
   });
 });
