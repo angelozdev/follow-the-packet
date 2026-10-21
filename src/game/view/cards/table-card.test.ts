@@ -4,7 +4,7 @@ import type { TermId } from '@/copy';
 import { RECORD_PROBLEMS, ROUTE_PROBLEMS, applyAction } from '@/engine';
 import { CHIP_PROBLEMS, INCIDENTS } from '@/levels';
 import { ADDRESS, FORWARDED_APP, IP, MESSAGE, ORIGIN, PORT, ROUTER } from '@/levels/02-ports-and-names/shared';
-import { NAME_SERVERS, OFFICE_FLOORS, filterIncident, namesSendIncident, withResolverCache } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, filterIncident, namesSendIncident, withResolverCache } from '@/testing';
 import { sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { cacheCard, recordsCard, routesCard, translationsCard, type TableCard } from './table-card';
@@ -13,7 +13,7 @@ const TRACE = { id: 'trace', label: '{{traceroute}}', command: 'traceroute', icm
 const WITHOUT_TRACE = namesSendIncident();
 const NAMES = { ...WITHOUT_TRACE, send: { ...WITHOUT_TRACE.send, message: [...WITHOUT_TRACE.send.message, TRACE] } };
 const { officeRouter, provider, server, range } = OFFICE_FLOORS;
-const { zone, resolver, authoritative } = NAME_SERVERS;
+const { zone, resolver, authoritative } = NAME_SERVER_PIECES;
 const START = startSession([NAMES], NAMES.id);
 const YOU = PIECE_ID.device('your-laptop');
 const OFFICE_ROUTER = PIECE_ID.router(officeRouter.id);

@@ -3,10 +3,10 @@ import { applyAction } from '@/engine/network/actions';
 import type { Network } from '@/engine/network/types';
 import { simulate } from '@/engine/simulation/simulate';
 import { simulateSequence } from '@/engine/simulation/sequence';
-import { NAME_SERVERS, OFFICE_FLOORS, device, dig, officeWithNames, ping, tcp } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, device, dig, officeWithNames, ping, tcp } from '@/testing';
 import { hostsLine, hostsTrace } from './hosts';
 
-const { zone, site, resolver } = NAME_SERVERS;
+const { zone, site, resolver } = NAME_SERVER_PIECES;
 const WWW = `www.${zone}`;
 const SHOP = `tienda.${zone}`;
 const IN_HOSTS = '198.51.100.51';

@@ -142,7 +142,7 @@ export function officeTwoFloorsNet(): Network {
   };
 }
 
-export const NAME_SERVERS = {
+export const NAME_SERVER_PIECES = {
   zone: 'lucia.example',
   downZone: 'noticias.example',
   site: OFFICE_FLOORS.server.ip,
@@ -162,7 +162,7 @@ function nameServer({ id, ip }: NameServer, dns: ServerDns): ServerActor {
 /** Returns the office of the map that grows with the DNS of chapter 2: tu-laptop uses the resolver servidor-dns, which knows two authoritative servers behind router-backbone, one for lucia.example (www points to the server of the internet and blog is an alias of www) and one for noticias.example that is down. */
 export function officeWithNames(): Network {
   const base = officeTwoFloorsNet();
-  const { resolver, authoritative, down, zone, downZone, site } = NAME_SERVERS;
+  const { resolver, authoritative, down, zone, downZone, site } = NAME_SERVER_PIECES;
   const upstreams = [{ zone, serverId: authoritative.id }, { zone: downZone, serverId: down.id }];
   const records = [{ name: `www.${zone}`, type: 'A', value: site, ttl: 300 }, { name: `blog.${zone}`, type: 'CNAME', value: `www.${zone}`, ttl: 300 }] as const;
   const wired = (router: Router): Router => (router.id === OFFICE_FLOORS.backbone.id ? { ...router, interfaces: [...router.interfaces, ...[resolver, authoritative, down].map(({ id, link }) => ({ ip: link, faces: id }))] } : router);
@@ -181,8 +181,8 @@ export function officeWithNames(): Network {
 
 /** Returns the network with an initial cache in the resolver of `officeWithNames`: data of the world, measured against the clock of the game, whose seconds are the `expiresAt` of its entries. */
 export function withResolverCache(net: Network, cache: DnsCacheEntry[]): Network {
-  const server = net.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === NAME_SERVERS.resolver.id);
-  return applyAction(net, { type: 'setDns', ownerId: NAME_SERVERS.resolver.id, dns: { ...server!.dns!, cache } });
+  const server = net.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === NAME_SERVER_PIECES.resolver.id);
+  return applyAction(net, { type: 'setDns', ownerId: NAME_SERVER_PIECES.resolver.id, dns: { ...server!.dns!, cache } });
 }
 
 export function withInbound(net: Network, firewallId: string, ...rules: Rule[]): Network {

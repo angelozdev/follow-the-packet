@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, simulate } from '@/engine';
 import { nameTag } from '@/copy';
-import { NAME_SERVERS, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
 import { FLOORS_LABEL_PIECES, mapPiece, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
 import { graphOf } from '@/scene/layout/arrange/assemble';
 import { lengthOf, positionAt, route, type Point } from '@/scene/layout/graph';
@@ -215,7 +215,7 @@ describe('stillPackets', () => {
 });
 
 describe('the question of a send by name on the still map', () => {
-  const { zone, resolver } = NAME_SERVERS;
+  const { zone, resolver } = NAME_SERVER_PIECES;
   const NAMES = officeWithNames();
   const PIECES = [...FLOORS_LABEL_PIECES, mapPiece({ kind: 'device', variant: 'internet-server' }, resolver.id, nameTag(resolver.id))];
   const NAMES_LAYOUT = layoutMap(NAMES, PIECES, { width: 1280 });

@@ -4,7 +4,7 @@ import { applyAction, simulate, type Network } from '@/engine';
 import { INCIDENTS, solvedWorld, startWorld } from '@/levels';
 import { lengthOf, route, type Point } from '@/scene/layout/graph';
 import { LINE_END, mainLine, startsOnMap, station, stationsFor } from '@/scene/layout/stations';
-import { NAME_SERVERS, OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, actor, device, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping } from '@/testing';
 import { graphOf } from './assemble';
 import {
   BAR_AT,
@@ -45,7 +45,7 @@ const groupOf = (layout: RowLayout, id: string) => layout.groups.find((group) =>
 
 const HOME = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
 const NAMED = applyAction(officeWithNames(), { type: 'addActor', actor: HOME });
-const NAME_PIECES = [NAME_SERVERS.resolver, NAME_SERVERS.authoritative, NAME_SERVERS.down].map(({ id }) => piece('device', id));
+const NAME_PIECES = [NAME_SERVER_PIECES.resolver, NAME_SERVER_PIECES.authoritative, NAME_SERVER_PIECES.down].map(({ id }) => piece('device', id));
 const WITH_NAMES = [...FLOOR_1_DEVICES, ROUTERS[0], GLOBE, ...NAME_PIECES, SERVER_PIECE, piece('actor', HOME.id)];
 
 const OTHER_OFFICE = startWorld(INCIDENTS, '02-07');

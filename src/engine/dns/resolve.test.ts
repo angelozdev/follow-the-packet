@@ -3,11 +3,11 @@ import { applyAction } from '@/engine/network/actions';
 import type { AnswerRecord, Device, Network, ServerActor, ServerDns, SoaRecord, Zone } from '@/engine/network/types';
 import { simulate } from '@/engine/simulation/simulate';
 import { simulateSequence } from '@/engine/simulation/sequence';
-import { NAME_SERVERS, OFFICE_FLOORS, allOut, device, dig, officeWithNames, ping, tcpService } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, device, dig, officeWithNames, ping, tcpService } from '@/testing';
 import { DNS_PORT, MAX_ALIAS_STEPS, resolve, type LookupMode } from './resolve';
 import { RECORD_TTL, nsOf, soaOf, zoneOf } from './records';
 
-const { zone: ZONE, downZone: DOWN_ZONE, site, resolver, authoritative, down } = NAME_SERVERS;
+const { zone: ZONE, downZone: DOWN_ZONE, site, resolver, authoritative, down } = NAME_SERVER_PIECES;
 const WWW = `www.${ZONE}`;
 const BLOG = `blog.${ZONE}`;
 const GONE = `noexiste.${ZONE}`;
@@ -203,8 +203,8 @@ describe('the question travels as a UDP datagram to port 53', () => {
     expect(found.query?.outcome).toBe('replied');
     expect(found.dns.status).toBe('NO-RESOLVER');
     expect(found).toMatchObject({ answered: false, notAResolver: OFFICE_FLOORS.server.id });
-    const authoritativeAsResolver = applyAction(net, { type: 'setDnsServer', deviceId: 'your-laptop', server: NAME_SERVERS.authoritative.ip });
-    expect(ask(WWW, authoritativeAsResolver)).toMatchObject({ answered: false, notAResolver: NAME_SERVERS.authoritative.id });
+    const authoritativeAsResolver = applyAction(net, { type: 'setDnsServer', deviceId: 'your-laptop', server: NAME_SERVER_PIECES.authoritative.ip });
+    expect(ask(WWW, authoritativeAsResolver)).toMatchObject({ answered: false, notAResolver: NAME_SERVER_PIECES.authoritative.id });
   });
 
   it('a resolver whose listening address is the loopback one does not take the question', () => {

@@ -5,7 +5,7 @@ import { INCIDENTS, caseWorld, sendCombinations, startWorld, type Flow, type Inc
 import { unknownTerms } from '@/levels/ladder';
 import { ADDRESS, IP, MESSAGE, ORIGIN, PORT, ROUTER } from '@/levels/02-ports-and-names/shared';
 import { FLOWS, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
+import { CHAPTER_1_TERMS, CHAPTER_2_TERMS, EVERY_TERM, NAME_SERVER_PIECES, OFFICE, actor, device, OFFICE_FLOORS, namesSendIncident, officeNet, officeTwoFloorsNet, outboundFilterIncident, ping, routedSendIncident, sendIncident, withDevice, withResolverCache } from '@/testing';
 import { sendPacket } from '@/game/flow-runs';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { firewallCard } from './cards/firewall-card';
@@ -627,7 +627,7 @@ describe('the box of a packet with ports and names', () => {
   const NAMES = namesSendIncident();
   const base = startSession([NAMES], NAMES.id);
   const { server } = OFFICE_FLOORS;
-  const { zone, resolver } = NAME_SERVERS;
+  const { zone, resolver } = NAME_SERVER_PIECES;
   const tcpApp = { protocol: 'tcp', port: 3000, listen: 'all' } as const;
   const inWorld = (session: Session, ...actions: NetworkAction[]): Session => ({ ...session, world: actions.reduce((net, action) => applyAction(net, action), session.world) });
   const served = inWorld(base, { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpApp] });
@@ -706,14 +706,14 @@ describe('the box of a packet with ports and names', () => {
   });
 
   it('the box of a dig says whether the answer came from the cache once dns-cache is known', () => {
-    const cached: Session = { ...base, world: withResolverCache(base.world, [{ name: `www.${zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 }]) };
+    const cached: Session = { ...base, world: withResolverCache(base.world, [{ name: `www.${zone}`, type: 'A', value: NAME_SERVER_PIECES.site, expiresAt: 240 }]) };
     const fromCache = sentTo(cached, 'www', 'dig');
-    expect(field(fromCache, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, `La respuesta salió de la caché de ${resolver.id}.`, 'TTL: quedan 240 s.']);
+    expect(field(fromCache, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVER_PIECES.site}`, `La respuesta salió de la caché de ${resolver.id}.`, 'TTL: quedan 240 s.']);
     const fresh = sentTo(base, 'www', 'dig');
-    expect(field(fresh, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, `${resolver.id} no la tenía en su caché y la buscó.`, 'TTL: 300 s.']);
+    expect(field(fresh, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVER_PIECES.site}`, `${resolver.id} no la tenía en su caché y la buscó.`, 'TTL: 300 s.']);
     const early = sentTo(without(cached, 'dns-cache'), 'www', 'dig');
-    expect(field(early, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`, 'TTL: 240 s.']);
-    expect(field(sentTo(without(cached, 'dns-cache', 'dns-ttl'), 'www', 'dig'), 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVERS.site}`]);
+    expect(field(early, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVER_PIECES.site}`, 'TTL: 240 s.']);
+    expect(field(sentTo(without(cached, 'dns-cache', 'dns-ttl'), 'www', 'dig'), 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `www.${zone} A ${NAME_SERVER_PIECES.site}`]);
     expect(field(sentTo(without(cached, 'dns'), 'www', 'dig'), 'DNS')).toBeUndefined();
     const missing = sentTo(base, 'missing', 'dig');
     expect(field(missing, 'DNS')).toEqual(['DNS', `Contestó ${resolver.id}.`, `NXDOMAIN: nadie.${zone} no existe.`]);
@@ -733,11 +733,11 @@ describe('the box of a packet with ports and names', () => {
     const ON_THE_MAP = 'La consulta salió del puerto 51514 y se ve en el mapa, antes de este paquete.';
     const asked = sentTo(base, 'www', 'ping');
     expect(asked.sent[0].trace.steps[0]).toMatchObject({ stage: 'dns', reason: { code: 'dns-answered' } });
-    expect(field(asked, 'DNS')).toEqual(['DNS', LEAD, `tu-laptop hizo una consulta DNS por www.${zone} a ${resolver.id}, su resolver: la respuesta es ${NAME_SERVERS.site}.`, ON_THE_MAP]);
-    expect(field(sentTo(without(base, 'dns-query', 'resolver'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop preguntó por www.${zone} a ${resolver.id}: la respuesta es ${NAME_SERVERS.site}.`, ON_THE_MAP]);
-    const hosted = inWorld(base, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: NAME_SERVERS.site }] });
-    expect(field(sentTo(hosted, 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop encontró www.${zone} en su archivo hosts: es ${NAME_SERVERS.site}. No preguntó a nadie.`]);
-    expect(field(sentTo(without(hosted, 'hosts-file'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop ya sabía que www.${zone} es ${NAME_SERVERS.site}: no preguntó a nadie.`]);
+    expect(field(asked, 'DNS')).toEqual(['DNS', LEAD, `tu-laptop hizo una consulta DNS por www.${zone} a ${resolver.id}, su resolver: la respuesta es ${NAME_SERVER_PIECES.site}.`, ON_THE_MAP]);
+    expect(field(sentTo(without(base, 'dns-query', 'resolver'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop preguntó por www.${zone} a ${resolver.id}: la respuesta es ${NAME_SERVER_PIECES.site}.`, ON_THE_MAP]);
+    const hosted = inWorld(base, { type: 'setHosts', deviceId: 'your-laptop', hosts: [{ name: `www.${zone}`, ip: NAME_SERVER_PIECES.site }] });
+    expect(field(sentTo(hosted, 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop encontró www.${zone} en su archivo hosts: es ${NAME_SERVER_PIECES.site}. No preguntó a nadie.`]);
+    expect(field(sentTo(without(hosted, 'hosts-file'), 'www', 'ping'), 'DNS')).toEqual(['DNS', LEAD, `tu-laptop ya sabía que www.${zone} es ${NAME_SERVER_PIECES.site}: no preguntó a nadie.`]);
     expect(field(sentTo(without(base, 'dns'), 'www', 'ping'), 'DNS')).toBeUndefined();
     expect(field(sentTo(base, 'lucia', 'ping'), 'DNS')).toBeUndefined();
     const failed = sentTo(base, 'missing', 'ping');
@@ -922,7 +922,7 @@ describe('the route a packet used and the translation the NAT made', () => {
   });
 
   it('tags only the terms the player knows in the fields of a packet with ports, names, routes and a translation, whichever term is missing', () => {
-    const cached = [{ name: `www.${NAME_SERVERS.zone}`, type: 'A', value: NAME_SERVERS.site, expiresAt: 240 }] as const;
+    const cached = [{ name: `www.${NAME_SERVER_PIECES.zone}`, type: 'A', value: NAME_SERVER_PIECES.site, expiresAt: 240 }] as const;
     const world: Session = { ...start, world: withResolverCache(start.world, [...cached]) };
     const OWN_FIELDS = /^(DNS|Encabezado|Ruta que usó|Traducción|Saludo de tres pasos|Consulta y respuesta)/;
     const sends = [['you', 'server', 'nc-3000'], ['you', 'server', 'ping'], ['you', 'lucia', 'nc'], ['you', 'www', 'dig'], ['you', 'www', 'ping'], ['you', 'missing', 'ping'], ['you', 'missing', 'dig'], ['home', 'uplink', 'nc-3000']] as const;

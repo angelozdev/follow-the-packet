@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { applyAction, networkActionSchema, type NetworkAction } from '@/engine/network/actions';
 import { networkSchema } from '@/engine/network/schema';
 import type { AnswerRecord, DnsRecord, Network, ServerActor, ServerDns, SoaRecord, Zone } from '@/engine/network/types';
-import { NAME_SERVERS, OFFICE_FLOORS, lab03Net, officeWithNames } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, lab03Net, officeWithNames } from '@/testing';
 import { RECORD_PROBLEMS, RECORD_TTL, negativeTtl, recordProblem, soaOf } from './records';
 
-const { zone: ZONE, authoritative, resolver, site } = NAME_SERVERS;
+const { zone: ZONE, authoritative, resolver, site } = NAME_SERVER_PIECES;
 const WWW = `www.${ZONE}`;
 const BLOG = `blog.${ZONE}`;
 const SOA_FIELDS = ['mname', 'rname', 'serial', 'refresh', 'retry', 'expire', 'minimum'];
@@ -78,7 +78,7 @@ describe('the CNAME rule', () => {
     expect(problems(added)).toEqual([]);
     const second = applyAction(added, addRecord(aRecord(`tienda.${ZONE}`, '198.51.100.51')));
     expect(zonesOf(second, authoritative.id)[0].records.filter((record) => record.name === shop.name)).toHaveLength(2);
-    expect(zonesOf(added, NAME_SERVERS.down.id)).toEqual(zonesOf(net, NAME_SERVERS.down.id));
+    expect(zonesOf(added, NAME_SERVER_PIECES.down.id)).toEqual(zonesOf(net, NAME_SERVER_PIECES.down.id));
   });
 
   it('removeRecord removes the record with that name, type and value and returns the same network for one the zone does not hold', () => {

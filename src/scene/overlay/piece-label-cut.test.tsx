@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MAP_TEXT, nameTag } from '@/copy';
-import { NAME_SERVERS, OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing/fixtures';
 import { FLOORS_LABEL_PIECES, mapPiece, triggerSpies } from '@/testing/map-pieces';
 import { frameOf } from '@/scene/frame';
 import { MIN_WIDTH } from '@/scene/layout/arrange/geometry';
@@ -14,7 +14,7 @@ import type { InspectTrigger, TriggerProps } from '@/scene/overlay/inspect-trigg
 import { MapLabels } from './map-labels';
 import { PieceLabel, pieceDomId, type MapPiece } from './piece-label';
 
-const LONG_NAME = NAME_SERVERS.down.id;
+const LONG_NAME = NAME_SERVER_PIECES.down.id;
 const FULL_NAME = `${LONG_NAME} ${MAP_TEXT.locked}`;
 const CUT_NAME = 'servidor-autoritativo-not…';
 const CUT_BOX = labelWidth(cutLabel(nameTag(LONG_NAME), 26), { locked: true });

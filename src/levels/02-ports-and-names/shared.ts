@@ -107,6 +107,9 @@ export const SERVER = {
 /** The client of the internet that sends from outside the office (02-09). */
 export const CLIENT = { home: { id: 'lucia-home', name: 'casa-lucia' } } as const;
 
+/** The titles of the incidents that the text of another incident quotes. */
+export const QUOTED_TITLE = { openingAConnection: 'Abrir una conexión', askingForAName: 'Preguntar por un nombre' } as const;
+
 export const NAME = {
   ...CHAPTER_1_NAME,
   destination: nameTag(ROUTER.destination.name),
@@ -372,7 +375,7 @@ const NAME_SERVER_INTERFACES: RouterInterface[] = [
   { ip: IP.destinationAuthoritative, faces: SERVER.authoritative.id },
 ];
 
-/** What 02-10 changes: servidor-dns, the resolver, and servidor-autoritativo, which holds the zone lucia.example, appear in the internet; both listen on UDP and TCP port 53 and the resolver knows which server to ask for the zone. The zone has one address, `www.lucia.example` A 198.51.100.50 (the server of the internet), with the time to live of the game. router-destino gets one interface for each (an update replaces the list, so it restates the two it had), and tu-laptop gets the resolver as its DNS server, the one DHCP lent it. The servers are new pieces, so the text does not have to name them; tu-laptop already existed and its Ajustes de red now show a DNS server, so the report names it. */
+/** What 02-10 changes: servidor-dns, the resolver, and servidor-autoritativo, which holds the zone lucia.example, appear in the internet; both listen on UDP and TCP port 53 and the resolver knows which server to ask for the zone. The zone has one address, `www.lucia.example` A 198.51.100.50 (the server of the internet), with the time to live of the game. router-destino gets one interface for each, and tu-laptop gets the resolver as its DNS server, the one DHCP lent it. */
 export const NAME_SERVERS: NetworkAction[] = [
   {
     type: 'addActor',
@@ -617,7 +620,7 @@ export function recordRemoval(name: string, type: AnswerRecord['type'], value: s
   return { type: 'removeEntry', tableId: SITE_RECORDS.table, entryId: recordEntryId({ name, type, value }) };
 }
 
-/** The fix of case 5 of 02-14: the table of routes of router-proveedor, and the task that the ping to servidor-internet comes back. Its reference solution takes the default route away, which sent everything back to router-oficina, writes the block of the servers towards router-destino and sends the ping again, because every change of the world clears the sends. */
+/** The fix of case 5 of 02-14: the table of routes of router-proveedor, and the task that the ping to servidor-internet comes back. Its reference solution takes the default route away, writes the block of the servers towards router-destino and sends the ping again. */
 export const LOOP_FIX: NonNullable<CaseSpec['fix']> = {
   tables: [PROVIDER_ROUTES_TABLE],
   tasks: [sendTaskFrom(ORIGIN.you, TASK.serverPing, `Que el {{ping}} a ${NAME.server} vuelva.`, MESSAGE.ping.id, ADDRESS.server.id, 'replied', SERVER.internet.id)],

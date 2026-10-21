@@ -9,7 +9,7 @@ import { MapStage } from '@/scene/map-stage';
 import { pieceDomId } from '@/scene/overlay/piece-label';
 import { confirm, openTerminal, sendMessage, showTheScreen, standStill } from '@/testing/browser-play';
 import { namesSendIncident } from '@/testing/incidents';
-import { NAME_SERVERS } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES } from '@/testing/fixtures';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -18,7 +18,7 @@ const WIDER_PHONE = { width: 390, height: 844 };
 const SLOW_TEST_MS = 120_000;
 const SUBPIXEL_PX = 0.5;
 const MODEL_SLACK_PX = 2;
-const NEWS_SERVER = NAME_SERVERS.down.id;
+const NEWS_SERVER = NAME_SERVER_PIECES.down.id;
 const NEWS_PIECE = `actor:${NEWS_SERVER}`;
 const FULL_NAME = `${NEWS_SERVER} ${MAP_TEXT.locked}`;
 const CUT_NAME = 'servidor-autoritativo-not…';

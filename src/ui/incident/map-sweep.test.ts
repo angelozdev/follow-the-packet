@@ -4,7 +4,7 @@ import { PIECE_ID, classifiedBlock, drawnSends, inspect, isIntruding, pieceViews
 import { runFlows } from '@/game/flow-runs';
 import { applyAction, type NetworkAction } from '@/engine';
 import { INCIDENTS, caseWorld, sendCombinations, solvedWorld, type Incident, type SendOwner } from '@/levels';
-import { NAME_SERVERS, OFFICE_FLOORS, namesSendIncident } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, namesSendIncident } from '@/testing';
 import { DOORSTEP, FAN_PITCH, LABEL_GAP, MIN_WIDTH, STAMP, fanBox, overlaps, type Box } from '@/scene/layout/arrange/geometry';
 import { blockTabBoxes, captionBoxes } from '@/scene/layout/captions';
 import { graphOf } from '@/scene/layout/arrange/assemble';
@@ -839,7 +839,7 @@ describe('the states the geometry tests of the chapters played, as the player re
 });
 
 describe('the sweep of the sends by name', () => {
-  const { zone, resolver, authoritative } = NAME_SERVERS;
+  const { zone, resolver, authoritative } = NAME_SERVER_PIECES;
   const base = namesSendIncident();
   const shown = ['your-laptop', 'lucia-laptop', 'printer', OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.provider.id, resolver.id, OFFICE_FLOORS.server.id];
   const NAMES = { ...base, shown, send: { ...base.send, message: base.send.message.filter(({ command }) => command !== 'dig'), to: [...base.send.to, { id: 'apex', address: zone }] } };

@@ -3,7 +3,7 @@ import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { applyAction, type Network, type Outcome } from '@/engine';
 import type { MessageChip, SendIncident, SendTask } from '@/levels';
-import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, device, filterIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, device, filterIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { lastOfEach, runFlows, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
 import { failingTaskIds, taskHolds } from './tasks';
 
@@ -198,9 +198,9 @@ describe('identify tasks', () => {
 
 describe('send tasks that expect what the DNS answered', () => {
   const NAMES = namesSendIncident();
-  const { zone, site } = NAME_SERVERS;
+  const { zone, site } = NAME_SERVER_PIECES;
   const OTHER_IP = '198.51.100.51';
-  const addresses = [{ id: 'blog', address: `blog.${zone}` }, { id: 'down', address: `www.${NAME_SERVERS.downZone}` }, { id: 'broken', address: `rota.${zone}` }];
+  const addresses = [{ id: 'blog', address: `blog.${zone}` }, { id: 'down', address: `www.${NAME_SERVER_PIECES.downZone}` }, { id: 'broken', address: `rota.${zone}` }];
   const NAMED = { ...NAMES, send: { ...NAMES.send, to: [...NAMES.send.to, ...addresses] } };
   const world = startWorld([NAMED], NAMED.id);
   const [www] = NAMES.tasks;
@@ -267,7 +267,7 @@ describe('send tasks that expect what the DNS answered', () => {
     const blog = sentAfter(world, dispatch('blog', 0));
     expect(holds(asking('blog', { status: 'NXDOMAIN', answer: { alias: true } }), blog)).toBe(false);
     expect(holds(asking('missing', { status: 'NXDOMAIN', answer: { alias: true } }), sentAfter(world, dispatch('missing', 0)))).toBe(false);
-    const dangling = applyAction(world, { type: 'addRecord', serverId: NAME_SERVERS.authoritative.id, record: { name: `rota.${zone}`, type: 'CNAME', value: `nadie.${zone}`, ttl: 300 } });
+    const dangling = applyAction(world, { type: 'addRecord', serverId: NAME_SERVER_PIECES.authoritative.id, record: { name: `rota.${zone}`, type: 'CNAME', value: `nadie.${zone}`, ttl: 300 } });
     const broken = sentAfter(dangling, dispatch('broken', 0));
     expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: true } }), broken)).toBe(true);
     expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: false } }), broken)).toBe(false);

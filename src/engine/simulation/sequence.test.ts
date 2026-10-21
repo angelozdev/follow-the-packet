@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { probePackets, withProbeActor } from '@/engine/exposure/exposure';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
-import { NAME_SERVERS, OFFICE, actor, chapter4Worlds, device, dig, officeNet, officeWithNames, ping, tcp, withResolverCache } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE, actor, chapter4Worlds, device, dig, officeNet, officeWithNames, ping, tcp, withResolverCache } from '@/testing';
 import { cacheAfter, simulateSequence, type Send } from './sequence';
 import { simulate } from './simulate';
 
@@ -113,7 +113,7 @@ describe('simulateSequence', () => {
 });
 
 describe('the cache of a resolver in a sequence', () => {
-  const { zone, site, resolver } = NAME_SERVERS;
+  const { zone, site, resolver } = NAME_SERVER_PIECES;
   const WWW = `www.${zone}`;
   const BLOG = `blog.${zone}`;
   const names = officeWithNames();
@@ -175,7 +175,7 @@ describe('the cache of a resolver in a sequence', () => {
 });
 
 describe('what a resolver holds after a sequence', () => {
-  const { zone, site, resolver, authoritative } = NAME_SERVERS;
+  const { zone, site, resolver, authoritative } = NAME_SERVER_PIECES;
   const WWW = `www.${zone}`;
   const names = officeWithNames();
   const rows = (list: Send[], now: number, id: string = resolver.id) => cacheAfter(names, list, id, now);

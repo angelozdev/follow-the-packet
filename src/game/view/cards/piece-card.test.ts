@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { CHAPTER_1_TERMS, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, sendIncident } from '@/testing';
+import { CHAPTER_1_TERMS, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, sendIncident } from '@/testing';
 import { startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { pieceCard } from './piece-card';
@@ -9,7 +9,7 @@ import { pieceCard } from './piece-card';
 const NAMES = namesSendIncident();
 const START = startSession([NAMES], NAMES.id);
 const { officeRouter, provider } = OFFICE_FLOORS;
-const { resolver, authoritative } = NAME_SERVERS;
+const { resolver, authoritative } = NAME_SERVER_PIECES;
 
 const ids = (session: Session, pieceId: string) => pieceCard(session, pieceId)?.tabs.map((tab) => tab.id);
 const labels = (session: Session, pieceId: string) => pieceCard(session, pieceId)?.tabs.map((tab) => toPlainText(tab.label));

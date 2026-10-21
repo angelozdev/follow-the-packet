@@ -7,7 +7,7 @@ import { lengthOf, route, type Point } from '@/scene/layout/graph';
 import { characterCount, labelWidth } from '@/scene/layout/metrics';
 import { LINE_END, startsOnMap, station, stationsFor } from '@/scene/layout/stations';
 import { holds } from '@/scene/marks/boxes';
-import { NAME_SERVERS, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames } from '@/testing';
+import { NAME_SERVER_PIECES, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames } from '@/testing';
 import { graphOf } from './arrange/assemble';
 import { BLOCK_TAB, CABLE_CLEARANCE, CABLE_STROKE, CAPTION, COMPACT, GROUP_PAD, MIN_WIDTH, NORMAL, OUTER, SNAKE_LABEL_WALL, WALL_STROKE, fanBox, overlaps, type Box, type MapMode, type RowLayout, type RowPiece } from './arrange/geometry';
 import { SERVERS, layoutRow } from './arrange/row';
@@ -35,7 +35,7 @@ function registeredWorlds(): { id: string; world: Network }[] {
 const FLOORS = officeTwoFloorsNet();
 const HOME = { id: 'casa-lucia', name: 'casa-lucia', ip: '192.0.2.77', kind: 'home' } as const;
 const NAMED = applyAction(officeWithNames(), { type: 'addActor', actor: HOME });
-const NAMED_OPENING_A_CARD = drawnWhole(NAMED).map((each) => (each.anchorId === NAME_SERVERS.down.id ? { ...each, locked: false } : each));
+const NAMED_OPENING_A_CARD = drawnWhole(NAMED).map((each) => (each.anchorId === NAME_SERVER_PIECES.down.id ? { ...each, locked: false } : each));
 const OTHER_OFFICE = startWorld(INCIDENTS, '02-07');
 const hosts = (world: Network, ...ids: string[]) => drawnWhole(world).filter(({ kind, anchorId }) => kind !== 'device' || ids.includes(anchorId));
 const withoutKinds = (pieces: RowPiece[], ...kinds: RowPiece['kind'][]) => pieces.filter(({ kind }) => !kinds.includes(kind));
@@ -48,7 +48,7 @@ const SCENES: { name: string; world: Network; pieces: RowPiece[] }[] = [
   { name: 'two floors with the routers out of sight', world: FLOORS, pieces: withoutKinds(drawnWhole(FLOORS), 'edge') },
   { name: 'the office alone', world: FLOORS, pieces: withoutKinds(hosts(FLOORS, 'your-laptop', 'lucia-laptop', 'marta-laptop', 'printer'), 'edge', 'internet', 'actor') },
   { name: 'an office and a server with no internet', world: FLOORS, pieces: withoutKinds(drawnWhole(FLOORS), 'edge', 'internet') },
-  { name: 'the names of chapter 2 and a client', world: NAMED, pieces: drawnWhole(NAMED).filter(({ anchorId }) => anchorId !== NAME_SERVERS.down.id) },
+  { name: 'the names of chapter 2 and a client', world: NAMED, pieces: drawnWhole(NAMED).filter(({ anchorId }) => anchorId !== NAME_SERVER_PIECES.down.id) },
   { name: 'the other office of 02-07', world: OTHER_OFFICE, pieces: drawnWhole(OTHER_OFFICE) },
   { name: 'the other office alone', world: OTHER_OFFICE, pieces: drawnWhole(OTHER_OFFICE).filter(({ kind, anchorId }) => kind !== 'device' || /^(branch-|internet-server)/.test(anchorId)) },
   { name: 'a road with no office', world: FLOORS, pieces: drawnWhole(FLOORS).filter(({ kind }) => kind === 'edge' || kind === 'internet') },
@@ -285,10 +285,10 @@ describe('layoutMap', () => {
 
   it('a name of 30 characters, in the server of names that opens a card, fits the snake at 360 px: 24 + 48 + 44 + 6 + 230, and 8 px to the wall', () => {
     const layout = layoutStack(NAMED, NAMED_OPENING_A_CARD, MIN_WIDTH);
-    const [name, icon, door, bus] = [layout.labels[`device:${NAME_SERVERS.down.id}`], layout.icons[`device:${NAME_SERVERS.down.id}`], layout.stations[station.door(NAME_SERVERS.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
+    const [name, icon, door, bus] = [layout.labels[`device:${NAME_SERVER_PIECES.down.id}`], layout.icons[`device:${NAME_SERVER_PIECES.down.id}`], layout.stations[station.door(NAME_SERVER_PIECES.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
     const side = Math.sign(door[0] - bus[0]);
     expect(layout.size.width).toBe(MIN_WIDTH);
-    expect(characterCount(NAME_SERVERS.down.id)).toBe(30);
+    expect(characterCount(NAME_SERVER_PIECES.down.id)).toBe(30);
     expect(name.width).toBe(230);
     expect(side === 1 ? bus[0] : MIN_WIDTH - bus[0]).toBe(24);
     expect(Math.abs(door[0] - bus[0])).toBe(44);
@@ -303,7 +303,7 @@ describe('layoutMap', () => {
     const nearest = new Map<number, number>();
     for (let width = MIN_WIDTH; width <= 520; width += 2) {
       const layout = layoutStack(NAMED, NAMED_OPENING_A_CARD, width);
-      const [name, door, bus] = [layout.labels[`device:${NAME_SERVERS.down.id}`], layout.stations[station.door(NAME_SERVERS.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
+      const [name, door, bus] = [layout.labels[`device:${NAME_SERVER_PIECES.down.id}`], layout.stations[station.door(NAME_SERVER_PIECES.down.id)], layout.nodes.find((node) => node.name === SERVERS)?.point ?? [NaN, NaN]];
       const side = Math.sign(door[0] - bus[0]);
       nearest.set(side, Math.min(nearest.get(side) ?? Infinity, side === 1 ? width - (name.x + name.width) : name.x));
       expect(layout.size.width, `at ${width}`).toBe(width);
@@ -315,9 +315,9 @@ describe('layoutMap', () => {
   it('a name of 30 characters with its lock, which no registered world has, widens the snake past 360 px instead of leaving the map', () => {
     const pieces = drawnWhole(NAMED);
     const narrow = layoutStack(NAMED, pieces, MIN_WIDTH);
-    const name = narrow.labels[`device:${NAME_SERVERS.down.id}`];
-    expect(characterCount(NAME_SERVERS.down.id)).toBe(30);
-    expect(name.width).toBe(labelWidth(NAME_SERVERS.down.id, { locked: true }));
+    const name = narrow.labels[`device:${NAME_SERVER_PIECES.down.id}`];
+    expect(characterCount(NAME_SERVER_PIECES.down.id)).toBe(30);
+    expect(name.width).toBe(labelWidth(NAME_SERVER_PIECES.down.id, { locked: true }));
     expect(narrow.size.width).toBeGreaterThan(MIN_WIDTH);
     expect(narrow.size.width).toBeLessThanOrEqual(name.x + name.width + OUTER + 8);
     expect(problemsOf(narrow)).toEqual([]);

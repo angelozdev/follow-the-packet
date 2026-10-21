@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcpService, withDevice, withInbound } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcpService, withDevice, withInbound } from '@/testing';
 import { applyAction, simulate, type Firewall, type Network } from '@/engine';
 import { INCIDENTS, solvedWorld } from '@/levels';
 import { startsOnMap, stationsFor, type Drawn } from './stations';
@@ -243,7 +243,7 @@ describe('a packet that dies at the NAT of the office', () => {
 
 describe('pathFor of a datagram that gets a Port Unreachable', () => {
   const printerAsResolver = withDevice(officeWithNames(), 'andres-laptop', { dnsServer: floor1.printer });
-  const lookup = dig(device('andres-laptop'), `www.${NAME_SERVERS.zone}`);
+  const lookup = dig(device('andres-laptop'), `www.${NAME_SERVER_PIECES.zone}`);
   const answered = simulate(printerAsResolver, lookup);
 
   it('runs to the door of the equipment that returns the warning, since the datagram does arrive there', () => {
@@ -322,7 +322,7 @@ describe('stationsFor', () => {
 });
 
 describe('pathFor of a send by name', () => {
-  const { zone, downZone, resolver } = NAME_SERVERS;
+  const { zone, downZone, resolver } = NAME_SERVER_PIECES;
   const WWW = `www.${zone}`;
   const names = officeWithNames();
   const NAMES_ROAD = drawn({ devices: DEVICES_ON_FLOORS, routers: [officeRouter.id, provider.id, backbone.id], internet: true, servers: [server.id, resolver.id] });

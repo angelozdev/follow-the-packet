@@ -17,7 +17,7 @@ import {
   type SendIncident,
   type SendOwner,
 } from '@/levels';
-import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, officeWithNames, ping, withDevice } from './fixtures';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, allOut, device, officeNet, officeTwoFloorsNet, officeWithNames, ping, withDevice } from './fixtures';
 
 /** Returns a registered incident that filters with rules, by its id; throws when there is none. */
 export function filterIncident(id: string): FilterIncident {
@@ -371,7 +371,7 @@ function routesTable(id: string, ownerId: string, destinations: string[], nextHo
 /** Returns a send incident on the office with names (`officeWithNames`), with every term introduced, that offers what chapter 2 adds to the contract: from your laptop, a ping, an `nc` to the port 3000 and a `dig`, to the IP of laptop-lucia, to a name of the zone and to the IP of the server; the settings of the resolver of your laptop and of the listen address of the port 3000 of laptop-lucia; a table of routes of the provider and one of records of the authoritative server; a clock with two steps; and the tasks that the `dig` of the name answers with the IP of the server, and that the `dig` of a name nobody holds ends as NXDOMAIN. Your laptop opens its settings first. */
 export function namesSendIncident(): SendIncident {
   const { floor1, server, officeRouter, provider, range } = OFFICE_FLOORS;
-  const { zone, authoritative, resolver } = NAME_SERVERS;
+  const { zone, authoritative, resolver } = NAME_SERVER_PIECES;
   const chip = (id: string, value: string | null) => ({ id, label: value ?? 'Ninguno', value });
   const dig = { fromId: 'you', messageId: 'dig', outcome: 'replied' } as const;
   return {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Network } from '@/engine';
-import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, actor, device, dig, lab03Net, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, isProblemStamp, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, serviceLabel, stampLabel, stampOf, tracerouteLabel, warningOf, type StampResult } from './packet-labels';
 import { MAP_TEXT } from './screens/incident-ui';
 import { termsIn, toPlainText } from './term-text';
@@ -253,7 +253,7 @@ describe('the label of a packet with ports', () => {
     expect(packetLabel(toLucia, simulate(serving(), toLucia), serving())).toBe('{{tcp}} 51514 → 3000 de [[tu-laptop]] a [[laptop-lucia]]');
     expect(packetLabel(toServer, simulate(floors, toServer), floors, EVERY_TERM)).toBe('{{tcp}} 51514 → 80 de [[tu-laptop]] a [[servidor-internet]]');
     const named = officeWithNames();
-    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    const question = dig(device('your-laptop'), `www.${NAME_SERVER_PIECES.zone}`);
     expect(packetLabel(question, simulate(named, question), named, EVERY_TERM)).toBe('{{udp}} 51514 → 53 de [[tu-laptop]] a [[servidor-dns]]');
     const given = { ...toLucia, sourcePort: 40000 };
     expect(packetLabel(given, simulate(serving(), given), serving())).toBe('{{tcp}} 40000 → 3000 de [[tu-laptop]] a [[laptop-lucia]]');
@@ -265,7 +265,7 @@ describe('the label of a packet with ports', () => {
     expect(label(withoutTerms('tcp'))).toBe('{{packet}} al {{port|puerto}} 3000 de [[tu-laptop]] a [[laptop-lucia]]');
     expect(label(withoutTerms('tcp', 'port'))).toBe('{{packet}} de [[tu-laptop]] a [[laptop-lucia]]');
     expect(label(withoutTerms('source-port'))).toBe('{{tcp}} 3000 de [[tu-laptop]] a [[laptop-lucia]]');
-    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    const question = dig(device('your-laptop'), `www.${NAME_SERVER_PIECES.zone}`);
     const named = officeWithNames();
     expect(packetLabel(question, simulate(named, question), named, withoutTerms('udp'))).toBe('{{packet}} al {{port|puerto}} 53 de [[tu-laptop]] a [[servidor-dns]]');
   });
@@ -385,7 +385,7 @@ describe('the labels of a packet with ports along its legs', () => {
   });
 
   it('a question to a resolver outside the office is translated like any other packet that leaves it', () => {
-    const question = dig(device('your-laptop'), `www.${NAME_SERVERS.zone}`);
+    const question = dig(device('your-laptop'), `www.${NAME_SERVER_PIECES.zone}`);
     expect(labelsOf(question, officeWithNames())).toEqual([
       { request: '{{udp}} 51514 → 53', reply: '{{udp}} 53 → 51514' },
       { request: '{{udp}} 40001 → 53', reply: '{{udp}} 53 → 40001' },

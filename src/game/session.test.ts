@@ -4,7 +4,7 @@ import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor } from '@/en
 import { INCIDENTS, caseWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -631,7 +631,7 @@ describe('the cases of a diagnose incident', () => {
 
 describe('the clock and the tables of chapter 2', () => {
   const NAMES = namesSendIncident();
-  const { zone, authoritative } = NAME_SERVERS;
+  const { zone, authoritative } = NAME_SERVER_PIECES;
   const { provider, officeRouter, server, range } = OFFICE_FLOORS;
   const WWW = `www.${zone}`;
   const send = (toId: string, messageId: string): SessionAction => ({ type: 'sendPacket', fromId: 'you', toId, messageId });
@@ -780,11 +780,11 @@ describe('the clock and the tables of chapter 2', () => {
   it('setSetting sets the dns server and the listen address of a device', () => {
     const serving = { ...NAMES, base: applyAction(officeWithNames(), { type: 'setServices', ownerId: 'lucia-laptop', services: [tcpService(3000)] }) };
     const opened = (...actions: SessionAction[]) => actions.reduce(sessionReducer, startSession([serving], serving.id));
-    expect(deviceOf(opened(), 'your-laptop').dnsServer).toBe(NAME_SERVERS.resolver.ip);
+    expect(deviceOf(opened(), 'your-laptop').dnsServer).toBe(NAME_SERVER_PIECES.resolver.ip);
     const none = opened(setting('your-laptop', 'resolver', 'none'));
     expect(deviceOf(none, 'your-laptop')).not.toHaveProperty('dnsServer');
     expect(sessionReducer(none, DIG).sent[0].trace.dns?.status).toBe('NO-RESOLVER');
-    expect(deviceOf(opened(setting('your-laptop', 'resolver', 'none'), setting('your-laptop', 'resolver', 'resolver')), 'your-laptop').dnsServer).toBe(NAME_SERVERS.resolver.ip);
+    expect(deviceOf(opened(setting('your-laptop', 'resolver', 'none'), setting('your-laptop', 'resolver', 'resolver')), 'your-laptop').dnsServer).toBe(NAME_SERVER_PIECES.resolver.ip);
     expect(opened(NC).sent[0].trace.outcome).toBe('replied');
     const loopback = opened(NC, setting('lucia-laptop', 'app', 'loopback'));
     expect(deviceOf(loopback, 'lucia-laptop').host.services).toEqual([tcpService(3000, 'loopback')]);

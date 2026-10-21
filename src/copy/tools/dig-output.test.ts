@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { simulate, type AnswerRecord, type SoaRecord } from '@/engine';
-import { NAME_SERVERS, device, dig, officeWithNames } from '@/testing';
+import { NAME_SERVER_PIECES, device, dig, officeWithNames } from '@/testing';
 import { digOutput, type DigFailure, type DigReply, type DigResult } from './dig-output';
 
 const SOURCE_READ = '2026-10-11';
 const BIND = `bind-9.18.50, read ${SOURCE_READ}`;
 const TAB = '\t';
-const SERVER = NAME_SERVERS.resolver.ip;
-const QUESTION = `www.${NAME_SERVERS.zone}`;
-const MISSING = `noexiste.${NAME_SERVERS.zone}`;
+const SERVER = NAME_SERVER_PIECES.resolver.ip;
+const QUESTION = `www.${NAME_SERVER_PIECES.zone}`;
+const MISSING = `noexiste.${NAME_SERVER_PIECES.zone}`;
 
 const address = (name: string, value: string, ttl = 300): AnswerRecord => ({ name, type: 'A', value, ttl });
 const ZONE_SOA: SoaRecord = {
-  name: NAME_SERVERS.zone,
+  name: NAME_SERVER_PIECES.zone,
   type: 'SOA',
   ttl: 300,
-  value: { mname: `ns1.${NAME_SERVERS.zone}`, rname: `hostmaster.${NAME_SERVERS.zone}`, serial: 2026101101, refresh: 1800, retry: 900, expire: 1209600, minimum: 1200 },
+  value: { mname: `ns1.${NAME_SERVER_PIECES.zone}`, rname: `hostmaster.${NAME_SERVER_PIECES.zone}`, serial: 2026101101, refresh: 1800, retry: 900, expire: 1209600, minimum: 1200 },
 };
 const REPLY: DigReply = { kind: 'reply', name: QUESTION, status: 'NOERROR', answers: [address(QUESTION, '198.51.100.50')], server: SERVER, queryMs: 84, at: 0 };
 const NXDOMAIN: DigReply = { ...REPLY, name: MISSING, status: 'NXDOMAIN', answers: [], soa: ZONE_SOA };
@@ -63,7 +63,7 @@ describe('digOutput', () => {
   it('an NXDOMAIN prints the SOA of the zone in the authority section with the TTL of RFC 2308', () => {
     const { dns } = simulate(officeWithNames(), dig(device('your-laptop'), MISSING));
     if (dns?.status !== 'NXDOMAIN' || !dns.soa) throw new Error('the dig of a missing name did not end as NXDOMAIN with its SOA');
-    const zone = NAME_SERVERS.zone;
+    const zone = NAME_SERVER_PIECES.zone;
     const soaLine = (ttl: number) => `${zone}.${TAB}${TAB}${ttl}${TAB}IN${TAB}SOA${TAB}ns1.${zone}. hostmaster.${zone}. 2026101101 1800 900 1209600 1200`;
     const printed = textOf({ ...NXDOMAIN, soa: dns.soa });
     expect(dns.soa.ttl).toBe(Math.min(ZONE_SOA.ttl, dns.soa.value.minimum));
@@ -113,15 +113,15 @@ describe('digOutput', () => {
     expect(textOf(real)).toContain(`;example.com.${TAB}${TAB}${TAB}IN${TAB}A`);
     expect(textOf(real)).toContain(`example.com.${TAB}${TAB}34${TAB}IN${TAB}A${TAB}172.66.147.243`);
     expect(textOf(REPLY)).toContain(`${QUESTION}.${TAB}300${TAB}IN${TAB}A${TAB}198.51.100.50`);
-    const long = `a-much-longer-name.${NAME_SERVERS.zone}`;
+    const long = `a-much-longer-name.${NAME_SERVER_PIECES.zone}`;
     expect(textOf({ ...REPLY, name: long, answers: [address(long, '198.51.100.50')] })).toContain(`${long}. 300 IN A${TAB}198.51.100.50`);
   });
 
   it('prints an alias before its address, each record with the TTL it has left', () => {
-    const answers: AnswerRecord[] = [{ name: `blog.${NAME_SERVERS.zone}`, type: 'CNAME', value: QUESTION, ttl: 240 }, address(QUESTION, '198.51.100.50', 240)];
-    const printed = textOf({ ...REPLY, name: `blog.${NAME_SERVERS.zone}`, answers });
+    const answers: AnswerRecord[] = [{ name: `blog.${NAME_SERVER_PIECES.zone}`, type: 'CNAME', value: QUESTION, ttl: 240 }, address(QUESTION, '198.51.100.50', 240)];
+    const printed = textOf({ ...REPLY, name: `blog.${NAME_SERVER_PIECES.zone}`, answers });
     expect(printed).toContain(`;; flags: qr rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1`);
-    expect(printed).toContain(`blog.${NAME_SERVERS.zone}.${TAB}240${TAB}IN${TAB}CNAME${TAB}${QUESTION}.`);
+    expect(printed).toContain(`blog.${NAME_SERVER_PIECES.zone}.${TAB}240${TAB}IN${TAB}CNAME${TAB}${QUESTION}.`);
     expect(printed).toContain(`${QUESTION}.${TAB}240${TAB}IN${TAB}A${TAB}198.51.100.50`);
   });
 

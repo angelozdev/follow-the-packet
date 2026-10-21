@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { applyAction, simulate } from '@/engine';
 import { nameTag } from '@/copy';
-import { NAME_SERVERS, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, device, officeTwoFloorsNet, officeWithNames, ping, tcp } from '@/testing/fixtures';
 import { FLOORS_LABEL_PIECES, mapPiece, mapRun, mapRunWithPorts, type MapRunFixture } from '@/testing/map-pieces';
 import { graphOf } from '@/scene/layout/arrange/assemble';
 import { lengthOf, positionAt, type Point } from '@/scene/layout/graph';
@@ -293,7 +293,7 @@ describe('the packets in flight, in a browser', () => {
 });
 
 describe('the question of a send by name, in a browser', () => {
-  const { zone, resolver } = NAME_SERVERS;
+  const { zone, resolver } = NAME_SERVER_PIECES;
   const WWW = `www.${zone}`;
   const NAMES = officeWithNames();
   const NAMES_LAYOUT = layoutMap(NAMES, [...FLOORS_LABEL_PIECES, mapPiece({ kind: 'device', variant: 'internet-server' }, resolver.id, nameTag(resolver.id))], { width: 1280 });

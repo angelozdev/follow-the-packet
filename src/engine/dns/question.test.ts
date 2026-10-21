@@ -4,10 +4,10 @@ import type { Network, PacketSpec } from '@/engine/network/types';
 import { cacheAfter, simulateSequence, type Send } from '@/engine/simulation/sequence';
 import { simulate } from '@/engine/simulation/simulate';
 import type { Trace } from '@/engine/simulation/trace';
-import { NAME_SERVERS, OFFICE_FLOORS, device, dig, officeWithNames, ping, tcp } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, device, dig, officeWithNames, ping, tcp } from '@/testing';
 import { DNS_PORT } from './resolve';
 
-const { zone, site, resolver } = NAME_SERVERS;
+const { zone, site, resolver } = NAME_SERVER_PIECES;
 const { floor1, officeRouter } = OFFICE_FLOORS;
 const WWW = `www.${zone}`;
 const GONE = `noexiste.${zone}`;

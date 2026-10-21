@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulateSequence, type Network } from '@/engine';
 import { packetFromChips, startWorld } from '@/levels';
 import { stampOf, type TermId } from '@/copy';
-import { EVERY_TERM, NAME_SERVERS, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
 import { drawnSends, hideStopsOutOfSight, lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
 import { PIECE_ID } from './view/piece-id';
 
@@ -10,7 +10,7 @@ const FIRST_PORT = 51514;
 const FIRST_PUBLIC_PORT = 40001;
 const NAMES = namesSendIncident();
 const WORLD = startWorld([NAMES], NAMES.id);
-const { resolver } = NAME_SERVERS;
+const { resolver } = NAME_SERVER_PIECES;
 const { uplink } = OFFICE_FLOORS.officeRouter;
 
 const dispatch = (messageId: string, toId: string, send: number, at: number): Dispatch => ({ move: { type: 'sendPacket', fromId: 'you', toId, messageId }, send, at });

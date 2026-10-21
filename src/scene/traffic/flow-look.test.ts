@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { applyAction, reachesHost, simulate, type Network, type PacketSpec } from '@/engine';
 import { replyShape } from '@/copy';
-import { NAME_SERVERS, OFFICE_FLOORS, device, officeWithNames, ping } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, device, officeWithNames, ping } from '@/testing';
 import { flowLook, type FlowResult } from './flow-look';
 
 const PING: PacketSpec = { from: { kind: 'device', id: 'your-laptop' }, to: '192.168.1.20', protocol: 'icmp', icmpType: 8 };
@@ -100,7 +100,7 @@ describe('flowLook', () => {
 
   it('the question of a send is drawn with the shapes of udp and ends replied, warned or lost like any packet', () => {
     const names = officeWithNames();
-    const questionIn = (world: Network) => simulate(world, ping(device('your-laptop'), `www.${NAME_SERVERS.zone}`)).question!;
+    const questionIn = (world: Network) => simulate(world, ping(device('your-laptop'), `www.${NAME_SERVER_PIECES.zone}`)).question!;
     const resultOf = ({ packet, trace }: ReturnType<typeof questionIn>, extras: Partial<FlowResult> = {}) => flow({ packet, reached: reachesHost(trace), replied: trace.outcome === 'replied', ...extras });
     const answered = questionIn(names);
     expect(answered.packet).toMatchObject({ protocol: 'udp', port: 53 });

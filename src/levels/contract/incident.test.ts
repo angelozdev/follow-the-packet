@@ -3,7 +3,7 @@ import { packetSchema } from '@/engine';
 import { caseWorld } from '@/levels/world';
 import { incidentTexts } from '@/levels/ladder';
 import {
-  NAME_SERVERS,
+  NAME_SERVER_PIECES,
   NOTE_RULE,
   OFFICE_FLOORS,
   actor,
@@ -547,7 +547,7 @@ describe('diagnose incident contract', () => {
 
 const NAMES = namesSendIncident();
 const { floor1, server, provider, officeRouter } = OFFICE_FLOORS;
-const WWW = `www.${NAME_SERVERS.zone}`;
+const WWW = `www.${NAME_SERVER_PIECES.zone}`;
 const [, NC, DIG] = NAMES.send.message;
 const [RESOLVER, LISTEN] = NAMES.send.settings ?? [];
 const tableOf = <Kind extends TableSpec['kind']>(kind: Kind) => NAMES.send.tables!.find((table): table is Extract<TableSpec, { kind: Kind }> => table.kind === kind)!;
@@ -670,7 +670,7 @@ describe('tables and clock of chapter 2', () => {
   });
 
   it('accepts a table of records with a name tray, a type tray and a value tray', () => {
-    expect(RECORDS).toMatchObject({ kind: 'records', ownerId: NAME_SERVERS.authoritative.id });
+    expect(RECORDS).toMatchObject({ kind: 'records', ownerId: NAME_SERVER_PIECES.authoritative.id });
     expect(Object.keys(RECORDS.trays)).toEqual(['name', 'type', 'value']);
     const tray = (patch: Record<string, unknown>) => withTables(ROUTES, { ...RECORDS, trays: { ...RECORDS.trays, ...patch } });
     expect(accepts(tray({ type: [{ id: 'mx', label: 'MX', value: 'MX' }] }))).toBe(false);
@@ -685,7 +685,7 @@ describe('tables and clock of chapter 2', () => {
     const owned = (ownerId: string, table: TableSpec = ROUTES) => withTables({ ...table, ownerId }) as unknown as SendIncident;
     expect(unknownTableOwnerIds(NAMES, world)).toEqual([]);
     expect(unknownTableOwnerIds(owned('router-ghost'), world)).toEqual(['router-ghost']);
-    expect(unknownTableOwnerIds(owned(NAME_SERVERS.resolver.id), world)).toEqual([NAME_SERVERS.resolver.id]);
+    expect(unknownTableOwnerIds(owned(NAME_SERVER_PIECES.resolver.id), world)).toEqual([NAME_SERVER_PIECES.resolver.id]);
     expect(unknownTableOwnerIds(owned(provider.id, RECORDS), world)).toEqual([provider.id]);
     expect(unknownTableOwnerIds(owned('your-laptop'), world)).toEqual(['your-laptop']);
     expect(unknownTableOwnerIds(sendIncident(), world)).toEqual([]);
@@ -746,7 +746,7 @@ describe('the card a piece opens first', () => {
   it('accepts the card a piece opens first and rejects a card the piece does not have', () => {
     expect(NAMES.send.opensFirst).toEqual({ 'your-laptop': 'settings' });
     expect(accepts(opening({ 'your-laptop': 'terminal' }))).toBe(true);
-    expect(accepts(opening({ 'lucia-laptop': 'services', [provider.id]: 'routes', [NAME_SERVERS.authoritative.id]: 'records' }))).toBe(true);
+    expect(accepts(opening({ 'lucia-laptop': 'services', [provider.id]: 'routes', [NAME_SERVER_PIECES.authoritative.id]: 'records' }))).toBe(true);
     expect(accepts(opening({ 'lucia-laptop': 'terminal' }))).toBe(false);
     expect(accepts(opening({ 'your-laptop': 'services' }))).toBe(false);
     expect(accepts(opening({ 'lucia-laptop': 'settings' }))).toBe(false);
@@ -760,7 +760,7 @@ describe('the card a piece opens first', () => {
     expect(cardsOfPiece(send, 'your-laptop')).toEqual(['terminal', 'settings']);
     expect(cardsOfPiece(send, 'lucia-laptop')).toEqual(['services']);
     expect(cardsOfPiece(send, provider.id)).toEqual(['routes']);
-    expect(cardsOfPiece(send, NAME_SERVERS.authoritative.id)).toEqual(['records']);
+    expect(cardsOfPiece(send, NAME_SERVER_PIECES.authoritative.id)).toEqual(['records']);
     expect(cardsOfPiece(send, 'printer')).toEqual([]);
     expect(firstCardOf(send, 'your-laptop')).toBe('settings');
     expect(firstCardOf({ ...send, opensFirst: undefined }, 'your-laptop')).toBe('terminal');
@@ -883,11 +883,11 @@ describe('the card that classifies in an identify incident', () => {
 
 describe('what an incident of chapter 2 draws and says', () => {
   const world = officeWithNames();
-  const everything = ['your-laptop', 'lucia-laptop', server.id, provider.id, NAME_SERVERS.authoritative.id, officeRouter.id];
+  const everything = ['your-laptop', 'lucia-laptop', server.id, provider.id, NAME_SERVER_PIECES.authoritative.id, officeRouter.id];
 
   it('asks the list of shown pieces for the devices that settings belong to, the owners of the tables and the routers a next hop chip names', () => {
     expect(missingShownIds({ ...NAMES, shown: everything }, world)).toEqual([]);
-    expect(missingShownIds({ ...NAMES, shown: ['your-laptop', server.id] }, world)).toEqual(['lucia-laptop', provider.id, NAME_SERVERS.authoritative.id, officeRouter.id]);
+    expect(missingShownIds({ ...NAMES, shown: ['your-laptop', server.id] }, world)).toEqual(['lucia-laptop', provider.id, NAME_SERVER_PIECES.authoritative.id, officeRouter.id]);
     expect(missingShownIds({ ...NAMES, shown: everything.filter((id) => id !== officeRouter.id) }, world)).toEqual([officeRouter.id]);
   });
 

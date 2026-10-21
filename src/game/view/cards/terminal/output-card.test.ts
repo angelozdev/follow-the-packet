@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { digOutput, ncOutput, type DigResult } from '@/copy';
 import type { Network, ServerActor } from '@/engine';
-import { NAME_SERVERS, OFFICE_FLOORS, allOut, namesSendIncident, routedSendIncident, tcpService, withDevice } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, namesSendIncident, routedSendIncident, tcpService, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { toolOutput, type OutputSegment, type ToolOutput } from './output-card';
 
 const NAMES = namesSendIncident();
 const start = startSession([NAMES], NAMES.id);
-const { zone, resolver } = NAME_SERVERS;
+const { zone, resolver } = NAME_SERVER_PIECES;
 const { floor1, backbone, server } = OFFICE_FLOORS;
 const WWW = `www.${zone}`;
 const picks = (to: string, message: string) => ({ from: 'you', to, message });

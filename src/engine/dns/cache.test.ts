@@ -4,11 +4,11 @@ import type { AnswerRecord, DnsCacheEntry, Network, ServerActor } from '@/engine
 import { simulate } from '@/engine/simulation/simulate';
 import { simulateSequence } from '@/engine/simulation/sequence';
 import type { DnsTrace } from '@/engine/simulation/trace';
-import { NAME_SERVERS, device, dig, officeWithNames, ping, withResolverCache } from '@/testing';
+import { NAME_SERVER_PIECES, device, dig, officeWithNames, ping, withResolverCache } from '@/testing';
 import { EMPTY_CACHE, cachedAnswer, entriesOf, remember } from './cache';
 import { RECORD_TTL } from './records';
 
-const { zone, downZone, site, resolver } = NAME_SERVERS;
+const { zone, downZone, site, resolver } = NAME_SERVER_PIECES;
 const WWW = `www.${zone}`;
 const BLOG = `blog.${zone}`;
 const OLD_IP = '198.51.100.77';

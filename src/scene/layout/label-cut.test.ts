@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag, parseTermText, toPlainText } from '@/copy';
-import { NAME_SERVERS, OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, officeTwoFloorsNet } from '@/testing';
 import { FLOORS_LABEL_PIECES } from '@/testing/map-pieces';
 import { MIN_WIDTH, type RowLayout, type RowPiece } from './arrange/geometry';
 import { layoutStack } from './arrange/stack';
@@ -9,7 +9,7 @@ import { layoutMap } from './map-layout';
 import { characterCount, labelWidth } from './metrics';
 
 const WORLD = officeTwoFloorsNet();
-const LONG_NAME = NAME_SERVERS.down.id;
+const LONG_NAME = NAME_SERVER_PIECES.down.id;
 const LONG_LABEL = nameTag(LONG_NAME);
 const SERVER_ID = `device:${OFFICE_FLOORS.server.id}`;
 const FIREWALL_ID = 'firewall:your-firewall';

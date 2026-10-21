@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deathPoint, stopStep } from '@/engine/simulation/paths/checkpoints';
-import { NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 import { simulate } from './simulate';
 import { ROUTE_DEFAULT } from '@/engine/network/schema';
 import { applyAction, type NetworkAction } from '@/engine/network/actions';
@@ -905,11 +905,11 @@ describe('names in a VPC and in an office', () => {
 
   it('a name in an office with no dns server does not resolve', () => {
     for (const net of [officeNet(), officeTwoFloorsNet()]) {
-      const trace = simulate(net, ping(device(net.devices[0].id), `www.${NAME_SERVERS.zone}`));
+      const trace = simulate(net, ping(device(net.devices[0].id), `www.${NAME_SERVER_PIECES.zone}`));
       expect(trace.outcome).toBe('unresolved');
       expect(trace.resolvedIp).toBeNull();
       expect(codes(trace)).toEqual(['dns-unresolved']);
-      expect(trace.dns).toEqual({ name: `www.${NAME_SERVERS.zone}`, status: 'NO-RESOLVER', answers: [], fromCache: false, usedHostsFile: false, viaDig: false });
+      expect(trace.dns).toEqual({ name: `www.${NAME_SERVER_PIECES.zone}`, status: 'NO-RESOLVER', answers: [], fromCache: false, usedHostsFile: false, viaDig: false });
       expect([trace.tcpdump, trace.hops, trace.header]).toEqual([[], undefined, undefined]);
     }
   });
@@ -922,7 +922,7 @@ describe('names in a VPC and in an office', () => {
 
   it('a name sent from the internet to an office does not resolve either, and the office has no resolver for it', () => {
     const withHome = applyAction(officeWithNames(), { type: 'addActor', actor: { id: 'home', name: 'casa-lucia', kind: 'home', ip: '192.0.2.77' } });
-    const trace = simulate(withHome, ping(actor('home'), `www.${NAME_SERVERS.zone}`));
+    const trace = simulate(withHome, ping(actor('home'), `www.${NAME_SERVER_PIECES.zone}`));
     expect(trace.outcome).toBe('unresolved');
     expect(codes(trace)).toEqual(['dns-unresolved']);
     expect(trace).not.toHaveProperty('dns');
@@ -930,7 +930,7 @@ describe('names in a VPC and in an office', () => {
 });
 
 describe('a dig and a resolver that cannot answer', () => {
-  const { zone, downZone, resolver } = NAME_SERVERS;
+  const { zone, downZone, resolver } = NAME_SERVER_PIECES;
   const WWW = `www.${zone}`;
   const you = device('your-laptop');
   const names = officeWithNames();
@@ -970,7 +970,7 @@ describe('a dig and a resolver that cannot answer', () => {
     expect(trace.exchange).toEqual([{ from: 'client', kind: 'query' }, { from: 'server', kind: 'response' }]);
     expect(trace.hops?.map((hop) => hop.routerId)).toEqual([OFFICE_FLOORS.officeRouter.id, OFFICE_FLOORS.provider.id, OFFICE_FLOORS.backbone.id]);
     expect(trace.steps.filter((step) => step.stage === 'dns' || step.stage === 'address')).toEqual([]);
-    expect(trace.dns).toMatchObject({ name: WWW, status: 'NOERROR', answers: [{ type: 'A', value: NAME_SERVERS.site, ttl: 300 }], fromCache: false, viaDig: true });
+    expect(trace.dns).toMatchObject({ name: WWW, status: 'NOERROR', answers: [{ type: 'A', value: NAME_SERVER_PIECES.site, ttl: 300 }], fromCache: false, viaDig: true });
   });
 
   it('NXDOMAIN and SERVFAIL are answers: the datagram comes back replied and the status is in the answer', () => {

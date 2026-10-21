@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Firewall, type Reason } from '@/engine';
-import { EVERY_TERM, NAME_SERVERS, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
@@ -596,7 +596,7 @@ describe('what comes from outside to the public IP of the router', () => {
 
 describe('what a device is told when it asks its resolver for a name', () => {
   const NAMED = officeWithNames();
-  const { zone, downZone, resolver, site } = NAME_SERVERS;
+  const { zone, downZone, resolver, site } = NAME_SERVER_PIECES;
   const you = device('your-laptop');
   const reasonOf = (world: typeof NAMED, name: string): Reason => simulate(world, ping(you, name)).steps[0].reason;
   const answered = reasonOf(NAMED, `www.${zone}`);
@@ -617,12 +617,12 @@ describe('what a device is told when it asks its resolver for a name', () => {
   });
 
   it('an answer names the question, the resolver and the IP, and an alias says it is one', () => {
-    expect(describeReason(answered, NAMED, EVERY_TERM)).toBe(`[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por www.lucia.example a [[${resolver.id}]], su {{resolver}}: la respuesta es ${NAME_SERVERS.site}.`);
+    expect(describeReason(answered, NAMED, EVERY_TERM)).toBe(`[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por www.lucia.example a [[${resolver.id}]], su {{resolver}}: la respuesta es ${NAME_SERVER_PIECES.site}.`);
     expect(describeReason(alias, NAMED, EVERY_TERM)).toBe(
-      `[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por blog.lucia.example a [[${resolver.id}]], su {{resolver}}: blog.lucia.example es un {{cname-record|alias}} de www.lucia.example, que es ${NAME_SERVERS.site}.`,
+      `[[tu-laptop]] hizo una {{dns-query|consulta DNS}} por blog.lucia.example a [[${resolver.id}]], su {{resolver}}: blog.lucia.example es un {{cname-record|alias}} de www.lucia.example, que es ${NAME_SERVER_PIECES.site}.`,
     );
-    expect(describeReason(answered, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por www.lucia.example a [[${resolver.id}]]: la respuesta es ${NAME_SERVERS.site}.`);
-    expect(describeReason(alias, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por blog.lucia.example a [[${resolver.id}]]: blog.lucia.example es un alias de www.lucia.example, que es ${NAME_SERVERS.site}.`);
+    expect(describeReason(answered, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por www.lucia.example a [[${resolver.id}]]: la respuesta es ${NAME_SERVER_PIECES.site}.`);
+    expect(describeReason(alias, NAMED, NONE)).toBe(`[[tu-laptop]] preguntó por blog.lucia.example a [[${resolver.id}]]: blog.lucia.example es un alias de www.lucia.example, que es ${NAME_SERVER_PIECES.site}.`);
   });
 
   it('an answer from the cache is a hidden cause: while dns-cache is unknown it reads as any answer, and the seconds that are left come with dns-ttl', () => {
@@ -692,7 +692,7 @@ describe('what a device is told when it asks its resolver for a name', () => {
 describe('the reasons chapter 2 adds', () => {
   const NONE = without(...EVERY_TERM);
   const NAMED = officeWithNames();
-  const { resolver, zone } = NAME_SERVERS;
+  const { resolver, zone } = NAME_SERVER_PIECES;
   const asked = { deviceId: 'your-laptop', resolverId: resolver.id, name: `www.${zone}` };
   const refused: Reason = { code: 'host-refused', deviceId: 'servidor2', port: 80 };
   const wrongAddress: Reason = { code: 'host-wrong-address', deviceId: 'servidor2', port: 3000, ip: '172.31.38.97' };
@@ -700,9 +700,9 @@ describe('the reasons chapter 2 adds', () => {
   const unsolicited: Reason = { code: 'nat-no-translation', routerId: officeRouter.id, protocol: 'tcp', ip: officeRouter.uplink, port: 40009 };
   const byForward: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'andres-laptop', protocol: 'tcp', ip: officeRouter.uplink, port: 8080, toPort: 3000, fixed: true };
   const byRow: Reason = { code: 'nat-forwarded', routerId: officeRouter.id, deviceId: 'your-laptop', protocol: 'udp', ip: officeRouter.uplink, port: 40001, toPort: 51514, fixed: false };
-  const answered: Reason = { code: 'dns-answered', ...asked, ip: NAME_SERVERS.site };
-  const cached: Reason = { code: 'dns-cached', ...asked, ip: NAME_SERVERS.site, ttlLeft: 240 };
-  const hosts: Reason = { code: 'dns-hosts-file', deviceId: 'your-laptop', name: `tienda.${zone}`, ip: NAME_SERVERS.site };
+  const answered: Reason = { code: 'dns-answered', ...asked, ip: NAME_SERVER_PIECES.site };
+  const cached: Reason = { code: 'dns-cached', ...asked, ip: NAME_SERVER_PIECES.site, ttlLeft: 240 };
+  const hosts: Reason = { code: 'dns-hosts-file', deviceId: 'your-laptop', name: `tienda.${zone}`, ip: NAME_SERVER_PIECES.site };
   const nxdomain: Reason = { code: 'dns-nxdomain', ...asked };
   const servfail: Reason = { code: 'dns-servfail', ...asked };
   const noResolver: Reason = { code: 'dns-no-resolver', deviceId: 'your-laptop', name: `www.${zone}`, ip: OFFICE_FLOORS.floor1.printer, hostId: 'printer' };
@@ -740,7 +740,7 @@ describe('the reasons chapter 2 adds', () => {
       expect(toPlainText(said), reason.code).toBe(toPlainText(text));
       expect(toPlainText(said), reason.code).not.toMatch(mustNotSay);
     }
-    expect(toPlainText(describeReason(hosts, NAMED, without('hosts-file')))).toBe(`tu-laptop ya sabía que tienda.${zone} es ${NAME_SERVERS.site}: no preguntó a nadie.`);
+    expect(toPlainText(describeReason(hosts, NAMED, without('hosts-file')))).toBe(`tu-laptop ya sabía que tienda.${zone} es ${NAME_SERVER_PIECES.site}: no preguntó a nadie.`);
     expect(toPlainText(describeReason(hosts, NAMED, without('hosts-file')))).not.toMatch(/hosts|dns|archivo/i);
     expect(toPlainText(describeReason(silent, NAMED, without('resolver')))).toContain('servidor de nombres');
     expect(toPlainText(describeReason(silent, NAMED, without('resolver')))).not.toMatch(/resolver/i);

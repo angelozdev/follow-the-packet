@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RECORD_TTL, applyAction, networkSchema, simulate, type Network, type NetworkAction, type PacketSpec, type ServerActor } from '@/engine';
-import { NAME_SERVERS, OFFICE_FLOORS, diagnoseIncident, gatewayIncident, namesSendIncident, officeNet, outboundFilterIncident, tcpService } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, diagnoseIncident, gatewayIncident, namesSendIncident, officeNet, outboundFilterIncident, tcpService } from '@/testing';
 import { DEVICE, IP } from './01-first-day/shared';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from './04-iaas/shared';
 import { chipsOfRule } from './contract/chips';
@@ -325,7 +325,7 @@ describe('the world chapter 2 starts from', () => {
 
 describe('applyMove of the tables, the clock and the settings of chapter 2', () => {
   const NAMES = namesSendIncident();
-  const { zone, authoritative, resolver } = NAME_SERVERS;
+  const { zone, authoritative, resolver } = NAME_SERVER_PIECES;
   const { provider, range, server, floor1 } = OFFICE_FLOORS;
   const WWW = `www.${zone}`;
   const start = startWorld([NAMES], NAMES.id);

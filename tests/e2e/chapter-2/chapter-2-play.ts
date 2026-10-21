@@ -346,7 +346,7 @@ const ON_CALL_CASES: OnCallCase[] = [
   { from: ANDRES, send: (terminal) => terminal.getByRole('button', { name: SEND, exact: true }).click(), cause: /Porque la impresora es su servidor DNS y no atiende DNS/ },
 ];
 
-/** Takes the page of the open incident 02-14; in each of its seven cases sends the tests from the terminal of the origin, closes the terminal and names the cause; in the fifth, the loop, it also repairs the routes of router-proveedor from its card and pings again, because writing a route clears the stamps; after the seventh it opens the result, which must show 3 stars. Each terminal draws a tray only where its case offers more than one address or more than one message: the terminal of `laptop-andres` in case 7 has one of each and shows only «Enviar». */
+/** Takes the page of the open incident 02-14; in each of its seven cases sends the tests from the terminal of the origin, closes the terminal and names the cause; in the fifth, the loop, it also repairs the routes of router-proveedor from its card and pings again; after the seventh it opens the result, which must show 3 stars. */
 export async function playOnCallItDoesNotConnect(page: Page) {
   for (const [index, { from, send, cause }] of ON_CALL_CASES.entries()) {
     const terminal = await openTerminal(page, from);

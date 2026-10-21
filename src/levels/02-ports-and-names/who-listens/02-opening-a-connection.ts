@@ -1,11 +1,11 @@
 import { defineIncident } from '@/levels/contract/incident';
-import { ADDRESS, CONCEPT, DEVICE, IP, LESSON, MESSAGE, NAME, ORIGIN, PORT, SERVICES_PIECES, TASK, sendMove, sendTask } from '@/levels/02-ports-and-names/shared';
+import { ADDRESS, CONCEPT, DEVICE, IP, LESSON, MESSAGE, NAME, ORIGIN, PORT, QUOTED_TITLE, SERVICES_PIECES, TASK, sendMove, sendTask } from '@/levels/02-ports-and-names/shared';
 
 export default defineIncident({
   id: '02-02',
   chapter: 2,
   order: 2,
-  title: 'Abrir una conexión',
+  title: QUOTED_TITLE.openingAConnection,
   role: 'defender',
   mechanic: 'send',
   lesson: LESSON,

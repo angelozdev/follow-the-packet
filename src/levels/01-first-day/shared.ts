@@ -227,7 +227,7 @@ export function backToOffice(next: string): Route {
 /** The routes of the router of the provider while its stretch works: the server range goes on to the router in front of the server, and what is for the office goes back to the office router. */
 const PROVIDER_ROUTES: Route[] = [{ to: SERVER_RANGE, next: ROUTER.destination.id }, backToOffice(ROUTER.office.id)];
 
-/** The two interfaces of the router in front of the server: the one that faces the router of the provider and the one that faces the server of the internet. An update of this router replaces the list, so a block that wires another server to it restates these two first. */
+/** The two interfaces of the router in front of the server: the one that faces the router of the provider and the one that faces the server of the internet. */
 export const DESTINATION_INTERFACES: Router['interfaces'] = [
   { ip: IP.destination, faces: ROUTER.provider.id },
   { ip: IP.destinationServer, faces: SERVER.id },

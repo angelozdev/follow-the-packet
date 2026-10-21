@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { FROM, S1, S2, SG, WHAT } from '@/levels/04-iaas/shared';
-import { CHAPTER_1_TERMS, NAME_SERVERS, OFFICE_FLOORS, classifyIncident, diagnoseIncident, gatewayIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, diagnoseIncident, gatewayIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
 import { canConfigure, sessionReducer, startSession, type Session, type SessionAction } from '@/game/session';
 import { classifyCard } from './cards/identify/classify-card';
 import { pieceCard } from './cards/piece-card';
@@ -318,7 +318,7 @@ describe('pieceViews of an incident that lists what it draws', () => {
 describe('pieceViews of the servers of names and the clients of the internet', () => {
   const NAMES = namesSendIncident();
   const names = startSession([NAMES], NAMES.id);
-  const { resolver, authoritative, down } = NAME_SERVERS;
+  const { resolver, authoritative, down } = NAME_SERVER_PIECES;
   const namesOnly = (known: Session['known'], shown?: string[]): Session => ({ ...names, known, incident: { ...names.incident, shown } });
   const everything = new Set<TermId>([...names.known, 'resolver', 'authoritative-server']);
   const server = (session: Session, id: string) => pieceViews(session).find((piece) => piece.id === PIECE_ID.actor(id));

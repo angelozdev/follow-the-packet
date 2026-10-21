@@ -6,7 +6,7 @@ import { TABLE_TEXT, TASK_CARD_TEXT } from '@/copy';
 import { sessionReducer, startSession, type Session, type TableCard as Tabled } from '@/game';
 import { cacheCard, recordsCard, routesCard } from '@/game/view/cards/table-card';
 import { PIECE_ID } from '@/game/view/piece-id';
-import { NAME_SERVERS, OFFICE_FLOORS } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS } from '@/testing/fixtures';
 import { namesSendIncident } from '@/testing/incidents';
 import { TableCard } from './table-card';
 
@@ -68,7 +68,7 @@ describe('table card', () => {
   });
 
   it('a read-only table has no trays and no buttons', () => {
-    renderTable(cardOf(START, cacheCard, PIECE_ID.actor(NAME_SERVERS.resolver.id)));
+    renderTable(cardOf(START, cacheCard, PIECE_ID.actor(NAME_SERVER_PIECES.resolver.id)));
     expect(screen.queryAllByRole('group')).toEqual([]);
     expect(within(screen.getByRole('dialog')).queryAllByRole('button').map((button) => button.textContent)).toEqual([TASK_CARD_TEXT.done]);
     expect(screen.queryByRole('status')).toBeNull();
@@ -105,14 +105,14 @@ describe('table card', () => {
 
   it('Escape closes the card and the focus goes to the title when it opens', async () => {
     const user = userEvent.setup();
-    const { onClose } = renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVERS.authoritative.id)));
+    const { onClose } = renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVER_PIECES.authoritative.id)));
     expect(screen.getByRole('heading', { name: /^Registros de lucia\.example/ })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('names the card after its table, and the muted line of the zone sits under the rows', () => {
-    renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVERS.authoritative.id)));
+    renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVER_PIECES.authoritative.id)));
     expect(screen.getByRole('dialog', { name: 'Registros de lucia.example' })).toBeInTheDocument();
     expect(screen.getByText(TABLE_TEXT.records.own)).toHaveClass('muted');
     expect(screen.getByRole('button', { name: 'Agregar registro' })).toBeDisabled();
@@ -120,13 +120,13 @@ describe('table card', () => {
 
   it('the buttons that need the keyboard are reached and used with it', async () => {
     const user = userEvent.setup();
-    const { onPlace } = renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVERS.authoritative.id)));
-    await user.click(chip(`www.${NAME_SERVERS.zone}`));
+    const { onPlace } = renderTable(cardOf(START, recordsCard, PIECE_ID.actor(NAME_SERVER_PIECES.authoritative.id)));
+    await user.click(chip(`www.${NAME_SERVER_PIECES.zone}`));
     await user.click(chip('CNAME'));
     await user.click(chip(server.ip));
     chip('Agregar registro').focus();
     await user.keyboard('{Enter}');
-    expect(onPlace).toHaveBeenCalledExactlyOnceWith('records', { name: `www.${NAME_SERVERS.zone}`, type: 'CNAME', value: server.ip });
+    expect(onPlace).toHaveBeenCalledExactlyOnceWith('records', { name: `www.${NAME_SERVER_PIECES.zone}`, type: 'CNAME', value: server.ip });
     expect(screen.getByRole('heading', { name: /^Registros/ })).toHaveFocus();
   });
 });
