@@ -36,6 +36,7 @@ export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, cidr as ci
 export { DNS_PORT } from './dns/resolve';
 export { siteContentSchema, siteSchema } from './web/schema';
 export type { HttpMessage, HttpMethod, Site, SiteContent } from './web/schema';
+export { STATUS_CODES } from './web/messages';
 export type { AppRequest, AppResponse } from './web/messages';
 export { isWebUrl, parseUrl } from './web/url';
 export { LOOPBACK_IP, ipBits, ipInCidr, isIpv4, isLoopbackIpv4, maskOf, parseCidr, prefixNumbers } from './network/addressing/cidr';

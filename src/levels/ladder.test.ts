@@ -77,7 +77,7 @@ const SUBCHAPTER_OF = { cidr: 4, nat: 8, dns: 10 };
 const TERMS_OF_CHAPTER_1 = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces);
 const SUPPORT_TERMS_OF_CHAPTER_3 = ['query-string', 'status-400', 'cookie', 'x-forwarded-for', 'status-500', 'self-signed-certificate', 'openssl-s-client', 'session-key', 'http-versions', 'hsts'];
 const SIZES_OF_CHAPTER_3 = [5, 4, 3, 3, 5, 6, 4, 4, 3, 4, 5, 5, 3, 4, 4, 3];
-const LAST_SUBCHAPTER_OF_BLOCK_1 = 4;
+const LAST_REGISTERED_SUBCHAPTER = 5;
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
@@ -293,38 +293,38 @@ describe('the term ladder of chapter 2', () => {
 
 describe('the term ladder of chapter 3', () => {
   const ids = LADDER_OF_CHAPTER_3.map(([id]) => id);
-  const block1 = LADDER_OF_CHAPTER_3.filter(([, , subchapter]) => subchapter <= LAST_SUBCHAPTER_OF_BLOCK_1);
-  const laterNames = LADDER_OF_CHAPTER_3.filter(([, , subchapter]) => subchapter > LAST_SUBCHAPTER_OF_BLOCK_1);
-  const earlierTerms = ALL_TERMS.filter((term) => !block1.some(([id]) => id === term));
+  const registered = LADDER_OF_CHAPTER_3.filter(([, , subchapter]) => subchapter <= LAST_REGISTERED_SUBCHAPTER);
+  const laterNames = LADDER_OF_CHAPTER_3.filter(([, , subchapter]) => subchapter > LAST_REGISTERED_SUBCHAPTER);
+  const earlierTerms = ALL_TERMS.filter((term) => !registered.some(([id]) => id === term));
   const subchapterName = (subchapter: number) => String(subchapter).padStart(2, '0');
 
-  /** Returns, for each definition of block 1, the terms it names that are not known yet at its subchapter: the terms of chapters 1 and 2 and those of chapter 3 up to it are known, and the rest of the registry and the 50 later names of the ladder data are not. */
+  /** Returns, for each definition of a registered term of chapter 3, the terms it names that are not known yet at its subchapter: the terms of chapters 1 and 2 and those of chapter 3 up to it are known, and the rest of the registry and the later names of the ladder data are not. */
   const laterTermsNamed = (definitionOf: (id: TermId) => string): string[] =>
-    block1.flatMap(([id, , subchapter]) => {
+    registered.flatMap(([id, , subchapter]) => {
       const known = new Set<string>([...TERMS_OF_CHAPTER_1, ...TERMS_OF_CHAPTER_2.flat(), ...LADDER_OF_CHAPTER_3.filter(([, , own]) => own <= subchapter).map(([own]) => own)]);
       const unknown = [...ALL_TERMS.filter((term) => !known.has(term)).map((term): [string, string] => [term, TERMS[term].name]), ...laterNames.map(([later, name]): [string, string] => [later, name])];
       return unknown.filter(([, name]) => saysName(definitionOf(id as TermId), name)).map(([later]) => `${id} (${subchapterName(subchapter)}) → ${later}`);
     });
 
-  it('the ladder data lists the 65 terms of chapter 3 and the registry holds exactly the 15 of 03-01 to 03-04', () => {
+  it('the ladder data lists the 65 terms of chapter 3 and the registry holds exactly the 20 of 03-01 to 03-05', () => {
     expect(ids).toHaveLength(65);
     expect(new Set(ids).size).toBe(ids.length);
     expect(SIZES_OF_CHAPTER_3.map((_, index) => LADDER_OF_CHAPTER_3.filter(([, , subchapter]) => subchapter === index + 1).length)).toEqual(SIZES_OF_CHAPTER_3);
     expect(SUPPORT_TERMS_OF_CHAPTER_3).toHaveLength(10);
     expect(SUPPORT_TERMS_OF_CHAPTER_3.filter((id) => !ids.includes(id))).toEqual([]);
-    expect(ids.filter(isTermId)).toEqual(block1.map(([id]) => id));
-    expect(block1).toHaveLength(15);
-    for (const [id, name] of block1) expect(TERMS[id as TermId].name, id).toBe(name);
+    expect(ids.filter(isTermId)).toEqual(registered.map(([id]) => id));
+    expect(registered).toHaveLength(20);
+    for (const [id, name] of registered) expect(TERMS[id as TermId].name, id).toBe(name);
   });
 
-  it('block 1 of chapter 3 registers 14 core terms and 1 support term', () => {
-    const support = block1.filter(([id]) => SUPPORT_TERMS_OF_CHAPTER_3.includes(id));
-    expect(support.map(([id]) => id)).toEqual(['query-string']);
-    expect(block1.length - support.length).toBe(14);
+  it('the registered terms of chapter 3 are 18 core terms and 2 support terms', () => {
+    const support = registered.filter(([id]) => SUPPORT_TERMS_OF_CHAPTER_3.includes(id));
+    expect(support.map(([id]) => id)).toEqual(['query-string', 'status-400']);
+    expect(registered.length - support.length).toBe(18);
     expect(LADDER_OF_CHAPTER_3.length - SUPPORT_TERMS_OF_CHAPTER_3.length).toBe(55);
   });
 
-  it('every definition of block 1 names only terms that are known at its incident, in the approved order, and none of the 50 later names', () => {
+  it('every definition of a registered term of chapter 3 names only terms that are known at its incident, in the approved order, and none of the 45 later names', () => {
     expect(laterTermsNamed((id) => TERMS[id].definition)).toEqual([]);
   });
 

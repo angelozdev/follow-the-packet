@@ -6,7 +6,7 @@ import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { dnsField, exchangeField, headerFields, routeField, translationField, type InspectionField } from './packet-fields';
-import { curlWaitField, requestField, responseField, urlField } from './cards/web/web-fields';
+import { curlWaitField, requestField, responseField, statusCodeFields, urlField } from './cards/web/web-fields';
 import { drawsActor, drawsRouter, isDrawn, isShown } from './drawn';
 import { placesOf, routerPlace } from './router-place';
 
@@ -210,7 +210,7 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
   return cameBack && session.known.has('rtt') ? [{ label: INSPECTION_TEXT.roundTrip, lines: [roundTripText(rttMs), INSPECTION_TEXT.exampleTime] }] : [];
 }
 
-/** The box of a packet, in the order the packet lives it: what it is, its message, the url it asked for, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the request and the response that went through the connection, the routers it crossed, the result (and, for a `curl` that waited, that it gave up) and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
+/** The box of a packet, in the order the packet lives it: what it is, its message, the url it asked for, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the request and the response that went through the connection, the status code of the response and who generated it, the routers it crossed, the result (and, for a `curl` that waited, that it gave up) and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
 function packet(session: Session, run: PacketRun & Asking): Inspection {
   const step = stopStep(run.trace);
   const { hops, destinationId } = run.trace;
@@ -229,6 +229,7 @@ function packet(session: Session, run: PacketRun & Asking): Inspection {
       ...exchangeField(session, run),
       ...requestField(session, run),
       ...responseField(session, run),
+      ...statusCodeFields(session, run),
       ...pathField(session, knowsTheRoute ? hops : []),
       { label: INSPECTION_TEXT.result, lines: [describeResult(run.trace, session.known, destinationId ? deviceName(session.world, destinationId) : undefined)] },
       ...curlWaitField(session, run),

@@ -296,6 +296,17 @@ export const TERMS = {
     definition: 'La cabecera HTTP con el nombre y el puerto de la petición. Un servidor con varios sitios la usa para elegir uno.',
   },
   'virtual-host': { name: 'host virtual', definition: 'Un sitio entre varios que comparten un servidor web y una IP. La cabecera Host dice cuál se pide.' },
+  'status-code': {
+    name: 'código de estado',
+    definition: 'El código de tres cifras con que una respuesta HTTP dice cómo salió la petición. La primera cifra da la clase.',
+  },
+  'status-200': { name: '200 OK', definition: 'La petición se cumplió. Con un GET, el cuerpo de la respuesta trae el recurso pedido.' },
+  'client-error': {
+    name: 'error 4xx',
+    definition: 'Un código 4xx: la petición, tal como llegó, no se puede cumplir. Parece un error del cliente, pero no siempre lo es.',
+  },
+  'status-404': { name: '404 Not Found', definition: 'No hay un recurso en esa URL, o el servidor no quiere decir si existe.' },
+  'status-400': { name: '400 Bad Request', definition: 'El servidor rechaza la petición porque está mal formada o trae datos que no acepta.' },
 } as const satisfies Record<string, Term>;
 
 export type TermId = keyof typeof TERMS;

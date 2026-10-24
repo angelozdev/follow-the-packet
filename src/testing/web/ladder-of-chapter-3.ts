@@ -1,4 +1,4 @@
-/** The id, the official name and the subchapter of each of the 65 terms of chapter 3, by the table of the ladder of the approved design (`docs/specs/2026-10-11-follow-the-packet-chapter-3-design.md`). Only the first 15 are registered in `src/copy/terms.ts`; the rest are names that no text of an earlier subchapter may say. */
+/** The id, the official name and the subchapter of each of the 65 terms of chapter 3, by the table of the ladder of the approved design (`docs/specs/2026-10-11-follow-the-packet-chapter-3-design.md`). Only the terms of the subchapters built so far are registered in `src/copy/terms.ts`; the rest are names that no text of an earlier subchapter may say. */
 type LadderRow = [id: string, name: string, subchapter: number];
 
 export const LADDER_OF_CHAPTER_3: LadderRow[] = [

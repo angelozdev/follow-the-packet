@@ -1228,4 +1228,10 @@ describe('what a send task expects of the page', () => {
     expect(accepts(expecting({ body: undefined, nth: undefined }))).toBe(true);
     for (const patch of [{ nth: 0 }, { nth: -1 }, { nth: 1.5 }, { body: 7 }]) expect(accepts(expecting(patch)), JSON.stringify(patch)).toBe(false);
   });
+
+  it('accepts an expected status code and rejects one that no app of the game answers', () => {
+    for (const statusCode of [200, 400, 404]) expect(accepts(expecting({ statusCode })), String(statusCode)).toBe(true);
+    expect(accepts(expecting({ statusCode: undefined }))).toBe(true);
+    for (const statusCode of [201, 418, 500, 4.5, '404']) expect(accepts(expecting({ statusCode })), String(statusCode)).toBe(false);
+  });
 });

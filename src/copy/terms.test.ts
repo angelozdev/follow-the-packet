@@ -59,9 +59,9 @@ const IDS_OF_CHAPTER_2: TermId[] = [
   'translation-table', 'port-forwarding', 'domain-name', 'dns-query', 'resolver', 'udp', 'dig', 'dhcp', 'authoritative-server', 'dns-record',
   'a-record', 'cname-record', 'dns-cache', 'dns-ttl', 'nxdomain', 'servfail', 'port-unreachable', 'hosts-file',
 ];
-const IDS_OF_BLOCK_1_OF_CHAPTER_3: TermId[] = [
+const IDS_OF_CHAPTER_3: TermId[] = [
   'http', 'url', 'url-path', 'query-string', 'curl', 'http-request', 'http-response', 'http-method', 'idempotent', 'process', 'web-server', 'browser',
-  'http-header', 'host-header', 'virtual-host',
+  'http-header', 'host-header', 'virtual-host', 'status-code', 'status-200', 'client-error', 'status-404', 'status-400',
 ];
 const DEFINITIONS_BEFORE_CHAPTER_2: [TermId, string][] = [
   ['cidr', 'Una notación para un rango de IPs, IP/número: /32 es una sola IP; /16, 65 536; 0.0.0.0/0, todas las IPv4.'],
@@ -148,7 +148,7 @@ describe('term registry', () => {
     expect(IDS_OF_CHAPTER_2).toHaveLength(50);
     expect(new Set(IDS_OF_CHAPTER_2).size).toBe(IDS_OF_CHAPTER_2.length);
     expect(IDS_OF_CHAPTER_2.filter((id) => !isTermId(id))).toEqual([]);
-    expect(Object.keys(TERMS)).toHaveLength(TERMS_BEFORE_CHAPTER_2 + IDS_OF_CHAPTER_2.length + IDS_OF_BLOCK_1_OF_CHAPTER_3.length);
+    expect(Object.keys(TERMS)).toHaveLength(TERMS_BEFORE_CHAPTER_2 + IDS_OF_CHAPTER_2.length + IDS_OF_CHAPTER_3.length);
     for (const [id, before] of DEFINITIONS_BEFORE_CHAPTER_2) expect(TERMS[id].definition, id).not.toBe(before);
     expect(TERMS.cidr.definition).toContain('IP/prefijo');
     expect(TERMS.dns.definition).toContain('Usa el puerto 53');
@@ -210,12 +210,12 @@ describe('term registry', () => {
     expect(TERM_ENTITY.packet).toEqual({ kind: 'packet', variant: 'echo-request' });
   });
 
-  it('registers the 15 ids of block 1 of chapter 3, which name no entity of the map and have no icon', () => {
+  it('registers the ids of the sub-chapters of chapter 3 built so far, which name no entity of the map and have no icon', () => {
     const named = Object.values(ENTITY_TERMS).flatMap((variants) => Object.values(variants));
-    expect(IDS_OF_BLOCK_1_OF_CHAPTER_3).toHaveLength(15);
-    expect(new Set(IDS_OF_BLOCK_1_OF_CHAPTER_3).size).toBe(IDS_OF_BLOCK_1_OF_CHAPTER_3.length);
-    expect(IDS_OF_BLOCK_1_OF_CHAPTER_3.filter((id) => !isTermId(id))).toEqual([]);
-    expect(IDS_OF_BLOCK_1_OF_CHAPTER_3.filter((id) => named.includes(id) || id in TERM_ENTITY)).toEqual([]);
+    expect(IDS_OF_CHAPTER_3).toHaveLength(20);
+    expect(new Set(IDS_OF_CHAPTER_3).size).toBe(IDS_OF_CHAPTER_3.length);
+    expect(IDS_OF_CHAPTER_3.filter((id) => !isTermId(id))).toEqual([]);
+    expect(IDS_OF_CHAPTER_3.filter((id) => named.includes(id) || id in TERM_ENTITY)).toEqual([]);
   });
 
   it('only the IP address and the Security Group have a short form', () => {

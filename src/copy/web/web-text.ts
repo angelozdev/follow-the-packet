@@ -15,6 +15,19 @@ export interface UrlParts {
   query?: string;
 }
 
+const STATUS_TERM: Readonly<Partial<Record<number, TermId>>> = { 200: 'status-200', 400: 'status-400', 404: 'status-404' };
+
+const STATUS_CLASS: Readonly<Partial<Record<number, (known: Known) => TermText>>> = {
+  2: () => 'Clase 2xx: la petición se cumplió.',
+  4: (known) => `Clase ${word(known, 'client-error', '4xx')}: la petición, tal como llegó, no se puede cumplir.`,
+};
+
+/** Writes a status code as the player reads it: the term that names it (`404 Not Found`) once the player knows it, and the number alone before. */
+export function statusCodeName(statusCode: number, known: Known): TermText {
+  const term = STATUS_TERM[statusCode];
+  return term !== undefined && known.has(term) ? `{{${term}}}` : String(statusCode);
+}
+
 export const WEB_BOX_TEXT = {
   url: {
     label: '{{url}}',
@@ -28,6 +41,17 @@ export const WEB_BOX_TEXT = {
   },
   request: '{{http-request|Petición HTTP}}',
   response: '{{http-response|Respuesta HTTP}}',
+  status: {
+    label: '{{status-code|Código de estado}}',
+    lines: (statusCode: number, known: Known): TermText[] => {
+      const classLine = STATUS_CLASS[Math.trunc(statusCode / 100)];
+      return [statusCodeName(statusCode, known), ...(classLine ? [classLine(known)] : [])];
+    },
+  },
+  generatedBy: {
+    label: 'Quién lo generó',
+    line: (owner: TermText): TermText => `La app de ${owner}`,
+  },
   header: (name: string, value: string): TermText => `${name}: ${value}`,
   body: (body: string): TermText => `Cuerpo: ${body}`,
   notes: {

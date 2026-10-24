@@ -306,6 +306,30 @@ describe('send tasks that expect a page', () => {
     expect(taskHolds(posting({ outcome: 'any', body: undefined }), [], dropped)).toBe(true);
   });
 
+  const answering = (messageId: string, statusCode: SendTask['expect']['statusCode'], patch: Partial<SendTask['expect']> = {}): SendTask => ({
+    ...second,
+    expect: { ...second.expect, messageId, nth: undefined, body: undefined, statusCode, ...patch },
+  });
+
+  it('a send task holds when the response has the expected status code', () => {
+    const sends = history(opened, dispatch('curl', 0), post(1));
+    expect(sends.map((packet) => packet.trace.app?.response?.statusCode)).toEqual([404, 200]);
+    expect(taskHolds(answering('curl', 404), [], sends)).toBe(true);
+    expect(taskHolds(answering('curl', 200), [], sends)).toBe(false);
+    expect(taskHolds(answering('curl-post', 200), [], sends)).toBe(true);
+    expect(taskHolds(answering('curl-post', 404), [], sends)).toBe(false);
+    expect(taskHolds(answering('curl-post', 400), [], sends)).toBe(false);
+    expect(taskHolds(answering('curl-post', undefined), [], sends)).toBe(true);
+  });
+
+  it('a send task that expects a status code does not hold when nothing answered', () => {
+    const dropped = history(startWorld([WEB], WEB.id), post(0));
+    expect(dropped.map((packet) => packet.trace.app?.response)).toEqual([undefined]);
+    for (const statusCode of [200, 404] as const) expect(taskHolds(answering('curl-post', statusCode, { outcome: 'any' }), [], dropped), String(statusCode)).toBe(false);
+    expect(taskHolds(answering('curl-post', undefined, { outcome: 'any' }), [], dropped)).toBe(true);
+    expect(taskHolds(answering('curl-post', 200), [], [])).toBe(false);
+  });
+
   it('a third send does not undo a task that held at the second', () => {
     const two = history(opened, post(0), post(1));
     const three = history(opened, post(0), post(1), post(2));

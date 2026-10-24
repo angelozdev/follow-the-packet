@@ -7,6 +7,9 @@ const CONTENT_TYPE = 'Content-Type';
 
 const STATUS_PHRASE = { 200: 'OK', 400: 'Bad Request', 404: 'Not Found' } as const;
 
+/** The status codes an app of the game answers. */
+export const STATUS_CODES: readonly number[] = Object.keys(STATUS_PHRASE).map(Number);
+
 type StatusCode = keyof typeof STATUS_PHRASE;
 type HttpHeaders = Readonly<Record<string, string>>;
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STATUS_CODES } from '@/engine';
 import { EVERY_TERM, OFFICE_FLOORS, officeWithNames } from '@/testing';
 import { termsIn, toPlainText } from '@/copy/term-text';
 import type { TermId } from '@/copy/terms';
@@ -24,6 +25,10 @@ describe('the texts of the web', () => {
     WEB_BOX_TEXT.url.label,
     WEB_BOX_TEXT.request,
     WEB_BOX_TEXT.response,
+    WEB_BOX_TEXT.status.label,
+    ...STATUS_CODES.flatMap((code) => WEB_BOX_TEXT.status.lines(code, known)),
+    WEB_BOX_TEXT.generatedBy.label,
+    WEB_BOX_TEXT.generatedBy.line('[[laptop-lucia]]'),
     WEB_BOX_TEXT.header('Host', 'localhost:3000'),
     WEB_BOX_TEXT.body('Pedido 7: 2 cafés'),
     ...Object.values(WEB_BOX_TEXT.notes),
@@ -40,6 +45,13 @@ describe('the texts of the web', () => {
 
   it('no text calls an http message a packet', () => {
     for (const known of [EVERY_TERM, NOTHING_KNOWN]) expect(textsOf(known).filter((text) => /paquete|packet/i.test(toPlainText(text)))).toEqual([]);
+  });
+
+  it('every status code an app answers has a term that names it, and the box writes the number alone before the term is known', () => {
+    for (const code of STATUS_CODES) {
+      expect(termsIn(WEB_BOX_TEXT.status.lines(code, EVERY_TERM)[0]), String(code)).toHaveLength(1);
+      expect(WEB_BOX_TEXT.status.lines(code, NOTHING_KNOWN)[0], String(code)).toBe(String(code));
+    }
   });
 
   it('the lines of the url tag the term of each part only once the player knows it', () => {

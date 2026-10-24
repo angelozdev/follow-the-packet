@@ -105,6 +105,42 @@ describe('the box of a curl or a browser: the request and the response', () => {
   });
 });
 
+describe('the box of a response: its status code and who generated it', () => {
+  const answered = (to: string, message: string, session: Session = opened) => boxOf(sentAs(session, 'you', to, message), 'you', to, message);
+  const labels = (box: string[][]) => box.map(([label]) => label);
+
+  it('the box shows the status code and its class behind the term status-code and not before', () => {
+    expect(field(answered('orders', 'curl-post'), 'Código de estado')).toEqual(['Código de estado', '200 OK', 'Clase 2xx: la petición se cumplió.']);
+    expect(field(answered('orders', 'curl'), 'Código de estado')).toEqual(['Código de estado', '404 Not Found', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.']);
+    const box = answered('orders', 'curl');
+    expect(labels(box).indexOf('Respuesta HTTP')).toBeLessThan(labels(box).indexOf('Código de estado'));
+    expect(labels(box).indexOf('Código de estado')).toBeLessThan(labels(box).indexOf('Resultado'));
+    expect(field(answered('orders', 'curl', without(opened, 'status-code')), 'Código de estado')).toBeUndefined();
+    expect(field(answered('orders', 'curl', without(opened, 'http-response')), 'Código de estado')).toBeDefined();
+  });
+
+  it('writes the code with its own term when the player knows it and as a number when not', () => {
+    expect(field(answered('orders', 'curl', without(opened, 'status-404')), 'Código de estado')?.[1]).toBe('404');
+    expect(field(answered('orders', 'curl', without(opened, 'client-error')), 'Código de estado')?.[2]).toBe('Clase 4xx: la petición, tal como llegó, no se puede cumplir.');
+  });
+
+  it('the box says who generated the code once status-code is known', () => {
+    expect(field(answered('orders', 'curl'), 'Quién lo generó')).toEqual(['Quién lo generó', 'La app de laptop-lucia']);
+    expect(field(answered('shop', 'curl'), 'Quién lo generó')).toEqual(['Quién lo generó', 'La app de servidor-internet']);
+    expect(labels(answered('orders', 'curl')).indexOf('Quién lo generó')).toBe(labels(answered('orders', 'curl')).indexOf('Código de estado') + 1);
+    expect(field(answered('orders', 'curl', without(opened, 'status-code')), 'Quién lo generó')).toBeUndefined();
+  });
+
+  it('a send that got no response shows neither field, and the browser shows them as the curl does', () => {
+    for (const [to, message] of [['orders', 'curl-timeout'], ['app-80', 'curl']]) {
+      const box = answered(to, message, web);
+      expect(field(box, 'Código de estado'), `${to} ${message}`).toBeUndefined();
+      expect(field(box, 'Quién lo generó'), `${to} ${message}`).toBeUndefined();
+    }
+    expect(field(answered('orders', 'browser'), 'Código de estado')).toEqual(field(answered('orders', 'curl'), 'Código de estado'));
+  });
+});
+
 describe('the words of the box', () => {
   it('names the request and the response as what they are and never calls them a packet', () => {
     const sends: [Session, string, string, string][] = [

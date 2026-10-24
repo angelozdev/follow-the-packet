@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { DEFAULT_DIRECTION, DNS_PORT, ECHO_REQUEST, OUTCOMES, cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, isIpv4, isWebUrl, listenSchema, networkActionSchema, networkSchema, packetSchema, parseUrl, portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema, siteContentSchema, siteSchema, type Direction, type DnsStatus } from '@/engine';
+import { DEFAULT_DIRECTION, DNS_PORT, ECHO_REQUEST, OUTCOMES, STATUS_CODES, cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, isIpv4, isWebUrl, listenSchema, networkActionSchema, networkSchema, packetSchema, parseUrl, portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema, siteContentSchema, siteSchema, type Direction, type DnsStatus } from '@/engine';
 
 const id = z.string().min(1);
 const SEGMENTED_CHIPS = 2;
@@ -63,6 +63,7 @@ const sendTaskSchema = z.object({
     answer: expectedAnswerSchema.optional(),
     status: z.enum(EXPECTED_STATUSES).optional(),
     body: z.string().optional(),
+    statusCode: z.number().refine((code) => STATUS_CODES.includes(code), 'a status code an app of the game answers').optional(),
     nth: z.number().int().positive().optional(),
   }),
 });

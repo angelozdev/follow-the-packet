@@ -32,6 +32,16 @@ describe('the reasons of a web service', () => {
     expect(describeWebReason(answered, NET, WITH_HOST_AND_RESPONSE)).toBe('[[servidor-internet]] contesta con una {{http-response|respuesta}} de código 404.');
   });
 
+  it('the reason of an answer names the status code behind its term once the player knows it', () => {
+    const WITH_STATUS: ReadonlySet<TermId> = new Set(['http-response', 'status-code']);
+    const WITH_EVERY_STATUS: ReadonlySet<TermId> = new Set(['http-response', 'status-code', 'status-200', 'status-404', 'status-400']);
+    expect(describeWebReason(answered, NET, WITH_STATUS)).toBe('[[servidor-internet]] contesta con una {{http-response|respuesta}} con el {{status-code|código de estado}} 404.');
+    expect(describeWebReason(answered, NET, WITH_EVERY_STATUS)).toBe('[[servidor-internet]] contesta con una {{http-response|respuesta}} con el {{status-code|código de estado}} {{status-404}}.');
+    expect(describeWebReason({ ...answered, statusCode: 200 }, NET, WITH_EVERY_STATUS)).toContain('{{status-200}}.');
+    expect(describeWebReason({ ...answered, statusCode: 400 }, NET, WITH_EVERY_STATUS)).toContain('{{status-400}}.');
+    expect(describeWebReason(answered, NET, WITH_HOST_AND_RESPONSE)).toBe('[[servidor-internet]] contesta con una {{http-response|respuesta}} de código 404.');
+  });
+
   it('describeReason gives the sentence of each web reason and ties no reply to a rule', () => {
     for (const reason of [chosen, fallback, answered]) {
       const text = describeReason(reason, NET, WITH_HOST_AND_RESPONSE);
