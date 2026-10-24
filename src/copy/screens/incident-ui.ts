@@ -15,7 +15,7 @@ const EDGE_LABEL: Record<Network['edge'], TermText> = {
   router: '{{router}}',
 };
 
-const STOPPED_PROCESS = 'detenido';
+const STOPPED_PROCESS = 'terminó';
 const MORE_STAMPS = (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`;
 const HIDDEN_PROBLEM = 'Entre los escondidos hay alguno bloqueado, perdido, con un aviso o que entró y no debía.';
 

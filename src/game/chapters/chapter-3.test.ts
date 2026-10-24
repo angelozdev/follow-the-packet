@@ -521,7 +521,7 @@ describe('03-03, who answers', () => {
 
   it('03-03: the box of laptop-lucia lists each app with the process it listens from and says the reports one stopped', () => {
     const services = inspect(start, PIECE_ID.device(DEVICE.lucia.id))?.fields.find(({ label }) => plain(label) === 'Servicios')?.lines.map(plain);
-    expect(services).toEqual(['TCP 3000 · escucha en todas las IPs · proceso app-pedidos', 'TCP 5432 · escucha en todas las IPs', 'TCP 22 · escucha en todas las IPs', 'TCP 3001 · proceso app-reportes · detenido']);
+    expect(services).toEqual(['TCP 3000 · escucha en todas las IPs · proceso app-pedidos', 'TCP 5432 · escucha en todas las IPs', 'TCP 22 · escucha en todas las IPs', 'TCP 3001 · proceso app-reportes · terminó']);
   });
 
   it('03-03: the report names laptop-lucia and says who stopped the process', () => {

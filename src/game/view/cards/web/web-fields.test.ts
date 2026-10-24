@@ -173,12 +173,12 @@ describe('the services of a device and the process each listens from', () => {
   };
 
   it('a service lists the process it listens from', () => {
-    expect(services(withProcesses(web))).toEqual(['TCP 3000 · escucha en todas las IPs · proceso app de pedidos', 'TCP 3001 · proceso app de reportes · detenido', 'TCP 22 · escucha solo en 127.0.0.1']);
+    expect(services(withProcesses(web))).toEqual(['TCP 3000 · escucha en todas las IPs · proceso app de pedidos', 'TCP 3001 · proceso app de reportes · terminó', 'TCP 22 · escucha solo en 127.0.0.1']);
   });
 
   it('names the process only once the player knows the term, and lists a service whose process stopped only then, because it does not listen', () => {
     expect(services(without(withProcesses(web), 'process'))).toEqual(['TCP 3000 · escucha en todas las IPs', 'TCP 22 · escucha solo en 127.0.0.1']);
-    expect(services(without(withProcesses(web), 'listen-address'))).toEqual(['TCP 3000 · proceso app de pedidos', 'TCP 3001 · proceso app de reportes · detenido', 'TCP 22']);
+    expect(services(without(withProcesses(web), 'listen-address'))).toEqual(['TCP 3000 · proceso app de pedidos', 'TCP 3001 · proceso app de reportes · terminó', 'TCP 22']);
   });
 
   it('a device whose services have no process lists them as it always did', () => {
