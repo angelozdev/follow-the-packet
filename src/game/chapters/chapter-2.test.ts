@@ -64,20 +64,20 @@ import {
   waitMove,
 } from '@/levels/02-ports-and-names/shared';
 import { CHAPTER_1_TERMS, sendIncident } from '@/testing';
-import { drawnSends } from './flow-runs';
-import { caseClosed, clockSteps, currentCase, isIntruding, sessionReducer, startSession, starsOf, type Session } from './session';
-import { taskHolds } from './tasks';
-import { caseCard, caseSummary } from './view/cards/case-card';
-import { terminalLine } from './view/cards/terminal/terminal-card';
-import { identifyCard } from './view/cards/identify-card';
-import { classifiedBlock, classifyCard } from './view/cards/identify/classify-card';
-import { pieceCard } from './view/cards/piece-card';
-import { servicesCard, settingsCard } from './view/cards/settings-card';
-import type { TableCard } from './view/cards/table-card';
-import { toolOutput } from './view/cards/terminal/output-card';
-import { inspect } from './view/inspection';
-import { PIECE_ID } from './view/piece-id';
-import { pieceViews } from './view/pieces';
+import { drawnSends } from '@/game/flow-runs';
+import { caseClosed, clockSteps, currentCase, isIntruding, sessionReducer, startSession, starsOf, type Session } from '@/game/session';
+import { taskHolds } from '@/game/tasks';
+import { caseCard, caseSummary } from '@/game/view/cards/case-card';
+import { terminalLine } from '@/game/view/cards/terminal/terminal-card';
+import { identifyCard } from '@/game/view/cards/identify-card';
+import { classifiedBlock, classifyCard } from '@/game/view/cards/identify/classify-card';
+import { pieceCard } from '@/game/view/cards/piece-card';
+import { servicesCard, settingsCard } from '@/game/view/cards/settings-card';
+import type { TableCard } from '@/game/view/cards/table-card';
+import { toolOutput } from '@/game/view/cards/terminal/output-card';
+import { inspect } from '@/game/view/inspection';
+import { PIECE_ID } from '@/game/view/piece-id';
+import { pieceViews } from '@/game/view/pieces';
 
 const CHAPTER = 2;
 const LAST_INCIDENT = '02-14';
