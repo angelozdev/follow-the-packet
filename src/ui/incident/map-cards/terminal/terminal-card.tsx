@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { TERMINAL_TEXT, type TermText } from '@/copy';
 import { Button, ChipTray } from '@/design';
-import type { SendPicks, SendTrayName, TerminalCard as Terminal, ToolOutput, TracerouteView } from '@/game';
+import { pickedParts, stripAddress, type SendPicks, type SendTrayName, type TerminalCard as Terminal, type ToolOutput, type TracerouteView, type UrlPartName, type UrlPicks } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
 import { FramedCard, trayChips, type CardFrame } from '@/ui/incident/map-cards/chip-card';
+import { UrlStripTray } from '@/ui/incident/map-cards/web/url-strip';
 import { OutputCard, type Printed } from './output-card';
 
 /** What the terminal asks of its screen: the line the picks make, what a traceroute, an `nc`, a `dig` or a `curl` sent with them printed (one block, or a block for each send of a `curl`), moving the card to another origin and sending. */
@@ -20,15 +21,18 @@ export interface TerminalHandlers {
 /** What the player has half done in a terminal: the chips picked and whether the output of a `dig` is unfolded. It lives above the card, so a card that shows the terminal as one tab among others keeps it when the player switches tabs. */
 export interface TerminalDraft {
   picks: Partial<SendPicks>;
+  parts: UrlPicks;
   unfolded: boolean;
   setPicks: (picks: Partial<SendPicks>) => void;
+  setParts: (parts: UrlPicks) => void;
   setUnfolded: (unfolded: boolean) => void;
 }
 
 export function useTerminalDraft(card: Terminal | null): TerminalDraft {
   const [picks, setPicks] = useState<Partial<SendPicks>>(card?.fixed ?? {});
+  const [parts, setParts] = useState<UrlPicks>({});
   const [unfolded, setUnfolded] = useState(false);
-  return { picks, unfolded, setPicks, setUnfolded };
+  return { picks, parts, unfolded, setPicks, setParts, setUnfolded };
 }
 
 function printedBy(route: TracerouteView | null, tools: ToolOutput | ToolOutput[] | null): Printed[] {
@@ -37,7 +41,9 @@ function printedBy(route: TracerouteView | null, tools: ToolOutput | ToolOutput[
 
 /** Returns what the terminal of an origin puts in its card: a chip from each tray it shows, the line those chips make (the real command, or a packet made by hand), "Enviar" and, once a traceroute, an `nc`, a `dig` or a `curl` was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. The draft is the caller's: whether the output of a `dig` is unfolded goes back to folded when another chip is picked. */
 export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, route, printed, onPickOrigin, onSend }: TerminalHandlers): CardFrame {
-  const chosen: Partial<SendPicks> = { ...card.fixed, ...draft.picks, from: card.fromId };
+  const parts = card.strip ? pickedParts(card.strip, draft.parts) : {};
+  const address = card.strip && stripAddress(card.strip, parts);
+  const chosen: Partial<SendPicks> = { ...card.fixed, ...draft.picks, ...(address && { to: address }), from: card.fromId };
   const line = describe(chosen);
   const outputs = printedBy(route(chosen), printed?.(chosen) ?? null);
   const pick = (tray: SendTrayName, chipId: string) => {
@@ -47,6 +53,13 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
       draft.setUnfolded(false);
     }
   };
+  const pickPart = (part: UrlPartName, value: string) => {
+    draft.setParts({ ...draft.parts, [part]: value });
+    draft.setUnfolded(false);
+  };
+  const trayOf = (tray: Terminal['trays'][number]) => (
+    <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
+  );
   const send = () => {
     if (chosen.to && chosen.message) onSend({ from: card.fromId, to: chosen.to, message: chosen.message });
   };
@@ -72,9 +85,9 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
         {outputs.map((printedOutput, index) => (
           <OutputCard key={index} printed={printedOutput} unfolded={draft.unfolded} onToggle={() => draft.setUnfolded(!draft.unfolded)} />
         ))}
-        {card.trays.map((tray) => (
-          <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
-        ))}
+        {card.trays.filter(({ name }) => name === 'from').map(trayOf)}
+        {card.strip && <UrlStripTray strip={card.strip} picked={parts} onPick={pickPart} />}
+        {card.trays.filter(({ name }) => name !== 'from').map(trayOf)}
       </>
     ),
   };

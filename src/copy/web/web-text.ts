@@ -48,6 +48,14 @@ export const BROWSER_TEXT = {
   noPage: 'El servidor no contestó con ninguna página',
 } as const;
 
+export const URL_STRIP_TEXT = {
+  name: 'Dirección',
+  parts: { scheme: 'Esquema', host: 'Nombre', port: 'Puerto', path: 'Path', query: 'Query string' },
+  separators: { host: '://', port: ':' },
+  none: { port: 'sin puerto', query: 'sin query' },
+  query: (query: string): string => `?${query}`,
+} as const;
+
 export const SITES_TEXT = {
   title: (owner: TermText): TermText => `{{virtual-host|Sitios}} de ${owner}`,
   name: 'Nombre',

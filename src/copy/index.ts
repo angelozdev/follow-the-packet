@@ -5,7 +5,7 @@ export type { TermSegment, TermText } from './term-text';
 export { describeReason } from './reasons';
 export { describeRule } from './rule-text';
 export { SITE_PROBLEM_TEXT } from './web/site-problems';
-export { BROWSER_TEXT, SITES_TEXT, WEB_BOX_TEXT } from './web/web-text';
+export { BROWSER_TEXT, SITES_TEXT, URL_STRIP_TEXT, WEB_BOX_TEXT } from './web/web-text';
 export type { UrlParts } from './web/web-text';
 export type { PlaceOf, RouterPlace } from './reasons';
 export { FIRST_WARNING_TERM, OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, isProblemStamp, messageLabel, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, stampLabel, stampOf, tracerouteLabel, warningOf } from './packet-labels';

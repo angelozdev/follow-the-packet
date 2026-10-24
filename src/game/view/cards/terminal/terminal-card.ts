@@ -3,6 +3,7 @@ import type { Endpoint } from '@/engine';
 import { urlOfChip, type MessageChip, type SendOwner } from '@/levels';
 import { sendingOf, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
+import { urlStrip, type UrlStrip } from '@/game/view/cards/web/url-strip';
 
 export type SendTrayName = 'from' | 'to' | 'message';
 export type SendPicks = Record<SendTrayName, string>;
@@ -23,6 +24,7 @@ export interface TerminalCard {
   trays: SendTray[];
   fixed: Partial<SendPicks>;
   origins: Record<string, string>;
+  strip?: UrlStrip;
 }
 
 const TRAY_ORDER: SendTrayName[] = ['from', 'to', 'message'];
@@ -45,18 +47,20 @@ function chipsOf(offers: SendOwner, session: Session): Record<SendTrayName, Chip
   };
 }
 
-/** Returns what the terminal card of an origin piece shows: its title, the trays with a choice to make, and the chip of each tray that offers only one (that tray is fixed and not shown); null when the piece is not an origin of a send incident, or of the case a diagnose is on. */
+/** Returns what the terminal card of an origin piece shows: its title, the trays with a choice to make, and the chip of each tray that offers only one (that tray is fixed and not shown); null when the piece is not an origin of a send incident, or of the case a diagnose is on. When the address chips give their urls by parts, the card carries the `strip` that picks them and has no tray of addresses. */
 export function terminalCard(session: Session, pieceId: string): TerminalCard | null {
   const offers = sendingOf(session);
   const origin = offers?.send.from.find((chip) => endpointPieceId(chip.endpoint) === pieceId);
   if (!offers || !origin) return null;
   const chips = chipsOf(offers, session);
+  const strip = urlStrip(offers.send.to);
   return {
     fromId: origin.id,
     title: TERMINAL_TEXT.title(endpointName(origin.endpoint, session.world)),
-    trays: TRAY_ORDER.filter((name) => chips[name].length > 1).map((name) => ({ name, chips: chips[name] })),
+    trays: TRAY_ORDER.filter((name) => chips[name].length > 1 && !(strip && name === 'to')).map((name) => ({ name, chips: chips[name] })),
     fixed: Object.fromEntries(TRAY_ORDER.flatMap((name) => (chips[name].length === 1 ? [[name, chips[name][0].id]] : []))),
     origins: originPieces(session),
+    ...(strip && { strip }),
   };
 }
 

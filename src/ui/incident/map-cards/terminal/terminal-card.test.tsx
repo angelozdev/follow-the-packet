@@ -7,6 +7,7 @@ import { TASK_CARD_TEXT, TERMINAL_TEXT } from '@/copy';
 import { sessionReducer, startSession, terminalCard, terminalLine, tracerouteLines } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { routedSendIncident, sendIncident } from '@/testing/incidents';
+import { addressByPartsIncident } from '@/testing/web/web-incident';
 import { TerminalCard } from './terminal-card';
 
 const SENDING = sendIncident();
@@ -174,5 +175,24 @@ describe('terminal card of a traceroute', () => {
     await user.click(screen.getByRole('button', { name: TERMINAL_TEXT.send }));
     expect(rows(screen.getByRole('list', { name: TERMINAL_TEXT.route.label }))).toEqual([[hop(1, '192.168.1.10'), '!H']]);
     expect(screen.getByRole('dialog')).toHaveTextContent('«!H»: el equipo con esa IP avisó con Destination Host Unreachable que no pudo llegar al dispositivo de destino.');
+  });
+});
+
+describe('terminal card of an incident that gives its urls by parts', () => {
+  it('writes the line once every part is picked and sends the address those parts stand for', async () => {
+    const user = userEvent.setup();
+    const incident = addressByPartsIncident();
+    const session = startSession([incident], incident.id);
+    const card = terminalCard(session, PIECE_ID.device('lucia-laptop'));
+    if (!card) throw new Error('missing terminal');
+    const onSend = vi.fn();
+    render(<TerminalCard card={card} describe={(picks) => terminalLine(session, picks)} route={noRoute} onPickOrigin={vi.fn()} onSend={onSend} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: TERMINAL_TEXT.send })).toBeDisabled();
+    for (const part of ['3000', '/pedidos']) await user.click(screen.getByRole('button', { name: part }));
+    expect(screen.getByRole('button', { name: TERMINAL_TEXT.send })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '?id=7' }));
+    expect(screen.getByRole('dialog').querySelector('code')).toHaveTextContent('curl http://localhost:3000/pedidos?id=7');
+    await user.click(screen.getByRole('button', { name: TERMINAL_TEXT.send }));
+    expect(onSend).toHaveBeenCalledWith({ from: 'lucia', to: '3000/pedidos-id=7', message: 'curl' });
   });
 });

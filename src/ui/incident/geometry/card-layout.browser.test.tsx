@@ -22,7 +22,7 @@ import {
   standStill,
   watchErrors,
 } from '@/testing/browser-play';
-import { webSendIncident } from '@/testing/web/web-incident';
+import { addressByPartsIncident, webSendIncident } from '@/testing/web/web-incident';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -68,6 +68,9 @@ const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
 const OFFICE_ROUTES_CARD = 'Tabla de rutas de router-oficina';
 const ANYWHERE = '0.0.0.0/0';
 const WEB = webSendIncident();
+const BY_PARTS = addressByPartsIncident();
+const LUCIA_TERMINAL = 'Terminal de laptop-lucia';
+const ORDER_7_BY_PARTS = ['3000', '/pedidos', '?id=7'];
 const BROWSER_TAB = 'Navegador';
 const BROWSER_CARD = 'Navegador de tu-laptop';
 const OPEN = 'Abrir';
@@ -371,6 +374,12 @@ async function sendTheCurlTwice(): Promise<void> {
   scrollTheBodyToItsEnd(terminal);
 }
 
+async function pickTheUrlByParts(): Promise<void> {
+  const terminal = await openTerminal(LUCIA);
+  for (const part of ORDER_7_BY_PARTS) await click(terminal.getByRole('button', { name: part, exact: true }));
+  scrollTheBodyToItsEnd(terminal);
+}
+
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await sendTo(card(TERMINAL), OFFICE_IP.andres);
@@ -394,6 +403,7 @@ const THE_CLOCK: Scene = { name: 'the clock of the game below the card of Lucía
 const THE_BROWSER: Scene = { name: 'the browser, a tab of the card of tu-laptop, with a page opened', level: WEB.id, incidents: [WEB], reach: openTheShopInTheBrowser, last: doneOf(BROWSER_CARD) };
 const THE_SITES: Scene = { name: 'the sites of servidor-internet, with a name that already has a site refused and the reason under the table', level: WEB.id, incidents: [WEB], reach: reachTheRefusedSite, last: doneOf(SITES_CARD) };
 const THE_CURL_TERMINAL: Scene = { name: 'the terminal with the output of a curl sent twice, titled Envío 1 and Envío 2', level: WEB.id, incidents: [WEB], reach: sendTheCurlTwice, last: doneOf(TERMINAL) };
+const THE_STRIP: Scene = { name: 'the terminal of laptop-lucia with the url by parts, in three rows, and the order 7 picked', level: BY_PARTS.id, incidents: [BY_PARTS], reach: pickTheUrlByParts, last: doneOf(LUCIA_TERMINAL) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: doneOf(TERMINAL) };
 
@@ -423,11 +433,12 @@ const SCENES: Scene[] = [
   THE_BROWSER,
   THE_SITES,
   THE_CURL_TERMINAL,
+  THE_STRIP,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL, THE_STRIP];
 
-const TABLES_OUTPUT_AND_SERVICES = [THE_TRACEROUTE, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL];
+const TABLES_OUTPUT_AND_SERVICES = [THE_TRACEROUTE, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL, THE_STRIP];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);

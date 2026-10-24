@@ -51,6 +51,28 @@ export function webNet(): Network {
 
 const orderUrl = (query: number) => ({ address: 'localhost', scheme: 'http', port: APP_PORT, path: ORDER_PATH, query: `id=${query}` }) as const;
 
+const PARTS_PORTS = [APP_PORT, WEB_PORT];
+const PARTS_PATHS = [ORDER_PATH, '/pedido'];
+const PARTS_QUERIES = ['id=7', 'id=8'];
+const PARTS_ORDER_7 = `${APP_PORT}${ORDER_PATH}-id=7`;
+
+/** Returns a send incident on `webNet` with every term introduced that offers what the first incident of chapter 3 offers: laptop-lucia as the only origin, the message `curl` alone, and eight address chips given by parts (the scheme `http`, the name `localhost`, the port 3000 or 80, the path `/pedidos` or `/pedido` and the query `id=7` or `id=8`, each combination once). Its one task expects the body of order 7 from the chip of port 3000, path `/pedidos` and query `id=7`. */
+export function addressByPartsIncident(): SendIncident {
+  const base = webSendIncident();
+  return {
+    ...base,
+    tasks: [{ id: 'order-7', text: 'Que el curl devuelva el pedido 7.', expect: { fromId: 'lucia', toId: PARTS_ORDER_7, messageId: 'curl', outcome: 'replied', body: 'Pedido 7: 2 cafés' } }],
+    send: {
+      from: [{ id: 'lucia', endpoint: device(LUCIA) }],
+      to: PARTS_PORTS.flatMap((port) =>
+        PARTS_PATHS.flatMap((path) => PARTS_QUERIES.map((query) => ({ id: `${port}${path}-${query}`, address: 'localhost', scheme: 'http' as const, port, path, query }))),
+      ),
+      message: [{ id: 'curl', label: 'curl', command: 'curl' }],
+    },
+    solution: [{ type: 'sendPacket', fromId: 'lucia', toId: PARTS_ORDER_7, messageId: 'curl' }],
+  };
+}
+
 /** Returns a send incident on `webNet` with every term introduced. It offers two origins (your laptop and laptop-lucia), URL chips by parts (the orders 7 and 8 of the app of laptop-lucia through localhost, and its closed port 80) and whole (the orders app by its IP, the shop, the blog and the server by its IP), the messages `curl`, `curl -i`, `curl -d`, `curl -X PUT -d`, `curl --connect-timeout 3` and the browser, the rules card of the firewall of laptop-lucia (TCP 3000 or 3001, from your laptop or from anyone), a table of sites on the server of the internet (the name `blog.lucia.example`, `blogs.lucia.example` or `www.lucia.example`, which the shop already has, serving the blog or the shop) and a clock of one step. Its tasks expect the body of order 7, the blog, and the body of the second post, and its solution places the site, the rule and sends. */
 export function webSendIncident(): SendIncident {
   return {
