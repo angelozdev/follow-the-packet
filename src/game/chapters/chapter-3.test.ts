@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { toPlainText } from '@/copy';
+import { TERMS, termsIn, toPlainText } from '@/copy';
 import { applyAction, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APP_ANSWERS_HTTP, DEVICE, IP, MESSAGE, NAME, ORDER_BODY, ORDER_PATH, ORIGIN, PAGE_PIECES, PORT, TASK, URLS_BY_PARTS } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, DEVICE, IP, MESSAGE, NAME, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, TASK, URLS_BY_PARTS } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -17,7 +17,15 @@ import { pieceViews } from '@/game/view/pieces';
 const CHAPTER = 3;
 const LAST_INCIDENT_OF_CHAPTER_2 = '02-14';
 
+const CALLS_A_MESSAGE_A_PACKET = /paquete (de )?HTTP|HTTP (es|son) (un )?paquete|(petición|respuesta) HTTP (es|son) (un )?paquete/i;
+const SAYS_HTTP_PREVENTS_DUPLICATES = /\bHTTP\s+(evita|previene|impide|protege)\b/i;
+
 const sorted = (values: string[]): string[] => [...values].sort();
+
+/** Returns the sentences of a text that say that idempotent means the same answer: one that names the term, a same or equal answer or result, and no negation. */
+function sentencesSayingIdempotentIsTheSameAnswer(text: string): string[] {
+  return text.split(/(?<=\.)\s+/).filter((sentence) => /idempotent/i.test(sentence) && /\b(misma|mismo|igual)\b/i.test(sentence) && /respuesta|resultado/i.test(sentence) && !/\bno\b/i.test(sentence));
+}
 const plain = toPlainText;
 const builtOfChapter3 = (): Incident[] => INCIDENTS.filter((incident) => incident.chapter === CHAPTER);
 
@@ -50,6 +58,12 @@ const lastBox = (session: Session): Record<string, string[]> => {
 /** Returns the lines the output card prints for the curl of laptop-lucia to this address. */
 const printedFor = (session: Session, toId: string, messageId: string = MESSAGE.curl.id): string[] =>
   (toolOutput(session, { from: ORIGIN.lucia.id, to: toId, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+
+/** Expects the map to draw laptop-lucia with its firewall and no other piece, and the incident to list just that. */
+function expectOnlyLuciaDrawn(session: Session): void {
+  expect(pieceViews(session).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort()).toEqual([`device:${DEVICE.lucia.name}`, `firewall:firewall ${DEVICE.lucia.name}`]);
+  expect(session.incident.shown).toEqual(PAGE_PIECES);
+}
 
 /** Returns an incident of chapter 3 at this order whose report is the given text and that introduces nothing. */
 function incidentSaying(order: number, report: string): Incident {
@@ -199,8 +213,7 @@ describe('03-01, an address for everything', () => {
   });
 
   it('03-01: draws laptop-lucia and no other piece', () => {
-    expect(pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort()).toEqual([`device:${DEVICE.lucia.name}`, `firewall:firewall ${DEVICE.lucia.name}`]);
-    expect(incident.shown).toEqual(PAGE_PIECES);
+    expectOnlyLuciaDrawn(start);
   });
 
   it('03-01: introduces http, url, path, query string and curl, and uses no later term', () => {
@@ -234,6 +247,126 @@ describe('03-01, an address for everything', () => {
 
   it('03-01: the takeaway says the http message is no packet but travels in the connection that the greeting opened, and no text calls it a packet', () => {
     expect(plain(incident.takeaway)).toContain('El mensaje HTTP no es un paquete: viaja dentro de la conexión TCP que abrió el saludo de tres pasos.');
-    expect(incidentTexts(incident).map(plain).filter((text) => /paquete (de )?HTTP|HTTP (es|son) (un )?paquete/i.test(text))).toEqual([]);
+    expect(incidentTexts(incident).map(plain).filter((text) => CALLS_A_MESSAGE_A_PACKET.test(text))).toEqual([]);
+  });
+});
+
+describe('03-02, ask and answer', () => {
+  const ASK_AND_ANSWER = '03-02';
+  const start = startSession(INCIDENTS, ASK_AND_ANSWER);
+  const { incident } = start;
+  const posting = (session: Session) => sending(session, ORDER_URL.all.id, MESSAGE.curlPost.id);
+  const putting = (session: Session) => sending(session, ORDER_URL.seven.id, MESSAGE.curlPut.id);
+  const reading = (session: Session) => sending(session, ORDER_URL.seven.id);
+  const bodyOfLast = (session: Session) => session.sent.at(-1)!.trace.app?.response?.body;
+  const wrongOptionTexts = isGuided(incident) ? incident.explanation.filter(({ correct }) => !correct).map(({ text }) => text) : [];
+  const everythingRead = (session: Session): string[] => [
+    ...incidentTexts(session.incident).filter((text) => !wrongOptionTexts.includes(text)).map(plain),
+    ...session.incident.introduces.map((term) => TERMS[term].definition),
+  ];
+
+  it('03-02: the get, the two posts and the two puts each complete their task', () => {
+    expect(stillOpen(start)).toEqual([TASK.getSeven, TASK.posts, TASK.puts]);
+    const read = reading(start);
+    expect(stillOpen(read)).toEqual([TASK.posts, TASK.puts]);
+    const posted = posting(posting(read));
+    expect(stillOpen(posted)).toEqual([TASK.puts]);
+    const done = putting(putting(posted));
+    expect(stillOpen(done)).toEqual([]);
+    expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('03-02: the task of the posts holds only after the second post', () => {
+    const once = posting(start);
+    expect(stillOpen(once)).toContain(TASK.posts);
+    const twice = posting(once);
+    expect(stillOpen(twice)).not.toContain(TASK.posts);
+    expect(stillOpen(posting(twice))).not.toContain(TASK.posts);
+    expect(stillOpen(putting(putting(start)))).toContain(TASK.posts);
+  });
+
+  it('03-02: the second post creates another order and the second put leaves the same', () => {
+    const first = posting(start);
+    expect(bodyOfLast(first)).toBe(ORDER_BODY.nine);
+    const second = posting(first);
+    expect(bodyOfLast(second)).toBe(ORDER_BODY.ten);
+    expect(bodyOfLast(sending(second, ORDER_URL.nine.id))).toBe(ORDER_BODY.nine);
+    const firstPut = putting(second);
+    const secondPut = putting(firstPut);
+    expect(bodyOfLast(firstPut)).toBe(ORDER_BODY.replaced);
+    expect(bodyOfLast(secondPut)).toBe(bodyOfLast(firstPut));
+    expect(bodyOfLast(reading(secondPut))).toBe(ORDER_BODY.replaced);
+    expect(bodyOfLast(sending(secondPut, ORDER_URL.nine.id))).toBe(ORDER_BODY.nine);
+  });
+
+  it('03-02: the order 7 is the one a put replaces, so the report asks to read it first', () => {
+    expect(bodyOfLast(reading(putting(start)))).toBe(ORDER_BODY.replaced);
+    expect(plain(incident.report)).toContain('Primero lee el pedido 7. Después manda dos POST iguales y dos PUT iguales.');
+  });
+
+  it('03-02: each curl asks with the method its options say', () => {
+    const startLine = (session: Session) => lastBox(session)['Petición HTTP'][0];
+    expect(startLine(reading(start))).toBe('GET /pedidos?id=7 HTTP/1.1');
+    expect(startLine(posting(start))).toBe('POST /pedidos HTTP/1.1');
+    expect(startLine(putting(start))).toBe('PUT /pedidos?id=7 HTTP/1.1');
+  });
+
+  it('03-02: the box shows the request and the response behind their terms and names no status code', () => {
+    const sentAll = putting(posting(reading(start)));
+    const fields = inspect(sentAll, sentAll.sent.at(-1)!.pieceId)?.fields ?? [];
+    const labelsWith = (term: string) => fields.filter(({ label }) => termsIn(label).includes(term as never)).map(({ label }) => plain(label));
+    expect(labelsWith('http-request')).toEqual(['Petición HTTP']);
+    expect(labelsWith('http-response')).toEqual(['Respuesta HTTP']);
+    const read = fields.flatMap(({ label, lines, notes = [] }) => [label, ...lines, ...notes]);
+    expect(unknownTerms(read, knownTerms(INCIDENTS, ASK_AND_ANSWER))).toEqual([]);
+    expect(read.map(plain).filter((text) => /código de estado|status code|status-code/i.test(text))).toEqual([]);
+  });
+
+  it('03-02: the report names laptop-lucia', () => {
+    expect(incident.report).toContain(NAME.lucia);
+    expect(plain(incident.report)).toContain(`el programa del puerto ${PORT.app} de ${DEVICE.lucia.name} también crea pedidos y los cambia`);
+    expect(changedNames(worldBeforeChanges(INCIDENTS, ASK_AND_ANSWER), startWorld(INCIDENTS, ASK_AND_ANSWER))).toEqual([DEVICE.lucia.name]);
+    expect(incident.changes).toEqual([APP_TAKES_ORDERS]);
+  });
+
+  it('03-02: draws laptop-lucia and no other piece', () => {
+    expectOnlyLuciaDrawn(start);
+  });
+
+  it('03-02: introduces http request, http response, http method and idempotent, and uses no later term', () => {
+    expect(sorted(incident.introduces)).toEqual(sorted(['http-request', 'http-response', 'http-method', 'idempotent']));
+    expect(unknownTerms(incidentTexts(incident), knownTerms(INCIDENTS, ASK_AND_ANSWER))).toEqual([]);
+    expect(laterNameLeaks([incident])).toEqual([]);
+    expect(incidentTexts(incident).map(plain).filter((text) => CALLS_A_MESSAGE_A_PACKET.test(text))).toEqual([]);
+  });
+
+  it('03-02: no text says idempotent means the same answer', () => {
+    expect(everythingRead(start).flatMap(sentencesSayingIdempotentIsTheSameAnswer)).toEqual([]);
+    expect(['Idempotente significa que la respuesta es la misma.', 'Una operación idempotente da el mismo resultado.', 'Idempotente: la respuesta es igual cada vez.'].filter((text) => sentencesSayingIdempotentIsTheSameAnswer(text).length === 0)).toEqual([]);
+    expect(['Idempotente habla del efecto, no de la respuesta.', 'Sí, la respuesta será la misma.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingIdempotentIsTheSameAnswer(text).length === 0));
+  });
+
+  it('03-02: no text says http prevents duplicates', () => {
+    expect(everythingRead(start).filter((text) => SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual([]);
+    expect(['HTTP evita los duplicados.', 'El HTTP previene repetidos.'].filter((text) => !SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual([]);
+    expect(SAYS_HTTP_PREVENTS_DUPLICATES.test('HTTP no evita nada.')).toBe(false);
+    expect(wrongOptionTexts.map(plain).filter((text) => SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual(['Sí, HTTP evita los duplicados.']);
+  });
+
+  it('03-02: the question separates the effect of repeating from the answer', () => {
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(2);
+    expect(plain(options[0].feedback)).toContain('Idempotente habla del efecto en el servidor, no de la respuesta.');
+    expect(plain(options[1].feedback)).toContain('HTTP no evita nada');
+    expect(plain(options[2].text)).toBe('No: un POST no es idempotente y repetirlo puede crear otro pedido.');
+    expect(plain(options[2].feedback)).toContain('el segundo POST creó el pedido 10. El segundo PUT, en cambio, dejó el pedido 7 igual.');
+  });
+
+  it('03-02: the takeaway says that idempotent speaks of the effect and not of the answer, that it is not the same as safe and that a client does not repeat a post by itself', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('GET, PUT y DELETE son idempotentes: repetirlos deja el mismo efecto que hacerlos una vez. POST no lo es:');
+    expect(takeaway).toContain('Idempotente habla del efecto, no de la respuesta: un segundo DELETE puede contestar 404 y dejar el servidor como lo dejó el primero.');
+    expect(takeaway).toContain('Tampoco quiere decir seguro: un PUT cambia el pedido y es idempotente.');
+    expect(takeaway).toContain('un cliente no debe repetir solo una petición que no es idempotente, como un POST.');
   });
 });
