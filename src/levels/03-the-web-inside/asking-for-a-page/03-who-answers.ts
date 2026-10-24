@@ -28,7 +28,7 @@ export default defineIncident({
   explanation: [
     {
       text: `No había ningún {{process|proceso}} escuchando en el {{port|puerto}} ${REPORTS_PORT}, y {{tcp|TCP}} rechazó la {{connection|conexión}} antes de que hubiera {{http|HTTP}}.`,
-      feedback: `${NAME.lucia} cerró la app de reportes: el {{process|proceso}} terminó y su {{service|servicio}} dejó de {{listen|escuchar}}. Cuando llegó el intento de conexión al puerto ${REPORTS_PORT}, ${NAME.lucia} contestó con un {{rst|RST}}, y {{curl}} lo mostró como un rechazo. Una {{http-response|respuesta HTTP}} nunca existió: no llegó a haber conexión.`,
+      feedback: `Lucía cerró la app de reportes en ${NAME.lucia}: el {{process|proceso}} terminó y su {{service|servicio}} dejó de {{listen|escuchar}}. Cuando llegó el intento de conexión al puerto ${REPORTS_PORT}, ${NAME.lucia} contestó con un {{rst|RST}}, y {{curl}} lo mostró como un rechazo. Una {{http-response|respuesta HTTP}} nunca existió: no llegó a haber conexión.`,
       correct: true,
     },
     {
