@@ -112,7 +112,7 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
           <h3>{LUCIA_TEXT.tasks}</h3>
           <ul className="tasks">
             {withTasks.tasks.map((task, index) => {
-              const done = taskHolds(task, session.runs, session.sent, session.answers);
+              const done = taskHolds(task, session.runs, session.history, session.answers);
               return (
                 <li key={task.id} className="task">
                   <span aria-hidden="true">{done ? '✓ ' : '☐ '}</span>

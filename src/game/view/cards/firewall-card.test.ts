@@ -3,7 +3,7 @@ import { TASK_CARD_TEXT, termsIn, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, S2, SG, WHAT } from '@/levels/04-iaas/shared';
 import { incidentSchema, ruleIdFor } from '@/levels/contract/incident';
-import { allOut, hostFirewallIncident, outboundFilterIncident } from '@/testing';
+import { LUCIA_FIREWALL, allOut, hostFirewallIncident, outboundFilterIncident, webSendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { firewallCard, rowText } from './firewall-card';
@@ -147,5 +147,21 @@ describe('the outbound list of the card of a firewall', () => {
     expect(session.parts.outboundRules['host-firewall']).toBe(true);
     expect(firewallCard(session, FIREWALL)).not.toHaveProperty('outbound');
     expect(firewallCard(host, HOST_FIREWALL)).not.toHaveProperty('outbound');
+  });
+});
+
+describe('the card of the firewall of a send incident', () => {
+  const WEB = webSendIncident();
+  const FIREWALL = PIECE_ID.firewall(LUCIA_FIREWALL);
+  const start = startSession([WEB], WEB.id);
+
+  it('names the inbound rules with the chips of the rules card and has no outbound list', () => {
+    const empty = firewallCard(start, FIREWALL);
+    expect(empty).toMatchObject({ firewallId: LUCIA_FIREWALL, kind: 'host-firewall', rules: [] });
+    expect(empty).not.toHaveProperty('outbound');
+    const placed = sessionReducer(start, { type: 'placeRule', firewallId: LUCIA_FIREWALL, whatId: 'tcp-3000', fromId: 'you' });
+    const card = firewallCard(placed, FIREWALL);
+    expect(card?.rules).toEqual([{ id: ruleIdFor('tcp-3000', 'you'), what: 'TCP · 3000', from: 'tu-laptop' }]);
+    expect(card).not.toHaveProperty('outbound');
   });
 });

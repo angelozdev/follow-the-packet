@@ -3,9 +3,14 @@ import { packetSchema } from '@/engine';
 import { caseWorld } from '@/levels/world';
 import { incidentTexts } from '@/levels/ladder';
 import {
+  APP_PORT,
+  BLOG_CONTENT,
+  BLOG_NAME,
+  LUCIA_FIREWALL,
   NAME_SERVER_PIECES,
   NOTE_RULE,
   OFFICE_FLOORS,
+  WEB_PORT,
   actor,
   classifyIncident,
   device,
@@ -24,20 +29,27 @@ import {
   routedSendIncident,
   sendIncident,
   tcp,
+  webNet,
+  webSendIncident,
 } from '@/testing';
 import {
+  chipsOfRule,
+  curlsOutsideWebServices,
   missingShownIds,
   officeLeaks,
   packetFromChips,
   probeFromChips,
   revealsRoutersByTraceroute,
+  ruleChipsOf,
+  ruleFromChips,
   sendCombinations,
   unknownCardDeviceIds,
   unknownClassifiedDeviceIds,
   unknownSettingDeviceIds,
   unknownTableOwnerIds,
 } from './chips';
-import { cardsOfPiece, firstCardOf, incidentSchema, isGuided, playerMoveSchema, ruleIdFor, settingKind, type MessageChip, type SendIncident, type TableSpec } from './incident';
+import { placementOf } from './tables';
+import { cardsOfPiece, firstCardOf, incidentSchema, isGuided, playerMoveSchema, ruleIdFor, settingKind, urlOfChip, type MessageChip, type SendIncident, type TableSpec } from './incident';
 
 const SEND = sendIncident();
 const LOOPBACK_ADDRESSES = ['127.0.0.1', '127.1.2.3', 'localhost'];
@@ -956,5 +968,264 @@ describe('the moves on tables and on the clock', () => {
     expect(accepts({ ...classifying, solution: [...classifying.solution, wait] })).toBe(false);
     const filtering = outboundFilterIncident();
     expect(accepts({ ...filtering, solution: [...filtering.solution, place] })).toBe(false);
+  });
+});
+
+const WEB = webSendIncident();
+const WEB_SITES = WEB.send.tables!.find((table): table is Extract<TableSpec, { kind: 'sites' }> => table.kind === 'sites')!;
+const withWeb = (patch: Record<string, unknown>) => ({ ...WEB, send: { ...WEB.send, ...patch } });
+const withUrlChips = (...chips: Record<string, unknown>[]) => withWeb({ to: [...WEB.send.to, ...chips] });
+const webPacket = (fromId: string, toId: string, messageId: string, incident: SendIncident = WEB) => packetFromChips(incident, { fromId, toId, messageId });
+const LUCIA_LAPTOP = device('lucia-laptop');
+
+describe('the url of a send incident', () => {
+  const parts = { id: 'parts', address: 'localhost', scheme: 'http', port: APP_PORT, path: '/pedidos', query: 'id=7' } as const;
+  const whole = { id: 'whole', address: 'localhost', url: `http://localhost:${APP_PORT}/pedidos?id=7` };
+
+  it('a url chip is built from its parts or given whole, and the whole url is what is sent', () => {
+    const incident = withUrlChips(
+      parts,
+      whole,
+      { id: 'fragment', address: 'localhost', url: `${whole.url}#top` },
+      { id: 'bare', address: 'www.lucia.example', scheme: 'https' },
+      { id: 'no-query', address: 'localhost', scheme: 'http', port: 8080, path: '/a' },
+    ) as unknown as SendIncident;
+    expect(accepts(incident)).toBe(true);
+    const sent = (toId: string) => webPacket('lucia', toId, 'curl', incident);
+    expect(sent('parts')).toEqual(sent('whole'));
+    expect(sent('whole')).toEqual({ from: LUCIA_LAPTOP, to: 'localhost', protocol: 'tcp', port: APP_PORT, message: { method: 'GET', url: whole.url } });
+    expect(sent('fragment')?.message?.url).toBe(`${whole.url}#top`);
+    expect(sent('bare')).toMatchObject({ to: 'www.lucia.example', port: 443, message: { url: 'https://www.lucia.example/' } });
+    expect(sent('no-query')).toMatchObject({ port: 8080, message: { url: 'http://localhost:8080/a' } });
+    expect(urlOfChip(parts)).toBe(whole.url);
+    expect(urlOfChip({ address: 'localhost' })).toBeUndefined();
+  });
+
+  it('rejects a url chip that mixes parts and a whole url', () => {
+    const chips: Record<string, unknown>[] = [
+      { ...whole, scheme: 'http' },
+      { ...whole, port: APP_PORT },
+      { ...whole, path: '/pedidos' },
+      { ...whole, query: 'id=7' },
+      { ...parts, url: whole.url },
+      { id: 'no-scheme', address: 'localhost', port: APP_PORT },
+      { id: 'no-address', scheme: 'http' },
+      { id: 'not-a-url', address: 'localhost', url: 'localhost:3000/pedidos' },
+      { id: 'ftp', address: 'localhost', url: 'ftp://localhost/' },
+      { id: 'other-host', address: 'otherhost', url: whole.url },
+      { ...parts, query: '?id=7' },
+      { ...parts, path: 'pedidos' },
+      { ...parts, port: 0 },
+      { ...parts, scheme: 'ftp' },
+    ];
+    for (const chip of chips) expect(accepts(withUrlChips(chip)), JSON.stringify(chip)).toBe(false);
+    expect(accepts(withUrlChips(parts, whole))).toBe(true);
+    expect(accepts(withUrlChips({ id: 'upper', address: 'WWW.Lucia.example', scheme: 'http' }))).toBe(true);
+  });
+
+  it('builds the tcp packet of a curl with the message of its url', () => {
+    const you = device('your-laptop');
+    expect(webPacket('lucia', 'app-7', 'curl')).toEqual({ from: LUCIA_LAPTOP, to: 'localhost', protocol: 'tcp', port: APP_PORT, message: { method: 'GET', url: `http://localhost:${APP_PORT}/pedidos?id=7` } });
+    const orders = { from: you, to: OFFICE_FLOORS.floor1.lucia, protocol: 'tcp', port: APP_PORT };
+    const url = `http://${OFFICE_FLOORS.floor1.lucia}:${APP_PORT}/pedidos`;
+    expect(webPacket('you', 'orders', 'curl-post')).toEqual({ ...orders, message: { method: 'POST', url, body: 'item=coffee' } });
+    expect(webPacket('you', 'orders', 'curl-put')).toEqual({ ...orders, message: { method: 'PUT', url, body: 'item=tea' } });
+    for (const messageId of ['curl-i', 'curl-timeout', 'browser']) expect(webPacket('you', 'orders', messageId), messageId).toEqual({ ...orders, message: { method: 'GET', url } });
+    expect(webPacket('you', 'shop', 'curl')).toEqual({ from: you, to: 'www.lucia.example', protocol: 'tcp', port: WEB_PORT, message: { method: 'GET', url: 'http://www.lucia.example/' } });
+    expect(packetSchema.safeParse(webPacket('you', 'blog', 'curl')).success).toBe(true);
+    expect(probeFromChips(WEB, { fromId: 'you', toId: 'shop', messageId: 'curl' })).toBeNull();
+    expect(webPacket('you', 'ghost', 'curl')).toBeNull();
+  });
+
+  it('builds no packet of a curl or a browser from a plain address, and sends a url chip to its address with any other message', () => {
+    const plain = { id: 'plain', address: OFFICE_FLOORS.server.ip };
+    const ping = { id: 'ping', label: 'ping', command: 'ping', icmpType: 8 };
+    const incident = withWeb({ to: [...WEB.send.to, plain], message: [...WEB.send.message, ping, { id: 'nc', label: 'nc', command: 'nc', port: APP_PORT }] }) as unknown as SendIncident;
+    expect(accepts(incident)).toBe(true);
+    expect(webPacket('you', 'plain', 'curl', incident)).toBeNull();
+    expect(webPacket('you', 'plain', 'browser', incident)).toBeNull();
+    expect(webPacket('you', 'plain', 'ping', incident)).toMatchObject({ protocol: 'icmp', to: OFFICE_FLOORS.server.ip });
+    expect(webPacket('you', 'shop', 'ping', incident)).toMatchObject({ protocol: 'icmp', to: 'www.lucia.example' });
+    expect(webPacket('you', 'shop', 'nc', incident)).toMatchObject({ protocol: 'tcp', to: 'www.lucia.example', port: APP_PORT });
+    expect(webPacket('you', 'shop', 'nc', incident)).not.toHaveProperty('message');
+    expect(sendCombinations(WEB)).toHaveLength(WEB.send.from.length * WEB.send.to.length * WEB.send.message.length);
+  });
+
+  it('a curl to an address outside an office with no router is a leak', () => {
+    const toOutside = withWeb({
+      from: [WEB.send.from[0]],
+      to: [
+        { id: 'dns', address: '8.8.8.8', url: 'http://8.8.8.8/' },
+        { id: 'name', address: 'www.lucia.example', url: 'http://www.lucia.example/' },
+        { id: 'local', address: 'localhost', url: `http://localhost:${APP_PORT}/` },
+        { id: 'inside', address: OFFICE_FLOORS.floor1.printer, url: `http://${OFFICE_FLOORS.floor1.printer}/` },
+      ],
+      message: WEB.send.message.filter(({ command }) => command === 'browser' || command === 'curl').slice(0, 2),
+    }) as unknown as SendIncident;
+    expect(officeLeaks(toOutside, officeNet())).toEqual(['your-laptop → 8.8.8.8', 'your-laptop → 8.8.8.8']);
+    expect(officeLeaks(toOutside, officeTwoFloorsNet())).toEqual([]);
+    expect(officeLeaks(WEB, webNet())).toEqual([]);
+  });
+
+  it('reads the url of the address chips and the labels of the rules as texts of the incident', () => {
+    const texts = incidentTexts(WEB);
+    expect(texts).toEqual(expect.arrayContaining([`http://localhost:${APP_PORT}/pedidos?id=7`, 'http://www.lucia.example/', 'curl -i', 'TCP · 3000', 'tu-laptop']));
+    const plain = incidentTexts({ ...WEB, send: { ...WEB.send, to: [{ id: 'plain', address: '198.51.100.50' }], rules: undefined } });
+    expect(plain.filter((text) => text.startsWith('http'))).toEqual([]);
+  });
+});
+
+describe('where a curl goes', () => {
+  const world = webNet();
+  const ssh = { id: 'ssh', address: OFFICE_FLOORS.floor1.lucia, scheme: 'http', port: 22 };
+
+  it('finds nothing wrong with a curl that reaches a web service or no service at all', () => {
+    expect(curlsOutsideWebServices(WEB, world)).toEqual([]);
+    expect(WEB.send.to.map(({ id }) => id)).toContain('app-80');
+  });
+
+  it('lists the combination that reaches a service that speaks no http, and the message that reaches no web service', () => {
+    const toSsh = withUrlChips(ssh) as unknown as SendIncident;
+    expect(curlsOutsideWebServices(toSsh, world)).toEqual(WEB.send.from.flatMap(({ id: fromId }) => WEB.send.message.map(({ id }) => `${fromId} → ssh via ${id}`)));
+    const onlyClosed = withWeb({ to: [WEB.send.to.find(({ id }) => id === 'app-80')] }) as unknown as SendIncident;
+    expect(curlsOutsideWebServices(onlyClosed, world)).toEqual(WEB.send.message.map(({ id }) => `${id} reaches no web service`));
+    expect(curlsOutsideWebServices(sendIncident(), world)).toEqual([]);
+  });
+});
+
+describe('curl and the browser as message chips', () => {
+  const curl = { id: 'extra', label: 'curl', command: 'curl' };
+  const withMessageChip = (chip: Record<string, unknown>) => withWeb({ message: [...WEB.send.message, chip] });
+
+  it('accepts the options of curl and the browser', () => {
+    expect(accepts(WEB)).toBe(true);
+    expect(WEB.send.message.map(({ command }) => command)).toEqual(['curl', 'curl', 'curl', 'curl', 'curl', 'browser']);
+    expect(accepts(withMessageChip({ ...curl, options: { include: true, request: 'PUT', data: 'item=tea', connectTimeout: 3 } }))).toBe(true);
+  });
+
+  it('rejects an option curl does not have, an option on another command and a curl or browser with a port, a TTL or an ICMP type', () => {
+    const rejected: Record<string, unknown>[] = [
+      { ...curl, options: { verbose: true } },
+      { ...curl, options: { include: false } },
+      { ...curl, options: { data: '' } },
+      { ...curl, options: { request: 'DELETE' } },
+      { ...curl, options: { connectTimeout: 0 } },
+      { ...curl, options: { connectTimeout: 1.5 } },
+      { ...curl, port: APP_PORT },
+      { ...curl, ttl: 3 },
+      { ...curl, icmpType: 8 },
+      { ...curl, protocol: 'udp' },
+      { id: 'extra', label: 'Navegador', command: 'browser', options: { include: true } },
+      { id: 'extra', label: 'Navegador', command: 'browser', port: APP_PORT },
+      { id: 'extra', label: 'ping', command: 'ping', icmpType: 8, options: { include: true } },
+      { id: 'extra', label: 'nc', command: 'nc', port: APP_PORT, options: { include: true } },
+      { id: 'extra', label: 'sin comando', icmpType: 8, options: { include: true } },
+    ];
+    for (const chip of rejected) expect(accepts(withMessageChip(chip)), JSON.stringify(chip)).toBe(false);
+    expect(accepts(withMessageChip({ ...curl, protocol: 'tcp' }))).toBe(true);
+  });
+
+  it('lists the browser card of an origin that offers the browser and the sites card of the owner of a table of sites', () => {
+    expect(cardsOfPiece(WEB.send, 'your-laptop')).toEqual(['terminal', 'browser']);
+    expect(cardsOfPiece(WEB.send, OFFICE_FLOORS.server.id)).toEqual(['sites']);
+    expect(cardsOfPiece({ ...WEB.send, message: WEB.send.message.filter(({ command }) => command !== 'browser') }, 'your-laptop')).toEqual(['terminal']);
+    expect(accepts(withWeb({ opensFirst: { 'your-laptop': 'browser', [OFFICE_FLOORS.server.id]: 'sites' } }))).toBe(true);
+    for (const opensFirst of [{ printer: 'browser' }, { 'your-laptop': 'sites' }, { [OFFICE_FLOORS.server.id]: 'browser' }]) expect(accepts(withWeb({ opensFirst })), JSON.stringify(opensFirst)).toBe(false);
+    expect(firstCardOf(WEB.send, OFFICE_FLOORS.server.id)).toBe('sites');
+  });
+});
+
+describe('the rules card of a send incident', () => {
+  const move = { type: 'placeRule', firewallId: LUCIA_FIREWALL, whatId: 'tcp-3000', fromId: 'you' };
+  const solving = (...moves: unknown[]) => ({ ...WEB, solution: [...WEB.solution, ...moves] });
+  const rules = WEB.send.rules!;
+
+  it('accepts a rules card in a send incident and the placeRule move', () => {
+    expect(rules.firewallId).toBe(LUCIA_FIREWALL);
+    expect(accepts(WEB)).toBe(true);
+    expect(WEB.solution).toContainEqual(move);
+    expect(accepts({ ...withWeb({ rules: undefined }), solution: WEB.solution.filter(({ type }) => type !== 'placeRule') })).toBe(true);
+    expect(playerMoveSchema.safeParse(move).success).toBe(true);
+    expect(accepts(solving({ ...move, fromId: 'anyone', whatId: 'tcp-3001' }))).toBe(true);
+    expect(ruleFromChips(WEB, move)).toEqual({ id: ruleIdFor('tcp-3000', 'you'), what: { kind: 'tcp', fromPort: APP_PORT, toPort: APP_PORT }, peer: { kind: 'cidr', cidr: `${OFFICE_FLOORS.floor1.you}/32` } });
+    expect(chipsOfRule(WEB, ruleFromChips(WEB, move)!)).toEqual({ what: rules.what[0], peer: rules.from[0] });
+  });
+
+  it('rejects a placement the card does not offer: other chips, another firewall, an outbound rule, or no card at all', () => {
+    for (const patch of [{ whatId: 'ghost' }, { fromId: 'ghost' }, { firewallId: 'fw-ghost' }, { fromId: undefined, toId: 'you', direction: 'outbound' }]) expect(accepts(solving({ ...move, ...patch })), JSON.stringify(patch)).toBe(false);
+    expect(accepts({ ...withWeb({ rules: undefined }), solution: [move, ...WEB.solution] })).toBe(false);
+    expect(ruleFromChips(WEB, { ...move, firewallId: 'fw-ghost' })).toBeNull();
+    expect(ruleFromChips(WEB, { ...move, whatId: 'ghost' })).toBeNull();
+    expect(ruleFromChips(WEB, { whatId: 'tcp-3000', firewallId: LUCIA_FIREWALL, toId: 'you', direction: 'outbound' })).toBeNull();
+    expect(ruleFromChips(withWeb({ rules: undefined }) as unknown as SendIncident, move)).toBeNull();
+    expect(chipsOfRule(WEB, { what: { kind: 'all' }, peer: rules.from[0].peer })).toBeNull();
+  });
+
+  it('rejects a rules card with an empty tray or with two chips that share an id', () => {
+    for (const patch of [{ what: [] }, { from: [] }, { what: [rules.what[0], rules.what[0]] }, { from: [rules.from[0], rules.from[0]] }, { firewallId: '' }]) expect(accepts(withWeb({ rules: { ...rules, ...patch } })), JSON.stringify(patch)).toBe(false);
+  });
+
+  it('names the firewall of the card in the world of the incident, and only there', () => {
+    expect(ruleChipsOf(WEB, LUCIA_FIREWALL)).toBe(rules);
+    expect(ruleChipsOf(WEB, 'fw-ghost')).toBeNull();
+    expect(ruleChipsOf(WEB)).toBe(rules);
+    expect(ruleChipsOf(withWeb({ rules: undefined }) as unknown as SendIncident)).toBeNull();
+    expect(ruleChipsOf(outboundFilterIncident(), 'any')?.what).toHaveLength(1);
+    expect(ruleChipsOf(identifyIncident())).toBeNull();
+  });
+});
+
+describe('the table of sites', () => {
+  const server = OFFICE_FLOORS.server;
+  const owned = (patch: Record<string, unknown>) => withWeb({ tables: [{ ...WEB_SITES, ...patch }] }) as unknown as SendIncident;
+  const trays = (patch: Record<string, unknown>) => withWeb({ tables: [{ ...WEB_SITES, trays: { ...WEB_SITES.trays, ...patch } }] });
+
+  it('accepts a table of sites', () => {
+    expect(WEB_SITES).toMatchObject({ kind: 'sites', ownerId: server.id, port: WEB_PORT });
+    expect(Object.keys(WEB_SITES.trays)).toEqual(['name', 'serves']);
+    expect(accepts(WEB)).toBe(true);
+    const { name, serves } = WEB_SITES.trays;
+    expect(accepts(trays({ name: [...name, { id: 'shop', label: 'tienda', value: 'tienda.lucia.example' }] }))).toBe(true);
+    const wrong = [
+      { name: [] },
+      { serves: [] },
+      { name: undefined },
+      { name: [...name, { id: 'ip', label: 'IP', value: server.ip }] },
+      { name: [...name, { id: 'com', label: 'com', value: 'blog.lucia.com' }] },
+      { serves: [...serves, { id: 'bare', label: 'Nada', value: {} }] },
+      { serves: [...serves, { ...serves[0], label: 'otra' }] },
+    ];
+    for (const patch of wrong) expect(accepts(trays(patch)), JSON.stringify(patch)).toBe(false);
+    expect(accepts(owned({ port: 0 }))).toBe(false);
+    expect(accepts(owned({ port: undefined }))).toBe(false);
+    expect(accepts(withWeb({ tables: [WEB_SITES, WEB_SITES] }))).toBe(false);
+  });
+
+  it('places a site with the name and the content picked, named after its name', () => {
+    expect(placementOf(WEB_SITES, { name: 'blog', serves: 'serve-blog' })).toEqual({ type: 'addSite', ownerId: server.id, port: WEB_PORT, site: { id: BLOG_NAME, names: [BLOG_NAME], ...BLOG_CONTENT } });
+    expect(placementOf(WEB_SITES, { name: 'blog' })).toBeNull();
+    expect(placementOf(WEB_SITES, { name: 'ghost', serves: 'serve-blog' })).toBeNull();
+  });
+
+  it('rejects a table whose owner is not a server with a web service', () => {
+    const world = webNet();
+    expect(unknownTableOwnerIds(WEB, world)).toEqual([]);
+    for (const ownerId of ['router-office', NAME_SERVER_PIECES.resolver.id, 'your-laptop', 'fw-ghost']) expect(unknownTableOwnerIds(owned({ ownerId }), world), ownerId).toEqual([ownerId]);
+    expect(unknownTableOwnerIds(owned({ port: 8080 }), world)).toEqual([server.id]);
+    expect(unknownTableOwnerIds(owned({ ownerId: 'lucia-laptop', port: 22 }), world)).toEqual(['lucia-laptop']);
+    expect(unknownTableOwnerIds(owned({}), officeWithNames())).toEqual([server.id]);
+  });
+});
+
+describe('what a send task expects of the page', () => {
+  const [task] = WEB.tasks;
+  const expecting = (patch: Record<string, unknown>) => ({ ...WEB, tasks: [{ ...task, expect: { ...task.expect, ...patch } }] });
+
+  it('accepts an expected body and an expected nth send', () => {
+    expect(WEB.tasks.map(({ expect: wanted }) => [wanted.body, wanted.nth])).toEqual([['Pedido 7: 2 cafés', undefined], ['El blog', undefined], ['Pedido 10: item=coffee', 2]]);
+    expect(accepts(WEB)).toBe(true);
+    expect(accepts(expecting({ body: '', nth: 1 }))).toBe(true);
+    expect(accepts(expecting({ body: undefined, nth: undefined }))).toBe(true);
+    for (const patch of [{ nth: 0 }, { nth: -1 }, { nth: 1.5 }, { body: 7 }]) expect(accepts(expecting(patch)), JSON.stringify(patch)).toBe(false);
   });
 });

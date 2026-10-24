@@ -5,7 +5,7 @@ import { toPlainText } from '@/copy';
 import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
-import { missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
+import { curlsOutsideWebServices, missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
 import { incidentSchema, isGuided, type CaseSpec, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
@@ -41,6 +41,12 @@ function scenesOf(incident: Incident): Scene[] {
     default:
       return [];
   }
+}
+
+/** Returns what an incident sends in the world it starts from: a send incident, and each case of a diagnose incident in its own world. */
+function startScenesOf(incident: Incident): Scene[] {
+  if (incident.mechanic === 'send') return [{ owner: incident, world: startWorld(INCIDENTS, incident.id) }];
+  return caseScenesOf(incident).map(({ spec, world }) => ({ owner: spec, world }));
 }
 
 /** Returns the routers the traceroutes of an incident cross that the list of its shown pieces lacks, scene by scene: the list of a case when it has its own, the incident's otherwise; none for a scene with no list, which draws the whole world. */
@@ -104,6 +110,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(unknownTableOwnerIds(incident, world)).toEqual([]);
     expect(unknownSettingDeviceIds(incident, world)).toEqual([]);
     expect(caseScenesOf(incident).flatMap(({ spec, world: inCase }) => unknownTableOwnerIds(incident, inCase, spec))).toEqual([]);
+  });
+
+  it('every message of a curl goes to a service that has a web service in the start world of its incident', () => {
+    expect(startScenesOf(incident).flatMap(({ owner, world }) => curlsOutsideWebServices(owner, world))).toEqual([]);
   });
 
   it('every device a classify card sorts exists in the start world of its incident', () => {

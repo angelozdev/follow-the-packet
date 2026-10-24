@@ -1,4 +1,4 @@
-import { INSPECTION_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
+import { INSPECTION_TEXT, SITE_PROBLEM_TEXT, TABLE_TEXT, deviceName, nameTag, toPlainText, word, type TermText } from '@/copy';
 import { DNS_PORT, ROUTE_DEFAULT, cacheAfter, forwardRows, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute, type Translation } from '@/engine';
 import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
 import { drawnSends, type SentPacket } from '@/game/flow-runs';
@@ -83,7 +83,7 @@ function words(text: TermText): TableCell {
 function problemOf(session: Session, spec: TableSpec | undefined): TermText | null {
   const kept = session.entryProblem;
   if (!spec || kept?.tableId !== spec.id) return null;
-  const problems: Record<EntryProblem, TermText> = TABLE_TEXT.problems;
+  const problems: Record<EntryProblem, TermText> = { ...TABLE_TEXT.problems, ...SITE_PROBLEM_TEXT };
   return TABLE_TEXT.refused(problems[kept.code]);
 }
 

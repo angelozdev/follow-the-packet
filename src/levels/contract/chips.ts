@@ -1,6 +1,6 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, simulate, traceroute, type Direction, type Network, type PacketSpec, type Rule } from '@/engine';
-import { peerIdOf, ruleIdFor, type AddressChip, type CaseSpec, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
+import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, parseUrl, simulate, tcpServiceAt, traceroute, webServiceAt, type Direction, type HttpMethod, type Network, type PacketSpec, type Rule } from '@/engine';
+import { peerIdOf, ruleIdFor, urlOfChip, type AddressChip, type CaseSpec, type CurlOptions, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
 import { tablesOf } from './tables';
 
 type RuleShape = Pick<Rule, 'what' | 'peer'>;
@@ -16,26 +16,40 @@ export function sameRule(a: RuleShape, b: RuleShape): boolean {
   return compare(a.what, b.what) && compare(a.peer, b.peer);
 }
 
-function peerChipsOf(incident: Incident, direction: Direction): FromChip[] | ToChip[] {
-  if (incident.mechanic !== 'filter') return [];
-  return direction === 'outbound' ? (incident.chips.to ?? []) : incident.chips.from;
+interface RuleChips {
+  what: WhatChip[];
+  from: FromChip[];
+  to?: ToChip[];
 }
 
-/** Builds the rule a placement of the incident's chips stands for (Type and Source for an inbound rule, Type and Destination for an outbound one), or null when the incident offers no rule chips or not these. */
-export function ruleFromChips(incident: Incident, move: Pick<PlaceMove, 'whatId' | 'direction' | 'fromId' | 'toId'>): Rule | null {
-  if (incident.mechanic !== 'filter') return null;
+/** Returns the chips that write the rules of a firewall: a filter incident offers them for every firewall of its world, and a send incident only the inbound ones (Type and Source) for the firewall its rules card names (`send.rules`), so with a firewall id it answers for that firewall only. Null when the incident offers none. */
+export function ruleChipsOf(incident: Incident, firewallId?: string): RuleChips | null {
+  if (incident.mechanic === 'filter') return incident.chips;
+  const rules = incident.mechanic === 'send' ? incident.send.rules : undefined;
+  return rules && (firewallId === undefined || firewallId === rules.firewallId) ? rules : null;
+}
+
+function peerChipsOf(chips: RuleChips, direction: Direction): FromChip[] | ToChip[] {
+  return direction === 'outbound' ? (chips.to ?? []) : chips.from;
+}
+
+/** Builds the rule a placement of the incident's chips stands for (Type and Source for an inbound rule, Type and Destination for an outbound one), or null when the incident offers no rule chips for that firewall or not these. */
+export function ruleFromChips(incident: Incident, move: Pick<PlaceMove, 'firewallId' | 'whatId' | 'direction' | 'fromId' | 'toId'>): Rule | null {
+  const chips = ruleChipsOf(incident, move.firewallId);
+  if (!chips) return null;
   const direction = move.direction ?? DEFAULT_DIRECTION;
   const peerId = peerIdOf(move);
-  const what = incident.chips.what.find((chip) => chip.id === move.whatId);
-  const peer = peerChipsOf(incident, direction).find((chip) => chip.id === peerId);
+  const what = chips.what.find((chip) => chip.id === move.whatId);
+  const peer = peerChipsOf(chips, direction).find((chip) => chip.id === peerId);
   return what && peer ? { id: ruleIdFor(move.whatId, peer.id, direction), what: what.what, peer: peer.peer } : null;
 }
 
 /** Returns the chips that name a rule of the list of its direction (inbound by default), or null when the incident offers no rule chips or none for its what or its peer. */
 export function chipsOfRule(incident: Incident, rule: RuleShape, direction: Direction = DEFAULT_DIRECTION): { what: WhatChip; peer: FromChip | ToChip } | null {
-  if (incident.mechanic !== 'filter') return null;
-  const what = incident.chips.what.find((chip) => compare(chip.what, rule.what));
-  const peer = peerChipsOf(incident, direction).find((chip) => compare(chip.peer, rule.peer));
+  const chips = ruleChipsOf(incident);
+  if (!chips) return null;
+  const what = chips.what.find((chip) => compare(chip.what, rule.what));
+  const peer = peerChipsOf(chips, direction).find((chip) => compare(chip.peer, rule.peer));
   return what && peer ? { what, peer } : null;
 }
 
@@ -64,11 +78,23 @@ function digPacket({ from, to }: PickedChips): PacketSpec {
   return { from: from.endpoint, to: to.address, protocol: 'udp', port: DNS_PORT, lookup: 'dig' };
 }
 
+function httpMethodOf({ request, data }: CurlOptions): HttpMethod {
+  return request ?? (data === undefined ? 'GET' : 'POST');
+}
+
+function webPacket({ from, to, message }: PickedChips): PacketSpec | null {
+  const url = urlOfChip(to);
+  if (url === undefined) return null;
+  const { host, port } = parseUrl(url);
+  const { options = {} } = message;
+  return { from: from.endpoint, to: host, protocol: 'tcp', port, message: { method: httpMethodOf(options), url, ...(options.data !== undefined && { body: options.data }) } };
+}
+
 function withTtl(packet: PacketSpec | null, { ttl }: MessageChip): PacketSpec | null {
   return packet && ttl !== undefined ? { ...packet, ttl } : packet;
 }
 
-/** Builds the packet three send chips stand for: an ICMP message from the origin to the address, with the TTL of the message chip when it has one; a TCP packet to the port of the message chip for an `nc`; a UDP datagram to port 53 that reads no hosts file, with the address (a name) as its destination, for a `dig`. Null when the incident does not offer one of the chips, and null for a traceroute, which sends a packet per hop and not a single one. */
+/** Builds the packet three send chips stand for: an ICMP message from the origin to the address, with the TTL of the message chip when it has one; a TCP packet to the port of the message chip for an `nc`; a UDP datagram to port 53 that reads no hosts file, with the address (a name) as its destination, for a `dig`; and, for a `curl` or a browser, a TCP packet that carries the HTTP request of the url chip (its whole url, whether the chip gave it whole or by parts), to the host and the port of that url, with the method and the body that the options of the `curl` say (`-d` makes a POST with its body, `-X PUT` a PUT, and the other options change no request). Null when the incident does not offer one of the chips, when a `curl` or a browser gets an address chip that is no url, and for a traceroute, which sends a packet per hop and not a single one. */
 export function packetFromChips(incident: SendOwner, combination: Combination): PacketSpec | null {
   const picked = pickedChips(incident, combination);
   if (!picked) return null;
@@ -79,6 +105,9 @@ export function packetFromChips(incident: SendOwner, combination: Combination): 
       return ncPacket(picked);
     case 'dig':
       return digPacket(picked);
+    case 'curl':
+    case 'browser':
+      return webPacket(picked);
     default:
       return withTtl(icmpPacket(picked), picked.message);
   }
@@ -135,6 +164,20 @@ export function routersCrossedByTraceroutes(owner: SendOwner, world: Network): s
   return crossed.filter((id, index) => crossed.indexOf(id) === index);
 }
 
+/** Returns what is wrong with where the curls and browsers of a send owner go in a world: each combination of them that reaches a TCP service that speaks no HTTP ("from → to via message"), and each curl or browser message none of whose combinations reaches a web service ("message reaches no web service"). A combination that reaches no service at all (a port nobody listens on, a name nobody answers) is no finding: it ends refused or in silence, which is what an incident may want to show. */
+export function curlsOutsideWebServices(owner: SendOwner, world: Network): string[] {
+  const reached = sendCombinations(owner).flatMap((combination) => {
+    const packet = packetFromChips(owner, combination);
+    if (packet?.message === undefined || packet.port === undefined) return [];
+    const { destinationId } = simulate(world, packet);
+    return [{ combination, service: destinationId === null ? undefined : tcpServiceAt(world, destinationId, packet.port) }];
+  });
+  const speaksNoHttp = reached.filter(({ service }) => service !== undefined && service.web === undefined).map(({ combination: { fromId, toId, messageId } }) => `${fromId} → ${toId} via ${messageId}`);
+  const messageIds = reached.map(({ combination }) => combination.messageId).filter((id, index, ids) => ids.indexOf(id) === index);
+  const unserved = messageIds.filter((id) => !reached.some(({ combination, service }) => combination.messageId === id && service?.web !== undefined));
+  return [...speaksNoHttp, ...unserved.map((id) => `${id} reaches no web service`)];
+}
+
 function placedIds(world: Network): string[] {
   return [...world.devices, ...(world.routers ?? []), ...world.actors].map((thing) => thing.id);
 }
@@ -189,10 +232,20 @@ export function unknownClassifiedDeviceIds(incident: Incident, world: Network): 
   return classifiedDeviceIds(incident).filter((deviceId) => !devices.has(deviceId));
 }
 
-/** Returns the owners of the tables the player edits that are not what the table needs in the world: a router for a table of routes and a server of the internet for a table of records. A case of a diagnose is given with its own world. */
+function ownsTable(world: Network, table: TableSpec): boolean {
+  switch (table.kind) {
+    case 'routes':
+      return (world.routers ?? []).some((router) => router.id === table.ownerId);
+    case 'records':
+      return world.actors.some((actor) => actor.kind === 'server' && actor.id === table.ownerId);
+    case 'sites':
+      return webServiceAt(world, table.ownerId, table.port) !== undefined;
+  }
+}
+
+/** Returns the owners of the tables the player edits that are not what the table needs in the world: a router for a table of routes, a server of the internet for a table of records and a device or a server with a web service on the port of the table for a table of sites. A case of a diagnose is given with its own world. */
 export function unknownTableOwnerIds(incident: Incident, world: Network, spec?: CaseSpec): string[] {
-  const owners = { routes: new Set((world.routers ?? []).map((router) => router.id)), records: new Set(world.actors.filter((actor) => actor.kind === 'server').map((actor) => actor.id)) };
-  return tablesOf(incident, spec).flatMap(({ kind, ownerId }) => (owners[kind].has(ownerId) ? [] : [ownerId]));
+  return tablesOf(incident, spec).flatMap((table) => (ownsTable(world, table) ? [] : [table.ownerId]));
 }
 
 /** Returns the devices that the settings of a send incident belong to that are not in the world, in the order of its settings. */

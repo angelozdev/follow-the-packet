@@ -4,6 +4,7 @@ export { nameTag, parseTermText, termsIn, toPlainText, unofficialNames, word } f
 export type { TermSegment, TermText } from './term-text';
 export { describeReason } from './reasons';
 export { describeRule } from './rule-text';
+export { SITE_PROBLEM_TEXT } from './web/site-problems';
 export type { PlaceOf, RouterPlace } from './reasons';
 export { FIRST_WARNING_TERM, OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, isProblemStamp, messageLabel, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, stampLabel, stampOf, tracerouteLabel, warningOf } from './packet-labels';
 export type { PacketPorts, PortLabels, StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';

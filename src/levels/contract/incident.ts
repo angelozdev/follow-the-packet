@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { isTermId, parseTermText, type TermId } from '@/copy';
-import { DEFAULT_DIRECTION, DNS_PORT, ECHO_REQUEST, OUTCOMES, cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, isIpv4, listenSchema, networkActionSchema, networkSchema, packetSchema, portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema, type Direction, type DnsStatus } from '@/engine';
+import { DEFAULT_DIRECTION, DNS_PORT, ECHO_REQUEST, OUTCOMES, cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, isIpv4, isWebUrl, listenSchema, networkActionSchema, networkSchema, packetSchema, parseUrl, portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema, siteContentSchema, siteSchema, type Direction, type DnsStatus } from '@/engine';
 
 const id = z.string().min(1);
 const SEGMENTED_CHIPS = 2;
+const URL_SCHEMES = ['http', 'https'] as const;
 
 function termTextProblem(text: string): string | undefined {
   try {
@@ -38,7 +39,7 @@ const placeEntrySchema = z.object({ type: z.literal('placeEntry'), tableId: id, 
 const removeEntrySchema = z.object({ type: z.literal('removeEntry'), tableId: id, entryId: id });
 const waitSchema = z.object({ type: z.literal('wait'), seconds: z.number().int().positive() });
 const ruleMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema]);
-const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
+const sendMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema, placeRuleSchema]);
 const fixMoveSchema = z.discriminatedUnion('type', [sendPacketSchema, placeEntrySchema, removeEntrySchema]);
 
 export const playerMoveSchema = z.discriminatedUnion('type', [placeRuleSchema, removeRuleSchema, sendPacketSchema, answerCardSchema, setSettingSchema, placeEntrySchema, removeEntrySchema, waitSchema]);
@@ -61,14 +62,42 @@ const sendTaskSchema = z.object({
     by: id.optional(),
     answer: expectedAnswerSchema.optional(),
     status: z.enum(EXPECTED_STATUSES).optional(),
+    body: z.string().optional(),
+    nth: z.number().int().positive().optional(),
   }),
 });
 const whatChipSchema = z.object({ id, label: termText, what: ruleWhatSchema });
 const peerChipSchema = z.object({ id, label: termText, peer: rulePeerSchema });
 const originChipSchema = z.object({ id, endpoint: endpointSchema });
-const addressChipSchema = z.object({ id, address: id });
-const MESSAGE_COMMANDS = ['packet', 'ping', 'traceroute', 'nc', 'dig'] as const;
-const COMMAND_PROTOCOL: Record<(typeof MESSAGE_COMMANDS)[number], z.infer<typeof packetSchema>['protocol']> = { packet: 'icmp', ping: 'icmp', traceroute: 'icmp', nc: 'tcp', dig: 'udp' };
+const addressChipSchema = z
+  .object({
+    id,
+    address: id,
+    url: z.string().optional(),
+    scheme: z.enum(URL_SCHEMES).optional(),
+    port: portSchema.optional(),
+    path: z.string().startsWith('/').optional(),
+    query: z.string().min(1).optional(),
+  })
+  .superRefine((chip, ctx) => {
+    const issue = (message: string, path: string) => ctx.addIssue({ code: 'custom', message, path: [path] });
+    const parts = [chip.scheme, chip.port, chip.path, chip.query].some((part) => part !== undefined);
+    if (chip.url !== undefined && parts) issue('a url chip gives its parts or its whole url, not both', 'url');
+    if (chip.url === undefined && parts && chip.scheme === undefined) issue('the parts of a url need its scheme', 'scheme');
+    if (chip.query?.startsWith('?')) issue('the query string of a url chip is written without its ?', 'query');
+    const url = urlOfChip(chip);
+    if (url === undefined) return;
+    if (!isWebUrl(url)) issue(`not an absolute http or https url: ${url}`, 'url');
+    else if (parseUrl(url).host !== chip.address.toLowerCase()) issue('the address of a url chip is the host of its url', 'address');
+  });
+const MESSAGE_COMMANDS = ['packet', 'ping', 'traceroute', 'nc', 'dig', 'curl', 'browser'] as const;
+const COMMAND_PROTOCOL: Record<(typeof MESSAGE_COMMANDS)[number], z.infer<typeof packetSchema>['protocol']> = { packet: 'icmp', ping: 'icmp', traceroute: 'icmp', nc: 'tcp', dig: 'udp', curl: 'tcp', browser: 'tcp' };
+const curlOptionsSchema = z.strictObject({
+  include: z.literal(true).optional(),
+  request: z.literal('PUT').optional(),
+  data: z.string().min(1).optional(),
+  connectTimeout: z.number().int().positive().optional(),
+});
 const messageChipSchema = z
   .object({
     id,
@@ -78,6 +107,7 @@ const messageChipSchema = z
     protocol: packetSchema.shape.protocol.optional(),
     port: portSchema.optional(),
     ttl: packetSchema.shape.ttl,
+    options: curlOptionsSchema.optional(),
   })
   .superRefine((chip, ctx) => {
     const issue = (message: string, path: string) => ctx.addIssue({ code: 'custom', message, path: [path] });
@@ -90,6 +120,8 @@ const messageChipSchema = z
     if (protocol !== 'icmp' && chip.icmpType !== undefined) issue(`a ${chip.command} has no ICMP type`, 'icmpType');
     if (chip.command === 'nc' && chip.port === undefined) issue('an nc needs the port it tests', 'port');
     if (chip.command === 'dig' && chip.port !== undefined && chip.port !== DNS_PORT) issue(`a dig goes to port ${DNS_PORT}`, 'port');
+    if ((chip.command === 'curl' || chip.command === 'browser') && chip.port !== undefined) issue('a curl or a browser takes its port from the url', 'port');
+    if (chip.options !== undefined && chip.command !== 'curl') issue('options belong to a curl', 'options');
   });
 const SETTING_KINDS = ['gateway', 'dns-server', 'listen-address'] as const;
 const settingChipSchema = z.object({ id, label: termText, value: z.union([ipSchema, listenSchema]).nullable() });
@@ -116,9 +148,10 @@ const tableShape = { id, ownerId: id };
 const tableSchema = z.discriminatedUnion('kind', [
   z.object({ ...tableShape, kind: z.literal('routes'), trays: z.object({ destination: tray(routeSchema.shape.to), nextHop: tray(routeSchema.shape.next) }) }),
   z.object({ ...tableShape, kind: z.literal('records'), trays: z.object({ name: tray(recordKeySchema.shape.name), type: tray(recordKeySchema.shape.type), value: tray(recordKeySchema.shape.value) }) }),
+  z.object({ ...tableShape, kind: z.literal('sites'), port: portSchema, trays: z.object({ name: tray(siteSchema.shape.names.element), serves: tray(siteContentSchema) }) }),
 ]);
 const clockSchema = z.object({ steps: z.array(z.object({ id, label: termText, seconds: waitSchema.shape.seconds })).min(1) });
-const PIECE_CARDS = ['terminal', 'settings', 'services', 'routes', 'records'] as const;
+const PIECE_CARDS = ['terminal', 'browser', 'settings', 'services', 'routes', 'records', 'sites'] as const;
 const identifyTaskSchema = z.object({ id, text: termText, expect: z.object({ deviceId: id, trayId: id, chipId: id }) });
 const cardChipSchema = z.object({ id, label: termText, feedback: termText.optional() });
 const cardTraySchema = z.object({
@@ -181,6 +214,8 @@ const filterIncidentSchema = z.object({
   solution: z.array(ruleMoveSchema).min(1),
 });
 
+const rulesSchema = z.object({ firewallId: id, what: z.array(whatChipSchema).min(1), from: z.array(peerChipSchema).min(1) });
+
 const sendIncidentSchema = z.object({
   ...common,
   ...guided,
@@ -190,6 +225,7 @@ const sendIncidentSchema = z.object({
   send: z.object({
     ...sendChipsShape,
     settings: z.array(settingSchema).min(1).optional(),
+    rules: rulesSchema.optional(),
     tables: z.array(tableSchema).min(1).optional(),
     clock: clockSchema.optional(),
     opensFirst: z.record(id, z.enum(PIECE_CARDS)).optional(),
@@ -282,6 +318,13 @@ function checkSettings({ send }: SendShape, fail: Fail): void {
 }
 
 type TableMoveShape = Extract<SendShape['solution'][number], { type: 'placeEntry' | 'removeEntry' }>;
+type RulesShape = NonNullable<SendShape['send']['rules']>;
+type PlaceRuleShape = Extract<SendShape['solution'][number], { type: 'placeRule' }>;
+
+function offersRule(rules: RulesShape | undefined, move: PlaceRuleShape): boolean {
+  if (!rules || move.firewallId !== rules.firewallId || (move.direction ?? DEFAULT_DIRECTION) !== DEFAULT_DIRECTION) return false;
+  return rules.what.some((chip) => chip.id === move.whatId) && rules.from.some((chip) => chip.id === move.fromId);
+}
 
 function offersPlacement(tables: TableShape[], { tableId, picks }: Extract<TableMoveShape, { type: 'placeEntry' }>): boolean {
   const trays = Object.entries<{ id: string }[]>(tables.find((table) => table.id === tableId)?.trays ?? {});
@@ -322,6 +365,8 @@ function offeredBy(ids: ReturnType<typeof checkSendChips>) {
 function checkSend(incident: SendShape, fail: Fail): void {
   const ids = checkSendChips(incident.send, '', fail);
   checkSettings(incident, fail);
+  uniqueIn(fail)('rules what chip id', (incident.send.rules?.what ?? []).map((chip) => chip.id));
+  uniqueIn(fail)('rules from chip id', (incident.send.rules?.from ?? []).map((chip) => chip.id));
   const tables = incident.send.tables ?? [];
   checkTables(tables, '', fail);
   uniqueIn(fail)('clock step id', (incident.send.clock?.steps ?? []).map((step) => step.id));
@@ -340,6 +385,7 @@ function checkSend(incident: SendShape, fail: Fail): void {
     if (move.type === 'sendPacket' && !offers(move)) fail(`the solution uses chips the incident does not offer: ${move.fromId}, ${move.toId}, ${move.messageId}`);
     if (move.type === 'setSetting' && !offersSetting(move)) fail(`the solution uses a setting the incident does not offer: ${move.deviceId}/${move.settingId}/${move.chipId}`);
     if (move.type === 'placeEntry' || move.type === 'removeEntry') checkTableMove(move, tables, fail);
+    if (move.type === 'placeRule' && !offersRule(incident.send.rules, move)) fail(`the solution places a rule the incident does not offer: ${move.firewallId}, ${move.whatId}, ${move.fromId}`);
     if (move.type === 'wait' && !(incident.send.clock?.steps ?? []).some((step) => step.seconds === move.seconds)) fail(`the solution waits ${move.seconds} seconds, which is no step of the clock`);
   }
 }
@@ -461,6 +507,7 @@ export type AddressChip = SendIncident['send']['to'][number];
 export type SettingSpec = NonNullable<SendIncident['send']['settings']>[number];
 export type SettingChip = SettingSpec['chips'][number];
 export type MessageChip = SendIncident['send']['message'][number];
+export type CurlOptions = NonNullable<MessageChip['options']>;
 export type SettingKind = (typeof SETTING_KINDS)[number];
 export type TableSpec = TableShape;
 export type ClockStep = NonNullable<SendIncident['send']['clock']>['steps'][number];
@@ -497,13 +544,16 @@ export function settingKind({ kind = 'gateway' }: Pick<SettingSpec, 'kind'>): Se
 }
 
 /** Returns the cards a piece of the world has in a send incident, in the order it opens them when the incident names none: the terminal when it is an origin, the network settings (a gateway or a DNS server), the services (a listen address), then the tables of routes and of records it owns. */
-export function cardsOfPiece({ from, settings = [], tables = [] }: SendIncident['send'], pieceId: string): PieceCard[] {
+export function cardsOfPiece({ from, message, settings = [], tables = [] }: SendIncident['send'], pieceId: string): PieceCard[] {
+  const sends = from.some(({ endpoint }) => endpoint.id === pieceId);
   const has: Record<PieceCard, boolean> = {
-    terminal: from.some(({ endpoint }) => endpoint.id === pieceId),
+    terminal: sends,
+    browser: sends && message.some(({ command }) => command === 'browser'),
     settings: settings.some((setting) => setting.deviceId === pieceId && settingKind(setting) !== 'listen-address'),
     services: settings.some((setting) => setting.deviceId === pieceId && settingKind(setting) === 'listen-address'),
     routes: tables.some((table) => table.ownerId === pieceId && table.kind === 'routes'),
     records: tables.some((table) => table.ownerId === pieceId && table.kind === 'records'),
+    sites: tables.some((table) => table.ownerId === pieceId && table.kind === 'sites'),
   };
   return PIECE_CARDS.filter((card) => has[card]);
 }
@@ -511,6 +561,13 @@ export function cardsOfPiece({ from, settings = [], tables = [] }: SendIncident[
 /** Returns the card a piece opens first: the one the incident names (`send.opensFirst`) or, with none, the first it has (the terminal, then the settings or the services, then the tables); none for a piece with no card. */
 export function firstCardOf(send: SendIncident['send'], pieceId: string): PieceCard | undefined {
   return send.opensFirst?.[pieceId] ?? cardsOfPiece(send, pieceId).at(0);
+}
+
+/** Returns the url an address chip stands for: the whole url it gives, or the one its parts make (`scheme://address[:port]/path[?query]`, the address being the host, with the path `/` when it gives none); undefined for a chip that is a plain address. */
+export function urlOfChip({ url, address, scheme, port, path = '/', query }: Pick<AddressChip, 'url' | 'address' | 'scheme' | 'port' | 'path' | 'query'>): string | undefined {
+  if (url !== undefined) return url;
+  if (scheme === undefined) return undefined;
+  return `${scheme}://${address}${port === undefined ? '' : `:${port}`}${path}${query === undefined ? '' : `?${query}`}`;
 }
 
 /** Returns the id of the peer chip a placement names: the Destination chip of an outbound rule, the Source chip of an inbound one. */

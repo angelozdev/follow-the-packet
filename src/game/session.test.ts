@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { TermId } from '@/copy';
-import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor, type Site } from '@/engine';
 import { INCIDENTS, caseWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { CHAPTER_1_TERMS, EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, EVERY_TERM, LUCIA_FIREWALL, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, webSendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -980,5 +980,107 @@ describe('clockSteps', () => {
     const sending = sendIncident();
     expect(clockSteps(startSession([sending], sending.id))).toEqual([]);
     expect(clockSteps(startSession(INCIDENTS, '04-01'))).toEqual([]);
+  });
+});
+
+describe('the web of chapter 3', () => {
+  const WEB = webSendIncident();
+  const { server } = OFFICE_FLOORS;
+  const send = (fromId: string, toId: string, messageId: string): SessionAction => ({ type: 'sendPacket', fromId, toId, messageId });
+  const POST = send('you', 'orders', 'curl-post');
+  const SHOP = send('you', 'shop', 'curl');
+  const BLOG = send('you', 'blog', 'curl');
+  const ONE_MINUTE: SessionAction = { type: 'wait', seconds: 60 };
+  const rule = (whatId: string, fromId: string): SessionAction => ({ type: 'placeRule', firewallId: LUCIA_FIREWALL, whatId, fromId });
+  const OPEN_THE_APP = rule('tcp-3000', 'you');
+  const site = (name: string, serves: string): SessionAction => ({ type: 'placeEntry', tableId: 'sites', picks: { name, serves } });
+  const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([WEB], WEB.id));
+  const bodies = (session: Session) => session.history.map((packet) => packet.trace.app?.response?.body);
+  const sitesOf = (session: Session): Site[] => {
+    const service = session.world.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === server.id)?.services?.find((candidate) => candidate.web);
+    return service?.web?.sites ?? [];
+  };
+  const rulesOf = (session: Session) => session.world.firewalls.find((firewall) => firewall.id === LUCIA_FIREWALL)?.inbound ?? [];
+
+  it('sends a curl with the url of its chips and keeps the response', () => {
+    const sent = playing(SHOP, send('lucia', 'app-7', 'curl'), send('you', 'ip', 'curl-i'));
+    expect(bodies(sent)).toEqual(['La tienda', 'Pedido 7: 2 cafés', 'La tienda']);
+    expect(sent.sent.map((packet) => [packet.id, packet.trace.outcome])).toEqual([['sent-you-shop-curl', 'replied'], ['sent-lucia-app-7-curl', 'replied'], ['sent-you-ip-curl-i', 'replied']]);
+    expect(playing(send('lucia', 'app-80', 'curl')).sent[0].trace.outcome).toBe('refused');
+    expect(playing(send('you', 'orders', 'browser')).sent[0].trace.outcome).toBe('timeout');
+    expect(sessionReducer(sent, { type: 'sendPacket', fromId: 'you', toId: 'shop', messageId: 'ghost' })).toBe(sent);
+  });
+
+  it('placeEntry of a site changes the table and clears the sends', () => {
+    const sent = playing(BLOG, SHOP);
+    expect(bodies(sent)).toEqual(['La tienda', 'La tienda']);
+    expect(sitesOf(sent).map(({ id }) => id)).toEqual(['shop']);
+    const placed = sessionReducer(sent, site('blog', 'serve-blog'));
+    expect(sitesOf(placed).map(({ id, names }) => [id, names])).toEqual([['shop', ['www.lucia.example']], ['blog.lucia.example', ['blog.lucia.example']]]);
+    expect([placed.sent, placed.history, placed.entryProblem, placed.rejection]).toEqual([[], [], null, null]);
+    expect(bodies(sessionReducer(placed, BLOG))).toEqual(['El blog']);
+    expect(placed.runs).toEqual(runFlows(placed.world, WEB.flows, placed.known));
+  });
+
+  it('placeEntry of a site the engine refuses leaves the world as it was and keeps the problem', () => {
+    const sent = playing(BLOG, ONE_MINUTE);
+    const refused = sessionReducer(sent, site('shop-name', 'serve-blog'));
+    expect(refused.world).toBe(sent.world);
+    expect([refused.sent, refused.history, refused.clock]).toEqual([sent.sent, sent.history, 60]);
+    expect(refused.entryProblem).toEqual({ tableId: 'sites', code: 'name-has-site' });
+    expect(sessionReducer(refused, site('shop-name', 'serve-blog'))).toBe(refused);
+    const taken = sessionReducer(refused, site('blog', 'serve-blog'));
+    expect([sitesOf(taken).length, taken.entryProblem]).toEqual([2, null]);
+    expect(sessionReducer(taken, site('blog', 'serve-blog')).entryProblem).toEqual({ tableId: 'sites', code: 'name-has-site' });
+  });
+
+  it('a site that is not offered, or one with a pick that is no chip, changes nothing and keeps no problem', () => {
+    const start = playing();
+    const odd: SessionAction[] = [{ type: 'placeEntry', tableId: 'sites', picks: { name: 'blog' } }, { type: 'placeEntry', tableId: 'sites', picks: { name: 'ghost', serves: 'serve-blog' } }, { type: 'removeEntry', tableId: 'sites', entryId: 'shop' }];
+    for (const move of odd) expect(sessionReducer(start, move), JSON.stringify(move)).toBe(start);
+  });
+
+  it('placeRule in a send incident changes the world and clears the sends', () => {
+    const sent = playing(POST, ONE_MINUTE);
+    expect(sent.sent[0].trace.outcome).toBe('timeout');
+    expect(rulesOf(sent)).toEqual([]);
+    const placed = sessionReducer(sent, OPEN_THE_APP);
+    expect(rulesOf(placed)).toEqual([{ id: 'tcp-3000-from-you', what: { kind: 'tcp', fromPort: 3000, toPort: 3000 }, peer: { kind: 'cidr', cidr: `${OFFICE_FLOORS.floor1.you}/32` } }]);
+    expect([placed.sent, placed.history, placed.clock, placed.sends]).toEqual([[], [], 60, 1]);
+    expect(bodies(sessionReducer(placed, POST))).toEqual(['Pedido 9: item=coffee']);
+    expect(sessionReducer(placed, OPEN_THE_APP)).toBe(placed);
+    expect(sessionReducer(placed, { type: 'removeRule', firewallId: LUCIA_FIREWALL, ruleId: 'tcp-3000-from-you' }).world.firewalls[0].inbound).toEqual([]);
+  });
+
+  it('a rule the card does not offer, or for another firewall, changes nothing', () => {
+    const start = playing(POST);
+    for (const move of [rule('ghost', 'you'), rule('tcp-3000', 'ghost'), { ...rule('tcp-3000', 'you'), firewallId: 'fw-ghost' }]) expect(sessionReducer(start, move), JSON.stringify(move)).toBe(start);
+    const closed = { ...start, phase: 'explaining' } as Session;
+    expect(sessionReducer(closed, OPEN_THE_APP)).toBe(closed);
+  });
+
+  it('a move that changes the world clears the sends and the orders and keeps the clock', () => {
+    const sent = playing(OPEN_THE_APP, POST, POST, ONE_MINUTE, POST);
+    expect(bodies(sent)).toEqual(['Pedido 9: item=coffee', 'Pedido 10: item=coffee', 'Pedido 11: item=coffee']);
+    for (const move of [site('blog', 'serve-blog'), rule('tcp-3001', 'you')]) {
+      const after = sessionReducer(sent, move);
+      expect([after.sent, after.history, after.clock, after.sends], JSON.stringify(move)).toEqual([[], [], 60, 3]);
+      expect(bodies(sessionReducer(after, POST)), JSON.stringify(move)).toEqual(['Pedido 9: item=coffee']);
+    }
+    expect(bodies(sessionReducer(sessionReducer(sent, ONE_MINUTE), POST)).at(-1)).toBe('Pedido 12: item=coffee');
+  });
+
+  it('a task that names the nth send holds from the second and a third send does not undo it', () => {
+    const second = WEB.tasks.find((task) => task.expect.nth === 2)!;
+    const two = playing(OPEN_THE_APP, POST, POST);
+    expect(sessionReducer(playing(OPEN_THE_APP, POST), SUBMIT).rejection?.failingTaskIds).toContain(second.id);
+    expect(sessionReducer(two, SUBMIT).rejection?.failingTaskIds).not.toContain(second.id);
+    expect(sessionReducer(sessionReducer(two, POST), SUBMIT).rejection?.failingTaskIds).not.toContain(second.id);
+  });
+
+  it('the reference solution closes it', () => {
+    const solved = WEB.solution.reduce(sessionReducer, startSession([WEB], WEB.id));
+    expect(solved.phase).toBe('playing');
+    expect(sessionReducer(solved, SUBMIT).phase).toBe('explaining');
   });
 });

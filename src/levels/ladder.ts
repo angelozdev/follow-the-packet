@@ -1,6 +1,6 @@
 import { TERMS, termsIn, type TermId, type TermText } from '@/copy';
 import type { Direction, FirewallKind } from '@/engine';
-import { isGuided, type CaseSpec, type Incident, type TableSpec } from './contract/incident';
+import { isGuided, urlOfChip, type CaseSpec, type Incident, type SendChips, type TableSpec } from './contract/incident';
 
 export interface ConfigurableParts {
   inboundRules: Record<FirewallKind, boolean>;
@@ -30,15 +30,19 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   return { inboundRules: opened(known, RULES_TERM.inbound), outboundRules: opened(known, RULES_TERM.outbound), hostSettings: known.has('icmp-echo-ignore-all') };
 }
 
-/** Returns the labels of the chips the incident writes: Type, Source and, when it offers outbound rules, Destination for a filter, the messages for a send and for every case of a diagnose (an origin is named after the world and an address is only an address), none for an identify (its chips are values, such as an IP, and not terms). */
+function sendChipTexts({ message, to }: SendChips): TermText[] {
+  return [...message.map((chip) => chip.label), ...to.flatMap((chip) => urlOfChip(chip) ?? [])];
+}
+
+/** Returns the labels of the chips the incident writes: Type, Source and, when it offers outbound rules, Destination for a filter; for a send the messages, the url of each address chip that is a url and the Type and Source of its rules card, and for every case of a diagnose its messages and urls (an origin is named after the world and an address that is no url is only an address); none for an identify (its chips are values, such as an IP, and not terms). */
 export function chipLabels(incident: Incident): TermText[] {
   switch (incident.mechanic) {
     case 'filter':
       return [...incident.chips.what, ...incident.chips.from, ...(incident.chips.to ?? [])].map((chip) => chip.label);
     case 'send':
-      return incident.send.message.map((chip) => chip.label);
+      return [...sendChipTexts(incident.send), ...[...(incident.send.rules?.what ?? []), ...(incident.send.rules?.from ?? [])].map((chip) => chip.label)];
     case 'diagnose':
-      return incident.diagnose.cases.flatMap((spec) => spec.send.message.map((chip) => chip.label));
+      return incident.diagnose.cases.flatMap((spec) => sendChipTexts(spec.send));
     case 'identify':
       return [];
   }

@@ -1,4 +1,4 @@
-import { DEFAULT_DIRECTION, applyAction, listenSchema, recordProblem, routeProblem, type Device, type Network, type RecordProblem, type RouteProblem } from '@/engine';
+import { DEFAULT_DIRECTION, applyAction, listenSchema, recordProblem, routeProblem, siteProblem, type Device, type Network, type RecordProblem, type RouteProblem, type SiteProblem } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
 import { settingKind, type CaseSpec, type Incident, type PlaceEntryMove, type PlayerMove, type RemoveEntryMove, type RuleMove, type SettingMove, type SettingSpec } from './contract/incident';
 import { chipProblem, placementOf, removalOf, tableOf, type ChipProblem } from './contract/tables';
@@ -9,8 +9,8 @@ function findIncident(incidents: Incident[], incidentId: string): Incident {
   return found;
 }
 
-/** Why an entry the player placed does not go in: the engine does not take it (a record code or a route code) or the chips do not make an entry (an address record with no IP). */
-export type EntryProblem = RecordProblem | RouteProblem | ChipProblem;
+/** Why an entry the player placed does not go in: the engine does not take it (a record code, a route code or a site code) or the chips do not make an entry (an address record with no IP). */
+export type EntryProblem = RecordProblem | RouteProblem | SiteProblem | ChipProblem;
 
 function listenOf(device: Device, { protocol, port }: NonNullable<SettingSpec['service']>): string | undefined {
   return device.host.services.find((service) => service.protocol === protocol && service.port === port)?.listen;
@@ -88,13 +88,20 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove, 
   }
 }
 
-/** Says why a placement the incident (or the fix of the case `spec`) offers does not go in: the code of the problem (`recordProblem` or `routeProblem` when the engine refuses it, or `chipProblem` when the chips make no record), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray), because then there is nothing to explain. */
+/** Says why a placement the incident (or the fix of the case `spec`) offers does not go in: the code of the problem (`recordProblem`, `routeProblem` or `siteProblem` when the engine refuses it, or `chipProblem` when the chips make no record), or undefined when the engine takes it and also when the incident does not offer it (an unknown table, a tray without a pick, a pick that is no chip of its tray), because then there is nothing to explain. */
 export function placementProblem(world: Network, incident: Incident, { tableId, picks }: PlaceEntryMove, spec?: CaseSpec | null): EntryProblem | undefined {
   const table = tableOf(incident, tableId, spec);
   if (!table) return undefined;
   const action = placementOf(table, picks);
   if (!action) return chipProblem(table, picks);
-  return action.type === 'addRoute' ? routeProblem(world, action.routerId, action.route) : recordProblem(world, action.serverId, action.record);
+  switch (action.type) {
+    case 'addRoute':
+      return routeProblem(world, action.routerId, action.route);
+    case 'addRecord':
+      return recordProblem(world, action.serverId, action.record);
+    case 'addSite':
+      return siteProblem(world, action.ownerId, action.port, action.site);
+  }
 }
 
 /** Returns the world the changes of an incident are made on: its base world, or the reference solution of the previous incident of its chapter, or, for the first incident of its chapter that has changes, the reference solution of the last incident of the chapters before it. Incidents come in game order. */

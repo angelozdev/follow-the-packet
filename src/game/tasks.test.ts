@@ -3,7 +3,7 @@ import { INCIDENTS, applyMove, solvedWorld, startWorld } from '@/levels';
 import { FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { applyAction, type Network, type Outcome } from '@/engine';
 import type { MessageChip, SendIncident, SendTask } from '@/levels';
-import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, device, filterIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, LUCIA_FIREWALL, NAME_SERVER_PIECES, OFFICE_FLOORS, device, filterIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, sendIncident, webSendIncident, withDevice } from '@/testing';
 import { lastOfEach, runFlows, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
 import { failingTaskIds, taskHolds } from './tasks';
 
@@ -271,5 +271,48 @@ describe('send tasks that expect what the DNS answered', () => {
     const broken = sentAfter(dangling, dispatch('broken', 0));
     expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: true } }), broken)).toBe(true);
     expect(holds(asking('broken', { status: 'NXDOMAIN', answer: { alias: false } }), broken)).toBe(false);
+  });
+});
+
+describe('send tasks that expect a page', () => {
+  const WEB = webSendIncident();
+  const opened = applyMove(startWorld([WEB], WEB.id), WEB, { type: 'placeRule', firewallId: LUCIA_FIREWALL, whatId: 'tcp-3000', fromId: 'you' });
+  const dispatch = (messageId: string, at: number): Dispatch => ({ move: { type: 'sendPacket', fromId: 'you', toId: 'orders', messageId }, send: at + 1, at });
+  const post = (at: number) => dispatch('curl-post', at);
+  const history = (world: Network, ...dispatches: Dispatch[]): SentPacket[] => sendSequence(world, WEB, dispatches, EVERY_TERM);
+  const bodies = (sends: SentPacket[]) => sends.map((packet) => packet.trace.app?.response?.body);
+  const second = WEB.tasks.find((candidate) => candidate.expect.nth === 2)!;
+  const posting = (patch: Partial<SendTask['expect']>): SendTask => ({ ...second, expect: { ...second.expect, ...patch } });
+
+  it('a send task holds when the nth curl of its chips answers with the expected body', () => {
+    const two = history(opened, post(0), post(1));
+    expect(bodies(two)).toEqual(['Pedido 9: item=coffee', 'Pedido 10: item=coffee']);
+    expect(taskHolds(second, [], two)).toBe(true);
+    expect(taskHolds(posting({ nth: 1, body: 'Pedido 9: item=coffee' }), [], two)).toBe(true);
+    expect(taskHolds(posting({ nth: 1 }), [], two)).toBe(false);
+    expect(taskHolds(posting({ nth: 3 }), [], two)).toBe(false);
+    expect(taskHolds(posting({ body: 'Pedido 11: item=coffee' }), [], two)).toBe(false);
+    expect(taskHolds(second, [], history(opened, post(0)))).toBe(false);
+    expect(taskHolds(second, [], [])).toBe(false);
+    expect(taskHolds(posting({ nth: undefined }), [], two)).toBe(true);
+    expect(taskHolds(posting({ nth: undefined }), [], history(opened, post(0)))).toBe(false);
+    expect(taskHolds(posting({ nth: 2 }), [], history(opened, post(0), dispatch('curl-put', 1), post(2)))).toBe(true);
+  });
+
+  it('an expected body does not hold for a message that got no response', () => {
+    const dropped = history(startWorld([WEB], WEB.id), post(0), post(1));
+    expect(bodies(dropped)).toEqual([undefined, undefined]);
+    expect(taskHolds(posting({ outcome: 'any' }), [], dropped)).toBe(false);
+    expect(taskHolds(posting({ outcome: 'any', body: undefined }), [], dropped)).toBe(true);
+  });
+
+  it('a third send does not undo a task that held at the second', () => {
+    const two = history(opened, post(0), post(1));
+    const three = history(opened, post(0), post(1), post(2));
+    expect(taskHolds(second, [], two)).toBe(true);
+    expect(taskHolds(second, [], three)).toBe(true);
+    expect(bodies(three).at(-1)).toBe('Pedido 11: item=coffee');
+    expect(taskHolds(posting({ nth: undefined }), [], three)).toBe(false);
+    expect(failingTaskIds([second], [], three)).toEqual([]);
   });
 });

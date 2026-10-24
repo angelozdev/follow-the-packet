@@ -28,7 +28,7 @@ export interface PieceCard {
   first: PieceTabId;
 }
 
-const OPENS_FIRST: Record<OpensFirst, PieceTabId> = { terminal: 'terminal', settings: 'settings', services: 'services', routes: 'routes', records: 'records' };
+const OPENS_FIRST: Partial<Record<OpensFirst, PieceTabId>> = { terminal: 'terminal', settings: 'settings', services: 'services', routes: 'routes', records: 'records' };
 
 function tabs(session: Session, pieceId: string): PieceTab[] {
   const tab = <Id extends PieceTabId, Card>(id: Id, card: Card | null): TabOf<Id, Card>[] => (card === null ? [] : [{ id, label: PIECE_TEXT.tabs[id], card }]);

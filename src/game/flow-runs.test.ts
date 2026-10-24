@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulateSequence, type Network } from '@/engine';
-import { packetFromChips, startWorld } from '@/levels';
+import { INCIDENTS, caseWorld, packetFromChips, sendCombinations, startWorld, type SendOwner } from '@/levels';
 import { stampOf, type TermId } from '@/copy';
 import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
 import { drawnSends, hideStopsOutOfSight, lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
@@ -209,5 +209,28 @@ describe('the question of a send by name', () => {
     const onTheMap = drawnSends(lastOfEach(history));
     expect(onTheMap.map((each) => [each.id, each.send])).toEqual([['sent-you-www-ping-question', 2], ['sent-you-www-ping', 2]]);
     expect(onTheMap[0].packet.sourcePort).toBe(FIRST_PORT + 1);
+  });
+});
+
+describe('the id of a run', () => {
+  const scenes = INCIDENTS.flatMap((incident): { owner: SendOwner; world: Network }[] => {
+    const start = startWorld(INCIDENTS, incident.id);
+    if (incident.mechanic === 'send') return [{ owner: incident, world: start }];
+    return incident.mechanic === 'diagnose' ? incident.diagnose.cases.map((spec) => ({ owner: spec, world: caseWorld(start, spec) })) : [];
+  });
+
+  it('the id of a run of chapters 1, 2 and 4 does not change', () => {
+    expect(scenes.length).toBeGreaterThan(0);
+    for (const { owner, world } of scenes) {
+      const runs = sendCombinations(owner).flatMap((combination) => sendPacket(world, owner, { type: 'sendPacket', ...combination }, 1, EVERY_TERM) ?? []);
+      expect(runs.length).toBeGreaterThan(0);
+      for (const run of runs) {
+        expect(run.id).toBe(`sent-${run.fromId}-${run.toId}-${run.messageId}`);
+        expect(run.pieceId).toBe(PIECE_ID.packet(run.id));
+      }
+      expect(new Set(runs.map((run) => run.id)).size).toBe(runs.length);
+    }
+    const lucia = sendSequence(WORLD, NAMES, [dispatch('dig', 'www', 1, 0), dispatch('nc', 'lucia', 2, 1)], EVERY_TERM);
+    expect(lucia.map((run) => run.id)).toEqual(['sent-you-www-dig', 'sent-you-lucia-nc']);
   });
 });

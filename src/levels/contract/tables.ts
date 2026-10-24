@@ -2,7 +2,7 @@ import { RECORD_TTL, isIpv4, type AnswerRecord, type Network, type NetworkAction
 import type { CaseSpec, Incident, TableSpec } from './incident';
 
 type RecordKey = Pick<AnswerRecord, 'name' | 'type' | 'value'>;
-type Placement = Extract<NetworkAction, { type: 'addRoute' | 'addRecord' }>;
+type Placement = Extract<NetworkAction, { type: 'addRoute' | 'addRecord' | 'addSite' }>;
 type Removal = Extract<NetworkAction, { type: 'removeRoute' | 'removeRecord' }>;
 
 const ENTRY_ID_JOINER = '|';
@@ -33,7 +33,7 @@ function recordOf(name: string, type: AnswerRecord['type'], value: string): Answ
   return { name, type, value, ttl: RECORD_TTL };
 }
 
-function pickedValue<Value extends string>(chips: readonly { id: string; value: Value }[], picks: Readonly<Record<string, string>>, trayName: string): Value | undefined {
+function pickedValue<Value>(chips: readonly { id: string; value: Value }[], picks: Readonly<Record<string, string>>, trayName: string): Value | undefined {
   return chips.find((chip) => chip.id === picks[trayName])?.value;
 }
 
@@ -49,23 +49,32 @@ export function chipProblem(table: TableSpec, picks: Readonly<Record<string, str
   return name !== undefined && type === 'A' && value !== undefined && !isIpv4(value) ? 'a-record-needs-ip' : undefined;
 }
 
-/** Returns the action that places the entry the chips of a table stand for, one chip picked in each tray: a route of the router that owns a table of routes, or a record, with the time to live of the game, in the zone of the server that owns a table of records. Null when a tray has no pick or the pick is not one of its chips, and when the chips do not make a record (an address record whose value is not an IP: `chipProblem` says so). */
+/** Returns the action that places the entry the chips of a table stand for, one chip picked in each tray: a route of the router that owns a table of routes, a record, with the time to live of the game, in the zone of the server that owns a table of records, or a site, named after the name picked and serving what was picked, in the web service of the owner of a table of sites on the port of the table. Null when a tray has no pick or the pick is not one of its chips, and when the chips do not make a record (an address record whose value is not an IP: `chipProblem` says so). */
 export function placementOf(table: TableSpec, picks: Readonly<Record<string, string>>): Placement | null {
-  if (table.kind === 'routes') {
-    const [to, next] = [pickedValue(table.trays.destination, picks, 'destination'), pickedValue(table.trays.nextHop, picks, 'nextHop')];
-    return to !== undefined && next !== undefined ? { type: 'addRoute', routerId: table.ownerId, route: { to, next } } : null;
+  switch (table.kind) {
+    case 'routes': {
+      const [to, next] = [pickedValue(table.trays.destination, picks, 'destination'), pickedValue(table.trays.nextHop, picks, 'nextHop')];
+      return to !== undefined && next !== undefined ? { type: 'addRoute', routerId: table.ownerId, route: { to, next } } : null;
+    }
+    case 'records': {
+      const [name, type, value] = [pickedValue(table.trays.name, picks, 'name'), pickedValue(table.trays.type, picks, 'type'), pickedValue(table.trays.value, picks, 'value')];
+      const record = name !== undefined && type !== undefined && value !== undefined ? recordOf(name, type, value) : null;
+      return record ? { type: 'addRecord', serverId: table.ownerId, record } : null;
+    }
+    case 'sites': {
+      const [name, content] = [pickedValue(table.trays.name, picks, 'name'), pickedValue(table.trays.serves, picks, 'serves')];
+      return name !== undefined && content !== undefined ? { type: 'addSite', ownerId: table.ownerId, port: table.port, site: { id: name, names: [name], ...content } } : null;
+    }
   }
-  const [name, type, value] = [pickedValue(table.trays.name, picks, 'name'), pickedValue(table.trays.type, picks, 'type'), pickedValue(table.trays.value, picks, 'value')];
-  const record = name !== undefined && type !== undefined && value !== undefined ? recordOf(name, type, value) : null;
-  return record ? { type: 'addRecord', serverId: table.ownerId, record } : null;
 }
 
 function serverOf(world: Network, id: string): ServerActor | undefined {
   return world.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id === id);
 }
 
-/** Returns the action that removes the row of the table that has this id in the world, or null when the owner has no such row. The records of the zone itself (the NS and the SOA) are not rows of a table: the player neither places nor removes them. */
+/** Returns the action that removes the row of the table that has this id in the world, or null when the owner has no such row. The records of the zone itself (the NS and the SOA) are not rows of a table: the player neither places nor removes them. A site is never removed: the player only adds sites. */
 export function removalOf(world: Network, table: TableSpec, entryId: string): Removal | null {
+  if (table.kind === 'sites') return null;
   if (table.kind === 'routes') {
     const route = (world.routers ?? []).find((router) => router.id === table.ownerId)?.routes.find((held) => routeEntryId(held) === entryId);
     return route ? { type: 'removeRoute', routerId: table.ownerId, to: route.to } : null;

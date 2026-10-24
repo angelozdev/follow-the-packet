@@ -171,9 +171,9 @@ function move(state: Session, action: RuleMove): Session {
   if (state.phase !== 'playing' || !canConfigure(state, action.firewallId, action.direction ?? DEFAULT_DIRECTION)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
-  const runs = runFlows(world, state.incident.flows, state.known);
-  const startsEpisode = hasIntrusion(runs) && !hasIntrusion(state.runs);
-  return { ...state, world, runs, alerts: state.alerts + (startsEpisode ? 1 : 0), rejection: null };
+  const next = withNewWorld(state, world);
+  const startsEpisode = hasIntrusion(next.runs) && !hasIntrusion(state.runs);
+  return { ...next, alerts: state.alerts + (startsEpisode ? 1 : 0) };
 }
 
 /** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. */
@@ -244,7 +244,7 @@ function answer(state: Session, action: AnswerMove): Session {
 function submit(state: Session): Session {
   const { incident } = state;
   if (state.phase !== 'playing' || !isGuided(incident)) return state;
-  const failing = failingTaskIds(incident.tasks, state.runs, state.sent, state.answers);
+  const failing = failingTaskIds(incident.tasks, state.runs, state.history, state.answers);
   if (failing.length === 0) return { ...state, phase: 'explaining', middle: earnsMiddle(state.incident, state.world, state.hintsShown), rejection: null };
   return { ...state, rejection: { attempt: (state.rejection?.attempt ?? 0) + 1, failingTaskIds: failing, intruding: hasIntrusion(state.runs) } };
 }
@@ -261,9 +261,9 @@ export function causeNamed(session: Session): boolean {
   return spec !== null && session.named.some((index) => spec.cause.options[index].correct);
 }
 
-/** Returns the tasks of the fix of the case a diagnose is on that do not hold in the last packets sent since the world last changed; none when every one holds, and none for a case with no fix. */
+/** Returns the tasks of the fix of the case a diagnose is on that do not hold in the sends since the world last changed (`Session.history`); none when every one holds, and none for a case with no fix. */
 export function failingFixTaskIds(session: Session): string[] {
-  return failingTaskIds(currentCase(session)?.fix?.tasks ?? [], session.runs, session.sent);
+  return failingTaskIds(currentCase(session)?.fix?.tasks ?? [], session.runs, session.history);
 }
 
 /** Closes the case a diagnose is on when it is ready: the right cause is named and every task of its fix holds (a case with no fix has none, so the cause alone closes it). It pushes `{ picks, hints }` onto `caseResults` once, whatever order the player did the two things in, and when it is the last case it closes the incident and settles the middle star. A case already closed, a case still missing the cause or the fix, and any other incident return the same session. */

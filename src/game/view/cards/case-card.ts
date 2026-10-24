@@ -70,7 +70,7 @@ function repairTable(session: Session, table: TableSpec): RepairTable[] {
 
 function repairOf(session: Session, fix: NonNullable<CaseSpec['fix']>): CaseRepair {
   return {
-    tasks: fix.tasks.map((task) => ({ id: task.id, text: task.text, done: taskHolds(task, session.runs, session.sent) })),
+    tasks: fix.tasks.map((task) => ({ id: task.id, text: task.text, done: taskHolds(task, session.runs, session.history) })),
     tables: fix.tables.flatMap((table) => repairTable(session, table)),
   };
 }

@@ -1,4 +1,4 @@
-export { ROUTE_PROBLEMS, SITE_PROBLEMS, applyAction, networkActionSchema, routeProblem, siteProblem } from './network/actions';
+export { ROUTE_PROBLEMS, SITE_PROBLEMS, applyAction, networkActionSchema, routeProblem, siteProblem, tcpServiceAt, webServiceAt } from './network/actions';
 export type { NetworkAction, RouteProblem, SiteProblem } from './network/actions';
 export type {
   Actor,
@@ -34,6 +34,9 @@ export { isClientActor, isConnected, lansOf } from './network/addressing/topolog
 export { facesALan } from './network/addressing/routing';
 export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, cidr as cidrSchema, directionSchema, endpointSchema, icmpTypeSchema, ipSchema, listenSchema, networkSchema, packetSchema, realPort as portSchema, recordKeySchema, routeSchema, rulePeerSchema, ruleWhatSchema } from './network/schema';
 export { DNS_PORT } from './dns/resolve';
+export { siteContentSchema, siteSchema } from './web/schema';
+export type { HttpMessage, HttpMethod, Site, SiteContent } from './web/schema';
+export { isWebUrl, parseUrl } from './web/url';
 export { LOOPBACK_IP, ipBits, ipInCidr, isIpv4, isLoopbackIpv4, maskOf, parseCidr, prefixNumbers } from './network/addressing/cidr';
 export { simulate } from './simulation/simulate';
 export { cacheAfter, simulateSequence } from './simulation/sequence';

@@ -86,5 +86,8 @@ export function terminalLine(session: Session, { from, to, message }: Partial<Se
       return picked.port === undefined ? null : TERMINAL_TEXT.nc(address, picked.port);
     case 'dig':
       return TERMINAL_TEXT.dig(address);
+    case 'curl':
+    case 'browser':
+      return null;
   }
 }

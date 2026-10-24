@@ -40,6 +40,9 @@ export const siteSchema = z.object({
   orders: orderBookSchema.optional(),
 });
 
+/** What a site serves, apart from the names it answers to: its pages, the body of its 404 and its order book. A table of sites gives a chip of it for each thing the player may pick to serve. */
+export const siteContentSchema = siteSchema.omit({ id: true, names: true });
+
 /** What a TCP service answers when someone speaks HTTP to it: its sites and the one that answers a request whose Host names none of them. */
 export const webServiceSchema = z
   .object({ sites: z.array(siteSchema).min(1), defaultSiteId: z.string().min(1) })
@@ -57,4 +60,5 @@ export type HttpMethod = z.infer<typeof httpMethodSchema>;
 export type HttpMessage = z.infer<typeof httpMessageSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type Site = z.infer<typeof siteSchema>;
+export type SiteContent = z.infer<typeof siteContentSchema>;
 export type WebService = z.infer<typeof webServiceSchema>;

@@ -8,6 +8,7 @@ export type {
   CaseSpec,
   ClassifySpec,
   ClockStep,
+  CurlOptions,
   DiagnoseIncident,
   ExpectedOutcome,
   ExplanationOption,
@@ -46,11 +47,11 @@ export type {
   WaitMove,
   WhatChip,
 } from './contract/incident';
-export { cardsOfPiece, firstCardOf, isGuided, settingKind } from './contract/incident';
+export { cardsOfPiece, firstCardOf, isGuided, settingKind, urlOfChip } from './contract/incident';
 export { CHIP_PROBLEMS, recordEntryId, routeEntryId, tablesOf } from './contract/tables';
 export type { ChipProblem } from './contract/tables';
 export { INCIDENTS } from './registry';
-export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, sendCombinations, shownOf } from './contract/chips';
+export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, ruleChipsOf, sendCombinations, shownOf } from './contract/chips';
 export type { SendOwner } from './contract/chips';
 export { applyMove, caseWorld, placementProblem, settingValue, solvedWorld, startWorld } from './world';
 export type { EntryProblem } from './world';

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, hostLineSchema, ipSchema, lanSchema, realPort, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
 import { recordProblem, sameName, zoneHeldBy } from '@/engine/dns/records';
-import { siteSchema, type Site } from '@/engine/web/schema';
+import { siteSchema, type Site, type WebService } from '@/engine/web/schema';
 import type { Actor, AnswerRecord, Device, Direction, DnsRecord, Firewall, Forward, HostLine, Lan, Network, Route, Router, Rule, ServerActor, ServerDns, Service } from './types';
 
 const nonEmpty = z.string().min(1);
@@ -166,9 +166,19 @@ export type SiteProblem = (typeof SITE_PROBLEMS)[number];
 
 const isWebAt = (service: Service, port: number): boolean => service.protocol === 'tcp' && service.port === port && service.web !== undefined;
 
+/** Returns the TCP service that a device or a server of the internet has on a port, or undefined when `ownerId` is neither or has none there. */
+export function tcpServiceAt(net: Network, ownerId: string, port: number): Service | undefined {
+  return servicesOf(net, ownerId)?.find((service) => service.protocol === 'tcp' && service.port === port);
+}
+
+/** Returns the web service that a device or a server of the internet has on a TCP port, or undefined when `ownerId` is neither or has none there. */
+export function webServiceAt(net: Network, ownerId: string, port: number): WebService | undefined {
+  return servicesOf(net, ownerId)?.find((service) => isWebAt(service, port))?.web;
+}
+
 /** Says why the web service of `ownerId` on TCP `port` does not take a site, or undefined when it does. `addSite` applies a site only when there is no problem, so it returns the same network exactly when this returns a code. */
 export function siteProblem(net: Network, ownerId: string, port: number, site: Site): SiteProblem | undefined {
-  const web = servicesOf(net, ownerId)?.find((service) => isWebAt(service, port))?.web;
+  const web = webServiceAt(net, ownerId, port);
   if (!web) return 'no-web-service';
   const taken = web.sites.flatMap(({ names }) => names);
   return site.names.some((name) => taken.some((held) => sameName(held, name))) ? 'name-has-site' : undefined;
