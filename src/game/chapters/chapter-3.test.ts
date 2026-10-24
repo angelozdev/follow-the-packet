@@ -324,6 +324,12 @@ describe('03-02, ask and answer', () => {
     expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
   });
 
+  it('03-02: the task of the posts counts orders and not their numbers, and no text of the incident names the order 9 or the order 10', () => {
+    const task = (isGuided(incident) ? incident.tasks : []).find(({ id }) => id === TASK.posts)!;
+    expect(plain(task.text)).toBe('Que dos POST iguales a la URL sin ?id creen dos pedidos nuevos.');
+    expect(everythingRead(start).filter((text) => /pedido (9|10)\b/.test(text))).toEqual([]);
+  });
+
   it('03-02: the task of the posts holds only after the second post', () => {
     const once = posting(start);
     expect(stillOpen(once)).toContain(TASK.posts);
@@ -418,7 +424,7 @@ describe('03-02, ask and answer', () => {
     expect(plain(options[0].feedback)).toContain('Idempotente habla del efecto en el servidor, no de la respuesta.');
     expect(plain(options[1].feedback)).toContain('HTTP no evita nada');
     expect(plain(options[2].text)).toBe('No: un POST no es idempotente y repetirlo puede crear otro pedido.');
-    expect(plain(options[2].feedback)).toContain('el segundo POST creó el pedido 10. El segundo PUT, en cambio, dejó el pedido 7 como lo dejó el primero.');
+    expect(plain(options[2].feedback)).toContain('el segundo POST creó otro pedido. El segundo PUT, en cambio, dejó el pedido 7 como lo dejó el primero.');
   });
 
   it('03-02: the takeaway says that idempotent speaks of the effect and not of the answer, that it is not the same as safe and that a client does not repeat a post by itself', () => {

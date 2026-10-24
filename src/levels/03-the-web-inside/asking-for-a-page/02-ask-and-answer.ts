@@ -14,7 +14,7 @@ export default defineIncident({
   report: `Lucía siguió con su app de pedidos: ahora el programa del {{port|puerto}} ${PORT.app} de ${NAME.lucia} también crea pedidos y los cambia. Cada vez que usas {{curl}} haces una {{http-request|petición HTTP}}, y la app contesta con una {{http-response|respuesta HTTP}}. La petición trae un {{http-method|método HTTP}} que dice qué quiere hacer. Sin opciones, {{curl}} pide un GET: lee un pedido. Con -d pide un POST: crea uno. Con -X PUT -d pide un PUT: cambia uno. Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7. En la caja lee cada petición y cada respuesta.`,
   tasks: [
     sendTaskFrom(ORIGIN.lucia, TASK.getEight, 'Que el GET devuelva el pedido 8.', MESSAGE.curl.id, ORDER_URL.eight.id, 'replied'),
-    bodyTask(TASK.posts, 'Que dos POST iguales dejen el pedido 9 y el 10.', ORDER_URL.all.id, ORDER_BODY.ten, { messageId: MESSAGE.curlPost.id, nth: 2 }),
+    { id: TASK.posts, text: 'Que dos POST iguales a la URL sin ?id creen dos pedidos nuevos.', expect: { fromId: ORIGIN.lucia.id, toId: ORDER_URL.all.id, messageId: MESSAGE.curlPost.id, outcome: 'replied', nth: 2 } },
     bodyTask(TASK.puts, 'Que el segundo PUT deje el pedido 7 como lo dejó el primero.', ORDER_URL.seven.id, ORDER_BODY.replaced, { messageId: MESSAGE.curlPut.id, nth: 2 }),
   ],
   flows: [],
@@ -34,7 +34,7 @@ export default defineIncident({
     },
     {
       text: 'No: un POST no es {{idempotent|idempotente}} y repetirlo puede crear otro pedido.',
-      feedback: 'Un POST puede dejar un efecto nuevo cada vez que se manda: lo viste, el segundo POST creó el pedido 10. El segundo PUT, en cambio, dejó el pedido 7 como lo dejó el primero.',
+      feedback: 'Un POST puede dejar un efecto nuevo cada vez que se manda: lo viste, el segundo POST creó otro pedido. El segundo PUT, en cambio, dejó el pedido 7 como lo dejó el primero.',
       correct: true,
     },
   ],

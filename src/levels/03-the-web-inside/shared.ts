@@ -12,7 +12,7 @@ const LOCALHOST = 'localhost';
 const POST_BODY = 'producto=café';
 const PUT_BODY = 'producto=té';
 
-/** The body each order answers with, as the order book of the app writes it. The orders 7 and 8 are the ones the app starts with; 9 and 10 are the ones two equal posts create, and `replaced` is the order 7 once a put has changed it. */
+/** The body each order answers with, as the order book of the app writes it. The orders 7 and 8 are the ones the app starts with; 9 and 10 are the first two orders a post creates, and `replaced` is the order 7 once a put has changed it. */
 export const ORDER_BODY = {
   seven: 'Pedido 7: 2 cafés.',
   eight: 'Pedido 8: 1 té.',
