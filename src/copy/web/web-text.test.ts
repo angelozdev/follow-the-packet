@@ -15,6 +15,8 @@ const reasons: WebReason[] = [
   { code: 'web-site-chosen', deviceId: SERVER, name: 'blog.lucia.example' },
   { code: 'web-default-site', deviceId: SERVER, name: 'blog.lucia.example' },
   { code: 'web-answered', deviceId: SERVER, statusCode: 200 },
+  { code: 'web-needs-login', deviceId: SERVER, path: '/admin' },
+  { code: 'web-forbidden', deviceId: SERVER, path: '/admin', user: 'marta' },
 ];
 
 describe('the texts of the web', () => {

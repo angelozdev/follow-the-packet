@@ -10,9 +10,14 @@ const HEADERS = { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length':
 const RESPONSE = { startLine: STATUS_LINE, headers: HEADERS, body: BODY };
 const PLAIN: CurlResult = { kind: 'response', response: RESPONSE, include: false };
 const WITH_HEADERS: CurlResult = { kind: 'response', response: RESPONSE, include: true };
+const UNAUTHORIZED: CurlResult = {
+  kind: 'response',
+  response: { startLine: 'HTTP/1.1 401 Unauthorized', headers: { ...HEADERS, 'WWW-Authenticate': 'Basic realm="admin"' }, body: BODY },
+  include: true,
+};
 const REFUSED: CurlResult = { kind: 'refused', host: 'localhost', port: 80, elapsedMs: 0 };
 const TIMEOUT: CurlResult = { kind: 'timeout' };
-const EVERY_RESULT: CurlResult[] = [PLAIN, WITH_HEADERS, REFUSED, TIMEOUT];
+const EVERY_RESULT: CurlResult[] = [PLAIN, WITH_HEADERS, UNAUTHORIZED, REFUSED, TIMEOUT];
 
 const CURL_FORMATS = [
   {
@@ -46,6 +51,11 @@ describe('curlOutput', () => {
 
   it('curl -i prints the status line, the headers and a blank line before the body', () => {
     expect(curlOutput(WITH_HEADERS)).toEqual([STATUS_LINE, 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 19', '', BODY]);
+  });
+
+  it('curl -i prints the status line and the headers of a 401, WWW-Authenticate included', () => {
+    const NO_RETRY = `lib/http.c:1001-1006 (auth_basic: a 401 after Basic was sent only sets authproblem) and :567-568 (Curl_http_auth_act returns with no new request), ${CURL_SOURCE}`;
+    expect(curlOutput(UNAUTHORIZED), NO_RETRY).toEqual(['HTTP/1.1 401 Unauthorized', 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 19', 'WWW-Authenticate: Basic realm="admin"', '', BODY]);
   });
 
   it('a refused connection prints the line of code 7 with host and port and Could not connect to server', () => {

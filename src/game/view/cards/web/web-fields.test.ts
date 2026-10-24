@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toPlainText, type TermId } from '@/copy';
+import type { Site } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { OFFICE_FLOORS, webSendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
@@ -219,5 +220,50 @@ describe('the services of a device and the process each listens from', () => {
 
   it('a device whose services have no process lists them as it always did', () => {
     expect(services(web)).toEqual(['TCP 3000 · escucha en todas las IPs', 'TCP 22 · escucha en todas las IPs']);
+  });
+});
+
+describe('the box of a curl with a credential: the Authorization header of the request and the 401 and the 403 of the response', () => {
+  const MARTA = 'marta:clave-marta';
+  const ADMIN_PASSWORD = 'clave-lucia';
+  const adminSite: Site = {
+    id: 'admin',
+    names: [],
+    notFoundBody: 'No hay nada en esa URL.',
+    pages: [{ path: '/admin', methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: 'Panel' } }],
+    accounts: {
+      users: [{ name: 'lucia', password: ADMIN_PASSWORD, role: 'admin' }, { name: 'marta', password: 'clave-marta', role: 'staff' }],
+      realm: 'admin',
+      unauthorizedBody: 'Hace falta identificarse.',
+      forbiddenBody: 'No tienes permiso.',
+    },
+  };
+  const GUARDED = {
+    ...WEB,
+    changes: [{ type: 'setWebService' as const, ownerId: 'lucia-laptop', port: 3000, web: { sites: [adminSite], defaultSiteId: adminSite.id } }],
+    send: {
+      ...WEB.send,
+      to: [...WEB.send.to, { id: 'admin', address: OFFICE_FLOORS.floor1.lucia, url: `http://${OFFICE_FLOORS.floor1.lucia}:3000/admin` }],
+      message: [...WEB.send.message, { id: 'curl-marta', label: `curl -i -u ${MARTA}`, command: 'curl' as const, options: { include: true as const, user: MARTA } }],
+    },
+  };
+  const guarded = sessionReducer(startSession([GUARDED], GUARDED.id), { type: 'placeRule', firewallId: 'fw-lucia', whatId: 'tcp-3000', fromId: 'you' });
+  const adminBox = (message: string) => boxOf(sentAs(guarded, 'you', 'admin', message), 'you', 'admin', message);
+
+  it('the box shows the Authorization header of the request and the WWW-Authenticate header of the 401', () => {
+    const noCredential = adminBox('curl-i');
+    expect(field(noCredential, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${OFFICE_FLOORS.floor1.lucia}:3000`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
+    expect(field(noCredential, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 401 Unauthorized', 'WWW-Authenticate: Basic realm="admin"', 'Cuerpo: Hace falta identificarse.']));
+    expect(field(noCredential, 'Código de estado')).toEqual(['Código de estado', '401 Unauthorized', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.']);
+    expect(field(noCredential, 'Quién lo generó')).toEqual(['Quién lo generó', 'La app de laptop-lucia']);
+    const asMarta = adminBox('curl-marta');
+    expect(field(asMarta, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${OFFICE_FLOORS.floor1.lucia}:3000`, `Authorization: Basic ${Buffer.from(MARTA).toString('base64')}`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
+  });
+
+  it('the box shows the 403 of a user without the role, with no WWW-Authenticate', () => {
+    const response = field(adminBox('curl-marta'), 'Respuesta HTTP');
+    expect(response).toEqual(expect.arrayContaining(['HTTP/1.1 403 Forbidden', 'Cuerpo: No tienes permiso.']));
+    expect(response?.some((line) => line.startsWith('WWW-Authenticate'))).toBe(false);
+    expect(field(adminBox('curl-marta'), 'Código de estado')?.[1]).toBe('403 Forbidden');
   });
 });

@@ -93,8 +93,10 @@ const addressChipSchema = z
   });
 const MESSAGE_COMMANDS = ['packet', 'ping', 'traceroute', 'nc', 'dig', 'curl', 'browser'] as const;
 const COMMAND_PROTOCOL: Record<(typeof MESSAGE_COMMANDS)[number], z.infer<typeof packetSchema>['protocol']> = { packet: 'icmp', ping: 'icmp', traceroute: 'icmp', nc: 'tcp', dig: 'udp', curl: 'tcp', browser: 'tcp' };
+const USER_AND_PASSWORD = /^[^:]+:.+$/;
 const curlOptionsSchema = z.strictObject({
   include: z.literal(true).optional(),
+  user: z.string().regex(USER_AND_PASSWORD, 'the value of -u is a user and a password, user:password').optional(),
   request: z.literal('PUT').optional(),
   data: z.string().min(1).optional(),
   connectTimeout: z.number().int().positive().optional(),

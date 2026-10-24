@@ -314,6 +314,8 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `Llega por ${word(known, 'udp', 'UDP')} al ${word(known, 'port', 'puerto')} ${reason.port}, pero ningún programa escucha ahí: ${deviceName(net, reason.deviceId)} avisa con {{port-unreachable}}.`;
     case 'web-site-chosen':
     case 'web-default-site':
+    case 'web-needs-login':
+    case 'web-forbidden':
     case 'web-answered':
       return describeWebReason(reason, net, known);
     case 'reply-stateful':

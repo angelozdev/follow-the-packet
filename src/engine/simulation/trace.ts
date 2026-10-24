@@ -76,6 +76,8 @@ export type Reason =
   | { code: 'host-udp-closed'; deviceId: string; port: number }
   | { code: 'web-site-chosen'; deviceId: string; name: string }
   | { code: 'web-default-site'; deviceId: string; name: string }
+  | { code: 'web-needs-login'; deviceId: string; path: string }
+  | { code: 'web-forbidden'; deviceId: string; path: string; user: string }
   | { code: 'web-answered'; deviceId: string; statusCode: number }
   | { code: 'reply-stateful'; deviceId: string };
 

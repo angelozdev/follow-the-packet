@@ -307,6 +307,18 @@ export const TERMS = {
   },
   'status-404': { name: '404 Not Found', definition: 'No hay un recurso en esa URL, o el servidor no quiere decir si existe.' },
   'status-400': { name: '400 Bad Request', definition: 'El servidor rechaza la petición porque está mal formada o trae datos que no acepta.' },
+  authentication: { name: 'autenticación', definition: 'Comprobar quién hace una petición, por ejemplo con una contraseña o una clave.' },
+  authorization: { name: 'autorización', definition: 'Decidir qué puede hacer quien ya se identificó, según sus permisos. Va después de la autenticación.' },
+  'authorization-header': {
+    name: 'cabecera Authorization',
+    definition: 'La cabecera HTTP con que el cliente manda cómo se identifica. Pese al nombre, sirve para autenticar, no para autorizar.',
+  },
+  'status-401': { name: '401 Unauthorized', definition: 'Falta una autenticación válida: el servidor no sabe quién eres. Pese al nombre, habla de autenticación.' },
+  'status-403': {
+    name: '403 Forbidden',
+    definition: 'El servidor entendió la petición y se niega: no hay permiso o una restricción lo impide. Repetirla igual no cambia nada.',
+  },
+  cookie: { name: 'cookie', definition: 'Un dato que el servidor manda con Set-Cookie y que el navegador devuelve en las peticiones siguientes a ese sitio.' },
 } as const satisfies Record<string, Term>;
 
 export type TermId = keyof typeof TERMS;

@@ -15,7 +15,7 @@ export interface UrlParts {
   query?: string;
 }
 
-const STATUS_TERM: Readonly<Partial<Record<number, TermId>>> = { 200: 'status-200', 400: 'status-400', 404: 'status-404' };
+const STATUS_TERM: Readonly<Partial<Record<number, TermId>>> = { 200: 'status-200', 400: 'status-400', 401: 'status-401', 403: 'status-403', 404: 'status-404' };
 
 const STATUS_CLASS: Readonly<Partial<Record<number, (known: Known) => TermText>>> = {
   2: () => 'Clase 2xx: la petición se cumplió.',

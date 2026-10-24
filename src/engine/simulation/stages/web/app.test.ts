@@ -208,4 +208,16 @@ describe('the pages that ask for a role', () => {
     expect(traces[0].app?.response?.headers['WWW-Authenticate']).toBe('Basic realm="admin"');
     expect(traces[1].app?.request.headers.Authorization).toBe(basicAuthorizationHeader('marta:pw-marta').Authorization);
   });
+
+  it('a 401 and a 403 each say why in a step between the site chosen and the answer, and a 200 has no such step', () => {
+    const [noCredential, marta, lucia] = [undefined, 'marta:pw-marta', 'lucia:pw-lucia'].map((credential) => appSteps(simulate(net, askAdmin(credential))).map(({ verdict, reason }) => [verdict, reason]));
+    expect(noCredential).toEqual([
+      ['info', { code: 'web-default-site', deviceId: LUCIA, name: floor1.lucia }],
+      ['info', { code: 'web-needs-login', deviceId: LUCIA, path: '/admin' }],
+      ['pass', { code: 'web-answered', deviceId: LUCIA, statusCode: 401 }],
+    ]);
+    expect(marta[1]).toEqual(['info', { code: 'web-forbidden', deviceId: LUCIA, path: '/admin', user: 'marta' }]);
+    expect(marta[2]).toEqual(['pass', { code: 'web-answered', deviceId: LUCIA, statusCode: 403 }]);
+    expect(lucia.map(([, reason]) => (reason as { code: string }).code)).toEqual(['web-default-site', 'web-answered']);
+  });
 });

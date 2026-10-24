@@ -15,6 +15,9 @@ const WITH_HOST_AND_RESPONSE: ReadonlySet<TermId> = new Set(['host-header', 'htt
 const chosen: WebReason = { code: 'web-site-chosen', deviceId: SERVER, name: 'blog.lucia.example' };
 const fallback: WebReason = { code: 'web-default-site', deviceId: SERVER, name: '198.51.100.50' };
 const answered: WebReason = { code: 'web-answered', deviceId: SERVER, statusCode: 404 };
+const needsLogin: WebReason = { code: 'web-needs-login', deviceId: SERVER, path: '/admin' };
+const forbidden: WebReason = { code: 'web-forbidden', deviceId: SERVER, path: '/admin', user: 'marta' };
+const WITH_AUTH: ReadonlySet<TermId> = new Set(['authentication', 'authorization']);
 
 describe('the reasons of a web service', () => {
   it('choosing a site names the host of the request and the site that answers', () => {
@@ -42,8 +45,17 @@ describe('the reasons of a web service', () => {
     expect(describeWebReason(answered, NET, WITH_HOST_AND_RESPONSE)).toBe('[[servidor-internet]] contesta con una {{http-response|respuesta}} de código 404.');
   });
 
+  it('the reason of the 401 speaks of who asks and the one of the 403 of what is allowed', () => {
+    expect(describeWebReason(needsLogin, NET, NOTHING_KNOWN)).toBe('[[servidor-internet]] no sabe quién pide /admin: la petición no trae una credencial válida, y sin ella no puede hacer la autenticación.');
+    expect(describeWebReason(forbidden, NET, NOTHING_KNOWN)).toBe('[[servidor-internet]] sabe quién pide /admin: es marta. Pero la autorización de /admin no deja entrar a marta: no tiene permiso.');
+    expect(describeWebReason(needsLogin, NET, WITH_AUTH)).toContain('la {{authentication|autenticación}}');
+    expect(describeWebReason(forbidden, NET, WITH_AUTH)).toContain('la {{authorization|autorización}} de /admin');
+    expect(describeWebReason(needsLogin, NET, EVERY_TERM)).not.toMatch(/permiso|permite/);
+    expect(describeWebReason(forbidden, NET, EVERY_TERM)).not.toMatch(/contraseña|credencial|temporal/);
+  });
+
   it('describeReason gives the sentence of each web reason and ties no reply to a rule', () => {
-    for (const reason of [chosen, fallback, answered]) {
+    for (const reason of [chosen, fallback, answered, needsLogin, forbidden]) {
       const text = describeReason(reason, NET, WITH_HOST_AND_RESPONSE);
       expect(text).toBe(describeWebReason(reason, NET, WITH_HOST_AND_RESPONSE));
       expect(text).not.toMatch(/stateful|firewall|bloquea|filtra/i);
@@ -54,6 +66,12 @@ describe('the reasons of a web service', () => {
 describe('the reasons of block 1 of chapter 3', () => {
   const stopped: Reason = { code: 'process-stopped', deviceId: SERVER, port: 3001 };
   const unknownTags = (reason: Reason, known: ReadonlySet<TermId>) => termsIn(describeReason(reason, NET, known)).filter((id) => !isTermId(id) || !known.has(id));
+
+  it('describes the reasons of the 401 and the 403 with registered terms only', () => {
+    const missingOne = [...EVERY_TERM].map((missing) => new Set([...EVERY_TERM].filter((term) => term !== missing)));
+    const wrong = [needsLogin, forbidden].flatMap((reason) => [EVERY_TERM, NOTHING_KNOWN, ...missingOne].flatMap((known) => unknownTags(reason, known).map((id) => `${reason.code} tags ${id}`)));
+    expect(wrong).toEqual([]);
+  });
 
   it('describes every new reason of the block with registered terms only', () => {
     const missingOne = [...EVERY_TERM].map((missing) => new Set([...EVERY_TERM].filter((term) => term !== missing)));

@@ -185,6 +185,15 @@ describe('terminalLine of a curl', () => {
     expect(terminalLine(body('a=1&b=2'), { to: 'shop', message: 'all' })).toContain("-d 'a=1&b=2'");
   });
 
+  it('the line of a curl with -u is written in Linux syntax', () => {
+    const asUser = (user: string): Session => startSession([{ ...WEB, send: { ...WEB.send, message: [{ id: 'all', label: 'curl', command: 'curl', options: { include: true, user } }] } }], WEB.id);
+    expect(terminalLine(asUser('marta:clave-marta'), { to: 'shop', message: 'all' })).toBe('curl -i -u marta:clave-marta http://www.lucia.example/');
+    expect(terminalLine(asUser('marta:clave con espacio'), { to: 'shop', message: 'all' })).toBe("curl -i -u 'marta:clave con espacio' http://www.lucia.example/");
+    expect(terminalLine(asUser("marta:it's"), { to: 'shop', message: 'all' })).toBe("curl -i -u 'marta:it'\\''s' http://www.lucia.example/");
+    const every = startSession([{ ...WEB, send: { ...WEB.send, message: [{ id: 'all', label: 'curl', command: 'curl', options: { connectTimeout: 3, data: 'a', request: 'PUT', user: 'marta:x', include: true } }] } }], WEB.id);
+    expect(terminalLine(every, { to: 'shop', message: 'all' })).toBe('curl -i -u marta:x -X PUT -d a --connect-timeout 3 http://www.lucia.example/');
+  });
+
   it('is null for a curl whose address is a plain address, for the browser and until the address is picked', () => {
     const plain = startSession([{ ...WEB, send: { ...WEB.send, to: [...WEB.send.to, { id: 'plain', address: '192.168.1.11' }] } }], WEB.id);
     expect(terminalLine(plain, { to: 'plain', message: 'curl' })).toBeNull();

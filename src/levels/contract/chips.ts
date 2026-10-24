@@ -1,5 +1,5 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, ipInCidr, isIpv4, isLoopbackIpv4, parseUrl, simulate, tcpServiceAt, traceroute, webServiceAt, type Direction, type HttpMethod, type Network, type PacketSpec, type Rule } from '@/engine';
+import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, basicAuthorizationHeader, ipInCidr, isIpv4, isLoopbackIpv4, parseUrl, simulate, tcpServiceAt, traceroute, webServiceAt, type Direction, type HttpMethod, type Network, type PacketSpec, type Rule } from '@/engine';
 import { peerIdOf, ruleIdFor, urlOfChip, type AddressChip, type CaseSpec, type CurlOptions, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
 import { tablesOf } from './tables';
 
@@ -95,7 +95,7 @@ const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded';
 
 function curlHeadersOf({ command, options = {} }: MessageChip): Record<string, string> | undefined {
   if (command !== 'curl') return undefined;
-  return { 'User-Agent': `curl/${CURL_VERSION}`, Accept: '*/*', ...(options.data !== undefined && { 'Content-Type': FORM_CONTENT_TYPE }) };
+  return { ...(options.user !== undefined && basicAuthorizationHeader(options.user)), 'User-Agent': `curl/${CURL_VERSION}`, Accept: '*/*', ...(options.data !== undefined && { 'Content-Type': FORM_CONTENT_TYPE }) };
 }
 
 function withTtl(packet: PacketSpec | null, { ttl }: MessageChip): PacketSpec | null {
@@ -121,7 +121,7 @@ export function packetFromChips(incident: SendOwner, combination: Combination): 
   }
 }
 
-/** Builds the packet a send puts on the wire: `packetFromChips` and, for a `curl`, the headers the real tool adds to every request (`User-Agent: curl/8.21.0`, an `Accept` for any type, and `Content-Type: application/x-www-form-urlencoded` with `-d`: `lib/http.c` and `src/config2setopts.c` of curl 8.21.0, read on 2026-10-24). The browser of the game sends only Host, so it gets none. */
+/** Builds the packet a send puts on the wire: `packetFromChips` and, for a `curl`, the headers the real tool adds to every request (`User-Agent: curl/8.21.0`, an `Accept` for any type, `Content-Type: application/x-www-form-urlencoded` with `-d`, and with `-u` an `Authorization: Basic` with the base64 of `user:password` before them, sent on the first request: `lib/http.c` and `src/config2setopts.c` of curl 8.21.0, read on 2026-10-24). The browser of the game sends only Host, so it gets none. */
 export function sentPacketFromChips(incident: SendOwner, combination: Combination): PacketSpec | null {
   const packet = packetFromChips(incident, combination);
   const message = pickedChips(incident, combination)?.message;

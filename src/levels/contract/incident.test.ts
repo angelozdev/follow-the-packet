@@ -1103,6 +1103,16 @@ describe('curl and the browser as message chips', () => {
     expect(accepts(withMessageChip({ ...curl, options: { include: true, request: 'PUT', data: 'item=tea', connectTimeout: 3 } }))).toBe(true);
   });
 
+  it('accepts a curl with -u and a user and a password', () => {
+    expect(accepts(withMessageChip({ ...curl, options: { include: true, user: 'marta:clave-marta' } }))).toBe(true);
+    expect(accepts(withMessageChip({ ...curl, options: { user: 'marta:a:b' } }))).toBe(true);
+  });
+
+  it('rejects a -u whose value is not user and password', () => {
+    for (const user of ['marta', '', ':', ':clave', 'marta:']) expect(accepts(withMessageChip({ ...curl, options: { user } })), JSON.stringify(user)).toBe(false);
+    expect(accepts(withMessageChip({ id: 'extra', label: 'Navegador', command: 'browser', options: { user: 'marta:clave-marta' } }))).toBe(false);
+  });
+
   it('rejects an option curl does not have, an option on another command and a curl or browser with a port, a TTL or an ICMP type', () => {
     const rejected: Record<string, unknown>[] = [
       { ...curl, options: { verbose: true } },
@@ -1230,7 +1240,7 @@ describe('what a send task expects of the page', () => {
   });
 
   it('accepts an expected status code and rejects one that no app of the game answers', () => {
-    for (const statusCode of [200, 400, 404]) expect(accepts(expecting({ statusCode })), String(statusCode)).toBe(true);
+    for (const statusCode of [200, 400, 401, 403, 404]) expect(accepts(expecting({ statusCode })), String(statusCode)).toBe(true);
     expect(accepts(expecting({ statusCode: undefined }))).toBe(true);
     for (const statusCode of [201, 418, 500, 4.5, '404']) expect(accepts(expecting({ statusCode })), String(statusCode)).toBe(false);
   });
