@@ -98,7 +98,7 @@ const PARTS = {
   queries: ['id=7', 'id=8'],
 } as const;
 
-/** The eight address chips of 03-01: every combination of the port (3000 or 80), the path (/pedidos or /pedido) and the query string (id=7 or id=8), after the scheme http and the name localhost. The strip needs the whole product, because the url the player writes is the chip whose parts it picks. */
+/** The eight address chips of 03-01: every combination of the port (3000 or 80), the path (/pedidos or /pedido) and the query string (id=7 or id=8), after the scheme http and the name localhost. */
 export const URLS_BY_PARTS: AddressChip[] = PARTS.ports.flatMap((port) => PARTS.paths.flatMap((path) => PARTS.queries.map((query) => urlByParts(port, path, query))));
 
 export const ADDRESS = {

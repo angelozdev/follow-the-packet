@@ -19,7 +19,7 @@ function bodyLines(body: string): string[] {
   return body === '' ? [] : body.split('\n');
 }
 
-/** Returns the lines `curl` 8.21.0 prints for a request with the game's options. A plain `curl` prints only the body; with `-i` it prints before it the status line and the headers as the server sent them, and the blank line that ends them. A refused connection prints, on stderr, `curl: (7) Failed to connect to <host>:<port> after <N> ms: Could not connect to server`; `<N>` is the round trip of the game, so it is an example. A wait that ran out prints nothing: the code has two texts for it and which one comes out was not confirmed. */
+/** Returns the lines `curl` 8.21.0 prints for a request with the game's options. A plain `curl` prints only the body; with `-i` it prints before it the status line and the headers as the server sent them, and the blank line that ends them. A refused connection prints, on stderr, `curl: (7) Failed to connect to <host>:<port> after <N> ms: Could not connect to server`; `<N>` is the round trip of the game, so it is an example. A wait that ran out prints nothing. */
 export function curlOutput(result: CurlResult): string[] {
   switch (result.kind) {
     case 'response': {

@@ -49,7 +49,7 @@ export function responseField(session: Session, run: PacketRun): InspectionField
   return [{ label: WEB_BOX_TEXT.response, lines: linesOf(response), notes: [WEB_BOX_TEXT.notes.response] }];
 }
 
-/** Returns the field that says a `curl` waited and gave up with code 28, once `curl` is known: the source of `curl` 8.21.0 has two texts for that error and which one comes out was not confirmed, so the card of the terminal prints no line for it. The seconds are those of its `--connect-timeout`, when it has one. */
+/** Returns the field that says a `curl` waited and gave up with code 28, once `curl` is known. The seconds are those of its `--connect-timeout`, when it has one. */
 export function curlWaitField(session: Session, run: PacketRun): InspectionField[] {
   const message = messageOf(session, run);
   if (message?.command !== 'curl' || run.trace.outcome !== 'timeout' || !session.known.has('curl')) return [];

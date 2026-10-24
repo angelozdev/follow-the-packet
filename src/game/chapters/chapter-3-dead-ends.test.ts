@@ -41,7 +41,7 @@ function reachedWithin(start: Session, moves: SessionAction[], depth: number): R
   return levels.flat();
 }
 
-/** Returns the moves a player can make in the incident, how many sessions up to `depth` of them reach, and the dead ends among them: the sessions from which playing the solution leaves a task open, written as the moves that led there and the tasks left open. Only the first move into a dead end is listed, because everything reached from it is stuck too. */
+/** Returns the moves a player can make in the incident, how many sessions up to `depth` of them reach, and the dead ends among them: the sessions from which playing the solution leaves a task open, written as the moves that led there and the tasks left open. Only the first move into a dead end is listed. */
 function explore(start: Session, depth: number): { moves: SessionAction[]; states: number; deadEnds: string[] } {
   const { incident } = start;
   if (incident.mechanic !== 'send') return { moves: [], states: 0, deadEnds: [] };
