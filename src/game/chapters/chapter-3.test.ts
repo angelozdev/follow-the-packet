@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, describeReason, termsIn, toPlainText } from '@/copy';
+import { SITES_TEXT, TERMS, describeReason, termsIn, toPlainText } from '@/copy';
 import { applyAction, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
@@ -12,6 +12,7 @@ import { failingTaskIds } from '@/game/tasks';
 import { toolOutput } from '@/game/view/cards/terminal/output-card';
 import { pieceCard } from '@/game/view/cards/piece-card';
 import { browserView } from '@/game/view/cards/web/browser-card';
+import { sitesCard } from '@/game/view/cards/web/sites-card';
 import { stripAddress, urlStrip, type UrlPartName } from '@/game/view/cards/web/url-strip';
 import { inspect } from '@/game/view/inspection';
 import { PIECE_ID } from '@/game/view/piece-id';
@@ -634,6 +635,13 @@ describe('03-04, one server and many sites', () => {
     expect(stillOpen(done)).toEqual([]);
     expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
     expect(stillOpen(asking(asking(asking(start, SITE_URL.www.id), SITE_URL.blog.id), SITE_URL.ip.id))).toEqual([TASK.blogByName]);
+  });
+
+  it('03-04: the card of the sites says in words what each site serves, the shop at the start and the blog once it is added', () => {
+    const rowsOf = (session: Session) => sitesCard(session, PIECE_ID.actor(SERVER.fresh.id))?.rows.map(({ cells }) => cells.map(({ text }) => plain(text)));
+    const shopRow = [SITES_TEXT.byDefault(HOSTNAME.www), SITE_BODY.shop];
+    expect(rowsOf(start)).toEqual([shopRow]);
+    expect(rowsOf(withBlog)).toEqual([shopRow, [HOSTNAME.blog, SITE_BODY.blog]]);
   });
 
   it('03-04: a site with the wrong name does not give blog its page', () => {
