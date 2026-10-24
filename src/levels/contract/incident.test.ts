@@ -86,12 +86,18 @@ const BROKEN: [string, Record<string, unknown>][] = [
   ['a term introduced twice', { introduces: ['ping', 'ping'] }],
   ['an id that does not match chapter and order', { id: '09-04' }],
   ['one hint only', { hints: ['Solo una.'] }],
+  ['a lesson that is an empty string', { lesson: '' }],
+  ['a concept note that is an empty string', { concept: '' }],
   ['two chips with the same id', { chips: { what: [{ id: 'echo', label: 'Eco', what: { kind: 'icmp', icmpType: 8 } }], from: [{ id: 'one', label: 'uno', peer: { kind: 'sg', sgId: 'sg-servidor1' } }, { id: 'one', label: 'otro', peer: { kind: 'cidr', cidr: '0.0.0.0/0' } }] } }],
 ];
 
 describe('incident contract', () => {
   it('accepts a complete incident', () => {
     expect(incidentSchema.safeParse(VALID).success).toBe(true);
+  });
+
+  it('accepts an incident that gives no lesson and no concept note', () => {
+    expect(incidentSchema.safeParse({ ...VALID, lesson: undefined, concept: undefined }).success).toBe(true);
   });
 
   it.each(BROKEN)('rejects %s', (_name, patch) => {

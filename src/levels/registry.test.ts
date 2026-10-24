@@ -49,6 +49,12 @@ function undrawnTracerouteRouters(incident: Incident, scenes: Scene[]): string[]
   return lacking.filter((id, index) => lacking.indexOf(id) === index);
 }
 
+/** Returns the citations (the lesson and the concept note) an incident lacks although its chapter names course modules; none for a chapter that names none. */
+function missingCitations(incident: Incident): ('lesson' | 'concept')[] {
+  const namesModules = (CHAPTERS.find((chapter) => chapter.number === incident.chapter)?.modules.length ?? 0) > 0;
+  return namesModules ? (['lesson', 'concept'] as const).filter((citation) => incident[citation] === undefined) : [];
+}
+
 it('registers the prototype incidents in game order', () => {
   expect(INCIDENTS.map((i) => i.id)).toEqual(PROTOTYPE_IDS);
 });
@@ -62,9 +68,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(CHAPTERS.map((c) => c.number)).toContain(incident.chapter);
   });
 
-  it('cites a lesson of syllabus.md and a concept note that exists', () => {
-    expect(lessons.has(incident.lesson)).toBe(true);
-    expect(existsSync(resolve(REPO_ROOT, incident.concept))).toBe(true);
+  it('cites a lesson of syllabus.md and a concept note that exists when its chapter names modules', () => {
+    expect(missingCitations(incident)).toEqual([]);
+    if (incident.lesson !== undefined) expect(lessons.has(incident.lesson)).toBe(true);
+    if (incident.concept !== undefined) expect(existsSync(resolve(REPO_ROOT, incident.concept))).toBe(true);
   });
 
   it('has two hints and exactly one correct explanation, in every case of a diagnose', () => {
@@ -122,6 +129,14 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     const continuesTheGame = opensChapter && incident.base === undefined && (incident.changes ?? []).length > 0 && INCIDENTS.some((i) => i.chapter < incident.chapter);
     expect(incident.base !== undefined || continuesTheGame).toBe(opensChapter);
   });
+});
+
+it('an incident of a chapter that names no modules may leave out its lesson and its concept note', () => {
+  const bare = { ...sendIncident(), lesson: undefined, concept: undefined };
+  expect(CHAPTERS.find((chapter) => chapter.number === 3)?.modules).toEqual([]);
+  expect(incidentSchema.safeParse({ ...bare, id: '03-01', chapter: 3, order: 1 }).success).toBe(true);
+  expect(missingCitations({ ...bare, chapter: 3 })).toEqual([]);
+  expect(missingCitations({ ...bare, chapter: 1 })).toEqual(['lesson', 'concept']);
 });
 
 describe('expected ids', () => {
