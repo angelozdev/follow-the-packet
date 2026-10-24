@@ -5,13 +5,16 @@ import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/l
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, DEVICE, IP, MESSAGE, NAME, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, TASK, URLS_BY_PARTS } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, DEVICE, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, TASK, URLS_BY_PARTS } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
 import { toolOutput } from '@/game/view/cards/terminal/output-card';
+import { pieceCard } from '@/game/view/cards/piece-card';
+import { browserView } from '@/game/view/cards/web/browser-card';
 import { stripAddress, urlStrip, type UrlPartName } from '@/game/view/cards/web/url-strip';
 import { inspect } from '@/game/view/inspection';
+import { PIECE_ID } from '@/game/view/piece-id';
 import { pieceViews } from '@/game/view/pieces';
 
 const CHAPTER = 3;
@@ -25,6 +28,10 @@ const sorted = (values: string[]): string[] => [...values].sort();
 /** Returns the sentences of a text that say that idempotent means the same answer: one that names the term, a same or equal answer or result, and no negation. */
 function sentencesSayingIdempotentIsTheSameAnswer(text: string): string[] {
   return text.split(/(?<=\.)\s+/).filter((sentence) => /idempotent/i.test(sentence) && /\b(misma|mismo|igual)\b/i.test(sentence) && /respuesta|resultado/i.test(sentence) && !/\bno\b/i.test(sentence));
+}
+/** Returns the sentences of a text that say that a stopped app and a firewall are the same thing: one that names a firewall and a stopped program or a refusal, says they are the same, and has no negation. */
+function sentencesSayingAStoppedAppIsAFirewall(text: string): string[] {
+  return text.split(/(?<=\.)\s+/).filter((sentence) => /firewall/i.test(sentence) && /proceso|app|rechaz|puerto cerrado/i.test(sentence) && /\b(lo mismo|es igual|son iguales|igual que|equivale)\b/i.test(sentence) && !/\bno\b/i.test(sentence));
 }
 const plain = toPlainText;
 const builtOfChapter3 = (): Incident[] => INCIDENTS.filter((incident) => incident.chapter === CHAPTER);
@@ -40,8 +47,8 @@ function laterNameLeaks(incidents: Incident[]): string[] {
   });
 }
 
-/** Sends the curl of laptop-lucia to this address chip. */
-const sending = (session: Session, toId: string, messageId: string = MESSAGE.curl.id): Session => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.lucia.id, toId, messageId });
+/** Sends a message to an address chip: the curl from the terminal of laptop-lucia unless it says another message or another origin. */
+const sending = (session: Session, toId: string, messageId: string = MESSAGE.curl.id, fromId: string = ORIGIN.lucia.id): Session => sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
 
 /** Returns the ids of the tasks of a guided incident that do not hold yet. */
 const stillOpen = ({ incident, runs, history, answers }: Session): string[] => (isGuided(incident) ? failingTaskIds(incident.tasks, runs, history, answers) : []);
@@ -55,14 +62,21 @@ const lastBox = (session: Session): Record<string, string[]> => {
   return Object.fromEntries(fields.map(({ label, lines }) => [plain(label), lines.map(plain)]));
 };
 
-/** Returns the lines the output card prints for the curl of laptop-lucia to this address. */
-const printedFor = (session: Session, toId: string, messageId: string = MESSAGE.curl.id): string[] =>
-  (toolOutput(session, { from: ORIGIN.lucia.id, to: toId, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
+/** Returns the lines the output card prints for the curl of laptop-lucia (or of another origin) to this address. */
+const printedFor = (session: Session, toId: string, messageId: string = MESSAGE.curl.id, fromId: string = ORIGIN.lucia.id): string[] =>
+  (toolOutput(session, { from: fromId, to: toId, message: messageId })?.segments ?? []).flatMap((segment) => (segment.kind === 'line' ? [segment.text] : segment.lines));
 
 /** Expects the map to draw laptop-lucia with its firewall and no other piece, and the incident to list just that. */
 function expectOnlyLuciaDrawn(session: Session): void {
   expect(pieceViews(session).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort()).toEqual([`device:${DEVICE.lucia.name}`, `firewall:firewall ${DEVICE.lucia.name}`]);
   expect(session.incident.shown).toEqual(PAGE_PIECES);
+}
+
+/** Expects every text of an incident to use only terms known at it, no name of a later subchapter and no call of an HTTP message a packet. */
+function expectOnlyTermsItKnows(incident: Incident): void {
+  expect(unknownTerms(incidentTexts(incident), knownTerms(INCIDENTS, incident.id))).toEqual([]);
+  expect(laterNameLeaks([incident])).toEqual([]);
+  expect(incidentTexts(incident).map(plain).filter((text) => CALLS_A_MESSAGE_A_PACKET.test(text))).toEqual([]);
 }
 
 /** Returns an incident of chapter 3 at this order whose report is the given text and that introduces nothing. */
@@ -335,9 +349,7 @@ describe('03-02, ask and answer', () => {
 
   it('03-02: introduces http request, http response, http method and idempotent, and uses no later term', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['http-request', 'http-response', 'http-method', 'idempotent']));
-    expect(unknownTerms(incidentTexts(incident), knownTerms(INCIDENTS, ASK_AND_ANSWER))).toEqual([]);
-    expect(laterNameLeaks([incident])).toEqual([]);
-    expect(incidentTexts(incident).map(plain).filter((text) => CALLS_A_MESSAGE_A_PACKET.test(text))).toEqual([]);
+    expectOnlyTermsItKnows(incident);
   });
 
   it('03-02: no text says idempotent means the same answer', () => {
@@ -368,5 +380,146 @@ describe('03-02, ask and answer', () => {
     expect(takeaway).toContain('Idempotente habla del efecto, no de la respuesta: un segundo DELETE puede contestar 404 y dejar el servidor como lo dejó el primero.');
     expect(takeaway).toContain('Tampoco quiere decir seguro: un PUT cambia el pedido y es idempotente.');
     expect(takeaway).toContain('un cliente no debe repetir solo una petición que no es idempotente, como un POST.');
+  });
+});
+
+describe('03-03, who answers', () => {
+  const WHO_ANSWERS = '03-03';
+  const start = startSession(INCIDENTS, WHO_ANSWERS);
+  const { incident } = start;
+  const BROWSER_AT_ORDERS = { from: ORIGIN.you.id, to: LUCIA_URL.orders.id, message: MESSAGE.browser.id };
+  const browsing = (session: Session) => sending(session, LUCIA_URL.orders.id, MESSAGE.browser.id, ORIGIN.you.id);
+  const waiting = (session: Session) => sending(session, LUCIA_URL.orders.id, MESSAGE.curlTimeout.id, ORIGIN.you.id);
+  const askingReports = (session: Session, fromId: string = ORIGIN.lucia.id) => sending(session, LUCIA_URL.reports.id, MESSAGE.curl.id, fromId);
+  const opened = sessionReducer(start, OPEN_APP_TO_FLOOR);
+  const luciaOf = (world: Network) => world.devices.find((device) => device.id === DEVICE.lucia.id)!;
+  const runOf = (session: Session) => session.sent.at(-1)!;
+  const outcomeOf = (session: Session) => runOf(session).trace.outcome;
+  const stepCodes = (session: Session) => runOf(session).trace.steps.map((step) => step.reason.code);
+  const inboundWhats = (session: Session) => session.world.firewalls.find((firewall) => firewall.id === LUCIA_RULES.firewallId)?.inbound.map(({ what }) => what);
+  const everythingRead = [...incidentTexts(incident).map(plain), ...(isGuided(incident) ? incident.explanation.map(({ feedback }) => plain(feedback)) : []), ...incident.introduces.map((term) => TERMS[term].definition)];
+
+  it('03-03 starts from the world 03-02 leaves: laptop-lucia keeps its database, its SSH and its orders pages, and gains the processes of her two apps', () => {
+    const before = luciaOf(worldBeforeChanges(INCIDENTS, WHO_ANSWERS)).host;
+    const after = luciaOf(startWorld(INCIDENTS, WHO_ANSWERS)).host;
+    expect(before.processes).toBeUndefined();
+    expect(after.processes).toEqual([{ id: 'orders-app', name: 'app-pedidos', running: true }, { id: 'reports-app', name: 'app-reportes', running: false }]);
+    expect(after.services.map(({ port, processId }) => [port, processId])).toEqual([[PORT.app, 'orders-app'], [PORT.database, undefined], [PORT.ssh, undefined], [REPORTS_PORT, 'reports-app']]);
+    expect(after.services.slice(0, 3).map((service) => ({ ...service, processId: undefined }))).toEqual(before.services.map((service) => ({ ...service, processId: undefined })));
+    expect(after.services.map(({ web }) => web !== undefined)).toEqual([true, false, false, true]);
+    expect(incident.changes).toEqual([APPS_AS_PROCESSES, REPORTS_CLOSED]);
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, WHO_ANSWERS)).error).toBeUndefined();
+  });
+
+  it('03-03: the browser reaches the page once the rule opens the port 3000 to the office', () => {
+    expect(stillOpen(start)).toEqual([TASK.page, TASK.reportsRefused]);
+    const page = browsing(opened);
+    expect(outcomeOf(page)).toBe('replied');
+    expect(browserView(page, BROWSER_AT_ORDERS)).toEqual({ address: LUCIA_URL.orders.url, shows: { kind: 'page', lines: [ORDER_BODY.seven] } });
+    expect(stillOpen(page)).toEqual([TASK.reportsRefused]);
+    expect(stepCodes(page)).toContain('host-accepts');
+    expect(stillOpen(askingReports(page))).toEqual([]);
+    expect(starsWhenSubmitted(askingReports(page))).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('03-03: without the rule the request dies in the firewall, the browser gets nothing and curl times out', () => {
+    const silent = browsing(start);
+    expect(outcomeOf(silent)).toBe('timeout');
+    expect(runOf(silent).by).toEqual([LUCIA_RULES.firewallId]);
+    expect(stepCodes(silent)).toContain('firewall-in-drop');
+    expect(browserView(silent, BROWSER_AT_ORDERS)?.shows).toEqual({ kind: 'error', text: 'No se pudo conectar' });
+    expect(lastBox(silent)['Dónde y por qué se detuvo']?.join(' ')).toContain(`Se queda en el firewall de ${DEVICE.lucia.name}`);
+    const curl = waiting(start);
+    expect(outcomeOf(curl)).toBe('timeout');
+    expect(printedFor(curl, LUCIA_URL.orders.id, MESSAGE.curlTimeout.id)).toEqual([]);
+    expect(lastBox(curl)['curl']).toEqual(['curl esperó 3 segundos y se rindió (código 28).']);
+    expect(stillOpen(silent)).toEqual([TASK.page, TASK.reportsRefused]);
+  });
+
+  it('03-03: the curl to the stopped app is refused by laptop-lucia and prints no status code', () => {
+    const refused = askingReports(start);
+    expect(outcomeOf(refused)).toBe('refused');
+    expect(runOf(refused).by).toEqual([DEVICE.lucia.id]);
+    expect(stepCodes(refused)).toContain('process-stopped');
+    expect(runOf(refused).trace.app?.response).toBeUndefined();
+    expect(printedFor(refused, LUCIA_URL.reports.id)).toEqual([`curl: (7) Failed to connect to ${IP.lucia}:${REPORTS_PORT} after 0 ms: Could not connect to server`]);
+    expect(Object.keys(lastBox(refused)).filter((label) => /Petición|Respuesta/.test(label))).toEqual([]);
+    expect(lastBox(refused)['Dónde y por qué se detuvo']?.join(' ')).toBe(`Llega, pero el proceso que escuchaba en el puerto ${REPORTS_PORT} terminó: ${DEVICE.lucia.name} lo rechaza.`);
+    expect(stillOpen(refused)).toEqual([TASK.page]);
+  });
+
+  it('03-03: a refusal, a silence and a page end in three different results', () => {
+    const results = [askingReports(start), browsing(start), browsing(opened)].map((session) => ({ outcome: outcomeOf(session), by: runOf(session).by, result: lastBox(session)['Resultado'] }));
+    expect(results.map(({ outcome }) => outcome)).toEqual(['refused', 'timeout', 'replied']);
+    expect(new Set(results.map(({ result }) => result?.join(' '))).size).toBe(3);
+    expect(results.map(({ by }) => by)).toEqual([[DEVICE.lucia.id], [LUCIA_RULES.firewallId], [DEVICE.lucia.id]]);
+    expect([printedFor(askingReports(start), LUCIA_URL.reports.id).length, printedFor(waiting(start), LUCIA_URL.orders.id, MESSAGE.curlTimeout.id).length, printedFor(sending(opened, LUCIA_URL.orders.id, MESSAGE.curl.id, ORIGIN.you.id), LUCIA_URL.orders.id, MESSAGE.curl.id, ORIGIN.you.id).length]).toEqual([1, 0, 1]);
+  });
+
+  it('03-03: a request from tu-laptop to the stopped app dies in the firewall: the refusal is only seen from laptop-lucia, where the firewall is not crossed', () => {
+    expect(outcomeOf(askingReports(start, ORIGIN.you.id))).toBe('timeout');
+    expect(outcomeOf(askingReports(opened, ORIGIN.you.id))).toBe('timeout');
+    expect(outcomeOf(askingReports(opened))).toBe('refused');
+  });
+
+  it('03-03: the rule opens the port 3000 and no other', () => {
+    expect(inboundWhats(opened)).toEqual([{ kind: 'tcp', fromPort: 22, toPort: 22 }, { kind: 'tcp', fromPort: PORT.app, toPort: PORT.app }]);
+    const wrongTypes = LUCIA_RULES.what.filter(({ what }) => !(what.kind === 'tcp' && what.fromPort === PORT.app && what.toPort === PORT.app));
+    expect(wrongTypes.map(({ id }) => id)).toEqual(['tcp-3001', 'tcp-1-1023']);
+    for (const { id } of wrongTypes) {
+      const placed = sessionReducer(start, { ...OPEN_APP_TO_FLOOR, whatId: id });
+      expect(inboundWhats(placed)).toHaveLength(2);
+      expect(outcomeOf(browsing(placed)), id).toBe('timeout');
+    }
+    expect(outcomeOf(askingReports(opened, ORIGIN.you.id))).toBe('timeout');
+    expect(outcomeOf(sending(opened, LUCIA_URL.orders.id, MESSAGE.curl.id, ORIGIN.you.id))).toBe('replied');
+  });
+
+  it('03-03: the box of laptop-lucia lists each app with the process it listens from and says the reports one stopped', () => {
+    const services = inspect(start, PIECE_ID.device(DEVICE.lucia.id))?.fields.find(({ label }) => plain(label) === 'Servicios')?.lines.map(plain);
+    expect(services).toEqual(['TCP 3000 · escucha en todas las IPs · proceso app-pedidos', 'TCP 5432 · escucha en todas las IPs', 'TCP 22 · escucha en todas las IPs', 'TCP 3001 · proceso app-reportes · detenido']);
+  });
+
+  it('03-03: the report names laptop-lucia and says who stopped the process', () => {
+    expect(incident.report).toContain(NAME.lucia);
+    expect(plain(incident.report)).toContain('Lucía cerró la terminal donde corría su app de reportes, así que ese proceso terminó.');
+    expect(changedNames(worldBeforeChanges(INCIDENTS, WHO_ANSWERS), startWorld(INCIDENTS, WHO_ANSWERS))).toEqual([DEVICE.lucia.name]);
+  });
+
+  it('03-03: no text says that a stopped app and a firewall are the same', () => {
+    expect(everythingRead.flatMap(sentencesSayingAStoppedAppIsAFirewall)).toEqual([]);
+    expect(['Una app cerrada y un firewall son lo mismo.', 'El firewall rechaza igual que un proceso que terminó.', 'Un rechazo es igual que el firewall.'].filter((text) => sentencesSayingAStoppedAppIsAFirewall(text).length === 0)).toEqual([]);
+    expect(['Un rechazo no es lo mismo que el silencio de un firewall.', 'El firewall descarta y el proceso rechaza.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingAStoppedAppIsAFirewall(text).length === 0));
+  });
+
+  it('03-03: the takeaway says that a rule names tcp and a port, not http, and that a process is not a port', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('Una regla del firewall nombra TCP y un puerto, no «HTTP»: el puerto no decide el protocolo.');
+    expect(takeaway).toContain('Un proceso no es un puerto: uno puede escuchar en varios.');
+    expect(LUCIA_RULES.what.map(({ label }) => plain(label))).toEqual(['TCP · 3000', 'TCP · 3001', 'TCP · 1-1023']);
+  });
+
+  it('03-03: the right option is the first and the question separates a refusal from a silence and from an error of a web server', () => {
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(0);
+    expect(plain(options[0].text)).toBe(`No había ningún proceso escuchando en el puerto ${REPORTS_PORT}, y TCP rechazó la conexión antes de que hubiera HTTP.`);
+    expect(plain(options[1].text)).toBe('Porque el firewall descartó el paquete.');
+    expect(plain(options[2].text)).toBe('Porque el servidor web devolvió un error.');
+    expect(plain(options[1].feedback)).toContain('que no es lo mismo que el silencio');
+  });
+
+  it('03-03: draws tu-laptop and laptop-lucia', () => {
+    expect(pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort()).toEqual([`device:${DEVICE.you.name}`, `device:${DEVICE.lucia.name}`, `firewall:firewall ${DEVICE.you.name}`, `firewall:firewall ${DEVICE.lucia.name}`].sort());
+    expect(incident.shown).toEqual(LAN_PIECES);
+  });
+
+  it('03-03: tu-laptop and laptop-lucia both open a Terminal and a Navegador tab', () => {
+    for (const id of [DEVICE.you.id, DEVICE.lucia.id]) expect(pieceCard(start, PIECE_ID.device(id))?.tabs.map((tab) => tab.id).slice(0, 2), id).toEqual(['terminal', 'browser']);
+    expect(pieceCard(start, PIECE_ID.device(DEVICE.lucia.id))?.tabs.map((tab) => tab.id)).toEqual(['terminal', 'browser', 'routes']);
+  });
+
+  it('03-03: introduces process, web server and browser, and uses no later term', () => {
+    expect(sorted(incident.introduces)).toEqual(sorted(['process', 'web-server', 'browser']));
+    expectOnlyTermsItKnows(incident);
   });
 });

@@ -454,6 +454,27 @@ describe('applyAction for processes and sites', () => {
     expect(applyAction(stopped, { type: 'setProcess', deviceId: 'lucia-laptop', processId: REPORTS.id, running: true })).toEqual(net);
   });
 
+  it('setServices with processes gives a device its processes together with its services, and without them keeps the ones it has', () => {
+    const net = running();
+    const REPORTS_ONLY: Service[] = [{ ...DATABASE, processId: REPORTS.id }];
+    const swapped = applyAction(net, { type: 'setServices', ownerId: 'lucia-laptop', services: REPORTS_ONLY, processes: [REPORTS] });
+    expect(deviceOf(swapped, 'lucia-laptop')?.host).toEqual({ ignoreIcmpEcho: false, services: REPORTS_ONLY, processes: [REPORTS] });
+    expect(validate(swapped)).toEqual([]);
+    const born = applyAction(officeNet(), { type: 'setServices', ownerId: 'lucia-laptop', services: REPORTS_ONLY, processes: [REPORTS] });
+    expect(deviceOf(born, 'lucia-laptop')?.host.processes).toEqual([REPORTS]);
+    expect(validate(born)).toEqual([]);
+    expect(deviceOf(applyAction(net, { type: 'setServices', ownerId: 'lucia-laptop', services: [APP] }), 'lucia-laptop')?.host.processes).toEqual([ORDERS, REPORTS]);
+    expect(swapped.devices.filter((device) => device.id !== 'lucia-laptop')).toEqual(net.devices.filter((device) => device.id !== 'lucia-laptop'));
+  });
+
+  it('setServices with processes on a server of the internet sets its services and gives it no process', () => {
+    const net = officeTwoFloorsNet();
+    const server = applyAction(net, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [APP], processes: [ORDERS] });
+    expect(server).toEqual(applyAction(net, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [APP] }));
+    expect(applyAction(net, { type: 'setServices', ownerId: GHOST, services: [APP], processes: [ORDERS] })).toBe(net);
+    expect(networkActionSchema.safeParse({ type: 'setServices', ownerId: 'lucia-laptop', services: [APP], processes: [{ id: '', name: 'x', running: true }] }).success).toBe(false);
+  });
+
   it('setProcess on a device or a process the network does not have returns the same network', () => {
     const net = running();
     expect(applyAction(net, { type: 'setProcess', deviceId: GHOST, processId: REPORTS.id, running: false })).toBe(net);

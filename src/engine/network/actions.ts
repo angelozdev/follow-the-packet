@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, hostLineSchema, ipSchema, lanSchema, realPort, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
+import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, hostLineSchema, ipSchema, lanSchema, processSchema, realPort, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
 import { recordProblem, sameName, zoneHeldBy } from '@/engine/dns/records';
 import { siteSchema, webServiceSchema, type Site, type WebService } from '@/engine/web/schema';
@@ -19,7 +19,7 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addLan'), lan: lanSchema }),
   z.object({ type: z.literal('addDevice'), device: deviceSchema }),
   z.object({ type: z.literal('addRouter'), router: routerSchema }),
-  z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema) }),
+  z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema), processes: z.array(processSchema).optional() }),
   z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.omit({ web: true, processId: true }).shape }),
   z.object({ type: z.literal('setProcess'), deviceId: nonEmpty, processId: nonEmpty, running: z.boolean() }),
   z.object({ type: z.literal('setWebService'), ownerId: nonEmpty, port: realPort, web: webServiceSchema }),
@@ -153,6 +153,11 @@ function withServices(net: Network, ownerId: string, services: Service[]): Netwo
   return { ...net, actors: net.actors.map((a) => (isServer(a) && a.id === ownerId ? { ...a, services } : a)) };
 }
 
+/** Replaces the processes of a device with the ones an action gives, when it gives any; a server of the internet has none, so the network stays as it is. */
+function withProcesses(net: Network, { ownerId, processes }: Extract<NetworkAction, { type: 'setServices' }>): Network {
+  return processes === undefined ? net : changeDevice(net, ownerId, (d) => ({ ...d, host: { ...d.host, processes } }));
+}
+
 /** Sets whether a process of a device runs, unless the network has no such device or the device has no such process. */
 function withProcess(net: Network, { deviceId, processId, running }: Extract<NetworkAction, { type: 'setProcess' }>): Network {
   const processes = net.devices.find((d) => d.id === deviceId)?.host.processes;
@@ -209,7 +214,7 @@ function withLan(net: Network, lan: Lan): Network {
   return { ...net, lans: [...(net.lans ?? lansOf(net)), lan] };
 }
 
-/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network; so does an `addRoute` for a destination the router already has a route to, a `removeRoute` for one it has none to, a `setProcess` for a process the device does not have, a `setWebService` for a port with no TCP service and an `addSite` that `siteProblem` refuses. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
+/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network; so does an `addRoute` for a destination the router already has a route to, a `removeRoute` for one it has none to, a `setProcess` for a process the device does not have, a `setServices` for an owner that is neither (its `processes` go to a device; a server of the internet keeps none), a `setWebService` for a port with no TCP service and an `addSite` that `siteProblem` refuses. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
 export function applyAction(net: Network, action: NetworkAction): Network {
   switch (action.type) {
     case 'addRule':
@@ -245,7 +250,7 @@ export function applyAction(net: Network, action: NetworkAction): Network {
     case 'addRouter':
       return { ...net, routers: [...(net.routers ?? []), action.router] };
     case 'setServices':
-      return servicesOf(net, action.ownerId) ? withServices(net, action.ownerId, action.services) : net;
+      return servicesOf(net, action.ownerId) ? withProcesses(withServices(net, action.ownerId, action.services), action) : net;
     case 'setListenAddress':
       return withListenAddress(net, action);
     case 'setProcess':

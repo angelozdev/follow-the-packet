@@ -209,7 +209,7 @@ const LOW_PORTS = { first: 1, last: 1023 } as const;
 const EVERY_PORT = { first: 0, last: 65535 } as const;
 
 /** Returns the Type chip of a TCP rule for a range of ports, written as the console writes it: `TCP · 22` for one port and `TCP · 1-1023` for a range. The chips of 02-05 all contain a port the probe battery tries (22, 80, 443, 3306 or 5432), so any of them that opens more than the 22 is found; none is UDP, which is presented in 02-10. */
-function tcpChip(fromPort: number, toPort: number): WhatChip {
+export function tcpChip(fromPort: number, toPort: number): WhatChip {
   const range = fromPort === toPort ? `${fromPort}` : `${fromPort}-${toPort}`;
   return { id: `tcp-${range}`, label: `{{tcp}} · ${range}`, what: { kind: 'tcp', fromPort, toPort } };
 }
@@ -268,7 +268,7 @@ export function statusTaskFrom(origin: OriginChip, id: string, text: string, mes
 }
 
 /** Returns the TCP service of a program that listens on a port, on every IP of its device unless it says otherwise. */
-function tcpService(port: number, listen: Service['listen'] = 'all'): Service {
+export function tcpService(port: number, listen: Service['listen'] = 'all'): Service {
   return { protocol: 'tcp', port, listen };
 }
 

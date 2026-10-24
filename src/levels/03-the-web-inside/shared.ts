@@ -1,8 +1,8 @@
-import type { NetworkAction, Site } from '@/engine';
-import type { AddressChip, MessageChip, SendTask } from '@/levels/contract/incident';
-import { DEVICE, ORIGIN, PORT, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
+import type { NetworkAction, Service, Site } from '@/engine';
+import type { AddressChip, MessageChip, OriginChip, PlaceMove, SendTask } from '@/levels/contract/incident';
+import { DEVICE, FIREWALL, IP, ORIGIN, PORT, SSH_FROM, SSH_WHAT, sendTaskFrom, tcpChip, tcpService } from '@/levels/02-ports-and-names/shared';
 
-export { DEVICE, IP, NAME, ORIGIN, PORT, sendMoveFrom } from '@/levels/02-ports-and-names/shared';
+export { DEVICE, IP, NAME, ORIGIN, PORT, sendMoveFrom, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
 
 export const ORDER_PATH = '/pedidos';
 const WRONG_PATH = '/pedido';
@@ -34,22 +34,56 @@ const READ_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['GET'],
 const CREATE_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['POST'], handler: { kind: 'order-create' } };
 const REPLACE_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['PUT'], handler: { kind: 'order-replace' } };
 
-/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages. The site has no name, so it answers to any name: it is the default site of the service. */
-function ordersApp(pages: Site['pages']): NetworkAction {
+const ORDER_PAGES = [READ_ORDERS, CREATE_ORDERS, REPLACE_ORDERS];
+
+/** Returns the web service of the program of laptop-lucia on port 3000 with the orders site, which serves these pages. The site has no name, so it answers to any name: it is the default site of the service. */
+function ordersWeb(pages: Site['pages']): NonNullable<Service['web']> {
   const site: Site = { id: ORDERS_SITE_ID, names: [], pages, notFoundBody: NOT_FOUND_BODY, orders: ORDER_BOOK };
-  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: { sites: [site], defaultSiteId: ORDERS_SITE_ID } };
+  return { sites: [site], defaultSiteId: ORDERS_SITE_ID };
+}
+
+/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages. */
+function ordersApp(pages: Site['pages']): NetworkAction {
+  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: ordersWeb(pages) };
 }
 
 /** What 03-01 changes on laptop-lucia: the program of port 3000, which since 02-01 only accepted connections, now answers HTTP. A GET of /pedidos with an id gives the order; any other path gives «No hay nada en ese camino.». Nothing else about the laptop changes. */
 export const APP_ANSWERS_HTTP: NetworkAction = ordersApp([READ_ORDERS]);
 
 /** What 03-02 changes on laptop-lucia: the same program of port 3000 now also takes orders. A POST to /pedidos creates the next order with the body it carries, and a PUT to /pedidos?id=<n> replaces the content of that order with its body. Nothing else about the laptop changes. */
-export const APP_TAKES_ORDERS: NetworkAction = ordersApp([READ_ORDERS, CREATE_ORDERS, REPLACE_ORDERS]);
+export const APP_TAKES_ORDERS: NetworkAction = ordersApp(ORDER_PAGES);
+
+export const REPORTS_PORT = 3001;
+const REPORTS_SITE_ID = 'reports';
+const REPORTS_WEB: NonNullable<Service['web']> = { sites: [{ id: REPORTS_SITE_ID, names: [], pages: [], notFoundBody: NOT_FOUND_BODY }], defaultSiteId: REPORTS_SITE_ID };
+
+const PROCESS = {
+  orders: { id: 'orders-app', name: 'app-pedidos' },
+  reports: { id: 'reports-app', name: 'app-reportes' },
+} as const;
+
+/** What 03-03 changes on laptop-lucia: her programs are processes. The orders app (port 3000, with the pages 03-02 left it) listens from the process app-pedidos, and a reports app (port 3001, a web app too, with no page yet) from app-reportes; both run. Her database (5432) and SSH (22) keep their services. `setServices` replaces the list, so it holds all four. */
+export const APPS_AS_PROCESSES: NetworkAction = {
+  type: 'setServices',
+  ownerId: DEVICE.lucia.id,
+  services: [
+    { ...tcpService(PORT.app), processId: PROCESS.orders.id, web: ordersWeb(ORDER_PAGES) },
+    tcpService(PORT.database),
+    tcpService(PORT.ssh),
+    { ...tcpService(REPORTS_PORT), processId: PROCESS.reports.id, web: REPORTS_WEB },
+  ],
+  processes: [PROCESS.orders, PROCESS.reports].map((process) => ({ ...process, running: true })),
+};
+
+/** What 03-03 changes next on laptop-lucia: Lucía closed the terminal where her reports app ran, so the process app-reportes is no longer running and its service on port 3001 no longer listens. The orders app goes on. */
+export const REPORTS_CLOSED: NetworkAction = { type: 'setProcess', deviceId: DEVICE.lucia.id, processId: PROCESS.reports.id, running: false };
 
 export const MESSAGE = {
   curl: { id: 'curl', label: '{{curl}}', command: 'curl' },
   curlPost: { id: 'curl-post', label: `{{curl}} -d ${POST_BODY}`, command: 'curl', options: { data: POST_BODY } },
   curlPut: { id: 'curl-put', label: `{{curl}} -X PUT -d ${PUT_BODY}`, command: 'curl', options: { request: 'PUT', data: PUT_BODY } },
+  curlTimeout: { id: 'curl-timeout', label: '{{curl}} --connect-timeout 3', command: 'curl', options: { connectTimeout: 3 } },
+  browser: { id: 'browser', label: '{{browser}}', command: 'browser' },
 } as const satisfies Record<string, MessageChip>;
 
 /** Returns the address chip of the url `http://localhost:<port><path>?<query>`, given by parts as the strip of 03-01 draws it. */
@@ -82,19 +116,42 @@ export const ORDER_URL = {
   nine: wholeUrl('url-order-9', 'id=9'),
 } as const;
 
+/** The two urls of laptop-lucia on her network that 03-03 asks for, each given whole: the page of the order 7 of her orders app (port 3000) and the root of her reports app (port 3001). */
+export const LUCIA_URL = {
+  orders: { id: 'url-lucia-orders', address: IP.lucia, url: `http://${IP.lucia}:${PORT.app}${ORDER_PATH}?id=7` },
+  reports: { id: 'url-lucia-reports', address: IP.lucia, url: `http://${IP.lucia}:${REPORTS_PORT}/` },
+} as const satisfies Record<string, AddressChip>;
+
 export const TASK = {
   orderSeven: 'curl-order-7',
   orderEight: 'curl-order-8',
   getSeven: 'get-order-7',
   posts: 'two-equal-posts',
   puts: 'two-equal-puts',
+  page: 'browser-gets-the-page',
+  reportsRefused: 'curl-to-reports-is-refused',
 } as const;
 
-/** Returns the task of a send incident that expects the response of laptop-lucia to a message of its own terminal (a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
-export function bodyTask(id: string, text: string, toId: string, body: string, { messageId = MESSAGE.curl.id, nth }: { messageId?: string; nth?: number } = {}): SendTask {
-  const { expect } = sendTaskFrom(ORIGIN.lucia, id, text, messageId, toId, 'replied');
+/** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
+export function bodyTask(id: string, text: string, toId: string, body: string, { origin = ORIGIN.lucia, messageId = MESSAGE.curl.id, nth }: { origin?: OriginChip; messageId?: string; nth?: number } = {}): SendTask {
+  const { expect } = sendTaskFrom(origin, id, text, messageId, toId, 'replied');
   return { id, text, expect: { ...expect, body, ...(nth !== undefined && { nth }) } };
 }
 
 /** The ids of the pieces 03-01 and 03-02 draw: laptop-lucia, whose firewall is drawn with it. Its own app answers its own curl through the loopback, so nothing else is on the path. */
 export const PAGE_PIECES: string[] = [DEVICE.lucia.id];
+
+/** The ids of the pieces 03-03 draws: your laptop, which asks for the page, and laptop-lucia, whose firewall is drawn with it and whose two programs answer or refuse. */
+export const LAN_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id];
+
+const APP_RULE_TYPE = tcpChip(PORT.app, PORT.app);
+
+/** The chips that write a rule in the firewall of laptop-lucia in 03-03: the Type chips `TCP · 3000`, `TCP · 3001` and `TCP · 1-1023`, and the Source chips of your laptop, of the block of the first floor and of any IP. */
+export const LUCIA_RULES = {
+  firewallId: FIREWALL.lucia,
+  what: [APP_RULE_TYPE, tcpChip(REPORTS_PORT, REPORTS_PORT), SSH_WHAT.wellKnown],
+  from: [SSH_FROM.you, SSH_FROM.floor, SSH_FROM.anyone],
+};
+
+/** The move that writes the rule the incident asks for: TCP port 3000 from the block of the first floor, which holds your laptop. */
+export const OPEN_APP_TO_FLOOR: PlaceMove = { type: 'placeRule', firewallId: FIREWALL.lucia, whatId: APP_RULE_TYPE.id, fromId: SSH_FROM.floor.id };
