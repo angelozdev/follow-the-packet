@@ -1,6 +1,7 @@
+import type { RestartKind } from '@/copy';
 import { DEFAULT_DIRECTION, applyAction, listenSchema, recordProblem, routeProblem, siteProblem, type Device, type Network, type RecordProblem, type RouteProblem, type SiteProblem } from '@/engine';
 import { ruleFromChips, sameRule } from './contract/chips';
-import { settingKind, type CaseSpec, type Incident, type PlaceEntryMove, type PlayerMove, type RemoveEntryMove, type RuleMove, type SettingMove, type SettingSpec } from './contract/incident';
+import { settingKind, type CaseSpec, type Incident, type PlaceEntryMove, type PlayerMove, type RemoveEntryMove, type RuleMove, type SettingMove, type SettingSpec, type TableMove } from './contract/incident';
 import { chipProblem, placementOf, removalOf, tableOf, type ChipProblem } from './contract/tables';
 
 function findIncident(incidents: Incident[], incidentId: string): Incident {
@@ -29,8 +30,13 @@ export function settingValue(world: Network, setting: SettingSpec): string | nul
   }
 }
 
-function applySetting(world: Network, incident: Incident, { deviceId, settingId, chipId }: SettingMove): Network {
-  const setting = incident.mechanic === 'send' ? incident.send.settings?.find((candidate) => candidate.deviceId === deviceId && candidate.id === settingId) : undefined;
+function settingOf(incident: Incident, { deviceId, settingId }: Pick<SettingMove, 'deviceId' | 'settingId'>): SettingSpec | undefined {
+  return incident.mechanic === 'send' ? incident.send.settings?.find((candidate) => candidate.deviceId === deviceId && candidate.id === settingId) : undefined;
+}
+
+function applySetting(world: Network, incident: Incident, move: SettingMove): Network {
+  const { deviceId, chipId } = move;
+  const setting = settingOf(incident, move);
   const chip = setting?.chips.find((candidate) => candidate.id === chipId);
   if (!setting || !chip || !world.devices.some((candidate) => candidate.id === deviceId) || settingValue(world, setting) === chip.value) return world;
   switch (settingKind(setting)) {
@@ -85,6 +91,26 @@ export function applyMove(world: Network, incident: Incident, move: PlayerMove, 
     case 'placeRule':
     case 'removeRule':
       return applyRule(world, incident, move);
+  }
+}
+
+/** Returns the part of the world a move edits and who owns it: the kind of the setting or of the table it changes, or a rule, and the id of the device, router or server that holds it (for a rule, the device with that firewall). Undefined when the incident does not offer what the move names. The tables are those of the incident or, given the case of a diagnose the player is on (`spec`), those of the fix of that case. */
+export function editedPart(world: Network, incident: Incident, move: SettingMove | TableMove | RuleMove, spec?: CaseSpec | null): { kind: RestartKind; ownerId: string } | undefined {
+  switch (move.type) {
+    case 'setSetting': {
+      const setting = settingOf(incident, move);
+      return setting && { kind: settingKind(setting), ownerId: move.deviceId };
+    }
+    case 'placeEntry':
+    case 'removeEntry': {
+      const table = tableOf(incident, move.tableId, spec);
+      return table && { kind: table.kind, ownerId: table.ownerId };
+    }
+    case 'placeRule':
+    case 'removeRule': {
+      const holder = world.devices.find((device) => device.firewallIds.includes(move.firewallId));
+      return holder && { kind: 'rule', ownerId: holder.id };
+    }
   }
 }
 

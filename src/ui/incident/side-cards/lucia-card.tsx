@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { LUCIA_TEXT, MESSAGE_TEXT, TERMS, TERM_ENTITY, termsIn, type TermId, type TermText } from '@/copy';
 import { Button, Card, Message } from '@/design';
-import { canAskHint, hintsOf, isIntruding, taskHolds, type Rejection, type Session } from '@/game';
+import { canAskHint, hintsOf, isIntruding, restartNotice, taskHolds, type Rejection, type Session } from '@/game';
 import { isGuided, type IncidentTask } from '@/levels';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
@@ -95,6 +95,7 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
   const { incident } = session;
   const withTasks = isGuided(incident) ? incident : null;
   const hints = hintsOf(session);
+  const restart = restartNotice(session);
   const newTerms = new Set(incident.introduces);
   const [reportTerms, ...taskTerms] = newTermsFirstSeen([incident.report, ...(withTasks?.tasks.map((task) => task.text) ?? [])], newTerms);
   return (
@@ -128,6 +129,11 @@ export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
             </Button>
           )}
           <div role="status" className="lucia__reply">
+            {restart && (
+              <Message variant="note" words={MESSAGE_TEXT}>
+                <TaggedText text={restart} />
+              </Message>
+            )}
             {session.rejection && <RejectionReply key={session.rejection.attempt} rejection={session.rejection} tasks={withTasks.tasks} />}
           </div>
         </>

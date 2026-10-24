@@ -1,5 +1,5 @@
 import { endpointName, type TermText } from '@/copy';
-import { caseClosed, currentCase, type Session } from '@/game/session';
+import { caseClosed, currentCase, restartNotice, type Session } from '@/game/session';
 import { firstTry } from '@/game/stars';
 import { taskHolds } from '@/game/tasks';
 import { PIECE_ID } from '@/game/view/piece-id';
@@ -52,6 +52,7 @@ export interface CaseCard {
   report: TermText;
   origins: CaseOrigin[];
   repair: CaseRepair | null;
+  restart: TermText | null;
   question: TermText;
   options: CaseOption[];
   closed: boolean;
@@ -96,6 +97,7 @@ export function caseCard(session: Session): CaseCard | null {
       ),
     })),
     repair: spec.fix ? repairOf(session, spec.fix) : null,
+    restart: restartNotice(session),
     question: spec.cause.question,
     options: spec.cause.options.map((option, index) => {
       const state = causeState(session, index);

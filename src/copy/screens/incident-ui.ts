@@ -176,6 +176,24 @@ export const LUCIA_TEXT = {
   hint: (number: number) => `Pista ${number}:`,
 } as const;
 
+const RESTART_CHANGED = {
+  gateway: (device, known) => `Cambiaste la ${word(known, 'default-gateway', 'puerta de enlace predeterminada')} de ${device}`,
+  'dns-server': (device, known) => `Cambiaste el servidor ${word(known, 'dns', 'DNS')} de ${device}`,
+  'listen-address': (device, known) => `Cambiaste cómo ${word(known, 'listen', 'escucha')} la app de ${device}`,
+  routes: (device, known) => `Cambiaste la ${word(known, 'routing-table', 'tabla de rutas')} de ${device}`,
+  records: (device, known) => `Cambiaste los ${word(known, 'dns-record', 'registros DNS')} de ${device}`,
+  sites: (device) => `Cambiaste los sitios de ${device}`,
+  rule: (device, known) => `Cambiaste las ${word(known, 'rule', 'reglas')} del ${word(known, 'firewall', 'firewall')} de ${device}`,
+} satisfies Record<string, (device: TermText, known: ReadonlySet<TermId>) => TermText>;
+
+/** The part of a network whose change starts the sends again: a setting (its kind), a table (its kind) or a rule. */
+export type RestartKind = keyof typeof RESTART_CHANGED;
+
+export const RESTART_TEXT = {
+  notice: (kind: RestartKind, device: TermText, known: ReadonlySet<TermId>): TermText =>
+    `${RESTART_CHANGED[kind](device, known)}: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.`,
+} as const;
+
 export const TASK_CARD_TEXT = {
   noRules: {
     'security-group': 'No tiene {{inbound-rule|reglas de entrada}}: no deja entrar nada.',

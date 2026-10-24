@@ -1025,6 +1025,19 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
     expect(caseCardOf(fixed + 1)).toBeInTheDocument();
   });
 
+  it('the case card says the sends start again, naming the router, when the routes of the fix change after a test, and until the next send', async () => {
+    const user = userEvent.setup();
+    render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
+    await reachTheFix(user);
+    await pingTheServer(user);
+    await user.keyboard('{Escape}');
+    expect(caseCardOf(fixed)).not.toHaveTextContent('Cambiaste');
+    await repairTheRoutes(user);
+    expect(caseCardOf(fixed)).toHaveTextContent('Cambiaste la tabla de rutas de router-provider: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.');
+    await pingTheServer(user);
+    expect(caseCardOf(fixed)).not.toHaveTextContent('Cambiaste');
+  });
+
   it('once the case is closed the card of the router keeps the table and offers nothing to edit', async () => {
     const user = userEvent.setup();
     render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
@@ -1308,6 +1321,7 @@ describe('the incidents of the chapters on the 2D map', () => {
   const SERVICES_CARD = 'Servicios de laptop-lucia';
   const ONLY_THIS_DEVICE = 'Solo este dispositivo (127.0.0.1)';
   const EVERY_IP = 'Todas las IPs (0.0.0.0)';
+  const SENDS_START_AGAIN_ON_THE_APP = 'Cambiaste cómo escucha la app de laptop-lucia: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
 
   beforeEach(() => {
     scene.drawsTheRealMap = true;
@@ -1533,6 +1547,27 @@ describe('the incidents of the chapters on the 2D map', () => {
     await user.click(everywhere);
     expect([onlyHere, everywhere].map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
     expect(screen.queryAllByRole('button', { name: ANY_PACKET_STAMP }), 'a setting that changes the world clears the stamps').toHaveLength(0);
+  });
+
+  it('the tasks card says the sends start again, naming the device, when a change to the network clears them', async () => {
+    const user = userEvent.setup();
+    renderIncident('02-03');
+    await drawWithoutAnimations(user);
+    const lucia = screen.getByRole('region', { name: LUCIA_TEXT.name });
+    const yours = await openTheTerminal(user);
+    await sendNc(user, yours, IP.lucia, NC_TO_THE_CLOSED_PORT);
+    await sendNc(user, yours, IP.marta, NC_TO_THE_APP);
+    await confirm(user, yours);
+    const hers = await openTheTerminal(user, LUCIA);
+    await sendNc(user, hers, IP.loopback, NC_TO_THE_APP);
+    await confirm(user, hers);
+    expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
+    await user.click(screen.getByRole('button', { name: LUCIA }));
+    await user.click(screen.getByRole('tab', { name: SERVICES_TAB }));
+    await user.click(within(screen.getByRole('dialog', { name: SERVICES_CARD })).getByRole('button', { name: EVERY_IP }));
+    expect(lucia).toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
+    await sendNc(user, await openTheTerminal(user), IP.lucia, NC_TO_THE_APP);
+    expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
   });
 
   it('02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none', async () => {

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { TermId } from '@/copy';
+import { toPlainText, type TermId } from '@/copy';
 import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor, type Site } from '@/engine';
 import { INCIDENTS, caseWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
 import { CHAPTER_1_TERMS, EVERY_TERM, LUCIA_FIREWALL, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, webSendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
-import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
+import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, restartNotice, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
 import { taskHolds } from './tasks';
 
@@ -1082,5 +1082,60 @@ describe('the web of chapter 3', () => {
     const solved = WEB.solution.reduce(sessionReducer, startSession([WEB], WEB.id));
     expect(solved.phase).toBe('playing');
     expect(sessionReducer(solved, SUBMIT).phase).toBe('explaining');
+  });
+});
+
+describe('the sends start again after a change to the network', () => {
+  const EDITS: ReadonlySet<string> = new Set(['setSetting', 'placeEntry', 'removeEntry', 'placeRule', 'removeRule']);
+  const START_AGAIN = ': las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
+  const CHANGES = [
+    ['01-07', 'Cambiaste la puerta de enlace predeterminada de tu-laptop'],
+    ['02-03', 'Cambiaste cómo escucha la app de laptop-lucia'],
+    ['02-07', 'Cambiaste la tabla de rutas de router-oficina'],
+    ['02-11', 'Cambiaste los registros DNS de servidor-autoritativo'],
+    ['03-03', 'Cambiaste las reglas del firewall de laptop-lucia'],
+    ['03-04', 'Cambiaste los sitios de servidor-nuevo'],
+  ] as const;
+  const noticeOf = (session: Session) => toPlainText(restartNotice(session) ?? '');
+
+  function sendAndEditOf(id: string): { test: SessionAction; edit: SessionAction } {
+    const incident = INCIDENTS.find((candidate) => candidate.id === id);
+    if (incident?.mechanic !== 'send') throw new Error(`${id} is no send incident`);
+    const test = incident.solution.find((move) => move.type === 'sendPacket');
+    const edit = incident.solution.find((move) => EDITS.has(move.type));
+    if (!test || !edit) throw new Error(`${id} has no test or no change in its solution`);
+    return { test, edit };
+  }
+
+  it.each(CHANGES)('%s: the notice names the device whose change cleared the sends, and goes with the next send', (id, change) => {
+    const { test, edit } = sendAndEditOf(id);
+    const start = startSession(INCIDENTS, id);
+    const sent = sessionReducer(start, test);
+    expect(restartNotice(sent)).toBeNull();
+    expect(restartNotice(sessionReducer(start, edit)), 'nothing was sent, so nothing starts again').toBeNull();
+    const edited = sessionReducer(sent, edit);
+    expect(noticeOf(edited)).toBe(`${change}${START_AGAIN}`);
+    expect(restartNotice(sessionReducer(edited, test))).toBeNull();
+  });
+
+  it('02-14: the notice names the router of the provider when its table changes after a test in the case with a fix', () => {
+    const onCall = INCIDENTS.find((candidate) => candidate.id === '02-14');
+    if (onCall?.mechanic !== 'diagnose') throw new Error('02-14 is no diagnose');
+    const { cases } = onCall.diagnose;
+    const fixed = cases.findIndex(({ fix }) => fix);
+    const closing = cases.slice(0, fixed).flatMap((spec): SessionAction[] => [...(spec.fix?.solution ?? []), { type: 'nameCause', index: spec.cause.options.findIndex((option) => option.correct) }, { type: 'nextCase' }]);
+    const { send, fix } = cases[fixed];
+    const edit = fix?.solution.find((move) => EDITS.has(move.type));
+    if (!edit) throw new Error('the case with a fix changes no table');
+    const test: SessionAction = { type: 'sendPacket', fromId: send.from[0].id, toId: send.to[0].id, messageId: send.message[0].id };
+    const sent = [...closing, test].reduce(sessionReducer, startSession(INCIDENTS, onCall.id));
+    expect(restartNotice(sent)).toBeNull();
+    const edited = sessionReducer(sent, edit);
+    expect(noticeOf(edited)).toBe(`Cambiaste la tabla de rutas de router-proveedor${START_AGAIN}`);
+    expect(restartNotice(sessionReducer(edited, test))).toBeNull();
+  });
+
+  it('a filter incident never says the sends start again, because nothing was sent', () => {
+    expect(restartNotice(play(FIX))).toBeNull();
   });
 });

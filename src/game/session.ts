@@ -1,9 +1,10 @@
-import type { TermId, TermText } from '@/copy';
+import { RESTART_TEXT, deviceName, type RestartKind, type TermId, type TermText } from '@/copy';
 import { DEFAULT_DIRECTION, type Direction, type Network } from '@/engine';
 import {
   applyMove,
   caseWorld,
   configurableParts,
+  editedPart,
   isGuided,
   knownTerms,
   placementProblem,
@@ -42,6 +43,12 @@ export interface TableProblem {
   code: EntryProblem;
 }
 
+/** The part of the network whose change emptied sends that were not empty: its kind and the id of the device, router or server that holds it. */
+export interface Restart {
+  kind: RestartKind;
+  ownerId: string;
+}
+
 export interface Session {
   incident: Incident;
   known: ReadonlySet<TermId>;
@@ -54,6 +61,7 @@ export interface Session {
   sends: number;
   clock: number;
   entryProblem: TableProblem | null;
+  restart: Restart | null;
   answers: Answers;
   rejection: Rejection | null;
   alerts: number;
@@ -115,6 +123,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     sends: 0,
     clock: 0,
     entryProblem: null,
+    restart: null,
     answers: initialAnswers(incident),
     rejection: null,
     alerts: hasIntrusion(runs) ? 1 : 0,
@@ -136,6 +145,11 @@ export function currentCase({ incident, caseIndex }: Session): CaseSpec | null {
 /** Returns what offers the send chips now: a send incident, or the case a diagnose is on; null for any other incident. */
 export function sendingOf(session: Session): SendOwner | null {
   return session.incident.mechanic === 'send' ? session.incident : currentCase(session);
+}
+
+/** Returns the notice that the sends start again, naming the device whose change emptied sends that were not empty; null when no change did, or when the player has sent since. */
+export function restartNotice({ restart, world, known }: Session): TermText | null {
+  return restart && RESTART_TEXT.notice(restart.kind, deviceName(world, restart.ownerId), known);
 }
 
 /** Returns the hints of what the player is on: the incident's, or those of the case of a diagnose. */
@@ -171,14 +185,15 @@ function move(state: Session, action: RuleMove): Session {
   if (state.phase !== 'playing' || !canConfigure(state, action.firewallId, action.direction ?? DEFAULT_DIRECTION)) return state;
   const world = applyMove(state.world, state.incident, action);
   if (world === state.world) return state;
-  const next = withNewWorld(state, world);
+  const next = withNewWorld(state, world, action);
   const startsEpisode = hasIntrusion(next.runs) && !hasIntrusion(state.runs);
   return { ...next, alerts: state.alerts + (startsEpisode ? 1 : 0) };
 }
 
-/** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. */
-function withNewWorld(state: Session, world: Network): Session {
-  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], history: [], rejection: null, entryProblem: null };
+/** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. When the sends were not empty it keeps what the move edited as `restart`, so the card of the tasks says why they start again; an earlier `restart` stays until the player sends. */
+function withNewWorld(state: Session, world: Network, action: SettingMove | TableMove | RuleMove): Session {
+  const restart = state.history.length > 0 ? (editedPart(world, state.incident, action, currentCase(state)) ?? state.restart) : state.restart;
+  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], history: [], rejection: null, entryProblem: null, restart };
 }
 
 /** Keeps the problem of an entry the engine refused, unless it is the one already kept. A refusal the incident gives nothing to explain leaves the session as it was. */
@@ -200,7 +215,7 @@ export function canEdit(state: Session): boolean {
 function edit(state: Session, action: SettingMove | TableMove): Session {
   if (!canEdit(state)) return state;
   const world = applyMove(state.world, state.incident, action, currentCase(state));
-  return world === state.world ? withProblem(state, action) : withNewWorld(state, world);
+  return world === state.world ? withProblem(state, action) : withNewWorld(state, world, action);
 }
 
 /** Returns the steps of the clock of the incident, which the player waits by; none when the incident has no clock, and none for any other mechanic than a send. */
@@ -219,7 +234,7 @@ function send(state: Session, action: SendMove): Session {
   if (state.phase !== 'playing' || !offers || !offersSend(offers, action)) return state;
   const sends = state.sends + 1;
   const history = sendSequence(state.world, offers, [...state.history.map(dispatchOf), { move: action, send: sends, at: state.clock }], state.known);
-  return closeCaseIfDone({ ...state, history, sent: lastOfEach(history), sends, rejection: null });
+  return closeCaseIfDone({ ...state, history, sent: lastOfEach(history), sends, rejection: null, restart: null });
 }
 
 function offeredPicks({ identify }: IdentifyIncident, { deviceId, picks }: AnswerMove): Record<string, string> {

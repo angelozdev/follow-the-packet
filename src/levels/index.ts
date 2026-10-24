@@ -53,7 +53,7 @@ export type { ChipProblem } from './contract/tables';
 export { INCIDENTS } from './registry';
 export { chipsOfRule, packetFromChips, probeFromChips, revealsRoutersByTraceroute, ruleChipsOf, sendCombinations, sentPacketFromChips, shownOf } from './contract/chips';
 export type { SendOwner } from './contract/chips';
-export { applyMove, caseWorld, placementProblem, settingValue, solvedWorld, startWorld } from './world';
+export { applyMove, caseWorld, editedPart, placementProblem, settingValue, solvedWorld, startWorld } from './world';
 export type { EntryProblem } from './world';
 export { RULES_TERM, configurableParts, knownTerms } from './ladder';
 export type { ConfigurableParts } from './ladder';
