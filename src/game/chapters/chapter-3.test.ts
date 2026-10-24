@@ -393,14 +393,14 @@ describe('03-02, ask and answer', () => {
     expect(plain(options[0].feedback)).toContain('Idempotente habla del efecto en el servidor, no de la respuesta.');
     expect(plain(options[1].feedback)).toContain('HTTP no evita nada');
     expect(plain(options[2].text)).toBe('No: un POST no es idempotente y repetirlo puede crear otro pedido.');
-    expect(plain(options[2].feedback)).toContain('el segundo POST creó el pedido 10. El segundo PUT, en cambio, dejó el pedido 7 igual.');
+    expect(plain(options[2].feedback)).toContain('el segundo POST creó el pedido 10. El segundo PUT, en cambio, dejó el pedido 7 como lo dejó el primero.');
   });
 
   it('03-02: the takeaway says that idempotent speaks of the effect and not of the answer, that it is not the same as safe and that a client does not repeat a post by itself', () => {
     const takeaway = plain(incident.takeaway);
     expect(takeaway).toContain('GET, PUT y DELETE son idempotentes: repetirlos deja el mismo efecto que hacerlos una vez. POST no lo es:');
-    expect(takeaway).toContain('Idempotente habla del efecto, no de la respuesta: un segundo DELETE puede contestar 404 y dejar el servidor como lo dejó el primero.');
-    expect(takeaway).toContain('Tampoco quiere decir seguro: un PUT cambia el pedido y es idempotente.');
+    expect(takeaway).toContain('Idempotente habla del efecto, no de la respuesta: un segundo DELETE puede contestar que el pedido ya no existe y dejar el servidor como lo dejó el primero.');
+    expect(takeaway).toContain('Tampoco quiere decir que no cambie nada: un PUT cambia el pedido y es idempotente.');
     expect(takeaway).toContain('un cliente no debe repetir solo una petición que no es idempotente, como un POST.');
   });
 });
