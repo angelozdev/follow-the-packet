@@ -188,10 +188,10 @@ const SITES_TABLE_ID = 'sites';
 export const BLOGS_NAME = `blogs.${DOMAIN.site}`;
 export const SITE_CHIP = {
   name: { blog: 'name-blog', blogs: 'name-blogs' },
-  serves: { blog: 'serves-blog', shop: 'serves-shop' },
+  serves: { blog: 'serves-blog' },
 } as const;
 
-/** The table of sites of servidor-nuevo that 03-04 lets the player edit: the name of the site (blog.lucia.example, or blogs.lucia.example with one letter too many) and what it serves (the blog or the shop). */
+/** The table of sites of servidor-nuevo that 03-04 lets the player edit: the name of the site (blog.lucia.example, or blogs.lucia.example with one letter too many) and what it serves (the blog). */
 export const SITES_TABLE: TableSpec = {
   id: SITES_TABLE_ID,
   kind: 'sites',
@@ -204,7 +204,6 @@ export const SITES_TABLE: TableSpec = {
     ],
     serves: [
       { id: SITE_CHIP.serves.blog, label: SITE_BODY.blog, value: siteServing(SITE_BODY.blog) },
-      { id: SITE_CHIP.serves.shop, label: SITE_BODY.shop, value: siteServing(SITE_BODY.shop) },
     ],
   },
 };

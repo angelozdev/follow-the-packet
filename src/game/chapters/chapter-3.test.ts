@@ -5,7 +5,7 @@ import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/l
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITE_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -582,13 +582,23 @@ describe('03-04, one server and many sites', () => {
     expect(stillOpen(asking(asking(asking(start, SITE_URL.www.id), SITE_URL.blog.id), SITE_URL.ip.id))).toEqual([TASK.blogByName]);
   });
 
-  it('03-04: a site with the wrong name, or one that serves the shop, does not give blog its page', () => {
+  it('03-04: a site with the wrong name does not give blog its page', () => {
     const wrongName = sessionReducer(start, siteMove(SITE_CHIP.name.blogs, SITE_CHIP.serves.blog));
     expect(sitesOfServer(wrongName)).toEqual([[HOSTNAME.www], [BLOGS_NAME]]);
     expect(bodyOfLast(asking(wrongName, SITE_URL.blog.id))).toBe(SITE_BODY.shop);
-    const servingTheShop = sessionReducer(start, siteMove(SITE_CHIP.name.blog, SITE_CHIP.serves.shop));
-    expect(bodyOfLast(asking(servingTheShop, SITE_URL.blog.id))).toBe(SITE_BODY.shop);
-    expect(stillOpen(asking(servingTheShop, SITE_URL.blog.id))).toContain(TASK.blogByName);
+    expect(stillOpen(asking(wrongName, SITE_URL.blog.id))).toContain(TASK.blogByName);
+  });
+
+  it('03-04: no chip the card offers can make the task of blog unreachable', () => {
+    const { trays } = SITES_TABLE;
+    const rightSite = siteMove(SITE_CHIP.name.blog, SITE_CHIP.serves.blog);
+    const placements = 'serves' in trays ? trays.name.flatMap((nameChip) => trays.serves.map((servesChip) => siteMove(nameChip.id, servesChip.id))) : [];
+    expect(placements.length).toBeGreaterThan(1);
+    for (const placement of placements) {
+      const fixed = sessionReducer(sessionReducer(start, placement), rightSite);
+      expect(bodyOfLast(asking(fixed, SITE_URL.blog.id)), JSON.stringify(placement)).toBe(SITE_BODY.blog);
+      expect(stillOpen(asking(asking(asking(fixed, SITE_URL.www.id), SITE_URL.blog.id), SITE_URL.ip.id)), JSON.stringify(placement)).toEqual([]);
+    }
   });
 
   it('03-04: the ip alone gets the default site', () => {
