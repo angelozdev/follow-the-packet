@@ -68,7 +68,7 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
     expect(CHAPTERS.map((c) => c.number)).toContain(incident.chapter);
   });
 
-  it('cites a lesson of syllabus.md and a concept note that exists when its chapter names modules', () => {
+  it('cites a lesson of syllabus.md and a concept note that exists', () => {
     expect(missingCitations(incident)).toEqual([]);
     if (incident.lesson !== undefined) expect(lessons.has(incident.lesson)).toBe(true);
     if (incident.concept !== undefined) expect(existsSync(resolve(REPO_ROOT, incident.concept))).toBe(true);
