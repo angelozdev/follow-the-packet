@@ -63,7 +63,7 @@ function Remembered({ cookies }: { cookies: RememberedCookie[] }) {
       <Table
         caption={caption}
         columns={Object.entries(columns).map(([id, label]) => ({ id, label }))}
-        rows={cookies.map(({ id, site, name, value }) => ({ id, cells: [site, name, value].map((cell) => <code key={cell}>{cell}</code>) }))}
+        rows={cookies.map(({ id, site, name, value }) => ({ id, cells: [site, name, value].map((cell, index) => <code key={index}>{cell}</code>) }))}
         emptyText={empty}
         inUseText={TABLE_TEXT.inUse}
         removeText={TABLE_TEXT.remove}

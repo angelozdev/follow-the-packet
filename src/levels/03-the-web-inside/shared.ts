@@ -34,6 +34,8 @@ const CHECKING_BOOK: NonNullable<Site['orders']> = { ...ORDER_BOOK, badIdBody: B
 
 export const ADMIN_PATH = '/admin';
 export const ADMIN_BODY = 'Panel de administración.';
+const LOGIN_PATH = '/login';
+const LOGIN_BODY = 'Sesión iniciada.';
 const ADMIN_ROLE = 'admin';
 const ADMIN_REALM = 'admin';
 
@@ -77,9 +79,10 @@ export const APP_TAKES_ORDERS: NetworkAction = ordersApp(ORDER_PAGES);
 export const APP_CHECKS_THE_ID: NetworkAction = ordersApp(ORDER_PAGES, CHECKING_BOOK);
 
 const ADMIN_PAGE: Site['pages'][number] = { path: ADMIN_PATH, methods: ['GET'], role: ADMIN_ROLE, handler: { kind: 'fixed', body: ADMIN_BODY } };
+const LOGIN_PAGE: Site['pages'][number] = { path: LOGIN_PATH, methods: ['POST'], handler: { kind: 'login', body: LOGIN_BODY } };
 
-/** What 03-06 changes on laptop-lucia: the same program of port 3000, with the pages and the check of the id that 03-05 left it, now also serves /admin and knows two users. /admin answers only to a user who has the administration role, which is Lucía, and not to Marta: a request with no valid credential in its Authorization header gets 401 with WWW-Authenticate, and Marta, who is known but has no such role, gets 403. Nothing else about the laptop changes. */
-export const APP_HAS_USERS: NetworkAction = ordersApp([...ORDER_PAGES, ADMIN_PAGE], CHECKING_BOOK, ACCOUNTS);
+/** What 03-06 changes on laptop-lucia: the same program of port 3000, with the pages and the check of the id that 03-05 left it, now also serves /admin and /login and knows two users. /admin answers only to a user who has the administration role, which is Lucía, and not to Marta: a request with no valid user (no valid credential in its Authorization header, no session in its Cookie) gets 401 with WWW-Authenticate, and Marta, who is known but has no such role, gets 403. A post to /login with the name and the password of a user opens a session and answers 200 with Set-Cookie: sesion=s<n>; a request with that cookie is that user. Nothing else about the laptop changes. */
+export const APP_HAS_USERS: NetworkAction = ordersApp([...ORDER_PAGES, ADMIN_PAGE, LOGIN_PAGE], CHECKING_BOOK, ACCOUNTS);
 
 export const REPORTS_PORT = 3001;
 const REPORTS_SITE_ID = 'reports';
@@ -109,6 +112,12 @@ export const REPORTS_CLOSED: NetworkAction = { type: 'setProcess', deviceId: DEV
 /** Returns the text a `curl -u` is given for a user: the name, a colon and the password. */
 const loginOf = ({ name, password }: { name: string; password: string }): string => `${name}:${password}`;
 
+/** The cookie `curl -b` is given: the first session the app opens since the world last changed. */
+const FIRST_SESSION_COOKIE = 'sesion=s1';
+
+/** Returns the message of the browser that signs in as a user: a post to the login of the site of the address it is sent to, with the name and the password of the user. Its label is the name the player reads in the tray of users. */
+const browserSigningInAs = (id: string, label: string, { name, password }: { name: string; password: string }) => ({ id, label, command: 'browser', signIn: { path: LOGIN_PATH, user: name, password } }) as const;
+
 export const MESSAGE = {
   curl: { id: 'curl', label: '{{curl}}', command: 'curl' },
   curlPost: { id: 'curl-post', label: `{{curl}} -d ${POST_BODY}`, command: 'curl', options: { data: POST_BODY } },
@@ -117,7 +126,10 @@ export const MESSAGE = {
   curlInclude: { id: 'curl-include', label: '{{curl}} -i', command: 'curl', options: { include: true } },
   curlMarta: { id: 'curl-marta', label: `{{curl}} -i -u ${loginOf(USER.marta)}`, command: 'curl', options: { include: true, user: loginOf(USER.marta) } },
   curlLucia: { id: 'curl-lucia', label: `{{curl}} -i -u ${loginOf(USER.lucia)}`, command: 'curl', options: { include: true, user: loginOf(USER.lucia) } },
+  curlCookie: { id: 'curl-cookie', label: `{{curl}} -i -b ${FIRST_SESSION_COOKIE}`, command: 'curl', options: { include: true, cookie: FIRST_SESSION_COOKIE } },
   browser: { id: 'browser', label: '{{browser}}', command: 'browser' },
+  browserLucia: browserSigningInAs('browser-lucia', 'Lucía', USER.lucia),
+  browserMarta: browserSigningInAs('browser-marta', 'Marta', USER.marta),
 } as const satisfies Record<string, MessageChip>;
 
 /** Returns the address chip of the url `http://localhost:<port><path>?<query>`, given by parts as the strip of 03-01 draws it. */
@@ -190,6 +202,7 @@ export const TASK = {
   adminWithoutCredentialIs401: 'admin-without-credential-answers-401',
   adminAsMartaIs403: 'admin-as-marta-answers-403',
   adminAsLuciaIs200: 'admin-as-lucia-answers-200',
+  browserEntersAdmin: 'browser-enters-admin',
 } as const;
 
 /** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */

@@ -1134,7 +1134,7 @@ describe('a sign-in of the browser', () => {
     expect(refusedSignIns(SIGN_IN, world)).toEqual([]);
   });
 
-  it('rejects a sign-in for a user the incident does not list, or with a password the app does not have for that user', () => {
+  it('rejects a sign-in for a user the incident does not list', () => {
     for (const [user, password] of [['nobody', 'clave-lucia'], ['lucia', 'clave-marta'], ['marta', '']]) {
       const refused = refusedSignIns(withSignIn({ path: LOGIN, user, password: password || 'x' }), world);
       expect(refused, user).toContain('you → admin via sign-in-extra');

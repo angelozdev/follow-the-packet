@@ -11,7 +11,7 @@ import { sessionReducer, startSession, starsOf, type Session } from '@/game/sess
 import { failingTaskIds } from '@/game/tasks';
 import { toolOutput } from '@/game/view/cards/terminal/output-card';
 import { pieceCard } from '@/game/view/cards/piece-card';
-import { browserView } from '@/game/view/cards/web/browser-card';
+import { browserCard, browserView } from '@/game/view/cards/web/browser-card';
 import { sitesCard } from '@/game/view/cards/web/sites-card';
 import { stripAddress, urlStrip, type UrlPartName } from '@/game/view/cards/web/url-strip';
 import { inspect } from '@/game/view/inspection';
@@ -918,9 +918,10 @@ describe('03-06, who you are and what you can', () => {
   const { incident } = start;
   const before = startSession(INCIDENTS.map((own) => (own.id === WHO_YOU_ARE ? { ...own, changes: [] } : own)), WHO_YOU_ARE);
   const asking = (session: Session, messageId: string) => sending(session, ADMIN_URL.id, messageId, ORIGIN.you.id);
-  const codeOfLast = (session: Session) => runOf(session).trace.app?.response?.statusCode;
-  const responseOfLast = (session: Session) => runOf(session).trace.app?.response;
-  const requestOfLast = (session: Session) => runOf(session).trace.app?.request;
+  const lastSend = (session: Session) => session.history.at(-1)!;
+  const codeOfLast = (session: Session) => lastSend(session).trace.app?.response?.statusCode;
+  const responseOfLast = (session: Session) => lastSend(session).trace.app?.response;
+  const requestOfLast = (session: Session) => lastSend(session).trace.app?.request;
   const appSteps = (session: Session) => runOf(session).trace.steps.filter(({ stage }) => stage === 'app').map(({ reason }) => plain(describeReason(reason, session.world, session.known)));
   const withoutCredential = MESSAGE.curlInclude.id;
   const asMarta = MESSAGE.curlMarta.id;
@@ -930,19 +931,21 @@ describe('03-06, who you are and what you can', () => {
   const basicOf = (user: { name: string; password: string }) => `Basic ${Buffer.from(`${user.name}:${user.password}`).toString('base64')}`;
 
   it('03-06: 401 without a credential, 403 with the one of Marta and 200 with the one of Lucía each complete their task', () => {
-    expect(stillOpen(start)).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200]);
+    expect(stillOpen(start)).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200, TASK.browserEntersAdmin]);
     const unauthorized = asking(start, withoutCredential);
     expect(codeOfLast(unauthorized)).toBe(401);
-    expect(stillOpen(unauthorized)).toEqual([TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200]);
+    expect(stillOpen(unauthorized)).toEqual([TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200, TASK.browserEntersAdmin]);
     const forbidden = asking(unauthorized, asMarta);
     expect(codeOfLast(forbidden)).toBe(403);
-    expect(stillOpen(forbidden)).toEqual([TASK.adminAsLuciaIs200]);
+    expect(stillOpen(forbidden)).toEqual([TASK.adminAsLuciaIs200, TASK.browserEntersAdmin]);
     const done = asking(forbidden, asLucia);
     expect(codeOfLast(done)).toBe(200);
     expect(responseOfLast(done)?.body).toBe(ADMIN_BODY);
-    expect(stillOpen(done)).toEqual([]);
-    expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
-    expect(stillOpen(asking(start, asLucia))).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403]);
+    expect(stillOpen(done)).toEqual([TASK.browserEntersAdmin]);
+    const finished = asking(asking(done, MESSAGE.browserLucia.id), MESSAGE.browser.id);
+    expect(stillOpen(finished)).toEqual([]);
+    expect(starsWhenSubmitted(finished)).toMatchObject({ closed: true, middle: true });
+    expect(stillOpen(asking(start, asLucia))).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403, TASK.browserEntersAdmin]);
   });
 
   it('03-06: the 401 carries WWW-Authenticate, the request carries Authorization and the box says the app generated each code', () => {
@@ -987,6 +990,83 @@ describe('03-06, who you are and what you can', () => {
     expect(requestOfLast(second)).toEqual(requestOfLast(first));
     expect(stillOpen(asking(second, asMarta))).toEqual(stillOpen(first));
     expect(codeOfLast(asking(second, asLucia))).toBe(200);
+  });
+
+  const signingInAs = (session: Session, signIn: { id: string }) => asking(session, signIn.id);
+  const opening = (session: Session) => asking(session, MESSAGE.browser.id);
+
+  it('03-06: the browser enters /admin with the cookie after signing in as Lucía', () => {
+    expect(codeOfLast(opening(start))).toBe(401);
+    expect(stillOpen(opening(start))).toContain(TASK.browserEntersAdmin);
+    const signedIn = signingInAs(start, MESSAGE.browserLucia);
+    expect(requestOfLast(signedIn)).toMatchObject({ startLine: 'POST /login HTTP/1.1', body: 'usuario=lucia&clave=clave-lucia' });
+    expect(codeOfLast(signedIn)).toBe(200);
+    expect(responseOfLast(signedIn)?.headers['Set-Cookie']).toBe('sesion=s1');
+    expect(stillOpen(signedIn)).toContain(TASK.browserEntersAdmin);
+    const entered = opening(signedIn);
+    expect(requestOfLast(entered)?.headers.Cookie).toBe('sesion=s1');
+    expect(codeOfLast(entered)).toBe(200);
+    expect(responseOfLast(entered)?.body).toBe(ADMIN_BODY);
+    expect(stillOpen(entered)).not.toContain(TASK.browserEntersAdmin);
+    expect(browserView(entered, { from: ORIGIN.you.id, to: ADMIN_URL.id, message: MESSAGE.browser.id })?.shows).toEqual({ kind: 'page', lines: [ADMIN_BODY] });
+    const solved = (isGuided(incident) ? incident.solution : []).reduce(sessionReducer, start);
+    expect(stillOpen(solved)).toEqual([]);
+    expect(starsWhenSubmitted(solved)).toMatchObject({ closed: true, middle: true });
+  });
+
+  it('03-06: signing in as Marta and opening /admin gets the 403 and not the page of the admin', () => {
+    const asMartaInTheBrowser = opening(signingInAs(start, MESSAGE.browserMarta));
+    expect(requestOfLast(asMartaInTheBrowser)?.headers.Cookie).toBe('sesion=s1');
+    expect(codeOfLast(asMartaInTheBrowser)).toBe(403);
+    expect(responseOfLast(asMartaInTheBrowser)?.body).not.toBe(ADMIN_BODY);
+    expect(stillOpen(asMartaInTheBrowser)).toContain(TASK.browserEntersAdmin);
+    const thenLucia = opening(signingInAs(asMartaInTheBrowser, MESSAGE.browserLucia));
+    expect(requestOfLast(thenLucia)?.headers.Cookie).toBe('sesion=s2');
+    expect(codeOfLast(thenLucia)).toBe(200);
+    expect(stillOpen(thenLucia)).not.toContain(TASK.browserEntersAdmin);
+  });
+
+  it('03-06: curl keeps no cookie unless it is given -b', () => {
+    const signedIn = signingInAs(start, MESSAGE.browserLucia);
+    const plainCurl = asking(signedIn, withoutCredential);
+    expect(requestOfLast(plainCurl)?.headers).not.toHaveProperty('Cookie');
+    expect(codeOfLast(plainCurl)).toBe(401);
+    const withCookie = asking(signedIn, MESSAGE.curlCookie.id);
+    expect(Object.keys(requestOfLast(withCookie)!.headers)).toEqual(['Host', 'User-Agent', 'Accept', 'Cookie']);
+    expect(requestOfLast(withCookie)?.headers.Cookie).toBe('sesion=s1');
+    expect(codeOfLast(withCookie)).toBe(200);
+    expect(codeOfLast(asking(signingInAs(start, MESSAGE.browserMarta), MESSAGE.curlCookie.id)), 'sesion=s1 is the first session: Marta').toBe(403);
+    expect(codeOfLast(asking(start, MESSAGE.curlCookie.id)), 'nobody signed in').toBe(401);
+    expect(browserCard(signedIn, PIECE_ID.device(DEVICE.you.id))?.remembered).toEqual([{ id: `${IP.lucia}|sesion`, site: IP.lucia, name: 'sesion', value: 's1' }]);
+    expect(pieceCard(signedIn, PIECE_ID.device(DEVICE.you.id))?.tabs.map(({ id }) => id)).toContain('browser');
+  });
+
+  it('03-06: the box shows the Cookie of the request and the Set-Cookie of the response', () => {
+    const signedIn = signingInAs(start, MESSAGE.browserLucia);
+    expect(lastBox(signedIn)['Respuesta HTTP']).toContain('Set-Cookie: sesion=s1');
+    expect(lastBox(opening(signedIn))['Petición HTTP']).toContain('Cookie: sesion=s1');
+    expect(lastBox(asking(signedIn, MESSAGE.curlCookie.id))['Petición HTTP']).toContain('Cookie: sesion=s1');
+    expect(lastBox(asking(signedIn, MESSAGE.curlInclude.id))['Petición HTTP']).not.toContain('Cookie: sesion=s1');
+  });
+
+  it('03-06: the report and the takeaway say the cookie, why the app has a /login and that curl keeps nothing, and no text promises a 200 for -b', () => {
+    const [report, takeaway] = [plain(incident.report), plain(incident.takeaway)];
+    expect(report).toContain('/login');
+    expect(report).toMatch(/\bcookie\b/);
+    expect(takeaway).toContain('lo que une varias es la cookie');
+    expect(takeaway).toMatch(/curl no guarda nada/);
+    expect(takeaway).toContain('-b sesion=s1');
+    const promisesA200 = (text: string) => text.split(/(?<=\.)\s+/).filter((sentence) => /-b|sesion=s1/.test(sentence) && /\b200\b/.test(sentence) && !/\bsi\b/i.test(sentence));
+    expect(incidentTexts(incident).map(plain).flatMap(promisesA200)).toEqual([]);
+    expect(['Con -b sesion=s1 el curl recibe 200.', 'El curl con -b da 200.'].filter((text) => promisesA200(text).length === 0)).toEqual([]);
+    expect(['Con -b sesion=s1 da 200 si Lucía inició sesión primero.']).toSatisfy((texts: string[]) => texts.every((text) => promisesA200(text).length === 0));
+  });
+
+  it('03-06: no text registers or uses the word stateless', () => {
+    const saysIt = (text: string) => /stateless|sin estado/i.test(text);
+    expect(Object.values(TERMS).flatMap(({ name, definition }) => [name, definition]).filter(saysIt)).toEqual([]);
+    expect(incidentTexts(incident).map(plain).filter(saysIt)).toEqual([]);
+    expect(Object.values(lastBox(opening(signingInAs(start, MESSAGE.browserLucia)))).flat().filter(saysIt)).toEqual([]);
   });
 
   it('03-06 starts from the world 03-05 leaves, and before the users /admin gets the 404', () => {
