@@ -491,6 +491,35 @@ describe('applyAction for processes and sites', () => {
     }
   });
 
+  it('setWebService replaces the web service of one port and keeps the rest', () => {
+    const net = hosting();
+    const answering = applyAction(net, { type: 'setWebService', ownerId: 'lucia-laptop', port: APP.port, web: { sites: [BLOG], defaultSiteId: BLOG.id } });
+    const services = deviceOf(answering, 'lucia-laptop')?.host.services;
+    expect(services?.find((service) => service.port === APP.port)).toEqual({ ...APP, web: { sites: [BLOG], defaultSiteId: BLOG.id } });
+    expect(services?.find((service) => service.port === WEB_PORT)).toEqual(webServing);
+    const replaced = applyAction(answering, { type: 'setWebService', ownerId: 'lucia-laptop', port: APP.port, web: { sites: [SHOP], defaultSiteId: SHOP.id } });
+    expect(deviceOf(replaced, 'lucia-laptop')?.host.services.find((service) => service.port === APP.port)?.web?.sites).toEqual([SHOP]);
+    expect(networkSchema.safeParse(replaced).success).toBe(true);
+    const server = applyAction(officeTwoFloorsNet(), { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [tcpService(WEB_PORT)] });
+    const onServer = applyAction(server, { type: 'setWebService', ownerId: OFFICE_FLOORS.server.id, port: WEB_PORT, web: { sites: [SHOP], defaultSiteId: SHOP.id } });
+    expect(serverOf(onServer, OFFICE_FLOORS.server.id)?.services).toEqual([webServing]);
+  });
+
+  it('setWebService on an owner with no TCP service on that port returns the same network', () => {
+    const net = hosting();
+    const web = { sites: [SHOP], defaultSiteId: SHOP.id };
+    const udpOnly = withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [NAME_SERVER] } });
+    for (const [owned, action] of [
+      [net, { type: 'setWebService', ownerId: GHOST, port: APP.port, web }],
+      [net, { type: 'setWebService', ownerId: 'printer', port: APP.port, web }],
+      [net, { type: 'setWebService', ownerId: 'lucia-laptop', port: WEB_PORT + 1, web }],
+      [udpOnly, { type: 'setWebService', ownerId: 'lucia-laptop', port: NAME_SERVER.port, web }],
+    ] as [Network, NetworkAction][]) {
+      expect(applyAction(owned, action), JSON.stringify(action)).toBe(owned);
+    }
+    expect(networkActionSchema.safeParse({ type: 'setWebService', ownerId: 'lucia-laptop', port: APP.port, web: { sites: [SHOP], defaultSiteId: 'missing' } }).success).toBe(false);
+  });
+
   it('every site problem has a code and the action parses only with a site under .example', () => {
     const problems: SiteProblem[] = ['no-web-service', 'name-has-site'];
     expect([...SITE_PROBLEMS]).toEqual(problems);

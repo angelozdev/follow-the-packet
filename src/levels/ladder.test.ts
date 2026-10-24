@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TASK_CARD_TEXT, TERMS, isTermId, parseTermText, termsIn, toPlainText, unofficialNames, type TermId } from '@/copy';
 import { ipInCidr, lansOf } from '@/engine';
-import { diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
+import { LADDER_OF_CHAPTER_3, diagnoseIncident, filterIncident, gatewayIncident } from '@/testing';
 import { IP } from './01-first-day/shared';
 import { FROM } from './04-iaas/shared';
 import { isGuided, settingKind, type Incident, type SendIncident } from './contract/incident';
@@ -75,75 +75,6 @@ const TERMS_OF_CHAPTER_2: TermId[][] = [
 const SIZES_OF_CHAPTER_2 = [6, 6, 5, 4, 4, 4, 3, 3, 1, 7, 4, 2, 4];
 const SUBCHAPTER_OF = { cidr: 4, nat: 8, dns: 10 };
 const TERMS_OF_CHAPTER_1 = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces);
-type LadderRow = [id: string, name: string, subchapter: number];
-
-const LADDER_OF_CHAPTER_3: LadderRow[] = [
-  ['http', 'HTTP', 1],
-  ['url', 'URL', 1],
-  ['url-path', 'path', 1],
-  ['query-string', 'query string', 1],
-  ['curl', 'curl', 1],
-  ['http-request', 'petición HTTP', 2],
-  ['http-response', 'respuesta HTTP', 2],
-  ['http-method', 'método HTTP', 2],
-  ['idempotent', 'idempotente', 2],
-  ['process', 'proceso', 3],
-  ['web-server', 'servidor web', 3],
-  ['browser', 'navegador', 3],
-  ['http-header', 'cabecera HTTP', 4],
-  ['host-header', 'cabecera Host', 4],
-  ['virtual-host', 'host virtual', 4],
-  ['status-code', 'código de estado', 5],
-  ['status-200', '200 OK', 5],
-  ['client-error', 'error 4xx', 5],
-  ['status-404', '404 Not Found', 5],
-  ['status-400', '400 Bad Request', 5],
-  ['authentication', 'autenticación', 6],
-  ['authorization', 'autorización', 6],
-  ['authorization-header', 'cabecera Authorization', 6],
-  ['status-401', '401 Unauthorized', 6],
-  ['status-403', '403 Forbidden', 6],
-  ['cookie', 'cookie', 6],
-  ['reverse-proxy', 'proxy inverso', 7],
-  ['origin-server', 'servidor de origen', 7],
-  ['x-forwarded-for', 'X-Forwarded-For', 7],
-  ['status-429', '429 Too Many Requests', 7],
-  ['server-error', 'error 5xx', 8],
-  ['status-500', '500 Internal Server Error', 8],
-  ['status-503', '503 Service Unavailable', 8],
-  ['status-504', '504 Gateway Timeout', 8],
-  ['status-502', '502 Bad Gateway', 9],
-  ['persistent-connection', 'conexión persistente', 9],
-  ['idle-timeout', 'idle timeout', 9],
-  ['encryption', 'cifrado', 10],
-  ['symmetric-encryption', 'cifrado simétrico', 10],
-  ['tls', 'TLS', 10],
-  ['https', 'HTTPS', 10],
-  ['asymmetric-encryption', 'cifrado asimétrico', 11],
-  ['public-key', 'clave pública', 11],
-  ['private-key', 'clave privada', 11],
-  ['digital-signature', 'firma digital', 11],
-  ['certificate', 'certificado', 11],
-  ['hash', 'hash', 12],
-  ['certificate-authority', 'autoridad certificadora', 12],
-  ['certificate-chain', 'cadena de certificados', 12],
-  ['self-signed-certificate', 'certificado autofirmado', 12],
-  ['openssl-s-client', 'openssl s_client', 12],
-  ['san', 'SAN', 13],
-  ['wildcard-certificate', 'certificado comodín', 13],
-  ['certificate-validation', 'validación del certificado', 13],
-  ['tls-handshake', 'saludo TLS', 14],
-  ['session-key', 'clave de sesión', 14],
-  ['sni', 'SNI', 14],
-  ['http-versions', 'versiones de HTTP', 14],
-  ['tls-termination', 'terminación de TLS', 15],
-  ['redirect', 'redirección', 15],
-  ['status-301', '301 Moved Permanently', 15],
-  ['hsts', 'HSTS', 15],
-  ['api', 'API', 16],
-  ['json', 'JSON', 16],
-  ['rest', 'REST', 16],
-];
 const SUPPORT_TERMS_OF_CHAPTER_3 = ['query-string', 'status-400', 'cookie', 'x-forwarded-for', 'status-500', 'self-signed-certificate', 'openssl-s-client', 'session-key', 'http-versions', 'hsts'];
 const SIZES_OF_CHAPTER_3 = [5, 4, 3, 3, 5, 6, 4, 4, 3, 4, 5, 5, 3, 4, 4, 3];
 const LAST_SUBCHAPTER_OF_BLOCK_1 = 4;

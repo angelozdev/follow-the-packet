@@ -35,6 +35,7 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   setGateway: { action: { type: 'setGateway', deviceId: 'your-laptop' }, names: [NAMES.you] },
   setServices: { action: { type: 'setServices', ownerId: 'lucia-laptop', services: [] }, names: [NAMES.lucia] },
   setProcess: { action: { type: 'setProcess', deviceId: 'lucia-laptop', processId: LUCIA_PROCESS.id, running: false }, names: [NAMES.lucia] },
+  setWebService: { action: { type: 'setWebService', ownerId: 'lucia-laptop', port: LUCIA_APP.port, web: { sites: [BLOG], defaultSiteId: BLOG.id } }, names: [NAMES.lucia] },
   addSite: { action: { type: 'addSite', ownerId: 'lucia-laptop', port: SHOP_SERVICE.port, site: BLOG }, names: [NAMES.lucia] },
   setListenAddress: { action: { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: LUCIA_APP.port, listen: 'loopback' }, names: [NAMES.lucia] },
   updateRouter: { action: { type: 'updateRouter', routerId: officeRouter.id, sendsUnreachable: false }, names: [anyRouter.name] },

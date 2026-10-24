@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DEFAULT_DIRECTION, actorSchema, deviceSchema, directionSchema, dnsSchema, editableRecordSchema, firewallSchema, forwardSchema, hostLineSchema, ipSchema, lanSchema, realPort, recordKeySchema, routeSchema, routerInterfaceSchema, routerSchema, ruleSchema, sameDestination, serviceSchema } from './schema';
 import { lansOf } from '@/engine/network/addressing/topology';
 import { recordProblem, sameName, zoneHeldBy } from '@/engine/dns/records';
-import { siteSchema, type Site, type WebService } from '@/engine/web/schema';
+import { siteSchema, webServiceSchema, type Site, type WebService } from '@/engine/web/schema';
 import type { Actor, AnswerRecord, Device, Direction, DnsRecord, Firewall, Forward, HostLine, Lan, Network, Route, Router, Rule, ServerActor, ServerDns, Service } from './types';
 
 const nonEmpty = z.string().min(1);
@@ -22,6 +22,7 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema) }),
   z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.omit({ web: true, processId: true }).shape }),
   z.object({ type: z.literal('setProcess'), deviceId: nonEmpty, processId: nonEmpty, running: z.boolean() }),
+  z.object({ type: z.literal('setWebService'), ownerId: nonEmpty, port: realPort, web: webServiceSchema }),
   z.object({ type: z.literal('addSite'), ownerId: nonEmpty, port: realPort, site: siteSchema }),
   z.object({ type: z.literal('addRoute'), routerId: nonEmpty, route: routeSchema }),
   z.object({ type: z.literal('removeRoute'), routerId: nonEmpty, to: routeSchema.shape.to }),
@@ -159,6 +160,13 @@ function withProcess(net: Network, { deviceId, processId, running }: Extract<Net
   return changeDevice(net, deviceId, (d) => ({ ...d, host: { ...d.host, processes: processes.map((process) => (process.id === processId ? { ...process, running } : process)) } }));
 }
 
+/** Replaces the web service of the TCP service that an owner has on a port, unless it has none there. The other services are kept. */
+function withWebService(net: Network, { ownerId, port, web }: Extract<NetworkAction, { type: 'setWebService' }>): Network {
+  const isIt = (service: Service) => service.protocol === 'tcp' && service.port === port;
+  const services = servicesOf(net, ownerId);
+  return services?.some(isIt) ? withServices(net, ownerId, services.map((service) => (isIt(service) ? { ...service, web } : service))) : net;
+}
+
 export const SITE_PROBLEMS = ['no-web-service', 'name-has-site'] as const;
 
 /** Why a web service does not take a site: the owner has no web service on that TCP port, or a name of the site is already the name of a site of the service. */
@@ -201,7 +209,7 @@ function withLan(net: Network, lan: Lan): Network {
   return { ...net, lans: [...(net.lans ?? lansOf(net)), lan] };
 }
 
-/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network; so does an `addRoute` for a destination the router already has a route to, a `removeRoute` for one it has none to, a `setProcess` for a process the device does not have and an `addSite` that `siteProblem` refuses. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
+/** Returns the network after one action. An action that names a firewall, a rule, a device or a router the network does not have returns the same network; so does an `addRoute` for a destination the router already has a route to, a `removeRoute` for one it has none to, a `setProcess` for a process the device does not have, a `setWebService` for a port with no TCP service and an `addSite` that `siteProblem` refuses. A rule goes in the inbound list unless the action says outbound. A LAN added to an office that declares none keeps the single LAN its devices were on. */
 export function applyAction(net: Network, action: NetworkAction): Network {
   switch (action.type) {
     case 'addRule':
@@ -242,6 +250,8 @@ export function applyAction(net: Network, action: NetworkAction): Network {
       return withListenAddress(net, action);
     case 'setProcess':
       return withProcess(net, action);
+    case 'setWebService':
+      return withWebService(net, action);
     case 'addSite':
       return withSite(net, action);
     case 'addRoute':
