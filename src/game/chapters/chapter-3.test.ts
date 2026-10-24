@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { TERMS, termsIn, toPlainText } from '@/copy';
+import { TERMS, describeReason, termsIn, toPlainText } from '@/copy';
 import { applyAction, networkSchema, type Network } from '@/engine';
 import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/levels';
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, DEVICE, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, TASK, URLS_BY_PARTS } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITE_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -33,6 +33,10 @@ function sentencesSayingIdempotentIsTheSameAnswer(text: string): string[] {
 function sentencesSayingAStoppedAppIsAFirewall(text: string): string[] {
   return text.split(/(?<=\.)\s+/).filter((sentence) => /firewall/i.test(sentence) && /proceso|app|rechaz|puerto cerrado/i.test(sentence) && /\b(lo mismo|es igual|son iguales|igual que|equivale)\b/i.test(sentence) && !/\bno\b/i.test(sentence));
 }
+/** Returns the sentences of a text that say that a server knows which site to give by the IP or by the CNAME: one that names a site and the IP or the CNAME as the way to choose it, with no negation. */
+function sentencesSayingTheSiteComesFromTheIpOrTheCname(text: string): string[] {
+  return text.split(/(?<=\.)\s+/).filter((sentence) => /sitio/i.test(sentence) && /\bpor (la )?IP\b|\bpor el (registro )?CNAME\b|\bpor el alias\b|\bla IP (de cada|decide|elige)\b/i.test(sentence) && !/\bno\b/i.test(sentence));
+}
 const plain = toPlainText;
 const builtOfChapter3 = (): Incident[] => INCIDENTS.filter((incident) => incident.chapter === CHAPTER);
 
@@ -49,6 +53,10 @@ function laterNameLeaks(incidents: Incident[]): string[] {
 
 /** Sends a message to an address chip: the curl from the terminal of laptop-lucia unless it says another message or another origin. */
 const sending = (session: Session, toId: string, messageId: string = MESSAGE.curl.id, fromId: string = ORIGIN.lucia.id): Session => sessionReducer(session, { type: 'sendPacket', fromId, toId, messageId });
+
+const runOf = (session: Session) => session.sent.at(-1)!;
+const outcomeOf = (session: Session) => runOf(session).trace.outcome;
+const stepCodes = (session: Session) => runOf(session).trace.steps.map((step) => step.reason.code);
 
 /** Returns the ids of the tasks of a guided incident that do not hold yet. */
 const stillOpen = ({ incident, runs, history, answers }: Session): string[] => (isGuided(incident) ? failingTaskIds(incident.tasks, runs, history, answers) : []);
@@ -393,9 +401,6 @@ describe('03-03, who answers', () => {
   const askingReports = (session: Session, fromId: string = ORIGIN.lucia.id) => sending(session, LUCIA_URL.reports.id, MESSAGE.curl.id, fromId);
   const opened = sessionReducer(start, OPEN_APP_TO_FLOOR);
   const luciaOf = (world: Network) => world.devices.find((device) => device.id === DEVICE.lucia.id)!;
-  const runOf = (session: Session) => session.sent.at(-1)!;
-  const outcomeOf = (session: Session) => runOf(session).trace.outcome;
-  const stepCodes = (session: Session) => runOf(session).trace.steps.map((step) => step.reason.code);
   const inboundWhats = (session: Session) => session.world.firewalls.find((firewall) => firewall.id === LUCIA_RULES.firewallId)?.inbound.map(({ what }) => what);
   const everythingRead = [...incidentTexts(incident).map(plain), ...(isGuided(incident) ? incident.explanation.map(({ feedback }) => plain(feedback)) : []), ...incident.introduces.map((term) => TERMS[term].definition)];
 
@@ -520,6 +525,140 @@ describe('03-03, who answers', () => {
 
   it('03-03: introduces process, web server and browser, and uses no later term', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['process', 'web-server', 'browser']));
+    expectOnlyTermsItKnows(incident);
+  });
+});
+
+describe('03-04, one server and many sites', () => {
+  const MANY_SITES = '03-04';
+  const start = startSession(INCIDENTS, MANY_SITES);
+  const { incident } = start;
+  const asking = (session: Session, urlId: string) => sending(session, urlId, MESSAGE.curlInclude.id, ORIGIN.you.id);
+  const withBlog = sessionReducer(start, siteMove(SITE_CHIP.name.blog, SITE_CHIP.serves.blog));
+  const bodyOfLast = (session: Session) => runOf(session).trace.app?.response?.body;
+  const appSentences = (session: Session) => runOf(session).trace.steps.filter(({ stage }) => stage === 'app').map(({ reason }) => plain(describeReason(reason, session.world, session.known)));
+  const sitesOfServer = (session: Session) => session.world.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === SERVER.fresh.id ? actor.services ?? [] : [])).find(({ port }) => port === PORT.web)?.web?.sites.map(({ names }) => names);
+  const wrongOptionTexts = isGuided(incident) ? incident.explanation.filter(({ correct }) => !correct).map(({ text }) => text) : [];
+  const everythingRead = [
+    ...incidentTexts(incident).filter((text) => !wrongOptionTexts.includes(text)).map(plain),
+    ...incident.introduces.map((term) => TERMS[term].definition),
+  ];
+
+  it('03-04 starts from the world 03-03 leaves: servidor-nuevo gets a web server on port 80 with the shop as its only and default site, and keeps its port 443', () => {
+    const servicesOf = (world: Network) => world.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === SERVER.fresh.id ? actor.services ?? [] : []));
+    const before = servicesOf(worldBeforeChanges(INCIDENTS, MANY_SITES));
+    const after = servicesOf(startWorld(INCIDENTS, MANY_SITES));
+    expect(before.map((service) => service.web)).toEqual([undefined, undefined]);
+    expect(after.map(({ port, web }) => [port, web?.sites.map(({ names }) => names)])).toEqual([[PORT.web, [[HOSTNAME.www]]], [PORT.secureWeb, undefined]]);
+    expect(after[0].web?.defaultSiteId).toBe(after[0].web?.sites[0].id);
+    expect(incident.changes).toEqual([SHOP_SERVER]);
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, MANY_SITES)).error).toBeUndefined();
+  });
+
+  it('03-04: adding blog gives blog its own site and www keeps the shop', () => {
+    expect(stillOpen(start)).toEqual([TASK.shopByName, TASK.blogByName, TASK.shopByIp]);
+    expect(bodyOfLast(asking(start, SITE_URL.blog.id))).toBe(SITE_BODY.shop);
+    expect(sitesOfServer(start)).toEqual([[HOSTNAME.www]]);
+    expect(sitesOfServer(withBlog)).toEqual([[HOSTNAME.www], [HOSTNAME.blog]]);
+    expect(bodyOfLast(asking(withBlog, SITE_URL.blog.id))).toBe(SITE_BODY.blog);
+    expect(bodyOfLast(asking(withBlog, SITE_URL.www.id))).toBe(SITE_BODY.shop);
+    const done = asking(asking(asking(withBlog, SITE_URL.www.id), SITE_URL.blog.id), SITE_URL.ip.id);
+    expect(stillOpen(done)).toEqual([]);
+    expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
+    expect(stillOpen(asking(asking(asking(start, SITE_URL.www.id), SITE_URL.blog.id), SITE_URL.ip.id))).toEqual([TASK.blogByName]);
+  });
+
+  it('03-04: a site with the wrong name, or one that serves the shop, does not give blog its page', () => {
+    const wrongName = sessionReducer(start, siteMove(SITE_CHIP.name.blogs, SITE_CHIP.serves.blog));
+    expect(sitesOfServer(wrongName)).toEqual([[HOSTNAME.www], [BLOGS_NAME]]);
+    expect(bodyOfLast(asking(wrongName, SITE_URL.blog.id))).toBe(SITE_BODY.shop);
+    const servingTheShop = sessionReducer(start, siteMove(SITE_CHIP.name.blog, SITE_CHIP.serves.shop));
+    expect(bodyOfLast(asking(servingTheShop, SITE_URL.blog.id))).toBe(SITE_BODY.shop);
+    expect(stillOpen(asking(servingTheShop, SITE_URL.blog.id))).toContain(TASK.blogByName);
+  });
+
+  it('03-04: the ip alone gets the default site', () => {
+    for (const session of [start, withBlog]) {
+      const byIp = asking(session, SITE_URL.ip.id);
+      expect(bodyOfLast(byIp)).toBe(SITE_BODY.shop);
+      expect(stepCodes(byIp)).toContain('web-default-site');
+      expect(lastBox(byIp)['Petición HTTP']).toContain(`Host: ${IP.freshServer}`);
+    }
+  });
+
+  it('03-04: before the site exists blog gets the shop because its host has no site', () => {
+    const before = asking(start, SITE_URL.blog.id);
+    expect(bodyOfLast(before)).toBe(SITE_BODY.shop);
+    expect(stepCodes(before)).toContain('web-default-site');
+    expect(stepCodes(before)).not.toContain('web-site-chosen');
+    expect(appSentences(before)[0]).toBe(`La cabecera Host de la petición indica ${HOSTNAME.blog}. ${SERVER.fresh.name} no tiene un sitio con ese nombre y contesta con su sitio por defecto.`);
+    const after = asking(withBlog, SITE_URL.blog.id);
+    expect(stepCodes(after)).toContain('web-site-chosen');
+    expect(appSentences(after)[0]).toBe(`La cabecera Host de la petición indica ${HOSTNAME.blog}. ${SERVER.fresh.name} tiene un sitio con ese nombre y contesta con él.`);
+  });
+
+  it('03-04: the box shows the Host header of each request', () => {
+    for (const [chip, host] of [[SITE_URL.www, HOSTNAME.www], [SITE_URL.blog, HOSTNAME.blog], [SITE_URL.ip, IP.freshServer]] as const) {
+      expect(lastBox(asking(start, chip.id))['Petición HTTP'], chip.id).toEqual(['GET / HTTP/1.1', `Host: ${host}`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
+    }
+  });
+
+  it('03-04: a url without a port goes to 80', () => {
+    const box = lastBox(asking(start, SITE_URL.www.id));
+    expect(box['URL']).toContain('Puerto: 80 · la URL no lo escribe: http usa su puerto por defecto, el 80');
+    expect(box['Encabezado de ida (en internet)'].join(' ')).toContain(`${IP.freshServer}:${PORT.web}`);
+  });
+
+  it('03-04: curl -i prints the status line, the headers as the server sent them, a blank line and the body', () => {
+    const printed = printedFor(asking(start, SITE_URL.www.id), SITE_URL.www.id, MESSAGE.curlInclude.id, ORIGIN.you.id);
+    expect(printed).toEqual(['HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', `Content-Length: ${new TextEncoder().encode(SITE_BODY.shop).length}`, '', SITE_BODY.shop]);
+  });
+
+  it('03-04: the browser shows the same page as the curl for each url', () => {
+    const opening = (session: Session, urlId: string) => browserView(sending(session, urlId, MESSAGE.browser.id, ORIGIN.you.id), { from: ORIGIN.you.id, to: urlId, message: MESSAGE.browser.id })?.shows;
+    expect(opening(start, SITE_URL.blog.id)).toEqual({ kind: 'page', lines: [SITE_BODY.shop] });
+    expect(opening(withBlog, SITE_URL.blog.id)).toEqual({ kind: 'page', lines: [SITE_BODY.blog] });
+  });
+
+  it('03-04: no text says the server knows the site by the ip or by the cname', () => {
+    expect(everythingRead.flatMap(sentencesSayingTheSiteComesFromTheIpOrTheCname)).toEqual([]);
+    expect(['El servidor elige el sitio por la IP.', 'El servidor sabe el sitio por el registro CNAME.', 'Cada sitio se reconoce por el alias.'].filter((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(text).length === 0)).toEqual([]);
+    expect(['El servidor no elige el sitio por la IP.', 'El sitio sale de la cabecera Host.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(text).length === 0));
+    expect(wrongOptionTexts.map(plain).filter((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(`El sitio sale ${text}`).length > 0)).toEqual(['Por la IP, que es distinta para cada sitio.', 'Por el registro CNAME.']);
+  });
+
+  it('03-04: the report names servidor-nuevo', () => {
+    expect(incident.report).toContain(NAME.freshServer);
+    expect(plain(incident.report)).toContain(`Lucía instaló un servidor web en ${SERVER.fresh.name} con un solo sitio: la tienda.`);
+    expect(changedNames(worldBeforeChanges(INCIDENTS, MANY_SITES), startWorld(INCIDENTS, MANY_SITES))).toEqual([SERVER.fresh.name]);
+  });
+
+  it('03-04: the right option is the second and the question separates the Host header from the IP and from the CNAME', () => {
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(1);
+    expect(plain((isGuided(incident) && incident.question) || '')).toBe(`${HOSTNAME.blog} es un alias de ${HOSTNAME.www}. ¿Cómo sabe ${SERVER.fresh.name} qué sitio dar?`);
+    expect(options.map(({ text }) => plain(text))).toEqual(['Por la IP, que es distinta para cada sitio.', 'Por la cabecera Host, que lleva el nombre escrito en la URL.', 'Por el registro CNAME.']);
+    expect(plain(options[0].feedback)).toContain(`La IP es la misma para los dos nombres: ${IP.freshServer}.`);
+    expect(plain(options[2].feedback)).toContain('El servidor web de servidor-nuevo no ve el DNS');
+  });
+
+  it('03-04: the takeaway says that Host carries the name of the url as written, that a server with many sites picks one by it and that a name with no site gets the default site', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('La cabecera Host de la petición lleva el nombre de la URL tal como se escribió');
+    expect(takeaway).toContain('Un servidor web con varios sitios usa esa cabecera para elegir uno');
+    expect(takeaway).toContain(`${SERVER.fresh.name} da su sitio por defecto, la tienda.`);
+    expect(takeaway).toContain('En HTTP/1.1 la cabecera Host es obligatoria.');
+  });
+
+  it('03-04: draws tu-laptop, servidor-dns, router-oficina and servidor-nuevo', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    expect(drawn.filter((piece) => piece.startsWith('device:'))).toEqual([DEVICE.you.name, 'servidor-dns', SERVER.fresh.name].map((name) => `device:${name}`));
+    expect(drawn).toContain('edge:router-oficina');
+    expect(incident.shown).toEqual(SITE_PIECES);
+  });
+
+  it('03-04: introduces http header, Host header and virtual host, and uses no later term', () => {
+    expect(sorted(incident.introduces)).toEqual(sorted(['http-header', 'host-header', 'virtual-host']));
     expectOnlyTermsItKnows(incident);
   });
 });

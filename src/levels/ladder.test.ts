@@ -221,6 +221,7 @@ describe('term ladder', () => {
       '03-01': HOST_RULES_IN_AND_OUT,
       '03-02': HOST_RULES_IN_AND_OUT,
       '03-03': HOST_RULES_IN_AND_OUT,
+      '03-04': HOST_RULES_IN_AND_OUT,
       '04-01': INBOUND_RULES,
       '04-02': INBOUND_RULES,
     });

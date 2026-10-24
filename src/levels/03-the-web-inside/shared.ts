@@ -1,8 +1,8 @@
-import type { NetworkAction, Service, Site } from '@/engine';
-import type { AddressChip, MessageChip, OriginChip, PlaceMove, SendTask } from '@/levels/contract/incident';
-import { DEVICE, FIREWALL, IP, ORIGIN, PORT, SSH_FROM, SSH_WHAT, sendTaskFrom, tcpChip, tcpService } from '@/levels/02-ports-and-names/shared';
+import type { NetworkAction, Service, Site, SiteContent } from '@/engine';
+import type { AddressChip, MessageChip, OriginChip, PlaceEntryMove, PlaceMove, SendTask, TableSpec } from '@/levels/contract/incident';
+import { DEVICE, DOMAIN, FIREWALL, HOSTNAME, IP, ORIGIN, PORT, ROUTER, SERVER, SSH_FROM, SSH_WHAT, sendTaskFrom, tcpChip, tcpService } from '@/levels/02-ports-and-names/shared';
 
-export { DEVICE, IP, NAME, ORIGIN, PORT, sendMoveFrom, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
+export { DEVICE, HOSTNAME, IP, NAME, ORIGIN, PORT, SERVER, sendMoveFrom, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
 
 export const ORDER_PATH = '/pedidos';
 const WRONG_PATH = '/pedido';
@@ -83,6 +83,7 @@ export const MESSAGE = {
   curlPost: { id: 'curl-post', label: `{{curl}} -d ${POST_BODY}`, command: 'curl', options: { data: POST_BODY } },
   curlPut: { id: 'curl-put', label: `{{curl}} -X PUT -d ${PUT_BODY}`, command: 'curl', options: { request: 'PUT', data: PUT_BODY } },
   curlTimeout: { id: 'curl-timeout', label: '{{curl}} --connect-timeout 3', command: 'curl', options: { connectTimeout: 3 } },
+  curlInclude: { id: 'curl-include', label: '{{curl}} -i', command: 'curl', options: { include: true } },
   browser: { id: 'browser', label: '{{browser}}', command: 'browser' },
 } as const satisfies Record<string, MessageChip>;
 
@@ -130,6 +131,9 @@ export const TASK = {
   puts: 'two-equal-puts',
   page: 'browser-gets-the-page',
   reportsRefused: 'curl-to-reports-is-refused',
+  shopByName: 'www-gets-the-shop',
+  blogByName: 'blog-gets-the-blog',
+  shopByIp: 'the-ip-gets-the-shop',
 } as const;
 
 /** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
@@ -155,3 +159,59 @@ export const LUCIA_RULES = {
 
 /** The move that writes the rule the incident asks for: TCP port 3000 from the block of the first floor, which holds your laptop. */
 export const OPEN_APP_TO_FLOOR: PlaceMove = { type: 'placeRule', firewallId: FIREWALL.lucia, whatId: APP_RULE_TYPE.id, fromId: SSH_FROM.floor.id };
+
+export const SITE_BODY = { shop: 'La tienda', blog: 'El blog' } as const;
+const SHOP_ID = 'shop';
+
+/** Returns what a site of 03-04 serves: its home page with this body, and the 404 body of the app of laptop-lucia for any other path. */
+function siteServing(body: string): SiteContent {
+  return { notFoundBody: NOT_FOUND_BODY, pages: [{ path: '/', methods: ['GET'], handler: { kind: 'fixed', body } }] };
+}
+
+/** What 03-04 changes on servidor-nuevo: its program on port 80, which since 02-12 only accepted connections, is now a web server with one site, the shop, named www.lucia.example. It is also the default site, the one it serves to a request whose Host names no site. */
+export const SHOP_SERVER: NetworkAction = {
+  type: 'setWebService',
+  ownerId: SERVER.fresh.id,
+  port: PORT.web,
+  web: { sites: [{ id: SHOP_ID, names: [HOSTNAME.www], ...siteServing(SITE_BODY.shop) }], defaultSiteId: SHOP_ID },
+};
+
+/** The three urls 03-04 asks for, each given whole and with no port, so they go to port 80: the shop by its name, the blog by its name (an alias of the shop) and servidor-nuevo by its IP alone. */
+export const SITE_URL = {
+  www: { id: 'url-www', address: HOSTNAME.www, url: `http://${HOSTNAME.www}/` },
+  blog: { id: 'url-blog', address: HOSTNAME.blog, url: `http://${HOSTNAME.blog}/` },
+  ip: { id: 'url-ip', address: IP.freshServer, url: `http://${IP.freshServer}/` },
+} as const satisfies Record<string, AddressChip>;
+
+const SITES_TABLE_ID = 'sites';
+export const BLOGS_NAME = `blogs.${DOMAIN.site}`;
+export const SITE_CHIP = {
+  name: { blog: 'name-blog', blogs: 'name-blogs' },
+  serves: { blog: 'serves-blog', shop: 'serves-shop' },
+} as const;
+
+/** The table of sites of servidor-nuevo that 03-04 lets the player edit: the name of the site (blog.lucia.example, or blogs.lucia.example with one letter too many) and what it serves (the blog or the shop). */
+export const SITES_TABLE: TableSpec = {
+  id: SITES_TABLE_ID,
+  kind: 'sites',
+  ownerId: SERVER.fresh.id,
+  port: PORT.web,
+  trays: {
+    name: [
+      { id: SITE_CHIP.name.blog, label: HOSTNAME.blog, value: HOSTNAME.blog },
+      { id: SITE_CHIP.name.blogs, label: BLOGS_NAME, value: BLOGS_NAME },
+    ],
+    serves: [
+      { id: SITE_CHIP.serves.blog, label: SITE_BODY.blog, value: siteServing(SITE_BODY.blog) },
+      { id: SITE_CHIP.serves.shop, label: SITE_BODY.shop, value: siteServing(SITE_BODY.shop) },
+    ],
+  },
+};
+
+/** Returns the move that adds a site to the table of 03-04, with these chips of the name tray and of the tray of what it serves. */
+export function siteMove(nameId: string, servesId: string): PlaceEntryMove {
+  return { type: 'placeEntry', tableId: SITES_TABLE_ID, picks: { name: nameId, serves: servesId } };
+}
+
+/** The ids of the pieces 03-04 draws: your laptop, the resolver that gives the IP of each name, the router between them and servidor-nuevo, which hosts the sites. */
+export const SITE_PIECES: string[] = [DEVICE.you.id, SERVER.resolver.id, ROUTER.office.id, SERVER.fresh.id];
