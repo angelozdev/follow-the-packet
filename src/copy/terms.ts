@@ -257,6 +257,45 @@ export const TERMS = {
   servfail: { name: 'SERVFAIL', definition: 'La respuesta del DNS «el servidor no pudo contestar». No dice si el nombre existe.' },
   'port-unreachable': { name: 'Port Unreachable', definition: 'Un aviso ICMP de que ningún programa escucha en ese puerto UDP. Es el par del RST de TCP.' },
   'hosts-file': { name: 'archivo hosts', definition: 'Un archivo del dispositivo que asocia nombres con IPs, sin usar DNS. Ahí suele estar localhost.' },
+  http: { name: 'HTTP', definition: 'HyperText Transfer Protocol: el protocolo con que un cliente pide un recurso (página, dato) y el servidor responde.' },
+  url: { name: 'URL', definition: 'Uniform Resource Locator: la dirección de un recurso web. Por ejemplo: http://lucia.example:8080/pedidos?id=7' },
+  'url-path': { name: 'path', definition: 'La parte de la URL que va después del nombre y del puerto, como /pedidos. Dice qué recurso del servidor se pide.' },
+  'query-string': { name: 'query string', definition: 'Lo que va en la URL después de ?, como id=7: pares nombre=valor que precisan lo que se pide.' },
+  curl: { name: 'curl', definition: 'Una herramienta de consola que pide por HTTP lo que señala una URL y muestra lo que contesta el servidor.' },
+  'http-request': {
+    name: 'petición HTTP',
+    definition: 'El mensaje con que un cliente pide algo: método, path con su query string, cabeceras y, a veces, un cuerpo de datos.',
+  },
+  'http-response': {
+    name: 'respuesta HTTP',
+    definition: 'El mensaje con que el servidor contesta: un código numérico, cabeceras y, a veces, un cuerpo de datos.',
+  },
+  'http-method': {
+    name: 'método HTTP',
+    definition: 'Lo que la petición quiere hacer: GET lee un recurso, POST le manda datos, PUT lo reemplaza y DELETE lo borra.',
+  },
+  idempotent: {
+    name: 'idempotente',
+    definition: 'Una operación es idempotente si repetirla deja el mismo efecto que hacerla una vez. GET, PUT y DELETE lo son; POST, no.',
+  },
+  process: {
+    name: 'proceso',
+    definition: 'Un programa mientras corre en un dispositivo. Un servicio escucha desde un proceso; si este termina, deja de escuchar.',
+  },
+  'web-server': {
+    name: 'servidor web',
+    definition: 'Un servicio que contesta peticiones HTTP. Por defecto escucha en el puerto 80, aunque puede usar cualquier otro.',
+  },
+  browser: { name: 'navegador', definition: 'Un programa que hace peticiones HTTP a nombre de una persona y muestra las respuestas. Es un cliente.' },
+  'http-header': {
+    name: 'cabecera HTTP',
+    definition: 'Una línea «nombre: valor» de una petición o respuesta, como Content-Type. No es el encabezado del paquete.',
+  },
+  'host-header': {
+    name: 'cabecera Host',
+    definition: 'La cabecera HTTP con el nombre y el puerto de la petición. Un servidor con varios sitios la usa para elegir uno.',
+  },
+  'virtual-host': { name: 'host virtual', definition: 'Un sitio entre varios que comparten un servidor web y una IP. La cabecera Host dice cuál se pide.' },
 } as const satisfies Record<string, Term>;
 
 export type TermId = keyof typeof TERMS;

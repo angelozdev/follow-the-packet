@@ -104,9 +104,14 @@ function escapeForPattern(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Returns true when the text says the name as whole words, ignoring case, alone or in the Spanish plural made with s or es; the rule of `namedTerms`, for a name that may belong to no registered term. */
+export function saysName(text: string, name: string): boolean {
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeForPattern(name)}(?:e?s)?(?![\\p{L}\\p{N}])`, 'iu').test(text);
+}
+
 /** Returns the terms whose name the text says as whole words, ignoring case, alone or in the Spanish plural made with s or es: «red» in «una Red» and in «redes», but not in «Redshift». Only the end of the whole name takes the plural: «IP privadas» is caught, «IPs privadas» and «direcciones IP» are not. */
 export function namedTerms(text: string, terms: TermId[]): TermId[] {
-  return terms.filter((term) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeForPattern(TERMS[term].name)}(?:e?s)?(?![\\p{L}\\p{N}])`, 'iu').test(text));
+  return terms.filter((term) => saysName(text, TERMS[term].name));
 }
 
 /** Returns, once each, the terms the texts use that are not known yet. */
