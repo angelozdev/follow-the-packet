@@ -56,8 +56,10 @@ export const WEB_BOX_TEXT = {
   body: (body: string): TermText => `Cuerpo: ${body}`,
   notes: {
     browserRequest: 'Un navegador real manda más cabeceras. El del juego manda solo esta.',
+    browserRequestSeveral: 'Un navegador real manda más cabeceras. El del juego manda solo estas.',
     response: 'Un servidor real manda más cabeceras. El del juego manda solo estas.',
   },
+  browserLoginBox: (statusCode: TermText): TermText => `Ante un ${statusCode} con WWW-Authenticate, un navegador real abre un cuadro para escribir el usuario y la clave. El del juego no lo abre.`,
   curl: '{{curl}}',
   curlGaveUp: (seconds?: number): TermText => `curl esperó ${seconds === undefined ? '' : `${seconds} ${seconds === 1 ? 'segundo' : 'segundos'} `}y se rindió (código ${CURL_TIMEOUT_CODE}).`,
 } as const;
@@ -70,6 +72,15 @@ export const BROWSER_TEXT = {
   refused: 'La conexión se rechazó',
   noConnection: 'No se pudo conectar',
   noPage: 'El servidor no contestó con ninguna página',
+  user: 'Usuario',
+  signIn: 'Iniciar sesión',
+  memory: {
+    title: 'Lo que recuerda',
+    caption: 'Lo que recuerda el navegador',
+    rows: 'Cada fila es una {{cookie}}.',
+    columns: { site: 'sitio', name: 'nombre', value: 'valor' },
+    empty: 'Todavía no guarda nada.',
+  },
 } as const;
 
 export const URL_STRIP_TEXT = {

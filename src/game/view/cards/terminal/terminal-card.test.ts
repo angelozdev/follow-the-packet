@@ -194,6 +194,12 @@ describe('terminalLine of a curl', () => {
     expect(terminalLine(every, { to: 'shop', message: 'all' })).toBe('curl -i -u marta:x -X PUT -d a --connect-timeout 3 http://www.lucia.example/');
   });
 
+  it('the line of a curl with -b is written in Linux syntax, after -u and before -X', () => {
+    const withCookie = (options: Record<string, unknown>): Session => startSession([{ ...WEB, send: { ...WEB.send, message: [{ id: 'all', label: 'curl', command: 'curl', options }] } }], WEB.id);
+    expect(terminalLine(withCookie({ include: true, cookie: 'sesion=s1' }), { to: 'shop', message: 'all' })).toBe('curl -i -b sesion=s1 http://www.lucia.example/');
+    expect(terminalLine(withCookie({ include: true, user: 'marta:x', cookie: 'sesion=s1', request: 'PUT', data: 'a' }), { to: 'shop', message: 'all' })).toBe('curl -i -u marta:x -b sesion=s1 -X PUT -d a http://www.lucia.example/');
+  });
+
   it('is null for a curl whose address is a plain address, for the browser and until the address is picked', () => {
     const plain = startSession([{ ...WEB, send: { ...WEB.send, to: [...WEB.send.to, { id: 'plain', address: '192.168.1.11' }] } }], WEB.id);
     expect(terminalLine(plain, { to: 'plain', message: 'curl' })).toBeNull();

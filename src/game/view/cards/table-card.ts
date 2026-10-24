@@ -268,8 +268,8 @@ export function recordsCard(session: Session, pieceId: string): TableCard | null
   };
 }
 
-/** Returns the packets the engine has to replay to know what a resolver remembers: every send since the world last changed, in order, with the second of the game clock it left at, without the traceroutes, which are not in the sequence. */
-function replayOf(history: readonly SentPacket[]): { packet: SentPacket['packet']; at: number }[] {
+/** Returns the packets the engine has to replay to know what a resolver or a browser remembers: every send since the world last changed, in order, with the second of the game clock it left at, without the traceroutes, which are not in the sequence. */
+export function replayOf(history: readonly SentPacket[]): { packet: SentPacket['packet']; at: number }[] {
   return history.filter((run) => run.route === undefined).map(({ packet, at }) => ({ packet, at }));
 }
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { toPlainText, type TermId } from '@/copy';
-import { ROUTE_DEFAULT, applyAction, type Network, type ServerActor, type Site } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, browserAfter, type Network, type ServerActor, type Site } from '@/engine';
 import { INCIDENTS, caseWorld } from '@/levels';
 import { DAY_SHIFT_RULE, FROM, SG, WHAT } from '@/levels/04-iaas/shared';
 import { ruleIdFor, type SettingMove } from '@/levels/contract/incident';
-import { CHAPTER_1_TERMS, EVERY_TERM, LUCIA_FIREWALL, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, tcpService, webSendIncident, withDevice } from '@/testing';
+import { CHAPTER_1_TERMS, EVERY_TERM, LUCIA_FIREWALL, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, device, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, officeNet, officeTwoFloorsNet, officeWithNames, outboundFilterIncident, ping, repairableDiagnoseIncident, sendIncident, signInIncident, tcpService, webSendIncident, withDevice } from '@/testing';
 import { runFlows } from './flow-runs';
 import { canAskHint, caseClosed, causeNamed, clockSteps, currentCase, failingFixTaskIds, hintsOf, isIntruding, restartNotice, sendingOf, sessionReducer, startSession, starsOf, type Session, type SessionAction } from './session';
 import { countStars } from './stars';
@@ -1082,6 +1082,49 @@ describe('the web of chapter 3', () => {
     const solved = WEB.solution.reduce(sessionReducer, startSession([WEB], WEB.id));
     expect(solved.phase).toBe('playing');
     expect(sessionReducer(solved, SUBMIT).phase).toBe('explaining');
+  });
+});
+
+describe('signing in from the browser', () => {
+  const SIGN_IN = signInIncident();
+  const send = (messageId: string): SessionAction => ({ type: 'sendPacket', fromId: 'you', toId: 'admin', messageId });
+  const [AS_LUCIA, AS_MARTA, OPEN, CURL, CURL_WITH_COOKIE] = ['sign-in-lucia', 'sign-in-marta', 'browser', 'curl-i', 'curl-cookie'].map(send);
+  const ONE_MINUTE: SessionAction = { type: 'wait', seconds: 60 };
+  const CLOSE_THE_REPORTS_PORT: SessionAction = { type: 'placeRule', firewallId: LUCIA_FIREWALL, whatId: 'tcp-3001', fromId: 'you' };
+  const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([SIGN_IN], SIGN_IN.id));
+  const codes = (session: Session) => session.history.map((packet) => packet.trace.app?.response?.statusCode);
+  const memoryOf = (session: Session) => browserAfter(session.world, session.history.map(({ packet, at }) => ({ packet, at })), 'your-laptop');
+
+  it('signing in does not clear the sends', () => {
+    const sent = playing(CURL, ONE_MINUTE);
+    const signedIn = sessionReducer(sent, AS_LUCIA);
+    expect(signedIn.history.map(({ messageId }) => messageId)).toEqual(['curl-i', 'sign-in-lucia']);
+    expect(signedIn.sent.map(({ id }) => id)).toEqual(['sent-you-admin-curl-i', 'sent-you-admin-sign-in-lucia']);
+    expect([signedIn.sends, signedIn.clock, signedIn.restart]).toEqual([2, 60, null]);
+    expect(codes(sessionReducer(signedIn, OPEN))).toEqual([401, 200, 200]);
+  });
+
+  it('the cookie of a sign-in goes with the browser and not with the curl, unless the curl is given it', () => {
+    const asLucia = playing(AS_LUCIA, OPEN, CURL, CURL_WITH_COOKIE);
+    expect(codes(asLucia)).toEqual([200, 200, 401, 200]);
+    expect(codes(playing(AS_MARTA, OPEN, CURL_WITH_COOKIE))).toEqual([200, 403, 403]);
+    expect(codes(playing(CURL_WITH_COOKIE))).toEqual([401]);
+  });
+
+  it('the sessions and the browser memory go away when a move changes the world, and the clock stays', () => {
+    const signedIn = playing(AS_LUCIA, ONE_MINUTE, OPEN);
+    expect(memoryOf(signedIn)).toEqual([{ site: OFFICE_FLOORS.floor1.lucia, name: 'sesion', value: 's1' }]);
+    const moved = sessionReducer(signedIn, CLOSE_THE_REPORTS_PORT);
+    expect([moved.history, moved.sent, moved.clock]).toEqual([[], [], 60]);
+    expect(memoryOf(moved)).toEqual([]);
+    expect(codes(sessionReducer(moved, OPEN))).toEqual([401]);
+    expect(codes(sessionReducer(sessionReducer(moved, AS_MARTA), CURL_WITH_COOKIE))).toEqual([200, 403]);
+  });
+
+  it('the reference solution, signing in as Lucía and opening /admin, closes it', () => {
+    const solved = SIGN_IN.solution.reduce(sessionReducer, startSession([SIGN_IN], SIGN_IN.id));
+    expect(sessionReducer(solved, SUBMIT).phase).toBe('explaining');
+    expect(sessionReducer(playing(AS_MARTA, OPEN), SUBMIT).rejection?.failingTaskIds).toEqual(['enter']);
   });
 });
 

@@ -94,13 +94,16 @@ const addressChipSchema = z
 const MESSAGE_COMMANDS = ['packet', 'ping', 'traceroute', 'nc', 'dig', 'curl', 'browser'] as const;
 const COMMAND_PROTOCOL: Record<(typeof MESSAGE_COMMANDS)[number], z.infer<typeof packetSchema>['protocol']> = { packet: 'icmp', ping: 'icmp', traceroute: 'icmp', nc: 'tcp', dig: 'udp', curl: 'tcp', browser: 'tcp' };
 const USER_AND_PASSWORD = /^[^:]+:.+$/;
+const COOKIE_NAME_AND_VALUE = /^[^=;\s]+=[^;\s]+$/;
 const curlOptionsSchema = z.strictObject({
   include: z.literal(true).optional(),
   user: z.string().regex(USER_AND_PASSWORD, 'the value of -u is a user and a password, user:password').optional(),
+  cookie: z.string().regex(COOKIE_NAME_AND_VALUE, 'the value of -b is a cookie, name=value').optional(),
   request: z.literal('PUT').optional(),
   data: z.string().min(1).optional(),
   connectTimeout: z.number().int().positive().optional(),
 });
+const signInSchema = z.strictObject({ path: z.string().startsWith('/'), user: z.string().min(1), password: z.string().min(1) });
 const messageChipSchema = z
   .object({
     id,
@@ -111,6 +114,7 @@ const messageChipSchema = z
     port: portSchema.optional(),
     ttl: packetSchema.shape.ttl,
     options: curlOptionsSchema.optional(),
+    signIn: signInSchema.optional(),
   })
   .superRefine((chip, ctx) => {
     const issue = (message: string, path: string) => ctx.addIssue({ code: 'custom', message, path: [path] });
@@ -125,6 +129,7 @@ const messageChipSchema = z
     if (chip.command === 'dig' && chip.port !== undefined && chip.port !== DNS_PORT) issue(`a dig goes to port ${DNS_PORT}`, 'port');
     if ((chip.command === 'curl' || chip.command === 'browser') && chip.port !== undefined) issue('a curl or a browser takes its port from the url', 'port');
     if (chip.options !== undefined && chip.command !== 'curl') issue('options belong to a curl', 'options');
+    if (chip.signIn !== undefined && chip.command !== 'browser') issue('a sign-in belongs to a browser', 'signIn');
   });
 const SETTING_KINDS = ['gateway', 'dns-server', 'listen-address'] as const;
 const settingChipSchema = z.object({ id, label: termText, value: z.union([ipSchema, listenSchema]).nullable() });

@@ -28,6 +28,7 @@ import {
   repairableDiagnoseIncident,
   routedSendIncident,
   sendIncident,
+  signInIncident,
   tcp,
   webNet,
   webSendIncident,
@@ -41,6 +42,7 @@ import {
   probeFromChips,
   revealsRoutersByTraceroute,
   ruleChipsOf,
+  refusedSignIns,
   ruleFromChips,
   sendCombinations,
   unknownCardDeviceIds,
@@ -1090,6 +1092,54 @@ describe('where a curl goes', () => {
     const onlyClosed = withWeb({ to: [WEB.send.to.find(({ id }) => id === 'app-80')] }) as unknown as SendIncident;
     expect(curlsOutsideWebServices(onlyClosed, world)).toEqual(WEB.send.message.map(({ id }) => `${id} reaches no web service`));
     expect(curlsOutsideWebServices(sendIncident(), world)).toEqual([]);
+  });
+});
+
+describe('a sign-in of the browser', () => {
+  const SIGN_IN = signInIncident();
+  const LOGIN = '/login';
+  const world = SIGN_IN.base!;
+  const withSignIn = (signIn: Record<string, unknown>) => ({ ...SIGN_IN, send: { ...SIGN_IN.send, message: [...SIGN_IN.send.message, { id: 'sign-in-extra', label: 'Extra', command: 'browser', signIn }] } }) as unknown as SendIncident;
+  const accepting = (chip: Record<string, unknown>) => accepts({ ...SIGN_IN, send: { ...SIGN_IN.send, message: [...SIGN_IN.send.message, chip] } });
+
+  it('accepts a browser that signs in with a path, a user and a password, and a curl with -b and a cookie', () => {
+    expect(accepts(SIGN_IN)).toBe(true);
+    expect(accepting({ id: 'extra', label: 'Extra', command: 'browser', signIn: { path: LOGIN, user: 'lucia', password: 'clave-lucia' } })).toBe(true);
+    expect(accepting({ id: 'extra', label: 'curl', command: 'curl', options: { cookie: 'sesion=s1' } })).toBe(true);
+  });
+
+  it('rejects a -b whose value is not a cookie, and a sign-in that is incomplete or is not the browser\'s', () => {
+    for (const cookie of ['sesion', '', '=s1', 'sesion=', 'sesion=s1; other=2', 'sesion = s1']) expect(accepting({ id: 'extra', label: 'curl', command: 'curl', options: { cookie } }), JSON.stringify(cookie)).toBe(false);
+    expect(accepting({ id: 'extra', label: 'Navegador', command: 'browser', options: { cookie: 'sesion=s1' } })).toBe(false);
+    const signIn = { path: LOGIN, user: 'lucia', password: 'clave-lucia' };
+    for (const broken of [{ ...signIn, path: 'login' }, { ...signIn, user: '' }, { ...signIn, password: '' }, { path: LOGIN, user: 'lucia' }, { ...signIn, remember: true }]) {
+      expect(accepting({ id: 'extra', label: 'Extra', command: 'browser', signIn: broken }), JSON.stringify(broken)).toBe(false);
+    }
+    expect(accepting({ id: 'extra', label: 'curl', command: 'curl', signIn })).toBe(false);
+  });
+
+  it('builds the post of a sign-in to the login of the site of the address it is sent to, with the form of its user', () => {
+    const send = { fromId: 'you', toId: 'admin', messageId: 'sign-in-lucia' };
+    expect(packetFromChips(SIGN_IN, send)).toEqual({
+      from: device('your-laptop'),
+      to: OFFICE_FLOORS.floor1.lucia,
+      protocol: 'tcp',
+      port: APP_PORT,
+      message: { method: 'POST', url: `http://${OFFICE_FLOORS.floor1.lucia}:${APP_PORT}${LOGIN}`, body: 'usuario=lucia&clave=clave-lucia' },
+    });
+    expect(packetFromChips(SIGN_IN, { ...send, toId: 'app-7' })?.message?.url).toBe(`http://localhost:${APP_PORT}${LOGIN}`);
+  });
+
+  it('finds nothing wrong with the sign-ins of the users the app lists', () => {
+    expect(refusedSignIns(SIGN_IN, world)).toEqual([]);
+  });
+
+  it('rejects a sign-in for a user the incident does not list, or with a password the app does not have for that user', () => {
+    for (const [user, password] of [['nobody', 'clave-lucia'], ['lucia', 'clave-marta'], ['marta', '']]) {
+      const refused = refusedSignIns(withSignIn({ path: LOGIN, user, password: password || 'x' }), world);
+      expect(refused, user).toContain('you → admin via sign-in-extra');
+      expect(refused.every((combination) => combination.endsWith(' via sign-in-extra')), user).toBe(true);
+    }
   });
 });
 

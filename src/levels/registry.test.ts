@@ -5,7 +5,7 @@ import { toPlainText } from '@/copy';
 import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
-import { curlsOutsideWebServices, missingShownIds, officeLeaks, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
+import { curlsOutsideWebServices, missingShownIds, officeLeaks, refusedSignIns, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
 import { incidentSchema, isGuided, type CaseSpec, type Incident } from './contract/incident';
 import { INCIDENTS } from './registry';
 import { caseWorld, solvedWorld, startWorld } from './world';
@@ -114,6 +114,10 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
 
   it('every message of a curl goes to a service that has a web service in the start world of its incident', () => {
     expect(startScenesOf(incident).flatMap(({ owner, world }) => curlsOutsideWebServices(owner, world))).toEqual([]);
+  });
+
+  it('every sign-in of a browser presents a user and a password the app of the start world of its incident lists', () => {
+    expect(startScenesOf(incident).flatMap(({ owner, world }) => refusedSignIns(owner, world))).toEqual([]);
   });
 
   it('every device a classify card sorts exists in the start world of its incident', () => {

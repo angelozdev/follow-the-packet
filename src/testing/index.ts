@@ -1,5 +1,5 @@
 export { ATTACKER_IP, EVERY_TERM, NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, YOU_IP, actor, allOut, device, dig, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, sshFromYou, tcp, tcpService, withDevice, withInbound, withResolverCache } from './fixtures';
 export { CHAPTER_1_TERMS, CHAPTER_2_TERMS, NOTE_RULE, chapter1Worlds, chapter2Worlds, chapter4Worlds, classifyIncident, diagnoseIncident, filterIncident, gatewayIncident, hostFirewallIncident, identifyIncident, namesSendIncident, outboundFilterIncident, repairableDiagnoseIncident, routedSendIncident, sendIncident } from './incidents';
 export { REPO_ROOT, docChapters, docTiers, readSyllabus, syllabusChapters, syllabusLessons } from './repo';
-export { APP_PORT, BLOG_CONTENT, BLOG_NAME, LUCIA_FIREWALL, WEB_PORT, addressByPartsIncident, webNet, webSendIncident } from './web/web-incident';
+export { APP_PORT, BLOG_CONTENT, BLOG_NAME, LUCIA_FIREWALL, WEB_PORT, addressByPartsIncident, signInIncident, webNet, webSendIncident } from './web/web-incident';
 export { LADDER_OF_CHAPTER_3 } from './web/ladder-of-chapter-3';

@@ -28,7 +28,7 @@ export { toolOutput, toolOutputOf, toolOutputs } from './view/cards/terminal/out
 export type { OutputSegment, ToolOutput } from './view/cards/terminal/output-card';
 export { tracerouteLines } from './view/cards/terminal/traceroute-lines';
 export { browserCard, browserView } from './view/cards/web/browser-card';
-export type { BrowserCard, BrowserShows, BrowserView } from './view/cards/web/browser-card';
+export type { BrowserCard, BrowserShows, BrowserUser, BrowserView, RememberedCookie } from './view/cards/web/browser-card';
 export { pickedParts, stripAddress } from './view/cards/web/url-strip';
 export type { UrlPartName, UrlPicks, UrlStrip, UrlStripPart } from './view/cards/web/url-strip';
 export type { RouteLine, TracerouteView } from './view/cards/terminal/traceroute-lines';

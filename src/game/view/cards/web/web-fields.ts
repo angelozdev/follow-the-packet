@@ -1,4 +1,4 @@
-import { WEB_BOX_TEXT, deviceName } from '@/copy';
+import { WEB_BOX_TEXT, deviceName, statusCodeName } from '@/copy';
 import { isIpv4, parseUrl } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import { sendingOf, type Session } from '@/game/session';
@@ -34,19 +34,24 @@ export function urlField(session: Session, run: PacketRun): InspectionField[] {
   return [{ label: WEB_BOX_TEXT.url.label, lines: WEB_BOX_TEXT.url.lines(parts, session.known) }];
 }
 
-/** Returns the field with the request that went through the open connection, once `http-request` is known, as it travelled: start line, headers and body. A connection that never opened sent none. The browser of the game says it sends only the Host header. */
+function isBrowser(session: Session, run: PacketRun): boolean {
+  return messageOf(session, run)?.command === 'browser';
+}
+
+/** Returns the field with the request that went through the open connection, once `http-request` is known, as it travelled: start line, headers and body. A connection that never opened sent none. The browser of the game says it sends only the headers shown: only Host, or Host and the Cookie it holds, or those of a sign-in. */
 export function requestField(session: Session, run: PacketRun): InspectionField[] {
   const request = run.trace.app?.request;
   if (!request || !opened(run) || !session.known.has('http-request')) return [];
-  const browser = messageOf(session, run)?.command === 'browser';
-  return [{ label: WEB_BOX_TEXT.request, lines: linesOf(request), ...(browser && { notes: [WEB_BOX_TEXT.notes.browserRequest] }) }];
+  const note = Object.keys(request.headers).length === 1 ? WEB_BOX_TEXT.notes.browserRequest : WEB_BOX_TEXT.notes.browserRequestSeveral;
+  return [{ label: WEB_BOX_TEXT.request, lines: linesOf(request), ...(isBrowser(session, run) && { notes: [note] }) }];
 }
 
-/** Returns the field with the response a web service gave, once `http-response` is known, as it travelled: start line, headers and body, and a note that a real server sends more headers. */
+/** Returns the field with the response a web service gave, once `http-response` is known, as it travelled: start line, headers and body, and a note that a real server sends more headers. To a browser that got a 401 the note adds that a real browser would open a box for the user and the password and the one of the game does not. */
 export function responseField(session: Session, run: PacketRun): InspectionField[] {
   const response = run.trace.app?.response;
   if (!response || !session.known.has('http-response')) return [];
-  return [{ label: WEB_BOX_TEXT.response, lines: linesOf(response), notes: [WEB_BOX_TEXT.notes.response] }];
+  const loginBox = isBrowser(session, run) && response.statusCode === 401 ? [WEB_BOX_TEXT.browserLoginBox(statusCodeName(response.statusCode, session.known))] : [];
+  return [{ label: WEB_BOX_TEXT.response, lines: linesOf(response), notes: [WEB_BOX_TEXT.notes.response, ...loginBox] }];
 }
 
 /** Returns the fields with the status code of the response and its class, and with the device whose app generated it (the one of the step `web-answered`), once `status-code` is known. A packet that got no response has neither. */

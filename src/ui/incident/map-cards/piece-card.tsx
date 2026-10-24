@@ -33,7 +33,7 @@ export function pieceHandlers(session: Session, dispatch: Dispatch<SessionAction
       onPickOrigin,
       onSend: send,
     },
-    browser: { view: (picks) => browserView(session, picks), onOpen: send },
+    browser: { view: (picks) => browserView(session, picks), onOpen: send, onSignIn: send },
     onAnswer: (deviceId, picks) => dispatch({ type: 'answerCard', deviceId, picks }),
     onPick: (deviceId, settingId, chipId) => dispatch({ type: 'setSetting', deviceId, settingId, chipId }),
     onPlace: (tableId, picks) => dispatch({ type: 'placeEntry', tableId, picks }),

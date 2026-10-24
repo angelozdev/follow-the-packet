@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BROWSER_TEXT, toPlainText } from '@/copy';
-import { OFFICE_FLOORS, sendIncident, webSendIncident } from '@/testing';
+import { OFFICE_FLOORS, sendIncident, signInIncident, webSendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { browserCard, browserView } from './browser-card';
@@ -70,6 +70,54 @@ describe('browserView', () => {
     for (const text of texts) expect(text, text).not.toMatch(/chrome|chromium|firefox|safari|edge|opera|brave|explorer|ERR_|NET::|\b[1-5]\d\d\b|código|code|cookie|redirig|redirecci|HSTS/i);
     const shown = [viewOf(web, 'you', 'shop'), viewOf(web, 'lucia', 'app-80'), viewOf(web, 'you', 'orders')].map((view) => view?.shows);
     expect(shown.filter((shows) => shows?.kind === 'error').map((shows) => shows && 'text' in shows && shows.text)).toEqual([BROWSER_TEXT.refused, BROWSER_TEXT.noConnection]);
+  });
+});
+
+describe('the sign-in and the memory of the browser', () => {
+  const SIGN_IN = signInIncident();
+  const signing = startSession([SIGN_IN], SIGN_IN.id);
+  const LAPTOP = PIECE_ID.device('your-laptop');
+  const sent = (session: Session, ...messageIds: string[]): Session => messageIds.reduce((current, messageId) => sessionReducer(current, { type: 'sendPacket', fromId: 'you', toId: 'admin', messageId }), session);
+  const cookieNamed = (site: string, value: string) => ({ id: `${site}|sesion`, site, name: 'sesion', value });
+  const lucia = OFFICE_FLOORS.floor1.lucia;
+
+  it('offers a user for each browser message that signs in, and opens with the one that does not', () => {
+    const card = browserCard(signing, LAPTOP);
+    expect(card?.messageId).toBe('browser');
+    expect(card?.users).toEqual([{ messageId: 'sign-in-lucia', label: 'Lucía' }, { messageId: 'sign-in-marta', label: 'Marta' }]);
+    expect(card?.addresses.map((chip) => chip.id)).toContain('admin');
+    expect(browserCard(web, LAPTOP)?.users).toEqual([]);
+  });
+
+  it('the memory table lists the cookies the browser holds, by site', () => {
+    expect(browserCard(signing, LAPTOP)?.remembered).toEqual([]);
+    const asLucia = sent(signing, 'sign-in-lucia');
+    expect(browserCard(asLucia, LAPTOP)?.remembered).toEqual([cookieNamed(lucia, 's1')]);
+    expect(browserCard(sent(asLucia, 'sign-in-marta'), LAPTOP)?.remembered, 'the same name and site replace each other').toEqual([cookieNamed(lucia, 's2')]);
+    expect(browserCard(sent(signing, 'curl-i', 'curl-cookie'), LAPTOP)?.remembered, 'a curl keeps nothing').toEqual([]);
+    expect(browserCard(asLucia, PIECE_ID.device('lucia-laptop'))?.remembered, 'the browser of another device holds its own').toEqual([]);
+  });
+
+  it('the memory table waits for the term cookie, and goes with the sends when a move changes the world', () => {
+    const unknown = startSession([{ ...SIGN_IN, introduces: SIGN_IN.introduces.filter((term) => term !== 'cookie') }], SIGN_IN.id);
+    expect(browserCard(sent(unknown, 'sign-in-lucia'), LAPTOP)?.remembered).toBeNull();
+    const moved = sessionReducer(sent(signing, 'sign-in-lucia'), { type: 'placeRule', firewallId: 'fw-lucia', whatId: 'tcp-3001', fromId: 'you' });
+    expect(browserCard(moved, LAPTOP)?.remembered).toEqual([]);
+  });
+
+  it('shows the page of the sign-in and then the page that was opened, for the same address', () => {
+    const picks = { from: 'you', to: 'admin', message: 'browser' };
+    expect(browserView(signing, picks)).toBeNull();
+    const asLucia = sent(signing, 'sign-in-lucia');
+    expect(browserView(asLucia, picks)).toEqual({ address: `http://${lucia}:3000/login`, shows: { kind: 'page', lines: ['Sesión iniciada.'] } });
+    expect(browserView(sent(asLucia, 'browser'), picks)).toEqual({ address: `http://${lucia}:3000/admin`, shows: { kind: 'page', lines: ['Panel de administración.'] } });
+    expect(browserView(sent(sent(asLucia, 'browser'), 'sign-in-marta'), picks)?.address, 'the last of the two').toBe(`http://${lucia}:3000/login`);
+    expect(browserView(sent(signing, 'curl-i'), picks), 'a curl is not the browser').toBeNull();
+  });
+
+  it('a browser without the cookie gets what the app answers to a request with no credential', () => {
+    expect(browserView(sent(signing, 'browser'), { from: 'you', to: 'admin', message: 'browser' })?.shows).toEqual({ kind: 'page', lines: ['Hace falta un usuario y una contraseña válidos.'] });
+    expect(browserView(sent(signing, 'sign-in-marta', 'browser'), { from: 'you', to: 'admin', message: 'browser' })?.shows).toEqual({ kind: 'page', lines: ['Ese usuario no tiene permiso para entrar aquí.'] });
   });
 });
 

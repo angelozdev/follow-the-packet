@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { toPlainText, type TermId } from '@/copy';
 import type { Site } from '@/engine';
 import { INCIDENTS } from '@/levels';
-import { OFFICE_FLOORS, webSendIncident, withDevice } from '@/testing';
+import { OFFICE_FLOORS, signInIncident, webSendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { inspect } from '@/game/view/inspection';
 import { PIECE_ID } from '@/game/view/piece-id';
@@ -139,6 +139,49 @@ describe('the box of a response: its status code and who generated it', () => {
       expect(field(box, 'Quién lo generó'), `${to} ${message}`).toBeUndefined();
     }
     expect(field(answered('orders', 'browser'), 'Código de estado')).toEqual(field(answered('orders', 'curl'), 'Código de estado'));
+  });
+});
+
+describe('the box of a browser that signs in and carries a cookie', () => {
+  const SIGN_IN = signInIncident();
+  const start = startSession([SIGN_IN], SIGN_IN.id);
+  const lucia = OFFICE_FLOORS.floor1.lucia;
+  const asLucia = sentAs(start, 'you', 'admin', 'sign-in-lucia');
+  const NOTE_OF_ONE = 'nota: Un navegador real manda más cabeceras. El del juego manda solo esta.';
+  const NOTE_OF_SEVERAL = 'nota: Un navegador real manda más cabeceras. El del juego manda solo estas.';
+  const NOTE_OF_THE_LOGIN_BOX = 'nota: Ante un 401 Unauthorized con WWW-Authenticate, un navegador real abre un cuadro para escribir el usuario y la clave. El del juego no lo abre.';
+
+  it('the sign-in shows the post with the form of its user, and the response shows the Set-Cookie', () => {
+    const box = boxOf(asLucia, 'you', 'admin', 'sign-in-lucia');
+    expect(field(box, 'Petición HTTP')).toEqual([
+      'Petición HTTP',
+      'POST /login HTTP/1.1',
+      `Host: ${lucia}:3000`,
+      'Content-Length: 31',
+      'Content-Type: application/x-www-form-urlencoded',
+      'Cuerpo: usuario=lucia&clave=clave-lucia',
+      NOTE_OF_SEVERAL,
+    ]);
+    expect(field(box, 'Respuesta HTTP')).toEqual(['Respuesta HTTP', 'HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 17', 'Set-Cookie: sesion=s1', 'Cuerpo: Sesión iniciada.', 'nota: Un servidor real manda más cabeceras. El del juego manda solo estas.']);
+  });
+
+  it('the next request of the browser to the same site shows the Cookie header it holds', () => {
+    const box = boxOf(sentAs(asLucia, 'you', 'admin', 'browser'), 'you', 'admin', 'browser');
+    expect(field(box, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${lucia}:3000`, 'Cookie: sesion=s1', NOTE_OF_SEVERAL]);
+    expect(field(box, 'Código de estado')?.[1]).toBe('200 OK');
+  });
+
+  it('a browser that carries no cookie still says it sends only Host, and a curl with -b shows its Cookie with the headers of the tool', () => {
+    expect(field(boxOf(sentAs(start, 'you', 'admin', 'browser'), 'you', 'admin', 'browser'), 'Petición HTTP')?.at(-1)).toBe(NOTE_OF_ONE);
+    expect(field(boxOf(sentAs(start, 'you', 'admin', 'curl-cookie'), 'you', 'admin', 'curl-cookie'), 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${lucia}:3000`, 'User-Agent: curl/8.21.0', 'Accept: */*', 'Cookie: sesion=s1']);
+  });
+
+  it('a 401 for the browser says a real browser asks for the user and the password in a box and the one of the game does not', () => {
+    const refused = boxOf(sentAs(start, 'you', 'admin', 'browser'), 'you', 'admin', 'browser');
+    expect(field(refused, 'Respuesta HTTP')?.at(-1)).toBe(NOTE_OF_THE_LOGIN_BOX);
+    expect(field(refused, 'Código de estado')?.[1]).toBe('401 Unauthorized');
+    expect(field(boxOf(sentAs(start, 'you', 'admin', 'curl-i'), 'you', 'admin', 'curl-i'), 'Respuesta HTTP')?.some((line) => line.includes('cuadro'))).toBe(false);
+    expect(field(boxOf(sentAs(asLucia, 'you', 'admin', 'browser'), 'you', 'admin', 'browser'), 'Respuesta HTTP')?.some((line) => line.includes('cuadro'))).toBe(false);
   });
 });
 

@@ -264,6 +264,31 @@ describe('the request of a curl and of the browser', () => {
     expect(requestOf('you', 'shop', 'curl-i')?.headers).not.toHaveProperty('Authorization');
   });
 
+  it('a curl with -b carries the Cookie header of its option, after Accept and before Content-Length', () => {
+    const cookie = 'sesion=s1';
+    const source = 'curl-8.21.0, read 2026-10-24: src/tool_getparam.c:2712-2722 (a -b with = is a cookie string), src/config2setopts.c:514-540 (CURLOPT_COOKIE), lib/http.c:2532-2592 (Cookie: and the data as given), :2846-2862 (after Accept, before the content headers)';
+    const withCookie: SendOwner = { send: { ...WEB.send, message: [{ id: 'curl-b', label: `curl -i -b ${cookie}`, command: 'curl', options: { include: true, cookie } }, { id: 'curl-b-d', label: 'curl -b -d', command: 'curl', options: { cookie, data: 'item=coffee' } }] } };
+    const sent = (messageId: string) => sendPacket(world, withCookie, { type: 'sendPacket', fromId: 'you', toId: 'orders', messageId }, 1, EVERY_TERM)?.trace.app?.request;
+    expect(Object.keys(sent('curl-b')!.headers), source).toEqual(['Host', 'User-Agent', 'Accept', 'Cookie']);
+    expect(sent('curl-b')?.headers.Cookie, source).toBe(cookie);
+    expect(Object.keys(sent('curl-b-d')!.headers), source).toEqual(['Host', 'User-Agent', 'Accept', 'Cookie', 'Content-Length', 'Content-Type']);
+    expect(requestOf('you', 'shop', 'curl-i')?.headers).not.toHaveProperty('Cookie');
+  });
+
+  it('a browser message that signs in sends a post to the login with the name and the password of its user', () => {
+    const signIn = { path: '/login', user: 'lucia', password: 'clave-lucia' };
+    const withSignIn: SendOwner = { send: { ...WEB.send, message: [{ id: 'sign-in', label: 'Lucía', command: 'browser', signIn }, { id: 'open', label: 'Navegador', command: 'browser' }] } };
+    const sent = (messageId: string) => sendPacket(world, withSignIn, { type: 'sendPacket', fromId: 'you', toId: 'orders', messageId }, 1, EVERY_TERM)?.packet.message;
+    expect(sent('sign-in')).toEqual({
+      method: 'POST',
+      url: `http://${OFFICE_FLOORS.floor1.lucia}:3000/login`,
+      body: 'usuario=lucia&clave=clave-lucia',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      browser: true,
+    });
+    expect(sent('open')).toEqual({ method: 'GET', url: `http://${OFFICE_FLOORS.floor1.lucia}:3000/pedidos`, browser: true });
+  });
+
   it('the browser of the game sends only Host: it imitates no real browser', () => {
     expect(requestOf('you', 'shop', 'browser')?.headers).toEqual({ Host: 'www.lucia.example' });
   });

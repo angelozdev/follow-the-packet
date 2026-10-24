@@ -225,10 +225,11 @@ function shellWord(text: string): string {
   return SHELL_SAFE.test(text) ? text : `'${text.replaceAll("'", "'\\''")}'`;
 }
 
-/** The options of a `curl` as the line writes them: `-i`, `-u <user:password>`, `-X <method>`, `-d <body>` and `--connect-timeout <seconds>`. */
+/** The options of a `curl` as the line writes them: `-i`, `-u <user:password>`, `-b <name=value>`, `-X <method>`, `-d <body>` and `--connect-timeout <seconds>`. */
 interface CurlLineOptions {
   include?: boolean;
   user?: string;
+  cookie?: string;
   request?: string;
   data?: string;
   connectTimeout?: number;
@@ -245,11 +246,12 @@ export const TERMINAL_TEXT = {
   handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
   nc: (address: string, port: number): TermText => `nc -vz -w 3 ${address} ${port}`,
   dig: (name: string): TermText => `dig ${name}`,
-  curl: (url: string, { include, user, request, data, connectTimeout }: CurlLineOptions = {}): TermText =>
+  curl: (url: string, { include, user, cookie, request, data, connectTimeout }: CurlLineOptions = {}): TermText =>
     [
       'curl',
       ...(include ? ['-i'] : []),
       ...(user === undefined ? [] : ['-u', shellWord(user)]),
+      ...(cookie === undefined ? [] : ['-b', shellWord(cookie)]),
       ...(request === undefined ? [] : ['-X', request]),
       ...(data === undefined ? [] : ['-d', shellWord(data)]),
       ...(connectTimeout === undefined ? [] : ['--connect-timeout', String(connectTimeout)]),

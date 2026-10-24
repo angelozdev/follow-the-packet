@@ -1,5 +1,5 @@
 import compare from 'just-compare';
-import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, basicAuthorizationHeader, ipInCidr, isIpv4, isLoopbackIpv4, parseUrl, simulate, tcpServiceAt, traceroute, webServiceAt, type Direction, type HttpMethod, type Network, type PacketSpec, type Rule } from '@/engine';
+import { DEFAULT_DIRECTION, DNS_PORT, TRACEROUTE_MAX_HOPS, basicAuthorizationHeader, loginFormOf, ipInCidr, isIpv4, isLoopbackIpv4, parseUrl, simulate, tcpServiceAt, traceroute, webServiceAt, type Direction, type HttpMessage, type HttpMethod, type Network, type PacketSpec, type Rule } from '@/engine';
 import { peerIdOf, ruleIdFor, urlOfChip, type AddressChip, type CaseSpec, type CurlOptions, type FromChip, type Incident, type MessageChip, type OriginChip, type PlaceMove, type SendChips, type SendMove, type TableSpec, type ToChip, type WhatChip } from './incident';
 import { tablesOf } from './tables';
 
@@ -82,20 +82,39 @@ function httpMethodOf({ request, data }: CurlOptions): HttpMethod {
   return request ?? (data === undefined ? 'GET' : 'POST');
 }
 
+function signInMessage({ path, user, password }: NonNullable<MessageChip['signIn']>, url: string): HttpMessage {
+  return { method: 'POST', url: new URL(path, url).href, body: loginFormOf(user, password) };
+}
+
 function webPacket({ from, to, message }: PickedChips): PacketSpec | null {
   const url = urlOfChip(to);
   if (url === undefined) return null;
-  const { host, port } = parseUrl(url);
-  const { options = {} } = message;
-  return { from: from.endpoint, to: host, protocol: 'tcp', port, message: { method: httpMethodOf(options), url, ...(options.data !== undefined && { body: options.data }) } };
+  const { options = {}, signIn } = message;
+  const sent = signIn ? signInMessage(signIn, url) : { method: httpMethodOf(options), url, ...(options.data !== undefined && { body: options.data }) };
+  const { host, port } = parseUrl(sent.url);
+  return { from: from.endpoint, to: host, protocol: 'tcp', port, message: sent };
 }
 
 const CURL_VERSION = '8.21.0';
 const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded';
 
-function curlHeadersOf({ command, options = {} }: MessageChip): Record<string, string> | undefined {
-  if (command !== 'curl') return undefined;
-  return { ...(options.user !== undefined && basicAuthorizationHeader(options.user)), 'User-Agent': `curl/${CURL_VERSION}`, Accept: '*/*', ...(options.data !== undefined && { 'Content-Type': FORM_CONTENT_TYPE }) };
+function clientOf({ command, options = {}, signIn }: MessageChip): Pick<HttpMessage, 'headers' | 'browser'> | undefined {
+  switch (command) {
+    case 'curl':
+      return {
+        headers: {
+          ...(options.user !== undefined && basicAuthorizationHeader(options.user)),
+          'User-Agent': `curl/${CURL_VERSION}`,
+          Accept: '*/*',
+          ...(options.cookie !== undefined && { Cookie: options.cookie }),
+          ...(options.data !== undefined && { 'Content-Type': FORM_CONTENT_TYPE }),
+        },
+      };
+    case 'browser':
+      return { browser: true, ...(signIn !== undefined && { headers: { 'Content-Type': FORM_CONTENT_TYPE } }) };
+    default:
+      return undefined;
+  }
 }
 
 function withTtl(packet: PacketSpec | null, { ttl }: MessageChip): PacketSpec | null {
@@ -121,12 +140,12 @@ export function packetFromChips(incident: SendOwner, combination: Combination): 
   }
 }
 
-/** Builds the packet a send puts on the wire: `packetFromChips` and, for a `curl`, the headers the real tool adds to every request (`User-Agent: curl/8.21.0`, an `Accept` for any type, `Content-Type: application/x-www-form-urlencoded` with `-d`, and with `-u` an `Authorization: Basic` with the base64 of `user:password` before them, sent on the first request: `lib/http.c` and `src/config2setopts.c` of curl 8.21.0, read on 2026-10-24). The browser of the game sends only Host, so it gets none. */
+/** Builds the packet a send puts on the wire: `packetFromChips` and the client that sends it. A `curl` adds the headers the real tool adds to every request (`User-Agent: curl/8.21.0`, an `Accept` for any type, `Content-Type: application/x-www-form-urlencoded` with `-d`, with `-u` an `Authorization: Basic` with the base64 of `user:password` before them, sent on the first request, and with `-b name=value` a `Cookie` with that text after them: `lib/http.c`, `src/tool_getparam.c` and `src/config2setopts.c` of curl 8.21.0, read on 2026-10-24). A browser is marked `browser: true`, which is what makes the engine give it the cookies of its device and keep the ones it receives; the browser of the game sends only Host, plus the `Content-Type` of the form of a sign-in. */
 export function sentPacketFromChips(incident: SendOwner, combination: Combination): PacketSpec | null {
   const packet = packetFromChips(incident, combination);
   const message = pickedChips(incident, combination)?.message;
-  const headers = message && curlHeadersOf(message);
-  return packet?.message && headers ? { ...packet, message: { ...packet.message, headers } } : packet;
+  const client = message && clientOf(message);
+  return packet?.message && client ? { ...packet, message: { ...packet.message, ...client } } : packet;
 }
 
 /** Builds the Echo Request that a traceroute repeats with a growing TTL, from the origin to the address; null unless the message chip is a traceroute the incident offers with these two chips. */
@@ -192,6 +211,16 @@ export function curlsOutsideWebServices(owner: SendOwner, world: Network): strin
   const messageIds = reached.map(({ combination }) => combination.messageId).filter((id, index, ids) => ids.indexOf(id) === index);
   const unserved = messageIds.filter((id) => !reached.some(({ combination, service }) => combination.messageId === id && service?.web !== undefined));
   return [...speaksNoHttp, ...unserved.map((id) => `${id} reaches no web service`)];
+}
+
+/** Returns "from → to via message" for each combination of a browser message that signs in, from a send owner, that reaches the app of a site and gets its 401: the user and the password of the message are not a user of that site, which a player who never types would then be unable to fix. A combination that reaches no app, or an app with no such login (a 404), is no finding. */
+export function refusedSignIns(owner: SendOwner, world: Network): string[] {
+  return sendCombinations(owner).flatMap((combination) => {
+    const signsIn = owner.send.message.find(({ id }) => id === combination.messageId)?.signIn !== undefined;
+    const packet = signsIn ? packetFromChips(owner, combination) : null;
+    const refused = packet !== null && simulate(world, packet).app?.response?.statusCode === 401;
+    return refused ? [`${combination.fromId} → ${combination.toId} via ${combination.messageId}`] : [];
+  });
 }
 
 function placedIds(world: Network): string[] {

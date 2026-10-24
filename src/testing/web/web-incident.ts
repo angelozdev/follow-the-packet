@@ -143,3 +143,55 @@ export function webSendIncident(): SendIncident {
     ],
   };
 }
+
+const ADMIN_PATH = '/admin';
+const ADMIN_BODY = 'Panel de administración.';
+const ADMIN_URL = `http://${floor1.lucia}:${APP_PORT}${ADMIN_PATH}`;
+const SIGNED_IN_BODY = 'Sesión iniciada.';
+const LOGIN_PATH = '/login';
+const ACCOUNTS: NonNullable<Site['accounts']> = {
+  users: [{ name: 'lucia', password: 'clave-lucia', role: 'admin' }, { name: 'marta', password: 'clave-marta', role: 'staff' }],
+  realm: 'admin',
+  unauthorizedBody: 'Hace falta un usuario y una contraseña válidos.',
+  forbiddenBody: 'Ese usuario no tiene permiso para entrar aquí.',
+};
+const signInSite: Site = {
+  ...ordersSite,
+  accounts: ACCOUNTS,
+  pages: [...ordersSite.pages, { path: LOGIN_PATH, methods: ['POST'], handler: { kind: 'login', body: SIGNED_IN_BODY } }, { path: ADMIN_PATH, methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: ADMIN_BODY } }],
+};
+
+/** Returns `webNet` where the orders app of laptop-lucia also has the `/login` page, the `/admin` page that asks for the `admin` role and two users, Lucía (admin, password `clave-lucia`) and Marta (staff, password `clave-marta`), and where its firewall lets your laptop reach port 3000. */
+function signInNet(): Network {
+  const net = applyAction(webNet(), { type: 'setWebService', ownerId: LUCIA, port: APP_PORT, web: { sites: [signInSite], defaultSiteId: signInSite.id } });
+  const allowYou = { id: 'app-from-you', what: { kind: 'tcp', fromPort: APP_PORT, toPort: APP_PORT }, peer: { kind: 'cidr', cidr: `${floor1.you}/32` } } as const;
+  return { ...net, firewalls: net.firewalls.map((firewall) => (firewall.id === LUCIA_FIREWALL ? { ...firewall, inbound: [allowYou] } : firewall)) };
+}
+
+const signIn = (id: string, label: string, user: string, password: string) => ({ id, label, command: 'browser', signIn: { path: LOGIN_PATH, user, password } }) as const;
+
+/** Returns `webSendIncident` on `signInNet` with one more address, `/admin` of the orders app by its IP (`admin`), and three more messages: the browser signing in as Lucía (`sign-in-lucia`) or as Marta (`sign-in-marta`) and a `curl -i -b sesion=s1` (`curl-cookie`). Its one task expects the browser to get the page of `/admin`, and its solution signs in as Lucía and opens it. */
+export function signInIncident(): SendIncident {
+  const base = webSendIncident();
+  return {
+    ...base,
+    id: '09-03',
+    order: 3,
+    base: signInNet(),
+    tasks: [{ id: 'enter', text: 'Que el navegador entre a /admin.', expect: { fromId: 'you', toId: 'admin', messageId: 'browser', outcome: 'replied', body: ADMIN_BODY } }],
+    send: {
+      ...base.send,
+      to: [...base.send.to, { id: 'admin', address: floor1.lucia, url: ADMIN_URL }],
+      message: [
+        ...base.send.message,
+        signIn('sign-in-lucia', 'Lucía', 'lucia', 'clave-lucia'),
+        signIn('sign-in-marta', 'Marta', 'marta', 'clave-marta'),
+        { id: 'curl-cookie', label: 'curl -i -b sesion=s1', command: 'curl', options: { include: true, cookie: 'sesion=s1' } },
+      ],
+    },
+    solution: [
+      { type: 'sendPacket', fromId: 'you', toId: 'admin', messageId: 'sign-in-lucia' },
+      { type: 'sendPacket', fromId: 'you', toId: 'admin', messageId: 'browser' },
+    ],
+  };
+}

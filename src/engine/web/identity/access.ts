@@ -26,3 +26,8 @@ export function loginUserOf(accounts: Accounts, body: string | undefined): strin
   const form = new URLSearchParams(body);
   return accounts.users.find(({ name, password }) => name === form.get(USER_FIELD) && password === form.get(PASSWORD_FIELD))?.name;
 }
+
+/** Returns the body of the login form that presents this user and password (`usuario=…&clave=…`), which `loginUserOf` reads back. */
+export function loginFormOf(user: string, password: string): string {
+  return new URLSearchParams({ [USER_FIELD]: user, [PASSWORD_FIELD]: password }).toString();
+}
