@@ -505,6 +505,24 @@ describe('03-03, who answers', () => {
     expect(changedNames(worldBeforeChanges(INCIDENTS, WHO_ANSWERS), startWorld(INCIDENTS, WHO_ANSWERS))).toEqual([DEVICE.lucia.name]);
   });
 
+  it('03-03: the report says what --connect-timeout 3 does and why the curl to the reports app leaves from laptop-lucia', () => {
+    const report = plain(incident.report);
+    expect(report).toContain('Con --connect-timeout 3, curl se rinde si en 3 segundos no logra conectar.');
+    expect(report).toContain(`Desde ${DEVICE.lucia.name}, pídele con curl a la app de reportes: como el paquete va a su propia IP, no cruza su firewall.`);
+  });
+
+  it('03-03: no text of the incident speaks of a código, which curl printed as (7) and (28) and an http response never had', () => {
+    const feedbacks = isGuided(incident) ? incident.explanation.map(({ feedback }) => plain(feedback)) : [];
+    expect([...incidentTexts(incident).map(plain), ...feedbacks].filter((text) => /código/i.test(text))).toEqual([]);
+    expect(plain((isGuided(incident) && incident.question) || '')).toBe('Con la app de reportes cerrada, ¿por qué curl no recibió ninguna respuesta HTTP?');
+  });
+
+  it('03-03: the takeaway keeps the refusal of laptop-lucia apart from the silence the sender got when the firewall dropped the request', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain(`Un rechazo: ${DEVICE.lucia.name} contestó con un RST a quien pedía la app de reportes, antes de que hubiera HTTP.`);
+    expect(takeaway).toContain(`Un silencio: el firewall de ${DEVICE.lucia.name} descartó la petición de ${DEVICE.you.name} y ${DEVICE.you.name} no recibió nada, hasta que agregaste la regla.`);
+  });
+
   it('03-03: no text says that a stopped app and a firewall are the same', () => {
     expect(everythingRead.flatMap(sentencesSayingAStoppedAppIsAFirewall)).toEqual([]);
     expect(['Una app cerrada y un firewall son lo mismo.', 'El firewall rechaza igual que un proceso que terminó.', 'Un rechazo es igual que el firewall.'].filter((text) => sentencesSayingAStoppedAppIsAFirewall(text).length === 0)).toEqual([]);
