@@ -22,17 +22,17 @@ export default defineIncident({
   question: '¿Qué parte de la {{url|URL}} eligió el pedido 7?',
   explanation: [
     {
-      text: 'El {{url-path|path}}, /pedidos.',
+      text: 'El {{url-path|path}}, que es /pedidos, en la {{url|URL}}.',
       feedback: 'El {{url-path|path}} dice qué recurso del servidor se pide: aquí, los pedidos. Es el mismo en los dos {{curl}}. Lo que cambia entre el pedido 7 y el 8 es otra parte de la {{url|URL}}.',
       correct: false,
     },
     {
-      text: 'La {{query-string|query string}}, ?id=7.',
+      text: 'La {{query-string|query string}}, que es ?id=7.',
       feedback: 'La {{query-string|query string}} precisa lo que se pide dentro del recurso: id=7 es el pedido 7 e id=8 es el pedido 8. Es lo único que cambia entre los dos {{curl}}.',
       correct: true,
     },
     {
-      text: `El {{port|puerto}}, ${PORT.app}.`,
+      text: `El {{port|puerto}}, que es el ${PORT.app}, en la {{url|URL}}.`,
       feedback: `El {{port|puerto}} elige qué {{service|servicio}} de ${NAME.lucia} contesta. En los dos {{curl}} es el ${PORT.app}: la app de pedidos.`,
       correct: false,
     },

@@ -107,6 +107,27 @@ describe('the incidents of chapter 3', () => {
   });
 });
 
+describe('the options of the questions of chapter 3', () => {
+  const MAX_LENGTH_RATIO = 1.4;
+  const questions = builtOfChapter3().filter(isGuided).map((incident) => {
+    const lengths = incident.explanation.map(({ text }) => plain(text).length);
+    return { id: incident.id, lengths, right: lengths[incident.explanation.findIndex(({ correct }) => correct)] };
+  });
+
+  it('are close in length and the right one is never the longest, so its length gives nothing away', () => {
+    expect(questions.length).toBeGreaterThan(0);
+    for (const { id, lengths, right } of questions) {
+      expect(Math.max(...lengths) / Math.min(...lengths), id).toBeLessThanOrEqual(MAX_LENGTH_RATIO);
+      expect(right, id).toBeLessThan(Math.max(...lengths));
+    }
+  });
+
+  it('the right one is the shortest in at most a third of the questions', () => {
+    const shortest = questions.filter(({ lengths, right }) => right === Math.min(...lengths));
+    expect(shortest.length * 3).toBeLessThanOrEqual(questions.length);
+  });
+});
+
 describe('the term ladder of chapter 3 in its incidents', () => {
   it('introduces, incident by incident, the terms of the approved design', () => {
     for (const incident of builtOfChapter3()) expect(sorted(incident.introduces), incident.id).toEqual(sorted(termsOfSubchapter(incident.order)));
@@ -251,7 +272,7 @@ describe('03-01, an address for everything', () => {
   it('03-01: the right option is the second and the question separates the three parts of the url', () => {
     const options = isGuided(incident) ? incident.explanation : [];
     expect(options.findIndex(({ correct }) => correct)).toBe(1);
-    expect(options.map(({ text }) => plain(text))).toEqual(['El path, /pedidos.', 'La query string, ?id=7.', `El puerto, ${PORT.app}.`]);
+    expect(options.map(({ text }) => plain(text))).toEqual(['El path, que es /pedidos, en la URL.', 'La query string, que es ?id=7.', `El puerto, que es el ${PORT.app}, en la URL.`]);
   });
 
   it('03-01: the takeaway says the output is the one of curl 8.21.0 of Amazon Linux 2023 and that a Mac prints errors differently', () => {
@@ -388,7 +409,7 @@ describe('03-02, ask and answer', () => {
     expect(everythingRead(start).filter((text) => SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual([]);
     expect(['HTTP evita los duplicados.', 'El HTTP previene repetidos.'].filter((text) => !SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual([]);
     expect(SAYS_HTTP_PREVENTS_DUPLICATES.test('HTTP no evita nada.')).toBe(false);
-    expect(wrongOptionTexts.map(plain).filter((text) => SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual(['Sí, HTTP evita los duplicados.']);
+    expect(wrongOptionTexts.map(plain).filter((text) => SAYS_HTTP_PREVENTS_DUPLICATES.test(text))).toEqual(['Sí, porque HTTP evita los duplicados al repetir una petición.']);
   });
 
   it('03-02: the question separates the effect of repeating from the answer', () => {
@@ -544,8 +565,8 @@ describe('03-03, who answers', () => {
     const options = isGuided(incident) ? incident.explanation : [];
     expect(options.findIndex(({ correct }) => correct)).toBe(0);
     expect(plain(options[0].text)).toBe(`No había ningún proceso escuchando en el puerto ${REPORTS_PORT}, y TCP rechazó la conexión antes de que hubiera HTTP.`);
-    expect(plain(options[1].text)).toBe('Porque el firewall descartó el paquete.');
-    expect(plain(options[2].text)).toBe('Porque el servidor web devolvió un error.');
+    expect(plain(options[1].text)).toBe(`Porque el firewall de ${DEVICE.lucia.name} descartó el paquete, y curl se quedó esperando una respuesta que nunca llegó.`);
+    expect(plain(options[2].text)).toBe('Porque el servidor web de la app de reportes devolvió un error HTTP, y curl lo mostró en la terminal.');
     expect(plain(options[1].feedback)).toContain('que no es lo mismo que el silencio');
   });
 
@@ -670,7 +691,7 @@ describe('03-04, one server and many sites', () => {
     expect(everythingRead.flatMap(sentencesSayingTheSiteComesFromTheIpOrTheCname)).toEqual([]);
     expect(['El servidor elige el sitio por la IP.', 'El servidor sabe el sitio por el registro CNAME.', 'Cada sitio se reconoce por el alias.'].filter((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(text).length === 0)).toEqual([]);
     expect(['El servidor no elige el sitio por la IP.', 'El sitio sale de la cabecera Host.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(text).length === 0));
-    expect(wrongOptionTexts.map(plain).filter((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(`El sitio sale ${text}`).length > 0)).toEqual(['Por la IP, que es distinta para cada sitio.', 'Por el registro CNAME.']);
+    expect(wrongOptionTexts.map(plain).filter((text) => sentencesSayingTheSiteComesFromTheIpOrTheCname(`El sitio sale ${text}`).length > 0)).toEqual(['Por la IP, que es distinta para cada nombre y para cada sitio.', 'Por el registro CNAME, que el servidor web lee del DNS.']);
   });
 
   it('03-04: the report names servidor-nuevo', () => {
@@ -683,7 +704,7 @@ describe('03-04, one server and many sites', () => {
     const options = isGuided(incident) ? incident.explanation : [];
     expect(options.findIndex(({ correct }) => correct)).toBe(1);
     expect(plain((isGuided(incident) && incident.question) || '')).toBe(`${HOSTNAME.blog} es un alias de ${HOSTNAME.www}. ¿Cómo sabe ${SERVER.fresh.name} qué sitio dar?`);
-    expect(options.map(({ text }) => plain(text))).toEqual(['Por la IP, que es distinta para cada sitio.', 'Por la cabecera Host, que lleva el nombre escrito en la URL.', 'Por el registro CNAME.']);
+    expect(options.map(({ text }) => plain(text))).toEqual(['Por la IP, que es distinta para cada nombre y para cada sitio.', 'Por la cabecera Host, que lleva el nombre escrito en la URL.', 'Por el registro CNAME, que el servidor web lee del DNS.']);
     expect(plain(options[0].feedback)).toContain(`La IP es la misma para los dos nombres: ${IP.freshServer}.`);
     expect(plain(options[2].feedback)).toContain('El servidor web de servidor-nuevo no ve el DNS');
   });

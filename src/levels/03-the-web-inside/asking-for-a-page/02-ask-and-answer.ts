@@ -23,12 +23,12 @@ export default defineIncident({
   question: 'Se cortó la red al mandar un POST. ¿Es seguro repetirlo?',
   explanation: [
     {
-      text: 'Sí, la respuesta será la misma.',
+      text: 'Sí, porque la respuesta del servidor será la misma que la primera vez.',
       feedback: '{{idempotent|Idempotente}} habla del efecto en el servidor, no de la respuesta. Un segundo POST crea otro pedido, así que el efecto no es el mismo.',
       correct: false,
     },
     {
-      text: 'Sí, {{http|HTTP}} evita los duplicados.',
+      text: 'Sí, porque {{http|HTTP}} evita los duplicados al repetir una petición.',
       feedback: `{{http|HTTP}} no evita nada: lleva lo que se le pide. Si repites el POST, la app de ${NAME.lucia} lo recibe otra vez y crea otro pedido.`,
       correct: false,
     },

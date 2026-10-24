@@ -25,7 +25,7 @@ export default defineIncident({
   question: `${HOSTNAME.blog} es un alias de ${HOSTNAME.www}. ¿Cómo sabe ${NAME.freshServer} qué sitio dar?`,
   explanation: [
     {
-      text: 'Por la {{ip-address|IP}}, que es distinta para cada sitio.',
+      text: 'Por la {{ip-address|IP}}, que es distinta para cada nombre y para cada sitio.',
       feedback: `La {{ip-address|IP}} es la misma para los dos nombres: ${IP.freshServer}. Con una sola IP, ${NAME.freshServer} no puede saber por ella qué sitio se le pide.`,
       correct: false,
     },
@@ -35,7 +35,7 @@ export default defineIncident({
       correct: true,
     },
     {
-      text: 'Por el registro {{cname-record|CNAME}}.',
+      text: 'Por el registro {{cname-record|CNAME}}, que el servidor web lee del {{dns|DNS}}.',
       feedback: `El {{cname-record|CNAME}} lo lee el {{dns|DNS}}, para dar la {{ip-address|IP}}. El {{web-server|servidor web}} de ${NAME.freshServer} no ve el DNS: solo recibe la petición, con su cabecera Host.`,
       correct: false,
     },

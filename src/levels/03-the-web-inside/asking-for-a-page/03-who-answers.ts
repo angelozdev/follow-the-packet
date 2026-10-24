@@ -32,12 +32,12 @@ export default defineIncident({
       correct: true,
     },
     {
-      text: 'Porque el {{firewall}} descartó el {{packet|paquete}}.',
+      text: `Porque el {{firewall}} de ${NAME.lucia} descartó el {{packet|paquete}}, y {{curl}} se quedó esperando una respuesta que nunca llegó.`,
       feedback: 'Un {{firewall}} que descarta no contesta nada: quien envía solo espera. Aquí alguien sí contestó, y {{curl}} mostró un rechazo, que no es lo mismo que el silencio.',
       correct: false,
     },
     {
-      text: 'Porque el {{web-server|servidor web}} devolvió un error.',
+      text: 'Porque el {{web-server|servidor web}} de la app de reportes devolvió un error {{http|HTTP}}, y {{curl}} lo mostró en la terminal.',
       feedback: `En el puerto ${REPORTS_PORT} ningún {{web-server|servidor web}} contestaba: el {{process|proceso}} de la app de reportes había terminado. Sin servidor web no hay {{http-response|respuesta HTTP}} de ningún tipo.`,
       correct: false,
     },
