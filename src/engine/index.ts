@@ -1,5 +1,5 @@
-export { ROUTE_PROBLEMS, applyAction, networkActionSchema, routeProblem } from './network/actions';
-export type { NetworkAction, RouteProblem } from './network/actions';
+export { ROUTE_PROBLEMS, SITE_PROBLEMS, applyAction, networkActionSchema, routeProblem, siteProblem } from './network/actions';
+export type { NetworkAction, RouteProblem, SiteProblem } from './network/actions';
 export type {
   Actor,
   AnswerRecord,
@@ -16,6 +16,7 @@ export type {
   Lan,
   Network,
   PacketSpec,
+  Process,
   Route,
   Router,
   RouterInterface,

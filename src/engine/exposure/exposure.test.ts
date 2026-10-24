@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine/simulation/simulate';
-import { extraOpenings, flowKey, probePackets, reachesHost } from './exposure';
-import type { Rule } from '@/engine/network/types';
+import { extraOpenings, flowKey, probePackets, reachesHost, withProbeActor } from './exposure';
+import type { Network, Rule } from '@/engine/network/types';
 import { OFFICE, OFFICE_FLOORS, actor, device, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, ping, tcp, tcpService, withDevice, withInbound } from '@/testing';
 
 const S2 = { private: '172.31.38.97', public: '34.244.254.100' };
@@ -103,6 +103,24 @@ describe('devices without a firewall', () => {
     const guarded = withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] });
     const fromPrinter = { id: 'echo-printer', what: { kind: 'icmp', icmpType: 8 }, peer: { kind: 'cidr', cidr: `${OFFICE.printer}/32` } } as const;
     expect(extraOpenings(withInbound(guarded, 'fw-lucia', fromPrinter), [ping(device('your-laptop'), OFFICE.lucia)])).toEqual([ping(device('printer'), OFFICE.lucia)]);
+  });
+});
+
+describe('a stopped process', () => {
+  const sshFromAnyone: Rule = { id: 'ssh-all', what: { kind: 'tcp', fromPort: 22, toPort: 22 }, peer: { kind: 'cidr', cidr: '0.0.0.0/0' } };
+  const guardedWith = (host: Pick<Network['devices'][number], 'host'>['host']): Network => withInbound(withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'], host }), 'fw-lucia', sshFromAnyone);
+
+  it('the probe battery treats a stopped process as a closed port', () => {
+    const stopped = guardedWith({ ignoreIcmpEcho: false, services: [{ ...tcpService(22), processId: 'ssh' }], processes: [{ id: 'ssh', name: 'sshd', running: false }] });
+    const closed = guardedWith({ ignoreIcmpEcho: false, services: [] });
+    expect(probePackets(stopped)).toEqual(probePackets(closed));
+    for (const packet of probePackets(closed)) {
+      const [withStopped, withClosed] = [stopped, closed].map((net) => simulate(withProbeActor(net), packet));
+      expect(withStopped.outcome, JSON.stringify(packet)).toBe(withClosed.outcome);
+      expect(reachesHost(withStopped), JSON.stringify(packet)).toBe(reachesHost(withClosed));
+    }
+    expect(extraOpenings(stopped, [])).toEqual(extraOpenings(closed, []));
+    expect(extraOpenings(closed, [])).toContainEqual(tcp(device('your-laptop'), OFFICE.lucia, 22));
   });
 });
 

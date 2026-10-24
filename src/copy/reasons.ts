@@ -176,7 +176,7 @@ function warning(term: TermId): HiddenCause {
   return { term, text: NOT_DELIVERED };
 }
 
-/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination, and is hidden by the term of its own kind (a router with no route by net-unreachable, never by host-unreachable); a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected; a packet from outside that no row or forward takes says that nothing came back, and one that a forward or a row delivers says only that it arrived at the device. */
+/** Returns the term that names what hid the packet from its sender and the only thing the player can say while that term is unknown, or null when the reason hides nothing. A warning that came back says only that the packet did not reach its destination, and is hidden by the term of its own kind (a router with no route by net-unreachable, never by host-unreachable); a silence (a firewall that drops, a laptop that ignores Echo Request) says that nothing came back; a refusal because of the listening address, a refusal because the process that listened is no longer running, and a UDP datagram that a host answers with Port Unreachable, say only that the packet arrived and was rejected; a packet from outside that no row or forward takes says that nothing came back, and one that a forward or a row delivers says only that it arrived at the device. */
 function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
   switch (reason.code) {
     case 'forward-no-owner':
@@ -193,6 +193,8 @@ function hiddenCause(reason: Reason, net: Network): HiddenCause | null {
       return { term: 'listen-address', text: refusedAtArrival(net, reason.deviceId) };
     case 'host-udp-closed':
       return { term: 'port-unreachable', text: refusedAtArrival(net, reason.deviceId) };
+    case 'process-stopped':
+      return { term: 'process', text: refusedAtArrival(net, reason.deviceId) };
     case 'dns-nxdomain':
       return { term: 'nxdomain', text: NO_IP_FOR(reason.name) };
     case 'dns-servfail':
@@ -306,6 +308,8 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `${refusedAtArrival(net, reason.deviceId)} El ${word(known, 'service', 'servicio')} del ${word(known, 'port', 'puerto')} ${reason.port} tiene como {{listen-address}} ${LOOPBACK_IP}, y el ${word(known, 'packet', 'paquete')} va a ${reason.ip}.`;
     case 'host-accepts':
       return `Un programa escucha en el puerto ${reason.port} y acepta.`;
+    case 'process-stopped':
+      return `Llega, pero el {{process|proceso}} que escuchaba en el ${word(known, 'port', 'puerto')} ${reason.port} terminó: ${deviceName(net, reason.deviceId)} lo rechaza.`;
     case 'host-udp-closed':
       return `Llega por ${word(known, 'udp', 'UDP')} al ${word(known, 'port', 'puerto')} ${reason.port}, pero ningún programa escucha ahí: ${deviceName(net, reason.deviceId)} avisa con {{port-unreachable}}.`;
     case 'web-site-chosen':

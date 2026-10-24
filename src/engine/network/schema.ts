@@ -74,8 +74,12 @@ export const serviceSchema = z.object({
   protocol: z.enum(['tcp', 'udp']),
   port: realPort,
   listen: listenSchema,
+  processId: nonEmpty.optional(),
   web: webServiceSchema.optional(),
 });
+
+/** A program that runs on a device or not: a service that names it with `processId` listens only while it runs. */
+export const processSchema = z.object({ id: nonEmpty, name: nonEmpty, running: z.boolean() });
 
 export const soaSchema = z.object({ mname: nonEmpty, rname: nonEmpty, serial: unsigned32, refresh: unsigned32, retry: unsigned32, expire: unsigned32, minimum: unsigned32 });
 
@@ -119,7 +123,7 @@ export const deviceSchema = z.object({
   privateIp: ipSchema,
   publicIp: ipSchema.optional(),
   firewallIds: z.array(z.string().min(1)),
-  host: z.object({ ignoreIcmpEcho: z.boolean(), services: z.array(serviceSchema) }),
+  host: z.object({ ignoreIcmpEcho: z.boolean(), services: z.array(serviceSchema), processes: z.array(processSchema).optional() }),
   appTarget: z.string().min(1).optional(),
   lanId: nonEmpty.optional(),
   gateway: ipSchema.optional(),
@@ -317,10 +321,20 @@ function checkDns(net: NetworkShape, fail: Fail): void {
   }
 }
 
-function checkWebServices(net: NetworkShape, fail: Fail): void {
-  const servers = net.actors.flatMap((actor) => (actor.kind === 'server' ? [{ id: actor.id, services: actor.services ?? [] }] : []));
-  for (const { id, services } of [...net.devices.map((device) => ({ id: device.id, services: device.host.services })), ...servers]) {
-    for (const service of services) if (service.web && service.protocol !== 'tcp') fail(`${id}: the web service of ${service.protocol} ${service.port} must be a TCP service`);
+function serviceOwners(net: NetworkShape) {
+  const devices = net.devices.map((device) => ({ id: device.id, services: device.host.services, processes: device.host.processes }));
+  const servers = net.actors.flatMap((actor) => (actor.kind === 'server' ? [{ id: actor.id, services: actor.services ?? [], processes: undefined }] : []));
+  return [...devices, ...servers];
+}
+
+function checkServices(net: NetworkShape, fail: Fail): void {
+  for (const { id, services, processes } of serviceOwners(net)) {
+    if (net.kind === 'vpc' && processes !== undefined) fail(`${id}: a VPC has no processes`);
+    for (const { protocol, port, web, processId } of services) {
+      if (web && protocol !== 'tcp') fail(`${id}: the web service of ${protocol} ${port} must be a TCP service`);
+      if (web && net.kind === 'vpc') fail(`${id}: a VPC has no web services`);
+      if (processId !== undefined && !processes?.some((candidate) => candidate.id === processId)) fail(`${id}: the service of ${protocol} ${port} listens from ${processId}, which is not a process of ${id}`);
+    }
   }
 }
 
@@ -350,7 +364,7 @@ export const networkSchema = networkShape.superRefine((net, ctx) => {
   else checkOffice(net, fail);
   checkRouters(net, fail);
   checkDns(net, fail);
-  checkWebServices(net, fail);
+  checkServices(net, fail);
   checkFirewalls(net, fail);
 });
 

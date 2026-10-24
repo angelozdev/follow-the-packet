@@ -15,6 +15,7 @@ import type {
   lookupSchema,
   networkSchema,
   packetSchema,
+  processSchema,
   routeSchema,
   routerInterfaceSchema,
   routerSchema,
@@ -33,6 +34,7 @@ export type Rule = z.infer<typeof ruleSchema>;
 export type Firewall = z.infer<typeof firewallSchema>;
 export type FirewallKind = Firewall['kind'];
 export type Service = z.infer<typeof serviceSchema>;
+export type Process = z.infer<typeof processSchema>;
 export type HostLine = z.infer<typeof hostLineSchema>;
 export type LookupMode = z.infer<typeof lookupSchema>;
 export type Device = z.infer<typeof deviceSchema>;

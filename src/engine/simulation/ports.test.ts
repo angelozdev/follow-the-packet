@@ -218,6 +218,20 @@ describe('services and the listening address in a trip', () => {
     expect(closed).toHaveProperty('rttMs');
   });
 
+  it('a tcp port whose process stopped answers with a reset and a firewall that drops answers with nothing', () => {
+    const fromProcess = (running: boolean, firewallIds: string[] = []): Network =>
+      withDevice(officeNet(), LUCIA, { firewallIds, host: { ignoreIcmpEcho: false, services: [{ ...tcpService(LISTENING_PORT), processId: 'orders' }], processes: [{ id: 'orders', name: 'pedidos', running }] } });
+    const stopped = simulate(fromProcess(false), tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(stopped.outcome).toBe('refused');
+    expect(stopped.exchange).toEqual([syn, rst]);
+    expect(stopped.steps.at(-1)).toMatchObject({ stage: 'host', at: LUCIA, verdict: 'reject', reason: { code: 'process-stopped', deviceId: LUCIA, port: LISTENING_PORT } });
+    expect(stopped.tcpdump.at(-1)).toMatchObject({ deviceId: LUCIA, direction: 'Out', summary: `TCP ${LISTENING_PORT} RST` });
+    const dropped = simulate(fromProcess(false, ['fw-lucia']), tcp(you, OFFICE.lucia, LISTENING_PORT));
+    expect(dropped).toMatchObject({ outcome: 'timeout', exchange: [syn], tcpdump: [] });
+    expect(stagesOf(dropped)).not.toContain('host');
+    expect(simulate(fromProcess(true), tcp(you, OFFICE.lucia, LISTENING_PORT)).outcome).toBe('replied');
+  });
+
   it('a tcp port with a service on the right address is accepted', () => {
     const everywhere = simulate(serving(tcpService(LISTENING_PORT)), tcp(you, OFFICE.lucia, LISTENING_PORT));
     expect(everywhere.outcome).toBe('replied');

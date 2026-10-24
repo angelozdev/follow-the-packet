@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { networkSchema, packetSchema, serviceSchema } from '@/engine/network/schema';
-import type { Network, PacketSpec } from '@/engine/network/types';
+import type { Network, PacketSpec, Process } from '@/engine/network/types';
 import { OFFICE_FLOORS, device, officeWithNames, tcp, withDevice } from '@/testing';
 import { httpMessageSchema, webServiceSchema, type Site } from './schema';
 
@@ -28,6 +28,26 @@ describe('the web service schema', () => {
     expect(serviceSchema.safeParse({ protocol: 'tcp', port: 80, listen: 'all', web }).success).toBe(true);
     const net: Network = withDevice(officeWithNames(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [{ protocol: 'tcp', port: 3000, listen: 'all', web }] } });
     expect(networkSchema.safeParse(net).success).toBe(true);
+  });
+
+  it('rejects a name that is not under .example', () => {
+    for (const names of [['www.shop.com'], ['example'], ['shop.example.com'], ['www.shop.example', 'blog.shop.org']]) {
+      expect(issuesOf(webServiceSchema.safeParse({ sites: [{ ...shop, names }], defaultSiteId: 'shop' }))).toEqual(['a site name goes under .example']);
+    }
+    expect(webServiceSchema.safeParse({ sites: [{ ...shop, names: ['WWW.Shop.Example', 'blog.shop.example'] }], defaultSiteId: 'shop' }).success).toBe(true);
+  });
+
+  it('rejects a service whose process is not a process of its device', () => {
+    const listeningFrom = (processId: string, processes: Process[] | undefined): Network =>
+      withDevice(officeWithNames(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [{ protocol: 'tcp', port: 3000, listen: 'all', processId }], processes } });
+    const orders: Process = { id: 'orders', name: 'pedidos', running: true };
+    expect(networkSchema.safeParse(listeningFrom('orders', [orders])).success).toBe(true);
+    const missing = 'lucia-laptop: the service of tcp 3000 listens from reports, which is not a process of lucia-laptop';
+    expect(issuesOf(networkSchema.safeParse(listeningFrom('reports', [orders])))).toEqual([missing]);
+    expect(issuesOf(networkSchema.safeParse(listeningFrom('reports', undefined)))).toEqual([missing]);
+    const net: Network = officeWithNames();
+    const onServer: Network = { ...net, actors: net.actors.map((actor) => (actor.id === OFFICE_FLOORS.server.id && actor.kind === 'server' ? { ...actor, services: [{ protocol: 'tcp', port: 80, listen: 'all', processId: 'orders' }] } : actor)) };
+    expect(issuesOf(networkSchema.safeParse(onServer))).toEqual([`${OFFICE_FLOORS.server.id}: the service of tcp 80 listens from orders, which is not a process of ${OFFICE_FLOORS.server.id}`]);
   });
 
   it('rejects a web service on a udp service', () => {

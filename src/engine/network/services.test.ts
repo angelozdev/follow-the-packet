@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LOOPBACK_IP } from '@/engine/network/addressing/cidr';
 import { tcpService } from '@/testing';
-import { listensOn, lookupService } from './services';
-import type { Service } from './types';
+import { acceptingService, listensOn, lookupService } from './services';
+import type { Process, Service } from './types';
 
 const APP_PORT = 3000;
 const NETWORK_IP = '192.168.1.11';
@@ -53,5 +53,28 @@ describe('lookupService', () => {
   it('a port with a service on every address and another on the loopback address accepts any IP', () => {
     expect(lookup([onLoopback, onAll], NETWORK_IP)).toBe('accepts');
     expect(lookup([onAll, onLoopback], '127.0.0.1')).toBe('accepts');
+  });
+});
+
+describe('a service and its process', () => {
+  const stopped: Process = { id: 'reports', name: 'reportes', running: false };
+  const running: Process = { ...stopped, running: true };
+  const fromReports: Service = { ...onAll, processId: stopped.id };
+
+  it('a service of a stopped process does not listen', () => {
+    expect(lookupService([fromReports], 'tcp', APP_PORT, NETWORK_IP, [stopped])).toBe('stopped');
+    expect(acceptingService([fromReports], 'tcp', APP_PORT, NETWORK_IP, [stopped])).toBeUndefined();
+    expect(lookupService([fromReports, onLoopback], 'tcp', APP_PORT, NETWORK_IP, [stopped])).toBe('wrong-address');
+  });
+
+  it('a service of a running process listens as before', () => {
+    expect(lookupService([fromReports], 'tcp', APP_PORT, NETWORK_IP, [running])).toBe('accepts');
+    expect(acceptingService([fromReports], 'tcp', APP_PORT, NETWORK_IP, [running])).toBe(fromReports);
+  });
+
+  it('a service with no process listens as before', () => {
+    expect(lookupService([onAll], 'tcp', APP_PORT, NETWORK_IP, [stopped])).toBe('accepts');
+    expect(lookupService([onAll], 'tcp', APP_PORT, NETWORK_IP)).toBe('accepts');
+    expect(lookupService([], 'tcp', APP_PORT, NETWORK_IP, [stopped])).toBe('closed');
   });
 });

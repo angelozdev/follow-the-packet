@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ATTACKER_IP, NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, echoFrom, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, tcpService, withDevice } from '@/testing';
-import { ROUTE_PROBLEMS, applyAction, networkActionSchema, routeProblem, type NetworkAction, type RouteProblem } from './actions';
+import { ROUTE_PROBLEMS, SITE_PROBLEMS, applyAction, networkActionSchema, routeProblem, siteProblem, type NetworkAction, type RouteProblem, type SiteProblem } from './actions';
 import { ROUTE_DEFAULT, networkSchema } from './schema';
 import { IMPLICIT_LAN_ID } from '@/engine/network/addressing/topology';
-import type { Actor, Device, Firewall, Forward, Lan, Network, Route, Router, ServerActor, ServerDns, Service } from './types';
+import type { Site } from '@/engine/web/schema';
+import type { Actor, Device, Firewall, Forward, Lan, Network, Process, Route, Router, ServerActor, ServerDns, Service } from './types';
 
 const { floor1, floor2, officeRouter, provider, backbone } = OFFICE_FLOORS;
 const FLOOR_3 = { id: 'floor-3', cidr: '192.168.3.0/24', gateway: '192.168.3.1', uplink: '192.168.2.2', ana: '192.168.3.15' } as const;
@@ -427,5 +428,75 @@ describe('applyAction for the DNS', () => {
     expect(parses([{ ...entry, type: 'NS' }])).toBe(false);
     expect(parses([{ ...entry, value: '' }])).toBe(false);
     expect(parses([{ name: entry.name, type: 'A', value: entry.value }])).toBe(false);
+  });
+});
+
+describe('applyAction for processes and sites', () => {
+  const ORDERS: Process = { id: 'orders', name: 'pedidos', running: true };
+  const REPORTS: Process = { id: 'reports', name: 'reportes', running: true };
+  const SHOP: Site = { id: 'shop', names: ['www.lucia.example'], pages: [], notFoundBody: 'Aquí no hay nada.' };
+  const BLOG: Site = { id: 'blog', names: ['blog.lucia.example'], pages: [], notFoundBody: 'Aquí no hay nada.' };
+  const WEB_PORT = 80;
+  const webServing: Service = { ...tcpService(WEB_PORT), web: { sites: [SHOP], defaultSiteId: SHOP.id } };
+  const running = (): Network =>
+    withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [{ ...APP, processId: ORDERS.id }, { ...DATABASE, processId: REPORTS.id }], processes: [ORDERS, REPORTS] } });
+  const hosting = (): Network => withDevice(officeNet(), 'lucia-laptop', { host: { ignoreIcmpEcho: false, services: [webServing, APP] } });
+  const addBlog: NetworkAction = { type: 'addSite', ownerId: 'lucia-laptop', port: WEB_PORT, site: BLOG };
+  const sitesOf = (net: Network) => deviceOf(net, 'lucia-laptop')?.host.services.find((service) => service.port === WEB_PORT)?.web?.sites;
+
+  it('setProcess changes whether a process runs and keeps the rest', () => {
+    const net = running();
+    const stopped = applyAction(net, { type: 'setProcess', deviceId: 'lucia-laptop', processId: REPORTS.id, running: false });
+    const host = deviceOf(stopped, 'lucia-laptop')?.host;
+    expect(host?.processes).toEqual([ORDERS, { ...REPORTS, running: false }]);
+    expect(host?.services).toEqual(deviceOf(net, 'lucia-laptop')?.host.services);
+    expect(stopped.devices.filter((device) => device.id !== 'lucia-laptop')).toEqual(net.devices.filter((device) => device.id !== 'lucia-laptop'));
+    expect(applyAction(stopped, { type: 'setProcess', deviceId: 'lucia-laptop', processId: REPORTS.id, running: true })).toEqual(net);
+  });
+
+  it('setProcess on a device or a process the network does not have returns the same network', () => {
+    const net = running();
+    expect(applyAction(net, { type: 'setProcess', deviceId: GHOST, processId: REPORTS.id, running: false })).toBe(net);
+    expect(applyAction(net, { type: 'setProcess', deviceId: 'lucia-laptop', processId: GHOST, running: false })).toBe(net);
+    expect(applyAction(net, { type: 'setProcess', deviceId: 'printer', processId: REPORTS.id, running: false })).toBe(net);
+  });
+
+  it('addSite adds a site and keeps the others', () => {
+    const net = hosting();
+    const added = applyAction(net, addBlog);
+    expect(sitesOf(added)).toEqual([SHOP, BLOG]);
+    expect(deviceOf(added, 'lucia-laptop')?.host.services.find((service) => service.port === WEB_PORT)?.web?.defaultSiteId).toBe(SHOP.id);
+    expect(deviceOf(added, 'lucia-laptop')?.host.services.find((service) => service.port === APP.port)).toEqual(APP);
+    expect(siteProblem(net, 'lucia-laptop', WEB_PORT, BLOG)).toBeUndefined();
+    expect(networkSchema.safeParse(added).success).toBe(true);
+    const server = applyAction(officeTwoFloorsNet(), { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [webServing] });
+    const onServer = applyAction(server, { ...addBlog, ownerId: OFFICE_FLOORS.server.id });
+    expect(serverOf(onServer, OFFICE_FLOORS.server.id)?.services?.[0].web?.sites).toEqual([SHOP, BLOG]);
+  });
+
+  it('addSite with a name that already has a site returns the same network and siteProblem says why', () => {
+    const added = applyAction(hosting(), addBlog);
+    expect(applyAction(added, addBlog)).toBe(added);
+    expect(siteProblem(added, 'lucia-laptop', WEB_PORT, BLOG)).toBe('name-has-site');
+    const sameNameOtherCase: Site = { ...BLOG, id: 'other', names: ['Blog.Lucia.Example'] };
+    expect(siteProblem(added, 'lucia-laptop', WEB_PORT, sameNameOtherCase)).toBe('name-has-site');
+    expect(applyAction(added, { ...addBlog, site: sameNameOtherCase })).toBe(added);
+  });
+
+  it('addSite on an owner with no web service on that port returns the same network and siteProblem says why', () => {
+    const net = hosting();
+    for (const action of [{ ...addBlog, ownerId: GHOST }, { ...addBlog, ownerId: 'printer' }, { ...addBlog, port: APP.port }, { ...addBlog, port: WEB_PORT + 1 }]) {
+      expect(siteProblem(net, action.ownerId, action.port, BLOG), JSON.stringify(action)).toBe('no-web-service');
+      expect(applyAction(net, action), JSON.stringify(action)).toBe(net);
+    }
+  });
+
+  it('every site problem has a code and the action parses only with a site under .example', () => {
+    const problems: SiteProblem[] = ['no-web-service', 'name-has-site'];
+    expect([...SITE_PROBLEMS]).toEqual(problems);
+    expect(networkActionSchema.safeParse(addBlog).success).toBe(true);
+    expect(networkActionSchema.safeParse({ ...addBlog, port: 0 }).success).toBe(false);
+    expect(networkActionSchema.safeParse({ ...addBlog, site: { ...BLOG, names: ['blog.lucia.com'] } }).success).toBe(false);
+    expect(networkActionSchema.safeParse({ type: 'setProcess', deviceId: 'lucia-laptop', processId: REPORTS.id, running: 'no' }).success).toBe(false);
   });
 });

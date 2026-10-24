@@ -72,6 +72,7 @@ export type Reason =
   | { code: 'host-refused'; deviceId: string; port: number }
   | { code: 'host-wrong-address'; deviceId: string; port: number; ip: string }
   | { code: 'host-accepts'; deviceId: string; port: number }
+  | { code: 'process-stopped'; deviceId: string; port: number }
   | { code: 'host-udp-closed'; deviceId: string; port: number }
   | { code: 'web-site-chosen'; deviceId: string; name: string }
   | { code: 'web-default-site'; deviceId: string; name: string }

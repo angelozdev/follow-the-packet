@@ -1,7 +1,13 @@
 import { z } from 'zod';
+import { normalizeName } from '@/engine/dns/records';
 import { isWebUrl } from './url';
 
 const httpMethodSchema = z.enum(['GET', 'POST', 'PUT']);
+
+const EXAMPLE_SUFFIX = '.example';
+
+/** A name a site answers to: under `.example`, the top-level name that RFC 2606 reserves for documentation, so no name of the game is a real one. */
+const siteNameSchema = z.string().refine((name) => normalizeName(name).endsWith(EXAMPLE_SUFFIX), 'a site name goes under .example');
 
 /** The request a client makes inside a TCP connection: the method, the absolute url it asks for, the headers it adds and a body. The Host header and the length of the body are not given: the request builds them. */
 export const httpMessageSchema = z.object({
@@ -26,9 +32,9 @@ const handlerSchema = z.discriminatedUnion('kind', [
 const pageSchema = z.object({ path: z.string().startsWith('/'), methods: z.array(httpMethodSchema).min(1), handler: handlerSchema });
 
 /** A site: the names it answers to, its pages, the body of its 404 and, for a site that serves orders, its order book. */
-const siteSchema = z.object({
+export const siteSchema = z.object({
   id: z.string().min(1),
-  names: z.array(z.string().min(1)),
+  names: z.array(siteNameSchema),
   pages: z.array(pageSchema),
   notFoundBody: z.string(),
   orders: orderBookSchema.optional(),

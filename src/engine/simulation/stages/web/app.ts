@@ -8,7 +8,7 @@ export const appStage: Stage = (ctx) => {
   if (!app) return CONTINUE;
   const receiver = receiverOf(ctx);
   const { ip, packet } = arrivalOf(ctx);
-  const web = acceptingService(receiver.host.services, 'tcp', packet.port!, ip)?.web;
+  const web = acceptingService(receiver.host.services, 'tcp', packet.port!, ip, receiver.host.processes)?.web;
   if (!web) {
     sayAnswer(ctx);
     return stop('arrived-no-reply');

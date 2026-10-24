@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nameTag } from '@/copy';
-import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction } from '@/engine';
+import { ROUTE_DEFAULT, applyAction, type Firewall, type Network, type NetworkAction, type Service } from '@/engine';
+import type { Site } from '@/engine/web/schema';
 import { ATTACKER_IP, NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, officeWithNames, tcpService, withDevice } from '@/testing';
 import { changedFloors, changedNames, mentions, unnamedChanges } from './changes';
 
@@ -12,7 +13,14 @@ const FLOOR_1_DEVICES = ['your-laptop', 'lucia-laptop', 'marta-laptop', 'printer
 const FLOOR_1_NAMES = ['tu-laptop', 'laptop-lucia', 'laptop-marta', 'impresora', 'laptop-visita'];
 
 const LUCIA_APP = tcpService(3000);
-const world: Network = withDevice({ ...officeWithNames(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', { firewallIds: [LUCIA_FIREWALL.id], host: { ignoreIcmpEcho: false, services: [LUCIA_APP] } });
+const LUCIA_PROCESS = { id: 'orders', name: 'pedidos', running: true };
+const SHOP: Site = { id: 'shop', names: ['www.lucia.example'], pages: [], notFoundBody: 'Aquí no hay nada.' };
+const BLOG: Site = { id: 'blog', names: ['blog.lucia.example'], pages: [], notFoundBody: 'Aquí no hay nada.' };
+const SHOP_SERVICE: Service = { ...tcpService(80), web: { sites: [SHOP], defaultSiteId: SHOP.id } };
+const world: Network = withDevice({ ...officeWithNames(), firewalls: [LUCIA_FIREWALL] }, 'lucia-laptop', {
+  firewallIds: [LUCIA_FIREWALL.id],
+  host: { ignoreIcmpEcho: false, services: [LUCIA_APP, SHOP_SERVICE], processes: [LUCIA_PROCESS] },
+});
 const [anyDevice] = world.devices;
 const [anyRouter] = world.routers ?? [];
 
@@ -26,6 +34,8 @@ const BY_KIND: Record<NetworkAction['type'], { action: NetworkAction; names: str
   connectDevice: { action: { type: 'connectDevice', deviceId: 'guest-laptop' }, names: [NAMES.visitor] },
   setGateway: { action: { type: 'setGateway', deviceId: 'your-laptop' }, names: [NAMES.you] },
   setServices: { action: { type: 'setServices', ownerId: 'lucia-laptop', services: [] }, names: [NAMES.lucia] },
+  setProcess: { action: { type: 'setProcess', deviceId: 'lucia-laptop', processId: LUCIA_PROCESS.id, running: false }, names: [NAMES.lucia] },
+  addSite: { action: { type: 'addSite', ownerId: 'lucia-laptop', port: SHOP_SERVICE.port, site: BLOG }, names: [NAMES.lucia] },
   setListenAddress: { action: { type: 'setListenAddress', ownerId: 'lucia-laptop', protocol: 'tcp', port: LUCIA_APP.port, listen: 'loopback' }, names: [NAMES.lucia] },
   updateRouter: { action: { type: 'updateRouter', routerId: officeRouter.id, sendsUnreachable: false }, names: [anyRouter.name] },
   addRoute: { action: { type: 'addRoute', routerId: officeRouter.id, route: { to: OFFICE_FLOORS.server.range, next: OFFICE_FLOORS.provider.id } }, names: [anyRouter.name] },
@@ -61,6 +71,20 @@ describe('changedNames', () => {
     expect(changedNames(world, served)).toEqual([internetServer?.name]);
     const moved = applyAction(served, { type: 'setListenAddress', ownerId: OFFICE_FLOORS.server.id, protocol: 'tcp', port: 443, listen: 'loopback' });
     expect(changedNames(served, moved)).toEqual([internetServer?.name]);
+  });
+
+  it('changedNames lists a device whose process stopped', () => {
+    const stopped = applyAction(world, { type: 'setProcess', deviceId: 'lucia-laptop', processId: LUCIA_PROCESS.id, running: false });
+    expect(changedNames(world, stopped)).toEqual([NAMES.lucia]);
+    expect(changedNames(stopped, applyAction(stopped, { type: 'setProcess', deviceId: 'lucia-laptop', processId: LUCIA_PROCESS.id, running: true }))).toEqual([NAMES.lucia]);
+  });
+
+  it('changedNames lists a server whose sites changed', () => {
+    const internetServer = world.actors.find((actor) => actor.kind === 'server');
+    const hosting = applyAction(world, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [SHOP_SERVICE] });
+    const added = applyAction(hosting, { type: 'addSite', ownerId: OFFICE_FLOORS.server.id, port: SHOP_SERVICE.port, site: BLOG });
+    expect(added).not.toBe(hosting);
+    expect(changedNames(hosting, added)).toEqual([internetServer?.name]);
   });
 
   it('names nothing when an action changes nothing, because its target is not there or already is as asked', () => {

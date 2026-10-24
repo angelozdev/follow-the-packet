@@ -767,3 +767,28 @@ describe('the reasons chapter 2 adds', () => {
     for (const reason of reply) expect(describeReason(reason, floors, EVERY_TERM)).toBe('Llega la respuesta.');
   });
 });
+
+describe('describeReason for a process that stopped', () => {
+  const stopped: Reason = { code: 'process-stopped', deviceId: 'servidor2', port: 3001 };
+
+  it('says the process that listened in that port ended and the device rejected the packet once process is known', () => {
+    const text = describeReason(stopped, NET, EVERY_TERM);
+    expect(text).toBe('Llega, pero el {{process|proceso}} que escuchaba en el {{port|puerto}} 3001 terminó: [[servidor2]] lo rechaza.');
+    expect(toPlainText(text)).toBe('Llega, pero el proceso que escuchaba en el puerto 3001 terminó: servidor2 lo rechaza.');
+  });
+
+  it('says only that the packet arrived and was rejected while process is unknown', () => {
+    const text = describeReason(stopped, NET, without('process'));
+    expect(text).toBe('Llega, pero [[servidor2]] lo rechaza.');
+    expect(toPlainText(text)).not.toMatch(/proceso|puerto|programa|escucha|terminó/i);
+  });
+
+  it('tags only the terms the player knows, whichever of its terms is missing', () => {
+    expect(describeReason(stopped, NET, without('port'))).toBe('Llega, pero el {{process|proceso}} que escuchaba en el puerto 3001 terminó: [[servidor2]] lo rechaza.');
+    for (const missing of ['process', 'port'] as const) expect(termsIn(describeReason(stopped, NET, without(missing)))).not.toContain(missing);
+  });
+
+  it('gives no reason for a reply to come back and never says the firewall or a rule did it', () => {
+    for (const known of [EVERY_TERM, without('process'), without('port')]) expect(toPlainText(describeReason(stopped, NET, known))).not.toMatch(/stateful|conversación|recuerda|porque|firewall|regla|bloquea|filtra/i);
+  });
+});

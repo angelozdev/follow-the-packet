@@ -42,11 +42,12 @@ export const hostStage: Stage = (ctx) => {
   }
 
   const port = p.port!;
-  const lookup = lookupService(host.services, p.protocol, port, destinationIp);
+  const lookup = lookupService(host.services, p.protocol, port, destinationIp, host.processes);
   if (lookup === 'accepts') {
     ctx.steps.push({ stage: 'host', at: id, verdict: 'pass', reason: { code: 'host-accepts', deviceId: id, port } });
     return CONTINUE;
   }
-  const reason: Reason = lookup === 'closed' ? { code: CLOSED_PORT_CODE[p.protocol], deviceId: id, port } : { code: 'host-wrong-address', deviceId: id, port, ip: destinationIp };
+  const code = lookup === 'stopped' ? 'process-stopped' : CLOSED_PORT_CODE[p.protocol];
+  const reason: Reason = lookup === 'wrong-address' ? { code: 'host-wrong-address', deviceId: id, port, ip: destinationIp } : { code, deviceId: id, port };
   return p.protocol === 'tcp' ? refuseTcp(ctx, receiver, port, reason) : rejectUdp(ctx, receiver, port, reason);
 };

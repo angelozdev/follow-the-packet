@@ -177,6 +177,16 @@ describe('networkSchema with floors, routers and servers of the internet', () =>
     expect(problems({ ...lab03Net(), routers: officeTwoFloorsNet().routers })).toContain('a VPC has no routers');
   });
 
+  it('a VPC rejects processes and web services', () => {
+    const site = { id: 'shop', names: ['www.shop.example'], pages: [], notFoundBody: 'x' };
+    const web = { sites: [site], defaultSiteId: 'shop' };
+    const process = { id: 'ssh', name: 'sshd', running: true };
+    expect(problems(withDevice(lab03Net(), 'servidor1', { host: { ignoreIcmpEcho: false, services: [], processes: [process] } }))).toEqual(['servidor1: a VPC has no processes']);
+    expect(problems(withDevice(lab03Net(), 'servidor1', { host: { ignoreIcmpEcho: false, services: [], processes: [] } }))).toEqual(['servidor1: a VPC has no processes']);
+    expect(problems(withDevice(lab03Net(), 'servidor1', { host: { ignoreIcmpEcho: false, services: [{ protocol: 'tcp', port: 80, listen: 'all', web }] } }))).toEqual(['servidor1: a VPC has no web services']);
+    expect(problems(withDevice(officeNet(), 'printer', { host: { ignoreIcmpEcho: false, services: [{ protocol: 'tcp', port: 80, listen: 'all', processId: 'ssh', web }], processes: [process] } }))).toEqual([]);
+  });
+
   it('rejects a device that names a LAN that does not exist', () => {
     expect(problems(withDevice(officeTwoFloorsNet(), 'printer', { lanId: 'floor-9' }))).toContain('printer: LAN floor-9 does not exist');
   });
