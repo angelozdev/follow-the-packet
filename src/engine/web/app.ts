@@ -34,10 +34,6 @@ function orderIdOf(query: string | undefined): number | undefined {
   return id !== null && DIGITS.test(id) ? Number(id) : undefined;
 }
 
-function hasOrderId(query: string | undefined): boolean {
-  return new URLSearchParams(query).has(ORDER_ID_PARAM);
-}
-
 function missing(site: Site, orders: Orders): Answer {
   return { response: responseOf(404, site.notFoundBody), orders };
 }
@@ -47,7 +43,7 @@ function served(site: Site, { id, content }: Order, orders: Orders): Answer {
   return { response: responseOf(200, body), orders };
 }
 
-/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404, and so does a post whose query names an order, because a post goes to the orders and not to one of them. The orders it receives are not changed. */
+/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. The orders it receives are not changed. */
 export function answerRequest(site: Site, orders: Orders, { method, path, query, body }: AppRequest): Answer {
   const page = site.pages.find((candidate) => candidate.path === path && candidate.methods.includes(method));
   if (!page) return missing(site, orders);
@@ -58,7 +54,6 @@ export function answerRequest(site: Site, orders: Orders, { method, path, query,
     case 'order-read':
       return current ? served(site, current, orders) : missing(site, orders);
     case 'order-create': {
-      if (hasOrderId(query)) return missing(site, orders);
       const created = { id: Math.max(0, ...orders.map(({ id }) => id)) + 1, content: body ?? '' };
       return served(site, created, [...orders, created]);
     }

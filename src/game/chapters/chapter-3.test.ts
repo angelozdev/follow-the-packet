@@ -396,6 +396,11 @@ describe('03-02, ask and answer', () => {
     expect(incident.changes).toEqual([APP_TAKES_ORDERS]);
   });
 
+  it('03-02: the report says that the app of laptop-lucia reads the query string as data and not as part of the path, so a post to ?id=7 creates an order', () => {
+    expect(plain(incident.report)).toContain(`La app de ${DEVICE.lucia.name} lee la query string como un dato, no como parte del path: un POST a la URL con ?id=7 llega al mismo path, /pedidos, y crea un pedido nuevo.`);
+    expect(bodyOfLast(sending(start, ORDER_URL.seven.id, MESSAGE.curlPost.id))).toBe(ORDER_BODY.nine);
+  });
+
   it('03-02: draws laptop-lucia and no other piece', () => {
     expectOnlyLuciaDrawn(start);
   });

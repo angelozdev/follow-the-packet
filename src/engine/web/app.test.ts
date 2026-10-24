@@ -58,13 +58,12 @@ describe('answerRequest', () => {
     expect(ask('GET', '/orders?id=10', undefined, second.orders).response.body).toBe('Order 10: item=coffee');
   });
 
-  it('a post to the address of an order answers 404 and creates nothing', () => {
-    for (const target of ['/orders?id=7', '/orders?id=99', '/orders?id=abc']) {
-      const refused = ask('POST', target, 'item=coffee');
-      expect(refused.response).toMatchObject({ statusCode: 404, body: NOT_FOUND });
-      expect(refused.orders).toEqual(start);
+  it('a post to the address of an order creates the next order like a post to the orders, since the query is not part of the route', () => {
+    for (const target of ['/orders?id=7', '/orders?id=99', '/orders?id=abc', '/orders?other=1']) {
+      const created = ask('POST', target, 'item=coffee');
+      expect(created.response).toMatchObject({ statusCode: 200, body: 'Order 9: item=coffee' });
+      expect(created.orders).toEqual([...start, { id: 9, content: 'item=coffee' }]);
     }
-    expect(ask('POST', '/orders?other=1', 'item=coffee').response.body).toBe('Order 9: item=coffee');
   });
 
   it('a put leaves the order as its body says and a second put leaves it the same', () => {

@@ -68,11 +68,15 @@ describe('the incidents of block 1 of chapter 3 have no dead end', () => {
     expect(explore(startSession(bodyOfTheOrder, '03-02'), 1).deadEnds).toEqual([putOfTheOrder]);
   });
 
-  it('03-02: a post to the address of an order creates nothing, so it cannot shift the numbers of the orders', () => {
+  it('03-02: a post to the address of an order creates an order, and the posts task holds after two posts to the orders whatever that shifted', () => {
     const posting = (session: Session, toId: string) => sessionReducer(session, { type: 'sendPacket', fromId: ORIGIN.lucia.id, toId, messageId: MESSAGE.curlPost.id });
     const bodyOfLast = (session: Session) => session.history.at(-1)?.trace.app?.response?.body;
-    const strays = [ORDER_URL.seven, ORDER_URL.eight, ORDER_URL.nine].reduce((session, address) => posting(session, address.id), startSession(INCIDENTS, '03-02'));
-    expect(bodyOfLast(strays)).toBe('No hay nada en ese camino.');
-    expect(bodyOfLast(posting(strays, ORDER_URL.all.id))).toBe(ORDER_BODY.nine);
+    const first = posting(startSession(INCIDENTS, '03-02'), ORDER_URL.seven.id);
+    expect(bodyOfLast(first)).toBe(ORDER_BODY.nine);
+    const strays = posting(first, ORDER_URL.eight.id);
+    expect(bodyOfLast(strays)).toBe(ORDER_BODY.ten);
+    const once = posting(strays, ORDER_URL.all.id);
+    expect(openTasks(once)).toContain(TASK.posts);
+    expect(openTasks(posting(once, ORDER_URL.all.id))).not.toContain(TASK.posts);
   });
 });

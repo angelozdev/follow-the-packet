@@ -50,7 +50,7 @@ function ordersApp(pages: Site['pages']): NetworkAction {
 /** What 03-01 changes on laptop-lucia: the program of port 3000, which since 02-01 only accepted connections, now answers HTTP. A GET of /pedidos with an id gives the order; any other path gives «No hay nada en ese camino.». Nothing else about the laptop changes. */
 export const APP_ANSWERS_HTTP: NetworkAction = ordersApp([READ_ORDERS]);
 
-/** What 03-02 changes on laptop-lucia: the same program of port 3000 now also takes orders. A POST to /pedidos creates the next order with the body it carries (a POST to the address of an order, /pedidos?id=<n>, creates nothing), and a PUT to /pedidos?id=<n> replaces the content of that order with its body. Nothing else about the laptop changes. */
+/** What 03-02 changes on laptop-lucia: the same program of port 3000 now also takes orders. A POST to /pedidos creates the next order with the body it carries (also when the url has a query, /pedidos?id=<n>, which the app reads as data and not as part of the path), and a PUT to /pedidos?id=<n> replaces the content of that order with its body. Nothing else about the laptop changes. */
 export const APP_TAKES_ORDERS: NetworkAction = ordersApp(ORDER_PAGES);
 
 export const REPORTS_PORT = 3001;

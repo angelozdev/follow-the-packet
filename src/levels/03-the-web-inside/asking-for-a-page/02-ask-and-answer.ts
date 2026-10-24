@@ -1,5 +1,5 @@
 import { defineIncident } from '@/levels/contract/incident';
-import { APP_TAKES_ORDERS, MESSAGE, NAME, ORDER_BODY, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, TASK, bodyTask, sendMoveFrom, sendTaskFrom } from '@/levels/03-the-web-inside/shared';
+import { APP_TAKES_ORDERS, MESSAGE, NAME, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, TASK, bodyTask, sendMoveFrom, sendTaskFrom } from '@/levels/03-the-web-inside/shared';
 
 export default defineIncident({
   id: '03-02',
@@ -11,7 +11,7 @@ export default defineIncident({
   introduces: ['http-request', 'http-response', 'http-method', 'idempotent'],
   changes: [APP_TAKES_ORDERS],
   shown: PAGE_PIECES,
-  report: `Lucía siguió con su app de pedidos: ahora el programa del {{port|puerto}} ${PORT.app} de ${NAME.lucia} también crea pedidos y los cambia. Cada vez que usas {{curl}} haces una {{http-request|petición HTTP}}, y la app contesta con una {{http-response|respuesta HTTP}}. La petición trae un {{http-method|método HTTP}} que dice qué quiere hacer. Sin opciones, {{curl}} pide un GET: lee un pedido. Con -d pide un POST: crea uno. Con -X PUT -d pide un PUT: cambia uno. Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7. En la caja lee cada petición y cada respuesta.`,
+  report: `Lucía siguió con su app de pedidos: ahora el programa del {{port|puerto}} ${PORT.app} de ${NAME.lucia} también crea pedidos y los cambia. Cada vez que usas {{curl}} haces una {{http-request|petición HTTP}}, y la app contesta con una {{http-response|respuesta HTTP}}. La petición trae un {{http-method|método HTTP}} que dice qué quiere hacer. Sin opciones, {{curl}} pide un GET: lee un pedido. Con -d pide un POST: crea uno. Con -X PUT -d pide un PUT: cambia uno. Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7. La app de ${NAME.lucia} lee la {{query-string|query string}} como un dato, no como parte del {{url-path|path}}: un POST a la {{url|URL}} con ?id=7 llega al mismo {{url-path|path}}, ${ORDER_PATH}, y crea un pedido nuevo. En la caja lee cada petición y cada respuesta.`,
   tasks: [
     sendTaskFrom(ORIGIN.lucia, TASK.getEight, 'Que el GET devuelva el pedido 8.', MESSAGE.curl.id, ORDER_URL.eight.id, 'replied'),
     { id: TASK.posts, text: 'Que dos POST iguales a la URL sin ?id creen dos pedidos nuevos.', expect: { fromId: ORIGIN.lucia.id, toId: ORDER_URL.all.id, messageId: MESSAGE.curlPost.id, outcome: 'replied', nth: 2 } },
