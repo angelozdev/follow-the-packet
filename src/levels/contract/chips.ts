@@ -90,6 +90,14 @@ function webPacket({ from, to, message }: PickedChips): PacketSpec | null {
   return { from: from.endpoint, to: host, protocol: 'tcp', port, message: { method: httpMethodOf(options), url, ...(options.data !== undefined && { body: options.data }) } };
 }
 
+const CURL_VERSION = '8.21.0';
+const FORM_CONTENT_TYPE = 'application/x-www-form-urlencoded';
+
+function curlHeadersOf({ command, options = {} }: MessageChip): Record<string, string> | undefined {
+  if (command !== 'curl') return undefined;
+  return { 'User-Agent': `curl/${CURL_VERSION}`, Accept: '*/*', ...(options.data !== undefined && { 'Content-Type': FORM_CONTENT_TYPE }) };
+}
+
 function withTtl(packet: PacketSpec | null, { ttl }: MessageChip): PacketSpec | null {
   return packet && ttl !== undefined ? { ...packet, ttl } : packet;
 }
@@ -111,6 +119,14 @@ export function packetFromChips(incident: SendOwner, combination: Combination): 
     default:
       return withTtl(icmpPacket(picked), picked.message);
   }
+}
+
+/** Builds the packet a send puts on the wire: `packetFromChips` and, for a `curl`, the headers the real tool adds to every request (`User-Agent: curl/8.21.0`, an `Accept` for any type, and `Content-Type: application/x-www-form-urlencoded` with `-d`: `lib/http.c` and `src/config2setopts.c` of curl 8.21.0, read on 2026-10-24). The browser of the game sends only Host, so it gets none. */
+export function sentPacketFromChips(incident: SendOwner, combination: Combination): PacketSpec | null {
+  const packet = packetFromChips(incident, combination);
+  const message = pickedChips(incident, combination)?.message;
+  const headers = message && curlHeadersOf(message);
+  return packet?.message && headers ? { ...packet, message: { ...packet.message, headers } } : packet;
 }
 
 /** Builds the Echo Request that a traceroute repeats with a growing TTL, from the origin to the address; null unless the message chip is a traceroute the incident offers with these two chips. */

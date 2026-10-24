@@ -29,6 +29,13 @@ describe('requestOf', () => {
     expect(request.headers).toEqual({ Host: 'shop.example', 'Content-Type': 'text/plain', 'Content-Length': '10' });
     expect(requestOf({ method: 'GET', url: 'http://shop.example/' })).not.toHaveProperty('body');
   });
+
+  it('the headers go in the order curl 8.21.0 writes them: Host, the headers the message brings, Content-Length and then Content-Type', () => {
+    const headers = { 'User-Agent': 'curl/8.21.0', Accept: '*/*', 'Content-Type': 'application/x-www-form-urlencoded' };
+    const request = requestOf({ method: 'POST', url: 'http://shop.example/orders', body: 'item=coffee', headers });
+    expect(Object.keys(request.headers)).toEqual(['Host', 'User-Agent', 'Accept', 'Content-Length', 'Content-Type']);
+    expect(Object.keys(requestOf({ method: 'GET', url: 'http://shop.example/', headers: { Accept: '*/*' } }).headers)).toEqual(['Host', 'Accept']);
+  });
 });
 
 describe('responseOf', () => {

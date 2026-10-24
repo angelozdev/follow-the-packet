@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulateSequence, type Network } from '@/engine';
 import { INCIDENTS, caseWorld, packetFromChips, sendCombinations, startWorld, type SendOwner } from '@/levels';
 import { stampOf, type TermId } from '@/copy';
-import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE_FLOORS, namesSendIncident, officeNet, sendIncident, webSendIncident, withDevice } from '@/testing';
 import { drawnSends, hideStopsOutOfSight, lastOfEach, offersSend, sendPacket, sendSequence, type Dispatch, type SentPacket } from './flow-runs';
 import { PIECE_ID } from './view/piece-id';
 
@@ -232,5 +232,33 @@ describe('the id of a run', () => {
     }
     const lucia = sendSequence(WORLD, NAMES, [dispatch('dig', 'www', 1, 0), dispatch('nc', 'lucia', 2, 1)], EVERY_TERM);
     expect(lucia.map((run) => run.id)).toEqual(['sent-you-www-dig', 'sent-you-lucia-nc']);
+  });
+});
+
+describe('the request of a curl and of the browser', () => {
+  const WEB = webSendIncident();
+  const world = startWorld([WEB], WEB.id);
+  const requestOf = (fromId: string, toId: string, messageId: string) => sendPacket(world, WEB, { type: 'sendPacket', fromId, toId, messageId }, 1, EVERY_TERM)?.trace.app?.request;
+  const CURL_HEADERS = { 'User-Agent': 'curl/8.21.0', Accept: '*/*' };
+
+  it('a curl sends the headers the tool adds to every request: Host, User-Agent and Accept (lib/http.c and src/config2setopts.c of curl 8.21.0)', () => {
+    expect(requestOf('you', 'shop', 'curl')?.headers).toEqual({ Host: 'www.lucia.example', ...CURL_HEADERS });
+    expect(Object.keys(requestOf('you', 'shop', 'curl-i')!.headers)).toEqual(['Host', 'User-Agent', 'Accept']);
+  });
+
+  it('a curl with -d also sends Content-Length and Content-Type form-urlencoded, in that order, and -X PUT changes only the method', () => {
+    const post = requestOf('you', 'orders', 'curl-post');
+    expect(Object.keys(post!.headers)).toEqual(['Host', 'User-Agent', 'Accept', 'Content-Length', 'Content-Type']);
+    expect(post?.headers).toMatchObject({ 'Content-Length': '11', 'Content-Type': 'application/x-www-form-urlencoded' });
+    const put = requestOf('you', 'orders', 'curl-put');
+    expect(put).toMatchObject({ method: 'PUT', body: 'item=tea', headers: { 'Content-Length': '8', 'Content-Type': 'application/x-www-form-urlencoded' } });
+  });
+
+  it('the browser of the game sends only Host: it imitates no real browser', () => {
+    expect(requestOf('you', 'shop', 'browser')?.headers).toEqual({ Host: 'www.lucia.example' });
+  });
+
+  it('packetFromChips still builds the packet without them: they are added when the send is made', () => {
+    expect(packetFromChips(WEB, { fromId: 'you', toId: 'shop', messageId: 'curl' })?.message).toEqual({ method: 'GET', url: 'http://www.lucia.example/' });
   });
 });

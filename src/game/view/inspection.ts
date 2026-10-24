@@ -1,11 +1,12 @@
 import { ACTOR_ROLE_TEXT, INSPECTION_TEXT, MAP_TEXT, TERMS, describeReason, describeResult, deviceName, entityTerm, messageLabel, nameTag, packetMessage, packetShape, roundTripText, stampOf, type EntityRef, type TermId, type TermText } from '@/copy';
-import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketSpec, type Router, type ServerActor, type Service } from '@/engine';
+import { TRACEROUTE_MAX_HOPS, isClientActor, isConnected, lansOf, privateDnsName, publicDnsName, stopStep, type ClientActor, type Device, type Firewall, type Hop, type Network, type PacketSpec, type Process, type Router, type ServerActor, type Service } from '@/engine';
 import { drawnSends, routerOutOfSight, type Asking, type PacketRun, type SentPacket } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { RULES_TERM } from '@/levels';
 import { outboundRows, rowText, ruleRows } from './cards/firewall-card';
 import { parsePieceId } from './piece-id';
 import { dnsField, exchangeField, headerFields, routeField, translationField, type InspectionField } from './packet-fields';
+import { curlWaitField, requestField, responseField, urlField } from './cards/web/web-fields';
 import { drawsActor, drawsRouter, isDrawn, isShown } from './drawn';
 import { placesOf, routerPlace } from './router-place';
 
@@ -60,9 +61,16 @@ function publicIpField(own: Device, kind: Network['kind']): FieldSpec[] {
   return [{ term: 'public-ip', label: INSPECTION_TEXT.publicIp, lines: () => [own.publicIp ?? INSPECTION_TEXT.none] }];
 }
 
-/** The field with the programs that listen on a device or on a server of the internet, one line each: its port, with the protocol once that term is known and the address it listens on once `listen-address` is known. A line is not repeated while two services only differ by a protocol the player does not know. */
-function servicesField(services: Service[], known: ReadonlySet<TermId>): FieldSpec {
-  const lines = [...new Set(services.map((service) => INSPECTION_TEXT.service(service, known)))];
+/** The field with the programs that listen on a device or on a server of the internet, one line each: its port, with the protocol once that term is known, the address it listens on once `listen-address` is known and the process it listens from once `process` is known. A service whose process stopped does not listen, so it has a line (that says so) only once `process` is known. A line is not repeated while two services only differ by a protocol the player does not know. */
+function servicesField(services: Service[], known: ReadonlySet<TermId>, processes: readonly Process[] = []): FieldSpec {
+  const lines = [
+    ...new Set(
+      services.flatMap((service) => {
+        const process = processes.find(({ id }) => id === service.processId);
+        return process && !process.running && !known.has('process') ? [] : [INSPECTION_TEXT.service(service, known, process)];
+      }),
+    ),
+  ];
   return { term: 'service', label: INSPECTION_TEXT.services, lines: () => (lines.length > 0 ? lines : [INSPECTION_TEXT.noServices]) };
 }
 
@@ -89,7 +97,7 @@ function device(session: Session, own: Device): Inspection {
         addressField(own, session.known),
         ...connectionField(own, session.world.kind),
         ...publicIpField(own, session.world.kind),
-        servicesField(own.host.services, session.known),
+        servicesField(own.host.services, session.known, own.host.processes),
         { term: 'dns', label: INSPECTION_TEXT.dnsNames, lines: () => dnsNames(own, region) },
         { term: 'icmp-echo-ignore-all', label: INSPECTION_TEXT.echoIgnore, lines: () => [own.host.ignoreIcmpEcho ? INSPECTION_TEXT.ignoresPing : INSPECTION_TEXT.answersPing] },
         ...guardsField(guards),
@@ -202,7 +210,7 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
   return cameBack && session.known.has('rtt') ? [{ label: INSPECTION_TEXT.roundTrip, lines: [roundTripText(rttMs), INSPECTION_TEXT.exampleTime] }] : [];
 }
 
-/** The box of a packet, in the order the packet lives it: what it is, its message, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the routers it crossed, the result and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
+/** The box of a packet, in the order the packet lives it: what it is, its message, the url it asked for, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the request and the response that went through the connection, the routers it crossed, the result (and, for a `curl` that waited, that it gave up) and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
 function packet(session: Session, run: PacketRun & Asking): Inspection {
   const step = stopStep(run.trace);
   const { hops, destinationId } = run.trace;
@@ -214,12 +222,16 @@ function packet(session: Session, run: PacketRun & Asking): Inspection {
     title: run.label,
     fields: [
       ...visible([...definition(traced ? 'traceroute' : packetTerm(run.packet, session.known)), ...messageField(run.packet)], session.known),
+      ...urlField(session, run),
       ...dnsField(session, run),
       ...headerFields(run, session.known, !traced),
       ...(path ? [...routeField(session, run), ...translationField(session, run)] : []),
       ...exchangeField(session, run),
+      ...requestField(session, run),
+      ...responseField(session, run),
       ...pathField(session, knowsTheRoute ? hops : []),
       { label: INSPECTION_TEXT.result, lines: [describeResult(run.trace, session.known, destinationId ? deviceName(session.world, destinationId) : undefined)] },
+      ...curlWaitField(session, run),
       ...roundTripField(session, run),
       ...(step && path ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
     ],

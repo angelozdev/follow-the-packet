@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ROUTE_DEFAULT, applyAction, simulate, simulateSequence, type Firewall, type Reason } from '@/engine';
-import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, withDevice } from '@/testing';
+import { EVERY_TERM, NAME_SERVER_PIECES, OFFICE, OFFICE_FLOORS, actor, allOut, device, dig, lab03Net, officeNet, officeTwoFloorsNet, officeWithNames, ping, tcp, tcpService, webNet, withDevice } from '@/testing';
 import { OUTCOME_TEXT, deviceName } from './packet-labels';
 import { describeReason, type PlaceOf, type RouterPlace } from './reasons';
 import { termsIn, toPlainText } from './term-text';
+import { BROWSER_TEXT, SITES_TEXT, WEB_BOX_TEXT } from './web/web-text';
 import { isTermId, type TermId } from './terms';
 
 const NET = lab03Net();
@@ -765,6 +766,16 @@ describe('the reasons chapter 2 adds', () => {
     const reply = traces.flatMap((trace) => trace.steps.map((step) => step.reason)).filter((reason) => reason.code === 'reply-stateful');
     expect(reply.length).toBeGreaterThan(0);
     for (const reason of reply) expect(describeReason(reason, floors, EVERY_TERM)).toBe('Llega la respuesta.');
+    const web = webNet();
+    const http = (to: string, port: number, url: string) => simulate(web, { from: you, to, protocol: 'tcp', port, message: { method: 'GET', url } });
+    const exchanges = [http(`www.${zone}`, 80, `http://www.${zone}/`), http(OFFICE_FLOORS.floor1.lucia, 3000, `http://${OFFICE_FLOORS.floor1.lucia}:3000/pedidos`), http(OFFICE_FLOORS.server.ip, 81, `http://${OFFICE_FLOORS.server.ip}:81/`)];
+    const webReasons: Reason[] = [...exchanges.flatMap((trace) => trace.steps.map((step) => step.reason)), { code: 'process-stopped', deviceId: OFFICE_FLOORS.floor1.lucia, port: 3001 }];
+    expect(webReasons.filter((reason) => reason.code.startsWith('web-')).length).toBeGreaterThan(0);
+    const webTexts = [WEB_BOX_TEXT.notes.browserRequest, WEB_BOX_TEXT.notes.response, WEB_BOX_TEXT.curlGaveUp(3), WEB_BOX_TEXT.curlGaveUp(), BROWSER_TEXT.refused, BROWSER_TEXT.noConnection, BROWSER_TEXT.noPage, SITES_TEXT.empty];
+    for (const known of [EVERY_TERM, NONE]) {
+      for (const reason of webReasons) expect(toPlainText(describeReason(reason, web, known)), reason.code).not.toMatch(noReason);
+    }
+    for (const text of webTexts) expect(text).not.toMatch(noReason);
   });
 });
 

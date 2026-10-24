@@ -36,6 +36,7 @@ export { DEFAULT_DIRECTION, DEFAULT_TTL, ECHO_REQUEST, ROUTE_DEFAULT, cidr as ci
 export { DNS_PORT } from './dns/resolve';
 export { siteContentSchema, siteSchema } from './web/schema';
 export type { HttpMessage, HttpMethod, Site, SiteContent } from './web/schema';
+export type { AppRequest, AppResponse } from './web/messages';
 export { isWebUrl, parseUrl } from './web/url';
 export { LOOPBACK_IP, ipBits, ipInCidr, isIpv4, isLoopbackIpv4, maskOf, parseCidr, prefixNumbers } from './network/addressing/cidr';
 export { simulate } from './simulation/simulate';
@@ -44,7 +45,7 @@ export type { CachedRow, Send } from './simulation/sequence';
 export { TRACEROUTE_MAX_HOPS, traceroute } from './simulation/paths/traceroute';
 export type { TracerouteLine, TracerouteResult, UnreachableKind } from './simulation/paths/traceroute';
 export { OUTCOMES } from './simulation/trace';
-export type { Checkpoint, DnsStatus, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, PacketHeader, Question, Reason, Step, Trace } from './simulation/trace';
+export type { AppTrace, Checkpoint, DnsStatus, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, PacketHeader, Question, Reason, Step, Trace } from './simulation/trace';
 export { routingTableOf } from './network/addressing/routing-table';
 export type { RouteDecision, RouteKind, TableRoute } from './network/addressing/routing-table';
 export { forwardRows, translates } from './nat/translation';

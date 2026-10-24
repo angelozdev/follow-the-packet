@@ -8,7 +8,7 @@ import { routerWithIp } from '@/game/view/revealed-routers';
 import { routerPlace } from '@/game/view/router-place';
 import { originPieces } from './terminal/terminal-card';
 
-export type TableKind = 'routes' | 'translations' | 'records' | 'cache';
+export type TableKind = 'routes' | 'translations' | 'records' | 'cache' | 'sites';
 
 /** One cell of a table: its text and whether it is a value written in code (an IP, a range, a name or a number) and not a word. */
 export interface TableCell {
@@ -52,7 +52,7 @@ function sendIncident(session: Session): SendIncident | null {
   return session.incident.mechanic === 'send' ? session.incident : null;
 }
 
-function tableSpec(session: Session, ownerId: string, kind: TableSpec['kind']): TableSpec | undefined {
+export function tableSpec(session: Session, ownerId: string, kind: TableSpec['kind']): TableSpec | undefined {
   return tablesOf(session.incident, currentCase(session)).find((table) => table.ownerId === ownerId && table.kind === kind);
 }
 
@@ -72,22 +72,22 @@ function lastRun(session: Session): SentPacket | undefined {
   return last && last.route === undefined ? last : undefined;
 }
 
-function code(text: TermText): TableCell {
+export function code(text: TermText): TableCell {
   return { text, code: true };
 }
 
-function words(text: TermText): TableCell {
+export function words(text: TermText): TableCell {
   return { text, code: false };
 }
 
-function problemOf(session: Session, spec: TableSpec | undefined): TermText | null {
+export function problemOf(session: Session, spec: TableSpec | undefined): TermText | null {
   const kept = session.entryProblem;
   if (!spec || kept?.tableId !== spec.id) return null;
   const problems: Record<EntryProblem, TermText> = { ...TABLE_TEXT.problems, ...SITE_PROBLEM_TEXT };
   return TABLE_TEXT.refused(problems[kept.code]);
 }
 
-function trayOf(name: string, label: string, chips: readonly { id: string; label: TermText }[]): EntryTray {
+export function trayOf(name: string, label: string, chips: readonly { id: string; label: TermText }[]): EntryTray {
   return { name, label, chips: chips.map(({ id, label: chipLabel }) => ({ id, label: chipLabel })) };
 }
 

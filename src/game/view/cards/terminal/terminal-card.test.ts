@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
-import { diagnoseIncident, gatewayIncident, namesSendIncident, sendIncident } from '@/testing';
+import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, namesSendIncident, sendIncident, webSendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { terminalCard, terminalLine } from './terminal-card';
@@ -161,5 +161,57 @@ describe('terminalCard of a diagnose incident', () => {
     expect(terminalLine(first, { from: 'origin', to: 'gateway', message: 'ping' })).toBe('ping 192.168.1.1');
     expect(terminalLine(first, { from: 'origin', to: 'typo', message: 'ping' })).toBeNull();
     expect(terminalLine(second, { from: 'origin', to: 'typo', message: 'ping' })).toBe('ping 192.168.1.22');
+  });
+});
+
+describe('terminalLine of a curl', () => {
+  const WEB = webSendIncident();
+  const web = startSession([WEB], WEB.id);
+  const line = (to: string, message: string) => terminalLine(web, { from: 'you', to, message });
+
+  it('the line of a curl is built from the chips of the url and the options in Linux syntax', () => {
+    expect(line('app-7', 'curl')).toBe('curl http://localhost:3000/pedidos?id=7');
+    expect(line('shop', 'curl-i')).toBe('curl -i http://www.lucia.example/');
+    expect(line('orders', 'curl-post')).toBe('curl -d item=coffee http://192.168.1.11:3000/pedidos');
+    expect(line('orders', 'curl-put')).toBe('curl -X PUT -d item=tea http://192.168.1.11:3000/pedidos');
+    expect(line('orders', 'curl-timeout')).toBe('curl --connect-timeout 3 http://192.168.1.11:3000/pedidos');
+    expect(line('app-80', 'curl')).toBe('curl http://localhost:80/pedidos?id=7');
+  });
+
+  it('quotes what the shell would read as more than one word, and leaves the options in a fixed order', () => {
+    const body = (data: string): Session => startSession([{ ...WEB, send: { ...WEB.send, message: [{ id: 'all', label: 'curl', command: 'curl', options: { include: true, request: 'PUT', data, connectTimeout: 3 } }] } }], WEB.id);
+    expect(terminalLine(body('producto=café'), { to: 'shop', message: 'all' })).toBe("curl -i -X PUT -d 'producto=café' --connect-timeout 3 http://www.lucia.example/");
+    expect(terminalLine(body("it's"), { to: 'shop', message: 'all' })).toBe("curl -i -X PUT -d 'it'\\''s' --connect-timeout 3 http://www.lucia.example/");
+    expect(terminalLine(body('a=1&b=2'), { to: 'shop', message: 'all' })).toContain("-d 'a=1&b=2'");
+  });
+
+  it('is null for a curl whose address is a plain address, for the browser and until the address is picked', () => {
+    const plain = startSession([{ ...WEB, send: { ...WEB.send, to: [...WEB.send.to, { id: 'plain', address: '192.168.1.11' }] } }], WEB.id);
+    expect(terminalLine(plain, { to: 'plain', message: 'curl' })).toBeNull();
+    expect(line('shop', 'browser')).toBeNull();
+    expect(terminalLine(web, { message: 'curl' })).toBeNull();
+  });
+});
+
+describe('terminalCard of a send with urls and a browser', () => {
+  const WEB = webSendIncident();
+  const web = startSession([WEB], WEB.id);
+  const card = terminalCard(web, PIECE_ID.device('your-laptop'));
+
+  it('labels a url chip by its url and not by its host, so the chips of one host are told apart', () => {
+    const labels = card?.trays.find((tray) => tray.name === 'to')?.chips.map((chip) => chip.label);
+    expect(labels).toEqual([
+      'http://localhost:3000/pedidos?id=7',
+      'http://localhost:3000/pedidos?id=8',
+      'http://localhost:80/pedidos?id=7',
+      'http://192.168.1.11:3000/pedidos',
+      'http://www.lucia.example/',
+      'http://blog.lucia.example/',
+      `http://${OFFICE_FLOORS.server.ip}/`,
+    ]);
+  });
+
+  it('does not offer the browser as a message of the terminal: the browser is a card of its own', () => {
+    expect(card?.trays.find((tray) => tray.name === 'message')?.chips.map((chip) => chip.id)).toEqual(['curl', 'curl-i', 'curl-post', 'curl-put', 'curl-timeout']);
   });
 });

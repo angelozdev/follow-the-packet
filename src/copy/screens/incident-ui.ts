@@ -1,8 +1,9 @@
-import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type RecordProblem, type RouteProblem, type Service, type UnreachableKind } from '@/engine';
+import { LOOPBACK_IP, type ClientActor, type Direction, type ExchangeKind, type FirewallKind, type Network, type Process, type RecordProblem, type RouteProblem, type Service, type UnreachableKind } from '@/engine';
 import type { RouterPlace } from '@/copy/reasons';
 import { nameTag, word, type TermText } from '@/copy/term-text';
 import { STAMP_TEXT, type StampState } from '@/copy/packet-labels';
 import type { TermId } from '@/copy/terms';
+import { WEB_BOX_TEXT } from '@/copy/web/web-text';
 
 const FIREWALL_LABEL: Record<FirewallKind, (name: string) => TermText> = {
   'security-group': (name) => `{{security-group}} ${nameTag(name)}`,
@@ -14,6 +15,7 @@ const EDGE_LABEL: Record<Network['edge'], TermText> = {
   router: '{{router}}',
 };
 
+const STOPPED_PROCESS = 'detenido';
 const MORE_STAMPS = (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`;
 const HIDDEN_PROBLEM = 'Entre los escondidos hay alguno bloqueado, perdido, con un aviso o que entró y no debía.';
 
@@ -90,10 +92,12 @@ export const INSPECTION_TEXT = {
   exampleTime: 'Cifra de ejemplo.',
   services: '{{service|Servicios}}',
   noServices: 'Ninguno.',
-  service: (service: Service, known: ReadonlySet<TermId>): TermText => {
+  service: (service: Service, known: ReadonlySet<TermId>, process?: Pick<Process, 'name' | 'running'>): TermText => {
     const what = known.has(service.protocol) ? `{{${service.protocol}}} ${service.port}` : `${word(known, 'port', 'puerto')} ${service.port}`;
-    if (!known.has('listen-address')) return what;
-    return `${what} · {{listen-address|${service.listen === 'all' ? 'escucha en todas las IPs' : `escucha solo en ${LOOPBACK_IP}`}}}`;
+    const owner = process && known.has('process') ? ` · {{process}} ${nameTag(process.name)}` : '';
+    if (process && !process.running) return `${what}${owner} · ${STOPPED_PROCESS}`;
+    if (!known.has('listen-address')) return `${what}${owner}`;
+    return `${what} · {{listen-address|${service.listen === 'all' ? 'escucha en todas las IPs' : `escucha solo en ${LOOPBACK_IP}`}}}${owner}`;
   },
   end: (ip: string, port: number | undefined): TermText => (port === undefined ? ip : `{{ip-port|${ip}:${port}}}`),
   ends: (from: TermText, to: TermText): TermText => `${from} → ${to}`,
@@ -197,6 +201,22 @@ export const TASK_CARD_TEXT = {
   giveBack: (chip: string) => `Devolver ${chip} a su bandeja`,
 } as const;
 
+const SHELL_SAFE = /^[\w@%+=:,./?-]+$/;
+
+function shellWord(text: string): string {
+  return SHELL_SAFE.test(text) ? text : `'${text.replaceAll("'", "'\\''")}'`;
+}
+
+/** The options of a `curl` as the line writes them: `-i`, `-X <method>`, `-d <body>` and `--connect-timeout <seconds>`. */
+interface CurlLineOptions {
+  include?: boolean;
+  request?: string;
+  data?: string;
+  connectTimeout?: number;
+}
+
+const EXAMPLE_TIME_NOTE = 'El tiempo es una cifra de ejemplo.';
+
 export const TERMINAL_TEXT = {
   title: (origin: TermText): TermText => `Terminal de ${origin}`,
   trays: { from: 'Origen', to: 'Destino', message: 'Mensaje' },
@@ -206,17 +226,29 @@ export const TERMINAL_TEXT = {
   handmade: (message: TermText, address: string): TermText => `paquete armado a mano: ${message} → ${address}`,
   nc: (address: string, port: number): TermText => `nc -vz -w 3 ${address} ${port}`,
   dig: (name: string): TermText => `dig ${name}`,
+  curl: (url: string, { include, request, data, connectTimeout }: CurlLineOptions = {}): TermText =>
+    [
+      'curl',
+      ...(include ? ['-i'] : []),
+      ...(request === undefined ? [] : ['-X', request]),
+      ...(data === undefined ? [] : ['-d', shellWord(data)]),
+      ...(connectTimeout === undefined ? [] : ['--connect-timeout', String(connectTimeout)]),
+      shellWord(url),
+    ].join(' '),
   incomplete: 'Elige una ficha de cada bandeja.',
   send: 'Enviar',
   output: {
-    label: { nc: 'Salida de nc', dig: 'Salida de dig' },
+    label: { nc: 'Salida de nc', dig: 'Salida de dig', curl: 'Salida de curl' },
+    sendTitle: (number: number): string => `Envío ${number}`,
     folded: (count: number): string => `⋯ ${count === 1 ? '1 línea plegada' : `${count} líneas plegadas`}`,
     show: (count: number): string => (count === 1 ? 'Ver la línea restante' : `Ver las ${count} líneas restantes`),
     hide: (count: number): string => (count === 1 ? 'Ocultar la línea restante' : `Ocultar las ${count} líneas restantes`),
     notes: {
-      nc: 'El tiempo es una cifra de ejemplo.',
+      nc: EXAMPLE_TIME_NOTE,
       dig: 'El id, el tiempo, la fecha y el tamaño son cifras de ejemplo.',
-    } satisfies Record<'nc' | 'dig', TermText>,
+      curl: EXAMPLE_TIME_NOTE,
+      curlHeaders: WEB_BOX_TEXT.notes.response,
+    } satisfies Record<'nc' | 'dig' | 'curl' | 'curlHeaders', TermText>,
   },
   route: {
     label: 'Salida de traceroute',
@@ -260,6 +292,8 @@ export const PIECE_TEXT = {
     translations: '{{translation-table|Tabla de traducciones}}',
     records: '{{dns-record|Registros}}',
     cache: '{{dns-cache|Caché}}',
+    browser: '{{browser|Navegador}}',
+    sites: '{{virtual-host|Sitios}}',
   },
 } as const;
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { digOutput, ncOutput, type DigResult } from '@/copy';
+import { curlOutput, digOutput, ncOutput, type DigResult } from '@/copy';
 import type { Network, ServerActor } from '@/engine';
-import { NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, namesSendIncident, routedSendIncident, tcpService, withDevice } from '@/testing';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, allOut, namesSendIncident, routedSendIncident, tcpService, webSendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
-import { toolOutput, type OutputSegment, type ToolOutput } from './output-card';
+import { toolOutput, toolOutputs, type OutputSegment, type ToolOutput } from './output-card';
 
 const NAMES = namesSendIncident();
 const start = startSession([NAMES], NAMES.id);
@@ -125,5 +125,78 @@ describe('toolOutput of a dig', () => {
   it('is null until that dig was sent, and for a combination of chips that is no tool', () => {
     expect(toolOutput(start, picks('www', 'dig'))).toBeNull();
     expect(toolOutput(sent(start, 'lucia', 'ping'), picks('lucia', 'ping'))).toBeNull();
+  });
+});
+
+describe('the output of a curl', () => {
+  const WEB = webSendIncident();
+  const web = startSession([WEB], WEB.id);
+  const curlSent = (session: Session, from: string, to: string, message: string) => sessionReducer(session, { type: 'sendPacket', fromId: from, toId: to, messageId: message });
+  const curlPicks = (from: string, to: string, message: string) => ({ from, to, message });
+  const printed = (session: Session, from: string, to: string, message: string) => toolOutput(curlSent(session, from, to, message), curlPicks(from, to, message));
+  const opened = sessionReducer(web, { type: 'placeRule', firewallId: 'fw-lucia', whatId: 'tcp-3000', fromId: 'you' });
+  const posted = (session: Session) => curlSent(curlSent(session, 'you', 'orders', 'curl-post'), 'you', 'orders', 'curl-post');
+  const SHOP_CONTENT_LENGTH = '9';
+
+  it('a plain curl lists the body of the response and nothing else', () => {
+    const output = printed(web, 'you', 'shop', 'curl');
+    expect(output?.command).toBe('curl');
+    expect(textsOf(output)).toEqual(['La tienda']);
+    expect(output?.folded).toBe(0);
+    expect(output?.notes).toEqual([]);
+  });
+
+  it('curl -i lists the status line, the headers as the server sent them, a blank line and the body, and says the server sent no more headers', () => {
+    const output = printed(web, 'you', 'shop', 'curl-i');
+    expect(textsOf(output)).toEqual(['HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', `Content-Length: ${SHOP_CONTENT_LENGTH}`, '', 'La tienda']);
+    expect(output?.notes).toEqual(['Un servidor real manda más cabeceras. El del juego manda solo estas.']);
+  });
+
+  it('a path that is not served lists the body of the 404 like any other response', () => {
+    expect(textsOf(printed(opened, 'you', 'orders', 'curl'))).toEqual(['No hay nada en ese camino.']);
+  });
+
+  it('a refused connection lists the line of code 7 with the host and the port of the url, and says the time is an example', () => {
+    const output = printed(web, 'lucia', 'app-80', 'curl');
+    expect(textsOf(output)).toEqual(curlOutput({ kind: 'refused', host: 'localhost', port: 80, elapsedMs: 0 }));
+    expect(output?.notes).toEqual(['El tiempo es una cifra de ejemplo.']);
+  });
+
+  it('a connection that gets no answer prints nothing: the box says what happened', () => {
+    expect(printed(web, 'you', 'orders', 'curl-timeout')).toBeNull();
+    expect(toolOutputs(curlSent(web, 'you', 'orders', 'curl-timeout'), curlPicks('you', 'orders', 'curl-timeout'))).toEqual([]);
+  });
+
+  it('is null until that curl was sent, and for the picks of the browser', () => {
+    expect(toolOutput(web, curlPicks('you', 'shop', 'curl'))).toBeNull();
+    expect(printed(web, 'you', 'shop', 'browser')).toBeNull();
+    expect(toolOutputs(web, curlPicks('you', 'shop', 'curl'))).toEqual([]);
+  });
+
+  it('the output lists every send of the same chips, each with its title Envío 1, Envío 2', () => {
+    const twice = posted(opened);
+    const blocks = toolOutputs(twice, curlPicks('you', 'orders', 'curl-post'));
+    expect(blocks.map((block) => block.title)).toEqual(['Envío 1', 'Envío 2']);
+    expect(blocks.map(textsOf)).toEqual([['Pedido 9: item=coffee'], ['Pedido 10: item=coffee']]);
+    expect(toolOutput(twice, curlPicks('you', 'orders', 'curl-post'))).toEqual(blocks[1]);
+  });
+
+  it('numbers the sends of the chips and no others', () => {
+    const mixed = curlSent(curlSent(curlSent(opened, 'you', 'orders', 'curl-post'), 'you', 'shop', 'curl'), 'you', 'orders', 'curl-post');
+    expect(toolOutputs(mixed, curlPicks('you', 'orders', 'curl-post')).map((block) => block.title)).toEqual(['Envío 1', 'Envío 2']);
+    expect(toolOutputs(mixed, curlPicks('you', 'shop', 'curl')).map((block) => block.title)).toEqual(['Envío 1']);
+  });
+
+  it('a move that changes the world takes the sends and their blocks away', () => {
+    const moved = sessionReducer(posted(opened), { type: 'placeRule', firewallId: 'fw-lucia', whatId: 'tcp-3000', fromId: 'anyone' });
+    expect(toolOutputs(moved, curlPicks('you', 'orders', 'curl-post'))).toEqual([]);
+    expect(toolOutput(moved, curlPicks('you', 'orders', 'curl-post'))).toBeNull();
+  });
+
+  it('an nc and a dig have one block with no title: only a curl is told apart by its sends', () => {
+    const output = toolOutputs(sent(start, 'www', 'dig'), picks('www', 'dig'));
+    expect(output).toHaveLength(1);
+    expect(output[0]).not.toHaveProperty('title');
+    expect(output[0]).toEqual(toolOutput(sent(start, 'www', 'dig'), picks('www', 'dig')));
   });
 });

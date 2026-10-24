@@ -1,6 +1,6 @@
 import { TERMINAL_TEXT, endpointName, packetMessage, type TermText } from '@/copy';
 import type { Endpoint } from '@/engine';
-import type { MessageChip, SendOwner } from '@/levels';
+import { urlOfChip, type MessageChip, type SendOwner } from '@/levels';
 import { sendingOf, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 
@@ -40,8 +40,8 @@ export function originPieces(session: Session): Record<string, string> {
 function chipsOf(offers: SendOwner, session: Session): Record<SendTrayName, Chip[]> {
   return {
     from: offers.send.from.map((chip) => ({ id: chip.id, label: endpointName(chip.endpoint, session.world) })),
-    to: offers.send.to.map((chip) => ({ id: chip.id, label: chip.address })),
-    message: offers.send.message.map((chip) => ({ id: chip.id, label: chip.label })),
+    to: offers.send.to.map((chip) => ({ id: chip.id, label: urlOfChip(chip) ?? chip.address })),
+    message: offers.send.message.filter((chip) => chip.command !== 'browser').map((chip) => ({ id: chip.id, label: chip.label })),
   };
 }
 
@@ -65,7 +65,7 @@ function lineKindOf(message: MessageChip): NonNullable<MessageChip['command']> |
   return packetMessage({ protocol: 'icmp', icmpType: message.icmpType }) === 'echo-request' ? 'ping' : 'handmade';
 }
 
-/** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. An `nc` is `nc -vz -w 3 <address> <port>` (`-v` makes it print what happened, `-z` that it only connects and `-w 3` that it waits three seconds), and a `dig` is `dig <name>` with no server, so it asks the resolver of the network settings of the device. Null until the address and the message (and, for a packet, the origin) are picked. */
+/** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. An `nc` is `nc -vz -w 3 <address> <port>` (`-v` makes it print what happened, `-z` that it only connects and `-w 3` that it waits three seconds), and a `dig` is `dig <name>` with no server, so it asks the resolver of the network settings of the device. A `curl` is `curl` with its options (`-i`, `-X PUT`, `-d <body>`, `--connect-timeout <seconds>`, in that order) and the whole url of the address chip; the browser has no line, because it is not a command, and a `curl` to a chip that is no url has none either. Null until the address and the message (and, for a packet, the origin) are picked. */
 export function terminalLine(session: Session, { from, to, message }: Partial<SendPicks>): TermText | null {
   const offers = sendingOf(session);
   const address = offers?.send.to.find((chip) => chip.id === to)?.address;
@@ -86,7 +86,10 @@ export function terminalLine(session: Session, { from, to, message }: Partial<Se
       return picked.port === undefined ? null : TERMINAL_TEXT.nc(address, picked.port);
     case 'dig':
       return TERMINAL_TEXT.dig(address);
-    case 'curl':
+    case 'curl': {
+      const url = urlOfChip(offers.send.to.find((chip) => chip.id === to)!);
+      return url === undefined ? null : TERMINAL_TEXT.curl(url, picked.options);
+    }
     case 'browser':
       return null;
   }

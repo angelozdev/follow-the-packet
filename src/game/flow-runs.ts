@@ -1,6 +1,6 @@
 import { FIRST_WARNING_TERM, entityTerm, packetLabel, packetPortLabels, tracerouteLabel, warningOf, type PacketPorts, type TermId, type TermText, type Warning } from '@/copy';
 import { TRACEROUTE_MAX_HOPS, facesALan, reachesHost, simulate, simulateSequence, stopStep, traceroute, type Network, type Outcome, type PacketSpec, type Step, type Trace, type TracerouteResult } from '@/engine';
-import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
+import { packetFromChips, probeFromChips, revealsRoutersByTraceroute, sentPacketFromChips, type Flow, type FlowKind, type Incident, type SendMove, type SendOwner } from '@/levels';
 import { PIECE_ID } from './view/piece-id';
 
 export interface PacketRun {
@@ -167,7 +167,7 @@ export function offersSend(offers: SendOwner, move: SendMove): boolean {
 }
 
 function planOf(offers: SendOwner, dispatch: Dispatch): Plan[] {
-  const packet = packetFromChips(offers, dispatch.move);
+  const packet = sentPacketFromChips(offers, dispatch.move);
   if (packet) return [{ dispatch, packet }];
   const probe = probeFromChips(offers, dispatch.move);
   return probe ? [{ dispatch, probe }] : [];

@@ -3,6 +3,7 @@ import { hostHeaderOf, parseUrl, targetOf } from './url';
 
 const HTTP_VERSION = 'HTTP/1.1';
 const PLAIN_TEXT = 'text/plain; charset=utf-8';
+const CONTENT_TYPE = 'Content-Type';
 
 const STATUS_PHRASE = { 200: 'OK', 404: 'Not Found' } as const;
 
@@ -33,16 +34,17 @@ function byteLength(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
-/** Builds the request a message makes: the Host header comes first, with the name of the url and its port when it is not the default; then the headers the message brings; then Content-Length, in bytes, when there is a body. The fragment of the url is not part of it. */
-export function requestOf({ method, url, headers, body }: HttpMessage): AppRequest {
+/** Builds the request a message makes: the Host header comes first, with the name of the url and its port when it is not the default; then the headers the message brings; then Content-Length, in bytes, when there is a body, and after it the Content-Type of the message, the order in which curl 8.21.0 writes them. The fragment of the url is not part of it. */
+export function requestOf({ method, url, headers = {}, body }: HttpMessage): AppRequest {
   const parsed = parseUrl(url);
+  const { [CONTENT_TYPE]: contentType, ...others } = headers;
   return {
     startLine: `${method} ${targetOf(parsed)} ${HTTP_VERSION}`,
     method,
     host: parsed.host,
     path: parsed.path,
     ...(parsed.query !== undefined && { query: parsed.query }),
-    headers: { Host: hostHeaderOf(parsed), ...headers, ...(body !== undefined && { 'Content-Length': String(byteLength(body)) }) },
+    headers: { Host: hostHeaderOf(parsed), ...others, ...(body !== undefined && { 'Content-Length': String(byteLength(body)) }), ...(contentType !== undefined && { [CONTENT_TYPE]: contentType }) },
     ...(body !== undefined && { body }),
   };
 }

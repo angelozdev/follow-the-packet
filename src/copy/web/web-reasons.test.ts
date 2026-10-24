@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { OFFICE_FLOORS, officeWithNames } from '@/testing';
+import { EVERY_TERM, OFFICE_FLOORS, officeWithNames } from '@/testing';
 import { describeReason } from '@/copy/reasons';
 import { termsIn } from '@/copy/term-text';
-import type { TermId } from '@/copy/terms';
+import { isTermId, type TermId } from '@/copy/terms';
+import type { Reason } from '@/engine';
 import { describeWebReason, type WebReason } from './web-reasons';
 
 const NET = officeWithNames();
@@ -37,5 +38,17 @@ describe('the reasons of a web service', () => {
       expect(text).toBe(describeWebReason(reason, NET, WITH_HOST_AND_RESPONSE));
       expect(text).not.toMatch(/stateful|firewall|bloquea|filtra/i);
     }
+  });
+});
+
+describe('the reasons of block 1 of chapter 3', () => {
+  const stopped: Reason = { code: 'process-stopped', deviceId: SERVER, port: 3001 };
+  const unknownTags = (reason: Reason, known: ReadonlySet<TermId>) => termsIn(describeReason(reason, NET, known)).filter((id) => !isTermId(id) || !known.has(id));
+
+  it('describes every new reason of the block with registered terms only', () => {
+    const missingOne = [...EVERY_TERM].map((missing) => new Set([...EVERY_TERM].filter((term) => term !== missing)));
+    const sets = [EVERY_TERM, NOTHING_KNOWN, ...missingOne];
+    const wrong = [chosen, fallback, answered, stopped].flatMap((reason) => sets.flatMap((known) => unknownTags(reason, known).map((id) => `${reason.code} tags ${id}`)));
+    expect(wrong).toEqual([]);
   });
 });

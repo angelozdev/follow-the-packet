@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { CHAPTER_1_TERMS, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, sendIncident } from '@/testing';
+import { CHAPTER_1_TERMS, NAME_SERVER_PIECES, OFFICE_FLOORS, classifyIncident, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, sendIncident, webSendIncident } from '@/testing';
 import { startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { pieceCard } from './piece-card';
@@ -107,5 +107,23 @@ describe('pieceCard', () => {
     const session = startSession([diagnoseIncident()], diagnoseIncident().id);
     expect(ids(session, PIECE_ID.device('your-laptop'))).toEqual(['terminal']);
     expect(pieceCard(session, PIECE_ID.router(officeRouter.id))).toBeNull();
+  });
+});
+
+describe('pieceCard of a web server', () => {
+  const WEB = webSendIncident();
+  const web = startSession([WEB], WEB.id);
+  const server = PIECE_ID.actor(OFFICE_FLOORS.server.id);
+
+  it('the server that owns a table of sites opens its sites card, alone, with the tab called Sitios', () => {
+    expect(pieceCard(web, server)).toMatchObject({ tabbed: false, first: 'sites' });
+    expect(ids(web, server)).toEqual(['sites']);
+    expect(labels(web, server)).toEqual(['Sitios']);
+  });
+
+  it('a device that owns no table of sites has none, and the incident can name the sites card to open first', () => {
+    expect(ids(web, PIECE_ID.device('lucia-laptop'))).not.toContain('sites');
+    const named = startSession([{ ...WEB, send: { ...WEB.send, opensFirst: { [OFFICE_FLOORS.server.id]: 'sites' } } }], WEB.id);
+    expect(pieceCard(named, server)?.first).toBe('sites');
   });
 });

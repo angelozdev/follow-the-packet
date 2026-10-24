@@ -70,6 +70,7 @@ function Single({ tab, handlers, terminal, onClose }: Drawn & { tab: PieceTab })
     case 'translations':
     case 'records':
     case 'cache':
+    case 'sites':
       return <TableCard key={tab.card.ownerId} card={tab.card} onPlace={handlers.onPlace} onRemove={handlers.onRemove} onClose={onClose} />;
   }
 }
@@ -97,6 +98,7 @@ function Tabbed({ card, handlers, terminal, onClose }: Drawn & { card: Piece }) 
       case 'translations':
       case 'records':
       case 'cache':
+      case 'sites':
         return tableFrame(tab.card, entries, handlers, refocus);
     }
   };
