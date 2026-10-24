@@ -357,7 +357,7 @@ describe('03-02, ask and answer', () => {
   it('03-02: a get of the order 7 after a put reads the replaced order, and no task depends on it', () => {
     expect(bodyOfLast(reading(putting(start)))).toBe(ORDER_BODY.replaced);
     expect(bodyOfLast(readingEight(putting(start)))).toBe(ORDER_BODY.eight);
-    expect(plain(incident.report)).toContain('Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7.');
+    expect(plain(incident.report)).toContain('Lee el pedido 8. Después manda dos POST iguales a la lista de pedidos y dos PUT iguales al pedido 7.');
   });
 
   it('03-02: the three tasks hold in each of the 30 orders in which the get of the order 8, the two posts and the two puts of the order 7 can be sent, and reading the order 7 afterwards undoes none', () => {
