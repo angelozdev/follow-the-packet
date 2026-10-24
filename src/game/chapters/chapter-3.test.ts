@@ -280,6 +280,7 @@ describe('03-02, ask and answer', () => {
   const posting = (session: Session) => sending(session, ORDER_URL.all.id, MESSAGE.curlPost.id);
   const putting = (session: Session) => sending(session, ORDER_URL.seven.id, MESSAGE.curlPut.id);
   const reading = (session: Session) => sending(session, ORDER_URL.seven.id);
+  const readingEight = (session: Session) => sending(session, ORDER_URL.eight.id);
   const bodyOfLast = (session: Session) => session.sent.at(-1)!.trace.app?.response?.body;
   const wrongOptionTexts = isGuided(incident) ? incident.explanation.filter(({ correct }) => !correct).map(({ text }) => text) : [];
   const everythingRead = (session: Session): string[] => [
@@ -288,8 +289,8 @@ describe('03-02, ask and answer', () => {
   ];
 
   it('03-02: the get, the two posts and the two puts each complete their task', () => {
-    expect(stillOpen(start)).toEqual([TASK.getSeven, TASK.posts, TASK.puts]);
-    const read = reading(start);
+    expect(stillOpen(start)).toEqual([TASK.getEight, TASK.posts, TASK.puts]);
+    const read = readingEight(start);
     expect(stillOpen(read)).toEqual([TASK.posts, TASK.puts]);
     const posted = posting(posting(read));
     expect(stillOpen(posted)).toEqual([TASK.puts]);
@@ -321,9 +322,22 @@ describe('03-02, ask and answer', () => {
     expect(bodyOfLast(sending(secondPut, ORDER_URL.nine.id))).toBe(ORDER_BODY.nine);
   });
 
-  it('03-02: the order 7 is the one a put replaces, so the report asks to read it first', () => {
+  it('03-02: a get of the order 7 after a put reads the replaced order, and no task depends on it', () => {
     expect(bodyOfLast(reading(putting(start)))).toBe(ORDER_BODY.replaced);
-    expect(plain(incident.report)).toContain('Primero lee el pedido 7. Después manda dos POST iguales y dos PUT iguales.');
+    expect(bodyOfLast(readingEight(putting(start)))).toBe(ORDER_BODY.eight);
+    expect(plain(incident.report)).toContain('Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7.');
+  });
+
+  it('03-02: the three tasks hold in whatever order the get, the two posts and the two puts are sent, and reading the order 7 afterwards undoes none', () => {
+    const sends: Record<string, (session: Session) => Session> = { get: readingEight, post: posting, put: putting };
+    const permutations = (items: string[]): string[][] => (items.length <= 1 ? [items] : items.flatMap((item, place) => permutations([...items.slice(0, place), ...items.slice(place + 1)]).map((rest) => [item, ...rest])));
+    const orders = [...new Set(permutations(['get', 'post', 'post', 'put', 'put']).map((order) => order.join(' ')))];
+    expect(orders).toHaveLength(30);
+    for (const order of orders) {
+      const played = order.split(' ').reduce((session, kind) => sends[kind](session), start);
+      expect(stillOpen(played), order).toEqual([]);
+      expect(stillOpen(reading(played)), order).toEqual([]);
+    }
   });
 
   it('03-02: each curl asks with the method its options say', () => {

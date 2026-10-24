@@ -11,14 +11,14 @@ export default defineIncident({
   introduces: ['http-request', 'http-response', 'http-method', 'idempotent'],
   changes: [APP_TAKES_ORDERS],
   shown: PAGE_PIECES,
-  report: `Lucía siguió con su app de pedidos: ahora el programa del {{port|puerto}} ${PORT.app} de ${NAME.lucia} también crea pedidos y los cambia. Cada pedido de {{curl}} es una {{http-request|petición HTTP}}, y la app contesta con una {{http-response|respuesta HTTP}}. La petición trae un {{http-method|método HTTP}} que dice qué quiere hacer. Sin opciones, {{curl}} pide un GET: lee un pedido. Con -d pide un POST: crea uno. Con -X PUT -d pide un PUT: cambia uno. Primero lee el pedido 7. Después manda dos POST iguales y dos PUT iguales. En la caja lee cada petición y cada respuesta.`,
+  report: `Lucía siguió con su app de pedidos: ahora el programa del {{port|puerto}} ${PORT.app} de ${NAME.lucia} también crea pedidos y los cambia. Cada pedido de {{curl}} es una {{http-request|petición HTTP}}, y la app contesta con una {{http-response|respuesta HTTP}}. La petición trae un {{http-method|método HTTP}} que dice qué quiere hacer. Sin opciones, {{curl}} pide un GET: lee un pedido. Con -d pide un POST: crea uno. Con -X PUT -d pide un PUT: cambia uno. Lee el pedido 8. Después manda dos POST iguales y dos PUT iguales al pedido 7. En la caja lee cada petición y cada respuesta.`,
   tasks: [
-    bodyTask(TASK.getSeven, 'Que el GET devuelva el pedido 7.', ORDER_URL.seven.id, ORDER_BODY.seven),
+    bodyTask(TASK.getEight, 'Que el GET devuelva el pedido 8.', ORDER_URL.eight.id, ORDER_BODY.eight),
     bodyTask(TASK.posts, 'Que dos POST iguales dejen el pedido 9 y el 10.', ORDER_URL.all.id, ORDER_BODY.ten, { messageId: MESSAGE.curlPost.id, nth: 2 }),
     bodyTask(TASK.puts, 'Que dos PUT iguales al pedido 7 lo dejen igual.', ORDER_URL.seven.id, ORDER_BODY.replaced, { messageId: MESSAGE.curlPut.id, nth: 2 }),
   ],
   flows: [],
-  send: { from: [ORIGIN.lucia], to: [ORDER_URL.seven, ORDER_URL.all, ORDER_URL.nine], message: [MESSAGE.curl, MESSAGE.curlPost, MESSAGE.curlPut] },
+  send: { from: [ORIGIN.lucia], to: [ORDER_URL.seven, ORDER_URL.eight, ORDER_URL.all, ORDER_URL.nine], message: [MESSAGE.curl, MESSAGE.curlPost, MESSAGE.curlPut] },
   hints: ['Compara lo que dejó el segundo POST con lo que dejó el segundo PUT.', 'Una operación es {{idempotent|idempotente}} si repetirla deja el mismo efecto que hacerla una vez.'],
   question: 'Se cortó la red al mandar un POST. ¿Es seguro repetirlo?',
   explanation: [
@@ -39,7 +39,7 @@ export default defineIncident({
     },
   ],
   solution: [
-    sendMoveFrom(ORIGIN.lucia, ORDER_URL.seven.id, MESSAGE.curl.id),
+    sendMoveFrom(ORIGIN.lucia, ORDER_URL.eight.id, MESSAGE.curl.id),
     sendMoveFrom(ORIGIN.lucia, ORDER_URL.all.id, MESSAGE.curlPost.id),
     sendMoveFrom(ORIGIN.lucia, ORDER_URL.all.id, MESSAGE.curlPost.id),
     sendMoveFrom(ORIGIN.lucia, ORDER_URL.seven.id, MESSAGE.curlPut.id),

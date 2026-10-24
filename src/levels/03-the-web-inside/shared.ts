@@ -106,13 +106,14 @@ export const ADDRESS = {
   orderEight: urlByParts(PORT.app, ORDER_PATH, 'id=8'),
 } as const;
 
-/** The three address chips of 03-02, each given whole: the order 7, the orders (where a post goes) and the order 9, which two posts create. */
+/** Returns the address chip of 03-02 with this id, given whole: the url of the orders app of laptop-lucia, with this query when there is one. */
 function wholeUrl(id: string, query?: string): AddressChip {
   return { id, address: LOCALHOST, url: `http://${LOCALHOST}:${PORT.app}${ORDER_PATH}${query === undefined ? '' : `?${query}`}` };
 }
 
 export const ORDER_URL = {
   seven: wholeUrl('url-order-7', 'id=7'),
+  eight: wholeUrl('url-order-8', 'id=8'),
   all: wholeUrl('url-orders'),
   nine: wholeUrl('url-order-9', 'id=9'),
 } as const;
@@ -126,7 +127,7 @@ export const LUCIA_URL = {
 export const TASK = {
   orderSeven: 'curl-order-7',
   orderEight: 'curl-order-8',
-  getSeven: 'get-order-7',
+  getEight: 'get-order-8',
   posts: 'two-equal-posts',
   puts: 'two-equal-puts',
   page: 'browser-gets-the-page',
