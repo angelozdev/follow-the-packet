@@ -1,0 +1,9 @@
+# engine/web/identity
+
+Who a request says it comes from, and whether that user may enter a page. Pure functions over the headers of a request and the users of a site; the page that asks for a role and the answers 401 and 403 are built in `../app.ts`.
+
+- `basic-credential.ts`: the Basic credential of RFC 7617. `basicAuthorizationHeader('user:password')` is the `Authorization` header a client sends (`Basic` and the base64 of that text in UTF-8, from `btoa` and `TextEncoder` of the platform), `credentialOf(headers)` reads it back (split on the first colon, as `curl` does; nothing when the header is missing, is not Basic, is not valid base64 or UTF-8, or has no colon) and `basicChallenge(realm)` is the `WWW-Authenticate` value of a 401 (`Basic realm="<realm>"`, RFC 7617 §2). The engine does not know a `curl`: the session writes the `Authorization` header into the message of a `curl -u` with `basicAuthorizationHeader` (`sentPacketFromChips`, `src/levels/contract/chips.ts`).
+- `access.ts`: `denialOf(accounts, role, headers)` decides for a page that asks for a `role`. A request whose credential is a user and a password of the site, and whose user has the role, gets nothing back (the page answers). A request with no credential, a wrong password or a user the site does not have gets `{ kind: 'needs-login' }` (a 401); a user of the site without the role gets `{ kind: 'forbidden', user }` (a 403). The same request always gets the same decision.
+- The users of a site are `Site.accounts` (`../schema.ts`): `users` (`{ name, password, role }`), the `realm` and the bodies of the 401 and the 403. The engine writes no sentence: every body comes from the data of the app.
+- Not here: the schema of a site (`../schema.ts`), the page and the response (`../app.ts`, `../messages.ts`), the Spanish text of why an app answered 401 or 403 (`src/copy/web/`).
+- May import: other files of `src/engine/`.

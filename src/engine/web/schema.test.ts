@@ -23,6 +23,15 @@ describe('the web service schema', () => {
     expect(webServiceSchema.safeParse({ sites: [{ ...serving, orders: { template: '{id}: {content}', start: [] } }], defaultSiteId: 'shop' }).success).toBe(true);
   });
 
+  it('rejects a page that asks for a role on a site with no users, and a user name with a colon', () => {
+    const accounts = { users: [{ name: 'lucia', password: 'x', role: 'admin' }], realm: 'admin', unauthorizedBody: 'a', forbiddenBody: 'b' };
+    const guarded: Site = { ...shop, pages: [{ path: '/admin', methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: 'x' } }] };
+    expect(issuesOf(webServiceSchema.safeParse({ sites: [guarded], defaultSiteId: 'shop' }))).toEqual(['shop: a page asks for a role and the site has no users']);
+    expect(webServiceSchema.safeParse({ sites: [{ ...guarded, accounts }], defaultSiteId: 'shop' }).success).toBe(true);
+    const colon = { ...accounts, users: [{ name: 'lu:cia', password: 'x', role: 'admin' }] };
+    expect(issuesOf(webServiceSchema.safeParse({ sites: [{ ...guarded, accounts: colon }], defaultSiteId: 'shop' }))).toEqual(['a user name has no colon']);
+  });
+
   it('a service may carry a web service and a network with one still validates', () => {
     const web = { sites: [shop], defaultSiteId: 'shop' };
     expect(serviceSchema.safeParse({ protocol: 'tcp', port: 80, listen: 'all', web }).success).toBe(true);

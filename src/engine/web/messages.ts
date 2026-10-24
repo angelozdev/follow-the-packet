@@ -5,7 +5,7 @@ const HTTP_VERSION = 'HTTP/1.1';
 const PLAIN_TEXT = 'text/plain; charset=utf-8';
 const CONTENT_TYPE = 'Content-Type';
 
-const STATUS_PHRASE = { 200: 'OK', 400: 'Bad Request', 404: 'Not Found' } as const;
+const STATUS_PHRASE = { 200: 'OK', 400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found' } as const;
 
 /** The status codes an app of the game answers. */
 export const STATUS_CODES: readonly number[] = Object.keys(STATUS_PHRASE).map(Number);
@@ -52,12 +52,12 @@ export function requestOf({ method, url, headers = {}, body }: HttpMessage): App
   };
 }
 
-/** Builds a response with only the headers the game teaches: Content-Type and Content-Length. */
-export function responseOf(statusCode: StatusCode, body: string): AppResponse {
+/** Builds a response with only the headers the game teaches: Content-Type and Content-Length, and after them the ones the app adds (the WWW-Authenticate of a 401). */
+export function responseOf(statusCode: StatusCode, body: string, headers: HttpHeaders = {}): AppResponse {
   return {
     startLine: `${HTTP_VERSION} ${statusCode} ${STATUS_PHRASE[statusCode]}`,
     statusCode,
-    headers: { 'Content-Type': PLAIN_TEXT, 'Content-Length': String(byteLength(body)) },
+    headers: { 'Content-Type': PLAIN_TEXT, 'Content-Length': String(byteLength(body)), ...headers },
     body,
   };
 }

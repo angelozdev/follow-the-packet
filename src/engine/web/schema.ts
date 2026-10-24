@@ -22,6 +22,11 @@ const orderSchema = z.object({ id: z.number().int().nonnegative(), content: z.st
 /** The orders of a site and how one reads: `template` holds the slots `{id}` and `{content}`, and `start` the orders the app begins with. An app that checks the id has a `badIdBody`, the body of the 400 it answers to an `id` that is not a number. */
 const orderBookSchema = z.object({ template: z.string(), start: z.array(orderSchema), badIdBody: z.string().optional() });
 
+const userSchema = z.object({ name: z.string().min(1).refine((name) => !name.includes(':'), 'a user name has no colon'), password: z.string(), role: z.string().min(1) });
+
+/** The users of a site and what it answers to a request that asks for a role: the `realm` it names in WWW-Authenticate, the body of the 401 for a request with no valid credential and the body of the 403 for a user without the role. */
+const accountsSchema = z.object({ users: z.array(userSchema).min(1), realm: z.string(), unauthorizedBody: z.string(), forbiddenBody: z.string() });
+
 const handlerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('fixed'), body: z.string() }),
   z.object({ kind: z.literal('order-read') }),
@@ -29,15 +34,16 @@ const handlerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('order-replace') }),
 ]);
 
-const pageSchema = z.object({ path: z.string().startsWith('/'), methods: z.array(httpMethodSchema).min(1), handler: handlerSchema });
+const pageSchema = z.object({ path: z.string().startsWith('/'), methods: z.array(httpMethodSchema).min(1), role: z.string().min(1).optional(), handler: handlerSchema });
 
-/** A site: the names it answers to, its pages, the body of its 404 and, for a site that serves orders, its order book. */
+/** A site: the names it answers to, its pages (a page with a `role` answers only to a user who has it), the body of its 404 and, for a site that serves orders, its order book and, for a site with pages that ask for a role, its users. */
 export const siteSchema = z.object({
   id: z.string().min(1),
   names: z.array(siteNameSchema),
   pages: z.array(pageSchema),
   notFoundBody: z.string(),
   orders: orderBookSchema.optional(),
+  accounts: accountsSchema.optional(),
 });
 
 /** What a site serves, apart from the names it answers to: its pages, the body of its 404 and its order book. A table of sites gives a chip of it for each thing the player may pick to serve. */
@@ -53,6 +59,7 @@ export const webServiceSchema = z
     if (new Set(ids).size !== ids.length) fail('two sites share an id');
     for (const site of web.sites) {
       if (!site.orders && site.pages.some(({ handler }) => handler.kind.startsWith('order-'))) fail(`${site.id}: a page serves orders and the site has no order book`);
+      if (!site.accounts && site.pages.some(({ role }) => role !== undefined)) fail(`${site.id}: a page asks for a role and the site has no users`);
     }
   });
 

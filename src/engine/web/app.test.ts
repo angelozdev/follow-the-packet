@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { answerRequest, chooseSite, type Orders } from './app';
+import { basicAuthorizationHeader } from './identity/basic-credential';
 import { requestOf } from './messages';
 import type { HttpMethod, Site, WebService } from './schema';
 
@@ -21,6 +22,18 @@ const ordersSite: Site = {
 
 const NOT_A_NUMBER = 'The id is not a number.';
 const checkingSite: Site = { ...ordersSite, orders: { ...ORDERS!, badIdBody: NOT_A_NUMBER } };
+
+const ADMIN_PANEL = 'Admin panel.';
+const accounts: NonNullable<Site['accounts']> = {
+  users: [
+    { name: 'lucia', password: 'pw-lucia', role: 'admin' },
+    { name: 'marta', password: 'pw-marta', role: 'staff' },
+  ],
+  realm: 'admin',
+  unauthorizedBody: 'Log in.',
+  forbiddenBody: 'Not allowed.',
+};
+const guardedSite: Site = { ...ordersSite, accounts, pages: [...ordersSite.pages, { path: '/admin', methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: ADMIN_PANEL } }] };
 
 const start: Orders = ORDERS!.start;
 const ask = (method: HttpMethod, target: string, body?: string, orders: Orders = start, site: Site = ordersSite) =>
@@ -122,6 +135,46 @@ describe('an app that checks the id of an order', () => {
   it('an id that is a number is read as before in an app that checks the id', () => {
     expect(askChecking('GET', '/orders?id=7').response).toMatchObject({ statusCode: 200, body: 'Order 7: 2 coffees.' });
     expect(askChecking('PUT', '/orders?id=7', 'item=tea').response).toMatchObject({ statusCode: 200, body: 'Order 7: item=tea' });
+  });
+});
+
+describe('a page that asks for a role', () => {
+  const askAdmin = (credential?: string, method: HttpMethod = 'GET') =>
+    answerRequest(guardedSite, start, requestOf({ method, url: 'http://app.example/admin', ...(credential !== undefined && { headers: basicAuthorizationHeader(credential) }) }));
+
+  it('a request with no credential to a protected path answers 401 with WWW-Authenticate', () => {
+    const { response, denial } = askAdmin();
+    expect(response).toMatchObject({ statusCode: 401, startLine: 'HTTP/1.1 401 Unauthorized', body: 'Log in.' });
+    expect(response.headers['WWW-Authenticate']).toBe('Basic realm="admin"');
+    expect(denial).toEqual({ kind: 'needs-login' });
+  });
+
+  it('a request with the credential of a user without the role answers 403', () => {
+    const { response, denial } = askAdmin('marta:pw-marta');
+    expect(response).toMatchObject({ statusCode: 403, startLine: 'HTTP/1.1 403 Forbidden', body: 'Not allowed.' });
+    expect(response.headers).not.toHaveProperty('WWW-Authenticate');
+    expect(denial).toEqual({ kind: 'forbidden', user: 'marta' });
+  });
+
+  it('a request with the credential of a user with the role answers 200', () => {
+    const { response, denial } = askAdmin('lucia:pw-lucia');
+    expect(response).toMatchObject({ statusCode: 200, body: ADMIN_PANEL });
+    expect(denial).toBeUndefined();
+  });
+
+  it('a wrong password answers 401, and so does a user the site does not have', () => {
+    for (const credential of ['marta:pw-lucia', 'lucia:wrong', 'nobody:pw-lucia']) expect(askAdmin(credential).response, credential).toMatchObject({ statusCode: 401, body: 'Log in.' });
+  });
+
+  it('repeating a request with the same credential gives the same 403', () => {
+    const first = askAdmin('marta:pw-marta');
+    expect(askAdmin('marta:pw-marta')).toEqual(first);
+    expect(askAdmin('marta:pw-marta').orders).toBe(start);
+  });
+
+  it('a page with no role needs no credential, and a method the protected path does not accept is a 404 before any credential is asked', () => {
+    expect(answerRequest(guardedSite, start, requestOf({ method: 'GET', url: 'http://app.example/orders?id=7' })).response.statusCode).toBe(200);
+    expect(askAdmin(undefined, 'POST').response.statusCode).toBe(404);
   });
 });
 

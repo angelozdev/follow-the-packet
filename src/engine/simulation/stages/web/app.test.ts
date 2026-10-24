@@ -4,6 +4,7 @@ import { simulateSequence } from '@/engine/simulation/sequence';
 import type { Trace } from '@/engine/simulation/trace';
 import { applyAction } from '@/engine/network/actions';
 import type { Firewall, Network, PacketSpec, Rule, Service } from '@/engine/network/types';
+import { basicAuthorizationHeader } from '@/engine/web/identity/basic-credential';
 import type { HttpMethod, Site } from '@/engine/web/schema';
 import { NAME_SERVER_PIECES, OFFICE_FLOORS, chapter1Worlds, chapter4Worlds, device, officeWithNames, tcp, withDevice } from '@/testing';
 
@@ -188,5 +189,23 @@ describe('the orders of an app', () => {
   it('a send that does not reach the app leaves the orders as they were', () => {
     const toClosedPort = http(floor1.lucia, REPORTS_PORT, 'POST', `http://${floor1.lucia}:${REPORTS_PORT}/orders`, 'x');
     expect(bodiesOf(lucia(ordersService), toClosedPort, ask('POST', '/orders', 'x'))).toEqual([undefined, 'Order 9: x']);
+  });
+});
+
+describe('the pages that ask for a role', () => {
+  const guardedOrders: Site = {
+    ...orders,
+    accounts: { users: [{ name: 'lucia', password: 'pw-lucia', role: 'admin' }, { name: 'marta', password: 'pw-marta', role: 'staff' }], realm: 'admin', unauthorizedBody: 'Log in.', forbiddenBody: 'Not allowed.' },
+    pages: [...orders.pages, { path: '/admin', methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: 'Admin panel.' } }],
+  };
+  const net = lucia({ ...ordersService, web: { sites: [guardedOrders], defaultSiteId: guardedOrders.id } });
+  const askAdmin = (credential?: string): PacketSpec => ({ ...ask('GET', '/admin'), message: { method: 'GET', url: `http://${floor1.lucia}:${APP_PORT}/admin`, ...(credential !== undefined && { headers: basicAuthorizationHeader(credential) }) } });
+
+  it('the credential the packet carries decides the code: 401 with none, 403 for a user without the role and 200 with it', () => {
+    const traces = [undefined, 'marta:pw-marta', 'lucia:pw-lucia'].map((credential) => simulate(net, askAdmin(credential)));
+    expect(traces.map((trace) => trace.app?.response?.statusCode)).toEqual([401, 403, 200]);
+    expect(traces.map((trace) => trace.outcome)).toEqual(['replied', 'replied', 'replied']);
+    expect(traces[0].app?.response?.headers['WWW-Authenticate']).toBe('Basic realm="admin"');
+    expect(traces[1].app?.request.headers.Authorization).toBe(basicAuthorizationHeader('marta:pw-marta').Authorization);
   });
 });

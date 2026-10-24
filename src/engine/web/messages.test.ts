@@ -63,3 +63,15 @@ describe('the length of a body', () => {
     expect(requestOf({ method: 'POST', url: 'http://shop.example/', body: 'café' }).headers['Content-Length']).toBe('5');
   });
 });
+
+describe('responseOf with the headers an app adds', () => {
+  it('a 401 and a 403 write their start line with the reason phrases Unauthorized and Forbidden', () => {
+    expect(responseOf(401, 'x')).toMatchObject({ startLine: 'HTTP/1.1 401 Unauthorized', statusCode: 401 });
+    expect(responseOf(403, 'x')).toMatchObject({ startLine: 'HTTP/1.1 403 Forbidden', statusCode: 403 });
+  });
+
+  it('the headers an app adds come after Content-Type and Content-Length', () => {
+    const response = responseOf(401, 'x', { 'WWW-Authenticate': 'Basic realm="admin"' });
+    expect(Object.entries(response.headers)).toEqual([['Content-Type', 'text/plain; charset=utf-8'], ['Content-Length', '1'], ['WWW-Authenticate', 'Basic realm="admin"']]);
+  });
+});
