@@ -1,6 +1,8 @@
 import { sameName } from '@/engine/dns/records';
-import { denialOf, type Denial } from './identity/access';
+import { denialOf, loginUserOf, type Denial } from './identity/access';
 import { basicChallenge } from './identity/basic-credential';
+import { SET_COOKIE_HEADER } from './identity/cookies';
+import { sessionCookieOf, type SessionUsers } from './identity/sessions';
 import { responseOf, type AppRequest, type AppResponse } from './messages';
 import type { Order, Site, WebService } from './schema';
 
@@ -9,12 +11,15 @@ export type Orders = readonly Order[];
 /** The orders of every app after the sends so far, by the key of the app (`appKey`). An app with no entry has its `start` orders. */
 export type Apps = Readonly<Record<string, Orders>>;
 
-/** What an app answered and the orders it holds afterwards; `denial` says why when a page that asks for a role answered 401 or 403. */
+/** What an app answered and the orders it holds afterwards; `sessions` are the ones it holds afterwards when it opened one, and `denial` says why when a page that asks for a role, or a login, answered 401 or 403. */
 interface Answer {
   response: AppResponse;
   orders: Orders;
+  sessions?: SessionUsers;
   denial?: Denial;
 }
+
+const NO_SESSIONS: SessionUsers = [];
 
 const ORDER_ID_PARAM = 'id';
 const ID_SLOT = '{id}';
@@ -64,17 +69,23 @@ function served(site: Site, { id, content }: Order, orders: Orders): Answer {
   return { response: responseOf(200, body), orders };
 }
 
-/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. A site whose order book has a `badIdBody` checks the `id` where a get or a put reads it: an `id` that is not a number answers 400 with that body, and a request with no `id` still answers 404. A page that asks for a role answers only to a user of the site who has it: a request with no valid credential gets a 401 with WWW-Authenticate and a user without the role a 403, each with the body of the site (`denial` says which). The orders it receives are not changed. */
-export function answerRequest(site: Site, orders: Orders, { method, path, query, headers, body }: AppRequest): Answer {
+/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. A site whose order book has a `badIdBody` checks the `id` where a get or a put reads it: an `id` that is not a number answers 400 with that body, and a request with no `id` still answers 404. A page that asks for a role answers only to a user of the site who has it, by the credential of its Authorization header or by the session its Cookie names: a request with no valid user gets a 401 with WWW-Authenticate and a user without the role a 403, each with the body of the site (`denial` says which). A login page opens a session for the user whose name and password its body gives and answers 200 with the cookie of that session (`sessions` are then the ones the app holds with the new one), or 401 and no cookie. The orders and the sessions it receives are not changed. */
+export function answerRequest(site: Site, orders: Orders, { method, path, query, headers, body }: AppRequest, sessions: SessionUsers = NO_SESSIONS): Answer {
   const page = site.pages.find((candidate) => candidate.path === path && candidate.methods.includes(method));
   if (!page) return missing(site, orders);
-  const denial = page.role === undefined ? undefined : denialOf(site.accounts!, page.role, headers);
+  const denial = page.role === undefined ? undefined : denialOf(site.accounts!, page.role, headers, sessions);
   if (denial) return denied(site.accounts!, denial, orders);
   const current = orders.find(({ id }) => id === orderIdOf(query));
   const badIdBody = misspelledIdBody(site, query);
   switch (page.handler.kind) {
     case 'fixed':
       return { response: responseOf(200, page.handler.body), orders };
+    case 'login': {
+      const user = loginUserOf(site.accounts!, body);
+      if (user === undefined) return denied(site.accounts!, { kind: 'needs-login' }, orders);
+      const opened = [...sessions, user];
+      return { response: responseOf(200, page.handler.body, { [SET_COOKIE_HEADER]: sessionCookieOf(opened.length) }), orders, sessions: opened };
+    }
     case 'order-read':
       if (badIdBody !== undefined) return rejected(badIdBody, orders);
       return current ? served(site, current, orders) : missing(site, orders);

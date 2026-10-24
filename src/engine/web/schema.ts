@@ -9,12 +9,13 @@ const EXAMPLE_SUFFIX = '.example';
 /** A name a site answers to: under `.example`, the top-level name that RFC 2606 reserves for documentation, so no name of the game is a real one. */
 const siteNameSchema = z.string().refine((name) => normalizeName(name).endsWith(EXAMPLE_SUFFIX), 'a site name goes under .example');
 
-/** The request a client makes inside a TCP connection: the method, the absolute url it asks for, the headers it adds and a body. The Host header and the length of the body are not given: the request builds them. */
+/** The request a client makes inside a TCP connection: the method, the absolute url it asks for, the headers it adds and a body. The Host header and the length of the body are not given: the request builds them. A request from a `browser` also carries the cookies its device holds for the site and keeps the ones the response sets; any other client remembers nothing. */
 export const httpMessageSchema = z.object({
   method: httpMethodSchema,
   url: z.string().refine(isWebUrl, 'an absolute http or https url'),
   headers: z.record(z.string(), z.string()).optional(),
   body: z.string().optional(),
+  browser: z.literal(true).optional(),
 });
 
 const orderSchema = z.object({ id: z.number().int().nonnegative(), content: z.string() });
@@ -32,11 +33,12 @@ const handlerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('order-read') }),
   z.object({ kind: z.literal('order-create') }),
   z.object({ kind: z.literal('order-replace') }),
+  z.object({ kind: z.literal('login'), body: z.string() }),
 ]);
 
 const pageSchema = z.object({ path: z.string().startsWith('/'), methods: z.array(httpMethodSchema).min(1), role: z.string().min(1).optional(), handler: handlerSchema });
 
-/** A site: the names it answers to, its pages (a page with a `role` answers only to a user who has it), the body of its 404 and, for a site that serves orders, its order book and, for a site with pages that ask for a role, its users. */
+/** A site: the names it answers to, its pages (a page with a `role` answers only to a user who has it, and a `login` page opens a session for a user and answers with its `body`), the body of its 404 and, for a site that serves orders, its order book and, for a site with pages that ask for a role or log in, its users. */
 export const siteSchema = z.object({
   id: z.string().min(1),
   names: z.array(siteNameSchema),
@@ -60,6 +62,7 @@ export const webServiceSchema = z
     for (const site of web.sites) {
       if (!site.orders && site.pages.some(({ handler }) => handler.kind.startsWith('order-'))) fail(`${site.id}: a page serves orders and the site has no order book`);
       if (!site.accounts && site.pages.some(({ role }) => role !== undefined)) fail(`${site.id}: a page asks for a role and the site has no users`);
+      if (!site.accounts && site.pages.some(({ handler }) => handler.kind === 'login')) fail(`${site.id}: a page logs in and the site has no users`);
     }
   });
 

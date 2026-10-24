@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { answerRequest, chooseSite, type Orders } from './app';
 import { basicAuthorizationHeader } from './identity/basic-credential';
+import type { SessionUsers } from './identity/sessions';
 import { requestOf } from './messages';
 import type { HttpMethod, Site, WebService } from './schema';
 
@@ -175,6 +176,59 @@ describe('a page that asks for a role', () => {
   it('a page with no role needs no credential, and a method the protected path does not accept is a 404 before any credential is asked', () => {
     expect(answerRequest(guardedSite, start, requestOf({ method: 'GET', url: 'http://app.example/orders?id=7' })).response.statusCode).toBe(200);
     expect(askAdmin(undefined, 'POST').response.statusCode).toBe(404);
+  });
+});
+
+describe('a login and the sessions it opens', () => {
+  const SIGNED_IN = 'Signed in.';
+  const loginSite: Site = { ...guardedSite, pages: [...guardedSite.pages, { path: '/login', methods: ['POST'], handler: { kind: 'login', body: SIGNED_IN } }] };
+  const logIn = (user: string, password: string, sessions: SessionUsers = []) =>
+    answerRequest(loginSite, start, requestOf({ method: 'POST', url: 'http://app.example/login', body: `usuario=${user}&clave=${password}` }), sessions);
+  const askAdminWith = (sessions: SessionUsers, cookie: string) => answerRequest(loginSite, start, requestOf({ method: 'GET', url: 'http://app.example/admin', headers: { Cookie: cookie } }), sessions);
+
+  it('a login with a good password answers 200 and sets a cookie with the session', () => {
+    const { response, sessions } = logIn('lucia', 'pw-lucia');
+    expect(response).toMatchObject({ statusCode: 200, body: SIGNED_IN });
+    expect(response.headers['Set-Cookie']).toBe('sesion=s1');
+    expect(sessions).toEqual(['lucia']);
+  });
+
+  it('a login with a wrong password answers 401 and sets no cookie', () => {
+    const open: SessionUsers = ['marta'];
+    for (const [user, password] of [['lucia', 'pw-marta'], ['marta', 'wrong'], ['nobody', 'pw-lucia'], ['', '']]) {
+      const { response, sessions, denial } = logIn(user, password, open);
+      expect(response, user).toMatchObject({ statusCode: 401, body: 'Log in.' });
+      expect(response.headers, user).not.toHaveProperty('Set-Cookie');
+      expect(sessions, user).toBeUndefined();
+      expect(denial, user).toEqual({ kind: 'needs-login' });
+    }
+    expect(answerRequest(loginSite, start, requestOf({ method: 'POST', url: 'http://app.example/login' })).response.statusCode).toBe(401);
+  });
+
+  it('a request with that cookie is the user of the session', () => {
+    expect(askAdminWith(['lucia'], 'sesion=s1').response).toMatchObject({ statusCode: 200, body: ADMIN_PANEL });
+    expect(askAdminWith(['lucia'], 'theme=dark; sesion=s1').response.statusCode).toBe(200);
+    const marta = askAdminWith(['marta'], 'sesion=s1');
+    expect(marta.response.statusCode).toBe(403);
+    expect(marta.denial).toEqual({ kind: 'forbidden', user: 'marta' });
+  });
+
+  it('the value of the cookie follows the order of the sessions', () => {
+    const first = logIn('marta', 'pw-marta');
+    const second = logIn('lucia', 'pw-lucia', first.sessions);
+    const third = logIn('lucia', 'pw-lucia', second.sessions);
+    expect([first, second, third].map(({ response }) => response.headers['Set-Cookie'])).toEqual(['sesion=s1', 'sesion=s2', 'sesion=s3']);
+    expect(third.sessions).toEqual(['marta', 'lucia', 'lucia']);
+    expect(askAdminWith(third.sessions!, 'sesion=s1').response.statusCode).toBe(403);
+    expect(askAdminWith(third.sessions!, 'sesion=s2').response.statusCode).toBe(200);
+  });
+
+  it('a cookie of a session that does not exist is a request with no credential', () => {
+    for (const [sessions, cookie] of [[[], 'sesion=s1'], [['lucia'], 'sesion=s2'], [['lucia'], 'sesion=s0'], [['lucia'], 'sesion=abc'], [['lucia'], 'other=s1'], [['lucia'], 'sesion=']] as const) {
+      const { response, denial } = askAdminWith(sessions, cookie);
+      expect(response, cookie).toMatchObject({ statusCode: 401, body: 'Log in.' });
+      expect(denial, cookie).toEqual({ kind: 'needs-login' });
+    }
   });
 });
 

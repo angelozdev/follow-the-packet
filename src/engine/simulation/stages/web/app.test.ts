@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '@/engine/simulation/simulate';
-import { simulateSequence } from '@/engine/simulation/sequence';
+import { browserAfter, simulateSequence } from '@/engine/simulation/sequence';
 import type { Trace } from '@/engine/simulation/trace';
 import { applyAction } from '@/engine/network/actions';
-import type { Firewall, Network, PacketSpec, Rule, Service } from '@/engine/network/types';
+import type { Endpoint, Firewall, Network, PacketSpec, Rule, Service } from '@/engine/network/types';
 import { basicAuthorizationHeader } from '@/engine/web/identity/basic-credential';
-import type { HttpMethod, Site } from '@/engine/web/schema';
-import { NAME_SERVER_PIECES, OFFICE_FLOORS, chapter1Worlds, chapter4Worlds, device, officeWithNames, tcp, withDevice } from '@/testing';
+import type { HttpMessage, HttpMethod, Site } from '@/engine/web/schema';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS, chapter1Worlds, chapter2Worlds, chapter4Worlds, device, officeWithNames, tcp, withDevice } from '@/testing';
 
 const { floor1, server } = OFFICE_FLOORS;
 const { zone } = NAME_SERVER_PIECES;
@@ -219,5 +219,98 @@ describe('the pages that ask for a role', () => {
     expect(marta[1]).toEqual(['info', { code: 'web-forbidden', deviceId: LUCIA, path: '/admin', user: 'marta' }]);
     expect(marta[2]).toEqual(['pass', { code: 'web-answered', deviceId: LUCIA, statusCode: 403 }]);
     expect(lucia.map(([, reason]) => (reason as { code: string }).code)).toEqual(['web-default-site', 'web-answered']);
+  });
+});
+
+describe('the sessions of an app and the cookie of the browser', () => {
+  const loginSite: Site = {
+    ...orders,
+    accounts: { users: [{ name: 'lucia', password: 'pw-lucia', role: 'admin' }, { name: 'marta', password: 'pw-marta', role: 'staff' }], realm: 'admin', unauthorizedBody: 'Log in.', forbiddenBody: 'Not allowed.' },
+    pages: [...orders.pages, { path: '/login', methods: ['POST'], handler: { kind: 'login', body: 'Signed in.' } }, { path: '/admin', methods: ['GET'], role: 'admin', handler: { kind: 'fixed', body: 'Admin panel.' } }],
+  };
+  const net = lucia({ ...ordersService, web: { sites: [loginSite], defaultSiteId: loginSite.id } });
+  const LOGIN_URL = `http://${floor1.lucia}:${APP_PORT}/login`;
+  const ADMIN_URL = `http://${floor1.lucia}:${APP_PORT}/admin`;
+  const LOOPBACK_ADMIN_URL = `http://localhost:${APP_PORT}/admin`;
+  const NOT_ALLOWED = 'Not allowed.';
+  const LOG_IN = 'Log in.';
+
+  const send = (from: Endpoint, url: string, message: Partial<HttpMessage> = {}): PacketSpec => ({ from, to: new URL(url).hostname, protocol: 'tcp', port: APP_PORT, message: { method: 'GET', url, ...message } });
+  const signIn = (from: Endpoint, user: string, extra: Partial<HttpMessage> = {}): PacketSpec => send(from, LOGIN_URL, { method: 'POST', body: `usuario=${user}&clave=pw-${user}`, ...extra });
+  const traceOf = (...packets: PacketSpec[]) => simulateSequence(net, packets.map((packet, at) => ({ packet, at }))).at(-1)!;
+  const bodiesAfter = (...packets: PacketSpec[]) => simulateSequence(net, packets.map((packet, at) => ({ packet, at }))).map((trace) => trace.app?.response?.body);
+  const memoryOf = (endpoint: Endpoint, ...packets: PacketSpec[]) => browserAfter(net, packets.map((packet, at) => ({ packet, at })), endpoint.id);
+  const BROWSER = { browser: true } as const;
+  const lucia1 = device(LUCIA);
+
+  it('the browser keeps the cookie of a Set-Cookie and sends it to the same site', () => {
+    const asLucia = [signIn(you, 'lucia', BROWSER), send(you, ADMIN_URL, BROWSER)];
+    const [login, admin] = simulateSequence(net, asLucia.map((packet, at) => ({ packet, at })));
+    expect(login.app?.response?.headers['Set-Cookie']).toBe('sesion=s1');
+    expect(login.app?.request.headers).not.toHaveProperty('Cookie');
+    expect(admin.app?.request.headers.Cookie).toBe('sesion=s1');
+    expect(admin.app?.response).toMatchObject({ statusCode: 200, body: 'Admin panel.' });
+    expect(memoryOf(you, ...asLucia)).toEqual([{ site: floor1.lucia, name: 'sesion', value: 's1' }]);
+  });
+
+  it('the browser replaces the cookie of the same name and site with the one of the newer login', () => {
+    const asMarta = [signIn(you, 'lucia', BROWSER), signIn(you, 'marta', BROWSER), send(you, ADMIN_URL, BROWSER)];
+    expect(memoryOf(you, ...asMarta)).toEqual([{ site: floor1.lucia, name: 'sesion', value: 's2' }]);
+    expect(traceOf(...asMarta).app?.response?.statusCode).toBe(403);
+  });
+
+  it('the browser does not send the cookie of one site to another', () => {
+    const own = device(LUCIA);
+    const signedInByIp = signIn(own, 'lucia', BROWSER);
+    expect(traceOf(signedInByIp, send(own, ADMIN_URL, BROWSER)).app?.response?.statusCode).toBe(200);
+    const byName = traceOf(signedInByIp, send(own, LOOPBACK_ADMIN_URL, BROWSER));
+    expect(byName.app?.request.headers).not.toHaveProperty('Cookie');
+    expect(byName.app?.response?.statusCode).toBe(401);
+    expect(memoryOf(own, signedInByIp, send(own, LOOPBACK_ADMIN_URL, BROWSER))).toEqual([{ site: floor1.lucia, name: 'sesion', value: 's1' }]);
+  });
+
+  it('the browser of one device does not send the cookie that another device holds', () => {
+    const signedIn = signIn(you, 'lucia', BROWSER);
+    expect(traceOf(signedIn, send(lucia1, ADMIN_URL, BROWSER)).app?.response?.statusCode).toBe(401);
+    expect(memoryOf(lucia1, signedIn)).toEqual([]);
+  });
+
+  it('curl sends a cookie only when it is given -b', () => {
+    const asLucia = signIn(you, 'lucia');
+    expect(bodiesAfter(asLucia, send(you, ADMIN_URL))).toEqual(['Signed in.', LOG_IN]);
+    expect(bodiesAfter(asLucia, send(you, ADMIN_URL, { headers: { Cookie: 'sesion=s1' } }))).toEqual(['Signed in.', 'Admin panel.']);
+    expect(traceOf(asLucia, send(you, ADMIN_URL, { headers: { Cookie: 'sesion=s1' } })).app?.request.headers.Cookie).toBe('sesion=s1');
+  });
+
+  it('curl remembers nothing between two sends', () => {
+    const asLucia = signIn(you, 'lucia');
+    const after = traceOf(asLucia, send(you, ADMIN_URL));
+    expect(after.app?.request.headers).not.toHaveProperty('Cookie');
+    expect(after.app?.response?.statusCode).toBe(401);
+    expect(memoryOf(you, asLucia, send(you, ADMIN_URL))).toEqual([]);
+  });
+
+  it('a cookie of a session opened by another client is the user of that session', () => {
+    expect(bodiesAfter(signIn(you, 'marta', BROWSER), send(lucia1, ADMIN_URL, { headers: { Cookie: 'sesion=s1' } }))).toEqual(['Signed in.', NOT_ALLOWED]);
+  });
+
+  it('the browser keeps nothing from a login that failed or from a send that never reached the app', () => {
+    const wrong = send(you, LOGIN_URL, { method: 'POST', body: 'usuario=lucia&clave=wrong', ...BROWSER });
+    expect(memoryOf(you, wrong)).toEqual([]);
+    const toClosedPort: PacketSpec = { ...signIn(you, 'lucia', BROWSER), port: REPORTS_PORT, message: { method: 'POST', url: `http://${floor1.lucia}:${REPORTS_PORT}/login`, body: 'usuario=lucia&clave=pw-lucia', ...BROWSER } };
+    expect(memoryOf(you, toClosedPort)).toEqual([]);
+  });
+});
+
+describe('the state this chapter adds to Carried', () => {
+  it('the sends of chapters 1 and 2 give the same traces with the state this chapter adds to Carried', () => {
+    const worlds = [...chapter1Worlds(), ...chapter2Worlds()].flatMap(({ world, packets }) => (packets.length === 0 ? [] : [{ world, sends: packets.map((packet, at) => ({ packet, at })) }]));
+    expect(worlds.length).toBeGreaterThan(0);
+    for (const { world, sends } of worlds) {
+      const traces = simulateSequence(world, sends);
+      expect(simulateSequence(world, sends)).toEqual(traces);
+      for (const trace of traces) expect(trace).not.toHaveProperty('app');
+      for (const { packet } of sends) expect(browserAfter(world, sends, packet.from.id)).toEqual([]);
+    }
   });
 });

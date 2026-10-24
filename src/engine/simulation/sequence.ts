@@ -1,5 +1,6 @@
 import { EMPTY_CACHE, entriesOf } from '@/engine/dns/cache';
 import type { DnsCacheEntry, Network, PacketSpec } from '@/engine/network/types';
+import type { StoredCookie } from '@/engine/web/identity/browser-memory';
 import { run, type Carried } from './simulate';
 import type { Trace } from './trace';
 
@@ -48,4 +49,9 @@ export function cacheAfter(net: Network, sends: readonly Send[], resolverId: str
   return entriesOf(resolver, play(net, sends).state.dnsCache)
     .filter((entry) => now < entry.expiresAt)
     .map(({ name, type, value, expiresAt }) => ({ name, type, value, ttlLeft: expiresAt - now }));
+}
+
+/** Returns the cookies the browser of the device with this id holds once the sends have run, in the order each was last set: the site it came from, its name and its value. The sends are replayed exactly as `simulateSequence` plays them, so nothing here is kept between calls; a device whose browser received none, and an id that is no device, give none. */
+export function browserAfter(net: Network, sends: readonly Send[], deviceId: string): StoredCookie[] {
+  return [...(play(net, sends).state.browser?.[deviceId] ?? [])];
 }

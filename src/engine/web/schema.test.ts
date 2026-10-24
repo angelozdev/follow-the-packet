@@ -32,6 +32,19 @@ describe('the web service schema', () => {
     expect(issuesOf(webServiceSchema.safeParse({ sites: [{ ...guarded, accounts: colon }], defaultSiteId: 'shop' }))).toEqual(['a user name has no colon']);
   });
 
+  it('rejects a login page on a site with no users', () => {
+    const logging: Site = { ...shop, pages: [{ path: '/login', methods: ['POST'], handler: { kind: 'login', body: 'Signed in.' } }] };
+    expect(issuesOf(webServiceSchema.safeParse({ sites: [logging], defaultSiteId: 'shop' }))).toEqual(['shop: a page logs in and the site has no users']);
+    const accounts = { users: [{ name: 'lucia', password: 'x', role: 'admin' }], realm: 'admin', unauthorizedBody: 'a', forbiddenBody: 'b' };
+    expect(webServiceSchema.safeParse({ sites: [{ ...logging, accounts }], defaultSiteId: 'shop' }).success).toBe(true);
+  });
+
+  it('a message may say it comes from a browser, and says nothing else of its client', () => {
+    const message = { method: 'GET', url: 'http://www.shop.example/' };
+    expect(httpMessageSchema.safeParse({ ...message, browser: true }).success).toBe(true);
+    expect(httpMessageSchema.safeParse({ ...message, browser: false }).success).toBe(false);
+  });
+
   it('a service may carry a web service and a network with one still validates', () => {
     const web = { sites: [shop], defaultSiteId: 'shop' };
     expect(serviceSchema.safeParse({ protocol: 'tcp', port: 80, listen: 'all', web }).success).toBe(true);

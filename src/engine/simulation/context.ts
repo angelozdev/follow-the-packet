@@ -4,6 +4,8 @@ import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import { DEFAULT_SOURCE_PORT } from '@/engine/network/schema';
 import type { Device, Endpoint, Network, PacketSpec, Router, Service } from '@/engine/network/types';
 import type { Apps } from '@/engine/web/app';
+import type { BrowserMemory } from '@/engine/web/identity/browser-memory';
+import type { Sessions } from '@/engine/web/identity/sessions';
 import type { AppTrace, DnsTrace, ExchangeKind, ExchangeMessage, Hop, Notice, Outcome, Question, Reason, Step, TcpdumpLine } from './trace';
 
 /** What `route` leaves for `forward` to hand over: the IP to find in the sender's own LAN, which is the destination itself or, when the destination is in another LAN, the default gateway. */
@@ -64,6 +66,10 @@ export interface SimContext {
   question?: Question;
   /** The orders of every app before this send; an app that changes its orders puts the new ones here. */
   apps?: Apps;
+  /** The sessions of every app before this send; an app that opens one puts the new ones here. */
+  sessions?: Sessions;
+  /** What the browser of each device holds before this send; a browser that receives a cookie puts the new memory here. */
+  browser?: BrowserMemory;
   /** The request of a packet that carries a message, and the response once a web service answers. */
   app?: AppTrace;
   hops: Hop[];

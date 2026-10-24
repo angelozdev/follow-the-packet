@@ -51,9 +51,8 @@ function sendPackets(owner: SendOwner): PacketSpec[] {
   return sendCombinations(owner).flatMap((combination) => packetFromChips(owner, combination) ?? probeFromChips(owner, combination) ?? []);
 }
 
-/** Returns the office worlds chapter 1 plays on, with the packets that can be sent in each: every incident at its start, once solved and with each choice of each of its settings, and every case of the diagnose in its own world. The packets are those of the flows and of the send chips (a traceroute through its probe). */
-export function chapter1Worlds(): { world: Network; packets: PacketSpec[] }[] {
-  return INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => {
+function worldsOfChapter(chapter: number): { world: Network; packets: PacketSpec[] }[] {
+  return INCIDENTS.filter((incident) => incident.chapter === chapter).flatMap((incident) => {
     const start = startWorld(INCIDENTS, incident.id);
     const flows = incident.flows.map(({ packet }) => packet);
     if (incident.mechanic === 'diagnose') return incident.diagnose.cases.map((spec) => ({ world: caseWorld(start, spec), packets: [...flows, ...sendPackets(spec)] }));
@@ -62,6 +61,12 @@ export function chapter1Worlds(): { world: Network; packets: PacketSpec[] }[] {
     return [start, solvedWorld(INCIDENTS, incident.id), ...choices].map((world) => ({ world, packets: [...flows, ...sendPackets(incident)] }));
   });
 }
+
+/** Returns the office worlds chapter 1 plays on, with the packets that can be sent in each: every incident at its start, once solved and with each choice of each of its settings, and every case of the diagnose in its own world. The packets are those of the flows and of the send chips (a traceroute through its probe). */
+export const chapter1Worlds = (): { world: Network; packets: PacketSpec[] }[] => worldsOfChapter(1);
+
+/** Returns the same for chapter 2: the worlds of its incidents, each with the packets of its flows and send chips. */
+export const chapter2Worlds = (): { world: Network; packets: PacketSpec[] }[] => worldsOfChapter(2);
 
 const PEER_CHIPS = [
   { id: 'lucia', label: nameTag('lucia-laptop'), peer: { kind: 'cidr', cidr: `${OFFICE.lucia}/32` } },

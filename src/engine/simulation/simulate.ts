@@ -16,6 +16,8 @@ import type { NatTable } from '@/engine/nat/translation';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
 import type { Apps } from '@/engine/web/app';
+import { withBrowserCookies, type BrowserMemory } from '@/engine/web/identity/browser-memory';
+import type { Sessions } from '@/engine/web/identity/sessions';
 import { requestOf } from '@/engine/web/messages';
 import type { ExchangeMessage, Outcome, PacketHeader, PortPair, Question, Trace } from './trace';
 
@@ -91,12 +93,14 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
   };
 }
 
-/** What a send inherits from the sends before it and hands on to the next: the ephemeral source port each sender uses next, the translation table of the NAT, what the resolvers remembered and the orders of every app. */
+/** What a send inherits from the sends before it and hands on to the next: the ephemeral source port each sender uses next, the translation table of the NAT, what the resolvers remembered, the orders and the sessions of every app and the cookies the browser of each device holds. */
 export interface Carried {
   nextSourcePort: SourcePorts;
   nat: NatTable;
   dnsCache: DnsCache;
   apps?: Apps;
+  sessions?: Sessions;
+  browser?: BrowserMemory;
 }
 
 /** The trace of a packet and what it leaves for the next send. */
@@ -122,7 +126,7 @@ function sendQuestion(ctx: SimContext, packet: PacketSpec): Question {
 /** Builds the run of a packet that has ended. A `dig` is the datagram to the resolver, so its answer is taken once the trip is over: if it came back replied from a resolver, the resolver answers the name from its cache or by asking, as for any lookup, and the trace gains `dns`; if it did not, the trace says `NO-RESOLVER` and is the trace of the datagram that failed, with the warning of whoever rejected it. */
 function conclude(ctx: SimContext, outcome: Outcome): Run {
   const trace = finish(ctx, outcome);
-  const carried: Carried = { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: ctx.dnsCache, apps: ctx.apps };
+  const carried: Carried = { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: ctx.dnsCache, apps: ctx.apps, sessions: ctx.sessions, browser: ctx.browser };
   if (ctx.asking === undefined) return { trace, carried };
   const resolution = answerFrom(ctx.net, trace, ctx.asking, 'dig', { now: ctx.now, cache: ctx.dnsCache });
   return { trace: { ...trace, dns: resolution.dns }, carried: { ...carried, dnsCache: resolution.answered ? resolution.cache : ctx.dnsCache } };
@@ -130,7 +134,7 @@ function conclude(ctx: SimContext, outcome: Outcome): Run {
 
 /** Runs the packet through every stage, starting from what the sends before it carried and measured against second `at` of the game clock, and returns its trace with what it carries on. The same network, packet, carried state and second always give the same result, and the state it receives is never changed. */
 export function run(net: Network, packet: PacketSpec, carried: Carried, at: number): Run {
-  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nextSourcePort: carried.nextSourcePort, nat: carried.nat, dnsCache: carried.dnsCache, apps: carried.apps, now: at, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet), ...(packet.message && { app: { request: requestOf(packet.message) } }) };
+  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nextSourcePort: carried.nextSourcePort, nat: carried.nat, dnsCache: carried.dnsCache, apps: carried.apps, sessions: carried.sessions, browser: carried.browser, now: at, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet), ...(packet.message && { app: { request: requestOf(withBrowserCookies(packet.message, packet.from.id, carried.browser)) } }) };
   for (const stage of PIPELINE) {
     const result = stage(ctx);
     if (result.done) return conclude(ctx, result.outcome);
