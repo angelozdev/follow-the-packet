@@ -58,6 +58,15 @@ describe('answerRequest', () => {
     expect(ask('GET', '/orders?id=10', undefined, second.orders).response.body).toBe('Order 10: item=coffee');
   });
 
+  it('a post to the address of an order answers 404 and creates nothing', () => {
+    for (const target of ['/orders?id=7', '/orders?id=99', '/orders?id=abc']) {
+      const refused = ask('POST', target, 'item=coffee');
+      expect(refused.response).toMatchObject({ statusCode: 404, body: NOT_FOUND });
+      expect(refused.orders).toEqual(start);
+    }
+    expect(ask('POST', '/orders?other=1', 'item=coffee').response.body).toBe('Order 9: item=coffee');
+  });
+
   it('a put leaves the order as its body says and a second put leaves it the same', () => {
     const first = ask('PUT', '/orders?id=7', 'item=tea');
     expect(first.response).toMatchObject({ statusCode: 200, body: 'Order 7: item=tea' });
