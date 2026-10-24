@@ -153,7 +153,7 @@ describe('the output of a curl', () => {
   });
 
   it('a path that is not served lists the body of the 404 like any other response', () => {
-    expect(textsOf(printed(opened, 'you', 'orders', 'curl'))).toEqual(['No hay nada en ese camino.']);
+    expect(textsOf(printed(opened, 'you', 'orders', 'curl'))).toEqual(['No hay nada en esa URL.']);
   });
 
   it('a refused connection lists the line of code 7 with the host and the port of the url, and says the time is an example', () => {

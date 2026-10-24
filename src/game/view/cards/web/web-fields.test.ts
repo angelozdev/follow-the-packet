@@ -86,7 +86,7 @@ describe('the box of a curl or a browser: the request and the response', () => {
 
   it('a path that is not served shows the 404 and its body', () => {
     const box = boxOf(sentAs(opened, 'you', 'orders', 'curl'), 'you', 'orders', 'curl');
-    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 404 Not Found', 'Cuerpo: No hay nada en ese camino.']));
+    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 404 Not Found', 'Cuerpo: No hay nada en esa URL.']));
   });
 
   it('the box of the browser shows the Host header and says the browser of the game sends only that one', () => {

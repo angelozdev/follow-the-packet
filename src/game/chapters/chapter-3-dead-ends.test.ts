@@ -9,7 +9,7 @@ interface Reached {
   path: string[];
 }
 
-const BLOCK_1 = ['03-01', '03-02', '03-03', '03-04'];
+const BUILT_INCIDENTS = ['03-01', '03-02', '03-03', '03-04', '03-05'];
 const DEPTH = 3;
 const MOVE_SEPARATOR = ' / ';
 
@@ -55,8 +55,8 @@ function explore(start: Session, depth: number): { moves: SessionAction[]; state
   return { moves, states: reached.length, deadEnds: first.map(({ path, open }) => `${path.join(MOVE_SEPARATOR) || 'start'} -> ${open.join(', ')}`) };
 }
 
-describe('the incidents of block 1 of chapter 3 have no dead end', () => {
-  it.each(BLOCK_1)(`%s: from the start and from every state up to ${DEPTH} moves away, playing the solution closes every task`, (id) => {
+describe('the built incidents of chapter 3 have no dead end', () => {
+  it.each(BUILT_INCIDENTS)(`%s: from the start and from every state up to ${DEPTH} moves away, playing the solution closes every task`, (id) => {
     const { moves, states, deadEnds } = explore(startSession(INCIDENTS, id), DEPTH);
     expect(states).toBeGreaterThan(moves.length);
     expect(deadEnds).toEqual([]);

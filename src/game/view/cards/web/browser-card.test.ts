@@ -43,7 +43,7 @@ describe('browserView', () => {
 
   it('shows the page the server sent after the firewall lets the browser in, the 404 included', () => {
     const opened = sessionReducer(web, { type: 'placeRule', firewallId: 'fw-lucia', whatId: 'tcp-3000', fromId: 'you' });
-    expect(viewOf(opened, 'you', 'orders')?.shows).toEqual({ kind: 'page', lines: ['No hay nada en ese camino.'] });
+    expect(viewOf(opened, 'you', 'orders')?.shows).toEqual({ kind: 'page', lines: ['No hay nada en esa URL.'] });
   });
 
   it('says a service that accepted the connection and sent no page did not answer with one', () => {

@@ -5,7 +5,7 @@ import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/l
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_CHECKS_THE_ID, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, STATUS_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -20,6 +20,7 @@ import { pieceViews } from '@/game/view/pieces';
 
 const CHAPTER = 3;
 const LAST_INCIDENT_OF_CHAPTER_2 = '02-14';
+const INCIDENT_BEFORE_HOW_DID_IT_GO = '03-04';
 
 const CALLS_A_MESSAGE_A_PACKET = /paquete (de )?HTTP|HTTP (es|son) (un )?paquete|(petición|respuesta) HTTP (es|son) (un )?paquete/i;
 const SAYS_HTTP_PREVENTS_DUPLICATES = /\bHTTP\s+(evita|previene|impide|protege)\b/i;
@@ -87,6 +88,27 @@ function expectOnlyTermsItKnows(incident: Incident): void {
   expect(laterNameLeaks([incident])).toEqual([]);
   expect(incidentTexts(incident).map(plain).filter((text) => CALLS_A_MESSAGE_A_PACKET.test(text))).toEqual([]);
 }
+
+/** Returns the sentences of a text that say a 4xx is always the fault of the client: one that says always, and the fault or the error of the client, with no negation. */
+function sentencesSayingA4xxIsAlwaysTheFaultOfTheClient(text: string): string[] {
+  return text.split(/(?<=\.)\s+/).filter((sentence) => /\bsiempre\b/i.test(sentence) && /(culpa|error) del cliente|culpa de quien/i.test(sentence) && !/\bno\b/i.test(sentence));
+}
+/** Returns the sentences of a text that say a 200 means the business went well: one that names the code or a success and the business or a good result, with no negation. */
+function sentencesSayingA200MeansTheBusinessWentWell(text: string): string[] {
+  return text.split(/(?<=\.)\s+/).filter((sentence) => /\b200\b|\bOK\b|se cumplió/.test(sentence) && /negocio|salió bien|todo bien|éxito/i.test(sentence) && !/\bno\b/i.test(sentence));
+}
+
+/** Returns the texts of the options of the question of an incident that are not the right one. */
+const wrongOptionsOf = (incident: Incident): string[] => (isGuided(incident) ? incident.explanation.filter(({ correct }) => !correct).map(({ text }) => text) : []);
+
+/** Returns, in plain words, the texts of an incident the player reads, except its wrong options, and the definitions of the terms it introduces. */
+const textsReadApartFromTheWrongOptions = (incident: Incident): string[] => [
+  ...incidentTexts(incident).filter((text) => !wrongOptionsOf(incident).includes(text)).map(plain),
+  ...incident.introduces.map((term) => TERMS[term].definition),
+];
+
+/** Returns the sites of every web service in the world: those of the programs of its devices and of its servers of the internet. */
+const sitesOf = (world: Network) => [...world.devices.flatMap((device) => device.host.services), ...world.actors.flatMap((actor) => (actor.kind === 'server' ? actor.services ?? [] : []))].flatMap(({ web }) => web?.sites ?? []);
 
 /** Returns an incident of chapter 3 at this order whose report is the given text and that introduces nothing. */
 function incidentSaying(order: number, report: string): Incident {
@@ -188,7 +210,7 @@ describe('03-01, an address for everything', () => {
   const urlOf = (port: number, path: string, query: string) => URLS_BY_PARTS.find((chip) => chip.port === port && chip.path === path && chip.query === query)!.id;
   const PORT_80_ORDER_7 = urlOf(PORT.web, ORDER_PATH, 'id=7');
   const WRONG_PATH_ORDER_7 = urlOf(PORT.app, '/pedido', 'id=7');
-  const NOT_FOUND = 'No hay nada en ese camino.';
+  const NOT_FOUND = 'No hay nada en esa URL.';
   const FRAGMENT = /#[^.]*no llega al servidor/;
 
   it('03-01 starts from the world chapter 2 leaves', () => {
@@ -751,5 +773,140 @@ describe('03-04, one server and many sites', () => {
   it('03-04: introduces http header, Host header and virtual host, and uses no later term', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['http-header', 'host-header', 'virtual-host']));
     expectOnlyTermsItKnows(incident);
+  });
+});
+
+describe('the apps of chapter 3 and their 404', () => {
+  it('the body of a 404 says there is nothing at that URL', () => {
+    const sites = builtOfChapter3().flatMap(({ id }) => sitesOf(startWorld(INCIDENTS, id)));
+    expect(sites.length).toBeGreaterThan(0);
+    expect(new Set(sites.map(({ notFoundBody }) => notFoundBody))).toEqual(new Set(['No hay nada en esa URL.']));
+  });
+});
+
+describe('03-05, how did it go', () => {
+  const HOW_DID_IT_GO = '03-05';
+  const NOT_A_NUMBER = 'El id no es un número.';
+  const start = startSession(INCIDENTS, HOW_DID_IT_GO);
+  const { incident } = start;
+  const asking = (session: Session, urlId: string) => sending(session, urlId, MESSAGE.curlInclude.id, ORIGIN.you.id);
+  const codeOfLast = (session: Session) => runOf(session).trace.app?.response?.statusCode;
+  const bodyOfLast = (session: Session) => runOf(session).trace.app?.response?.body;
+  const before = startSession(INCIDENTS.map((own) => (own.id === HOW_DID_IT_GO ? { ...own, changes: [] } : own)), HOW_DID_IT_GO);
+  const answeredBy = (session: Session) => runOf(session).trace.steps.filter(({ stage }) => stage === 'app').map(({ reason }) => plain(describeReason(reason, session.world, session.known)));
+  const wrongOptionTexts = wrongOptionsOf(incident);
+  const everythingRead = textsReadApartFromTheWrongOptions(incident);
+
+  it('03-05: 200, 404 and 400 each complete their task', () => {
+    expect(stillOpen(start)).toEqual([TASK.orderSevenIs200, TASK.wrongPathIs404, TASK.misspelledIdIs400]);
+    const served = asking(start, STATUS_URL.served.id);
+    expect(codeOfLast(served)).toBe(200);
+    expect(stillOpen(served)).toEqual([TASK.wrongPathIs404, TASK.misspelledIdIs400]);
+    const wrongPath = asking(served, STATUS_URL.wrongPath.id);
+    expect(codeOfLast(wrongPath)).toBe(404);
+    expect(stillOpen(wrongPath)).toEqual([TASK.misspelledIdIs400]);
+    const done = asking(wrongPath, STATUS_URL.misspelledId.id);
+    expect(codeOfLast(done)).toBe(400);
+    expect(stillOpen(done)).toEqual([]);
+    expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
+    expect(stillOpen(asking(start, STATUS_URL.missingOrder.id))).toEqual(stillOpen(start));
+  });
+
+  it('03-05 starts from the world 03-04 leaves, and before the check the misspelled id gets the 404 that 03-04 gave', () => {
+    expect(worldBeforeChanges(INCIDENTS, HOW_DID_IT_GO)).toEqual(solvedWorld(INCIDENTS, INCIDENT_BEFORE_HOW_DID_IT_GO));
+    expect(incident.changes).toEqual([APP_CHECKS_THE_ID]);
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, HOW_DID_IT_GO)).error).toBeUndefined();
+    const unchecked = asking(before, STATUS_URL.misspelledId.id);
+    expect(codeOfLast(unchecked)).toBe(404);
+    expect(bodyOfLast(unchecked)).toBe('No hay nada en esa URL.');
+    expect(codeOfLast(asking(before, STATUS_URL.served.id))).toBe(200);
+    expect(stillOpen(asking(before, STATUS_URL.misspelledId.id))).toContain(TASK.misspelledIdIs400);
+    expect(codeOfLast(asking(start, STATUS_URL.misspelledId.id))).toBe(400);
+  });
+
+  it('03-05: the box says the app generated each code', () => {
+    const expected: [string, string, string][] = [
+      [STATUS_URL.served.id, '200 OK', 'Clase 2xx: la petición se cumplió.'],
+      [STATUS_URL.wrongPath.id, '404 Not Found', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.'],
+      [STATUS_URL.misspelledId.id, '400 Bad Request', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.'],
+    ];
+    for (const [urlId, code, classLine] of expected) {
+      const box = lastBox(asking(start, urlId));
+      expect(box['Código de estado'], urlId).toEqual([code, classLine]);
+      expect(box['Quién lo generó'], urlId).toEqual([`La app de ${DEVICE.lucia.name}`]);
+      const labels = Object.keys(box);
+      expect(labels.indexOf('Respuesta HTTP'), urlId).toBeLessThan(labels.indexOf('Código de estado'));
+    }
+    expect(answeredBy(asking(start, STATUS_URL.wrongPath.id)).at(-1)).toBe(`${DEVICE.lucia.name} contesta con una respuesta con el código de estado 404 Not Found.`);
+  });
+
+  it('03-05: the box of 03-04 says nothing of the code or of who generated it, because status-code arrives here', () => {
+    const shop = sending(startSession(INCIDENTS, INCIDENT_BEFORE_HOW_DID_IT_GO), SITE_URL.www.id, MESSAGE.curlInclude.id, ORIGIN.you.id);
+    expect(Object.keys(lastBox(shop))).toEqual(expect.arrayContaining(['Respuesta HTTP']));
+    expect(Object.keys(lastBox(shop)).filter((label) => /Código|Quién/.test(label))).toEqual([]);
+    expect(knownTerms(INCIDENTS, INCIDENT_BEFORE_HOW_DID_IT_GO).has('status-code')).toBe(false);
+    expect(answeredBy(shop).at(-1)).toBe(`${SERVER.fresh.name} contesta con una respuesta de código 200.`);
+  });
+
+  it('03-05: an id that names no order gets the 404 and the one that is not a number gets the 400', () => {
+    const missing = asking(start, STATUS_URL.missingOrder.id);
+    expect([codeOfLast(missing), bodyOfLast(missing)]).toEqual([404, 'No hay nada en esa URL.']);
+    const misspelled = asking(start, STATUS_URL.misspelledId.id);
+    expect([codeOfLast(misspelled), bodyOfLast(misspelled)]).toEqual([400, NOT_A_NUMBER]);
+    expect(printedFor(misspelled, STATUS_URL.misspelledId.id, MESSAGE.curlInclude.id, ORIGIN.you.id)).toEqual([
+      'HTTP/1.1 400 Bad Request',
+      'Content-Type: text/plain; charset=utf-8',
+      `Content-Length: ${new TextEncoder().encode(NOT_A_NUMBER).length}`,
+      '',
+      NOT_A_NUMBER,
+    ]);
+    expect(codeOfLast(asking(start, STATUS_URL.wrongPath.id))).toBe(404);
+  });
+
+  it('03-05: no text says a 4xx is always the fault of the client', () => {
+    expect(everythingRead.flatMap(sentencesSayingA4xxIsAlwaysTheFaultOfTheClient)).toEqual([]);
+    expect(['Un 4xx es siempre culpa del cliente.', 'Siempre es un error del cliente.'].filter((text) => sentencesSayingA4xxIsAlwaysTheFaultOfTheClient(text).length === 0)).toEqual([]);
+    expect(['Parece un error del cliente, pero no siempre lo es.', 'No siempre es culpa del cliente.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingA4xxIsAlwaysTheFaultOfTheClient(text).length === 0));
+    expect(wrongOptionTexts.map(plain).filter((text) => sentencesSayingA4xxIsAlwaysTheFaultOfTheClient(text).length > 0)).toEqual(['Que siempre es culpa del cliente que hizo la petición.']);
+  });
+
+  it('03-05: no text says a 200 means the business went well', () => {
+    expect(everythingRead.flatMap(sentencesSayingA200MeansTheBusinessWentWell)).toEqual([]);
+    expect(['Un 200 quiere decir que el negocio salió bien.', 'El código 200 es un éxito para el negocio.'].filter((text) => sentencesSayingA200MeansTheBusinessWentWell(text).length === 0)).toEqual([]);
+    expect(['200 OK: el servidor dice que la petición se cumplió; no dice que al negocio le salió bien.']).toSatisfy((texts: string[]) => texts.every((text) => sentencesSayingA200MeansTheBusinessWentWell(text).length === 0));
+    expect(plain(incident.takeaway)).toContain('no dice que al negocio le salió bien');
+  });
+
+  it('03-05: the report names laptop-lucia and the takeaway says why the misspelled id gives 400 and not 404', () => {
+    expect(incident.report).toContain(NAME.lucia);
+    expect(plain(incident.report)).toContain(`Lucía cambió la app de ${DEVICE.lucia.name}: ahora comprueba el id del pedido antes de buscarlo, y si el id no es un número, contesta con un error.`);
+    expect(changedNames(worldBeforeChanges(INCIDENTS, HOW_DID_IT_GO), startWorld(INCIDENTS, HOW_DID_IT_GO))).toEqual([DEVICE.lucia.name]);
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain(`Lucía cambió la app de ${DEVICE.lucia.name} para que compruebe el id.`);
+    expect(takeaway).toContain('Sin esa comprobación, la app habría buscado un pedido «siete» y habría contestado 404.');
+  });
+
+  it('03-05: draws tu-laptop and laptop-lucia', () => {
+    const drawn = pieceViews(start);
+    expect(drawn.filter(({ kind }) => kind === 'device').map(({ label }) => plain(label)).sort()).toEqual([DEVICE.lucia.name, DEVICE.you.name].sort());
+    expect(drawn.filter(({ kind }) => kind === 'firewall')).toHaveLength(2);
+    expect(drawn).toHaveLength(4);
+    expect(incident.shown).toEqual(LAN_PIECES);
+  });
+
+  it('03-05: the right option is the third and the question separates the class from who is at fault', () => {
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(2);
+    expect(plain((isGuided(incident) && incident.question) || '')).toBe('¿Qué dice la primera cifra de un 404?');
+    expect(options.map(({ text }) => plain(text))).toEqual(['Que el servidor falló mientras intentaba cumplir la petición.', 'Que siempre es culpa del cliente que hizo la petición.', 'La clase: la petición, tal como llegó, no se puede cumplir.']);
+    expect(plain(options[1].feedback)).toContain('parece un error del cliente, pero no siempre lo es');
+    expect(plain(options[1].feedback)).toContain('no dice de quién es la culpa');
+    expect(plain(options[2].feedback)).toContain('el 2 dice que la petición se cumplió y el 4, que la petición, tal como llegó, no se puede cumplir');
+  });
+
+  it('03-05: introduces status code, 200 OK, 4xx error, 404 Not Found and 400 Bad Request, and uses no later term', () => {
+    expect(sorted(incident.introduces)).toEqual(sorted(['status-code', 'status-200', 'client-error', 'status-404', 'status-400']));
+    expectOnlyTermsItKnows(incident);
+    expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx/.test(text))).toEqual([]);
   });
 });

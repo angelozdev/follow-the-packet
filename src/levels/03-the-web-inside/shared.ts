@@ -21,7 +21,8 @@ export const ORDER_BODY = {
   replaced: `Pedido 7: ${PUT_BODY}.`,
 } as const;
 
-const NOT_FOUND_BODY = 'No hay nada en ese camino.';
+const NOT_FOUND_BODY = 'No hay nada en esa URL.';
+const BAD_ID_BODY = 'El id no es un número.';
 const ORDER_BOOK: NonNullable<Site['orders']> = {
   template: 'Pedido {id}: {content}.',
   start: [
@@ -36,22 +37,25 @@ const REPLACE_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['PUT
 
 const ORDER_PAGES = [READ_ORDERS, CREATE_ORDERS, REPLACE_ORDERS];
 
-/** Returns the web service of the program of laptop-lucia on port 3000 with the orders site, which serves these pages. The site has no name, so it answers to any name: it is the default site of the service. */
-function ordersWeb(pages: Site['pages']): NonNullable<Service['web']> {
-  const site: Site = { id: ORDERS_SITE_ID, names: [], pages, notFoundBody: NOT_FOUND_BODY, orders: ORDER_BOOK };
+/** Returns the web service of the program of laptop-lucia on port 3000 with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another). The site has no name, so it answers to any name: it is the default site of the service. */
+function ordersWeb(pages: Site['pages'], orders: NonNullable<Site['orders']> = ORDER_BOOK): NonNullable<Service['web']> {
+  const site: Site = { id: ORDERS_SITE_ID, names: [], pages, notFoundBody: NOT_FOUND_BODY, orders };
   return { sites: [site], defaultSiteId: ORDERS_SITE_ID };
 }
 
-/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages. */
-function ordersApp(pages: Site['pages']): NetworkAction {
-  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: ordersWeb(pages) };
+/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another). */
+function ordersApp(pages: Site['pages'], orders?: NonNullable<Site['orders']>): NetworkAction {
+  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: ordersWeb(pages, orders) };
 }
 
-/** What 03-01 changes on laptop-lucia: the program of port 3000, which since 02-01 only accepted connections, now answers HTTP. A GET of /pedidos with an id gives the order; any other path gives «No hay nada en ese camino.». Nothing else about the laptop changes. */
+/** What 03-01 changes on laptop-lucia: the program of port 3000, which since 02-01 only accepted connections, now answers HTTP. A GET of /pedidos with an id gives the order; any other path gives «No hay nada en esa URL.». Nothing else about the laptop changes. */
 export const APP_ANSWERS_HTTP: NetworkAction = ordersApp([READ_ORDERS]);
 
 /** What 03-02 changes on laptop-lucia: the same program of port 3000 now also takes orders. A POST to /pedidos creates the next order with the body it carries (also when the url has a query, /pedidos?id=<n>, which the app reads as data and not as part of the path), and a PUT to /pedidos?id=<n> replaces the content of that order with its body. Nothing else about the laptop changes. */
 export const APP_TAKES_ORDERS: NetworkAction = ordersApp(ORDER_PAGES);
+
+/** What 03-05 changes on laptop-lucia: the same program of port 3000 now checks the id of the orders it reads. A GET or a PUT of /pedidos with an id that is not a number answers 400 with «El id no es un número.»; an order that does not exist, a request with no id and a path the app does not serve still answer 404. Nothing else about the laptop changes. */
+export const APP_CHECKS_THE_ID: NetworkAction = ordersApp(ORDER_PAGES, { ...ORDER_BOOK, badIdBody: BAD_ID_BODY });
 
 export const REPORTS_PORT = 3001;
 const REPORTS_SITE_ID = 'reports';
@@ -124,6 +128,19 @@ export const LUCIA_URL = {
   reports: { id: 'url-lucia-reports', address: IP.lucia, url: `http://${IP.lucia}:${REPORTS_PORT}/` },
 } as const satisfies Record<string, AddressChip>;
 
+/** Returns the address chip of the orders app of laptop-lucia by her IP, given whole, with this path and this query string. */
+function luciaOrdersUrl(id: string, path: string, query: string): AddressChip {
+  return { id, address: IP.lucia, url: `http://${IP.lucia}:${PORT.app}${path}?${query}` };
+}
+
+/** The four urls 03-05 asks for, each given whole: the order 7, a path the app does not serve, an id that is not a number and an order that does not exist. */
+export const STATUS_URL = {
+  served: LUCIA_URL.orders,
+  wrongPath: luciaOrdersUrl('url-lucia-wrong-path', WRONG_PATH, 'id=7'),
+  misspelledId: luciaOrdersUrl('url-lucia-misspelled-id', ORDER_PATH, 'id=siete'),
+  missingOrder: luciaOrdersUrl('url-lucia-missing-order', ORDER_PATH, 'id=99'),
+} as const satisfies Record<string, AddressChip>;
+
 export const TASK = {
   orderSeven: 'curl-order-7',
   orderEight: 'curl-order-8',
@@ -135,6 +152,9 @@ export const TASK = {
   shopByName: 'www-gets-the-shop',
   blogByName: 'blog-gets-the-blog',
   shopByIp: 'the-ip-gets-the-shop',
+  orderSevenIs200: 'order-7-answers-200',
+  wrongPathIs404: 'wrong-path-answers-404',
+  misspelledIdIs400: 'misspelled-id-answers-400',
 } as const;
 
 /** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
@@ -143,10 +163,16 @@ export function bodyTask(id: string, text: string, toId: string, body: string, {
   return { id, text, expect: { ...expect, body, ...(nth !== undefined && { nth }) } };
 }
 
+/** Returns the task of a send incident that expects the response to the `curl -i` of your laptop to this address to have this status code. */
+export function statusTask(id: string, text: string, toId: string, statusCode: number): SendTask {
+  const { expect } = sendTaskFrom(ORIGIN.you, id, text, MESSAGE.curlInclude.id, toId, 'replied');
+  return { id, text, expect: { ...expect, statusCode } };
+}
+
 /** The ids of the pieces 03-01 and 03-02 draw: laptop-lucia, whose firewall is drawn with it. Its own app answers its own curl through the loopback, so nothing else is on the path. */
 export const PAGE_PIECES: string[] = [DEVICE.lucia.id];
 
-/** The ids of the pieces 03-03 draws: your laptop, which asks for the page, and laptop-lucia, whose firewall is drawn with it and whose two programs answer or refuse. */
+/** The ids of the pieces 03-03 and 03-05 draw: your laptop, which asks for the page, and laptop-lucia, whose firewall is drawn with it and whose programs answer or refuse. */
 export const LAN_PIECES: string[] = [DEVICE.you.id, DEVICE.lucia.id];
 
 const APP_RULE_TYPE = tcpChip(PORT.app, PORT.app);

@@ -40,7 +40,7 @@ const CURL_FORMATS = [
 describe('curlOutput', () => {
   it('a plain curl prints only the body', () => {
     expect(curlOutput(PLAIN)).toEqual([BODY]);
-    expect(curlOutput({ kind: 'response', response: { ...RESPONSE, startLine: 'HTTP/1.1 404 Not Found', body: 'No hay nada en ese camino.' }, include: false })).toEqual(['No hay nada en ese camino.']);
+    expect(curlOutput({ kind: 'response', response: { ...RESPONSE, startLine: 'HTTP/1.1 404 Not Found', body: 'No hay nada en esa URL.' }, include: false })).toEqual(['No hay nada en esa URL.']);
     expect(curlOutput({ kind: 'response', response: { ...RESPONSE, body: '' }, include: false })).toEqual([]);
   });
 
