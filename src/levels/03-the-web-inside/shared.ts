@@ -30,6 +30,25 @@ const ORDER_BOOK: NonNullable<Site['orders']> = {
     { id: 8, content: '1 té' },
   ],
 };
+const CHECKING_BOOK: NonNullable<Site['orders']> = { ...ORDER_BOOK, badIdBody: BAD_ID_BODY };
+
+export const ADMIN_PATH = '/admin';
+export const ADMIN_BODY = 'Panel de administración.';
+const ADMIN_ROLE = 'admin';
+const ADMIN_REALM = 'admin';
+
+/** The two users of the app of laptop-lucia from 03-06: Lucía, who administers, and Marta, who does not. Their name and password are what a `curl -u` and the sign-in of the browser present. */
+export const USER = {
+  lucia: { name: 'lucia', password: 'clave-lucia', role: ADMIN_ROLE },
+  marta: { name: 'marta', password: 'clave-marta', role: 'staff' },
+} as const satisfies Record<string, NonNullable<Site['accounts']>['users'][number]>;
+
+const ACCOUNTS: NonNullable<Site['accounts']> = {
+  users: [USER.lucia, USER.marta],
+  realm: ADMIN_REALM,
+  unauthorizedBody: 'Hace falta un usuario y una contraseña válidos.',
+  forbiddenBody: 'Ese usuario no tiene permiso para entrar aquí.',
+};
 
 const READ_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['GET'], handler: { kind: 'order-read' } };
 const CREATE_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['POST'], handler: { kind: 'order-create' } };
@@ -37,15 +56,15 @@ const REPLACE_ORDERS: Site['pages'][number] = { path: ORDER_PATH, methods: ['PUT
 
 const ORDER_PAGES = [READ_ORDERS, CREATE_ORDERS, REPLACE_ORDERS];
 
-/** Returns the web service of the program of laptop-lucia on port 3000 with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another). The site has no name, so it answers to any name: it is the default site of the service. */
-function ordersWeb(pages: Site['pages'], orders: NonNullable<Site['orders']> = ORDER_BOOK): NonNullable<Service['web']> {
-  const site: Site = { id: ORDERS_SITE_ID, names: [], pages, notFoundBody: NOT_FOUND_BODY, orders };
+/** Returns the web service of the program of laptop-lucia on port 3000 with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another), with its users when it has any. The site has no name, so it answers to any name: it is the default site of the service. */
+function ordersWeb(pages: Site['pages'], orders: NonNullable<Site['orders']> = ORDER_BOOK, accounts?: Site['accounts']): NonNullable<Service['web']> {
+  const site: Site = { id: ORDERS_SITE_ID, names: [], pages, notFoundBody: NOT_FOUND_BODY, orders, ...(accounts && { accounts }) };
   return { sites: [site], defaultSiteId: ORDERS_SITE_ID };
 }
 
-/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another). */
-function ordersApp(pages: Site['pages'], orders?: NonNullable<Site['orders']>): NetworkAction {
-  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: ordersWeb(pages, orders) };
+/** Returns the action that makes the program of laptop-lucia on port 3000 answer HTTP with the orders site, which serves these pages and keeps its orders in this book (the starting one unless it says another), with its users when it has any. */
+function ordersApp(pages: Site['pages'], orders?: NonNullable<Site['orders']>, accounts?: Site['accounts']): NetworkAction {
+  return { type: 'setWebService', ownerId: DEVICE.lucia.id, port: PORT.app, web: ordersWeb(pages, orders, accounts) };
 }
 
 /** What 03-01 changes on laptop-lucia: the program of port 3000, which since 02-01 only accepted connections, now answers HTTP. A GET of /pedidos with an id gives the order; any other path gives «No hay nada en esa URL.». Nothing else about the laptop changes. */
@@ -55,7 +74,12 @@ export const APP_ANSWERS_HTTP: NetworkAction = ordersApp([READ_ORDERS]);
 export const APP_TAKES_ORDERS: NetworkAction = ordersApp(ORDER_PAGES);
 
 /** What 03-05 changes on laptop-lucia: the same program of port 3000 now checks the id of the orders it reads. A GET or a PUT of /pedidos with an id that is not a number answers 400 with «El id no es un número.»; an order that does not exist, a request with no id and a path the app does not serve still answer 404. Nothing else about the laptop changes. */
-export const APP_CHECKS_THE_ID: NetworkAction = ordersApp(ORDER_PAGES, { ...ORDER_BOOK, badIdBody: BAD_ID_BODY });
+export const APP_CHECKS_THE_ID: NetworkAction = ordersApp(ORDER_PAGES, CHECKING_BOOK);
+
+const ADMIN_PAGE: Site['pages'][number] = { path: ADMIN_PATH, methods: ['GET'], role: ADMIN_ROLE, handler: { kind: 'fixed', body: ADMIN_BODY } };
+
+/** What 03-06 changes on laptop-lucia: the same program of port 3000, with the pages and the check of the id that 03-05 left it, now also serves /admin and knows two users. /admin answers only to a user who has the administration role, which is Lucía, and not to Marta: a request with no valid credential in its Authorization header gets 401 with WWW-Authenticate, and Marta, who is known but has no such role, gets 403. Nothing else about the laptop changes. */
+export const APP_HAS_USERS: NetworkAction = ordersApp([...ORDER_PAGES, ADMIN_PAGE], CHECKING_BOOK, ACCOUNTS);
 
 export const REPORTS_PORT = 3001;
 const REPORTS_SITE_ID = 'reports';
@@ -82,12 +106,17 @@ export const APPS_AS_PROCESSES: NetworkAction = {
 /** What 03-03 changes next on laptop-lucia: Lucía closed the terminal where her reports app ran, so the process app-reportes is no longer running and its service on port 3001 no longer listens. The orders app goes on. */
 export const REPORTS_CLOSED: NetworkAction = { type: 'setProcess', deviceId: DEVICE.lucia.id, processId: PROCESS.reports.id, running: false };
 
+/** Returns the text a `curl -u` is given for a user: the name, a colon and the password. */
+const loginOf = ({ name, password }: { name: string; password: string }): string => `${name}:${password}`;
+
 export const MESSAGE = {
   curl: { id: 'curl', label: '{{curl}}', command: 'curl' },
   curlPost: { id: 'curl-post', label: `{{curl}} -d ${POST_BODY}`, command: 'curl', options: { data: POST_BODY } },
   curlPut: { id: 'curl-put', label: `{{curl}} -X PUT -d ${PUT_BODY}`, command: 'curl', options: { request: 'PUT', data: PUT_BODY } },
   curlTimeout: { id: 'curl-timeout', label: '{{curl}} --connect-timeout 3', command: 'curl', options: { connectTimeout: 3 } },
   curlInclude: { id: 'curl-include', label: '{{curl}} -i', command: 'curl', options: { include: true } },
+  curlMarta: { id: 'curl-marta', label: `{{curl}} -i -u ${loginOf(USER.marta)}`, command: 'curl', options: { include: true, user: loginOf(USER.marta) } },
+  curlLucia: { id: 'curl-lucia', label: `{{curl}} -i -u ${loginOf(USER.lucia)}`, command: 'curl', options: { include: true, user: loginOf(USER.lucia) } },
   browser: { id: 'browser', label: '{{browser}}', command: 'browser' },
 } as const satisfies Record<string, MessageChip>;
 
@@ -141,6 +170,9 @@ export const STATUS_URL = {
   missingOrder: luciaOrdersUrl('url-lucia-missing-order', ORDER_PATH, 'id=99'),
 } as const satisfies Record<string, AddressChip>;
 
+/** The whole url 03-06 asks for: the /admin page of the orders app of laptop-lucia, by her IP. */
+export const ADMIN_URL = { id: 'url-lucia-admin', address: IP.lucia, url: `http://${IP.lucia}:${PORT.app}${ADMIN_PATH}` } as const satisfies AddressChip;
+
 export const TASK = {
   orderSeven: 'curl-order-7',
   orderEight: 'curl-order-8',
@@ -155,6 +187,9 @@ export const TASK = {
   orderSevenIs200: 'order-7-answers-200',
   wrongPathIs404: 'wrong-path-answers-404',
   misspelledIdIs400: 'misspelled-id-answers-400',
+  adminWithoutCredentialIs401: 'admin-without-credential-answers-401',
+  adminAsMartaIs403: 'admin-as-marta-answers-403',
+  adminAsLuciaIs200: 'admin-as-lucia-answers-200',
 } as const;
 
 /** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
@@ -163,9 +198,9 @@ export function bodyTask(id: string, text: string, toId: string, body: string, {
   return { id, text, expect: { ...expect, body, ...(nth !== undefined && { nth }) } };
 }
 
-/** Returns the task of a send incident that expects the response to the `curl -i` of your laptop to this address to have this status code. */
-export function statusTask(id: string, text: string, toId: string, statusCode: number): SendTask {
-  const { expect } = sendTaskFrom(ORIGIN.you, id, text, MESSAGE.curlInclude.id, toId, 'replied');
+/** Returns the task of a send incident that expects the response to the `curl -i` of your laptop (the one of the message chip it says) to this address to have this status code. */
+export function statusTask(id: string, text: string, toId: string, statusCode: number, messageId: string = MESSAGE.curlInclude.id): SendTask {
+  const { expect } = sendTaskFrom(ORIGIN.you, id, text, messageId, toId, 'replied');
   return { id, text, expect: { ...expect, statusCode } };
 }
 

@@ -5,7 +5,7 @@ import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/l
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_CHECKS_THE_ID, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, STATUS_URL, TASK, URLS_BY_PARTS, siteMove } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, ADMIN_BODY, ADMIN_URL, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_CHECKS_THE_ID, APP_HAS_USERS, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, STATUS_URL, TASK, URLS_BY_PARTS, USER, siteMove } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -21,6 +21,7 @@ import { pieceViews } from '@/game/view/pieces';
 const CHAPTER = 3;
 const LAST_INCIDENT_OF_CHAPTER_2 = '02-14';
 const INCIDENT_BEFORE_HOW_DID_IT_GO = '03-04';
+const INCIDENT_BEFORE_WHO_YOU_ARE = '03-05';
 
 const CALLS_A_MESSAGE_A_PACKET = /paquete (de )?HTTP|HTTP (es|son) (un )?paquete|(petición|respuesta) HTTP (es|son) (un )?paquete/i;
 const SAYS_HTTP_PREVENTS_DUPLICATES = /\bHTTP\s+(evita|previene|impide|protege)\b/i;
@@ -908,5 +909,159 @@ describe('03-05, how did it go', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['status-code', 'status-200', 'client-error', 'status-404', 'status-400']));
     expectOnlyTermsItKnows(incident);
     expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx/.test(text))).toEqual([]);
+  });
+});
+
+describe('03-06, who you are and what you can', () => {
+  const WHO_YOU_ARE = '03-06';
+  const start = startSession(INCIDENTS, WHO_YOU_ARE);
+  const { incident } = start;
+  const before = startSession(INCIDENTS.map((own) => (own.id === WHO_YOU_ARE ? { ...own, changes: [] } : own)), WHO_YOU_ARE);
+  const asking = (session: Session, messageId: string) => sending(session, ADMIN_URL.id, messageId, ORIGIN.you.id);
+  const codeOfLast = (session: Session) => runOf(session).trace.app?.response?.statusCode;
+  const responseOfLast = (session: Session) => runOf(session).trace.app?.response;
+  const requestOfLast = (session: Session) => runOf(session).trace.app?.request;
+  const appSteps = (session: Session) => runOf(session).trace.steps.filter(({ stage }) => stage === 'app').map(({ reason }) => plain(describeReason(reason, session.world, session.known)));
+  const withoutCredential = MESSAGE.curlInclude.id;
+  const asMarta = MESSAGE.curlMarta.id;
+  const asLucia = MESSAGE.curlLucia.id;
+  const wrongOptionTexts = wrongOptionsOf(incident);
+  const everythingRead = textsReadApartFromTheWrongOptions(incident);
+  const basicOf = (user: { name: string; password: string }) => `Basic ${Buffer.from(`${user.name}:${user.password}`).toString('base64')}`;
+
+  it('03-06: 401 without a credential, 403 with the one of Marta and 200 with the one of Lucía each complete their task', () => {
+    expect(stillOpen(start)).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200]);
+    const unauthorized = asking(start, withoutCredential);
+    expect(codeOfLast(unauthorized)).toBe(401);
+    expect(stillOpen(unauthorized)).toEqual([TASK.adminAsMartaIs403, TASK.adminAsLuciaIs200]);
+    const forbidden = asking(unauthorized, asMarta);
+    expect(codeOfLast(forbidden)).toBe(403);
+    expect(stillOpen(forbidden)).toEqual([TASK.adminAsLuciaIs200]);
+    const done = asking(forbidden, asLucia);
+    expect(codeOfLast(done)).toBe(200);
+    expect(responseOfLast(done)?.body).toBe(ADMIN_BODY);
+    expect(stillOpen(done)).toEqual([]);
+    expect(starsWhenSubmitted(done)).toMatchObject({ closed: true, middle: true });
+    expect(stillOpen(asking(start, asLucia))).toEqual([TASK.adminWithoutCredentialIs401, TASK.adminAsMartaIs403]);
+  });
+
+  it('03-06: the 401 carries WWW-Authenticate, the request carries Authorization and the box says the app generated each code', () => {
+    const unauthorized = asking(start, withoutCredential);
+    expect(responseOfLast(unauthorized)?.headers['WWW-Authenticate']).toBe('Basic realm="admin"');
+    expect(Object.keys(requestOfLast(unauthorized)!.headers)).not.toContain('Authorization');
+    expect(printedFor(unauthorized, ADMIN_URL.id, withoutCredential, ORIGIN.you.id)).toEqual([
+      'HTTP/1.1 401 Unauthorized',
+      'Content-Type: text/plain; charset=utf-8',
+      `Content-Length: ${new TextEncoder().encode(responseOfLast(unauthorized)!.body).length}`,
+      'WWW-Authenticate: Basic realm="admin"',
+      '',
+      responseOfLast(unauthorized)!.body,
+    ]);
+    const forbidden = asking(start, asMarta);
+    expect(requestOfLast(forbidden)?.headers.Authorization).toBe(basicOf(USER.marta));
+    expect(Object.keys(requestOfLast(forbidden)!.headers)).toEqual(['Host', 'Authorization', 'User-Agent', 'Accept']);
+    expect(responseOfLast(forbidden)?.headers).not.toHaveProperty('WWW-Authenticate');
+    expect(requestOfLast(asking(start, asLucia))?.headers.Authorization).toBe(basicOf(USER.lucia));
+    for (const [session, code] of [[unauthorized, '401 Unauthorized'], [forbidden, '403 Forbidden'], [asking(start, asLucia), '200 OK']] as const) {
+      const box = lastBox(session);
+      expect(box['Código de estado']?.[0]).toBe(code);
+      expect(box['Quién lo generó']).toEqual([`La app de ${DEVICE.lucia.name}`]);
+    }
+  });
+
+  it('03-06: each reason says why: the 401 who asks and the 403 what is allowed', () => {
+    expect(appSteps(asking(start, withoutCredential))).toEqual([
+      `La cabecera Host de la petición indica ${IP.lucia}. ${DEVICE.lucia.name} no tiene un sitio con ese nombre y contesta con su sitio por defecto.`,
+      `${DEVICE.lucia.name} no sabe quién pide /admin: la petición no trae una credencial válida, y sin ella no puede hacer la autenticación.`,
+      `${DEVICE.lucia.name} contesta con una respuesta con el código de estado 401 Unauthorized.`,
+    ]);
+    expect(appSteps(asking(start, asMarta))[1]).toBe(`${DEVICE.lucia.name} sabe quién pide /admin: es marta. Pero la autorización de /admin no deja entrar a marta: no tiene permiso.`);
+    expect(appSteps(asking(start, asLucia))).toHaveLength(2);
+  });
+
+  it('03-06: repeating the request of Marta gives the same 403', () => {
+    const first = asking(start, asMarta);
+    const second = asking(first, asMarta);
+    expect(codeOfLast(second)).toBe(403);
+    expect(responseOfLast(second)).toEqual(responseOfLast(first));
+    expect(requestOfLast(second)).toEqual(requestOfLast(first));
+    expect(stillOpen(asking(second, asMarta))).toEqual(stillOpen(first));
+    expect(codeOfLast(asking(second, asLucia))).toBe(200);
+  });
+
+  it('03-06 starts from the world 03-05 leaves, and before the users /admin gets the 404', () => {
+    expect(worldBeforeChanges(INCIDENTS, WHO_YOU_ARE)).toEqual(solvedWorld(INCIDENTS, INCIDENT_BEFORE_WHO_YOU_ARE));
+    expect(incident.changes).toEqual([APP_HAS_USERS]);
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, WHO_YOU_ARE)).error).toBeUndefined();
+    const unchecked = asking(before, withoutCredential);
+    expect(codeOfLast(unchecked)).toBe(404);
+    expect(responseOfLast(unchecked)?.body).toBe('No hay nada en esa URL.');
+    expect(codeOfLast(asking(before, asLucia))).toBe(404);
+    expect(stillOpen(before)).toEqual(stillOpen(start));
+    expect(codeOfLast(asking(start, withoutCredential))).toBe(401);
+    expect(sitesOf(startWorld(INCIDENTS, WHO_YOU_ARE)).flatMap(({ accounts }) => accounts?.users.map(({ name }) => name) ?? [])).toEqual([USER.lucia.name, USER.marta.name]);
+  });
+
+  it('03-06: the takeaway says that in AWS the number alone is not enough and names no service', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('En AWS el número solo no basta');
+    expect(takeaway).toContain('hay que ver quién lo generó');
+    expect(takeaway.match(/\b(API Gateway|ALB|Application Load Balancer|Elastic Load Balancing|CloudFront|Lambda|S3|EC2|Cognito|IAM|Route 53|WAF|NLB|ELB)\b/g)).toBeNull();
+  });
+
+  it('03-06: the takeaway says a credential over http can be read by anyone who sees the path', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain('cualquiera que vea el camino puede volver a leer el usuario y la contraseña');
+    expect(takeaway).not.toMatch(/cifrad|TLS|HTTPS|base64/i);
+  });
+
+  it('03-06: the takeaway says why the same request gives other codes: the app of laptop-lucia has users and permissions now', () => {
+    const takeaway = plain(incident.takeaway);
+    expect(takeaway).toContain(`Lucía agregó /admin a la app de ${DEVICE.lucia.name}`);
+    expect(takeaway).toContain('Un 404 puede esconder un 403');
+    expect(takeaway).toContain('pese al nombre, esa cabecera sirve para autenticar, no para autorizar');
+  });
+
+  it('03-06: no text says that a 403 is temporary or that it means the password is wrong', () => {
+    const saysTemporary = (text: string) => text.split(/(?<=\.)\s+/).filter((sentence) => /\b403\b|Forbidden/i.test(sentence) && /temporal|pasa solo|se quita/i.test(sentence) && !/\bno\b/i.test(sentence));
+    const saysWrongPassword = (text: string) => text.split(/(?<=\.)\s+/).filter((sentence) => /\b403\b|Forbidden/i.test(sentence) && /contraseña|clave/i.test(sentence) && /\bmal\b|incorrecta|equivocada/i.test(sentence) && !/\bno\b|\b401\b/i.test(sentence));
+    expect(everythingRead.flatMap(saysTemporary)).toEqual([]);
+    expect(everythingRead.flatMap(saysWrongPassword)).toEqual([]);
+    expect(['Un 403 es temporal y pasa solo.', 'El 403 se quita al repetir.'].filter((text) => saysTemporary(text).length === 0)).toEqual([]);
+    expect(['Un 403 dice que la contraseña está mal.'].filter((text) => saysWrongPassword(text).length === 0)).toEqual([]);
+    expect(['El 403 no es temporal.', 'Una contraseña mal escrita da 401, no 403.']).toSatisfy((texts: string[]) => texts.every((text) => saysTemporary(text).length + saysWrongPassword(text).length === 0));
+    expect(wrongOptionTexts.map(plain).filter((text) => saysTemporary(text).length + saysWrongPassword(text).length > 0)).toHaveLength(2);
+  });
+
+  it('03-06: the report names laptop-lucia', () => {
+    expect(incident.report).toContain(NAME.lucia);
+    expect(changedNames(worldBeforeChanges(INCIDENTS, WHO_YOU_ARE), startWorld(INCIDENTS, WHO_YOU_ARE))).toEqual([DEVICE.lucia.name]);
+    expect(plain(incident.report)).toContain(`Lucía agregó /admin a la app de ${DEVICE.lucia.name}`);
+  });
+
+  it('03-06: draws tu-laptop and laptop-lucia', () => {
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`);
+    expect(drawn.sort()).toEqual([`device:${DEVICE.lucia.name}`, `device:${DEVICE.you.name}`, `firewall:firewall ${DEVICE.lucia.name}`, `firewall:firewall ${DEVICE.you.name}`]);
+    expect(incident.shown).toEqual(LAN_PIECES);
+  });
+
+  it('03-06: the right option is the first and the question separates the 403 from the 401 and from a temporary error', () => {
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(0);
+    expect(plain((isGuided(incident) && incident.question) || '')).toBe('Marta recibió un 403. ¿Le sirve repetir la petición con la misma credencial?');
+    expect(options.map(({ text }) => plain(text))).toEqual([
+      'No: la app ya sabe quién es Marta y no le da permiso.',
+      'Sí: un 403 es temporal y se quita al repetir la petición.',
+      'Sí: un 403 dice que la contraseña de Marta está mal.',
+    ]);
+    expect(plain(options[0].feedback)).toContain('repetir la misma petición con la misma credencial da el mismo 403');
+    expect(plain(options[1].feedback)).toContain('no avisa que sea temporal');
+    expect(plain(options[2].feedback)).toContain('Una contraseña mal escrita da 401, no 403');
+  });
+
+  it('03-06: introduces authentication, authorization, Authorization header, 401, 403 and cookie, and uses no later term', () => {
+    expect(sorted(incident.introduces)).toEqual(sorted(['authentication', 'authorization', 'authorization-header', 'status-401', 'status-403', 'cookie']));
+    expectOnlyTermsItKnows(incident);
+    expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx|\b429\b/.test(text))).toEqual([]);
   });
 });
