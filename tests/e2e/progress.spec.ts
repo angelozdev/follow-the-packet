@@ -30,7 +30,7 @@ test('the stars saved in the browser come back after a reload and open what they
   await expectWhatTheStarsOpen(page);
 });
 
-test('04-01 opens once 02-14 has a star', async ({ page }) => {
+test('04-01 opens once the last incident of chapter 3 has a star', async ({ page }) => {
   const beforeTheLast = Object.fromEntries(Object.entries(CHAPTER_3_DONE).filter(([id]) => id !== LAST_OF_CHAPTER_3));
   await startWithProgress(page, beforeTheLast);
   await page.goto('/');

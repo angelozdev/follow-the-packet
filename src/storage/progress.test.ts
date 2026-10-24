@@ -101,7 +101,7 @@ describe('progress along the chapters of the game', () => {
     expect(isUnlocked(FIRST_OF_CHAPTER_4, { [LAST_OF_CHAPTER_2.id]: 1 }, CHAIN)).toBe(true);
   });
 
-  it('in the registered course 04-01 opens once 02-14 has a star, and not with 02-13 or 01-14', () => {
+  it('in the registered course 04-01 opens once the last incident of chapter 3 has a star, and not with 02-14, 02-13 or 01-14', () => {
     const course = INCIDENTS.map(({ id, chapter, order, title, role }): LevelEntry => ({ id, chapter, order, title, role }));
     const first = course.find(({ id }) => id === FIRST_OF_CHAPTER_4.id);
     const lastOfChapter3 = first && course.at(course.indexOf(first) - 1);

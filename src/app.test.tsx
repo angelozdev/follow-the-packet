@@ -124,7 +124,7 @@ describe('the roadmap opens the incidents as the progress saved in the browser s
     expect(consoleErrors).not.toHaveBeenCalled();
   });
 
-  it('04-01 stays locked after 01-14 has a star and opens after the last built incident of chapter 2 has one', () => {
+  it('04-01 stays locked after 01-14 has a star and opens after the last built incident of chapter 3 has one', () => {
     const upToThirteen = openWith({ '01-13': 3 });
     expect(levelItem(FIRST_PING.id)).toHaveTextContent(ROADMAP_TEXT.locked);
     upToThirteen.unmount();
