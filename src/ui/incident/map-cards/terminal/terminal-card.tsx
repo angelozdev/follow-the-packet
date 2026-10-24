@@ -8,11 +8,11 @@ import { TaggedText } from '@/ui/tagged-text';
 import { FramedCard, trayChips, type CardFrame } from '@/ui/incident/map-cards/chip-card';
 import { OutputCard, type Printed } from './output-card';
 
-/** What the terminal asks of its screen: the line the picks make, what a traceroute, an `nc` or a `dig` sent with them printed, moving the card to another origin and sending. */
+/** What the terminal asks of its screen: the line the picks make, what a traceroute, an `nc`, a `dig` or a `curl` sent with them printed (one block, or a block for each send of a `curl`), moving the card to another origin and sending. */
 export interface TerminalHandlers {
   describe: (picks: Partial<SendPicks>) => TermText | null;
   route: (picks: Partial<SendPicks>) => TracerouteView | null;
-  printed?: (picks: Partial<SendPicks>) => ToolOutput | null;
+  printed?: (picks: Partial<SendPicks>) => ToolOutput | ToolOutput[] | null;
   onPickOrigin: (fromId: string) => void;
   onSend: (picks: SendPicks) => void;
 }
@@ -31,16 +31,15 @@ export function useTerminalDraft(card: Terminal | null): TerminalDraft {
   return { picks, unfolded, setPicks, setUnfolded };
 }
 
-function printedBy(route: TracerouteView | null, tool: ToolOutput | null): Printed | null {
-  if (route) return { kind: 'route', route };
-  return tool ? { kind: 'tool', tool } : null;
+function printedBy(route: TracerouteView | null, tools: ToolOutput | ToolOutput[] | null): Printed[] {
+  return route ? [{ kind: 'route', route }] : [tools ?? []].flat().map((tool) => ({ kind: 'tool', tool }));
 }
 
-/** Returns what the terminal of an origin puts in its card: a chip from each tray it shows, the line those chips make (the real command, or a packet made by hand), "Enviar" and, once a traceroute, an `nc` or a `dig` was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. The draft is the caller's: whether the output of a `dig` is unfolded goes back to folded when another chip is picked. */
+/** Returns what the terminal of an origin puts in its card: a chip from each tray it shows, the line those chips make (the real command, or a packet made by hand), "Enviar" and, once a traceroute, an `nc`, a `dig` or a `curl` was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. The draft is the caller's: whether the output of a `dig` is unfolded goes back to folded when another chip is picked. */
 export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, route, printed, onPickOrigin, onSend }: TerminalHandlers): CardFrame {
   const chosen: Partial<SendPicks> = { ...card.fixed, ...draft.picks, from: card.fromId };
   const line = describe(chosen);
-  const output = printedBy(route(chosen), printed?.(chosen) ?? null);
+  const outputs = printedBy(route(chosen), printed?.(chosen) ?? null);
   const pick = (tray: SendTrayName, chipId: string) => {
     if (tray === 'from') onPickOrigin(chipId);
     else {
@@ -70,7 +69,9 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
             <span className="slot__empty">{TERMINAL_TEXT.incomplete}</span>
           )}
         </p>
-        {output && <OutputCard printed={output} unfolded={draft.unfolded} onToggle={() => draft.setUnfolded(!draft.unfolded)} />}
+        {outputs.map((printedOutput, index) => (
+          <OutputCard key={index} printed={printedOutput} unfolded={draft.unfolded} onToggle={() => draft.setUnfolded(!draft.unfolded)} />
+        ))}
         {card.trays.map((tray) => (
           <ChipTray key={tray.name} name={TERMINAL_TEXT.trays[tray.name]} chips={trayChips(tray.chips)} picked={chosen[tray.name] ?? null} onPick={(chipId) => pick(tray.name, chipId)} />
         ))}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
-import { INCIDENTS } from '@/levels';
+import { INCIDENTS, type Incident } from '@/levels';
 import { cardProblems, cardsOutsideTheMap, INSPECTION_HELP, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
 import { coveredBy } from '@/testing/map-boxes';
 import {
@@ -22,6 +22,7 @@ import {
   standStill,
   watchErrors,
 } from '@/testing/browser-play';
+import { webSendIncident } from '@/testing/web/web-incident';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -66,6 +67,21 @@ const ROUTES_TAB = 'Tabla de rutas';
 const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
 const OFFICE_ROUTES_CARD = 'Tabla de rutas de router-oficina';
 const ANYWHERE = '0.0.0.0/0';
+const WEB = webSendIncident();
+const BROWSER_TAB = 'Navegador';
+const BROWSER_CARD = 'Navegador de tu-laptop';
+const OPEN = 'Abrir';
+const SECOND_SEND = /Envío 2$/;
+const BROWSER_SEES = 'Lo que ve el navegador';
+const SERVES_TRAY = 'Qué sirve';
+const CURL = 'curl';
+const SHOP_URL = 'http://www.lucia.example/';
+const WEB_SERVER = 'servidor-internet';
+const SITES_CARD = 'Sitios de servidor-internet';
+const SHOP_NAME = 'www.lucia.example';
+const BLOG_CONTENT = 'El blog';
+const ADD_SITE = 'Agregar sitio';
+const SITE_REFUSED = /Ese nombre ya tiene un sitio/;
 const OTHER_OFFICE_BLOCK = '10.0.0.0/16';
 const PROVIDER_HOP = '203.0.113.1 router-proveedor';
 const BRANCH_HOP = '172.16.0.2 router-sucursal';
@@ -139,6 +155,7 @@ const INSPECTION_WINDOWS = [
 interface Scene {
   name: string;
   level: string;
+  incidents?: Incident[];
   reach: () => Promise<void>;
   last: () => Locator;
 }
@@ -321,6 +338,39 @@ async function digTheName(): Promise<void> {
   await sendMessage(await openTerminal(), DIG);
 }
 
+function scrollTheBodyToItsEnd(opened: Locator): void {
+  const body = opened.element().querySelector('.chip-card__body') as HTMLElement;
+  body.scrollTop = body.scrollHeight;
+}
+
+async function openTheShopInTheBrowser(): Promise<void> {
+  await openByKeyboard(YOUR_LAPTOP);
+  await click(page.getByRole('tab', { name: BROWSER_TAB, exact: true }));
+  const browser = card(BROWSER_CARD);
+  await click(browser.getByRole('button', { name: SHOP_URL, exact: true }));
+  await click(browser.getByRole('button', { name: OPEN, exact: true }));
+  await expect.element(browser.getByRole('group', { name: BROWSER_SEES })).toBeVisible();
+  scrollTheBodyToItsEnd(browser);
+}
+
+async function reachTheRefusedSite(): Promise<void> {
+  await openByKeyboard(WEB_SERVER);
+  const sites = card(SITES_CARD);
+  await pickInTray(sites, NAME_TRAY, SHOP_NAME);
+  await pickInTray(sites, SERVES_TRAY, BLOG_CONTENT);
+  await click(sites.getByRole('button', { name: ADD_SITE, exact: true }));
+  await expect.element(sites.getByRole('status')).toMatchTextContent(SITE_REFUSED);
+}
+
+async function sendTheCurlTwice(): Promise<void> {
+  const terminal = await openTerminal();
+  await click(terminal.getByRole('button', { name: SHOP_URL, exact: true }));
+  await sendMessage(terminal, CURL);
+  await click(terminal.getByRole('button', { name: SEND, exact: true }));
+  await expect.element(terminal.getByRole('group', { name: SECOND_SEND })).toBeVisible();
+  scrollTheBodyToItsEnd(terminal);
+}
+
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await sendTo(card(TERMINAL), OFFICE_IP.andres);
@@ -341,6 +391,9 @@ const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-ofi
 const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: doneOf(RECORDS_CARD) };
 const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: doneOf(CACHE_CARD) };
 const THE_CLOCK: Scene = { name: 'the clock of the game below the card of Lucía, after a minute of waiting', level: '02-12', reach: waitAMinute, last: () => page.getByText(CLOCK_NOTE) };
+const THE_BROWSER: Scene = { name: 'the browser, a tab of the card of tu-laptop, with a page opened', level: WEB.id, incidents: [WEB], reach: openTheShopInTheBrowser, last: doneOf(BROWSER_CARD) };
+const THE_SITES: Scene = { name: 'the sites of servidor-internet, with a name that already has a site refused and the reason under the table', level: WEB.id, incidents: [WEB], reach: reachTheRefusedSite, last: doneOf(SITES_CARD) };
+const THE_CURL_TERMINAL: Scene = { name: 'the terminal with the output of a curl sent twice, titled Envío 1 and Envío 2', level: WEB.id, incidents: [WEB], reach: sendTheCurlTwice, last: doneOf(TERMINAL) };
 const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
 const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: doneOf(TERMINAL) };
 
@@ -367,11 +420,14 @@ const SCENES: Scene[] = [
   THE_CACHE,
   THE_CLOCK,
   THE_FIREWALL,
+  THE_BROWSER,
+  THE_SITES,
+  THE_CURL_TERMINAL,
 ];
 
-const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL];
+const MAP_SCENES = [THE_TERMINAL, THE_TRACEROUTE, THE_PRINTER, THE_SETTINGS, THE_TABBED_TERMINAL, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_CLASSIFY, THE_PLACED_CLASSIFY, THE_FIREWALL, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL];
 
-const TABLES_OUTPUT_AND_SERVICES = [THE_TRACEROUTE, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE];
+const TABLES_OUTPUT_AND_SERVICES = [THE_TRACEROUTE, THE_NAMES_TERMINAL, THE_SERVICES, THE_ROUTES, THE_EDITABLE_ROUTES, THE_PROVIDER_ROUTES, THE_TRANSLATIONS, THE_RECORDS, THE_CACHE, THE_BROWSER, THE_SITES, THE_CURL_TERMINAL];
 
 async function wrongIpOfThePrinter(): Promise<void> {
   const printer = await openCard(PRINTER);
@@ -401,13 +457,13 @@ function messagesCoveringWhatIsAbove(): string[] {
   });
 }
 
-function show(level: string) {
-  return showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId={level} nextId={null} onFinish={() => undefined} />);
+function show(level: string, incidents: Incident[] = INCIDENTS) {
+  return showTheScreen(<IncidentScreen incidents={incidents} incidentId={level} nextId={null} onFinish={() => undefined} />);
 }
 
 async function inTheScene<Seen>(scene: Scene, mode: 'live' | 'right-after-the-click' | 'at-rest', measure: () => Promise<Seen> | Seen): Promise<Seen> {
   if (mode !== 'live') holdTheGrace();
-  const view = await show(scene.level);
+  const view = await show(scene.level, scene.incidents);
   if (mode !== 'live') await standStill();
   await scene.reach();
   if (mode === 'at-rest') await passTheGrace();
@@ -605,7 +661,7 @@ describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size, boxShows }) => {
         for (const problem of seen.covered) covered.add(`${name}, ${scene.name}: ${problem}`);
       };
       holdTheGrace();
-      const view = await show(scene.level);
+      const view = await show(scene.level, scene.incidents);
       await standStill();
       await scene.reach();
       sample();

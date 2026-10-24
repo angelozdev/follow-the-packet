@@ -112,6 +112,11 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .chip-card__body > .btn--small { justify-self: start; }
 .slot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.2rem; margin: 0; padding: var(--space-2xs) var(--space-xs); border: var(--stroke-regular) dashed var(--color-ink-soft); border-radius: var(--radius-tile); }
 .slot__empty { color: var(--color-ink-soft); font-size: var(--text-md); }
+.browser { display: grid; gap: var(--space-2xs); padding: var(--space-sm); border: var(--stroke-regular) solid var(--color-ink); border-radius: var(--radius); background: var(--color-page); }
+.browser__address { overflow-wrap: anywhere; }
+.browser__page { font: var(--weight-display) var(--text-lg)/1.3 var(--font-display); }
+.browser__error { font: var(--weight-bold) var(--text-base)/1.35 var(--font-body); }
+.browser__error::before { content: '✕ '; }
 .classify__fields { margin: 0; display: grid; gap: var(--space-xs); }
 .classify__fields dd { margin: 0; }
 .cidr { font-size: var(--text-lg); }

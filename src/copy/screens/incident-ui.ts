@@ -240,6 +240,7 @@ export const TERMINAL_TEXT = {
   output: {
     label: { nc: 'Salida de nc', dig: 'Salida de dig', curl: 'Salida de curl' },
     sendTitle: (number: number): string => `Envío ${number}`,
+    titled: (label: string, title: string): string => `${label} · ${title}`,
     folded: (count: number): string => `⋯ ${count === 1 ? '1 línea plegada' : `${count} líneas plegadas`}`,
     show: (count: number): string => (count === 1 ? 'Ver la línea restante' : `Ver las ${count} líneas restantes`),
     hide: (count: number): string => (count === 1 ? 'Ocultar la línea restante' : `Ocultar las ${count} líneas restantes`),

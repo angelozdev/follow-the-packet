@@ -41,6 +41,8 @@ export const WEB_BOX_TEXT = {
 export const BROWSER_TEXT = {
   title: (device: TermText): TermText => `{{browser|Navegador}} de ${device}`,
   address: 'Dirección',
+  open: 'Abrir',
+  sees: 'Lo que ve el navegador',
   refused: 'La conexión se rechazó',
   noConnection: 'No se pudo conectar',
   noPage: 'El servidor no contestó con ninguna página',

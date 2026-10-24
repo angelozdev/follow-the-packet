@@ -1,4 +1,4 @@
-import { MESSAGE_TEXT, TERMINAL_TEXT, type TermText } from '@/copy';
+import { MESSAGE_TEXT, TERMINAL_TEXT, toPlainText, type TermText } from '@/copy';
 import { Button, Message } from '@/design';
 import type { OutputSegment, ToolOutput, TracerouteView } from '@/game';
 import { TaggedText } from '@/ui/tagged-text';
@@ -63,11 +63,18 @@ function Segment({ segment, unfolded }: { segment: OutputSegment; unfolded: bool
   return <span className="output__fold">{TERMINAL_TEXT.output.folded(segment.lines.length)}</span>;
 }
 
-/** What an `nc` or a `dig` printed, line by line as the tool printed it, tabs included. A folded output keeps the key lines in view and puts a mark where the others are, saying how many lines are there; the control, which only an output with folded lines has, unfolds them in place and folds them again. */
+/** What an `nc`, a `dig` or a `curl` printed, line by line as the tool printed it, tabs included, under the title of its send when it has one («Envío 1»). A folded output keeps the key lines in view and puts a mark where the others are, saying how many lines are there; the control, which only an output with folded lines has, unfolds them in place and folds them again. */
 function ToolOutputLines({ tool, unfolded, onToggle }: { tool: ToolOutput; unfolded: boolean; onToggle: () => void }) {
+  const label = TERMINAL_TEXT.output.label[tool.command];
+  const title = tool.title === undefined ? undefined : toPlainText(tool.title);
   return (
     <>
-      <div className="output" role="group" aria-label={TERMINAL_TEXT.output.label[tool.command]}>
+      {title !== undefined && (
+        <span className="caption caption--soft" aria-hidden="true">
+          {title}
+        </span>
+      )}
+      <div className="output" role="group" aria-label={title === undefined ? label : TERMINAL_TEXT.output.titled(label, title)}>
         {tool.segments.map((segment, index) => (
           <Segment key={index} segment={segment} unfolded={unfolded} />
         ))}
