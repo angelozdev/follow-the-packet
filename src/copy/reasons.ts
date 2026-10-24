@@ -2,6 +2,7 @@ import { LOOPBACK_IP, type FirewallKind, type Network, type Reason } from '@/eng
 import { NOT_DELIVERED, deviceName } from './packet-labels';
 import { word, type TermText } from './term-text';
 import type { TermId } from './terms';
+import { describeWebReason } from './web/web-reasons';
 
 type FirewallSentence = (device: TermText) => TermText;
 type Way = 'out' | 'in';
@@ -307,6 +308,10 @@ export function describeReason(reason: Reason, net: Network, known: ReadonlySet<
       return `Un programa escucha en el puerto ${reason.port} y acepta.`;
     case 'host-udp-closed':
       return `Llega por ${word(known, 'udp', 'UDP')} al ${word(known, 'port', 'puerto')} ${reason.port}, pero ningún programa escucha ahí: ${deviceName(net, reason.deviceId)} avisa con {{port-unreachable}}.`;
+    case 'web-site-chosen':
+    case 'web-default-site':
+    case 'web-answered':
+      return describeWebReason(reason, net, known);
     case 'reply-stateful':
       return replyText(net, reason.deviceId, known);
   }

@@ -9,6 +9,11 @@ export function listensOn(service: Pick<Service, 'listen'>, destinationIp: strin
   return service.listen === 'all' || destinationIp === LOOPBACK_IP;
 }
 
+/** Returns the service of `protocol` and `port` that takes a packet addressed to `destinationIp`, or undefined when none does. */
+export function acceptingService(services: readonly Service[], protocol: Service['protocol'], port: number, destinationIp: string): Service | undefined {
+  return services.find((service) => service.protocol === protocol && service.port === port && listensOn(service, destinationIp));
+}
+
 /** Looks for the service that takes a packet of `protocol` for `port` and `destinationIp`, among the `services` of a device or a server. */
 export function lookupService(services: readonly Service[], protocol: Service['protocol'], port: number, destinationIp: string): ServiceLookup {
   const onPort = services.filter((service) => service.protocol === protocol && service.port === port);

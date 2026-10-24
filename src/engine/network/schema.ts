@@ -3,6 +3,7 @@ import { ipInCidr, isIpv4, isPrivateCidr, networkOf, parseCidr } from '@/engine/
 import { lanOf, lansOf } from '@/engine/network/addressing/topology';
 import { holdsAliasAndMore, isWithin, normalizeName, sameName } from '@/engine/dns/records';
 import { DNS_PORT } from '@/engine/dns/resolve';
+import { httpMessageSchema, webServiceSchema } from '@/engine/web/schema';
 
 export const ROUTE_DEFAULT = 'default';
 export const TTL_MAX = 255;
@@ -73,6 +74,7 @@ export const serviceSchema = z.object({
   protocol: z.enum(['tcp', 'udp']),
   port: realPort,
   listen: listenSchema,
+  web: webServiceSchema.optional(),
 });
 
 export const soaSchema = z.object({ mname: nonEmpty, rname: nonEmpty, serial: unsigned32, refresh: unsigned32, retry: unsigned32, expire: unsigned32, minimum: unsigned32 });
@@ -315,6 +317,13 @@ function checkDns(net: NetworkShape, fail: Fail): void {
   }
 }
 
+function checkWebServices(net: NetworkShape, fail: Fail): void {
+  const servers = net.actors.flatMap((actor) => (actor.kind === 'server' ? [{ id: actor.id, services: actor.services ?? [] }] : []));
+  for (const { id, services } of [...net.devices.map((device) => ({ id: device.id, services: device.host.services })), ...servers]) {
+    for (const service of services) if (service.web && service.protocol !== 'tcp') fail(`${id}: the web service of ${service.protocol} ${service.port} must be a TCP service`);
+  }
+}
+
 function checkFirewalls(net: NetworkShape, fail: Fail): void {
   const byId = new Map(net.firewalls.map((f) => [f.id, f]));
   for (const device of net.devices) {
@@ -341,6 +350,7 @@ export const networkSchema = networkShape.superRefine((net, ctx) => {
   else checkOffice(net, fail);
   checkRouters(net, fail);
   checkDns(net, fail);
+  checkWebServices(net, fail);
   checkFirewalls(net, fail);
 });
 
@@ -362,10 +372,12 @@ export const packetSchema = z
     icmpType: icmpTypeSchema.optional(),
     ttl: z.number().int().min(1).max(TTL_MAX).optional(),
     lookup: lookupSchema.optional(),
+    message: httpMessageSchema.optional(),
   })
   .refine((p) => (p.protocol === 'icmp' ? p.icmpType !== undefined : p.port !== undefined), {
     message: 'ICMP needs icmpType; TCP and UDP need port',
   })
+  .refine((p) => p.message === undefined || p.protocol === 'tcp', { message: 'a message travels in a TCP connection' })
   .refine((p) => p.lookup !== 'dig' || (p.protocol === 'udp' && p.port === DNS_PORT), {
     message: 'a dig is a UDP datagram to port 53',
   });

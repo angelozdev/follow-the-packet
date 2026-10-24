@@ -10,13 +10,16 @@ import { hostStage } from './stages/host';
 import { portStage, withSourcePort } from './stages/port';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
+import { appStage } from './stages/web/app';
 import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
 import type { NatTable } from '@/engine/nat/translation';
 import { DEFAULT_TTL } from '@/engine/network/schema';
 import type { Endpoint, Network, PacketSpec } from '@/engine/network/types';
+import type { Apps } from '@/engine/web/app';
+import { requestOf } from '@/engine/web/messages';
 import type { ExchangeMessage, Outcome, PacketHeader, PortPair, Question, Trace } from './trace';
 
-export const PIPELINE: Stage[] = [addressStage, createDnsStage(sendQuestion), portStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, replyStage];
+export const PIPELINE: Stage[] = [addressStage, createDnsStage(sendQuestion), portStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, appStage, replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
   if (from.kind === 'device') {
@@ -83,15 +86,17 @@ function finish(ctx: SimContext, outcome: Outcome): Trace {
     ...(ctx.translation && { translation: ctx.translation }),
     ...(ctx.dns && { dns: ctx.dns }),
     ...(ctx.question && { question: ctx.question }),
+    ...(ctx.app && { app: ctx.app }),
     ...(rttMs !== undefined && { rttMs }),
   };
 }
 
-/** What a send inherits from the sends before it and hands on to the next: the ephemeral source port each sender uses next, the translation table of the NAT and what the resolvers remembered. */
+/** What a send inherits from the sends before it and hands on to the next: the ephemeral source port each sender uses next, the translation table of the NAT, what the resolvers remembered and the orders of every app. */
 export interface Carried {
   nextSourcePort: SourcePorts;
   nat: NatTable;
   dnsCache: DnsCache;
+  apps?: Apps;
 }
 
 /** The trace of a packet and what it leaves for the next send. */
@@ -117,14 +122,15 @@ function sendQuestion(ctx: SimContext, packet: PacketSpec): Question {
 /** Builds the run of a packet that has ended. A `dig` is the datagram to the resolver, so its answer is taken once the trip is over: if it came back replied from a resolver, the resolver answers the name from its cache or by asking, as for any lookup, and the trace gains `dns`; if it did not, the trace says `NO-RESOLVER` and is the trace of the datagram that failed, with the warning of whoever rejected it. */
 function conclude(ctx: SimContext, outcome: Outcome): Run {
   const trace = finish(ctx, outcome);
-  if (ctx.asking === undefined) return { trace, carried: { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: ctx.dnsCache } };
+  const carried: Carried = { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: ctx.dnsCache, apps: ctx.apps };
+  if (ctx.asking === undefined) return { trace, carried };
   const resolution = answerFrom(ctx.net, trace, ctx.asking, 'dig', { now: ctx.now, cache: ctx.dnsCache });
-  return { trace: { ...trace, dns: resolution.dns }, carried: { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: resolution.answered ? resolution.cache : ctx.dnsCache } };
+  return { trace: { ...trace, dns: resolution.dns }, carried: { ...carried, dnsCache: resolution.answered ? resolution.cache : ctx.dnsCache } };
 }
 
 /** Runs the packet through every stage, starting from what the sends before it carried and measured against second `at` of the game clock, and returns its trace with what it carries on. The same network, packet, carried state and second always give the same result, and the state it receives is never changed. */
 export function run(net: Network, packet: PacketSpec, carried: Carried, at: number): Run {
-  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nextSourcePort: carried.nextSourcePort, nat: carried.nat, dnsCache: carried.dnsCache, now: at, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet) };
+  const ctx: SimContext = { net, packet, source: resolveSource(net, packet.from), nextSourcePort: carried.nextSourcePort, nat: carried.nat, dnsCache: carried.dnsCache, apps: carried.apps, now: at, hops: [], legsMs: [], steps: [], tcpdump: [], exchange: openingOf(packet), ...(packet.message && { app: { request: requestOf(packet.message) } }) };
   for (const stage of PIPELINE) {
     const result = stage(ctx);
     if (result.done) return conclude(ctx, result.outcome);

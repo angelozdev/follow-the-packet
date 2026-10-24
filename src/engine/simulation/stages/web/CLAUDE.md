@@ -1,0 +1,8 @@
+# engine/simulation/stages/web
+
+The `app` stage (`app.ts`): the web service at the end of the connection. It runs after `host` and before `reply`, and only for a packet that carries a message; a packet with no message meets no `app` stage, writes no step and has no `Trace.app`.
+
+- `run` gives a packet with a message `ctx.app = { request }` before any stage runs, built from the message alone, so `Trace.app.request` exists for every packet that carries one, whether or not the connection opened. `Trace.app.response` exists only when a web service answered. A packet that was refused, dropped by a firewall, unresolved or lost has a request and no response, and the `app` stage never ran.
+- The stage finds the TCP service that accepted the packet (`acceptingService`). A service with no `web` accepts the connection and says nothing in HTTP: the stage adds the SYN-ACK and the ACK to the exchange (the connection did open) and ends the trip as `arrived-no-reply`, with no step and no response.
+- A web service chooses its site by the host of the request (`chooseSite`): the step `web-site-chosen` when a site has that name, `web-default-site` when it serves the default site (the name is in the reason, a name or an IP). The orders are read from `ctx.apps` or from the starting orders of the site, `answerRequest` answers, and a change in the orders goes back to `ctx.apps` (`Carried.apps`). The second step is `web-answered` with the status code of the response. Both steps are `at` the device or server that answered. The trip then goes on to `reply`, which writes `reply-stateful` and ends it as `replied`: the reply of an HTTP exchange is never stopped by a firewall, because the firewalls check the request only.
+- May import: other files of `src/engine/`.

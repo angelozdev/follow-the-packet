@@ -1,8 +1,9 @@
 import type { Translation } from '@/engine/nat/translation';
 import type { RouteDecision } from '@/engine/network/addressing/routing-table';
 import type { AnswerRecord, FirewallKind, IcmpType, PacketSpec, Service, SoaRecord } from '@/engine/network/types';
+import type { AppRequest, AppResponse } from '@/engine/web/messages';
 
-export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'reply';
+export type StepStage = 'address' | 'dns' | 'route' | 'nat' | 'firewall-out' | 'forward' | 'firewall-in' | 'host' | 'app' | 'reply';
 export type Verdict = 'pass' | 'drop' | 'reject' | 'info';
 export type CheckpointStage = Exclude<StepStage, 'nat'>;
 
@@ -72,6 +73,9 @@ export type Reason =
   | { code: 'host-wrong-address'; deviceId: string; port: number; ip: string }
   | { code: 'host-accepts'; deviceId: string; port: number }
   | { code: 'host-udp-closed'; deviceId: string; port: number }
+  | { code: 'web-site-chosen'; deviceId: string; name: string }
+  | { code: 'web-default-site'; deviceId: string; name: string }
+  | { code: 'web-answered'; deviceId: string; statusCode: number }
   | { code: 'reply-stateful'; deviceId: string };
 
 export const OUTCOMES = ['replied', 'timeout', 'refused', 'arrived-no-reply', 'unresolved', 'invalid-address', 'no-route', 'unreachable', 'ttl-exceeded', 'lost'] as const;
@@ -145,6 +149,12 @@ export interface Question {
   trace: Trace;
 }
 
+/** What happened to the message of a packet: the request it makes, built from the message alone whether or not the connection opened, and the response, which exists only when a web service answered it. */
+export interface AppTrace {
+  request: AppRequest;
+  response?: AppResponse;
+}
+
 export interface Trace {
   steps: Step[];
   outcome: Outcome;
@@ -160,5 +170,6 @@ export interface Trace {
   translation?: Translation;
   dns?: DnsTrace;
   question?: Question;
+  app?: AppTrace;
   rttMs?: number;
 }

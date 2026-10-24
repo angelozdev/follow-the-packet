@@ -19,7 +19,7 @@ export const networkActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('addDevice'), device: deviceSchema }),
   z.object({ type: z.literal('addRouter'), router: routerSchema }),
   z.object({ type: z.literal('setServices'), ownerId: nonEmpty, services: z.array(serviceSchema) }),
-  z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.shape }),
+  z.object({ type: z.literal('setListenAddress'), ownerId: nonEmpty, ...serviceSchema.omit({ web: true }).shape }),
   z.object({ type: z.literal('addRoute'), routerId: nonEmpty, route: routeSchema }),
   z.object({ type: z.literal('removeRoute'), routerId: nonEmpty, to: routeSchema.shape.to }),
   z.object({ type: z.literal('setForwards'), routerId: nonEmpty, forwards: z.array(forwardSchema) }),
