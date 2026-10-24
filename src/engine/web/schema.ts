@@ -19,8 +19,8 @@ export const httpMessageSchema = z.object({
 
 const orderSchema = z.object({ id: z.number().int().nonnegative(), content: z.string() });
 
-/** The orders of a site and how one reads: `template` holds the slots `{id}` and `{content}`, and `start` the orders the app begins with. */
-const orderBookSchema = z.object({ template: z.string(), start: z.array(orderSchema) });
+/** The orders of a site and how one reads: `template` holds the slots `{id}` and `{content}`, and `start` the orders the app begins with. An app that checks the id has a `badIdBody`, the body of the 400 it answers to an `id` that is not a number. */
+const orderBookSchema = z.object({ template: z.string(), start: z.array(orderSchema), badIdBody: z.string().optional() });
 
 const handlerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('fixed'), body: z.string() }),

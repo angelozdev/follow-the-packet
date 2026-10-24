@@ -44,6 +44,10 @@ describe('responseOf', () => {
     expect(responseOf(404, 'x').startLine).toBe('HTTP/1.1 404 Not Found');
   });
 
+  it('a 400 response writes its start line with the reason phrase Bad Request', () => {
+    expect(responseOf(400, 'x')).toMatchObject({ startLine: 'HTTP/1.1 400 Bad Request', statusCode: 400 });
+  });
+
   it('the response carries only Content-Type and Content-Length', () => {
     const response = responseOf(200, 'Order 7');
     expect(response).toMatchObject({ statusCode: 200, body: 'Order 7' });

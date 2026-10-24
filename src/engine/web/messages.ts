@@ -5,7 +5,7 @@ const HTTP_VERSION = 'HTTP/1.1';
 const PLAIN_TEXT = 'text/plain; charset=utf-8';
 const CONTENT_TYPE = 'Content-Type';
 
-const STATUS_PHRASE = { 200: 'OK', 404: 'Not Found' } as const;
+const STATUS_PHRASE = { 200: 'OK', 400: 'Bad Request', 404: 'Not Found' } as const;
 
 type StatusCode = keyof typeof STATUS_PHRASE;
 type HttpHeaders = Readonly<Record<string, string>>;

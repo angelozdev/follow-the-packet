@@ -29,13 +29,26 @@ export function chooseSite(web: WebService, host: string): { site: Site; named: 
   return site ? { site, named: true } : { site: web.sites.find(({ id }) => id === web.defaultSiteId)!, named: false };
 }
 
+function idParamOf(query: string | undefined): string | null {
+  return new URLSearchParams(query).get(ORDER_ID_PARAM);
+}
+
 function orderIdOf(query: string | undefined): number | undefined {
-  const id = new URLSearchParams(query).get(ORDER_ID_PARAM);
+  const id = idParamOf(query);
   return id !== null && DIGITS.test(id) ? Number(id) : undefined;
+}
+
+function misspelledIdBody(site: Site, query: string | undefined): string | undefined {
+  const id = idParamOf(query);
+  return id !== null && !DIGITS.test(id) ? site.orders?.badIdBody : undefined;
 }
 
 function missing(site: Site, orders: Orders): Answer {
   return { response: responseOf(404, site.notFoundBody), orders };
+}
+
+function rejected(body: string, orders: Orders): Answer {
+  return { response: responseOf(400, body), orders };
 }
 
 function served(site: Site, { id, content }: Order, orders: Orders): Answer {
@@ -43,21 +56,24 @@ function served(site: Site, { id, content }: Order, orders: Orders): Answer {
   return { response: responseOf(200, body), orders };
 }
 
-/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. The orders it receives are not changed. */
+/** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. A site whose order book has a `badIdBody` checks the `id` where a get or a put reads it: an `id` that is not a number answers 400 with that body, and a request with no `id` still answers 404. The orders it receives are not changed. */
 export function answerRequest(site: Site, orders: Orders, { method, path, query, body }: AppRequest): Answer {
   const page = site.pages.find((candidate) => candidate.path === path && candidate.methods.includes(method));
   if (!page) return missing(site, orders);
   const current = orders.find(({ id }) => id === orderIdOf(query));
+  const badIdBody = misspelledIdBody(site, query);
   switch (page.handler.kind) {
     case 'fixed':
       return { response: responseOf(200, page.handler.body), orders };
     case 'order-read':
+      if (badIdBody !== undefined) return rejected(badIdBody, orders);
       return current ? served(site, current, orders) : missing(site, orders);
     case 'order-create': {
       const created = { id: Math.max(0, ...orders.map(({ id }) => id)) + 1, content: body ?? '' };
       return served(site, created, [...orders, created]);
     }
     case 'order-replace': {
+      if (badIdBody !== undefined) return rejected(badIdBody, orders);
       const replaced = current && { ...current, content: body ?? '' };
       return replaced ? served(site, replaced, orders.map((order) => (order === current ? replaced : order))) : missing(site, orders);
     }

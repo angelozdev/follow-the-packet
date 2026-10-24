@@ -19,6 +19,9 @@ const ordersSite: Site = {
   ],
 };
 
+const NOT_A_NUMBER = 'The id is not a number.';
+const checkingSite: Site = { ...ordersSite, orders: { ...ORDERS!, badIdBody: NOT_A_NUMBER } };
+
 const start: Orders = ORDERS!.start;
 const ask = (method: HttpMethod, target: string, body?: string, orders: Orders = start, site: Site = ordersSite) =>
   answerRequest(site, orders, requestOf({ method, url: `http://app.example${target}`, ...(body !== undefined && { body }) }));
@@ -85,6 +88,40 @@ describe('answerRequest', () => {
 
   it('a body with a dollar sign reaches the order as it is', () => {
     expect(ask('POST', '/orders', "$& $'").response.body).toBe("Order 9: $& $'");
+  });
+});
+
+describe('an app that checks the id of an order', () => {
+  const askChecking = (method: HttpMethod, target: string, body?: string) => ask(method, target, body, start, checkingSite);
+
+  it('an app that checks the id answers 400 with its own body to an id that is not a number', () => {
+    for (const target of ['/orders?id=abc', '/orders?id=', '/orders?id=7x', '/orders?id=-1']) expect(askChecking('GET', target).response, target).toMatchObject({ statusCode: 400, body: NOT_A_NUMBER });
+  });
+
+  it('a put with an id that is not a number answers 400 in an app that checks the id', () => {
+    const refused = askChecking('PUT', '/orders?id=abc', 'item=tea');
+    expect(refused.response).toMatchObject({ statusCode: 400, body: NOT_A_NUMBER });
+    expect(refused.orders).toEqual(start);
+  });
+
+  it('an order that does not exist and a request with no id still answer 404 in an app that checks the id', () => {
+    for (const [method, target] of [['GET', '/orders?id=99'], ['GET', '/orders'], ['GET', '/orders?other=1'], ['PUT', '/orders?id=99'], ['PUT', '/orders']] as const) {
+      expect(askChecking(method, target, 'x').response, `${method} ${target}`).toMatchObject({ statusCode: 404, body: NOT_FOUND });
+    }
+  });
+
+  it('an app that does not check the id answers 404 to an id that is not a number, as before', () => {
+    for (const target of ['/orders?id=abc', '/orders?id=', '/orders?id=7x']) expect(ask('GET', target).response, target).toMatchObject({ statusCode: 404, body: NOT_FOUND });
+    expect(ask('PUT', '/orders?id=abc', 'x').response.statusCode).toBe(404);
+  });
+
+  it('a post to an id that is not a number still creates an order in an app that checks the id, since a post does not read the id', () => {
+    expect(askChecking('POST', '/orders?id=abc', 'item=coffee').response).toMatchObject({ statusCode: 200, body: 'Order 9: item=coffee' });
+  });
+
+  it('an id that is a number is read as before in an app that checks the id', () => {
+    expect(askChecking('GET', '/orders?id=7').response).toMatchObject({ statusCode: 200, body: 'Order 7: 2 coffees.' });
+    expect(askChecking('PUT', '/orders?id=7', 'item=tea').response).toMatchObject({ statusCode: 200, body: 'Order 7: item=tea' });
   });
 });
 
