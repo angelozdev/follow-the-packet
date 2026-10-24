@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { FULL_STARS, submitAndFinish } from './closing';
 import { collectErrors } from './console-errors';
-import { CHAPTER_2_DONE, startWithProgress } from './saved-progress';
+import { CHAPTER_3_DONE, startWithProgress } from './saved-progress';
 
 const SG_SERVIDOR2 = 'Security Group servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
@@ -19,7 +19,7 @@ async function placeRule(card: Locator, source: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await startWithProgress(page, CHAPTER_2_DONE);
+  await startWithProgress(page, CHAPTER_3_DONE);
 });
 
 async function playBoth(page: Page) {

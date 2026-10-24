@@ -182,6 +182,15 @@ describe('separateGlyphs', () => {
     expect(crossing[1].point[0]).toBeCloseTo(212, 9);
     expect(separateGlyphs([])).toEqual([]);
   });
+
+  it('puts every glyph on a point of its own even when a short path has no more room at 12 px', () => {
+    const short: Point[] = [[0, 100], [62, 100]];
+    const crowd = separateGlyphs(Array.from({ length: 12 }, (_, index) => ({ id: `glyph-${index}`, path: short, at: 31 })));
+    const xs = crowd.map(({ point }) => point[0]);
+    expect(xs.slice(0, 4).map((x) => Math.round(x))).toEqual([31, 43, 55, 62]);
+    expect(new Set(xs.map((x) => x.toFixed(6))).size).toBe(xs.length);
+    expect(xs.every((x) => x >= 0 && x <= 62)).toBe(true);
+  });
 });
 
 describe('the text of the label of a packet along its path', () => {

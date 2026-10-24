@@ -8,6 +8,7 @@ import type { Fan } from './stamp-fan';
 export const TAG_REACH_UP = 66;
 export const TAG_REACH_DOWN = 44;
 export const GLYPH_STEP = 12;
+const FINE_STEP = 1;
 
 const SAME_POINT = 1e-6;
 const MICRO = 1e6;
@@ -115,9 +116,11 @@ function freePoint({ path, at }: Glyph, taken: readonly Point[]): Point {
   const lengths = lengthOf(path);
   const length = lengths.at(-1) ?? 0;
   const direction = at + GLYPH_STEP <= length ? 1 : -1;
-  for (let step = 0; step * GLYPH_STEP <= length; step++) {
-    const point = positionAt(path, lengths, at + direction * step * GLYPH_STEP);
-    if (!taken.some((other) => isSame(point, other))) return point;
+  for (const pitch of [GLYPH_STEP, FINE_STEP]) {
+    for (let step = 0; step * pitch <= length; step++) {
+      const point = positionAt(path, lengths, at + direction * step * pitch);
+      if (!taken.some((other) => isSame(point, other))) return point;
+    }
   }
   return positionAt(path, lengths, at);
 }
@@ -137,7 +140,7 @@ export function placeTags(tags: readonly PacketTag[], obstacles: readonly Box[],
   return placed;
 }
 
-/** Takes the glyphs (the shapes of packets) with the path each follows and the distance along it where it stands; returns where each stands, in order: a glyph that falls on the point of one placed before it is moved 12 px further along its own path (back along it when the end of the path is nearer than 12 px), and again until it stands alone. */
+/** Takes the glyphs (the shapes of packets) with the path each follows and the distance along it where it stands; returns where each stands, in order: a glyph that falls on the point of one placed before it is moved 12 px further along its own path (back along it when the end of the path is nearer than 12 px), and again until it stands alone; when the path has no free point at that pitch (many packets of one device to itself, on a path of 62 px) it moves in steps of 1 px instead. */
 export function separateGlyphs(glyphs: readonly Glyph[]): PlacedGlyph[] {
   const placed: PlacedGlyph[] = [];
   for (const glyph of glyphs) placed.push({ id: glyph.id, point: freePoint(glyph, placed.map(({ point }) => point)) });

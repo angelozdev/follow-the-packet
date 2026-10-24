@@ -11,10 +11,11 @@ const SOON_COUNT = CHAPTERS.length - new Set(INCIDENTS.map((i) => i.chapter)).si
 const ROADMAP_TITLE = 'Sigue el paquete';
 const CHAPTER_1 = INCIDENTS.filter(({ chapter }) => chapter === 1);
 const CHAPTER_2 = INCIDENTS.filter(({ chapter }) => chapter === 2);
+const CHAPTER_3 = INCIDENTS.filter(({ chapter }) => chapter === 3);
 const [OFFICE, SECOND_OF_CHAPTER_1] = CHAPTER_1;
 const LAST_OF_CHAPTER_1 = CHAPTER_1[CHAPTER_1.length - 1];
 const [ONE_MACHINE] = CHAPTER_2;
-const LAST_BUILT_OF_CHAPTER_2 = CHAPTER_2[CHAPTER_2.length - 1];
+const LAST_BUILT_OF_CHAPTER_3 = CHAPTER_3[CHAPTER_3.length - 1];
 const FIRST_PING = { id: '04-01', title: 'El primer ping' };
 const OPENING_RULE = { id: '04-02', title: 'Abre lo justo' };
 
@@ -118,7 +119,7 @@ describe('the roadmap opens the incidents as the progress saved in the browser s
     expect(levelItem(SECOND_OF_CHAPTER_1.id)).toHaveTextContent(ROADMAP_TEXT.locked);
     expect(levelItem(FIRST_PING.id)).toHaveTextContent(ROADMAP_TEXT.locked);
     fresh.unmount();
-    openWith({ [LAST_BUILT_OF_CHAPTER_2.id]: 1 });
+    openWith({ [LAST_BUILT_OF_CHAPTER_3.id]: 1 });
     expectFirstPingOpen();
     expect(consoleErrors).not.toHaveBeenCalled();
   });
@@ -130,7 +131,7 @@ describe('the roadmap opens the incidents as the progress saved in the browser s
     const upToFourteen = openWith({ [LAST_OF_CHAPTER_1.id]: 1 });
     expect(levelItem(FIRST_PING.id)).toHaveTextContent(ROADMAP_TEXT.locked);
     upToFourteen.unmount();
-    openWith({ [LAST_BUILT_OF_CHAPTER_2.id]: 1 });
+    openWith({ [LAST_BUILT_OF_CHAPTER_3.id]: 1 });
     expectFirstPingOpen();
     expect(consoleErrors).not.toHaveBeenCalled();
   });

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { collectErrors } from './console-errors';
 
 const SOON = 'Próximamente';
-const SOON_CHAPTER_COUNT = 30;
+const SOON_CHAPTER_COUNT = 29;
 const TIER_HEADINGS = ['Nivel 0 · Bases', 'Nivel 1 · Fundamentos', 'Nivel 2 · Asociado', 'Nivel 3 · Profesional', 'Nivel 4 · Especialista'];
 
 test('the roadmap loads every chapter, grouped by level, without console errors', async ({ page }) => {

@@ -104,6 +104,17 @@ describe('progress along the chapters of the game', () => {
   it('in the registered course 04-01 opens once 02-14 has a star, and not with 02-13 or 01-14', () => {
     const course = INCIDENTS.map(({ id, chapter, order, title, role }): LevelEntry => ({ id, chapter, order, title, role }));
     const first = course.find(({ id }) => id === FIRST_OF_CHAPTER_4.id);
+    const lastOfChapter3 = first && course.at(course.indexOf(first) - 1);
+    expect(lastOfChapter3?.chapter).toBe(3);
+    const without: Progress[] = [{ '01-14': 3 }, { '02-13': 3 }, { [LAST_OF_CHAPTER_2.id]: 3 }, {}];
+    expect(first && without.map((progress) => isUnlocked(first, progress, course))).toEqual([false, false, false, false]);
+    expect(first && lastOfChapter3 && isUnlocked(first, { [lastOfChapter3.id]: 1 }, course)).toBe(true);
+  });
+
+  it('the first incident of chapter 3 opens with the last incident of chapter 2 in game order', () => {
+    const course = INCIDENTS.map(({ id, chapter, order, title, role }): LevelEntry => ({ id, chapter, order, title, role }));
+    const first = course.find(({ chapter }) => chapter === 3);
+    expect(first?.id).toBe('03-01');
     expect(first && course.at(course.indexOf(first) - 1)?.id).toBe(LAST_OF_CHAPTER_2.id);
     const without: Progress[] = [{ '01-14': 3 }, { '02-13': 3 }, {}];
     expect(first && without.map((progress) => isUnlocked(first, progress, course))).toEqual([false, false, false]);

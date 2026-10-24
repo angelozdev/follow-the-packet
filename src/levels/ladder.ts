@@ -30,19 +30,19 @@ export function configurableParts(known: ReadonlySet<TermId>): ConfigurableParts
   return { inboundRules: opened(known, RULES_TERM.inbound), outboundRules: opened(known, RULES_TERM.outbound), hostSettings: known.has('icmp-echo-ignore-all') };
 }
 
-function sendChipTexts({ message, to }: SendChips): TermText[] {
-  return [...message.map((chip) => chip.label), ...to.flatMap((chip) => urlOfChip(chip) ?? [])];
+function messageLabels({ message }: SendChips): TermText[] {
+  return message.map((chip) => chip.label);
 }
 
-/** Returns the labels of the chips the incident writes: Type, Source and, when it offers outbound rules, Destination for a filter; for a send the messages, the url of each address chip that is a url and the Type and Source of its rules card, and for every case of a diagnose its messages and urls (an origin is named after the world and an address that is no url is only an address); none for an identify (its chips are values, such as an IP, and not terms). */
+/** Returns the labels of the chips the incident writes: Type, Source and, when it offers outbound rules, Destination for a filter; for a send the messages and the Type and Source of its rules card, and for every case of a diagnose its messages (an origin is named after the world and an address is only an address, a url included: it is a text the player reads but names no term); none for an identify (its chips are values, such as an IP, and not terms). */
 export function chipLabels(incident: Incident): TermText[] {
   switch (incident.mechanic) {
     case 'filter':
       return [...incident.chips.what, ...incident.chips.from, ...(incident.chips.to ?? [])].map((chip) => chip.label);
     case 'send':
-      return [...sendChipTexts(incident.send), ...[...(incident.send.rules?.what ?? []), ...(incident.send.rules?.from ?? [])].map((chip) => chip.label)];
+      return [...messageLabels(incident.send), ...[...(incident.send.rules?.what ?? []), ...(incident.send.rules?.from ?? [])].map((chip) => chip.label)];
     case 'diagnose':
-      return incident.diagnose.cases.flatMap((spec) => sendChipTexts(spec.send));
+      return incident.diagnose.cases.flatMap((spec) => messageLabels(spec.send));
     case 'identify':
       return [];
   }
@@ -90,12 +90,19 @@ function followUpTexts(incident: Incident): TermText[] {
   return [...incident.hints, ...(incident.question ? [incident.question] : []), ...incident.explanation.flatMap((option) => [option.text, option.feedback])];
 }
 
-/** Returns every text of the incident the player reads: report, tasks, chips, the texts of the cards of an identify incident and of the settings, tables and clock of a send incident, hints, the question, the explanation and the takeaway; for a diagnose, the texts of each case instead of the tasks, the hints, the question and the explanation. */
+/** Returns the url of each address chip of a send, and of every case of a diagnose, that is a url: a text the player reads, whole or built from its parts. An address that is no url is only an address. */
+function urlTexts(incident: Incident): TermText[] {
+  const owners = incident.mechanic === 'send' ? [incident.send] : incident.mechanic === 'diagnose' ? incident.diagnose.cases.map((spec) => spec.send) : [];
+  return owners.flatMap(({ to }) => to.flatMap((chip) => urlOfChip(chip) ?? []));
+}
+
+/** Returns every text of the incident the player reads: report, tasks, chips, the urls of the address chips, the texts of the cards of an identify incident and of the settings, tables and clock of a send incident, hints, the question, the explanation and the takeaway; for a diagnose, the texts of each case instead of the tasks, the hints, the question and the explanation. */
 export function incidentTexts(incident: Incident): TermText[] {
   return [
     incident.report,
     ...(isGuided(incident) ? incident.tasks.map((task) => task.text) : []),
     ...chipLabels(incident),
+    ...urlTexts(incident),
     ...cardTexts(incident),
     ...settingTexts(incident),
     ...editorTexts(incident),

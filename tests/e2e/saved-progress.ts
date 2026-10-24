@@ -8,6 +8,8 @@ const INCIDENTS_PER_CHAPTER = 14;
 const CHAPTER_3_FOLDER = fileURLToPath(new URL('../../src/levels/03-the-web-inside', import.meta.url));
 const INCIDENT_FILE = /^(\d{2})-.+(?<!\.test)\.ts$/;
 
+export const FIRST_OF_CHAPTER_3 = '03-01';
+export const FIRST_OF_CHAPTER_3_TITLE = 'Una dirección para cada cosa';
 export const FIRST_OF_CHAPTER_4 = '04-01';
 export const FIRST_OF_CHAPTER_4_TITLE = 'El primer ping';
 
@@ -28,8 +30,13 @@ function incidentIdsOfChapter3(): string[] {
   return orders.sort().map((order) => `03-${order}`);
 }
 
-/** Chapter 2 and chapter 3 done, every incident of chapter 1 and 2 and every incident registered in the folder of chapter 3 with three stars: the progress that opens 04-01 once chapter 3 is registered. */
-export const CHAPTER_3_DONE: Record<string, number> = { ...CHAPTER_2_DONE, ...Object.fromEntries(incidentIdsOfChapter3().map((id) => [id, MAX_STARS])) };
+const CHAPTER_3_IDS = incidentIdsOfChapter3();
+
+/** The last incident registered in the folder of chapter 3, the one 04-01 waits for. */
+export const LAST_OF_CHAPTER_3: string = CHAPTER_3_IDS[CHAPTER_3_IDS.length - 1];
+
+/** Chapter 1, chapter 2 and every incident registered in the folder of chapter 3 with three stars: the progress that opens 04-01 once chapter 3 is registered. */
+export const CHAPTER_3_DONE: Record<string, number> = { ...CHAPTER_2_DONE, ...Object.fromEntries(CHAPTER_3_IDS.map((id) => [id, MAX_STARS])) };
 
 /** Opens every page of the test with this saved progress, unless the game already saved its own, so a reload keeps what the test earned. */
 export async function startWithProgress(page: Page, progress: Record<string, number>): Promise<void> {
