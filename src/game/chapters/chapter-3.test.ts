@@ -234,6 +234,10 @@ describe('03-01, an address for everything', () => {
     expect(changedNames(worldBeforeChanges(INCIDENTS, ADDRESS_FOR_EVERYTHING), startWorld(INCIDENTS, ADDRESS_FOR_EVERYTHING))).toEqual([DEVICE.lucia.name]);
   });
 
+  it('03-01: the report sends the player to the box for the parts of the url and to the output of curl for what the app answered', () => {
+    expect(plain(incident.report)).toContain('En la caja lee qué dice cada parte de la URL, y en la salida de curl, qué contestó la app.');
+  });
+
   it('03-01: draws laptop-lucia and no other piece', () => {
     expectOnlyLuciaDrawn(start);
   });
@@ -264,7 +268,7 @@ describe('03-01, an address for everything', () => {
   it('03-01: the takeaway says localhost is 127.0.0.1, that the game has no IPv6 and that a real curl may try ::1 first', () => {
     const takeaway = plain(incident.takeaway);
     expect(takeaway).toContain(`localhost es ${IP.loopback}, la propia ${DEVICE.lucia.name}.`);
-    expect(takeaway).toContain('El juego no modela IPv6, y un curl real puede probar primero ::1.');
+    expect(takeaway).toContain('El juego no modela IPv6, la versión 6 de las direcciones IP: un curl real puede probar primero ::1, que es el loopback de IPv6.');
   });
 
   it('03-01: the takeaway says the http message is no packet but travels in the connection that the greeting opened, and no text calls it a packet', () => {
@@ -690,6 +694,11 @@ describe('03-04, one server and many sites', () => {
     expect(takeaway).toContain('Un servidor web con varios sitios usa esa cabecera para elegir uno');
     expect(takeaway).toContain(`${SERVER.fresh.name} da su sitio por defecto, la tienda.`);
     expect(takeaway).toContain('En HTTP/1.1 la cabecera Host es obligatoria.');
+  });
+
+  it('03-04: the report says what curl -i shows before it asks for it', () => {
+    const report = plain(incident.report);
+    expect(report).toContain('Con -i, curl muestra la respuesta entera, no solo su cuerpo. Pide con curl -i y con el navegador');
   });
 
   it('03-04: draws tu-laptop, servidor-dns, router-oficina and servidor-nuevo', () => {
