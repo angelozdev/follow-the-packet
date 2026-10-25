@@ -37,8 +37,19 @@
 .card__body > h2 { margin-bottom: var(--space-sm); font: var(--weight-display) var(--text-lg)/1.3 var(--font-display); }
 h3, .caption { font: var(--weight-bold) var(--text-xs)/1.2 var(--font-body); text-transform: uppercase; letter-spacing: var(--tracking-caps); }
 .caption--soft { color: var(--color-ink-soft); }
-.tabs { display: grid; gap: var(--space-xs); }
-.tabs__list { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); }
+@property --tabs-fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --tabs-fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@keyframes tabs-fade {
+  0% { --tabs-fade-start: 0px; --tabs-fade-end: var(--space-xl); }
+  5% { --tabs-fade-start: var(--space-xl); }
+  95% { --tabs-fade-end: var(--space-xl); }
+  100% { --tabs-fade-start: var(--space-xl); --tabs-fade-end: 0px; }
+}
+.tabs { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); }
+.tabs__list { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr); gap: var(--space-xs); overflow-x: auto; padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); scroll-padding-inline: var(--space-xl); }
+@supports (animation-timeline: scroll()) {
+  .tabs__list { mask-image: linear-gradient(to right, transparent, #000 var(--tabs-fade-start), #000 calc(100% - var(--tabs-fade-end)), transparent); animation: tabs-fade linear; animation-timeline: scroll(self inline); }
+}
 .tabs__tab { font: var(--weight-bold) var(--text-md) var(--font-body); color: var(--color-ink); background: var(--color-page); border: var(--stroke-bold) solid var(--color-ink); border-radius: var(--radius-tile); padding: var(--space-xs) var(--space-sm); text-align: center; cursor: pointer; }
 .tabs__tab[aria-selected='true'] { background: var(--color-ink); color: var(--color-on-fill); }
 .tabs__panel { display: grid; gap: var(--space-xs); }

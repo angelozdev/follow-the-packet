@@ -41,6 +41,7 @@ export interface Point {
 interface WheelOptions {
   within?: Locator;
   wheelPx?: number;
+  sideways?: boolean;
 }
 
 interface StillOptions {
@@ -233,8 +234,8 @@ function isInside(target: Element, scroller: Element): boolean {
   return endsInside && (box.top >= frame.top - SLACK_PX || box.height > frame.height);
 }
 
-/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it (an element taller than the scroller, such as the last field of an inspection box that the marks of the map cap, never can: its end in view is what counts); and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. */
-export async function reachWithWheel(target: Locator, { within, wheelPx = WHEEL_PX }: WheelOptions = {}): Promise<boolean> {
+/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it (an element taller than the scroller, such as the last field of an inspection box that the marks of the map cap, never can: its end in view is what counts); and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. With `sideways` the wheel turns along the scroller's width, for a strip such as a bar of tabs. */
+export async function reachWithWheel(target: Locator, { within, wheelPx = WHEEL_PX, sideways = false }: WheelOptions = {}): Promise<boolean> {
   const scroller = within ?? page.elementLocator(document.querySelector(SIDE_PANEL) as Element);
   const readable = () => {
     const element = target.query();
@@ -242,7 +243,7 @@ export async function reachWithWheel(target: Locator, { within, wheelPx = WHEEL_
   };
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     if (readable()) return true;
-    await userEvent.wheel(scroller, { delta: { y: wheelPx } });
+    await userEvent.wheel(scroller, { delta: sideways ? { x: wheelPx } : { y: wheelPx } });
     await nextFrame();
     await nextFrame();
   }
