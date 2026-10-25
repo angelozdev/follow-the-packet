@@ -20,12 +20,16 @@ afterEach(async () => {
 
 const press = (opened: Locator, name: string) => userEvent.click(opened.getByRole('button', { name, exact: true }));
 
-async function signInAndOpenAt360(): Promise<{ browser: Locator; body: HTMLElement }> {
+async function openTheBrowserTabAt360(): Promise<Locator> {
   await page.viewport(PHONE.width, PHONE.height);
   await showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId="03-06" nextId={null} onFinish={() => undefined} />);
   await openTerminal();
   await userEvent.click(page.getByRole('tab', { name: 'Navegador', exact: true }));
-  const browser = card(BROWSER_CARD);
+  return card(BROWSER_CARD);
+}
+
+async function signInAndOpenAt360(): Promise<{ browser: Locator; body: HTMLElement }> {
+  const browser = await openTheBrowserTabAt360();
   for (const name of [ADMIN_URL, 'Lucía', BROWSER_TEXT.signIn, BROWSER_TEXT.open]) await press(browser, name);
   await expect.element(browser.getByRole('group', { name: BROWSER_TEXT.memory.title })).toBeVisible();
   const body = browser.element().querySelector('.chip-card__body') as HTMLElement;
@@ -56,11 +60,8 @@ describe('the tab of the browser', () => {
   });
 
   it('at 360 px a tab cut by the edge of the bar is brought into view by a click that does not focus it, clear of the fade', { timeout: SLOW_TEST_MS }, async () => {
-    await page.viewport(PHONE.width, PHONE.height);
-    await showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId="03-06" nextId={null} onFinish={() => undefined} />);
-    await openTerminal();
-    await userEvent.click(page.getByRole('tab', { name: 'Navegador', exact: true }));
-    const strip = card(BROWSER_CARD).element().querySelector('[role="tablist"]') as HTMLElement;
+    const browser = await openTheBrowserTabAt360();
+    const strip = browser.element().querySelector('[role="tablist"]') as HTMLElement;
     const bar = strip.getBoundingClientRect();
     const cut = [...strip.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.getBoundingClientRect().left < bar.right && tab.getBoundingClientRect().right > bar.right)!;
     expect(cut, 'a tab is cut by the right edge of the bar').toBeDefined();
