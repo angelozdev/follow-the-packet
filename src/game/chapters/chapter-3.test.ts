@@ -1069,6 +1069,12 @@ describe('03-06, who you are and what you can', () => {
     expect(['Con -b sesion=s1 da 200 si Lucía inició sesión primero.']).toSatisfy((texts: string[]) => texts.every((text) => promisesA200(text).length === 0));
   });
 
+  it('03-06: the report says what a credential is, what -u does and why the cookie is named sesion=s1', () => {
+    const report = plain(incident.report);
+    expect(report).toContain('sin credencial (el usuario y la contraseña) y con -u, que la manda');
+    expect(report).toContain('la app anota quién entró en una sesión y contesta con una cookie que la nombra (la primera es sesion=s1)');
+  });
+
   it('03-06: no text registers or uses the word stateless', () => {
     const saysIt = (text: string) => /stateless|sin estado/i.test(text);
     expect(Object.values(TERMS).flatMap(({ name, definition }) => [name, definition]).filter(saysIt)).toEqual([]);
