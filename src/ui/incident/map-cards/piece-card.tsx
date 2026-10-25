@@ -1,7 +1,7 @@
 import { useState, type Dispatch } from 'react';
 import { PIECE_TEXT } from '@/copy';
 import { Tabs } from '@/design';
-import { browserView, terminalLine, toolOutputs, tracerouteLines, type PieceCard as Piece, type PieceTab, type PieceTabId, type SendPicks, type Session, type SessionAction } from '@/game';
+import { browserView, isShellCommand, terminalLine, toolOutputs, tracerouteLines, type PieceCard as Piece, type PieceTab, type PieceTabId, type SendPicks, type Session, type SessionAction } from '@/game';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
 import { FramedCard, type CardFrame } from './chip-card';
@@ -28,6 +28,7 @@ export function pieceHandlers(session: Session, dispatch: Dispatch<SessionAction
   return {
     terminal: {
       describe: (picks) => terminalLine(session, picks),
+      shell: (picks) => isShellCommand(session, picks),
       route: (picks) => tracerouteLines(session, picks),
       printed: (picks) => toolOutputs(session, picks),
       onPickOrigin,

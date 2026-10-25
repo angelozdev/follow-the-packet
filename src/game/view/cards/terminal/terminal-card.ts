@@ -69,6 +69,14 @@ function lineKindOf(message: MessageChip): NonNullable<MessageChip['command']> |
   return packetMessage({ protocol: 'icmp', icmpType: message.icmpType }) === 'echo-request' ? 'ping' : 'handmade';
 }
 
+const HAND_MADE_KINDS: ReadonlySet<ReturnType<typeof lineKindOf>> = new Set(['packet', 'handmade']);
+
+/** Returns whether the line of the picks is a command a shell would run (`ping`, `traceroute`, `nc`, `dig`, `curl`), and not a packet the player makes by hand, which no shell writes («paquete de …», «paquete armado a mano: …»); false until a message of the incident is picked. The card draws the prompt of a shell only before the first. */
+export function isShellCommand(session: Session, { message }: Partial<SendPicks>): boolean {
+  const picked = sendingOf(session)?.send.message.find((chip) => chip.id === message);
+  return picked !== undefined && !HAND_MADE_KINDS.has(lineKindOf(picked));
+}
+
 /** Returns the line the terminal shows for the chips picked, in Linux syntax: `ping <address>` with `-t <ttl>` when the message sets a TTL (the iputils option), `traceroute -I <address>` (`-I` makes it send ICMP Echo, as the engine does), and for a packet "paquete de <origin> a <address>", which names no command and so needs the origin picked too. A message with no command keeps the first design: an Echo Request is the ping command and any other message is a packet made by hand. An `nc` is `nc -vz -w 3 <address> <port>` (`-v` makes it print what happened, `-z` that it only connects and `-w 3` that it waits three seconds), and a `dig` is `dig <name>` with no server, so it asks the resolver of the network settings of the device. A `curl` is `curl` with its options (`-i`, `-X PUT`, `-d <body>`, `--connect-timeout <seconds>`, in that order) and the whole url of the address chip; the browser has no line, because it is not a command, and a `curl` to a chip that is no url has none either. Null until the address and the message (and, for a packet, the origin) are picked. */
 export function terminalLine(session: Session, { from, to, message }: Partial<SendPicks>): TermText | null {
   const offers = sendingOf(session);

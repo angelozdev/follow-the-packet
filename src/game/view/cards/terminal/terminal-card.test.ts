@@ -3,7 +3,7 @@ import { INCIDENTS, type MessageChip, type SendIncident } from '@/levels';
 import { OFFICE_FLOORS, diagnoseIncident, gatewayIncident, namesSendIncident, sendIncident, webSendIncident } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
 import { PIECE_ID } from '@/game/view/piece-id';
-import { terminalCard, terminalLine } from './terminal-card';
+import { isShellCommand, terminalCard, terminalLine } from './terminal-card';
 
 const SENDING = sendIncident();
 const session = startSession([SENDING], SENDING.id);
@@ -139,6 +139,34 @@ describe('terminalLine of an nc and a dig', () => {
   it('is null until an address is picked, as for any other message', () => {
     expect(terminalLine(names, { message: 'nc' })).toBeNull();
     expect(terminalLine(names, { message: 'dig' })).toBeNull();
+  });
+});
+
+describe('isShellCommand', () => {
+  const PACKET: MessageChip = { id: 'raw', label: '{{echo-request}}', icmpType: 8, command: 'packet' };
+  const TRACEROUTE: MessageChip = { id: 'trace', label: 'traceroute', icmpType: 8, command: 'traceroute' };
+  const commanded = withTrays({ message: [...SENDING.send.message, PACKET, TRACEROUTE] });
+  const NAMES = namesSendIncident();
+  const names = startSession([NAMES], NAMES.id);
+  const WEB = webSendIncident();
+  const web = startSession([WEB], WEB.id);
+
+  it('a ping, a traceroute, an nc, a dig and a curl are commands a shell runs', () => {
+    expect(isShellCommand(session, { message: 'ping' })).toBe(true);
+    expect(isShellCommand(commanded, { message: 'trace' })).toBe(true);
+    expect(isShellCommand(names, { message: 'nc' })).toBe(true);
+    expect(isShellCommand(names, { message: 'dig' })).toBe(true);
+    expect(isShellCommand(web, { message: 'curl' })).toBe(true);
+  });
+
+  it('a packet made by hand, with no command or as a packet message, is not one', () => {
+    expect(isShellCommand(session, { message: 'reply' })).toBe(false);
+    expect(isShellCommand(commanded, { message: 'raw' })).toBe(false);
+  });
+
+  it('is false until a message is picked, and for a message the incident does not offer', () => {
+    expect(isShellCommand(session, {})).toBe(false);
+    expect(isShellCommand(session, { message: 'ghost' })).toBe(false);
   });
 });
 

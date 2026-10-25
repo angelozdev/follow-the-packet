@@ -9,9 +9,10 @@ import { UrlStripTray } from '@/ui/incident/map-cards/web/url-strip';
 import { CommandLine } from './command-line';
 import { OutputCard, type Printed } from './output-card';
 
-/** What the terminal asks of its screen: the line the picks make, what a traceroute, an `nc`, a `dig` or a `curl` sent with them printed (one block, or a block for each send of a `curl`), moving the card to another origin and sending. */
+/** What the terminal asks of its screen: the line the picks make, whether that line is a command a shell runs and so wears the `$ ` prompt (a screen that does not say it gets the prompt), what a traceroute, an `nc`, a `dig` or a `curl` sent with them printed (one block, or a block for each send of a `curl`), moving the card to another origin and sending. */
 export interface TerminalHandlers {
   describe: (picks: Partial<SendPicks>) => TermText | null;
+  shell?: (picks: Partial<SendPicks>) => boolean;
   route: (picks: Partial<SendPicks>) => TracerouteView | null;
   printed?: (picks: Partial<SendPicks>) => ToolOutput | ToolOutput[] | null;
   onPickOrigin: (fromId: string) => void;
@@ -35,12 +36,17 @@ export function useTerminalDraft(card: Terminal | null): TerminalDraft {
   return { picks, parts, unfolded, setPicks, setParts, setUnfolded };
 }
 
+function panelOf(line: TermText | null, prompted: boolean): string {
+  if (!line) return 'slot';
+  return prompted ? 'command' : 'command command--no-prompt';
+}
+
 function printedBy(route: TracerouteView | null, tools: ToolOutput | ToolOutput[] | null): Printed[] {
   return route ? [{ kind: 'route', route }] : [tools ?? []].flat().map((tool) => ({ kind: 'tool', tool }));
 }
 
 /** Returns what the terminal of an origin puts in its card: a chip from each tray it shows, the line those chips make (the real command, or a packet made by hand), "Enviar" and, once a traceroute, an `nc`, a `dig` or a `curl` was sent with those chips, what it printed. Picking another origin moves the card beside it; the other picks stay. The draft is the caller's: whether the output of a `dig` is unfolded goes back to folded when another chip is picked. */
-export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, route, printed, onPickOrigin, onSend }: TerminalHandlers): CardFrame {
+export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, shell, route, printed, onPickOrigin, onSend }: TerminalHandlers): CardFrame {
   const parts = card.strip ? pickedParts(card.strip, draft.parts) : {};
   const address = card.strip && stripAddress(card.strip, parts);
   const chosen: Partial<SendPicks> = { ...card.fixed, ...draft.picks, ...(address && { to: address }), from: card.fromId };
@@ -73,7 +79,7 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
     ),
     body: (
       <>
-        <p className={line ? 'command' : 'slot'} aria-live="polite">
+        <p className={panelOf(line, shell?.(chosen) ?? true)} aria-live="polite">
           {line ? <CommandLine line={line} /> : <span className="slot__empty">{TERMINAL_TEXT.incomplete}</span>}
         </p>
         {outputs.map((printedOutput, index) => (
