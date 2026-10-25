@@ -905,6 +905,13 @@ describe('03-05, how did it go', () => {
     expect(plain(options[2].feedback)).toContain('el 2 dice que la petición se cumplió y el 4, que la petición, tal como llegó, no se puede cumplir');
   });
 
+  it('03-05: the feedback of the option that says the server failed gives the cause of the 404, not the one of the 400, and says the other class comes later in the game', () => {
+    const feedback = plain((isGuided(incident) ? incident.explanation : [])[0].feedback);
+    expect(feedback).toContain('no encontró nada en esa URL');
+    expect(feedback).not.toContain('comprobó el id');
+    expect(feedback).toContain('que verás más adelante');
+  });
+
   it('03-05: introduces status code, 200 OK, 4xx error, 404 Not Found and 400 Bad Request, and uses no later term', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['status-code', 'status-200', 'client-error', 'status-404', 'status-400']));
     expectOnlyTermsItKnows(incident);

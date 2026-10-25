@@ -28,7 +28,7 @@ export default defineIncident({
   explanation: [
     {
       text: 'Que el servidor falló mientras intentaba cumplir la petición.',
-      feedback: `El 4 no dice que el servidor falló. ${NAME.lucia} no falló: comprobó el id y contestó que no podía cumplir la petición tal como llegó. Que el servidor falló lo dice otra clase de códigos, que llega después.`,
+      feedback: `El 4 no dice que el servidor falló. ${NAME.lucia} no falló: recibió la petición, no encontró nada en esa URL y contestó que no podía cumplirla tal como llegó. Que el servidor falló lo dice otra clase de códigos, que verás más adelante.`,
       correct: false,
     },
     {
