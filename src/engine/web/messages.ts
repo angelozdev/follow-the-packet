@@ -52,7 +52,7 @@ export function requestOf({ method, url, headers = {}, body }: HttpMessage): App
   };
 }
 
-/** Builds a response with only the headers the game teaches: Content-Type and Content-Length, and after them the ones the app adds (the WWW-Authenticate of a 401). */
+/** Builds a response with only the headers the game teaches: Content-Type and Content-Length, and after them the ones the app adds (the WWW-Authenticate of a 401, the Set-Cookie of a login). */
 export function responseOf(statusCode: StatusCode, body: string, headers: HttpHeaders = {}): AppResponse {
   return {
     startLine: `${HTTP_VERSION} ${statusCode} ${STATUS_PHRASE[statusCode]}`,
