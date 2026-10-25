@@ -985,7 +985,7 @@ describe('03-06, who you are and what you can', () => {
       `${DEVICE.lucia.name} no sabe quién pide /admin: la petición no trae una credencial válida, y sin ella no puede hacer la autenticación.`,
       `${DEVICE.lucia.name} contesta con una respuesta con el código de estado 401 Unauthorized.`,
     ]);
-    expect(appSteps(asking(start, asMarta))[1]).toBe(`${DEVICE.lucia.name} sabe quién pide /admin: es marta. Pero la autorización de /admin no deja entrar a marta: no tiene permiso.`);
+    expect(appSteps(asking(start, asMarta))[1]).toBe(`${DEVICE.lucia.name} sabe quién pide /admin: es marta. Pero la autorización decide que marta no tiene permiso para entrar a /admin.`);
     expect(appSteps(asking(start, asLucia))).toHaveLength(2);
   });
 

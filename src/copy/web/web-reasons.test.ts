@@ -47,9 +47,9 @@ describe('the reasons of a web service', () => {
 
   it('the reason of the 401 speaks of who asks and the one of the 403 of what is allowed', () => {
     expect(describeWebReason(needsLogin, NET, NOTHING_KNOWN)).toBe('[[servidor-internet]] no sabe quién pide /admin: la petición no trae una credencial válida, y sin ella no puede hacer la autenticación.');
-    expect(describeWebReason(forbidden, NET, NOTHING_KNOWN)).toBe('[[servidor-internet]] sabe quién pide /admin: es marta. Pero la autorización de /admin no deja entrar a marta: no tiene permiso.');
+    expect(describeWebReason(forbidden, NET, NOTHING_KNOWN)).toBe('[[servidor-internet]] sabe quién pide /admin: es marta. Pero la autorización decide que marta no tiene permiso para entrar a /admin.');
     expect(describeWebReason(needsLogin, NET, WITH_AUTH)).toContain('la {{authentication|autenticación}}');
-    expect(describeWebReason(forbidden, NET, WITH_AUTH)).toContain('la {{authorization|autorización}} de /admin');
+    expect(describeWebReason(forbidden, NET, WITH_AUTH)).toContain('la {{authorization|autorización}} decide que marta');
     expect(describeWebReason(needsLogin, NET, EVERY_TERM)).not.toMatch(/permiso|permite/);
     expect(describeWebReason(forbidden, NET, EVERY_TERM)).not.toMatch(/contraseña|credencial|temporal/);
   });

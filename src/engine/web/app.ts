@@ -37,6 +37,11 @@ export function chooseSite(web: WebService, host: string): { site: Site; named: 
   return site ? { site, named: true } : { site: web.sites.find(({ id }) => id === web.defaultSiteId)!, named: false };
 }
 
+/** Returns the page of the site that has the path and the method of the request, or nothing when none does. */
+export function pageOf(site: Site, { method, path }: AppRequest): Site['pages'][number] | undefined {
+  return site.pages.find((candidate) => candidate.path === path && candidate.methods.includes(method));
+}
+
 function idParamOf(query: string | undefined): string | null {
   return new URLSearchParams(query).get(ORDER_ID_PARAM);
 }
@@ -70,8 +75,9 @@ function served(site: Site, { id, content }: Order, orders: Orders): Answer {
 }
 
 /** Answers a request with the page of the site that has its path and its method, or with its 404 when none does, and returns the orders after it. A get reads the order of the `id` of the query, a post adds the next order with the body, and a put replaces the content of the order of the `id` with the body; an order that does not exist answers 404. A site whose order book has a `badIdBody` checks the `id` where a get or a put reads it: an `id` that is not a number answers 400 with that body, and a request with no `id` still answers 404. A page that asks for a role answers only to a user of the site who has it, by the credential of its Authorization header or by the session its Cookie names: a request with no valid user gets a 401 with WWW-Authenticate and a user without the role a 403, each with the body of the site (`denial` says which). A login page opens a session for the user whose name and password its body gives and answers 200 with the cookie of that session (`sessions` are then the ones the app holds with the new one), or 401 and no cookie. The orders and the sessions it receives are not changed. */
-export function answerRequest(site: Site, orders: Orders, { method, path, query, headers, body }: AppRequest, sessions: SessionUsers = NO_SESSIONS): Answer {
-  const page = site.pages.find((candidate) => candidate.path === path && candidate.methods.includes(method));
+export function answerRequest(site: Site, orders: Orders, request: AppRequest, sessions: SessionUsers = NO_SESSIONS): Answer {
+  const { query, headers, body } = request;
+  const page = pageOf(site, request);
   if (!page) return missing(site, orders);
   const denial = page.role === undefined ? undefined : denialOf(site.accounts!, page.role, headers, sessions);
   if (denial) return denied(site.accounts!, denial, orders);

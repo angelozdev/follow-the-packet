@@ -183,6 +183,14 @@ describe('the box of a browser that signs in and carries a cookie', () => {
     expect(field(boxOf(sentAs(start, 'you', 'admin', 'curl-i'), 'you', 'admin', 'curl-i'), 'Respuesta HTTP')?.some((line) => line.includes('cuadro'))).toBe(false);
     expect(field(boxOf(sentAs(asLucia, 'you', 'admin', 'browser'), 'you', 'admin', 'browser'), 'Respuesta HTTP')?.some((line) => line.includes('cuadro'))).toBe(false);
   });
+
+  it('a login with a wrong password shows the 401 and its class and no reason, because the login page asks for no role', () => {
+    const wrongPassword = { id: 'sign-in-wrong', label: 'Lucía con otra clave', command: 'browser' as const, signIn: { path: '/login', user: 'lucia', password: 'otra-clave' } };
+    const incident = { ...SIGN_IN, send: { ...SIGN_IN.send, message: [...SIGN_IN.send.message, wrongPassword] } };
+    const failed = boxOf(sentAs(startSession([incident], incident.id), 'you', 'admin', 'sign-in-wrong'), 'you', 'admin', 'sign-in-wrong');
+    expect(field(failed, 'Respuesta HTTP')).toContain('HTTP/1.1 401 Unauthorized');
+    expect(field(failed, 'Código de estado')).toEqual(['Código de estado', '401 Unauthorized', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.']);
+  });
 });
 
 describe('the words of the box', () => {
@@ -297,7 +305,12 @@ describe('the box of a curl with a credential: the Authorization header of the r
     const noCredential = adminBox('curl-i');
     expect(field(noCredential, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${OFFICE_FLOORS.floor1.lucia}:3000`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
     expect(field(noCredential, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 401 Unauthorized', 'WWW-Authenticate: Basic realm="admin"', 'Cuerpo: Hace falta identificarse.']));
-    expect(field(noCredential, 'Código de estado')).toEqual(['Código de estado', '401 Unauthorized', 'Clase 4xx: la petición, tal como llegó, no se puede cumplir.']);
+    expect(field(noCredential, 'Código de estado')).toEqual([
+      'Código de estado',
+      '401 Unauthorized',
+      'Clase 4xx: la petición, tal como llegó, no se puede cumplir.',
+      'laptop-lucia no sabe quién pide /admin: la petición no trae una credencial válida, y sin ella no puede hacer la autenticación.',
+    ]);
     expect(field(noCredential, 'Quién lo generó')).toEqual(['Quién lo generó', 'La app de laptop-lucia']);
     const asMarta = adminBox('curl-marta');
     expect(field(asMarta, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${OFFICE_FLOORS.floor1.lucia}:3000`, `Authorization: Basic ${Buffer.from(MARTA).toString('base64')}`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
@@ -307,6 +320,11 @@ describe('the box of a curl with a credential: the Authorization header of the r
     const response = field(adminBox('curl-marta'), 'Respuesta HTTP');
     expect(response).toEqual(expect.arrayContaining(['HTTP/1.1 403 Forbidden', 'Cuerpo: No tienes permiso.']));
     expect(response?.some((line) => line.startsWith('WWW-Authenticate'))).toBe(false);
-    expect(field(adminBox('curl-marta'), 'Código de estado')?.[1]).toBe('403 Forbidden');
+    expect(field(adminBox('curl-marta'), 'Código de estado')).toEqual([
+      'Código de estado',
+      '403 Forbidden',
+      'Clase 4xx: la petición, tal como llegó, no se puede cumplir.',
+      'laptop-lucia sabe quién pide /admin: es marta. Pero la autorización decide que marta no tiene permiso para entrar a /admin.',
+    ]);
   });
 });

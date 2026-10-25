@@ -294,6 +294,13 @@ describe('the sessions of an app and the cookie of the browser', () => {
     expect(bodiesAfter(signIn(you, 'marta', BROWSER), send(lucia1, ADMIN_URL, { headers: { Cookie: 'sesion=s1' } }))).toEqual(['Signed in.', NOT_ALLOWED]);
   });
 
+  it('a login with a wrong password writes no step that says the page needs a login, and a page that asks for a role still writes it', () => {
+    const failed = traceOf(send(you, LOGIN_URL, { method: 'POST', body: 'usuario=lucia&clave=wrong', ...BROWSER }));
+    expect(failed.app?.response?.statusCode).toBe(401);
+    expect(appSteps(failed).map(({ reason }) => reason.code)).toEqual(['web-default-site', 'web-answered']);
+    expect(appSteps(traceOf(send(you, ADMIN_URL))).map(({ reason }) => reason.code)).toEqual(['web-default-site', 'web-needs-login', 'web-answered']);
+  });
+
   it('the browser keeps nothing from a login that failed or from a send that never reached the app', () => {
     const wrong = send(you, LOGIN_URL, { method: 'POST', body: 'usuario=lucia&clave=wrong', ...BROWSER });
     expect(memoryOf(you, wrong)).toEqual([]);

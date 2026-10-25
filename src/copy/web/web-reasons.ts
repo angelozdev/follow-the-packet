@@ -10,7 +10,7 @@ function withCode(statusCode: number, known: ReadonlySet<TermId>): TermText {
   return known.has('status-code') ? `con el {{status-code|código de estado}} ${statusCodeName(statusCode, known)}` : `de código ${statusCode}`;
 }
 
-/** Turns what a web service did with a request into the sentence the player reads, with the terms they know tagged. Choosing a site names the host the request carries and says whether the service has a site with that name; before `host-header` is known the request is only "dirigida a" that name. A 401 speaks of who asks (the app does not know who the request comes from, so there is no authentication) and a 403 of what is allowed (the app knows the user, and the authorization of the page does not let that user in); each tags its term once the player knows it. Answering says the code of the response and nothing else about it, behind the term status code and the term of the code itself once the player knows them. */
+/** Turns what a web service did with a request into the sentence the player reads, with the terms they know tagged. Choosing a site names the host the request carries and says whether the service has a site with that name; before `host-header` is known the request is only "dirigida a" that name. A 401 speaks of who asks (the app does not know who the request comes from, so there is no authentication) and a 403 of what is allowed (the app knows the user, and the authorization decides that this user has no permission for the page); each tags its term once the player knows it. Answering says the code of the response and nothing else about it, behind the term status code and the term of the code itself once the player knows them. */
 export function describeWebReason(reason: WebReason, net: Network, known: ReadonlySet<TermId>): TermText {
   const server = deviceName(net, reason.deviceId);
   const asked = (name: string): TermText => (known.has('host-header') ? `La {{host-header}} de la petición indica ${name}.` : `La petición va dirigida a ${name}.`);
@@ -22,7 +22,7 @@ export function describeWebReason(reason: WebReason, net: Network, known: Readon
     case 'web-needs-login':
       return `${server} no sabe quién pide ${reason.path}: la petición no trae una credencial válida, y sin ella no puede hacer la ${word(known, 'authentication', 'autenticación')}.`;
     case 'web-forbidden':
-      return `${server} sabe quién pide ${reason.path}: es ${reason.user}. Pero la ${word(known, 'authorization', 'autorización')} de ${reason.path} no deja entrar a ${reason.user}: no tiene permiso.`;
+      return `${server} sabe quién pide ${reason.path}: es ${reason.user}. Pero la ${word(known, 'authorization', 'autorización')} decide que ${reason.user} no tiene permiso para entrar a ${reason.path}.`;
     case 'web-answered':
       return `${server} contesta con una ${word(known, 'http-response', 'respuesta')} ${withCode(reason.statusCode, known)}.`;
   }
