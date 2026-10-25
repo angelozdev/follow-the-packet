@@ -11,6 +11,8 @@ const BROWSER_CARD = 'Navegador de tu-laptop';
 const ADMIN_URL = 'http://192.168.1.11:3000/admin';
 const CONTROL_WHEEL_PX = 20;
 const SLOW_TEST_MS = 60_000;
+const FADE_PX = 32;
+const SLACK_PX = 1;
 
 afterEach(async () => {
   await page.viewport(INITIAL_VIEWPORT.width, INITIAL_VIEWPORT.height);
@@ -51,5 +53,22 @@ describe('the tab of the browser', () => {
     const lastCell = page.elementLocator(table.querySelector('tbody tr td:last-child') as HTMLElement);
     expect(await reachWithWheel(lastCell, { within, wheelPx: CONTROL_WHEEL_PX }), 'the last column of the table is within reach').toBe(true);
     expect(await reachWithWheel(browser.getByRole('button', { name: BROWSER_TEXT.open, exact: true })), 'the foot with «Abrir» stays in reach').toBe(true);
+  });
+
+  it('at 360 px a tab cut by the edge of the bar is brought into view by a click that does not focus it, clear of the fade', { timeout: SLOW_TEST_MS }, async () => {
+    await page.viewport(PHONE.width, PHONE.height);
+    await showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId="03-06" nextId={null} onFinish={() => undefined} />);
+    await openTerminal();
+    await userEvent.click(page.getByRole('tab', { name: 'Navegador', exact: true }));
+    const strip = card(BROWSER_CARD).element().querySelector('[role="tablist"]') as HTMLElement;
+    const bar = strip.getBoundingClientRect();
+    const cut = [...strip.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.getBoundingClientRect().left < bar.right && tab.getBoundingClientRect().right > bar.right)!;
+    expect(cut, 'a tab is cut by the right edge of the bar').toBeDefined();
+    for (const type of ['mousedown', 'mouseup', 'click']) cut.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
+    await standStill();
+    const tab = cut.getBoundingClientRect();
+    expect(cut, 'Safari and Firefox on macOS do not focus a button on click').not.toHaveFocus();
+    expect(tab.left, 'the tab starts inside the bar').toBeGreaterThanOrEqual(bar.left - SLACK_PX);
+    expect(tab.right, 'the tab ends before the fade of the right edge').toBeLessThanOrEqual(bar.right - FADE_PX + SLACK_PX);
   });
 });
