@@ -58,7 +58,8 @@ describe('the box of a curl or a browser: the request and the response', () => {
       'HTTP/1.1 200 OK',
       'Content-Type: text/plain; charset=utf-8',
       'Content-Length: 9',
-      'Cuerpo: La tienda',
+      '',
+      'La tienda',
       'nota: Un servidor real manda más cabeceras. El del juego manda solo estas.',
     ]);
     const labels = box.map(([label]) => label);
@@ -80,20 +81,21 @@ describe('the box of a curl or a browser: the request and the response', () => {
       'Accept: */*',
       'Content-Length: 11',
       'Content-Type: application/x-www-form-urlencoded',
-      'Cuerpo: item=coffee',
+      '',
+      'item=coffee',
     ]);
-    expect(field(box, 'Respuesta HTTP')).toContain('Cuerpo: Pedido 9: item=coffee');
+    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['', 'Pedido 9: item=coffee']));
   });
 
   it('a path that is not served shows the 404 and its body', () => {
     const box = boxOf(sentAs(opened, 'you', 'orders', 'curl'), 'you', 'orders', 'curl');
-    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 404 Not Found', 'Cuerpo: No hay nada en esa URL.']));
+    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 404 Not Found', '', 'No hay nada en esa URL.']));
   });
 
   it('the box of the browser shows the Host header and says the browser of the game sends only that one', () => {
     const box = boxOf(sentAs(web, 'you', 'blog', 'browser'), 'you', 'blog', 'browser');
     expect(field(box, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET / HTTP/1.1', 'Host: blog.lucia.example', 'nota: Un navegador real manda más cabeceras. El del juego manda solo esta.']);
-    expect(field(box, 'Respuesta HTTP')).toContain('Cuerpo: La tienda');
+    expect(field(box, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['', 'La tienda']));
   });
 
   it('shows no request when the connection never opened: a refusal, a firewall that drops', () => {
@@ -103,6 +105,27 @@ describe('the box of a curl or a browser: the request and the response', () => {
       expect(field(box, 'Respuesta HTTP'), `${to} ${message}`).toBeUndefined();
       expect(field(box, 'URL'), `${to} ${message}`).toBeDefined();
     }
+  });
+});
+
+describe('the box of a curl or a browser: a message is one field', () => {
+  const fieldsOf = (session: Session, from: string, to: string, message: string) => inspect(session, PIECE_ID.packet(`sent-${from}-${to}-${message}`))?.fields ?? [];
+  const labelOf = (own: { label: string }) => toPlainText(own.label);
+
+  it('a message of the box is one field with a blank line before its body and no label for the body', () => {
+    const fields = fieldsOf(sentAs(opened, 'you', 'orders', 'curl-post'), 'you', 'orders', 'curl-post');
+    const messages = fields.filter((own) => own.message);
+    expect(messages.map(labelOf)).toEqual(['Petición HTTP', 'Respuesta HTTP']);
+    expect(messages[0].lines.at(-2)).toBe('');
+    expect(messages[0].lines.at(-1)).toBe('item=coffee');
+    expect(messages[1].lines).toEqual(['HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 21', '', 'Pedido 9: item=coffee']);
+    expect(fields.flatMap((own) => own.lines).filter((line) => line.startsWith('Cuerpo'))).toEqual([]);
+  });
+
+  it('a message with no body ends at its last header', () => {
+    const [request] = fieldsOf(sentAs(web, 'you', 'shop', 'curl'), 'you', 'shop', 'curl').filter((own) => own.message);
+    expect(labelOf(request)).toBe('Petición HTTP');
+    expect(request.lines).toEqual(['GET / HTTP/1.1', 'Host: www.lucia.example', 'User-Agent: curl/8.21.0', 'Accept: */*']);
   });
 });
 
@@ -159,10 +182,11 @@ describe('the box of a browser that signs in and carries a cookie', () => {
       `Host: ${lucia}:3000`,
       'Content-Length: 31',
       'Content-Type: application/x-www-form-urlencoded',
-      'Cuerpo: usuario=lucia&clave=clave-lucia',
+      '',
+      'usuario=lucia&clave=clave-lucia',
       NOTE_OF_SEVERAL,
     ]);
-    expect(field(box, 'Respuesta HTTP')).toEqual(['Respuesta HTTP', 'HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 17', 'Set-Cookie: sesion=s1', 'Cuerpo: Sesión iniciada.', 'nota: Un servidor real manda más cabeceras. El del juego manda solo estas.']);
+    expect(field(box, 'Respuesta HTTP')).toEqual(['Respuesta HTTP', 'HTTP/1.1 200 OK', 'Content-Type: text/plain; charset=utf-8', 'Content-Length: 17', 'Set-Cookie: sesion=s1', '', 'Sesión iniciada.', 'nota: Un servidor real manda más cabeceras. El del juego manda solo estas.']);
   });
 
   it('the next request of the browser to the same site shows the Cookie header it holds', () => {
@@ -304,7 +328,7 @@ describe('the box of a curl with a credential: the Authorization header of the r
   it('the box shows the Authorization header of the request and the WWW-Authenticate header of the 401', () => {
     const noCredential = adminBox('curl-i');
     expect(field(noCredential, 'Petición HTTP')).toEqual(['Petición HTTP', 'GET /admin HTTP/1.1', `Host: ${OFFICE_FLOORS.floor1.lucia}:3000`, 'User-Agent: curl/8.21.0', 'Accept: */*']);
-    expect(field(noCredential, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 401 Unauthorized', 'WWW-Authenticate: Basic realm="admin"', 'Cuerpo: Hace falta identificarse.']));
+    expect(field(noCredential, 'Respuesta HTTP')).toEqual(expect.arrayContaining(['HTTP/1.1 401 Unauthorized', 'WWW-Authenticate: Basic realm="admin"', '', 'Hace falta identificarse.']));
     expect(field(noCredential, 'Código de estado')).toEqual([
       'Código de estado',
       '401 Unauthorized',
@@ -318,7 +342,7 @@ describe('the box of a curl with a credential: the Authorization header of the r
 
   it('the box shows the 403 of a user without the role, with no WWW-Authenticate', () => {
     const response = field(adminBox('curl-marta'), 'Respuesta HTTP');
-    expect(response).toEqual(expect.arrayContaining(['HTTP/1.1 403 Forbidden', 'Cuerpo: No tienes permiso.']));
+    expect(response).toEqual(expect.arrayContaining(['HTTP/1.1 403 Forbidden', '', 'No tienes permiso.']));
     expect(response?.some((line) => line.startsWith('WWW-Authenticate'))).toBe(false);
     expect(field(adminBox('curl-marta'), 'Código de estado')).toEqual([
       'Código de estado',

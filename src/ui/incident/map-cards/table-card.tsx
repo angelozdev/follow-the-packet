@@ -36,7 +36,7 @@ export function useEntryDrafts(): EntryDrafts {
 }
 
 function Cell({ cell }: { cell: TableCell }) {
-  const text = <TaggedText text={cell.text} />;
+  const text = <TaggedText text={cell.text} ips={!cell.code} />;
   return cell.code ? <code>{text}</code> : text;
 }
 

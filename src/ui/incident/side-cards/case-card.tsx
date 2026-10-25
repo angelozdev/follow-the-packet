@@ -30,7 +30,7 @@ function TickList({ items, code = false, said }: TickListProps) {
   return (
     <ul className="tasks">
       {items.map((item) => {
-        const text = <TaggedText text={item.text} />;
+        const text = <TaggedText text={item.text} ips={!code} />;
         return (
           <li key={item.key} className="task">
             <span aria-hidden="true">{item.ticked ? '✓ ' : '☐ '}</span>

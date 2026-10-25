@@ -37,7 +37,7 @@ export function settingsFrame(card: Settings, onPick: OnPick): CardFrame {
             </p>
             <p>
               <code>
-                <TaggedText text={card.dns.value} />
+                <TaggedText text={card.dns.value} ips={false} />
               </code>
             </p>
             <p className="muted">

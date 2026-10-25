@@ -104,6 +104,12 @@ describe('design tokens', () => {
       }
     });
 
+    it('the text of the light panel keeps 4.5:1 on shade and its border 3:1', () => {
+      expect(contrast(token('--color-ink'), token('--color-shade'))).toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+      for (const paper of [PAPERS.page, PAPERS.surface]) expect(contrast(token('--color-ink-soft'), paper)).toBeGreaterThanOrEqual(NON_TEXT_MIN_CONTRAST);
+      expect(contrast(token('--color-ink-soft'), token('--color-shade'))).toBeGreaterThanOrEqual(NON_TEXT_MIN_CONTRAST);
+    });
+
     it('the success green keeps 4.5:1 on the surface and under its fill text, in light and in dark', () => {
       const green = token('--color-success');
       expect(green).toBe(token('--palette-green'));

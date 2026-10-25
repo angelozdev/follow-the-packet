@@ -114,6 +114,8 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .output__line--key { background: var(--color-surface); color: var(--color-ink); }
 .output__fold { padding: 0 var(--space-sm); border-top: var(--stroke-thin) dotted var(--color-shade); border-bottom: var(--stroke-thin) dotted var(--color-shade); color: var(--color-shade); font-size: var(--text-xs); line-height: 1.8; }
 .caption + .command, .caption + .output { margin-top: calc(-1 * var(--space-xs)); }
+.output--message { background: var(--color-shade); color: var(--color-ink); border: var(--stroke-thin) solid var(--color-ink-soft); }
+.ip-text { font-family: var(--font-mono); }
 .chip-card__body > .btn--small, .tabs__panel > .btn--small { justify-self: start; }
 .remembers { display: grid; gap: var(--space-2xs); }
 .remembers p { font-size: var(--text-md); }
@@ -188,6 +190,8 @@ button.stamp { cursor: help; }
 .inspection__fields > div:has(dd + dd) dd { flex-basis: 100%; }
 .inspection__fields dt { margin-top: var(--space-xs); }
 .inspection__fields dd { min-width: 0; margin: 0; }
+.inspection__fields .inspection__message { flex-basis: 100%; margin-top: var(--space-2xs); }
+.inspection__fields .inspection__message + dd { margin-top: var(--space-xs); }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
 @media (min-width: 901px) {

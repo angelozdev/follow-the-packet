@@ -73,6 +73,19 @@ describe('TaggedText', () => {
     expect(screen.getByRole('button', { name: 'Siguiente' })).toHaveFocus();
   });
 
+  it('draws each IP of the plain text, with its port or its prefix, as an element of its own, and the text reads the same', () => {
+    const text = 'De 198.51.100.60 a 192.168.1.20:3000 y 10.0.0.0/16, con curl/8.21.0.';
+    const { container } = render(<TaggedText text={text} />);
+    expect([...container.querySelectorAll('.ip-text')].map((ip) => ip.textContent)).toEqual(['198.51.100.60', '192.168.1.20:3000', '10.0.0.0/16']);
+    expect(container.textContent).toBe(text);
+  });
+
+  it('leaves an IP as plain text when the text is already code', () => {
+    const { container } = render(<TaggedText text="ping 192.168.1.20" ips={false} />);
+    expect(container.querySelector('.ip-text')).toBeNull();
+    expect(container.textContent).toBe('ping 192.168.1.20');
+  });
+
   it('without tips a term stays bold, with no underline and no definition', async () => {
     const user = userEvent.setup();
     render(<TaggedText text="El {{security-group}}." tips={false} />);

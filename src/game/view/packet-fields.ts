@@ -4,10 +4,12 @@ import type { Asking, PacketRun } from '@/game/flow-runs';
 import type { Session } from '@/game/session';
 import { placesOf, routerPlace } from './router-place';
 
+/** A field of the inspection box: its label, its lines and the muted notes under them. A `message` is an HTTP message, whose lines are written as the protocol does, start line, headers, a blank line (an empty line) and the body, so the box draws it as code. */
 export interface InspectionField {
   label: TermText;
   lines: TermText[];
   notes?: TermText[];
+  message?: true;
 }
 
 const ANYWHERE = '0.0.0.0/0';

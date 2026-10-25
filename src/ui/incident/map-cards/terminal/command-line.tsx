@@ -15,7 +15,7 @@ export function CommandLine({ line }: { line: TermText }) {
           {group.map((part, at) => (
             <Fragment key={at}>
               {at > 0 && <wbr />}
-              <TaggedText text={part.replaceAll(' ', NO_BREAK_SPACE)} />
+              <TaggedText text={part.replaceAll(' ', NO_BREAK_SPACE)} ips={false} />
             </Fragment>
           ))}
         </Fragment>

@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { cdp, page, userEvent, type Locator } from 'vitest/browser';
-import { CATALOG_TEXT, INTERFACE_TEXT, MESSAGE_TEXT, SCREEN_TEXT, TERMINAL_TEXT } from '@/copy';
+import { CATALOG_TEXT, INTERFACE_TEXT, MESSAGE_TEXT, SCREEN_TEXT, TERMINAL_TEXT, toPlainText, WEB_BOX_TEXT } from '@/copy';
 import { emulateReducedMotion, moveTheMouseAway, reachWithWheel, watchErrors } from '@/testing/browser-play';
 import { EntitiesPage } from './entities-page';
 
@@ -30,6 +30,7 @@ const OUTPUT_WHEEL_PX = 30;
 const SCROLLBAR_PX = 12;
 const FOCUS_RING_PX = 4;
 const PROMPT = '"$ "';
+const WEB_BOX_TEXT_RESPONSE = toPlainText(WEB_BOX_TEXT.response);
 const COMMANDS_DRAWN = [TERMINAL_TEXT.ping(SAMPLE.addresses[0]), TERMINAL_TEXT.dig(SAMPLE.dig.name)];
 const OUTPUT_GROUP = TERMINAL_TEXT.output.label.dig;
 const OUTPUT_FOLDED_LINES = 17;
@@ -212,6 +213,10 @@ it('the interface specimens of the command and of the HTTP message are part of t
     expect(isInside(boxOf(command), region), 'a specimen of the command is inside the captured region').toBe(true);
     expect(getComputedStyle(theOne(command, 'code'), '::before').content, 'the command wears its prompt').toBe(PROMPT);
   }
+  const message = theOne(elements, '.output--message');
+  expect(isInside(boxOf(message), region), 'the specimen of the HTTP message is inside the captured region').toBe(true);
+  expect(inside(message, '.output__line').map((line) => line.textContent), 'its blank line and its body').toEqual(SAMPLE.message.lines);
+  expect(message.closest('dd')?.parentElement?.querySelector('dt')?.textContent, 'it has the label of its field').toBe(WEB_BOX_TEXT_RESPONSE);
 });
 
 it('the focus ring of a remove button fits inside the wrapper of the Table', async () => {

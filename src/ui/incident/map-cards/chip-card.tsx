@@ -43,9 +43,9 @@ export function ChipCard({ title, icon, heading, onClose, onDone = onClose, acti
   );
 }
 
-/** Returns a card's chips as the chips of a tray, each label with its terms tagged. */
+/** Returns a card's chips as the chips of a tray, each label with its terms tagged. A chip is a control, not prose, so an IP in its label keeps the face of the chip. */
 export function trayChips(chips: { id: string; label: TermText }[]): TrayChip[] {
-  return chips.map(({ id, label }) => ({ id, label: <TaggedText text={label} /> }));
+  return chips.map(({ id, label }) => ({ id, label: <TaggedText text={label} ips={false} /> }));
 }
 
 /** What a card puts in the frame every card of the map shares: its title, the icon on its stripe, what it shows, the actions of its foot and, when it has its own way out, what "Listo" does. A card that lives beside others as a tab of a piece is drawn from its frame in the same `ChipCard`. */

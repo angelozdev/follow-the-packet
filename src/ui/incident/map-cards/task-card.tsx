@@ -55,7 +55,7 @@ interface PanelProps {
 function SlotChip({ chip, placeholder, onGiveBack }: { chip: Chip | undefined; placeholder: string; onGiveBack: () => void }) {
   return chip ? (
     <Choice aria-label={TASK_CARD_TEXT.giveBack(toPlainText(chip.label))} onClick={onGiveBack}>
-      <TaggedText text={chip.label} />
+      <TaggedText text={chip.label} ips={false} />
     </Choice>
   ) : (
     <span className="slot__empty">{placeholder}</span>

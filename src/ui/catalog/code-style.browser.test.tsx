@@ -1,13 +1,15 @@
 import { render } from '@testing-library/react';
-import type { CSSProperties } from 'react';
+import { createRef, type CSSProperties } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
-import { INTERFACE_TEXT, TERMINAL_TEXT } from '@/copy';
+import { INTERFACE_TEXT, TERMINAL_TEXT, WEB_BOX_TEXT } from '@/copy';
 import { tokenPx } from '@/design';
-import { PIECE_ID, startSession, terminalCard, toolOutputOf } from '@/game';
+import { PIECE_ID, inspect, sessionReducer, startSession, terminalCard, toolOutputOf } from '@/game';
 import { tokenColor } from '@/testing/token-color';
 import { webSendIncident } from '@/testing/web/web-incident';
+import { InspectionBox } from '@/ui/incident/inspection-box';
 import { TerminalCard } from '@/ui/incident/map-cards/terminal/terminal-card';
+import { TaggedText } from '@/ui/tagged-text';
 import { InterfaceSection } from './interface-section';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -22,6 +24,12 @@ const BEFORE_THE_PATH = 'http://www.lucia.example/';
 const AFTER_THE_PATH = 'pedidos-de-octubre?id=7';
 const LONG_WORD = 'una-clave-demasiado-larga-para-caber-en-una-fila-de-360-px';
 const LONG_HEADER = 'Content-Type: text/plain; charset=utf-8; boundary=una-frontera-larga';
+const CODE_IP = '192.168.1.20';
+const PROSE_IP = '198.51.100.60';
+const IP_TEXT = `La app recibió 20 peticiones de ${PROSE_IP} y ${CODE_IP}:3000 contestó.`;
+const SHOP_BOX = 'sent-you-shop-curl';
+const BOX_MARGIN_PX = 16;
+const RESPONSE_NOTE = WEB_BOX_TEXT.notes.response;
 const WEB = webSendIncident();
 const SESSION = startSession([WEB], WEB.id);
 const TERMINAL = terminalCard(SESSION, PIECE_ID.device('your-laptop'));
@@ -63,7 +71,7 @@ function lengthOf(length: string, like: Element): number {
 describe('the command and the output of a terminal as code', () => {
   it('the command and each output block sit on a dark panel with paper text', async () => {
     const region = await drawTheInterface();
-    const panels = inside(region, '.command, .output');
+    const panels = inside(region, '.command, .output:not(.output--message)');
     expect(panels, 'the terminal specimen, the output specimen and its output block').toHaveLength(3);
     for (const panel of panels) {
       const style = getComputedStyle(panel);
@@ -71,7 +79,7 @@ describe('the command and the output of a terminal as code', () => {
       expect(style.color, panel.className).toBe(tokenColor('--color-on-fill'));
       expect(Number.parseFloat(style.borderTopLeftRadius), panel.className).toBe(tokenPx('--radius'));
     }
-    const lines = inside(region, '.command code, .output__line:not(.output__line--key)');
+    const lines = inside(region, '.command code, .output:not(.output--message) .output__line:not(.output__line--key)');
     expect(lines, 'the two commands: the folded output has only key lines').toHaveLength(2);
     for (const line of lines) {
       const style = getComputedStyle(line);
@@ -103,7 +111,7 @@ describe('the command and the output of a terminal as code', () => {
 
   it('the key line of a dig is inverted on the dark panel and keeps its contrast', async () => {
     const region = await drawTheInterface();
-    const output = theOne(region, '.output');
+    const output = theOne(region, '.output:not(.output--message)');
     const keyLines = inside(output, '.output__line--key');
     expect(keyLines).toHaveLength(3);
     for (const line of keyLines) {
@@ -124,12 +132,70 @@ describe('the command and the output of a terminal as code', () => {
   });
 });
 
+describe('the message of the box and the prose as code', () => {
+  it('a message of the box sits on the light panel with a thin border', async () => {
+    const region = await drawTheInterface();
+    const message = theOne(region, '.output--message');
+    const style = getComputedStyle(message);
+    expect(style.backgroundColor).toBe(tokenColor('--color-shade'));
+    expect(style.color).toBe(tokenColor('--color-ink'));
+    expect(style.borderTopWidth).toBe(`${tokenPx('--stroke-thin')}px`);
+    expect(style.borderTopStyle).toBe('solid');
+    expect(style.borderTopColor).toBe(tokenColor('--color-ink-soft'));
+    expect(Number.parseFloat(style.borderTopLeftRadius)).toBe(tokenPx('--radius'));
+    const lines = inside(message, '.output__line');
+    expect(lines.map((line) => line.textContent)).toEqual(INTERFACE_TEXT.sample.message.lines);
+    for (const line of lines) {
+      expect(getComputedStyle(line).fontFamily, 'the mono face').toContain('monospace');
+      expect(getComputedStyle(line).color).toBe(tokenColor('--color-ink'));
+    }
+    expect(lines.indexOf(lines.find((line) => line.textContent === '') as HTMLElement), 'the blank line stands before the body').toBe(lines.length - 2);
+    expect(message.closest('dd')?.nextElementSibling?.textContent, 'the note stays under the panel, in the body font').toBe(RESPONSE_NOTE);
+  });
+
+  it('an IP in a text is drawn in the mono face with no box and reads the same', async () => {
+    const view = render(
+      <p>
+        <TaggedText text={IP_TEXT} />
+      </p>,
+    );
+    const paragraph = theOne(view.container, 'p');
+    expect(paragraph.textContent, 'the text reads the same').toBe(IP_TEXT);
+    const ips = inside(paragraph, '.ip-text');
+    expect(ips.map((ip) => ip.textContent)).toEqual([PROSE_IP, `${CODE_IP}:3000`]);
+    for (const ip of ips) {
+      const style = getComputedStyle(ip);
+      expect(style.fontFamily, 'the mono face').toContain('monospace');
+      expect(style.fontFamily).not.toBe(getComputedStyle(paragraph).fontFamily);
+      expect(style.backgroundColor, 'no fill').toBe(TRANSPARENT);
+      expect(`${style.borderTopWidth} ${style.paddingLeft}`, 'no border and no padding').toBe('0px 0px');
+    }
+    view.rerender(
+      <button type="button">
+        <TaggedText text={IP_TEXT} />
+      </button>,
+    );
+    await expect.element(page.getByRole('button', { name: IP_TEXT, exact: true })).toBeVisible();
+  });
+});
+
 describe('at 360 px', () => {
   function Terminal({ line }: { line: string }) {
     if (!TERMINAL) throw new Error('missing terminal');
     return (
       <div className="map-card" style={CARD_ON_A_PHONE}>
         <TerminalCard card={TERMINAL} describe={() => line} route={() => null} printed={() => LONG_OUTPUT} onPickOrigin={() => undefined} onSend={() => undefined} onClose={() => undefined} />
+      </div>
+    );
+  }
+
+  function Box() {
+    const sent = sessionReducer(SESSION, { type: 'sendPacket', fromId: 'you', toId: 'shop', messageId: 'curl' });
+    const inspection = inspect(sent, PIECE_ID.packet(SHOP_BOX));
+    if (!inspection) throw new Error('missing box');
+    return (
+      <div style={{ width: `${PHONE.width - 2 * BOX_MARGIN_PX}px` }}>
+        <InspectionBox inspection={inspection} pinned={false} heading={createRef()} onClose={() => undefined} />
       </div>
     );
   }
@@ -163,5 +229,14 @@ describe('at 360 px', () => {
     expect(document.documentElement.scrollWidth, 'the page does not scroll sideways').toBeLessThanOrEqual(PHONE.width);
     expect(body.scrollWidth, 'the body of the card does not scroll sideways').toBeLessThanOrEqual(body.clientWidth);
     for (const panel of inside(view.container, '.command, .output, .command code, .output__line')) expect(panel.scrollWidth, panel.className).toBeLessThanOrEqual(panel.clientWidth);
+    view.unmount();
+    const box = render(<Box />);
+    const message = inside(box.container, '.output--message');
+    expect(message.map((panel) => panel.closest('dd')?.parentElement?.querySelector('dt')?.textContent), 'the request and the response of the box').toEqual(['Petición HTTP', 'Respuesta HTTP']);
+    const fields = theOne(box.container, '.inspection__fields');
+    expect(fields.scrollWidth, 'the fields of the box do not scroll sideways').toBeLessThanOrEqual(fields.clientWidth);
+    for (const panel of inside(box.container, '.output--message, .output--message .output__line')) expect(panel.scrollWidth, panel.className).toBeLessThanOrEqual(panel.clientWidth);
+    const rows = inside(box.container, '.output--message .output__line');
+    expect(Math.max(...rows.map((line) => line.getBoundingClientRect().height)), 'a long header wraps into more rows').toBeGreaterThan(Number.parseFloat(getComputedStyle(rows[0]).lineHeight));
   });
 });

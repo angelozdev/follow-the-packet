@@ -53,7 +53,6 @@ export const WEB_BOX_TEXT = {
     line: (owner: TermText): TermText => `La app de ${owner}`,
   },
   header: (name: string, value: string): TermText => `${name}: ${value}`,
-  body: (body: string): TermText => `Cuerpo: ${body}`,
   notes: {
     browserRequest: 'Un navegador real manda más cabeceras. El del juego manda solo esta.',
     browserRequestSeveral: 'Un navegador real manda más cabeceras. El del juego manda solo estas.',

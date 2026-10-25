@@ -32,7 +32,6 @@ describe('the texts of the web', () => {
     WEB_BOX_TEXT.generatedBy.label,
     WEB_BOX_TEXT.generatedBy.line('[[laptop-lucia]]'),
     WEB_BOX_TEXT.header('Host', 'localhost:3000'),
-    WEB_BOX_TEXT.body('Pedido 7: 2 cafés'),
     ...Object.values(WEB_BOX_TEXT.notes),
     WEB_BOX_TEXT.curlGaveUp(3),
     BROWSER_TEXT.title('[[tu-laptop]]'),

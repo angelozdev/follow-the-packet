@@ -1,9 +1,10 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, MESSAGE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, digOutput, type TermId } from '@/copy';
+import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, MESSAGE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, WEB_BOX_TEXT, digOutput, type TermId } from '@/copy';
 import { Button, Card, ChipTray, Choice, Message, Table, Tabs, type MessageVariant } from '@/design';
-import { toolOutputOf } from '@/game';
+import { toolOutputOf, type Inspection } from '@/game';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
+import { InspectionFields } from '@/ui/incident/inspection-box';
 import { CommandLine } from '@/ui/incident/map-cards/terminal/command-line';
 import { OutputCard } from '@/ui/incident/map-cards/terminal/output-card';
 import { Stars } from '@/ui/stars';
@@ -15,7 +16,7 @@ const [FIRST_CHIP] = SAMPLE.chips;
 const [FIRST_ADDRESS] = SAMPLE.addresses;
 const SAMPLE_STARS = 2;
 const NEW_TERMS = new Set<TermId>(['security-group']);
-const TRAY_CHIPS = SAMPLE.chips.map((label) => ({ id: label, label: <TaggedText text={label} /> }));
+const TRAY_CHIPS = SAMPLE.chips.map((label) => ({ id: label, label: <TaggedText text={label} ips={false} /> }));
 const ADDRESS_CHIPS = SAMPLE.addresses.map((address) => ({ id: address, label: address }));
 const YES_NO_CHIPS = [
   { id: 'yes', label: SAMPLE.yes },
@@ -46,6 +47,7 @@ const [FIXED_ROUTE, REMOVABLE_ROUTE, ROUTE_IN_USE] = TABLE.routes.map(({ to, via
 }));
 const TABLE_ROWS = [FIXED_ROUTE, { ...REMOVABLE_ROUTE, onRemove: noPick }, { ...ROUTE_IN_USE, inUse: true, onRemove: noPick }];
 const MESSAGE_VARIANTS: MessageVariant[] = ['note', 'success', 'warning', 'error'];
+const HTTP_MESSAGE: Inspection['fields'][number] = { label: WEB_BOX_TEXT.response, lines: [...SAMPLE.message.lines], notes: [WEB_BOX_TEXT.notes.response], message: true };
 const DIG = SAMPLE.dig;
 const DIG_OUTPUT = toolOutputOf(
   'dig',
@@ -144,7 +146,7 @@ export function InterfaceSection() {
         </Specimen>
         <Specimen caption={VARIANT.chipNamePressed}>
           <Choice pressed>
-            <TaggedText text={SAMPLE.namedChip} />
+            <TaggedText text={SAMPLE.namedChip} ips={false} />
           </Choice>
         </Specimen>
         <Specimen caption={VARIANT.tray}>
@@ -297,6 +299,11 @@ export function InterfaceSection() {
       <Family name={INTERFACE_TEXT.family.output}>
         <Specimen caption={VARIANT.output} wide>
           <OutputSpecimen />
+        </Specimen>
+        <Specimen caption={VARIANT.httpMessage} wide>
+          <Card header={{ icon: <CardIcon kind="inspection" />, type: INSPECTION_TEXT.type }}>
+            <InspectionFields fields={[HTTP_MESSAGE]} />
+          </Card>
         </Specimen>
       </Family>
       <Family name={INTERFACE_TEXT.family.messages}>
