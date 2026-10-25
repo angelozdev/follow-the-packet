@@ -217,6 +217,15 @@ describe('a login and the sessions it opens', () => {
     expect(marta.denial).toEqual({ kind: 'forbidden', user: 'marta' });
   });
 
+  it('a valid Authorization is the user of the request even when it also carries the cookie of another user', () => {
+    const withBoth = (credential: string, sessions: SessionUsers) =>
+      answerRequest(loginSite, start, requestOf({ method: 'GET', url: 'http://app.example/admin', headers: { ...basicAuthorizationHeader(credential), Cookie: 'sesion=s1' } }), sessions);
+    expect(withBoth('lucia:pw-lucia', ['marta']).response).toMatchObject({ statusCode: 200, body: ADMIN_PANEL });
+    const marta = withBoth('marta:pw-marta', ['lucia']);
+    expect(marta.response.statusCode).toBe(403);
+    expect(marta.denial).toEqual({ kind: 'forbidden', user: 'marta' });
+  });
+
   it('the value of the cookie follows the order of the sessions', () => {
     const first = logIn('marta', 'pw-marta');
     const second = logIn('lucia', 'pw-lucia', first.sessions);

@@ -269,6 +269,12 @@ describe('the sessions of an app and the cookie of the browser', () => {
     expect(memoryOf(own, signedInByIp, send(own, LOOPBACK_ADMIN_URL, BROWSER))).toEqual([{ site: floor1.lucia, name: 'sesion', value: 's1' }]);
   });
 
+  it('the browser sends the cookie of a host to another port of the same host, because the scope of a cookie is the host and not the port', () => {
+    const signedIn = signIn(you, 'lucia', BROWSER);
+    const otherPort: PacketSpec = { ...send(you, `http://${floor1.lucia}:${REPORTS_PORT}/admin`, BROWSER), port: REPORTS_PORT };
+    expect(traceOf(signedIn, otherPort).app?.request.headers.Cookie).toBe('sesion=s1');
+  });
+
   it('the browser of one device does not send the cookie that another device holds', () => {
     const signedIn = signIn(you, 'lucia', BROWSER);
     expect(traceOf(signedIn, send(lucia1, ADMIN_URL, BROWSER)).app?.response?.statusCode).toBe(401);
