@@ -135,6 +135,7 @@ function boxOfTheLostPing(): Locator {
 
 async function sendNc(terminal: Locator, ip: string, message: string): Promise<void> {
   await userEvent.click(terminal.getByRole('button', { name: ip, exact: true }));
+  await moveTheMouseAway();
   await sendMessage(terminal, message);
 }
 

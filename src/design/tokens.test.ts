@@ -60,6 +60,9 @@ const CONTRAST_CASES = [
   ),
   ...ACCENT_ROLES.map((role) => ({ name: `--color-on-fill as text on ${role}`, foreground: token('--color-on-fill'), background: token(role), minimum: TEXT_MIN_CONTRAST })),
   ...Object.entries(PAPERS).map(([paper, background]) => ({ name: `--color-focus as the focus ring on ${paper}`, foreground: token('--color-focus'), background, minimum: NON_TEXT_MIN_CONTRAST })),
+  { name: 'the text of the dark panel keeps 4.5:1 on ink', foreground: token('--color-on-fill'), background: token('--color-ink'), minimum: TEXT_MIN_CONTRAST },
+  { name: 'the prompt keeps 4.5:1 on ink', foreground: token('--color-shade'), background: token('--color-ink'), minimum: TEXT_MIN_CONTRAST },
+  { name: 'the inverted key line keeps 4.5:1', foreground: token('--color-ink'), background: token('--color-surface'), minimum: TEXT_MIN_CONTRAST },
 ];
 
 describe('design tokens', () => {

@@ -4,9 +4,9 @@ import { Button, ChipTray } from '@/design';
 import { pickedParts, stripAddress, type SendPicks, type SendTrayName, type TerminalCard as Terminal, type ToolOutput, type TracerouteView, type UrlPartName, type UrlPicks } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
-import { TaggedText } from '@/ui/tagged-text';
 import { FramedCard, trayChips, type CardFrame } from '@/ui/incident/map-cards/chip-card';
 import { UrlStripTray } from '@/ui/incident/map-cards/web/url-strip';
+import { CommandLine } from './command-line';
 import { OutputCard, type Printed } from './output-card';
 
 /** What the terminal asks of its screen: the line the picks make, what a traceroute, an `nc`, a `dig` or a `curl` sent with them printed (one block, or a block for each send of a `curl`), moving the card to another origin and sending. */
@@ -73,14 +73,8 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
     ),
     body: (
       <>
-        <p className="slot" aria-live="polite">
-          {line ? (
-            <code>
-              <TaggedText text={line} />
-            </code>
-          ) : (
-            <span className="slot__empty">{TERMINAL_TEXT.incomplete}</span>
-          )}
+        <p className={line ? 'command' : 'slot'} aria-live="polite">
+          {line ? <CommandLine line={line} /> : <span className="slot__empty">{TERMINAL_TEXT.incomplete}</span>}
         </p>
         {outputs.map((printedOutput, index) => (
           <OutputCard key={index} printed={printedOutput} unfolded={draft.unfolded} onToggle={() => draft.setUnfolded(!draft.unfolded)} />

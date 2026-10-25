@@ -4,6 +4,7 @@ import { Button, Card, ChipTray, Choice, Message, Table, Tabs, type MessageVaria
 import { toolOutputOf } from '@/game';
 import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
+import { CommandLine } from '@/ui/incident/map-cards/terminal/command-line';
 import { OutputCard } from '@/ui/incident/map-cards/terminal/output-card';
 import { Stars } from '@/ui/stars';
 import { TaggedText } from '@/ui/tagged-text';
@@ -75,8 +76,8 @@ function OutputSpecimen() {
     <Card header={{ icon: <CardIcon kind="terminal" />, title: <h2><TaggedText text={TERMINAL_TEXT.title(SAMPLE.origin)} /></h2> }}>
       <div className="chip-card">
         <div className="chip-card__body">
-          <p className="slot">
-            <code>{TERMINAL_TEXT.dig(DIG.name)}</code>
+          <p className="command">
+            <CommandLine line={TERMINAL_TEXT.dig(DIG.name)} />
           </p>
           <OutputCard printed={{ kind: 'tool', tool: DIG_OUTPUT }} unfolded={unfolded} onToggle={() => setUnfolded(!unfolded)} />
         </div>
@@ -229,10 +230,8 @@ export function InterfaceSection() {
             }}
           >
             <div className="chip-card">
-              <p className="slot">
-                <code>
-                  <TaggedText text={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
-                </code>
+              <p className="command">
+                <CommandLine line={TERMINAL_TEXT.ping(FIRST_ADDRESS)} />
               </p>
               <ChipTray name={TERMINAL_TEXT.trays.to} chips={ADDRESS_CHIPS} picked={FIRST_ADDRESS} onPick={noPick} />
               <Button variant="primary">{TERMINAL_TEXT.send}</Button>

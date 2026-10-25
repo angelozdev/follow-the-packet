@@ -22,6 +22,7 @@ export { inspect } from './view/inspection';
 export { PIECE_ID } from './view/piece-id';
 export type { Inspection } from './view/inspection';
 export { pieceViews } from './view/pieces';
+export { commandGroups } from './view/cards/terminal/command-groups';
 export { terminalCard, terminalLine } from './view/cards/terminal/terminal-card';
 export type { SendPicks, SendTrayName, TerminalCard } from './view/cards/terminal/terminal-card';
 export { toolOutput, toolOutputOf, toolOutputs } from './view/cards/terminal/output-card';

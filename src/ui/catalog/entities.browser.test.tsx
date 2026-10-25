@@ -26,8 +26,11 @@ const MAP_CARD_WIDTH_PX = 352;
 const MAP_CARD_ROOM_PX = 224;
 const ROW_COPIES = 6;
 const WHEEL_PX = 120;
+const OUTPUT_WHEEL_PX = 30;
 const SCROLLBAR_PX = 12;
 const FOCUS_RING_PX = 4;
+const PROMPT = '"$ "';
+const COMMANDS_DRAWN = [TERMINAL_TEXT.ping(SAMPLE.addresses[0]), TERMINAL_TEXT.dig(SAMPLE.dig.name)];
 const OUTPUT_GROUP = TERMINAL_TEXT.output.label.dig;
 const OUTPUT_FOLDED_LINES = 17;
 const OUTPUT_SHOW = TERMINAL_TEXT.output.show(OUTPUT_FOLDED_LINES);
@@ -200,6 +203,17 @@ it('the interface specimen of the output card is part of the capture', async () 
   expect(isInside(boxOf(output), boxOf(elements)), 'the specimen is inside the captured region').toBe(true);
 });
 
+it('the interface specimens of the command and of the HTTP message are part of the capture', async () => {
+  const { elements } = await openCatalog();
+  const region = boxOf(elements);
+  const commands = inside(elements, '.command');
+  expect(commands.map((command) => command.textContent), 'the command of the terminal and the one of the output').toEqual(COMMANDS_DRAWN);
+  for (const command of commands) {
+    expect(isInside(boxOf(command), region), 'a specimen of the command is inside the captured region').toBe(true);
+    expect(getComputedStyle(theOne(command, 'code'), '::before').content, 'the command wears its prompt').toBe(PROMPT);
+  }
+});
+
 it('the focus ring of a remove button fits inside the wrapper of the Table', async () => {
   const { elements } = await openCatalog();
   const filled = elements.getByRole('table', { name: TABLE_CAPTION }).first();
@@ -252,7 +266,7 @@ it('an unfolded output in a card on the map stays inside the card, scrolls in it
   expect(boxOf(theOne(holder, '.card__band')).y, 'the band of the card stays at its top').toBeGreaterThanOrEqual(cardBox.y);
   expect(boxOf(foot).bottom, 'the foot stays inside the card').toBeLessThanOrEqual(cardBox.bottom);
   const lastLine = withText(inside(holder, `[aria-label="${OUTPUT_GROUP}"] code`), OUTPUT_LAST_FOLDED).at(-1) as HTMLElement;
-  expect(await reachWithWheel(page.elementLocator(lastLine), { within: page.elementLocator(body), wheelPx: WHEEL_PX }), 'the last line comes into view with the wheel').toBe(true);
+  expect(await reachWithWheel(page.elementLocator(lastLine), { within: page.elementLocator(body), wheelPx: OUTPUT_WHEEL_PX }), 'the last line comes into view with the wheel').toBe(true);
   const finalCard = boxOf(card);
   expect(finalCard.height, 'scrolling does not grow the card').toBeCloseTo(cardBox.height, 0);
   expect(boxOf(body).bottom, 'the output ends above the foot').toBeLessThanOrEqual(boxOf(foot).y);
