@@ -878,10 +878,13 @@ describe('03-05, how did it go', () => {
     expect(plain(incident.takeaway)).toContain('no dice que al negocio le salió bien');
   });
 
-  it('03-05: the report names laptop-lucia and the takeaway says why the misspelled id gives 400 and not 404', () => {
+  it('03-05: the report names laptop-lucia', () => {
     expect(incident.report).toContain(NAME.lucia);
     expect(plain(incident.report)).toContain(`Lucía cambió la app de ${DEVICE.lucia.name}: ahora comprueba el id del pedido antes de buscarlo, y si el id no es un número, contesta con un error.`);
     expect(changedNames(worldBeforeChanges(INCIDENTS, HOW_DID_IT_GO), startWorld(INCIDENTS, HOW_DID_IT_GO))).toEqual([DEVICE.lucia.name]);
+  });
+
+  it('03-05: the takeaway says why the misspelled id gives 400 and not 404', () => {
     const takeaway = plain(incident.takeaway);
     expect(takeaway).toContain(`Lucía cambió la app de ${DEVICE.lucia.name} para que compruebe el id.`);
     expect(takeaway).toContain('Sin esa comprobación, la app habría buscado un pedido «siete» y habría contestado 404.');

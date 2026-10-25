@@ -254,14 +254,20 @@ describe('the request of a curl and of the browser', () => {
     expect(put).toMatchObject({ method: 'PUT', body: 'item=tea', headers: { 'Content-Length': '8', 'Content-Type': 'application/x-www-form-urlencoded' } });
   });
 
-  it('a curl with -u carries the Authorization header with the credential of its option, after Host and before User-Agent', () => {
-    const credential = 'marta:clave-marta';
-    const source = 'curl-8.21.0, read 2026-10-24: lib/http.c:299 (Authorization: Basic), :814-818 (Basic is used on the first request), :2838-2846 (after Host and before User-Agent)';
-    const withUser: SendOwner = { send: { ...WEB.send, message: [{ id: 'curl-u', label: `curl -i -u ${credential}`, command: 'curl', options: { include: true, user: credential } }] } };
-    const request = sendPacket(world, withUser, { type: 'sendPacket', fromId: 'you', toId: 'shop', messageId: 'curl-u' }, 1, EVERY_TERM)?.trace.app?.request;
-    expect(Object.keys(request!.headers), source).toEqual(['Host', 'Authorization', 'User-Agent', 'Accept']);
-    expect(request?.headers.Authorization, source).toBe(`Basic ${Buffer.from(credential).toString('base64')}`);
+  const CREDENTIAL = 'marta:clave-marta';
+  const AUTHORIZATION_SOURCE = 'curl-8.21.0, read 2026-10-24: lib/http.c:299 (Authorization: Basic), :814-818 (Basic is used on the first request), :2838-2846 (after Host and before User-Agent)';
+  const requestWithUser = () => {
+    const withUser: SendOwner = { send: { ...WEB.send, message: [{ id: 'curl-u', label: `curl -i -u ${CREDENTIAL}`, command: 'curl', options: { include: true, user: CREDENTIAL } }] } };
+    return sendPacket(world, withUser, { type: 'sendPacket', fromId: 'you', toId: 'shop', messageId: 'curl-u' }, 1, EVERY_TERM)?.trace.app?.request;
+  };
+
+  it('a curl with -u carries the Authorization header with the credential of its option', () => {
+    expect(requestWithUser()?.headers.Authorization, AUTHORIZATION_SOURCE).toBe(`Basic ${Buffer.from(CREDENTIAL).toString('base64')}`);
     expect(requestOf('you', 'shop', 'curl-i')?.headers).not.toHaveProperty('Authorization');
+  });
+
+  it('a curl with -u puts the Authorization header after Host and before User-Agent', () => {
+    expect(Object.keys(requestWithUser()!.headers), AUTHORIZATION_SOURCE).toEqual(['Host', 'Authorization', 'User-Agent', 'Accept']);
   });
 
   it('a curl with -b carries the Cookie header of its option', () => {

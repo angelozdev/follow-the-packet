@@ -163,8 +163,12 @@ describe('a page that asks for a role', () => {
     expect(denial).toBeUndefined();
   });
 
-  it('a wrong password answers 401, and so does a user the site does not have', () => {
-    for (const credential of ['marta:pw-lucia', 'lucia:wrong', 'nobody:pw-lucia']) expect(askAdmin(credential).response, credential).toMatchObject({ statusCode: 401, body: 'Log in.' });
+  it('a wrong password answers 401', () => {
+    for (const credential of ['marta:pw-lucia', 'lucia:wrong']) expect(askAdmin(credential).response, credential).toMatchObject({ statusCode: 401, body: 'Log in.' });
+  });
+
+  it('a user the site does not have answers 401', () => {
+    expect(askAdmin('nobody:pw-lucia').response).toMatchObject({ statusCode: 401, body: 'Log in.' });
   });
 
   it('repeating a request with the same credential gives the same 403', () => {
