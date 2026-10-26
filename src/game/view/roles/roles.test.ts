@@ -17,6 +17,7 @@ const LOGIN_PAGE: Page = { path: '/login', methods: ['POST'], handler: { kind: '
 const ORDER_BOOK: NonNullable<Site['orders']> = { template: 'Pedido {id}.', start: [] };
 const USERS: NonNullable<Site['accounts']> = { users: [{ name: 'lucia', password: 'clave', role: 'admin' }], realm: 'admin', unauthorizedBody: 'No.', forbiddenBody: 'No.' };
 
+const FORWARDS: NonNullable<Site['proxy']> = { prefixes: ['/pedidos'], origins: [{ ip: '198.51.100.61', port: 3000 }] };
 const site = (id: string, pages: Page[], extra: Partial<Site> = {}): Site => ({ id, names: [], pages, notFoundBody: 'No hay nada.', ...extra });
 const serving = (...sites: Site[]): Service => ({ protocol: 'tcp', port: 80, listen: 'all', web: { sites, defaultSiteId: sites[0].id } });
 const server = (parts: Partial<ServerActor> = {}): ServerActor => ({ id: 'servidor', name: 'servidor', kind: 'server', ip: '198.51.100.9', latencyMs: 5, ...parts });
@@ -47,6 +48,15 @@ describe('the roles of a server', () => {
     expect(rolesOf(both)).toEqual(['app', 'web']);
   });
 
+  it('a server whose site forwards a path has the proxy role and its mark wins over the web and the app', () => {
+    const forwarding = site('shop', [FIXED_PAGE], { proxy: FORWARDS });
+    expect(rolesOf(server({ services: [serving(forwarding)] }))).toEqual(['proxy', 'web']);
+    const withApp = server({ services: [serving(forwarding, site('orders', [ORDER_PAGE], { orders: ORDER_BOOK }))] });
+    expect(rolesOf(withApp)).toEqual(['proxy', 'app', 'web']);
+    expect(markOf(rolesOf(withApp))).toBe('proxy');
+    expect(rolesOf(server({ services: [serving(site('shop', [FIXED_PAGE]))] }))).toEqual(['web']);
+  });
+
   it('the mark is the one of the role that redirects the packet: proxy over app over web', () => {
     expect(markOf(['web', 'proxy', 'app'])).toBe('proxy');
     expect(markOf(['web', 'app'])).toBe('app');
@@ -69,6 +79,13 @@ describe('the roles of a server on the map', () => {
     expect(fresh(changed)).toMatchObject({ roles: ['app'], role: 'app' });
     expect(fresh(SHOP)).toMatchObject({ roles: ['web'], role: 'web' });
     expect(Object.keys(SHOP)).not.toContain('roles');
+  });
+
+  it('a server that forwards a path wears the proxy mark on the map and says both roles in words', () => {
+    const forwarding = withWeb(SHOP, { sites: [site('shop', [FIXED_PAGE], { proxy: FORWARDS })], defaultSiteId: 'shop' });
+    expect(fresh(forwarding)).toMatchObject({ roles: ['proxy', 'web'], role: 'proxy' });
+    expect(toPlainText(pieceCard(forwarding, PIECE_ID.actor(SERVER.fresh.id))?.roles ?? '')).toBe('Papeles: proxy inverso y servidor web');
+    expect(fresh(SHOP)).toMatchObject({ roles: ['web'], role: 'web' });
   });
 
   it('pieceViews gives roles to a server of the internet and to no other piece', () => {

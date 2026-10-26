@@ -77,7 +77,7 @@ const SUBCHAPTER_OF = { cidr: 4, nat: 8, dns: 10 };
 const TERMS_OF_CHAPTER_1 = INCIDENTS.filter((incident) => incident.chapter === 1).flatMap((incident) => incident.introduces);
 const SUPPORT_TERMS_OF_CHAPTER_3 = ['query-string', 'status-400', 'cookie', 'x-forwarded-for', 'status-500', 'self-signed-certificate', 'openssl-s-client', 'session-key', 'http-versions', 'hsts'];
 const SIZES_OF_CHAPTER_3 = [5, 4, 3, 3, 5, 6, 4, 4, 3, 4, 5, 5, 3, 4, 4, 3];
-const LAST_REGISTERED_SUBCHAPTER = 6;
+const LAST_REGISTERED_SUBCHAPTER = 7;
 
 describe('term ladder', () => {
   it('a term is introduced by one incident at most', () => {
@@ -315,14 +315,14 @@ describe('the term ladder of chapter 3', () => {
     expect(SUPPORT_TERMS_OF_CHAPTER_3).toHaveLength(10);
     expect(SUPPORT_TERMS_OF_CHAPTER_3.filter((id) => !ids.includes(id))).toEqual([]);
     expect(ids.filter(isTermId)).toEqual(registered.map(([id]) => id));
-    expect(registered).toHaveLength(26);
+    expect(registered).toHaveLength(30);
     for (const [id, name] of registered) expect(TERMS[id as TermId].name, id).toBe(name);
   });
 
   it('the registered terms of chapter 3 count their core terms and their support terms', () => {
     const support = registered.filter(([id]) => SUPPORT_TERMS_OF_CHAPTER_3.includes(id));
-    expect(support.map(([id]) => id)).toEqual(['query-string', 'status-400', 'cookie']);
-    expect(registered.length - support.length).toBe(23);
+    expect(support.map(([id]) => id)).toEqual(['query-string', 'status-400', 'cookie', 'x-forwarded-for']);
+    expect(registered.length - support.length).toBe(26);
     expect(LADDER_OF_CHAPTER_3.length - SUPPORT_TERMS_OF_CHAPTER_3.length).toBe(55);
   });
 

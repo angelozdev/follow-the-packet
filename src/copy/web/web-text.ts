@@ -51,6 +51,7 @@ export const WEB_BOX_TEXT = {
   generatedBy: {
     label: 'Quién lo generó',
     line: (owner: TermText): TermText => `La app de ${owner}`,
+    proxyLine: (owner: TermText, known: Known): TermText => `El ${word(known, 'reverse-proxy', 'proxy inverso')} ${owner}`,
   },
   header: (name: string, value: string): TermText => `${name}: ${value}`,
   notes: {

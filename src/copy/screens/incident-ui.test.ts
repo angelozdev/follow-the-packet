@@ -10,20 +10,20 @@ const ROLE_WORDS: Record<Role, string> = {
   proxy: 'proxy inverso',
   app: 'app, servidor de origen',
 };
-const ROLE_TERMS: Partial<Record<Role, TermId>> = { resolver: 'resolver', authoritative: 'authoritative-server', web: 'web-server' };
+const ROLE_TERMS: Record<Role, TermId> = { resolver: 'resolver', authoritative: 'authoritative-server', web: 'web-server', proxy: 'reverse-proxy', app: 'origin-server' };
 const NO_TERMS = new Set<TermId>();
 
 describe('the words of the roles of a server', () => {
   it('the words of the roles name each term once the player knows it and use a plain word before', () => {
-    const known = new Set<TermId>(['resolver', 'authoritative-server', 'web-server']);
+    const known = new Set<TermId>(Object.values(ROLE_TERMS));
     expect([...ROLES].sort()).toEqual(Object.keys(ROLE_WORDS).sort());
     for (const role of ROLES) {
       const term = ROLE_TERMS[role];
       expect(toPlainText(MAP_TEXT.roles([role], known)), role).toBe(ROLE_WORDS[role]);
       expect(toPlainText(MAP_TEXT.roles([role], NO_TERMS)), role).toBe(ROLE_WORDS[role]);
-      expect(termsIn(MAP_TEXT.roles([role], known)), role).toEqual(term === undefined ? [] : [term]);
+      expect(termsIn(MAP_TEXT.roles([role], known)), role).toEqual([term]);
       expect(termsIn(MAP_TEXT.roles([role], NO_TERMS)), role).toEqual([]);
-      expect(termsIn(MAP_TEXT.roles([role])), `${role} with no list of known terms`).toEqual(term === undefined ? [] : [term]);
+      expect(termsIn(MAP_TEXT.roles([role])), `${role} with no list of known terms`).toEqual([term]);
     }
   });
 

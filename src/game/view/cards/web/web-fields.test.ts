@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toPlainText, type TermId } from '@/copy';
-import type { Site } from '@/engine';
+import { applyAction, type NetworkAction, type Site } from '@/engine';
 import { INCIDENTS } from '@/levels';
 import { OFFICE_FLOORS, signInIncident, webSendIncident, withDevice } from '@/testing';
 import { sessionReducer, startSession, type Session } from '@/game/session';
@@ -350,5 +350,42 @@ describe('the box of a curl with a credential: the Authorization header of the r
       'Clase 4xx: la petición, tal como llegó, no se puede cumplir.',
       'laptop-lucia sabe quién pide /admin: es marta. Pero la autorización decide que marta no tiene permiso para entrar a /admin.',
     ]);
+  });
+});
+
+describe('the box of a response that went through a proxy', () => {
+  const { backbone, server } = OFFICE_FLOORS;
+  const ORIGIN = { id: 'origin-server', name: 'servidor-app', ip: '198.51.100.61', link: '198.51.100.6' };
+  const origin = { id: 'orders', names: [], pages: [], notFoundBody: 'No hay nada en esa URL.' };
+  const forwardEverything = (session: Session): Session => {
+    const shop: Site = { id: 'shop', names: ['www.lucia.example'], pages: [], notFoundBody: 'No hay nada aquí.', proxy: { prefixes: ['/'], origins: [{ ip: ORIGIN.ip, port: 3000 }] } };
+    const facing = (session.world.routers ?? []).find(({ id }) => id === backbone.id)!.interfaces;
+    const changes: NetworkAction[] = [
+      { type: 'addActor', actor: { id: ORIGIN.id, name: ORIGIN.name, ip: ORIGIN.ip, kind: 'server', latencyMs: 20, services: [{ protocol: 'tcp', port: 3000, listen: 'all', web: { sites: [origin], defaultSiteId: origin.id } }] } },
+      { type: 'updateRouter', routerId: backbone.id, interfaces: [...facing, { ip: ORIGIN.link, faces: ORIGIN.id }] },
+      { type: 'setWebService', ownerId: server.id, port: 80, web: { sites: [shop], defaultSiteId: shop.id } },
+    ];
+    return { ...session, world: changes.reduce(applyAction, session.world) };
+  };
+  const through = sentAs(forwardEverything(web), 'you', 'shop', 'curl');
+  const generatedBy = (role: 'app' | 'proxy', id: string = server.id): Session => ({
+    ...through,
+    sent: through.sent.map((run) => ({ ...run, trace: { ...run.trace, app: { ...run.trace.app!, generatedBy: { id, role } } } })),
+  });
+  const whoGenerated = (session: Session) => field(boxOf(session, 'you', 'shop', 'curl'), 'Quién lo generó');
+
+  it('the box says who generated the code from the trace, not from the first answer', () => {
+    const [firstAnswer] = through.sent[0].trace.steps.flatMap(({ reason }) => (reason.code === 'web-answered' ? [reason] : []));
+    expect(firstAnswer.deviceId).toBe(server.id);
+    expect(through.sent[0].trace.app?.generatedBy).toEqual({ id: ORIGIN.id, role: 'app' });
+    expect(whoGenerated(through)).toEqual(['Quién lo generó', `La app de ${ORIGIN.name}`]);
+    expect(field(boxOf(through, 'you', 'shop', 'curl'), 'Código de estado')?.[1]).toBe('404 Not Found');
+  });
+
+  it('the box names the proxy as the one that generated a code only when it generated it', () => {
+    expect(whoGenerated(generatedBy('app'))).toEqual(['Quién lo generó', 'La app de servidor-internet']);
+    expect(whoGenerated(generatedBy('proxy'))).toEqual(['Quién lo generó', 'El proxy inverso servidor-internet']);
+    expect(whoGenerated(without(generatedBy('proxy'), 'reverse-proxy'))).toEqual(['Quién lo generó', 'El proxy inverso servidor-internet']);
+    expect(whoGenerated(through)).not.toContain('El proxy inverso servidor-app');
   });
 });

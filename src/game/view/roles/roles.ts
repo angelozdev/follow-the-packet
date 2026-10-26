@@ -13,6 +13,7 @@ export function rolesOf(server: ServerActor): Role[] {
   const held: Partial<Record<Role, boolean>> = {
     resolver: server.dns?.role === 'resolver',
     authoritative: server.dns?.role === 'authoritative',
+    proxy: sites.some(({ proxy }) => proxy !== undefined),
     web: sites.some((site) => !keepsState(site)),
     app: sites.some(keepsState),
   };

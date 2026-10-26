@@ -3,6 +3,7 @@ import { isIpv4, parseUrl } from '@/engine';
 import type { PacketRun } from '@/game/flow-runs';
 import { sendingOf, type Session } from '@/game/session';
 import type { InspectionField } from '@/game/view/packet-fields';
+import { placesOf } from '@/game/view/router-place';
 
 const PORT_WRITTEN = /^[a-z][a-z\d+.-]*:\/\/[^/?#]*:\d+(?:[/?#]|$)/i;
 
@@ -54,15 +55,16 @@ export function responseField(session: Session, run: PacketRun): InspectionField
   return [{ label: WEB_BOX_TEXT.response, lines: linesOf(response), message: true, notes: [WEB_BOX_TEXT.notes.response, ...loginBox] }];
 }
 
-/** Returns the fields with the status code of the response and its class, and with the device whose app generated it (the one of the step `web-answered`), once `status-code` is known. A 401 or a 403 adds, after the class, the sentence of why the app refused. A packet that got no response has neither. */
+/** Returns the fields with the status code of the response and its class, and with the device whose app generated it (the one `Trace.app.generatedBy` names, which is not the one of the first `web-answered` when a proxy passed the response on), once `status-code` is known. A 401 or a 403 adds, after the class, the sentence of why the app refused. A packet that got no response has neither. */
 export function statusCodeFields(session: Session, run: PacketRun): InspectionField[] {
   const response = run.trace.app?.response;
-  const generatedBy = run.trace.steps.flatMap(({ reason }) => (reason.code === 'web-answered' ? [reason.deviceId] : []))[0];
+  const generatedBy = run.trace.app?.generatedBy;
   if (!response || generatedBy === undefined || !session.known.has('status-code')) return [];
-  const refusal = run.trace.steps.flatMap(({ reason }) => (reason.code === 'web-needs-login' || reason.code === 'web-forbidden' ? [describeReason(reason, session.world, session.known)] : []));
+  const refusal = run.trace.steps.flatMap(({ reason }) => (reason.code === 'web-needs-login' || reason.code === 'web-forbidden' ? [describeReason(reason, session.world, session.known, placesOf(session))] : []));
+  const owner = deviceName(session.world, generatedBy.id);
   return [
     { label: WEB_BOX_TEXT.status.label, lines: [...WEB_BOX_TEXT.status.lines(response.statusCode, session.known), ...refusal] },
-    { label: WEB_BOX_TEXT.generatedBy.label, lines: [WEB_BOX_TEXT.generatedBy.line(deviceName(session.world, generatedBy))] },
+    { label: WEB_BOX_TEXT.generatedBy.label, lines: [generatedBy.role === 'proxy' ? WEB_BOX_TEXT.generatedBy.proxyLine(owner, session.known) : WEB_BOX_TEXT.generatedBy.line(owner)] },
   ];
 }
 

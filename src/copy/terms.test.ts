@@ -63,6 +63,7 @@ const IDS_OF_CHAPTER_3: TermId[] = [
   'http', 'url', 'url-path', 'query-string', 'curl', 'http-request', 'http-response', 'http-method', 'idempotent', 'process', 'web-server', 'browser',
   'http-header', 'host-header', 'virtual-host', 'status-code', 'status-200', 'client-error', 'status-404', 'status-400',
   'authentication', 'authorization', 'authorization-header', 'status-401', 'status-403', 'cookie',
+  'reverse-proxy', 'origin-server', 'x-forwarded-for', 'status-429',
 ];
 const DEFINITIONS_BEFORE_CHAPTER_2: [TermId, string][] = [
   ['cidr', 'Una notación para un rango de IPs, IP/número: /32 es una sola IP; /16, 65 536; 0.0.0.0/0, todas las IPv4.'],
@@ -213,7 +214,7 @@ describe('term registry', () => {
 
   it('registers the ids of the sub-chapters of chapter 3 built so far, which name no entity of the map and have no icon', () => {
     const named = Object.values(ENTITY_TERMS).flatMap((variants) => Object.values(variants));
-    expect(IDS_OF_CHAPTER_3).toHaveLength(26);
+    expect(IDS_OF_CHAPTER_3).toHaveLength(30);
     expect(new Set(IDS_OF_CHAPTER_3).size).toBe(IDS_OF_CHAPTER_3.length);
     expect(IDS_OF_CHAPTER_3.filter((id) => !isTermId(id))).toEqual([]);
     expect(IDS_OF_CHAPTER_3.filter((id) => named.includes(id) || id in TERM_ENTITY)).toEqual([]);

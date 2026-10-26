@@ -23,8 +23,8 @@ const ROLE_WORDS: Record<Role, { words: string; term?: TermId }> = {
   resolver: { words: 'resolutor de DNS', term: 'resolver' },
   authoritative: { words: 'servidor autoritativo', term: 'authoritative-server' },
   web: { words: 'servidor web', term: 'web-server' },
-  proxy: { words: 'proxy inverso' },
-  app: { words: 'app, servidor de origen' },
+  proxy: { words: 'proxy inverso', term: 'reverse-proxy' },
+  app: { words: 'app, servidor de origen', term: 'origin-server' },
 };
 const ROLE_LIST = new Intl.ListFormat('es', { type: 'conjunction' });
 

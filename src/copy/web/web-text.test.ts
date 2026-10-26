@@ -60,4 +60,14 @@ describe('the texts of the web', () => {
     expect(termsIn(WEB_BOX_TEXT.url.lines({ ...PARTS, hostIsIp: true }, EVERY_TERM).join(' '))).toEqual(['ip-address', 'port', 'url-path', 'query-string']);
     expect(termsIn(WEB_BOX_TEXT.url.lines(PARTS, NOTHING_KNOWN).join(' '))).toEqual([]);
   });
+
+  it('the line of the box that names the proxy tags its term only once the player knows it, and the one of an app names no term', () => {
+    const proxy = (known: ReadonlySet<TermId>) => WEB_BOX_TEXT.generatedBy.proxyLine('[[servidor-nuevo]]', known);
+    expect(proxy(EVERY_TERM)).toBe('El {{reverse-proxy|proxy inverso}} [[servidor-nuevo]]');
+    expect(proxy(NOTHING_KNOWN)).toBe('El proxy inverso [[servidor-nuevo]]');
+    expect(termsIn(proxy(EVERY_TERM))).toEqual(['reverse-proxy']);
+    expect(termsIn(proxy(NOTHING_KNOWN))).toEqual([]);
+    expect(termsIn(WEB_BOX_TEXT.generatedBy.line('[[servidor-app]]'))).toEqual([]);
+    for (const known of [EVERY_TERM, NOTHING_KNOWN]) expect(toPlainText(proxy(known))).not.toMatch(/paquete|packet/i);
+  });
 });

@@ -319,6 +319,13 @@ export const TERMS = {
     definition: 'El servidor entendió la petición y se niega: no hay permiso o una restricción lo impide. Repetirla igual no cambia nada.',
   },
   cookie: { name: 'cookie', definition: 'Un dato que el servidor manda con Set-Cookie y que el navegador devuelve en las peticiones siguientes a ese sitio.' },
+  'reverse-proxy': { name: 'proxy inverso', definition: 'Un servidor que recibe peticiones HTTP en nombre de otro y las reenvía por otra conexión. El cliente solo ve al proxy.' },
+  'origin-server': { name: 'servidor de origen', definition: 'El servidor que genera la respuesta definitiva de un recurso, detrás de los proxies inversos que haya en medio.' },
+  'x-forwarded-for': {
+    name: 'X-Forwarded-For',
+    definition: 'Cabecera HTTP con la IP del cliente que añade un proxy inverso. Sin ella, el servidor de origen solo ve la IP del proxy.',
+  },
+  'status-429': { name: '429 Too Many Requests', definition: 'El cliente mandó demasiadas peticiones en poco tiempo. Quien limita puede añadir Retry-After: cuándo reintentar.' },
 } as const satisfies Record<string, Term>;
 
 export type TermId = keyof typeof TERMS;
