@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CATALOG_TEXT, entityName, replyShape, toPlainText, type EntityRef, type EntityVariants, type PacketShape, type StampState } from '@/copy';
+import { CATALOG_TEXT, MAP_TEXT, ROLES, entityName, replyShape, toPlainText, type EntityRef, type EntityVariants, type PacketShape, type Role, type StampState } from '@/copy';
 import { GroupBoxes } from '@/scene/entities/group-boxes';
 import { MORE_SPECIMENS, StampButton, StampMore, type MoreSpecimen } from '@/scene/entities/stamp';
 import { BAR_LENGTH, BAR_THICKNESS, BLOCK_TAB, CASILLAS, ICON, type Box, type Group, type GroupKind } from '@/scene/layout/arrange/geometry';
@@ -95,14 +95,14 @@ function networkCell(variant: EntityVariants['network']): CatalogCell {
   return { id: `network-${variant}`, caption: plainName({ kind: 'network', variant }), art: () => <GroupBoxes groups={groups} tabs={tabs} /> };
 }
 
-function pieceCell(entity: PieceEntity, state: PieceState): CatalogCell {
-  const id = `${entity.kind}-${entity.variant}-${state}`;
+function pieceCell(entity: PieceEntity, state: PieceState, role?: Role): CatalogCell {
+  const id = `${entity.kind}-${entity.variant}-${role ?? state}`;
   const { selected, locked, mark } = APPEARANCE[state];
-  const look: PieceLook = { ...entity, state: mark, id };
-  const piece: MapPiece = { ...entity, id, anchorId: id, label: entityName(entity), locked, state: mark };
+  const look: PieceLook = { ...entity, state: mark, id, role };
+  const piece: MapPiece = { ...entity, id, anchorId: id, label: entityName(entity), locked, state: mark, ...(role && { roles: [role], role }) };
   return {
     id,
-    caption: `${plainName(entity)} · ${CATALOG_TEXT.state[state]}`,
+    caption: role === undefined ? `${plainName(entity)} · ${CATALOG_TEXT.state[state]}` : toPlainText(MAP_TEXT.roles([role])),
     art: (still) => (
       <>
         {ON_THE_LINE.includes(entity.kind) && <path className="map-link" d={LINK} />}
@@ -155,12 +155,13 @@ function moreCell({ hidden, hidesProblem }: MoreSpecimen): CatalogCell {
   };
 }
 
-/** Every entity of the map in every variant and state, one row per entity or variant in the order of the catalog of the chapter 1 design, with the packets of TCP and UDP and the «+N» last, so the cells of the rows above keep their place; the widest row sets the columns. */
+/** Every entity of the map in every variant and state, one row per entity or variant in the order of the catalog of the chapter 1 design (the server of the internet has a row more, with the tower wearing the mark of each of its five roles), with the packets of TCP and UDP and the «+N» last, so the cells of the rows above keep their place; the widest row sets the columns. */
 export const CATALOG_ROWS: CatalogCell[][] = [
   NETWORK_VARIANTS.map(networkCell),
   statesRow({ kind: 'device', variant: 'laptop' }, DEVICE_STATES),
   statesRow({ kind: 'device', variant: 'printer' }, DEVICE_STATES),
   [...statesRow({ kind: 'device', variant: 'ec2-instance' }, DEVICE_STATES), pieceCell({ kind: 'device', variant: 'internet-server' }, 'normal')],
+  ROLES.map((role) => pieceCell({ kind: 'device', variant: 'internet-server' }, 'normal', role)),
   statesRow({ kind: 'firewall', variant: 'host-firewall' }, FIREWALL_STATES),
   statesRow({ kind: 'firewall', variant: 'security-group' }, FIREWALL_STATES),
   [pieceCell({ kind: 'edge', variant: 'router' }, 'locked'), pieceCell({ kind: 'edge', variant: 'internet-gateway' }, 'locked'), pieceCell({ kind: 'internet', variant: 'internet' }, 'normal')],

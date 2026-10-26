@@ -7,8 +7,8 @@ import { FirewallPiece } from '@/scene/entities/firewall';
 import { InternetPiece } from '@/scene/entities/internet';
 import type { Box } from '@/scene/layout/arrange/geometry';
 
-/** What a piece of the map is drawn as: its kind and variant and the state the game gives it. */
-export type PieceLook = Extract<EntityRef, { kind: MapPieceKind }> & Pick<MapPiece, 'state'> & { id?: string };
+/** What a piece of the map is drawn as: its kind and variant, the state the game gives it and, for a server of the internet with roles, the one its mark shows. */
+export type PieceLook = Extract<EntityRef, { kind: MapPieceKind }> & Pick<MapPiece, 'state' | 'role'> & { id?: string };
 
 interface PieceDrawing {
   piece: PieceLook;
@@ -20,7 +20,7 @@ interface PieceDrawing {
 function Shape({ piece, box, selected, still }: PieceDrawing) {
   switch (piece.kind) {
     case 'device':
-      return <DevicePiece box={box} variant={piece.variant} selected={selected} intruded={piece.state === 'intruded'} still={still} />;
+      return <DevicePiece box={box} variant={piece.variant} role={piece.role} selected={selected} intruded={piece.state === 'intruded'} still={still} />;
     case 'firewall':
       return <FirewallPiece box={box} variant={piece.variant} selected={selected} blocking={piece.state === 'blocking'} still={still} />;
     case 'edge':
@@ -36,7 +36,7 @@ function Shape({ piece, box, selected, still }: PieceDrawing) {
 export function PieceShape(drawing: PieceDrawing) {
   const { piece } = drawing;
   return (
-    <g className="map-piece" aria-hidden="true" data-piece={piece.id} data-kind={piece.kind} data-variant={piece.variant}>
+    <g className="map-piece" aria-hidden="true" data-piece={piece.id} data-kind={piece.kind} data-variant={piece.variant} data-role={piece.role}>
       <Shape {...drawing} />
     </g>
   );

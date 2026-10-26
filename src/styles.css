@@ -48,6 +48,12 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-piece__thin { stroke-width: var(--stroke-thin); }
 .map-piece__bold { stroke-width: var(--stroke-bold); }
 .map-piece__paper { stroke: var(--color-page); }
+.role-mark { fill: none; }
+.role-face[data-role='resolver'] { fill: var(--role-resolver-tint); }
+.role-face[data-role='authoritative'] { fill: var(--role-authoritative-tint); }
+.role-face[data-role='web'] { fill: var(--role-web-tint); }
+.role-face[data-role='proxy'] { fill: var(--role-proxy-tint); }
+.role-face[data-role='app'] { fill: var(--role-app-tint); }
 .map-piece__mat { fill: var(--color-shade); stroke-width: var(--stroke-thin); }
 .map-bar { fill: var(--color-shade); }
 .map-bar--blocking { fill: var(--color-danger); }

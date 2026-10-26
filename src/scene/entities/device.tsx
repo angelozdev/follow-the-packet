@@ -1,6 +1,8 @@
-import type { EntityRef, EntityVariants } from '@/copy';
+import type { ReactNode } from 'react';
+import type { EntityRef, EntityVariants, Role } from '@/copy';
 import { tokenPx } from '@/design';
 import { EntityIcon } from '@/scene/entities/icons/entity-icon';
+import { RoleIcon } from '@/scene/entities/roles/role-icon';
 import { LABEL_GAP, type Box } from '@/scene/layout/arrange/geometry';
 
 /** Every kind of device the map draws: the ones of a network and the server of the internet. */
@@ -27,12 +29,20 @@ const SHAPE_BOUNDS: Record<DeviceVariant, Bounds> = {
   'internet-server': { left: 7, top: 2, right: 17, bottom: 21 },
 };
 
+function PieceIcon({ box, children }: { box: Box; children: ReactNode }) {
+  return (
+    <svg className="map-piece__icon" x={box.x} y={box.y} width={box.width} height={box.height}>
+      {children}
+    </svg>
+  );
+}
+
 /** Takes an entity of the catalog and the box the layout holds for it; returns its icon of the catalog drawn as large as the box, with a stroke the width of the scale however large it is drawn. */
 export function CatalogIcon({ entity, box }: { entity: EntityRef; box: Box }) {
   return (
-    <svg className="map-piece__icon" x={box.x} y={box.y} width={box.width} height={box.height}>
+    <PieceIcon box={box}>
       <EntityIcon entity={entity} />
-    </svg>
+    </PieceIcon>
   );
 }
 
@@ -41,15 +51,21 @@ function borderOf({ x, y, width }: Box, { left, top, right, bottom }: Bounds): B
   return { x: x + left * scale - BORDER_GAP, y: y + top * scale - BORDER_GAP, width: (right - left) * scale + 2 * BORDER_GAP, height: (bottom - top) * scale + 2 * BORDER_GAP };
 }
 
-/** Takes the box of a device, its variant, whether its card is open, whether a forbidden packet got in and whether animations are off; returns its icon of the catalog, larger, on a shaded mat while selected, and, while something forbidden gets in, shaking with animations or, without them, inside a second border. */
-export function DevicePiece({ box, variant, selected, intruded, still }: { box: Box; variant: DeviceVariant; selected: boolean; intruded: boolean; still: boolean }) {
+/** Takes the box of a device, its variant, the role its mark shows when it is a server of the internet with one, whether its card is open, whether a forbidden packet got in and whether animations are off; returns its icon of the catalog, or the tower with the mark of its role in the same box, larger, on a shaded mat while selected, and, while something forbidden gets in, shaking with animations or, without them, inside a second border. */
+export function DevicePiece({ box, variant, role, selected, intruded, still }: { box: Box; variant: DeviceVariant; role?: Role; selected: boolean; intruded: boolean; still: boolean }) {
   const border = borderOf(box, SHAPE_BOUNDS[variant]);
   return (
     <>
       {selected && <rect className="map-piece__mat" x={box.x - MAT_PAD} y={box.y - MAT_PAD} width={box.width + 2 * MAT_PAD} height={box.height + 2 * MAT_PAD} rx={MAT_RADIUS} />}
       <g>
         {intruded && !still && <animateTransform attributeName="transform" type="translate" values={SHAKE_VALUES} dur={SHAKE_DURATION} repeatCount="indefinite" />}
-        <CatalogIcon entity={{ kind: 'device', variant }} box={box} />
+        {role === undefined ? (
+          <CatalogIcon entity={{ kind: 'device', variant }} box={box} />
+        ) : (
+          <PieceIcon box={box}>
+            <RoleIcon role={role} />
+          </PieceIcon>
+        )}
         {intruded && still && <rect className="map-piece__border" {...border} />}
       </g>
     </>

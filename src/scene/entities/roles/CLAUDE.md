@@ -1,0 +1,8 @@
+# scene/entities/roles
+
+The mark of the role of a server of the internet, drawn on its tower (V31, the student's choice of 2026-10-25). `role-icon.tsx` holds `RoleIcon`, the tower of the catalog with the pictogram of a role in the place of its three bays: the same face (`rect` 10 × 15 at 7, 6) and the same antenna (`M12 6V2`), so the silhouette, the box of the layout and the border of an alert are those of the bare tower, and a `g.role-mark` with the pictogram, one for each role of the closed list of `@/copy` (`ROLES`): a magnifying glass (`resolver`), a stamp with a check (`authoritative`), a pair of arrows (`proxy`), a triangle (`app`) and «&lt;/&gt;» (`web`). The pictograms are the data of a `Record<Role, ReactNode>`, so a role with no pictogram does not compile, and each one is drawn by the same component.
+
+- The shape says the role alone; the colour is a second cue. The face takes the tint of the role (`.role-face[data-role]` in `src/styles.css`, from `--role-<role>-tint` in `src/design/tokens.css`) and the pictogram stays in ink (`.role-mark` has no fill, and `.map-piece__ink` fills the solid parts), so ink on the tint keeps 7:1.
+- The mark is hidden from screen readers with the rest of the piece: the roles are told by the description of the button of the piece (`../../overlay/piece-label.tsx`) and by the line of its card. The icon of the catalog (`EntityIcon`) stays the bare tower; only `DevicePiece` (`../device.tsx`) draws a role, when its piece carries one.
+- Not here: which roles a server has and which one its mark shows (`src/game/view/roles/`), the words of a role (`src/copy/`), the colours (`src/design/tokens.css`).
+- May import: `@/copy` and `@/scene/entities/icons/ink-icon`.

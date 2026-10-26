@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { CATALOG_TEXT, ENTITY_REFS, MAP_TEXT, entityName, toPlainText, type EntityRef } from '@/copy';
+import { CATALOG_TEXT, ENTITY_REFS, MAP_TEXT, ROLES, entityName, toPlainText, type EntityRef } from '@/copy';
 import { MORE_SPECIMENS } from '@/scene/entities/stamp';
 import { CASILLAS } from '@/scene/layout/arrange/geometry';
 import { CatalogScene } from './catalog-scene';
@@ -11,7 +11,7 @@ type State = keyof typeof CATALOG_TEXT.state;
 
 const DEVICE_STATES: readonly State[] = ['normal', 'locked', 'selected', 'alert'];
 const FIREWALL_STATES: readonly State[] = ['locked', 'configurable', 'selected', 'blocking'];
-const ROW_SIZES = [3, 4, 4, 5, 4, 4, 3, 3, 5, 5, 4, 4, 3];
+const ROW_SIZES = [3, 4, 4, 5, 5, 4, 4, 3, 3, 5, 5, 4, 4, 3];
 const COLUMNS = 5;
 const TRACES: { caption: string; end: string; stamp: string }[] = [
   { caption: CATALOG_TEXT.state.replied, end: 'replied', stamp: 'arrived' },
@@ -72,11 +72,30 @@ describe('the 2D entity catalog', () => {
           expect(has(drawn, '.map-button__alert'), caption).toBe(state === 'alert');
           expect(has(drawn, '.map-piece__mat'), caption).toBe(entity.kind === 'device' && state === 'selected');
           expect(has(drawn, '.map-piece__border'), caption).toBe(state === 'alert');
+          expect(has(drawn, '.role-mark'), caption).toBe(false);
           expect(has(drawn, '.map-bar--blocking'), caption).toBe(state === 'blocking');
           expect(has(drawn, '.map-bar--selected'), caption).toBe(entity.kind === 'firewall' && state === 'selected');
         }
       }
     }
+  });
+
+  it('the catalog draws the bare tower of the server of the internet and the tower with each of the five marks, each with a caption that names its role', () => {
+    render(<CatalogScene still />);
+    const server: EntityRef = { kind: 'device', variant: 'internet-server' };
+    const bare = figure(captionOf(server, 'normal'));
+    expect(has(bare, '.map-piece[data-variant="internet-server"]')).toBe(true);
+    expect(has(bare, '.role-mark')).toBe(false);
+    expect(ROLES).toHaveLength(5);
+    for (const role of ROLES) {
+      const caption = toPlainText(MAP_TEXT.roles([role]));
+      const drawn = figure(caption);
+      expect(drawn.querySelectorAll('.role-mark'), caption).toHaveLength(1);
+      expect(drawn.querySelector(`.map-piece[data-variant="internet-server"][data-role="${role}"] .role-mark[data-role="${role}"]`), caption).not.toBeNull();
+      expect(drawn.querySelector('.map-button'), caption).toHaveAccessibleDescription(toPlainText(MAP_TEXT.roles([role])));
+    }
+    const marks = ROLES.map((role) => figure(toPlainText(MAP_TEXT.roles([role]))).querySelector('.role-mark')?.innerHTML);
+    expect(new Set(marks).size).toBe(ROLES.length);
   });
 
   it('the catalog draws a trace with its stamp for every way a packet ends', () => {
