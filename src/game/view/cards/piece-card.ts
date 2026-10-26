@@ -1,7 +1,8 @@
-import { PIECE_TEXT, type TermText } from '@/copy';
+import { MAP_TEXT, PIECE_TEXT, type TermText } from '@/copy';
 import type { PieceCard as OpensFirst } from '@/levels';
 import type { Session } from '@/game/session';
 import { parsePieceId } from '@/game/view/piece-id';
+import { rolesOf } from '@/game/view/roles/roles';
 import { identifyCard, type IdentifyCard } from './identify-card';
 import { classifyCard, type ClassifyCard } from './identify/classify-card';
 import { servicesCard, settingsCard, type ServicesCard, type SettingsCard } from './settings-card';
@@ -28,6 +29,7 @@ export interface PieceCard {
   tabs: PieceTab[];
   tabbed: boolean;
   first: PieceTabId;
+  roles?: TermText;
 }
 
 const OPENS_FIRST: Record<OpensFirst, PieceTabId> = { terminal: 'terminal', browser: 'browser', settings: 'settings', services: 'services', routes: 'routes', records: 'records', sites: 'sites' };
@@ -56,8 +58,15 @@ function firstOf(session: Session, pieceId: string, available: PieceTab[]): Piec
   return available.find((candidate) => candidate.id === wanted)?.id ?? available[0].id;
 }
 
-/** Returns the cards a piece opens from its one button, each as a tab, in the order they are offered when the incident names none: the terminal, the browser, the questions of an identify incident, the card that classifies, the network settings, the services, the table of routes, the table of translations, the records of a zone, the sites of a web server and the cache. A piece with several cards is `tabbed`; one with a single card opens it as it always did, with no tabs. The tab that opens first is the one the incident names for the piece (`send.opensFirst`) when the piece has that card, and the first of the list otherwise. Null for a piece with no card (a firewall opens its task card, which is not a tab, and a locked piece opens nothing). */
+function rolesLine(session: Session, pieceId: string): { roles?: TermText } {
+  const ref = parsePieceId(pieceId);
+  const actor = ref?.kind === 'actor' ? session.world.actors.find(({ id }) => id === ref.id) : undefined;
+  const roles = actor?.kind === 'server' ? rolesOf(actor) : [];
+  return roles.length === 0 ? {} : { roles: MAP_TEXT.rolesLine(roles, session.known) };
+}
+
+/** Returns the cards a piece opens from its one button, each as a tab, in the order they are offered when the incident names none: the terminal, the browser, the questions of an identify incident, the card that classifies, the network settings, the services, the table of routes, the table of translations, the records of a zone, the sites of a web server and the cache. A piece with several cards is `tabbed`; one with a single card opens it as it always did, with no tabs. The tab that opens first is the one the incident names for the piece (`send.opensFirst`) when the piece has that card, and the first of the list otherwise. Null for a piece with no card (a firewall opens its task card, which is not a tab, and a locked piece opens nothing). The card of a server of the internet carries `roles`, the line that says its roles in words, with the terms the player knows. */
 export function pieceCard(session: Session, pieceId: string): PieceCard | null {
   const available = tabs(session, pieceId);
-  return available.length === 0 ? null : { pieceId, tabs: available, tabbed: available.length > 1, first: firstOf(session, pieceId, available) };
+  return available.length === 0 ? null : { pieceId, tabs: available, tabbed: available.length > 1, first: firstOf(session, pieceId, available), ...rolesLine(session, pieceId) };
 }

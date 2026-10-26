@@ -1,0 +1,7 @@
+# game/view/roles
+
+The roles of a server of the internet, which the map shows as a mark on its tower and the button and the card of its piece say in words. `roles.ts` holds the two functions: `rolesOf(server)`, which reads the roles from the configuration of the server in the world (the `dns` role says `resolver` or `authoritative`; a web service with a site that keeps orders or logs users in is `app`, and one whose sites serve fixed pages is `web`; `proxy` is not derived yet, it comes with the site that forwards a prefix), in order of priority, and `markOf(roles)`, the one role the mark shows: the role that redirects the packet wins, the proxy over the app and the app over the web server. The list of roles (`ROLES`, `Role`) and their words (`MAP_TEXT.roles`, `MAP_TEXT.rolesLine`) live in `src/copy/`, because the scene and the words cannot import `@/game`.
+
+- The session never stores a role: `pieceViews` (`../pieces.ts`) and `pieceCard` (`../cards/piece-card.ts`) call `rolesOf` every time they are asked, so a move that changes the world changes them. Only a server of the internet (an actor of kind `server`) has roles; a server with no dns and no web service has none and its piece carries neither `roles` nor `role`.
+- Not here: the pictogram and the tint (`src/scene/entities/roles/`), the colours (`src/design/tokens.css`), the words of a role (`src/copy/screens/incident-ui.ts`).
+- May import: `@/engine`, `@/copy`.

@@ -4,7 +4,7 @@ import { Tabs } from '@/design';
 import { browserView, isShellCommand, terminalLine, toolOutputs, tracerouteLines, type PieceCard as Piece, type PieceTab, type PieceTabId, type SendPicks, type Session, type SessionAction } from '@/game';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { FramedCard, type CardFrame } from './chip-card';
+import { FramedCard, RolesOfThePiece, type CardFrame } from './chip-card';
 import { IdentifyCard, identifyFrame, useIdentifyDraft } from './identify-card';
 import { ClassifyCard, classifyFrame, useClassifyDraft } from './identify/classify-card';
 import { ServicesCard, SettingsCard, servicesFrame, settingsFrame } from './settings-card';
@@ -134,9 +134,13 @@ function Tabbed({ card, handlers, terminal, browser, onClose }: Drawn & { card: 
 export function PieceCard({ card, onClose, ...handlers }: PieceCardProps) {
   const terminal = useTerminalDraft(tabOf(card, 'terminal')?.card ?? null);
   const browser = useBrowserDraft();
-  return card.tabbed ? (
-    <Tabbed card={card} handlers={handlers} terminal={terminal} browser={browser} onClose={onClose} />
-  ) : (
-    <Single tab={card.tabs[0]} handlers={handlers} terminal={terminal} browser={browser} onClose={onClose} />
+  return (
+    <RolesOfThePiece value={card.roles ?? null}>
+      {card.tabbed ? (
+        <Tabbed card={card} handlers={handlers} terminal={terminal} browser={browser} onClose={onClose} />
+      ) : (
+        <Single tab={card.tabs[0]} handlers={handlers} terminal={terminal} browser={browser} onClose={onClose} />
+      )}
+    </RolesOfThePiece>
   );
 }

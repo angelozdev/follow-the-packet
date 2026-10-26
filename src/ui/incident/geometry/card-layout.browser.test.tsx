@@ -122,6 +122,14 @@ const PROVIDER = 'router-proveedor';
 const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
 const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
 const SERVERS_BLOCK = '198.51.100.0/24';
+const NARROWEST_PHONE = { width: 360, height: 800 };
+const NEW_SERVER = 'servidor-nuevo';
+const SHOP_SITES_CARD = 'Sitios de servidor-nuevo';
+const ROLES_LINE = '.chip-card__roles';
+const SERVER_CARDS = [
+  { name: 'the records of servidor-autoritativo', level: '02-11', server: AUTHORITATIVE, card: RECORDS_CARD, line: 'Papel: servidor autoritativo' },
+  { name: 'the sites of servidor-nuevo', level: '03-04', server: NEW_SERVER, card: SHOP_SITES_CARD, line: 'Papel: servidor web' },
+];
 const DESTINATION_HOP = '203.0.113.2 router-destino';
 const PING = 'ping';
 const DIG = 'dig';
@@ -701,3 +709,23 @@ describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size, boxShows }) => {
     expect(framesWithABox > 0, 'the box was up in some of the frames exactly where this window leaves it room, so the test looked at something').toBe(boxShows);
   });
 });
+
+describe('the card of a server on the narrowest phone', () => {
+  it('at 360 px the card of a server with its line of roles does not scroll sideways and every control is within reach', { timeout: SLOW_TEST_MS }, async () => {
+    await page.viewport(NARROWEST_PHONE.width, NARROWEST_PHONE.height);
+    for (const { name, level, server, card: cardName, line } of SERVER_CARDS) {
+      await inTheScene({ name, level, reach: () => openByKeyboard(server), last: doneOf(cardName) }, 'at-rest', async () => {
+        const opened = card(cardName);
+        await expect.element(opened).toBeVisible();
+        expect(opened.element().querySelector(ROLES_LINE)?.textContent, `${name}: the card says the role`).toBe(line);
+        expect(document.documentElement.scrollWidth - window.innerWidth, `${name}: the page does not scroll sideways`).toBe(0);
+        const body = opened.element().querySelector('.chip-card__body') as HTMLElement;
+        expect(body.scrollWidth, `${name}: nor does the body of the card`).toBeLessThanOrEqual(body.clientWidth);
+        expect(opened.element().querySelector(ROLES_LINE)?.getBoundingClientRect().right, `${name}: the line ends inside the card`).toBeLessThanOrEqual(opened.element().getBoundingClientRect().right);
+        expect(await reachWithWheel(doneOf(cardName)()), `${name}: the foot is within reach`).toBe(true);
+        expect(cardsOutsideTheMap(), `${name}: the card stays inside the map`).toEqual([]);
+      });
+    }
+  });
+});
+

@@ -1,7 +1,12 @@
-import type { KeyboardEvent, ReactNode, RefObject } from 'react';
+import { createContext, useContext, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { TASK_CARD_TEXT, toPlainText, type TermText } from '@/copy';
 import { Button, Card, type TrayChip } from '@/design';
 import { TaggedText } from '@/ui/tagged-text';
+
+const RolesContext = createContext<TermText | null>(null);
+
+/** Gives the cards drawn inside it the line that says the roles of their piece, so a card of a server says them once, whatever the card or its tabs. */
+export const RolesOfThePiece = RolesContext.Provider;
 
 interface ChipCardProps {
   title: TermText;
@@ -15,6 +20,7 @@ interface ChipCardProps {
 
 /** The card that opens beside a piece of the map: a dialog with its title on the stripe, what the caller puts in it and, at its foot, the caller's `actions` (such as "Enviar") and the "Listo" button. Escape always calls `onClose`; "Listo" calls `onDone` when the card has its own way out, and `onClose` when it has not. The foot stays in view when the card is docked and what it shows outgrows it: only what is above it scrolls. */
 export function ChipCard({ title, icon, heading, onClose, onDone = onClose, actions, children }: ChipCardProps) {
+  const roles = useContext(RolesContext);
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose();
   };
@@ -33,7 +39,14 @@ export function ChipCard({ title, icon, heading, onClose, onDone = onClose, acti
       }}
     >
       <div className="chip-card">
-        <div className="chip-card__body">{children}</div>
+        <div className="chip-card__body">
+          {roles !== null && (
+            <p className="chip-card__roles muted">
+              <TaggedText text={roles} />
+            </p>
+          )}
+          {children}
+        </div>
         <div className="chip-card__actions">
           {actions}
           <Button onClick={onDone}>{TASK_CARD_TEXT.done}</Button>

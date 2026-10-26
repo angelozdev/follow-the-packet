@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { useReducer, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TASK_CARD_TEXT, TERMINAL_TEXT } from '@/copy';
-import { pieceCard, sessionReducer, startSession, type Session } from '@/game';
+import { pieceCard, sessionReducer, startSession, type PieceCard as Piece, type Session } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import type { SendIncident } from '@/levels';
 import { PieceLabel, pieceDomId } from '@/scene/overlay/piece-label';
-import { OFFICE_FLOORS } from '@/testing/fixtures';
+import { NAME_SERVER_PIECES, OFFICE_FLOORS } from '@/testing/fixtures';
 import { namesSendIncident, sendIncident } from '@/testing/incidents';
 import { PieceCard, pieceHandlers } from './piece-card';
 
@@ -18,11 +18,11 @@ const LAPTOP = PIECE_ID.device('your-laptop');
 const ROUTER = PIECE_ID.router(OFFICE_FLOORS.officeRouter.id);
 const WWW = 'www.lucia.example';
 
-function Hosted({ pieceId, incident = NAMES, onClose = vi.fn() }: { pieceId: string; incident?: SendIncident; onClose?: () => void }) {
+function Hosted({ pieceId, incident = NAMES, onClose = vi.fn(), shaped = (card) => card }: { pieceId: string; incident?: SendIncident; onClose?: () => void; shaped?: (card: Piece) => Piece }) {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([incident], incident.id));
   const card = pieceCard(session, pieceId);
   if (!card) throw new Error('missing the card of the piece');
-  return <PieceCard card={card} {...pieceHandlers(session, dispatch, vi.fn())} onClose={onClose} />;
+  return <PieceCard card={shaped(card)} {...pieceHandlers(session, dispatch, vi.fn())} onClose={onClose} />;
 }
 
 const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
@@ -147,5 +147,28 @@ describe('piece card', () => {
     expect(screen.getByRole('tab', { name: 'Tabla de rutas' })).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{Home}');
     expect(screen.getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('the card of a server says every role in words once', async () => {
+    const user = userEvent.setup();
+    const rolesOfTheCard = () => [...document.querySelectorAll('.chip-card__roles')].map((line) => line.textContent);
+    const { unmount } = render(<Hosted pieceId={PIECE_ID.actor(NAME_SERVER_PIECES.authoritative.id)} />);
+    expect(tabs()).toEqual([]);
+    expect(rolesOfTheCard()).toEqual(['Papel: servidor autoritativo']);
+    unmount();
+    const resolver = PIECE_ID.actor(NAME_SERVER_PIECES.resolver.id);
+    const second = pieceCard(startSession([NAMES], NAMES.id), PIECE_ID.actor(NAME_SERVER_PIECES.authoritative.id))?.tabs[0];
+    if (!second) throw new Error('missing the second tab');
+    const withTwoTabs = (card: Piece): Piece => ({ ...card, tabs: [...card.tabs, second], tabbed: true });
+    render(<Hosted pieceId={resolver} shaped={withTwoTabs} />);
+    expect(tabs()).toHaveLength(2);
+    expect(rolesOfTheCard()).toEqual(['Papel: resolutor de DNS']);
+    await user.click(screen.getAllByRole('tab')[1]);
+    expect(rolesOfTheCard()).toEqual(['Papel: resolutor de DNS']);
+  });
+
+  it('a card of a piece that is not a server has no line of roles', () => {
+    render(<Hosted pieceId={LAPTOP} />);
+    expect(document.querySelector('.chip-card__roles')).toBeNull();
   });
 });

@@ -2730,3 +2730,19 @@ describe('02-14, on call', () => {
     expect(laterTermLeaks([incident])).toEqual([]);
   });
 });
+
+describe('the marks of the servers of names on the map of chapter 2', () => {
+  const marksOf = (incidentId: string): Record<string, string | undefined> =>
+    Object.fromEntries(pieceViews(startSession(INCIDENTS, incidentId)).filter((piece) => piece.variant === 'internet-server').map((piece) => [plain(piece.label), piece.role]));
+
+  it('chapter 2: servidor-dns wears the resolver mark and servidor-autoritativo the authoritative one', () => {
+    const { resolver, authoritative, news, fresh } = SERVER;
+    expect(marksOf('02-10')[resolver.name]).toBe('resolver');
+    expect(marksOf('02-11')).toMatchObject({ [resolver.name]: 'resolver', [authoritative.name]: 'authoritative' });
+    expect(marksOf('02-12')).toMatchObject({ [resolver.name]: 'resolver', [authoritative.name]: 'authoritative', [fresh.name]: undefined });
+    expect(marksOf('02-13')).toMatchObject({ [resolver.name]: 'resolver', [authoritative.name]: 'authoritative', [news.name]: 'authoritative' });
+    expect(marksOf('02-14')[resolver.name]).toBe('resolver');
+    expect(Object.values(marksOf('02-10')).filter((role) => role === 'authoritative')).toEqual([]);
+  });
+});
+

@@ -15,6 +15,28 @@ const EDGE_LABEL: Record<Network['edge'], TermText> = {
   router: '{{router}}',
 };
 
+/** The roles a server of the internet can play, each with a mark of its own on the map. */
+export const ROLES = ['resolver', 'authoritative', 'web', 'proxy', 'app'] as const;
+export type Role = (typeof ROLES)[number];
+
+const ROLE_WORDS: Record<Role, { words: string; term?: TermId }> = {
+  resolver: { words: 'resolutor de DNS', term: 'resolver' },
+  authoritative: { words: 'servidor autoritativo', term: 'authoritative-server' },
+  web: { words: 'servidor web', term: 'web-server' },
+  proxy: { words: 'proxy inverso' },
+  app: { words: 'app, servidor de origen' },
+};
+const ROLE_LIST = new Intl.ListFormat('es', { type: 'conjunction' });
+
+function roleWords(role: Role, known?: ReadonlySet<TermId>): TermText {
+  const { words, term } = ROLE_WORDS[role];
+  return term !== undefined && (known === undefined || known.has(term)) ? `{{${term}|${words}}}` : words;
+}
+
+function roleList(roles: readonly Role[], known?: ReadonlySet<TermId>): TermText {
+  return ROLE_LIST.format(roles.map((role) => roleWords(role, known)));
+}
+
 const STOPPED_PROCESS = 'terminó';
 const MORE_STAMPS = (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`;
 const HIDDEN_PROBLEM = 'Entre los escondidos hay alguno bloqueado, perdido, con un aviso o que entró y no debía.';
@@ -28,6 +50,8 @@ export const MAP_TEXT = {
   hiddenProblem: HIDDEN_PROBLEM,
   moreStampsWithProblem: (hidden: number, total: number): string => `${MORE_STAMPS(hidden, total)} ${HIDDEN_PROBLEM}`,
   alert: 'con alerta: entra algo que no debe',
+  roles: roleList,
+  rolesLine: (roles: readonly Role[], known?: ReadonlySet<TermId>): TermText => `${roles.length === 1 ? 'Papel' : 'Papeles'}: ${roleList(roles, known)}`,
   groups: {
     office: { text: 'Oficina' },
     vpc: { text: 'VPC', term: 'vpc' },

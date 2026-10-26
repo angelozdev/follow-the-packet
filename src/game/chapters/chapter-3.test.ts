@@ -1161,3 +1161,18 @@ describe('03-06, who you are and what you can', () => {
     expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx|\b429\b/.test(text))).toEqual([]);
   });
 });
+
+describe('the marks of the servers on the map of chapter 3', () => {
+  const MARKED = ['03-04', '03-05', '03-06'];
+
+  it('03-04 to 03-06: servidor-nuevo wears the web mark', () => {
+    for (const id of MARKED) {
+      const session = startSession(INCIDENTS, id);
+      const whole = { ...session, incident: { ...session.incident, shown: undefined } };
+      const mark = (seen: Session) => pieceViews(seen).find((piece) => piece.anchorId === SERVER.fresh.id)?.role;
+      expect(mark(whole), id).toBe('web');
+      if (id === '03-04') expect(mark(session), id).toBe('web');
+    }
+  });
+});
+

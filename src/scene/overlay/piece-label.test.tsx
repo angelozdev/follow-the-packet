@@ -25,6 +25,8 @@ const LAPTOP: MapPiece = {
   state: 'normal',
 };
 
+const TOWER: MapPiece = { id: 'actor:new-server', kind: 'device', variant: 'internet-server', anchorId: 'new-server', label: '[[servidor-nuevo]]', locked: false, state: 'normal', roles: ['proxy', 'web'], role: 'proxy' };
+
 describe('piece label', () => {
   it('reads its plain label and says when the piece is locked', () => {
     renderLabel(SERVER);
@@ -125,5 +127,34 @@ describe('piece label', () => {
   it('a piece without a settings entry draws one button only', () => {
     renderLabel(SERVER);
     expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('the description of the button of a server lists every role in words', () => {
+    renderLabel(TOWER);
+    expect(screen.getByRole('button', { name: 'servidor-nuevo' })).toHaveAccessibleDescription('proxy inverso y servidor web');
+  });
+
+  it('the accessible name of the button of a server is the name of the piece and no more', () => {
+    renderLabel(TOWER);
+    expect(screen.getByRole('button')).toHaveAccessibleName('servidor-nuevo');
+    expect(screen.getByRole('button').textContent).toBe('servidor-nuevo');
+  });
+
+  it('the accessible name of a locked server stays the name and the lock, and the roles go only in the description', () => {
+    renderLabel({ ...TOWER, locked: true });
+    expect(screen.getByRole('button')).toHaveAccessibleName(`servidor-nuevo ${MAP_TEXT.locked}`);
+    expect(screen.getByRole('button')).toHaveAccessibleDescription('proxy inverso y servidor web');
+  });
+
+  it('a server with no role has no description', () => {
+    renderLabel({ ...TOWER, roles: undefined, role: undefined });
+    const button = screen.getByRole('button', { name: 'servidor-nuevo' });
+    expect(button).not.toHaveAttribute('aria-describedby');
+    expect(button).toHaveAccessibleDescription('');
+  });
+
+  it('a piece that is not a server has no description', () => {
+    renderLabel(LAPTOP);
+    expect(screen.getByRole('button')).not.toHaveAttribute('aria-describedby');
   });
 });
