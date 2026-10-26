@@ -43,6 +43,18 @@ function mix(from: string, to: string, share: number): string {
   return `#${blended.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 }
 
+function labOf(hex: string): number[] {
+  const rgb = channels(hex).map(linear);
+  const [fx, fy, fz] = XYZ_FROM_LINEAR_RGB.map((row, index) => row.reduce((sum, weight, at) => sum + weight * rgb[at], 0) / D65_WHITE[index]).map((share) => (share > LAB_EPSILON ? Math.cbrt(share) : (LAB_KAPPA * share + 16) / 116));
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+/** Returns the CIE 1976 colour difference between two #rrggbb colours: the distance between them in CIELAB under D65. */
+function deltaE(a: string, b: string): number {
+  const [first, second] = [labOf(a), labOf(b)];
+  return Math.hypot(...first.map((value, index) => value - second[index]));
+}
+
 const MESSAGE_TABS = [
   { text: '--color-ink-soft', fill: '--color-surface', frame: '--color-ink-soft' },
   { text: '--color-on-fill', fill: '--color-success', frame: '--color-success' },
@@ -53,6 +65,19 @@ const SUCCESS_GREEN_ON_SURFACE = { light: 5.83, dark: 6.67 };
 const SUCCESS_FILL_TEXT_ON_GREEN = { light: 5.83, dark: 7.54 };
 const PROTOTYPE_DARK = { surface: '#292623', onFill: '#1e1c19', success: '#86b896' };
 const RATIO_DIGITS = 2;
+const ROLES = ['resolver', 'authoritative', 'proxy', 'app', 'web'];
+const roleColours = () => ROLES.map((role) => ({ role, colour: token(`--role-${role}`), tint: token(`--role-${role}-tint`) }));
+const ROLE_TINT_SHARE = 0.5;
+const ROLE_TINT_INK_MIN_CONTRAST = 7;
+const ROLE_MIN_DELTA_E = 25;
+const D65_WHITE = [0.95047, 1, 1.08883];
+const LAB_EPSILON = 216 / 24389;
+const LAB_KAPPA = 24389 / 27;
+const XYZ_FROM_LINEAR_RGB = [
+  [0.4124564, 0.3575761, 0.1804375],
+  [0.2126729, 0.7151522, 0.072175],
+  [0.0193339, 0.119192, 0.9503041],
+];
 
 const CONTRAST_CASES = [
   ...ACCENT_ROLES.flatMap((role) =>
@@ -126,6 +151,34 @@ describe('design tokens', () => {
     it('leaves the ink beside a vermilion shape out of the 3:1 check, because that outline already separates it from every paper', () => {
       for (const background of Object.values(PAPERS)) {
         expect(contrast(token('--color-ink'), background)).toBeGreaterThanOrEqual(NON_TEXT_MIN_CONTRAST);
+      }
+    });
+  });
+
+  describe('the colours of the roles of a server', () => {
+    it('each role tint is half its role colour and half the surface', () => {
+      for (const { role, colour, tint } of roleColours()) expect(tint, role).toBe(mix(colour, token('--color-surface'), ROLE_TINT_SHARE));
+    });
+
+    it('ink keeps 7:1 on each role tint', () => {
+      for (const { role, tint } of roleColours()) expect(contrast(token('--color-ink'), tint), role).toBeGreaterThanOrEqual(ROLE_TINT_INK_MIN_CONTRAST);
+    });
+
+    it('each role colour keeps 3:1 on the surface', () => {
+      for (const { role, colour } of roleColours()) expect(contrast(colour, token('--color-surface')), role).toBeGreaterThanOrEqual(NON_TEXT_MIN_CONTRAST);
+    });
+
+    it('each role colour keeps a distance of 25 from the success green and from the danger vermilion', () => {
+      for (const { role, colour } of roleColours()) {
+        expect(deltaE(colour, token('--color-success')), `${role} from the success green`).toBeGreaterThanOrEqual(ROLE_MIN_DELTA_E);
+        expect(deltaE(colour, token('--color-danger')), `${role} from the danger vermilion`).toBeGreaterThanOrEqual(ROLE_MIN_DELTA_E);
+      }
+    });
+
+    it('no two role colours are closer than 25', () => {
+      const colours = roleColours();
+      for (const [index, first] of colours.entries()) {
+        for (const second of colours.slice(index + 1)) expect(deltaE(first.colour, second.colour), `${first.role} and ${second.role}`).toBeGreaterThanOrEqual(ROLE_MIN_DELTA_E);
       }
     });
   });

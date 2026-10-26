@@ -18,6 +18,17 @@
   --color-focus: var(--palette-vermilion);
   --color-success: var(--palette-green);
 
+  --role-resolver: #ae760c;
+  --role-resolver-tint: #d5b77f;
+  --role-authoritative: #16979f;
+  --role-authoritative-tint: #89c8c9;
+  --role-proxy: #756fb3;
+  --role-proxy-tint: #b8b4d3;
+  --role-app: #a67d93;
+  --role-app-tint: #d1bbc3;
+  --role-web: #808703;
+  --role-web-tint: #bec07b;
+
   --font-display: 'Newsreader', Georgia, serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;

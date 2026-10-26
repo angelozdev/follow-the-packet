@@ -35,6 +35,20 @@ How "Sigue el paquete" looks, in one place: the tokens, the scales, the primitiv
 | `--color-focus` | vermilion | the focus ring |
 | `--color-success` | green | a right answer: the frame and the tab of a `success` `Message` |
 
+### The colours of the roles of a server
+
+A server of the internet wears a mark that says its role (a pictogram on the face of its tower, `src/scene/entities/roles/`), and its face takes a tint of the role's colour as a second cue: the shape says the role alone, and the colour never does. Each role has two tokens, `--role-<role>` and `--role-<role>-tint`, with the values of the prototype of the student's choice (2026-10-25, way «a» of the colour page of V31); they hold their hex value and are not in the palette layer, because a role of a server is the only thing they are for. Only the five roles the game uses today have tokens; the other five that the prototype measured (database, queue, balancer, cache and files) get theirs in the chapter that uses them.
+
+| Role | Colour | Tint |
+|------|--------|------|
+| `resolver` | `#ae760c` | `#d5b77f` |
+| `authoritative` | `#16979f` | `#89c8c9` |
+| `proxy` | `#756fb3` | `#b8b4d3` |
+| `app` | `#a67d93` | `#d1bbc3` |
+| `web` | `#808703` | `#bec07b` |
+
+The tint is the colour mixed half and half with `--color-surface`. The pictogram is drawn in `--color-ink` over the tint, at 7:1 or more (7.08 on the proxy tint, the lowest), and each colour keeps 3:1 on the surface (3.31 on `app`, the lowest). No role colour is a red, an orange or a green: each is at a CIE 1976 distance of 25 or more from the success green (29.2 on `authoritative`, the lowest) and from the danger vermilion (40.2 on `resolver`, the lowest), so a tinted face cannot read as a state, and no two role colours are closer than 25 to each other (30.5 between `proxy` and `app`, the lowest). `src/design/tokens.test.ts` asserts all five, with a CIE 1976 distance of its own.
+
 ### The vermilion rule
 
 Vermilion is for danger. Emphasis and focus share its value today, but they are separate roles: either can change in one line of `tokens.css` without touching danger. A new use of vermilion picks the role it means; nothing outside `tokens.css` names `--palette-vermilion`.
