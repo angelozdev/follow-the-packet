@@ -39,6 +39,18 @@ describe('the web service schema', () => {
     expect(webServiceSchema.safeParse({ sites: [{ ...logging, accounts }], defaultSiteId: 'shop' }).success).toBe(true);
   });
 
+  it('rejects a forwarded prefix that does not start with a slash and an origin without a port', () => {
+    const origin = { ip: '198.51.100.61', port: 3000 };
+    const pathsOf = (proxy: unknown): string[] => webServiceSchema.safeParse({ sites: [{ ...shop, proxy }], defaultSiteId: 'shop' }).error?.issues.map(({ path }) => path.slice(2).join('.')) ?? [];
+    expect(pathsOf({ prefixes: ['/pedidos', '/api'], origins: [origin] })).toEqual([]);
+    expect(pathsOf({ prefixes: ['/pedidos', 'api'], origins: [origin] })).toEqual(['proxy.prefixes.1']);
+    expect(pathsOf({ prefixes: ['/pedidos'], origins: [{ ip: origin.ip }] })).toEqual(['proxy.origins.0.port']);
+    expect(pathsOf({ prefixes: ['/pedidos'], origins: [{ ...origin, port: 0 }, { ...origin, port: 65536 }, { ...origin, port: 80.5 }] })).toEqual(['proxy.origins.0.port', 'proxy.origins.1.port', 'proxy.origins.2.port']);
+    expect(pathsOf({ prefixes: ['/pedidos'], origins: [{ ...origin, ip: 'lucia.example' }] })).toEqual(['proxy.origins.0.ip']);
+    expect(pathsOf({ prefixes: [], origins: [origin] })).toEqual(['proxy.prefixes']);
+    expect(pathsOf({ prefixes: ['/pedidos'], origins: [] })).toEqual(['proxy.origins']);
+  });
+
   it('a message may say it comes from a browser, and says nothing else of its client', () => {
     const message = { method: 'GET', url: 'http://www.shop.example/' };
     expect(httpMessageSchema.safeParse({ ...message, browser: true }).success).toBe(true);

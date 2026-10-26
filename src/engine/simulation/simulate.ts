@@ -10,7 +10,7 @@ import { hostStage } from './stages/host';
 import { portStage, withSourcePort } from './stages/port';
 import { replyStage } from './stages/reply';
 import { routeStage } from './stages/route';
-import { appStage } from './stages/web/app';
+import { createAppStage } from './stages/web/app';
 import { LOOPBACK_IP, isLoopbackIpv4 } from '@/engine/network/addressing/cidr';
 import type { NatTable } from '@/engine/nat/translation';
 import { DEFAULT_TTL } from '@/engine/network/schema';
@@ -21,7 +21,7 @@ import type { Sessions } from '@/engine/web/identity/sessions';
 import { requestOf } from '@/engine/web/messages';
 import type { ExchangeMessage, Outcome, PacketHeader, PortPair, Question, Trace } from './trace';
 
-export const PIPELINE: Stage[] = [addressStage, createDnsStage(sendQuestion), portStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, appStage, replyStage];
+export const PIPELINE: Stage[] = [addressStage, createDnsStage(sendQuestion), portStage, routeStage, firewallOutStage, forwardStage, firewallInStage, hostStage, createAppStage(sendUpstream), replyStage];
 
 function resolveSource(net: Network, from: Endpoint): SimContext['source'] {
   if (from.kind === 'device') {
@@ -121,6 +121,14 @@ function sendQuestion(ctx: SimContext, packet: PacketSpec): Question {
   ctx.nat = carried.nat;
   ctx.nextSourcePort = carried.nextSourcePort;
   return { packet: given.packet, trace };
+}
+
+function sendUpstream(ctx: SimContext, packet: PacketSpec): Trace {
+  const { trace, carried } = run(ctx.net, packet, { nextSourcePort: ctx.nextSourcePort, nat: ctx.nat, dnsCache: ctx.dnsCache, apps: ctx.apps, sessions: ctx.sessions, browser: ctx.browser }, ctx.now);
+  ctx.nextSourcePort = carried.nextSourcePort;
+  ctx.apps = carried.apps;
+  ctx.sessions = carried.sessions;
+  return trace;
 }
 
 /** Builds the run of a packet that has ended. A `dig` is the datagram to the resolver, so its answer is taken once the trip is over: if it came back replied from a resolver, the resolver answers the name from its cache or by asking, as for any lookup, and the trace gains `dns`; if it did not, the trace says `NO-RESOLVER` and is the trace of the datagram that failed, with the warning of whoever rejected it. */

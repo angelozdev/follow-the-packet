@@ -83,7 +83,7 @@ function forwardOn(ctx: SimContext, router: Router, from: string, ttlLeft: numbe
   }
 }
 
-function answerFromServer(ctx: SimContext, server: ServerActor): StageResult {
+export function answerFromServer(ctx: SimContext, server: ServerActor): StageResult {
   addLeg(ctx, server.latencyMs);
   return answerAs(ctx, server.id, server.ip, { code: 'host-replies', deviceId: server.id }, server.services);
 }

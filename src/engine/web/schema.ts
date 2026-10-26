@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizeName } from '@/engine/dns/records';
+import { isIpv4 } from '@/engine/network/addressing/cidr';
 import { isWebUrl } from './url';
 
 const httpMethodSchema = z.enum(['GET', 'POST', 'PUT']);
@@ -38,6 +39,12 @@ const handlerSchema = z.discriminatedUnion('kind', [
 
 const pageSchema = z.object({ path: z.string().startsWith('/'), methods: z.array(httpMethodSchema).min(1), role: z.string().min(1).optional(), handler: handlerSchema });
 
+const PORT_MAX = 65535;
+
+const originSchema = z.object({ ip: z.string().refine(isIpv4, 'an origin has an IPv4 address'), port: z.number().int().min(1).max(PORT_MAX) });
+
+const proxySchema = z.object({ prefixes: z.array(z.string().startsWith('/')).min(1), origins: z.array(originSchema).min(1) });
+
 /** A site: the names it answers to, its pages (a page with a `role` answers only to a user who has it, and a `login` page opens a session for a user and answers with its `body`), the body of its 404 and, for a site that serves orders, its order book and, for a site with pages that ask for a role or log in, its users. */
 export const siteSchema = z.object({
   id: z.string().min(1),
@@ -46,6 +53,7 @@ export const siteSchema = z.object({
   notFoundBody: z.string(),
   orders: orderBookSchema.optional(),
   accounts: accountsSchema.optional(),
+  proxy: proxySchema.optional(),
 });
 
 /** What a site serves, apart from the names it answers to: its pages, the body of its 404 and its order book. A table of sites gives a chip of it for each thing the player may pick to serve. */
@@ -69,6 +77,7 @@ export const webServiceSchema = z
 export type HttpMethod = z.infer<typeof httpMethodSchema>;
 export type HttpMessage = z.infer<typeof httpMessageSchema>;
 export type Order = z.infer<typeof orderSchema>;
+export type Origin = z.infer<typeof originSchema>;
 export type Site = z.infer<typeof siteSchema>;
 export type SiteContent = z.infer<typeof siteContentSchema>;
 export type WebService = z.infer<typeof webServiceSchema>;

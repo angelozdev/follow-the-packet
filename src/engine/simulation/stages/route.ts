@@ -3,8 +3,9 @@ import { ownsIp } from '@/engine/network/addressing/routing';
 import { chooseRoute, type RouteDecision } from '@/engine/network/addressing/routing-table';
 import { isClientActor, isConnected } from '@/engine/network/addressing/topology';
 import { CONTINUE, recordRoute, stop, type SimContext, type Stage, type StageResult } from '@/engine/simulation/context';
+import { answerFromServer } from '@/engine/simulation/paths/routers';
 import type { Reason } from '@/engine/simulation/trace';
-import type { Device } from '@/engine/network/types';
+import type { Device, ServerActor } from '@/engine/network/types';
 
 const INTERNET = 'internet';
 
@@ -82,6 +83,17 @@ function enterOffice(ctx: SimContext): StageResult {
   return CONTINUE;
 }
 
+function sendsFromAServer({ net, source }: SimContext): boolean {
+  return !source.device && net.actors.some((actor) => actor.id === source.id && !isClientActor(actor));
+}
+
+function deliverToAnotherServer(ctx: SimContext): StageResult | undefined {
+  const other = ctx.net.actors.find((actor): actor is ServerActor => actor.kind === 'server' && actor.id !== ctx.source.id && actor.ip === ctx.destIp);
+  if (!other || !sendsFromAServer(ctx)) return undefined;
+  ctx.effectiveSource = ctx.source.ip;
+  return answerFromServer(ctx, other);
+}
+
 export const routeStage: Stage = (ctx) => {
   const { net, source } = ctx;
   const destIp = ctx.destIp!;
@@ -93,6 +105,9 @@ export const routeStage: Stage = (ctx) => {
   if (source.device && destIp === source.ip) {
     return deliverToSelf(ctx, source.device, { code: 'route-self', deviceId: source.device.id });
   }
+
+  const betweenServers = deliverToAnotherServer(ctx);
+  if (betweenServers) return betweenServers;
 
   const decided = source.device && net.kind === 'office' ? routeFromOffice(ctx, source.device) : routeInsideNetwork(ctx);
   if (decided) return decided;

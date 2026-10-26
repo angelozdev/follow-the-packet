@@ -88,6 +88,15 @@ describe('changedNames', () => {
     expect(changedNames(hosting, added)).toEqual([internetServer?.name]);
   });
 
+  it('changedNames lists a server whose forwarded paths changed', () => {
+    const internetServer = world.actors.find((actor) => actor.kind === 'server');
+    const forwarding = (prefixes: string[]): Service => ({ ...tcpService(80), web: { sites: [{ ...SHOP, proxy: { prefixes, origins: [{ ip: '198.51.100.61', port: 3000 }] } }], defaultSiteId: SHOP.id } });
+    const forwardsOrders = applyAction(world, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [forwarding(['/pedidos'])] });
+    const forwardsMore = applyAction(forwardsOrders, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [forwarding(['/pedidos', '/informe'])] });
+    expect(changedNames(forwardsOrders, forwardsMore)).toEqual([internetServer?.name]);
+    expect(changedNames(forwardsMore, applyAction(forwardsMore, { type: 'setServices', ownerId: OFFICE_FLOORS.server.id, services: [forwarding(['/pedidos', '/informe'])] }))).toEqual([]);
+  });
+
   it('names nothing when an action changes nothing, because its target is not there or already is as asked', () => {
     const sameGateway: NetworkAction = { type: 'setGateway', deviceId: 'your-laptop', gateway: floor1.gateway };
     const ghost: NetworkAction = { type: 'connectDevice', deviceId: 'ghost' };

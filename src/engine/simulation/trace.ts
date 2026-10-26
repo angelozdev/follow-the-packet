@@ -153,9 +153,16 @@ export interface Question {
 }
 
 /** What happened to the message of a packet: the request it makes, built from the message alone whether or not the connection opened, and the response, which exists only when a web service answered it. */
+export interface GeneratedBy {
+  id: string;
+  role: 'app' | 'proxy';
+}
+
 export interface AppTrace {
   request: AppRequest;
   response?: AppResponse;
+  generatedBy?: GeneratedBy;
+  upstream?: Trace;
 }
 
 export interface Trace {
