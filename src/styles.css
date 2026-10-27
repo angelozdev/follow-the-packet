@@ -183,7 +183,8 @@ button.stamp { cursor: help; }
 .incident__bar > * { pointer-events: auto; }
 .incident__bar h1 { font-size: var(--text-xl); margin: 0; }
 .incident__motion { margin-left: auto; font-size: var(--text-md); }
-.incident__side { grid-area: 1 / 2; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); padding: var(--space-md); overflow-y: auto; background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
+.incident__side { grid-area: 1 / 2; display: flex; flex-direction: column; gap: var(--space-md); min-height: 0; padding: var(--space-md); background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
+.incident__lucia { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-md); }
 .incident__inspection { grid-area: 1 / 1; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: min(45%, var(--inspection-room, 45%)); pointer-events: none; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
@@ -202,6 +203,7 @@ button.stamp { cursor: help; }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
 @media (min-width: 901px) {
+  .incident__lucia { flex: 0 1 auto; min-height: 0; max-height: 60%; overflow-y: auto; padding-bottom: var(--space-xs); }
   .incident__inspection[data-place='left'] { place-self: end start; }
   .incident .map-stage { position: absolute; inset: 0; overflow: auto; }
   .incident .map-stage__sheet { min-height: 100%; }

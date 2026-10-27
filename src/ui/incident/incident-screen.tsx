@@ -5,6 +5,7 @@ import { Button, Message } from '@/design';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, ruleChipsOf, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
+import { ShellColumn } from '@/ui/shell/shell-column';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
@@ -137,33 +138,39 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           !helpInPanel && <InspectHelp line="p" className="muted" cardOpen={cardOpen} />
         )}
       </div>
-      <aside className="incident__side">
-        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
-        {noRoom && (
-          <Message variant="note" words={MESSAGE_TEXT} role="status">
-            {SCREEN_TEXT.noRoomForTheBox}
-          </Message>
-        )}
-        {helpInPanel && (
-          <Message variant="note" words={MESSAGE_TEXT}>
-            <InspectHelp line="span" className="incident__help-line" cardOpen={cardOpen} />
-          </Message>
-        )}
-        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
-        {caseOnCard && (
-          <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
-        )}
-        {session.phase === 'explaining' && isGuided(incident) && (
-          <ExplanationCard
-            question={incident.question ?? EXPLANATION_TEXT.whatHappened}
-            options={incident.explanation}
-            choice={session.choice}
-            onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
-            onContinue={showResult}
-          />
-        )}
-        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
-      </aside>
+      <ShellColumn
+        lucia={
+          <>
+            <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
+            {noRoom && (
+              <Message variant="note" words={MESSAGE_TEXT} role="status">
+                {SCREEN_TEXT.noRoomForTheBox}
+              </Message>
+            )}
+            {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
+            {caseOnCard && (
+              <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
+            )}
+            {session.phase === 'explaining' && isGuided(incident) && (
+              <ExplanationCard
+                question={incident.question ?? EXPLANATION_TEXT.whatHappened}
+                options={incident.explanation}
+                choice={session.choice}
+                onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
+                onContinue={showResult}
+              />
+            )}
+            {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
+          </>
+        }
+        panel={
+          helpInPanel && (
+            <Message variant="note" words={MESSAGE_TEXT}>
+              <InspectHelp line="span" className="incident__help-line" cardOpen={cardOpen} />
+            </Message>
+          )
+        }
+      />
     </main>
   );
 }

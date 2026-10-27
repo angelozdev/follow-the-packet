@@ -142,6 +142,7 @@ const PHONE_WINDOW = { width: 390, height: 844 };
 const HOLDER = '.incident__inspection';
 const SCROLLING_INSPECTION = '.incident__inspection[data-scrolls]';
 
+const STACKED_UP_TO = 900;
 const TALL_WINDOWS = [
   { name: '390 px wide', size: { width: 390, height: 844 } },
   { name: 'desktop width', size: { width: 1440, height: 900 } },
@@ -568,7 +569,7 @@ describe('the cards of the game in a real browser', () => {
           problems.push(...cardProblems().map((problem) => `${name}, ${scene.name}: ${problem}`));
         });
       }
-      expect(helpSeen, `${name}: the inspection help is on the page, so the check of the cards over it looks at something`).toBeGreaterThan(0);
+      if (size.width <= STACKED_UP_TO) expect(helpSeen, `${name}: the inspection help is on the page, so the check of the cards over it looks at something`).toBeGreaterThan(0);
     }
     watching.stop();
     expect(problems).toEqual([]);

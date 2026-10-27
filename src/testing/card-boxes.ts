@@ -1,8 +1,8 @@
 const MIN_GAP_PX = 4;
 const MIN_BUTTON_GAP_PX = 6;
-export const INSPECTION_HELP = '.incident__inspection > p, .incident__help-line';
+export const INSPECTION_HELP = '.incident__inspection > p';
 
-/** Returns one line per defect in the cards on the page: content a card cuts off or lets spill, two cards that overlap, a card over a line of the inspection help (the paragraphs under the map at 900 px and under, and the lines of the note in the side panel above it), a primary button that touches what is above it, buttons that touch each other, and a last button that touches the bottom edge of its card. A gap above a stamp and from a card's bottom edge counts when it is at least `gap` pixels, and a gap between two buttons when it is at least `buttonGap`. */
+/** Returns one line per defect in the cards on the page: content a card cuts off or lets spill, two cards that overlap, a card over a line of the inspection help (the paragraphs under the map at 900 px and under: above it the help is the note of the panel of the column, which no card of the map reaches), a primary button that touches what is above it, buttons that touch each other, and a last button that touches the bottom edge of its card. A gap above a stamp and from a card's bottom edge counts when it is at least `gap` pixels, and a gap between two buttons when it is at least `buttonGap`. */
 export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_BUTTON_GAP_PX): string[] {
   interface Rect {
     left: number;
