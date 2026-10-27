@@ -21,6 +21,8 @@ export type { FirewallCard } from './view/cards/firewall-card';
 export { inspect } from './view/inspection';
 export { PIECE_ID } from './view/piece-id';
 export type { Inspection } from './view/inspection';
+export { PANEL_TABS, TAB_OF_PART, panelOf } from './view/panel/panel';
+export type { Panel, PanelPart, PanelTab, PanelTabId, RulesPart } from './view/panel/panel';
 export { pieceViews } from './view/pieces';
 export { commandGroups } from './view/cards/terminal/command-groups';
 export { isShellCommand, terminalCard, terminalLine } from './view/cards/terminal/terminal-card';

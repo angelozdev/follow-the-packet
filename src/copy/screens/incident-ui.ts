@@ -327,8 +327,16 @@ export const SERVICES_TEXT = {
 } as const;
 
 export const PIECE_TEXT = {
-  tabsName: 'Tarjetas de la pieza',
+  tabsName: 'Pestañas del panel',
   tabs: {
+    status: 'Estado',
+    settings: 'Ajustes',
+    tables: 'Tablas',
+    terminal: 'Terminal',
+    browser: '{{browser|Navegador}}',
+    questions: 'Preguntas',
+  },
+  parts: {
     terminal: 'Terminal',
     identify: 'Preguntas',
     classify: 'Clasificar',

@@ -35,7 +35,7 @@ export interface PieceCard {
 const OPENS_FIRST: Record<OpensFirst, PieceTabId> = { terminal: 'terminal', browser: 'browser', settings: 'settings', services: 'services', routes: 'routes', records: 'records', sites: 'sites' };
 
 function tabs(session: Session, pieceId: string): PieceTab[] {
-  const tab = <Id extends PieceTabId, Card>(id: Id, card: Card | null): TabOf<Id, Card>[] => (card === null ? [] : [{ id, label: PIECE_TEXT.tabs[id], card }]);
+  const tab = <Id extends PieceTabId, Card>(id: Id, card: Card | null): TabOf<Id, Card>[] => (card === null ? [] : [{ id, label: PIECE_TEXT.parts[id], card }]);
   return [
     ...tab('terminal', terminalCard(session, pieceId)),
     ...tab('browser', browserCard(session, pieceId)),
