@@ -1762,4 +1762,10 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(card).not.toBeInTheDocument();
     expect(consoleErrors).not.toHaveBeenCalled();
   });
+
+  it('03-07: the description of the button of servidor-nuevo lists proxy inverso and servidor web, and the one of servidor-app lists app', () => {
+    renderIncident('03-07');
+    expect(screen.getByRole('button', { name: 'servidor-nuevo con candado' })).toHaveAccessibleDescription('proxy inverso y servidor web');
+    expect(screen.getByRole('button', { name: 'servidor-app con candado' })).toHaveAccessibleDescription('app, servidor de origen');
+  });
 });

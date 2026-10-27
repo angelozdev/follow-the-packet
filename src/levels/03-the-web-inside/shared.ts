@@ -1,8 +1,33 @@
-import type { NetworkAction, Service, Site, SiteContent } from '@/engine';
+import { nameTag } from '@/copy';
+import type { NetworkAction, RouterInterface, Service, Site, SiteContent } from '@/engine';
 import type { AddressChip, MessageChip, OriginChip, PlaceEntryMove, PlaceMove, SendTask, TableSpec } from '@/levels/contract/incident';
-import { DEVICE, DOMAIN, FIREWALL, HOSTNAME, IP, ORIGIN, PORT, ROUTER, SERVER, SSH_FROM, SSH_WHAT, sendTaskFrom, tcpChip, tcpService } from '@/levels/02-ports-and-names/shared';
+import {
+  DEVICE,
+  DOMAIN,
+  FIREWALL,
+  HOSTNAME,
+  IP as CHAPTER_2_IP,
+  NAME as CHAPTER_2_NAME,
+  NEWS_INTERFACES,
+  ORIGIN,
+  PORT,
+  ROUTER,
+  SERVER as CHAPTER_2_SERVER,
+  SERVER_MS,
+  SSH_FROM,
+  SSH_WHAT,
+  sendTaskFrom,
+  tcpChip,
+  tcpService,
+} from '@/levels/02-ports-and-names/shared';
 
-export { DEVICE, HOSTNAME, IP, NAME, ORIGIN, PORT, SERVER, sendMoveFrom, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
+export { DEVICE, HOSTNAME, ORIGIN, PORT, sendMoveFrom, sendTaskFrom } from '@/levels/02-ports-and-names/shared';
+
+export const IP = { ...CHAPTER_2_IP, app: '198.51.100.61', destinationApp: '198.51.100.6' } as const;
+
+export const SERVER = { ...CHAPTER_2_SERVER, app: { id: 'app-server', name: 'servidor-app' } } as const;
+
+export const NAME = { ...CHAPTER_2_NAME, app: nameTag(SERVER.app.name) } as const;
 
 export const ORDER_PATH = '/pedidos';
 const WRONG_PATH = '/pedido';
@@ -81,8 +106,10 @@ export const APP_CHECKS_THE_ID: NetworkAction = ordersApp(ORDER_PAGES, CHECKING_
 const ADMIN_PAGE: Site['pages'][number] = { path: ADMIN_PATH, methods: ['GET'], role: ADMIN_ROLE, handler: { kind: 'fixed', body: ADMIN_BODY } };
 const LOGIN_PAGE: Site['pages'][number] = { path: LOGIN_PATH, methods: ['POST'], handler: { kind: 'login', body: LOGIN_BODY } };
 
+const USERS_PAGES = [...ORDER_PAGES, ADMIN_PAGE, LOGIN_PAGE];
+
 /** What 03-06 changes on laptop-lucia: the same program of port 3000, with the pages and the check of the id that 03-05 left it, now also serves /admin and /login and knows two users. /admin answers only to a user who has the administration role, which is Lucía, and not to Marta: a request with no valid user (no valid credential in its Authorization header, no session in its Cookie) gets 401 with WWW-Authenticate, and Marta, who is known but has no such role, gets 403. A post to /login with the name and the password of a user opens a session and answers 200 with Set-Cookie: sesion=s<n>; a request with that cookie is that user. Nothing else about the laptop changes. */
-export const APP_HAS_USERS: NetworkAction = ordersApp([...ORDER_PAGES, ADMIN_PAGE, LOGIN_PAGE], CHECKING_BOOK, ACCOUNTS);
+export const APP_HAS_USERS: NetworkAction = ordersApp(USERS_PAGES, CHECKING_BOOK, ACCOUNTS);
 
 export const REPORTS_PORT = 3001;
 const REPORTS_SITE_ID = 'reports';
@@ -203,6 +230,7 @@ export const TASK = {
   adminAsMartaIs403: 'admin-as-marta-answers-403',
   adminAsLuciaIs200: 'admin-as-lucia-answers-200',
   browserEntersAdmin: 'browser-enters-admin',
+  ordersThroughTheProxyIs200: 'orders-through-the-proxy-answers-200',
 } as const;
 
 /** Returns the task of a send incident that expects the response to a message of a terminal (the one of laptop-lucia and a plain curl unless it says otherwise) to this address to have exactly this body, in the last send of those chips or in the nth, since the world last changed, when it says `nth`. */
@@ -289,3 +317,32 @@ export function siteMove(nameId: string, servesId: string): PlaceEntryMove {
 
 /** The ids of the pieces 03-04 draws: your laptop, the resolver that gives the IP of each name, the router between them and servidor-nuevo, which hosts the sites. */
 export const SITE_PIECES: string[] = [DEVICE.you.id, SERVER.resolver.id, ROUTER.office.id, SERVER.fresh.id];
+
+const API_PATH = '/api';
+const PROXIED_PATHS = [ORDER_PATH, ADMIN_PATH, API_PATH];
+const APP_INTERFACES: RouterInterface[] = [...NEWS_INTERFACES, { ip: IP.destinationApp, faces: SERVER.app.id }];
+
+export const SERVER_IN_FRONT: NetworkAction[] = [
+  {
+    type: 'addActor',
+    actor: { id: SERVER.app.id, name: SERVER.app.name, ip: IP.app, kind: 'server', latencyMs: SERVER_MS, services: [{ ...tcpService(PORT.app), web: ordersWeb(USERS_PAGES, CHECKING_BOOK, ACCOUNTS) }] },
+  },
+  { type: 'updateRouter', routerId: ROUTER.destination.id, interfaces: APP_INTERFACES },
+  { type: 'setProcess', deviceId: DEVICE.lucia.id, processId: PROCESS.orders.id, running: false },
+  {
+    type: 'setWebService',
+    ownerId: SERVER.fresh.id,
+    port: PORT.web,
+    web: {
+      sites: [
+        { id: SHOP_ID, names: [HOSTNAME.www], ...siteServing(SITE_BODY.shop), proxy: { prefixes: PROXIED_PATHS, origins: [{ ip: IP.app, port: PORT.app }] } },
+        { id: HOSTNAME.blog, names: [HOSTNAME.blog], ...siteServing(SITE_BODY.blog) },
+      ],
+      defaultSiteId: SHOP_ID,
+    },
+  },
+];
+
+export const PROXY_URL = { id: 'url-www-orders', address: HOSTNAME.www, url: `http://${HOSTNAME.www}${ORDER_PATH}?id=7` } as const satisfies AddressChip;
+
+export const PROXY_PIECES: string[] = [DEVICE.you.id, SERVER.resolver.id, ROUTER.office.id, SERVER.fresh.id, SERVER.app.id];

@@ -5,7 +5,7 @@ import { INCIDENTS, isGuided, solvedWorld, startWorld, type Incident } from '@/l
 import { changedNames } from '@/levels/contract/changes';
 import { incidentTexts, knownTerms, saysName, unknownTerms } from '@/levels/ladder';
 import { worldBeforeChanges } from '@/levels/world';
-import { ADDRESS, ADMIN_BODY, ADMIN_URL, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_CHECKS_THE_ID, APP_HAS_USERS, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, REPORTS_CLOSED, REPORTS_PORT, SERVER, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, STATUS_URL, TASK, URLS_BY_PARTS, USER, siteMove } from '@/levels/03-the-web-inside/shared';
+import { ADDRESS, ADMIN_BODY, ADMIN_URL, APPS_AS_PROCESSES, APP_ANSWERS_HTTP, APP_CHECKS_THE_ID, APP_HAS_USERS, APP_TAKES_ORDERS, BLOGS_NAME, DEVICE, HOSTNAME, IP, LAN_PIECES, LUCIA_RULES, LUCIA_URL, MESSAGE, NAME, OPEN_APP_TO_FLOOR, ORDER_BODY, ORDER_PATH, ORDER_URL, ORIGIN, PAGE_PIECES, PORT, PROXY_PIECES, PROXY_URL, REPORTS_CLOSED, REPORTS_PORT, SERVER, SERVER_IN_FRONT, SHOP_SERVER, SITE_BODY, SITE_CHIP, SITE_PIECES, SITES_TABLE, SITE_URL, STATUS_URL, TASK, URLS_BY_PARTS, USER, siteMove } from '@/levels/03-the-web-inside/shared';
 import { LADDER_OF_CHAPTER_3, sendIncident } from '@/testing';
 import { sessionReducer, startSession, starsOf, type Session } from '@/game/session';
 import { failingTaskIds } from '@/game/tasks';
@@ -1159,6 +1159,123 @@ describe('03-06, who you are and what you can', () => {
     expect(sorted(incident.introduces)).toEqual(sorted(['authentication', 'authorization', 'authorization-header', 'status-401', 'status-403', 'cookie']));
     expectOnlyTermsItKnows(incident);
     expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx|\b429\b/.test(text))).toEqual([]);
+  });
+});
+
+describe('03-07, a server in front', () => {
+  const SERVER_IN_FRONT_ID = '03-07';
+  const INCIDENT_BEFORE_A_SERVER_IN_FRONT = '03-06';
+  const NOT_FOUND = 'No hay nada en esa URL.';
+  const started = (): Session => startSession(INCIDENTS, SERVER_IN_FRONT_ID);
+  const withoutTheChanges = (): Session => startSession(INCIDENTS.map((own) => (own.id === SERVER_IN_FRONT_ID ? { ...own, changes: [] } : own)), SERVER_IN_FRONT_ID);
+  const asking = (session: Session, urlId: string = PROXY_URL.id) => sending(session, urlId, MESSAGE.curlInclude.id, ORIGIN.you.id);
+  const appOfLast = (session: Session) => runOf(session).trace.app;
+  const sitesOfTheFreshServer = (world: Network) => world.actors.flatMap((actor) => (actor.kind === 'server' && actor.id === SERVER.fresh.id ? actor.services?.find(({ port }) => port === PORT.web)?.web?.sites ?? [] : []));
+  const sentencesOf = (text: string) => text.split(/(?<=\.)\s+/);
+  const saysTheProxyLimits = (text: string) => sentencesOf(text).filter((sentence) => /proxy|servidor-nuevo/i.test(sentence) && /\blimita\b|pone el límite|cuenta las peticiones/i.test(sentence) && !/\bno\b/i.test(sentence));
+  const saysEveryProxyKeepsHost = (text: string) => sentencesOf(text).filter((sentence) => /\bHost\b/.test(sentence) && /todo proxy|todos los proxies|cualquier proxy|siempre/i.test(sentence) && /conserva|mantiene|deja|respeta/i.test(sentence) && !/\bno\b/i.test(sentence));
+
+  it('03-07 starts from the world 03-06 leaves, and before the proxy www.lucia.example/pedidos gets the 404 of the shop', () => {
+    const { incident } = started();
+    expect(worldBeforeChanges(INCIDENTS, SERVER_IN_FRONT_ID)).toEqual(solvedWorld(INCIDENTS, INCIDENT_BEFORE_A_SERVER_IN_FRONT));
+    expect(incident.changes).toEqual(SERVER_IN_FRONT);
+    expect(networkSchema.safeParse(startWorld(INCIDENTS, SERVER_IN_FRONT_ID)).error).toBeUndefined();
+    const shop = asking(withoutTheChanges());
+    expect(appOfLast(shop)?.response).toMatchObject({ statusCode: 404, body: NOT_FOUND });
+    expect(appOfLast(shop)?.upstream).toBeUndefined();
+    expect(sitesOfTheFreshServer(startWorld(INCIDENTS, SERVER_IN_FRONT_ID)).map(({ names, proxy }) => [names, proxy !== undefined])).toEqual([[[HOSTNAME.www], true], [[HOSTNAME.blog], false]]);
+  });
+
+  it('03-07: the request of tu-laptop goes through servidor-nuevo and servidor-app generates the 200', () => {
+    const start = started();
+    expect(stillOpen(start)).toEqual([TASK.ordersThroughTheProxyIs200]);
+    const answered = asking(start);
+    expect(stillOpen(answered)).toEqual([]);
+    const app = appOfLast(answered);
+    expect(app?.response).toMatchObject({ statusCode: 200, body: ORDER_BODY.seven });
+    expect(app?.generatedBy).toEqual({ id: SERVER.app.id, role: 'app' });
+    expect(app?.upstream?.outcome).toBe('replied');
+    expect(app?.upstream?.app?.request.headers['X-Forwarded-For']).toBe(IP.officeUplink);
+    expect(lastBox(answered)['Quién lo generó']).toEqual([`La app de ${SERVER.app.name}`]);
+  });
+
+  it('03-07: laptop-lucia no longer answers on 3000 once its process stopped', () => {
+    const withHerUrl = (changes: Incident['changes']): Session =>
+      startSession(INCIDENTS.map((own) => (own.id === SERVER_IN_FRONT_ID && own.mechanic === 'send' ? { ...own, changes, send: { ...own.send, to: [...own.send.to, LUCIA_URL.orders] } } : own)), SERVER_IN_FRONT_ID);
+    const refused = asking(withHerUrl(SERVER_IN_FRONT), LUCIA_URL.orders.id);
+    expect(outcomeOf(refused)).toBe('refused');
+    expect(runOf(refused).by).toEqual([DEVICE.lucia.id]);
+    expect(outcomeOf(asking(withHerUrl([]), LUCIA_URL.orders.id))).toBe('replied');
+  });
+
+  it('03-07: the report names laptop-lucia, servidor-nuevo and servidor-app', () => {
+    const { incident } = started();
+    const report = plain(incident.report);
+    for (const name of [DEVICE.lucia.name, SERVER.fresh.name, SERVER.app.name]) expect(report).toContain(name);
+    expect(report).toContain(`la dejó de correr en ${DEVICE.lucia.name} y puso ${SERVER.fresh.name} delante, como proxy inverso`);
+    expect(changedNames(worldBeforeChanges(INCIDENTS, SERVER_IN_FRONT_ID), startWorld(INCIDENTS, SERVER_IN_FRONT_ID))).toEqual([DEVICE.lucia.name, SERVER.fresh.name]);
+  });
+
+  it('03-07: the takeaway tells the practical case of the app on 127.0.0.1 behind the web server', () => {
+    expect(plain(started().incident.takeaway)).toContain(`muchas apps nuevas empiezan con la app en ${IP.loopback}:${PORT.app}, detrás del servidor web, en el mismo equipo; aquí está en su propio equipo para que se vean las dos conexiones`);
+  });
+
+  it('03-07: the takeaway says the client can write its own X-Forwarded-For and the origin takes the entry its proxy added', () => {
+    const takeaway = plain(started().incident.takeaway);
+    expect(takeaway).toContain('El cliente puede escribir su propia X-Forwarded-For');
+    expect(takeaway).toContain(`${SERVER.app.name} toma la última entrada, la que agregó su proxy`);
+    expect(takeaway).toContain(`todos los equipos de la oficina salen con ${IP.officeUplink}`);
+  });
+
+  it('03-07: no text says the proxy limits the requests', () => {
+    const everythingRead = textsReadApartFromTheWrongOptions(started().incident);
+    expect(everythingRead.flatMap(saysTheProxyLimits)).toEqual([]);
+    expect(saysTheProxyLimits('El proxy limita las peticiones.')).toHaveLength(1);
+    expect(saysTheProxyLimits('servidor-nuevo cuenta las peticiones de cada IP.')).toHaveLength(1);
+    expect(saysTheProxyLimits('servidor-nuevo no limita: reenvía.')).toEqual([]);
+    expect(wrongOptionsOf(started().incident).map(plain).flatMap(saysTheProxyLimits)).toHaveLength(1);
+  });
+
+  it('03-07: no text says every proxy keeps the Host header', () => {
+    expect(textsReadApartFromTheWrongOptions(started().incident).flatMap(saysEveryProxyKeepsHost)).toEqual([]);
+    expect(saysEveryProxyKeepsHost('Todo proxy conserva la cabecera Host del cliente.')).toHaveLength(1);
+    expect(saysEveryProxyKeepsHost('Un proxy siempre mantiene el Host.')).toHaveLength(1);
+    expect(saysEveryProxyKeepsHost('Un proxy real puede cambiar la cabecera Host.')).toEqual([]);
+  });
+
+  it('03-07: the right option is the second and the question separates who counts from who forwards', () => {
+    const { incident } = started();
+    const options = isGuided(incident) ? incident.explanation : [];
+    expect(options.findIndex(({ correct }) => correct)).toBe(1);
+    expect(plain((isGuided(incident) && incident.question) || '')).toBe('Antes del cambio, ¿por qué tu-laptop recibía 429 si mandó una sola petición?');
+    expect(options.map(({ text }) => plain(text))).toEqual([
+      'Porque servidor-nuevo, el proxy inverso, limita las peticiones que reenvía a servidor-app.',
+      'Porque servidor-app contaba juntas las peticiones, todas con la IP de servidor-nuevo.',
+      'Porque tu-laptop mandó más peticiones de las que servidor-app acepta en un mismo segundo.',
+    ]);
+    expect(plain(options[0].feedback)).toContain('El 429 lo generó servidor-app, no servidor-nuevo');
+    expect(plain(options[0].feedback)).toContain('Quien cuenta las peticiones de cada IP y pone el límite es servidor-app');
+    expect(plain(options[1].feedback)).toContain('todas las peticiones llegaban con la misma IP y se contaban juntas');
+    expect(plain(options[2].feedback)).toContain('tu-laptop mandó una sola');
+  });
+
+  it('03-07: draws tu-laptop, servidor-dns, router-oficina, the globe, servidor-nuevo and servidor-app', () => {
+    const start = started();
+    const drawn = pieceViews(start).map((piece) => `${piece.kind}:${plain(piece.label)}`).sort();
+    expect(drawn).toEqual([`device:${DEVICE.you.name}`, `device:${SERVER.resolver.name}`, `device:${SERVER.fresh.name}`, `device:${SERVER.app.name}`, 'edge:router-oficina', `firewall:firewall ${DEVICE.you.name}`, 'internet:internet'].sort());
+    expect(start.incident.shown).toEqual(PROXY_PIECES);
+  });
+
+  it('03-07: servidor-nuevo wears the proxy mark and servidor-app the app mark', () => {
+    const marks = Object.fromEntries(pieceViews(started()).filter((piece) => piece.variant === 'internet-server').map((piece) => [plain(piece.label), piece.role]));
+    expect(marks).toEqual({ [SERVER.resolver.name]: 'resolver', [SERVER.fresh.name]: 'proxy', [SERVER.app.name]: 'app' });
+  });
+
+  it('03-07: introduces reverse proxy, origin server, X-Forwarded-For and 429, and uses no later term', () => {
+    const { incident } = started();
+    expect(sorted(incident.introduces)).toEqual(sorted(['reverse-proxy', 'origin-server', 'x-forwarded-for', 'status-429']));
+    expectOnlyTermsItKnows(incident);
+    expect(incidentTexts(incident).map(plain).filter((text) => /\b5\d\d\b|5xx|idle timeout|balanceador/i.test(text))).toEqual([]);
   });
 });
 

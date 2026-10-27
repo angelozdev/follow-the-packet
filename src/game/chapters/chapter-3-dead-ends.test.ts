@@ -9,7 +9,7 @@ interface Reached {
   path: string[];
 }
 
-const BUILT_INCIDENTS = ['03-01', '03-02', '03-03', '03-04', '03-05', '03-06'];
+const BUILT_INCIDENTS = ['03-01', '03-02', '03-03', '03-04', '03-05', '03-06', '03-07'];
 const DEPTH = 3;
 const MOVE_SEPARATOR = ' / ';
 

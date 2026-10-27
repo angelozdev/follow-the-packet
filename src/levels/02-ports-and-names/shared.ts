@@ -27,7 +27,7 @@ import {
   officeDevice,
 } from '@/levels/01-first-day/shared';
 
-export { CONCEPT, FIREWALL, LESSON, LOOP, LOOP_CAUSE, PING_WITH_TTL, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
+export { CONCEPT, FIREWALL, LESSON, LOOP, LOOP_CAUSE, PING_WITH_TTL, SERVER_MS, pingTask, sendMove, sendTask } from '@/levels/01-first-day/shared';
 
 export const PORT = {
   ssh: 22,
@@ -435,7 +435,7 @@ export const WAIT = {
 const SHOP_HOSTS: HostLine[] = [{ name: HOSTNAME.shop, ip: IP.server }];
 
 /** The interfaces of router-destino once servidor-autoritativo-noticias hangs from it too (02-13). */
-const NEWS_INTERFACES: RouterInterface[] = [...MOVED_SITE_INTERFACES, { ip: IP.destinationNewsAuthoritative, faces: SERVER.news.id }];
+export const NEWS_INTERFACES: RouterInterface[] = [...MOVED_SITE_INTERFACES, { ip: IP.destinationNewsAuthoritative, faces: SERVER.news.id }];
 
 /** What 02-13 changes: servidor-autoritativo-noticias, which holds the zone noticias.example, appears in the internet and fails, so it answers nothing; servidor-dns learns that it is the server to ask for that zone (an update replaces the `dns`, so it restates the zone of the site and holds no cache: the answer 02-12 left in it is not carried over); tu-laptop gets a hosts file with one line, tienda.lucia.example to 198.51.100.50; and laptop-andres uses the printer as its DNS server, which has no program on port 53. router-destino gets the interface of the new server (an update replaces the list, so it restates those it had). The new server is a piece, so the text does not have to name it, but the report does, because it is the cause of a SERVFAIL. */
 export const NAME_FAILURES: NetworkAction[] = [
