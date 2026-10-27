@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { LUCIA_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { reachWithWheel } from '@/testing/browser-play';
@@ -12,6 +12,14 @@ const SIDE = '.incident__side';
 const LUCIA_REGION = '.incident__lucia';
 const MAP = '.incident__map';
 const NOTE = '.message--note';
+const PANEL_CARD = '.incident__side > .card';
+const PANEL_BODY = '.incident__side > .card > .card__body';
+const LONG_BOX_INCIDENT = '04-01';
+const PACKET_WITH_A_LONG_BOX = /^Paquete: ping de Atacante/;
+const CHOSEN_PIECE = /^servidor2/;
+const PIECE_IN_VIEW_INCIDENT = '04-01';
+const ROOM_FOR_THE_BODY_PX = 120;
+const LUCIA_SHARE_KEPT = 0.35;
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
   { width: 1280, height: 720 },
@@ -41,7 +49,7 @@ describe('the fixed column of the incident screen', () => {
   it('the column fills the height of the window at 1280×720, 1440×900 and 1280×600: the page does not scroll, Lucía scrolls inside her region and the panel keeps room for its body', async () => {
     for (const size of COLUMN_WINDOWS) {
       await page.viewport(size.width, size.height);
-      const view = await theScreen(TALL_LUCIA_INCIDENT);
+      const view = await theScreen(LONG_BOX_INCIDENT);
       const where = `${size.width}×${size.height}`;
       const side = rectOf(SIDE);
       const lucia = view.container.querySelector(LUCIA_REGION) as HTMLElement;
@@ -56,6 +64,14 @@ describe('the fixed column of the incident screen', () => {
       expect(lucia.getBoundingClientRect().bottom, `${where}: her region ends above the panel`).toBeLessThanOrEqual(note.top + EPSILON);
       expect(note.bottom, `${where}: the panel stays inside the column`).toBeLessThanOrEqual(side.bottom + EPSILON);
       expect(note.height, `${where}: the panel keeps room for its body`).toBeGreaterThan(0);
+      await userEvent.click(page.getByRole('button', { name: PACKET_WITH_A_LONG_BOX }));
+      await expect.poll(() => document.querySelector(PANEL_CARD), { message: `${where}: the packet chosen fills the panel` }).not.toBeNull();
+      const card = rectOf(PANEL_CARD);
+      expect(card.top, `${where}: the card of the panel starts under Lucía`).toBeGreaterThanOrEqual(lucia.getBoundingClientRect().bottom - EPSILON);
+      expect(card.bottom, `${where}: and ends inside the column`).toBeLessThanOrEqual(side.bottom + EPSILON);
+      expect(rectOf(PANEL_BODY).height, `${where}: its body keeps room to be read`).toBeGreaterThanOrEqual(ROOM_FOR_THE_BODY_PX);
+      expect(lucia.clientHeight, `${where}: and does not squeeze the region of Lucía`).toBeGreaterThanOrEqual(Math.min(lucia.scrollHeight, LUCIA_SHARE_KEPT * column.clientHeight) - EPSILON);
+      expect(column.scrollHeight - column.clientHeight, `${where}: the column still holds its regions without scrolling`).toBeLessThanOrEqual(EPSILON);
       view.unmount();
     }
   });
@@ -78,6 +94,7 @@ describe('the fixed column of the incident screen', () => {
     const lucia = stacked.container.querySelector(LUCIA_REGION) as HTMLElement;
 
     expect(rectOf(SIDE).top, 'the column lies under the map').toBeGreaterThanOrEqual(rectOf(MAP).bottom - EPSILON);
+    expect(rectOf(NOTE).top, 'the panel lies under Lucía').toBeGreaterThanOrEqual(lucia.getBoundingClientRect().bottom - EPSILON);
     expect(lucia.scrollHeight - lucia.clientHeight, 'her region has no cap of its own').toBeLessThanOrEqual(EPSILON);
     expect(document.documentElement.scrollHeight, 'the page scrolls').toBeGreaterThan(window.innerHeight);
     stacked.unmount();
@@ -87,5 +104,26 @@ describe('the fixed column of the incident screen', () => {
 
     expect(document.documentElement.scrollWidth - window.innerWidth, 'at 390 px the page does not scroll sideways').toBeLessThanOrEqual(0);
     expect((phone.container.querySelector(SIDE) as HTMLElement).scrollWidth - PHONE_WINDOW.width, 'nor does the column').toBeLessThanOrEqual(0);
+  });
+
+  it('at 390×844 selecting a piece brings its panel into view and a hover scrolls nothing', async () => {
+    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
+    const view = await theScreen(PIECE_IN_VIEW_INCIDENT);
+    const piece = page.getByRole('button', { name: CHOSEN_PIECE });
+    window.scrollTo(0, 0);
+
+    await userEvent.hover(piece);
+    await expect.poll(() => view.container.querySelector('.incident__inspection .card'), { message: 'the hover previews the box' }).not.toBeNull();
+
+    expect(window.scrollY, 'a hover scrolls nothing').toBe(0);
+    expect(rectOf(NOTE).top, 'the panel lies below the fold of the phone').toBeGreaterThan(window.innerHeight);
+
+    await userEvent.click(piece);
+    await expect.poll(() => document.querySelector(PANEL_CARD)).not.toBeNull();
+
+    await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the panel is scrolled into view' }).toBeLessThanOrEqual(window.innerHeight + EPSILON);
+    expect(rectOf(PANEL_CARD).top, 'from its top').toBeGreaterThanOrEqual(-EPSILON);
+    expect(window.scrollY).toBeGreaterThan(0);
+    window.scrollTo(0, 0);
   });
 });

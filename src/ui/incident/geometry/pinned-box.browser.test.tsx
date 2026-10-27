@@ -37,10 +37,9 @@ const HIDDEN_AT_LUCIA = 2;
 const PACKET_STAMP = /^Paquete:/;
 const LISTED_PACKET = 'dl > div';
 const SOURCE_OF_THE_PACKET = /^TCP \d+ → /;
-const PINNED = 'Fijada';
 const PIECE_LABEL = '.map-button';
-const INSPECTION_CARD = '.incident__inspection > .card';
-const SCROLLING_INSPECTION = '.incident__inspection[data-scrolls]';
+const PANEL_CARD = '.incident__side > .card';
+const PANEL_BODY = '.incident__side > .card > .card__body';
 const LOST_TO_THE_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
 const LOST_PING_BOX = 'ping de tu-laptop a 10.0.0.10';
 const TRIP_STEPS = 30;
@@ -51,8 +50,8 @@ const SLOW_STEPS = 10;
 const SLOW_STEP_MS = 25;
 const OUTSIDE_POINT = { x: 4, y: 4 };
 const DESKTOP_WINDOW = { width: 1440, height: 900 };
-const SIDE_PANEL = '.incident__side';
-const BODY_OF_A_CARD = '.card__body';
+const LUCIA_REGION = '.incident__lucia';
+const LOW_WINDOW = { width: 1280, height: 600 };
 const PINNED_MARK = 'data-pinned';
 const YOUR_LAPTOP = 'tu-laptop';
 const LUCIA_CARD = 'Lucía';
@@ -148,6 +147,11 @@ async function stackFourStampsAtLucia(): Promise<Locator> {
   return page.getByRole('button', { name: MAP_TEXT.moreStamps(HIDDEN_AT_LUCIA, STAMPS_AT_LUCIA), exact: true });
 }
 
+async function readToTheEnd(box: Locator): Promise<void> {
+  const body = document.querySelector(PANEL_BODY) as HTMLElement;
+  if (body.scrollHeight > body.clientHeight + 1) await bringTheLastLineIntoView(box);
+}
+
 function listOfTheFour(): Locator {
   return page.getByRole('region', { name: INSPECTION_TEXT.stampsTitle(STAMPS_AT_LUCIA), exact: true });
 }
@@ -161,19 +165,19 @@ afterEach(async () => {
 describe.each(TRIP_WINDOWS)('$name', ({ size }) => {
   beforeEach(() => page.viewport(size.width, size.height));
 
-  it('a pinned box survives a human-paced trip across another piece and scrolls under the mouse', { timeout: SLOW_TEST_MS }, async () => {
+  it('a packet chosen stays in the panel across a human-paced trip over another piece, and its box scrolls under the mouse', { timeout: SLOW_TEST_MS }, async () => {
     holdTheGrace();
     await show(INCIDENT);
     const stamp = await sendTheLostPing();
     await standStill();
     await userEvent.click(stamp);
     const box = boxOfTheLostPing();
-    await expect.element(box).toMatchTextContent(PINNED);
-    await expect.poll(() => document.querySelectorAll(SCROLLING_INSPECTION).length).toBe(1);
+    await expect.element(box).toBeVisible();
+    expect(box.element().closest(PANEL_CARD), 'the box is in the panel of the column').toBe(box.element());
     await standStill();
     const from = centerOf(stamp.element());
     const corner = nearestCorner(box.element().getBoundingClientRect(), from);
-    expect(isTopmost(corner, INSPECTION_CARD), 'the end of the trip lands on the box').toBe(true);
+    expect(isTopmost(corner, PANEL_CARD), 'the end of the trip lands on the panel').toBe(true);
     const straight = straightPath(from, corner, TRIP_STEPS);
     const through = labelsUnder(straight).length > 0 ? null : labelNearestTo(from, corner);
     const path = through === null ? straight : [...straightPath(from, through, TRIP_STEPS / 2), ...straightPath(through, corner, TRIP_STEPS / 2)];
@@ -181,29 +185,27 @@ describe.each(TRIP_WINDOWS)('$name', ({ size }) => {
 
     await travel(path, TRIP_STEP_MS);
 
-    await expect.element(box, { message: 'after the trip, which outlasts the grace, the box still shows the lost ping, pinned' }).toMatchTextContent(PINNED);
-    await bringTheLastLineIntoView(box);
-    await userEvent.keyboard('{Escape}');
-    await expect.element(box).not.toBeInTheDocument();
+    await expect.element(box, { message: 'after the trip, which outlasts the grace, the panel still shows the lost ping' }).toBeVisible();
+    await readToTheEnd(box);
   });
 });
 
-describe('at the desktop window', () => {
-  beforeEach(() => page.viewport(DESKTOP_WINDOW.width, DESKTOP_WINDOW.height));
+describe('at a low window', () => {
+  beforeEach(() => page.viewport(LOW_WINDOW.width, LOW_WINDOW.height));
 
-  it('with the keyboard, Enter pins the box and PageDown scrolls it; Escape gives the focus back', { timeout: SLOW_TEST_MS }, async () => {
+  it('with the keyboard, Enter chooses the packet and PageDown scrolls its box in the panel; Escape gives the focus back and keeps the box', { timeout: SLOW_TEST_MS }, async () => {
     await show(INCIDENT);
     const stamp = await sendTheLostPing();
     const box = boxOfTheLostPing();
-    const scrolled = () => ({ page: window.scrollY, side: document.querySelector(SIDE_PANEL)?.scrollTop ?? 0 });
-    const bodyOfTheBox = () => box.element().querySelector(BODY_OF_A_CARD) as HTMLElement;
+    const scrolled = () => ({ page: window.scrollY, lucia: document.querySelector(LUCIA_REGION)?.scrollTop ?? 0 });
+    const bodyOfTheBox = () => document.querySelector(PANEL_BODY) as HTMLElement;
     stamp.element().focus();
 
     await userEvent.keyboard('{Enter}');
 
-    await expect.element(box).toMatchTextContent(PINNED);
-    await expect.poll(() => document.querySelectorAll(SCROLLING_INSPECTION).length).toBe(1);
+    await expect.element(box).toBeVisible();
     await expect.element(box.getByRole('heading', { name: LOST_PING_BOX }), { message: 'Enter moves the focus to the heading of the box' }).toHaveFocus();
+    expect(bodyOfTheBox().scrollHeight, 'the box does not fit the panel, so its body scrolls').toBeGreaterThan(bodyOfTheBox().clientHeight);
     const before = scrolled();
 
     await userEvent.keyboard('{PageDown}');
@@ -215,16 +217,17 @@ describe('at the desktop window', () => {
     await userEvent.tab({ shift: true });
     await expect.element(box.getByRole('button', { name: INSPECTION_TEXT.closeLabel, exact: true }), { message: 'Shift+Tab again reaches «Cerrar»' }).toHaveFocus();
 
-    holdTheGrace();
     await userEvent.keyboard('{Escape}');
 
-    await expect.element(box).not.toBeInTheDocument();
     await expect.element(stamp, { message: 'Escape gives the focus back to the stamp' }).toHaveFocus();
-    await passTheGrace();
-    expect(box.query(), 'the focus that comes back does not reopen the box').toBeNull();
+    await expect.element(box, { message: 'and keeps the box in the panel' }).toBeVisible();
   });
+});
 
-  it("a click on a piece that opens a card opens it, pins the piece's box, and a click in the card releases the box", { timeout: SLOW_TEST_MS }, async () => {
+describe('at the desktop window', () => {
+  beforeEach(() => page.viewport(DESKTOP_WINDOW.width, DESKTOP_WINDOW.height));
+
+  it("a click on a piece that opens a card opens it, shows the piece in the panel, and a click in the card leaves the panel as it is", { timeout: SLOW_TEST_MS }, async () => {
     holdTheGrace();
     const first = await show(INCIDENT);
     await standStill();
@@ -237,15 +240,16 @@ describe('at the desktop window', () => {
 
     await expect.element(terminal).toBeVisible();
     await expect.poll(() => terminal.element().contains(document.activeElement), { message: 'the terminal holds the focus' }).toBe(true);
-    await expect.element(box, { message: 'the box of the piece is pinned' }).toMatchTextContent(PINNED);
+    await expect.element(box, { message: 'the piece is in the panel' }).toBeVisible();
+    expect(box.element().closest(PANEL_CARD)).toBe(box.element());
     await expect.element(label).toHaveAttribute(PINNED_MARK, 'true');
     await standStill();
-    expect(inspectionBoxOverCards(), 'the pinned box is on show and covers none of the cards of the map').toEqual({ shown: true, covered: [] });
+    expect(inspectionBoxOverCards().covered, 'the box of the hover covers none of the cards of the map').toEqual([]);
 
     await userEvent.click(chip);
 
-    await expect.element(box, { message: 'a click in the card releases the box' }).not.toBeInTheDocument();
-    await expect.element(label).not.toHaveAttribute(PINNED_MARK);
+    await expect.element(box, { message: 'a click in the card leaves the panel as it is' }).toBeVisible();
+    await expect.element(label).toHaveAttribute(PINNED_MARK, 'true');
     await expect.element(chip, { message: 'and the chip is picked' }).toHaveAttribute('aria-pressed', 'true');
 
     first.unmount();
@@ -256,7 +260,7 @@ describe('at the desktop window', () => {
 
     await expect.element(terminal).toBeVisible();
     await expect.poll(() => terminal.element().contains(document.activeElement), { message: 'with the keyboard the terminal holds the focus too' }).toBe(true);
-    await expect.element(box, { message: 'with the keyboard the box is pinned' }).toMatchTextContent(PINNED);
+    await expect.element(box, { message: 'with the keyboard the piece is in the panel' }).toBeVisible();
     await expect.element(label).toHaveAttribute(PINNED_MARK, 'true');
   });
 
@@ -311,7 +315,7 @@ describe('the «+N» of 02-03 at the desktop window', () => {
 
     const list = listOfTheFour();
     await expect.element(list).toBeVisible();
-    await expect.element(list, { message: 'a hover is a preview: no «Fijada»' }).not.toMatchTextContent(INSPECTION_TEXT.pinned);
+    await expect.element(list, { message: 'a hover is a preview: no «Cerrar»' }).not.toMatchTextContent(INSPECTION_TEXT.close);
     const fields = [...list.element().querySelectorAll(LISTED_PACKET)].map((field) => [field.querySelector('dt')?.textContent?.replace(SOURCE_OF_THE_PACKET, ''), field.querySelector('dd')?.textContent]);
     expect(fields, 'one field for each stamp of the place, the drawn ones too, the newest first, with how it ended').toEqual([
       [`3306 de ${LUCIA_LAPTOP} a ${LOOPBACK}`, INSPECTION_TEXT.stampLine('arrived')],
@@ -321,7 +325,7 @@ describe('the «+N» of 02-03 at the desktop window', () => {
     ]);
   });
 
-  it('in 02-03 the list of «+2» opens with the keyboard focus and Escape gives the focus back', { timeout: SLOW_TEST_MS }, async () => {
+  it('in 02-03 the list of «+2» opens in the panel with the keyboard focus and Escape gives the focus back', { timeout: SLOW_TEST_MS }, async () => {
     await show(REFUSED_OR_SILENT);
     const more = await stackFourStampsAtLucia();
     await expect.element(more).toBeVisible();
@@ -330,19 +334,19 @@ describe('the «+N» of 02-03 at the desktop window', () => {
     await userEvent.keyboard('{Enter}');
 
     const list = listOfTheFour();
-    await expect.element(list, { message: 'Enter pins the list' }).toMatchTextContent(INSPECTION_TEXT.pinned);
+    await expect.element(list, { message: 'Enter shows the list in the panel, with «Cerrar»' }).toMatchTextContent(INSPECTION_TEXT.close);
+    expect(list.element().closest(PANEL_CARD)).toBe(list.element());
     await expect.element(list.getByRole('heading', { name: INSPECTION_TEXT.stampsTitle(STAMPS_AT_LUCIA) }), { message: 'Enter moves the focus to the heading of the list' }).toHaveFocus();
 
     holdTheGrace();
     await userEvent.keyboard('{Escape}');
 
-    await expect.element(list).not.toBeInTheDocument();
     await expect.element(more, { message: 'Escape gives the focus back to «+2»' }).toHaveFocus();
     await passTheGrace();
-    expect(list.query(), 'the focus that comes back does not reopen the list').toBeNull();
+    await expect.element(list, { message: 'and the list stays in the panel' }).toBeVisible();
   });
 
-  it('in 02-03 a tap on «+2» pins the list and a tap outside releases it', { timeout: SLOW_TEST_MS }, async () => {
+  it('in 02-03 a tap on «+2» shows the list in the panel and a tap outside leaves it', { timeout: SLOW_TEST_MS }, async () => {
     await show(REFUSED_OR_SILENT);
     const more = await stackFourStampsAtLucia();
     await expect.element(more).toBeVisible();
@@ -351,12 +355,12 @@ describe('the «+N» of 02-03 at the desktop window', () => {
     await tapAt(centerOf(more.element()));
 
     const list = listOfTheFour();
-    await expect.element(list, { message: 'a tap pins the list' }).toMatchTextContent(INSPECTION_TEXT.pinned);
+    await expect.element(list, { message: 'a tap shows the list in the panel, with «Cerrar»' }).toMatchTextContent(INSPECTION_TEXT.close);
     await passTheGrace();
-    await expect.element(list, { message: 'the pinned list stays after the finger lifts' }).toBeVisible();
+    await expect.element(list, { message: 'the list stays after the finger lifts' }).toBeVisible();
 
     await tapAt(OUTSIDE_POINT);
 
-    await expect.element(list, { message: 'a tap outside releases it' }).not.toBeInTheDocument();
+    await expect.element(list, { message: 'a tap outside leaves it' }).toBeVisible();
   });
 });

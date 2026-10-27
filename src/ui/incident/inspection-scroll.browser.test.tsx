@@ -24,13 +24,15 @@ const BODY_OF_A_CARD = '.map-card .chip-card__body';
 const HIDDEN_PX_ALLOWED = 1;
 const PHONE = { width: 390, height: 844 };
 const HOLDER = '.incident__inspection';
-const PINNED_BOX = '.incident__inspection > .card';
+const PREVIEW = '.incident__inspection > .card';
+const PANEL_CARD = '.incident__side > .card';
 const SOMETHING_TO_INSPECT = /^internet$/;
 const HELP_WINDOWS = [{ width: 1280, height: 800 }, { width: 1440, height: 900 }, { width: 1280, height: 720 }];
 const WIDEST_NARROW_WINDOW = { width: 900, height: 800 };
 const NARROWEST_WIDE_WINDOW = { width: 901, height: 800 };
 const INCIDENT_IDS = INCIDENTS.map((incident) => incident.id);
 const SIDE_PANEL = '.incident__side';
+const LUCIA_REGION = '.incident__lucia';
 const MAP = '.incident__map';
 const NOTE = '.message--note';
 
@@ -119,35 +121,35 @@ describe('the inspection box on a phone, under the map', () => {
     window.scrollTo(0, 0);
   });
 
-  it('comes into view when it is pinned and not when it only previews', async () => {
+  it('the panel comes into view when a piece is chosen and not when it only previews', async () => {
     await page.viewport(PHONE.width, PHONE.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST_INCIDENT} nextId={null} onFinish={() => undefined} />);
     await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBeGreaterThan(0);
-    const holder = view.container.querySelector(HOLDER) as HTMLElement;
     const label = page.getByRole('button', { name: SOMETHING_TO_INSPECT });
-    const below = () => holder.getBoundingClientRect().bottom - window.innerHeight;
+    const note = view.container.querySelector(SIDE_PANEL)?.lastElementChild as HTMLElement;
+    const below = (element: Element) => element.getBoundingClientRect().bottom - window.innerHeight;
 
     await userEvent.hover(label);
-    await expect.poll(() => rectOf(PINNED_BOX), { message: 'the preview shows in the holder under the map' }).not.toBeNull();
+    await expect.poll(() => rectOf(PREVIEW), { message: 'the preview shows in the holder under the map' }).not.toBeNull();
     const scrolledByTheHover = window.scrollY;
-    expect(below(), 'the holder is under the fold, as the phone lays it out').toBeGreaterThan(0);
+    expect(below(note), 'the panel is under the fold, as the phone lays it out').toBeGreaterThan(0);
 
     await userEvent.click(label);
-    await expect.poll(() => holder.textContent, { message: 'the click pins the box' }).toMatch(/Fijada/);
-    await expect.poll(below, { message: 'the pinned box is scrolled into view' }).toBeLessThanOrEqual(EPSILON);
-    expect(holder.getBoundingClientRect().top, 'the whole box, from its top').toBeGreaterThanOrEqual(-EPSILON);
+    await expect.poll(() => document.querySelector(PANEL_CARD), { message: 'the click chooses the piece, and the panel shows it' }).not.toBeNull();
+    const panel = document.querySelector(PANEL_CARD) as HTMLElement;
+    await expect.poll(() => below(panel), { message: 'the panel is scrolled into view' }).toBeLessThanOrEqual(EPSILON);
+    expect(panel.getBoundingClientRect().top, 'the whole panel, from its top').toBeGreaterThanOrEqual(-EPSILON);
     expect(window.scrollY).toBeGreaterThan(scrolledByTheHover);
   });
   it('leaves the page to the card when the same click opens a card', async () => {
     await page.viewport(PHONE.width, PHONE.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={INCIDENT} nextId={null} onFinish={() => undefined} />);
     await expect.poll(() => view.container.querySelectorAll('button.map-button').length).toBeGreaterThan(0);
-    const holder = view.container.querySelector(HOLDER) as HTMLElement;
 
     await userEvent.click(page.getByRole('button', { name: CARD_OF }));
     await expect.poll(() => rectOf(CARD), { message: 'the card opens' }).not.toBeNull();
-    await expect.poll(() => holder.textContent, { message: 'the click also pins the box' }).toMatch(/Fijada/);
-    expect(holder.getBoundingClientRect().bottom - window.innerHeight, 'the holder stays where the phone lays it out').toBeGreaterThan(0);
+    await expect.poll(() => rectOf(PANEL_CARD), { message: 'the click also chooses the piece' }).not.toBeNull();
+    expect((rectOf(PANEL_CARD) as DOMRect).bottom - window.innerHeight, 'the panel stays where the phone lays it out').toBeGreaterThan(0);
   });
 });
 
@@ -186,53 +188,50 @@ describe('the inspection help of the 2D screen at the 900 px break', () => {
     await page.viewport(INITIAL_VIEWPORT.width, INITIAL_VIEWPORT.height);
   });
 
-  it.each([
-    { size: WIDEST_NARROW_WINDOW, inThePanel: false },
-    { size: NARROWEST_WIDE_WINDOW, inThePanel: true },
-  ])('is in the side panel only when the window is wider than 900 px ($size.width px)', async ({ size, inThePanel }) => {
+  it.each([{ size: WIDEST_NARROW_WINDOW }, { size: NARROWEST_WIDE_WINDOW }])('is the panel of the column, under the region of Lucía, at 900 px and at 901 px ($size.width px)', async ({ size }) => {
     await page.viewport(size.width, size.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST_INCIDENT} nextId={null} onFinish={() => undefined} />);
     await waitForTheHelp(view);
     const lines = [view.getByText(SCREEN_TEXT.inspectHelp), view.getByText(SCREEN_TEXT.stampLegend)];
 
     for (const line of lines) {
-      expect(line.closest(SIDE_PANEL) !== null, line.textContent ?? '').toBe(inThePanel);
-      expect(line.closest(HOLDER) !== null, line.textContent ?? '').toBe(!inThePanel);
+      expect(line.closest(SIDE_PANEL) !== null, line.textContent ?? '').toBe(true);
+      expect(line.closest(HOLDER) !== null, line.textContent ?? '').toBe(false);
     }
+    expect(lines[0].closest(NOTE)?.previousElementSibling, 'right under the region of Lucía').toBe(view.container.querySelector(LUCIA_REGION));
   });
 
-  it('keeps the note, and what is under it, where it is while a box shows, is pinned and goes', async () => {
+  it('keeps the region of Lucía where it is while a box previews and while a piece is chosen', async () => {
     await page.viewport(NARROWEST_WIDE_WINDOW.width, NARROWEST_WIDE_WINDOW.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST_INCIDENT} nextId={null} onFinish={() => undefined} />);
     await waitForTheHelp(view);
-    const side = view.container.querySelector(SIDE_PANEL) as HTMLElement;
-    const lastTop = () => (side.lastElementChild as HTMLElement).getBoundingClientRect().top;
-    const before = lastTop();
+    const lucia = view.container.querySelector(LUCIA_REGION) as HTMLElement;
+    const luciaBottom = () => lucia.getBoundingClientRect().bottom;
+    const before = luciaBottom();
     const label = page.getByRole('button', { name: SOMETHING_TO_INSPECT });
 
     await userEvent.hover(label);
     await expect.poll(() => rectOf(BOX), { message: 'the preview shows' }).not.toBeNull();
-    expect(view.queryByText(SCREEN_TEXT.inspectHelp)?.closest(NOTE), 'the note stays while the box shows').toBeTruthy();
-    expect(lastTop(), 'with the preview').toBe(before);
+    expect(view.queryByText(SCREEN_TEXT.inspectHelp)?.closest(NOTE), 'the note stays while the box previews').toBeTruthy();
+    expect(luciaBottom(), 'with the preview').toBe(before);
 
     await userEvent.click(label);
-    await expect.poll(() => rectOf(BOX)?.height, { message: 'the click pins the box' }).toBeGreaterThan(0);
-    await userEvent.click(side);
-    await expect.poll(() => view.container.querySelector(HOLDER)?.textContent, { message: 'a click outside releases the box' }).not.toMatch(/Fijada/);
-    expect(lastTop(), 'with the box released').toBe(before);
+    await expect.poll(() => document.querySelector(PANEL_CARD), { message: 'the click chooses the piece' }).not.toBeNull();
+    expect(luciaBottom(), 'with the piece chosen').toBe(before);
+    expect(view.queryByText(SCREEN_TEXT.inspectHelp), 'the panel is the piece, not the note').toBeNull();
   });
 
-  it('keeps the sentence about pinning in the note until a card opens, and the rest of the help after', async () => {
+  it('tells in the note what a click does until a piece is chosen, and gives the panel to the piece after', async () => {
     await page.viewport(NARROWEST_WIDE_WINDOW.width, NARROWEST_WIDE_WINDOW.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={INCIDENT} nextId={null} onFinish={() => undefined} />);
     await waitForTheHelp(view);
-    expect(view.getByText(SCREEN_TEXT.inspectPinHelp).closest(NOTE), 'with no card open').not.toBeNull();
+    expect(view.getByText(SCREEN_TEXT.inspectClickHelp).closest(NOTE), 'with nothing chosen').not.toBeNull();
 
     await userEvent.click(page.getByRole('button', { name: CARD_OF }));
     await expect.poll(() => rectOf(CARD), { message: 'the card opens' }).not.toBeNull();
 
-    expect(view.queryByText(SCREEN_TEXT.inspectPinHelp), 'with a card open the note no longer promises the pinned box').toBeNull();
-    expect(view.getByText(SCREEN_TEXT.inspectHelp).closest(NOTE)).not.toBeNull();
-    expect(view.getByText(SCREEN_TEXT.stampLegend).closest(NOTE)).not.toBeNull();
+    expect(view.queryByText(SCREEN_TEXT.inspectClickHelp), 'with a piece chosen the note is gone').toBeNull();
+    expect(view.queryByText(SCREEN_TEXT.stampLegend), 'and so is its legend').toBeNull();
+    expect(rectOf(PANEL_CARD), 'the panel is the piece').not.toBeNull();
   });
 });

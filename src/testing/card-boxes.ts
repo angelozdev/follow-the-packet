@@ -1,8 +1,7 @@
 const MIN_GAP_PX = 4;
 const MIN_BUTTON_GAP_PX = 6;
-export const INSPECTION_HELP = '.incident__inspection > p';
 
-/** Returns one line per defect in the cards on the page: content a card cuts off or lets spill, two cards that overlap, a card over a line of the inspection help (the paragraphs under the map at 900 px and under: above it the help is the note of the panel of the column, which no card of the map reaches), a primary button that touches what is above it, buttons that touch each other, and a last button that touches the bottom edge of its card. A gap above a stamp and from a card's bottom edge counts when it is at least `gap` pixels, and a gap between two buttons when it is at least `buttonGap`. */
+/** Returns one line per defect in the cards on the page: content a card cuts off or lets spill, two cards that overlap in the part each shows (a card inside a region that scrolls counts only where the region shows it), a primary button that touches what is above it, buttons that touch each other, and a last button that touches the bottom edge of its card. A gap above a stamp and from a card's bottom edge counts when it is at least `gap` pixels, and a gap between two buttons when it is at least `buttonGap`. */
 export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_BUTTON_GAP_PX): string[] {
   interface Rect {
     left: number;
@@ -112,15 +111,13 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
     if (lowest && paddingBoxOf(card).bottom - lowest.bottom < gap) problems.push(`${nameOf(card)}: its last button is ${(paddingBoxOf(card).bottom - lowest.bottom).toFixed(1)}px from the bottom edge`);
   }
 
+  const shownPart = (card: Element): Rect => {
+    const box = visibleBoxOf(card, document.body);
+    return { ...box, bottom: box.bottom + lipOf(card) };
+  };
   for (const [index, upper] of cards.entries()) {
     for (const lower of cards.slice(index + 1)) {
-      if (overlap(withLip(upper), withLip(lower))) problems.push(`${nameOf(upper)} overlaps ${nameOf(lower)}`);
-    }
-  }
-  const helps = [...document.querySelectorAll(INSPECTION_HELP)].filter(shown);
-  for (const card of cards) {
-    for (const help of helps) {
-      if (overlap(withLip(card), rectOf(help))) problems.push(`${nameOf(card)} overlaps the inspection help ${describe(help)}`);
+      if (overlap(shownPart(upper), shownPart(lower))) problems.push(`${nameOf(upper)} overlaps ${nameOf(lower)}`);
     }
   }
   return problems;

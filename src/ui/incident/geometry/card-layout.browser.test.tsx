@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { INCIDENTS, type Incident } from '@/levels';
-import { cardProblems, cardsOutsideTheMap, INSPECTION_HELP, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
+import { cardProblems, cardsOutsideTheMap, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
 import { coveredBy } from '@/testing/map-boxes';
 import {
   GENTLE_WHEEL_PX,
@@ -137,12 +137,11 @@ const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
 const ANYWHERE_CHIP = /Anywhere-IPv4/;
-const PINNED = 'Fijada';
+const CLOSE = 'Cerrar';
 const PHONE_WINDOW = { width: 390, height: 844 };
 const HOLDER = '.incident__inspection';
 const SCROLLING_INSPECTION = '.incident__inspection[data-scrolls]';
 
-const STACKED_UP_TO = 900;
 const TALL_WINDOWS = [
   { name: '390 px wide', size: { width: 390, height: 844 } },
   { name: 'desktop width', size: { width: 1440, height: 900 } },
@@ -562,14 +561,11 @@ describe('the cards of the game in a real browser', () => {
     const problems: string[] = [];
     for (const { name, size } of TALL_WINDOWS) {
       await page.viewport(size.width, size.height);
-      let helpSeen = 0;
       for (const scene of SCENES) {
         await inTheScene(scene, 'at-rest', () => {
-          helpSeen += document.querySelectorAll(INSPECTION_HELP).length;
           problems.push(...cardProblems().map((problem) => `${name}, ${scene.name}: ${problem}`));
         });
       }
-      if (size.width <= STACKED_UP_TO) expect(helpSeen, `${name}: the inspection help is on the page, so the check of the cards over it looks at something`).toBeGreaterThan(0);
     }
     watching.stop();
     expect(problems).toEqual([]);
@@ -607,6 +603,7 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
     const holder = document.querySelector(HOLDER) as HTMLElement;
     const bodyOfTheBox = () => box.element().querySelector('.card__body') as HTMLElement;
     const inView = () => holder.getBoundingClientRect().bottom <= window.innerHeight;
+    const panelInView = () => box.element().getBoundingClientRect().bottom <= window.innerHeight;
 
     await userEvent.hover(stamp);
     await expect.element(box).toBeVisible();
@@ -615,20 +612,20 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
       await userEvent.hover(page.elementLocator(bodyOfTheBox()));
       await passTheGrace();
       await expect.element(box, { message: 'the preview stays while the mouse is over it' }).toBeVisible();
-      await expect.element(box, { message: 'a preview is not pinned' }).not.toMatchTextContent(PINNED);
+      await expect.element(box, { message: 'a preview has no «Cerrar»' }).not.toMatchTextContent(CLOSE);
     } else {
       expect(window.scrollY, 'a hover leaves the page where it is, so the holder under the map stays out of view').toBe(0);
     }
 
     await click(stamp);
 
-    await expect.element(box, { message: 'the click pins the box' }).toMatchTextContent(PINNED);
-    await expect.poll(inView, { message: 'the pin brings the holder of the box into view' }).toBe(true);
+    await expect.element(box, { message: 'the click shows the box in the panel, with «Cerrar»' }).toMatchTextContent(CLOSE);
+    await expect.poll(panelInView, { message: 'the choice brings the panel into view' }).toBe(true);
     await userEvent.hover(page.elementLocator(bodyOfTheBox()));
     await passTheGrace();
     await expect.element(box, { message: 'the box stays while the mouse is over it' }).toBeVisible();
     expect(getComputedStyle(bodyOfTheBox(), '::-webkit-scrollbar').width, 'the body draws its own scrollbar, so a scroller that hides it still shows there is more').not.toBe('auto');
-    await bringTheLastLineIntoView(box);
+    if (bodyOfTheBox().scrollHeight > bodyOfTheBox().clientHeight + 1) await bringTheLastLineIntoView(box);
   });
 });
 

@@ -3,9 +3,9 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
-import { pieceViews, startSession } from '@/game';
+import { inspect, pieceViews, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type SendIncident } from '@/levels';
-import type { GameSceneProps } from '@/scene';
+import { pieceDomId, type GameSceneProps } from '@/scene';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GLYPH_BOX } from '@/scene/marks/still-packets';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
@@ -52,6 +52,9 @@ const LOCKED_SERVER = 'servidor2 con candado';
 const ATTACKER_PACKET = 'ping de Atacante a servidor2';
 const ECHO_REQUEST = 'ICMP · Echo Request';
 const SG_SERVIDOR1 = 'SG servidor1';
+const LOCKED_PIECE = 'device:servidor2';
+const COLUMN = '.incident__side';
+const HOLDER_OF_THE_PREVIEW = '.incident__inspection';
 const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
 const FULL_STARS = 3;
 const FIRST = filterIncident('04-01');
@@ -85,13 +88,24 @@ function wait(ms: number) {
   });
 }
 
-function expectCardKeepsTheFocusAndItsBoxIsPinned() {
-  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
-  expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
-  expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+function theColumn(): HTMLElement {
+  const column = document.querySelector<HTMLElement>(COLUMN);
+  if (column === null) throw new Error('the column is not on the page');
+  return column;
 }
 
-async function pinTheStampWithTheKeyboard(user: User) {
+function expectInThePanel(region: HTMLElement) {
+  expect(region.parentElement).toBe(theColumn());
+  expect(region.closest(HOLDER_OF_THE_PREVIEW)).toBeNull();
+}
+
+function expectCardKeepsTheFocusAndItsPieceIsInThePanel() {
+  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+  expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
+  expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
+}
+
+async function chooseTheStampWithTheKeyboard(user: User) {
   const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
   await tabTo(user, stamp);
   await user.keyboard('{Enter}');
@@ -135,12 +149,14 @@ async function sendTraceToAndres(user: User) {
 }
 
 describe('incident screen', () => {
-  it('explains the stamps and the lock beside the inspect help, and stops while a piece is inspected', async () => {
+  it('explains the stamps and the lock with the inspect help in the panel, and gives the panel to a piece once the player chooses it', async () => {
     const user = userEvent.setup();
     renderFirst();
     expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
     expect(screen.getByText(SCREEN_TEXT.stampLegend)).toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(screen.getByText(SCREEN_TEXT.stampLegend), 'a hover leaves the panel as it is').toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
     expect(screen.queryByText(SCREEN_TEXT.stampLegend)).toBeNull();
   });
 
@@ -298,89 +314,139 @@ describe('the inspection box can be reached with the mouse', () => {
   });
 });
 
-describe('a floating inspection box can be pinned', () => {
-  it('clicking a stamp pins its box with «Fijada» and «Cerrar», and hovering another piece leaves it', async () => {
+describe('a piece or a stamp can be chosen and read in the panel', () => {
+  it('clicking a piece shows what it is in the panel of the column', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
+    const panel = screen.getByRole('region', { name: 'servidor2' });
+    expectInThePanel(panel);
+    expect(within(panel).getByRole('heading', { name: 'servidor2' }).querySelector('svg.entity-icon')).toBeInTheDocument();
+    expect(panel.querySelector('dt')).toHaveTextContent(INSPECTION_TEXT.whatIs);
+    expect(within(panel).queryByRole('button', { name: INSPECTION_TEXT.closeLabel }), 'a piece stays chosen until another is').toBeNull();
+  });
+
+  it('clicking a stamp, a packet or a «+N» shows its box in the panel with «Cerrar»', async () => {
+    scene.drawsTheList = true;
+    const user = userEvent.setup();
+    renderFirst();
+    const { runs, sent } = startSession(INCIDENTS, FIRST.id);
+    await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
+    const packet = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expectInThePanel(packet);
+    expect(within(packet).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
+    await user.click(screen.getByRole('button', { name: LIST_OF_THE_STAMPS }));
+    const list = screen.getByRole('region', { name: INSPECTION_TEXT.stampsTitle(runs.length + sent.length) });
+    expectInThePanel(list);
+    expect(within(list).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
+    expect(screen.queryByRole('region', { name: ATTACKER_PACKET }), 'the list takes the place of the packet').toBeNull();
+  });
+
+  it('with touch, a tap on a stamp shows its box in the panel, which a tap outside leaves where it is', async () => {
     const user = renderWithFakeTimers();
-    const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
-    await user.click(stamp);
+    await user.pointer({ keys: TAP, target: screen.getByRole('button', { name: ATTACKER_PACKET }) });
     const box = screen.getByRole('region', { name: ATTACKER_PACKET });
-    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
-    expect(within(box).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
-    expect(stamp).toHaveAttribute('data-pinned');
+    expectInThePanel(box);
+    wait(AFTER_THE_GRACE_ENDS_MS);
+    await user.pointer({ keys: TAP, target: screen.getByRole('heading', { level: 1 }) });
+    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toBe(box);
+  });
+
+  it('a hover or a focus still previews the box on the map and selects nothing', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const piece = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.hover(piece);
+    const preview = screen.getByRole('region', { name: 'servidor2' });
+    expect(preview.closest(HOLDER_OF_THE_PREVIEW)).not.toBeNull();
+    expect(within(preview).queryByRole('button', { name: INSPECTION_TEXT.closeLabel })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp), 'the panel is still the help').toBeInTheDocument();
+    await user.unhover(piece);
+    await user.click(screen.getByRole('heading', { level: 1 }));
+    await tabTo(user, piece);
+    expect(screen.getByRole('region', { name: 'servidor2' }).closest(HOLDER_OF_THE_PREVIEW)).not.toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp), 'a focus selects nothing either').toBeInTheDocument();
+  });
+
+  it('hovering another piece previews it and leaves the one that was chosen in the panel', async () => {
+    const user = renderWithFakeTimers();
+    await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
     const piece = screen.getByRole('button', { name: LOCKED_SERVER });
     await user.hover(piece);
     await user.unhover(piece);
-    await user.unhover(stamp);
     wait(AFTER_THE_GRACE_ENDS_MS);
-    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: ATTACKER_PACKET }).parentElement).toBe(theColumn());
     expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
-    expect(piece).not.toHaveAttribute('data-pinned');
   });
 
-  it('with touch, a tap pins the box and a tap outside releases it', async () => {
-    const user = renderWithFakeTimers();
-    const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
-
-    await user.pointer({ keys: TAP, target: stamp });
-
-    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
-    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
-    wait(AFTER_THE_GRACE_ENDS_MS);
-    expect(box, 'the pinned box stays after the finger lifts').toBeInTheDocument();
-
-    await user.pointer({ keys: TAP, target: screen.getByRole('heading', { level: 1 }) });
-
-    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
+  it('with nothing selected the panel is the inspect help and the legend of the stamps', () => {
+    renderFirst();
+    const note = screen.getByText(SCREEN_TEXT.inspectHelp).closest('.message--note');
+    expect(note?.parentElement, 'the note is the panel, a direct child of the column').toBe(theColumn());
+    expect(note?.previousElementSibling, 'right under the region of Lucía').toBe(theColumn().firstElementChild);
+    expect(within(note as HTMLElement).getByText(SCREEN_TEXT.inspectClickHelp)).toBeInTheDocument();
+    expect(within(note as HTMLElement).getByText(SCREEN_TEXT.stampLegend)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
   });
 
-  it('a box that is only a preview shows neither «Fijada» nor «Cerrar»', async () => {
+  it('Enter or Space on a piece selects it and moves the focus to the heading of its panel, and Escape gives the focus back to the piece', async () => {
+    for (const key of ['{Enter}', ' ']) {
+      const user = userEvent.setup();
+      const view = render(firstScreen());
+      const piece = screen.getByRole('button', { name: LOCKED_SERVER });
+      await tabTo(user, piece);
+      await user.keyboard(key);
+      const panel = screen.getByRole('region', { name: 'servidor2' });
+      expectInThePanel(panel);
+      expect(within(panel).getByRole('heading', { name: 'servidor2' }), key).toHaveFocus();
+      await user.keyboard('{Escape}');
+      expect(piece, key).toHaveFocus();
+      expect(screen.getByRole('region', { name: 'servidor2' }), 'Escape keeps the piece chosen').toBe(panel);
+      view.unmount();
+    }
+  });
+
+  it('Enter on a stamp shows its box in the panel and puts the focus on its heading; Escape gives the focus back to the stamp', async () => {
     const user = userEvent.setup();
     renderFirst();
-    await user.hover(screen.getByRole('button', { name: ATTACKER_PACKET }));
+    const stamp = await chooseTheStampWithTheKeyboard(user);
     const box = screen.getByRole('region', { name: ATTACKER_PACKET });
-    expect(box).not.toHaveTextContent(INSPECTION_TEXT.pinned);
-    expect(within(box).queryByRole('button', { name: INSPECTION_TEXT.closeLabel })).toBeNull();
-  });
-
-  it('Enter on a stamp pins its box and puts the focus on its heading; Escape gives the focus back to the stamp', async () => {
-    const user = userEvent.setup();
-    renderFirst();
-    const stamp = await pinTheStampWithTheKeyboard(user);
-    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
-    expect(box).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expectInThePanel(box);
     expect(within(box).getByRole('heading', { name: ATTACKER_PACKET })).toHaveFocus();
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
     expect(stamp).toHaveFocus();
+    expect(screen.getByRole('region', { name: ATTACKER_PACKET })).toBe(box);
   });
 
-  it('Shift+Tab from the heading of a pinned box reaches «Cerrar», and Enter on it releases the box and gives the focus back to the stamp', async () => {
-    const user = userEvent.setup();
-    renderFirst();
-    const stamp = await pinTheStampWithTheKeyboard(user);
+  it('Shift+Tab from the heading of a packet in the panel reaches «Cerrar», and Enter on it releases the choice and gives the focus back to the stamp', async () => {
+    const user = renderWithFakeTimers();
+    const stamp = await chooseTheStampWithTheKeyboard(user);
     await user.tab({ shift: true });
-    expect(within(screen.getByRole('region', { name: ATTACKER_PACKET })).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveFocus();
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expectInThePanel(box);
+    expect(within(box).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveFocus();
     await user.keyboard('{Enter}');
+    wait(AFTER_THE_GRACE_ENDS_MS);
     expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
     expect(stamp).toHaveFocus();
   });
 
-  it("clicking a piece that opens a card opens it, keeps the focus in it and pins the piece's box", async () => {
+  it("clicking a piece that opens a card opens it, keeps the focus in it and shows the piece in the panel", async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expectCardKeepsTheFocusAndItsBoxIsPinned();
+    expectCardKeepsTheFocusAndItsPieceIsInThePanel();
   });
 
-  it("Enter on a piece that opens a card keeps the focus in the card and pins the piece's box", async () => {
+  it('Enter on a piece that opens a card keeps the focus in the card and shows the piece in the panel', async () => {
     const user = userEvent.setup();
     renderFirst();
     await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
     await user.keyboard('{Enter}');
-    expectCardKeepsTheFocusAndItsBoxIsPinned();
+    expectCardKeepsTheFocusAndItsPieceIsInThePanel();
   });
 
-  it('a box pinned with the keyboard on a piece that opens a card does not take the focus when the phase changes', async () => {
+  it('a piece chosen with the keyboard that opens a card does not take the focus when the phase changes', async () => {
     const user = userEvent.setup();
     renderFirst();
     await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
@@ -392,51 +458,87 @@ describe('a floating inspection box can be pinned', () => {
     await user.keyboard('{Enter}');
     await tabTo(user, screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
     expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
   });
 
-  it('Escape inside a card opened from a pinned piece closes the card, releases the box and leaves the focus on the piece', async () => {
+  it('Escape inside a card closes the card, leaves the focus on the piece and keeps the piece in the panel', async () => {
     const user = userEvent.setup();
     renderFirst();
     const label = screen.getByRole('button', { name: SG_SERVIDOR2 });
     await user.click(label);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
+    expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
     expect(label).toHaveFocus();
-    expect(label).not.toHaveAttribute('data-pinned');
   });
 
-  it('«Cerrar» unpins the box', async () => {
+  it('«Cerrar» releases the choice, the help comes back and the focus goes to the stamp', async () => {
     const user = userEvent.setup();
     renderFirst();
     const stamp = screen.getByRole('button', { name: ATTACKER_PACKET });
     await user.click(stamp);
-    await user.click(within(screen.getByRole('region', { name: ATTACKER_PACKET })).getByRole('button', { name: INSPECTION_TEXT.closeLabel }));
+    const box = screen.getByRole('region', { name: ATTACKER_PACKET });
+    expectInThePanel(box);
+    await user.click(within(box).getByRole('button', { name: INSPECTION_TEXT.closeLabel }));
     expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
     expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
     expect(stamp).not.toHaveAttribute('data-pinned');
     expect(stamp).toHaveFocus();
   });
 
-  it('a click on another piece releases the box and pins the box of that piece', async () => {
+  it('a click on another piece chooses that one in place of the first', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
     expect(screen.queryByRole('region', { name: ATTACKER_PACKET })).toBeNull();
-    expect(screen.getByRole('region', { name: 'servidor2' })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expectInThePanel(screen.getByRole('region', { name: 'servidor2' }));
+  });
+
+  it('the panel is a region named by its heading and is no dialog', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+    const panel = screen.getByRole('region', { name: SG_SERVIDOR2 });
+    const heading = within(panel).getByRole('heading', { name: SG_SERVIDOR2 });
+    expectInThePanel(panel);
+    expect(panel).toHaveAttribute('aria-labelledby', heading.id);
+    expect(panel).not.toHaveAttribute('role');
+    expect(panel.closest('[role="dialog"]')).toBeNull();
+    expect(screen.getAllByRole('dialog'), 'the only dialog is the card of the piece').toHaveLength(1);
+  });
+
+});
+
+describe('the ring of the chosen piece', () => {
+  beforeEach(() => {
+    scene.drawsTheRealMap = true;
+  });
+
+  afterEach(() => {
+    scene.drawsTheRealMap = false;
+  });
+
+  it('the selected piece wears the ring the piece with an open card wore', async () => {
+    const user = userEvent.setup();
+    renderFirst();
+    const ring = () => document.querySelector(`[data-piece="${LOCKED_PIECE}"] .map-piece__mat`);
+    expect(ring()).toBeNull();
+    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
+    expect(ring(), 'a piece with no card is selected too').not.toBeNull();
+    await user.click(screen.getByRole('button', { name: /^Atacante/ }));
+    expect(ring(), 'the ring goes with the choice').toBeNull();
   });
 });
 
-describe('a pinned inspection box whose piece is gone', () => {
+describe('a chosen piece or packet that the map no longer draws', () => {
   const GATEWAY = gatewayIncident();
   const SETTINGS = 'Ajustes de red de tu-laptop';
   const ROUTER = '192.168.1.1';
   const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
 
-  it('a pinned box whose piece is gone is released', async () => {
+  it('the selection is released when its piece or its packet is no longer drawn', async () => {
     const user = userEvent.setup();
     render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
@@ -444,11 +546,11 @@ describe('a pinned inspection box whose piece is gone', () => {
     await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
     await user.click(screen.getByRole('button', { name: LOST_PING }));
-    expect(screen.getByRole('region', { name: LOST_PING })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expectInThePanel(screen.getByRole('region', { name: LOST_PING }));
 
     await tabTo(user, within(screen.getByRole('dialog', { name: /^Terminal de/ })).getByRole('tab', { name: 'Terminal' }));
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('region', { name: LOST_PING })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expectInThePanel(screen.getByRole('region', { name: LOST_PING }));
     await tabTo(user, within(screen.getByRole('dialog', { name: SETTINGS })).getByRole('button', { name: ROUTER }));
     await user.keyboard('{Enter}');
 
@@ -456,7 +558,31 @@ describe('a pinned inspection box whose piece is gone', () => {
     expect(screen.queryByRole('region', { name: LOST_PING })).toBeNull();
     expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
-    expect(screen.getByRole('region', { name: 'tu-laptop' })).not.toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(screen.getByRole('region', { name: 'tu-laptop' })).not.toHaveTextContent(INSPECTION_TEXT.close);
+  });
+});
+
+describe('every piece of every registered incident can be read in the panel', () => {
+  it('every piece the map draws in every registered incident shows its fields in the panel', async () => {
+    const user = userEvent.setup({ delay: null });
+    const shown: string[] = [];
+    for (const { id } of INCIDENTS) {
+      const session = startSession(INCIDENTS, id);
+      const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={id} nextId={null} onFinish={vi.fn()} />);
+      for (const { id: pieceId } of pieceViews(session)) {
+        const inspection = inspect(session, pieceId);
+        const label = document.getElementById(pieceDomId(pieceId));
+        if (inspection === null || label === null) {
+          shown.push(`${id} ${pieceId}: nothing to read`);
+          continue;
+        }
+        await user.click(label);
+        const panel = screen.getByRole('region', { name: toPlainText(inspection.title) });
+        if (panel.parentElement !== theColumn() || panel.querySelectorAll('dt').length !== inspection.fields.length) shown.push(`${id} ${pieceId}: the panel does not show its fields`);
+      }
+      view.unmount();
+    }
+    expect(shown).toEqual([]);
   });
 });
 
@@ -524,31 +650,31 @@ describe('the inspection box steps aside from an open card', () => {
     expect(theHolder()).toHaveAttribute('data-place', 'right');
   });
 
-  it('a pinned box moves to the other place when the card takes its own', async () => {
+  it('a box moves to the other place when the card takes its own', async () => {
     drawTheMap(DOCKED_AT_THE_LEFT);
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
     expect(theHolder()).toHaveAttribute('data-place', 'right');
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
 
     await moveTheCardTo(AT_THE_RIGHT);
 
     expect(theHolder()).toHaveAttribute('data-place', 'left');
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
 
     await moveTheCardTo(FAR_FROM_BOTH);
 
     expect(theHolder(), 'a box that the card does not touch keeps the place it has').toHaveAttribute('data-place', 'left');
   });
 
-  it('a pinned box is released, and its piece wears no pin, when the card takes both places', async () => {
+  it('no box is drawn over the map, and the piece clicked is in the panel, when the card takes both places', async () => {
     drawTheMap(OVER_BOTH);
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
-    expect(screen.getByRole('button', { name: SG_SERVIDOR2 })).not.toHaveAttribute('data-pinned');
+    expect(theHolder().querySelector('.card')).toBeNull();
+    expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
     expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
   });
 
@@ -559,17 +685,18 @@ describe('the inspection box steps aside from an open card', () => {
     await openTheCardAndLetGoOfItsBox(user);
     await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
     expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
-    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 }), 'the panel keeps the piece that was chosen').toBeInTheDocument();
   });
 
-  it('a click on another piece shows no pinned box, and its piece wears no pin, when the card takes both places', async () => {
+  it('a click on another piece draws no box over the map and chooses it in the panel when the card takes both places', async () => {
     drawTheMap(OVER_BOTH);
     const user = userEvent.setup();
     renderFirst();
     await openTheCardAndLetGoOfItsBox(user);
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
-    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
-    expect(screen.getByRole('button', { name: LOCKED_SERVER })).not.toHaveAttribute('data-pinned');
+    expect(theHolder().querySelector('.card')).toBeNull();
+    expectInThePanel(screen.getByRole('region', { name: 'servidor2' }));
+    expect(screen.getByRole('button', { name: LOCKED_SERVER })).toHaveAttribute('data-pinned');
   });
 
   it('the box of the click that opens a card is not drawn until the card is measured', async () => {
@@ -592,7 +719,7 @@ describe('the inspection box steps aside from an open card', () => {
 
     expect(theHolder()).not.toHaveAttribute('data-hold');
     expect(theHolder(), 'the card is measured before the box shows').toHaveAttribute('data-place', 'left');
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toHaveTextContent(INSPECTION_TEXT.pinned);
+    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
   });
 
   it('the reason is written when a piece is inspected and the card takes both places', async () => {
@@ -600,7 +727,7 @@ describe('the inspection box steps aside from an open card', () => {
     const user = userEvent.setup();
     renderFirst();
     expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'no card is open, so nothing to explain').toBeNull();
-    expect(screen.getByText(SCREEN_TEXT.inspectPinHelp), 'with no card the grey help promises the pinned box').toBeInTheDocument();
+    expect(screen.getByText(SCREEN_TEXT.inspectClickHelp), 'with nothing chosen the help tells what a click does').toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
 
@@ -608,8 +735,8 @@ describe('the inspection box steps aside from an open card', () => {
     expect(reason, 'a note, in the side panel, right under the card of Lucía').toHaveClass('message--note');
     expect(reason.closest('.incident__side')).not.toBeNull();
     expect(reason.previousElementSibling).toBe(screen.getByRole('region', { name: /Lucía/ }));
-    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
-    expect(screen.queryByText(SCREEN_TEXT.inspectPinHelp), 'with a card open the grey help no longer promises the pinned box').toBeNull();
+    expect(screen.queryByText(SCREEN_TEXT.inspectHelp), 'the piece chosen takes the panel from the help').toBeNull();
+    expect(screen.queryByText(SCREEN_TEXT.inspectClickHelp), 'and the sentence about the click goes with it').toBeNull();
 
     await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
     await user.unhover(screen.getByRole('button', { name: LOCKED_SERVER }));
@@ -643,7 +770,7 @@ describe('the inspection box steps aside from an open card', () => {
     expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox)).toBeNull();
 
     await moveTheCardTo(OVER_BOTH);
-    expect(screen.queryByRole('region', { name: SG_SERVIDOR2 })).toBeNull();
+    expect(theHolder().querySelector('.card')).toBeNull();
     expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox)).toBeInTheDocument();
 
     await moveTheCardTo(FAR_FROM_BOTH);

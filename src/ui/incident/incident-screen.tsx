@@ -1,11 +1,13 @@
-import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useReducer, useState } from 'react';
 import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, firewallCard, pieceCard, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, ruleChipsOf, type Incident } from '@/levels';
 import { GameScene, pieceDomId } from '@/scene';
+import { InspectHelp } from '@/ui/shell/inspect-help';
+import { SelectionPanel } from '@/ui/shell/selection-panel';
 import { ShellColumn } from '@/ui/shell/shell-column';
+import { useSelection } from '@/ui/shell/use-selection';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
@@ -18,33 +20,6 @@ import { TaskCard } from './map-cards/task-card';
 import { ResultCard } from './side-cards/result-card';
 import { useInspection } from './use-inspection';
 
-const ABOVE_900_PX = '(min-width: 901px)';
-const MEDIA_QUERY_AT_FIRST_RENDER = { getInitialValueInEffect: false };
-
-interface InspectHelpProps {
-  line: 'p' | 'span';
-  className: string;
-  cardOpen: boolean;
-}
-
-/** The two lines of the inspect help: what hovering or focusing a piece or a stamp does (with no card open, also the sentence about pinning the box) and the legend of the stamps. `line` is the element of each line and `className` its class, so the same words sit in a paragraph under the map or inside a note of the side panel. */
-function InspectHelp({ line: Line, className, cardOpen }: InspectHelpProps) {
-  return (
-    <>
-      <Line className={className}>
-        {SCREEN_TEXT.inspectHelp}
-        {!cardOpen && (
-          <>
-            {' '}
-            <span>{SCREEN_TEXT.inspectPinHelp}</span>
-          </>
-        )}
-      </Line>
-      <Line className={className}>{SCREEN_TEXT.stampLegend}</Line>
-    </>
-  );
-}
-
 interface IncidentScreenProps {
   incidents: Incident[];
   incidentId: string;
@@ -56,7 +31,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [cardPieceId, setCardPieceId] = useState<string | null>(null);
   const [still, setStill] = useStillMode();
-  const helpInPanel = useMediaQuery(ABOVE_900_PX, undefined, MEDIA_QUERY_AT_FIRST_RENDER);
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
@@ -66,7 +40,9 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const card = chips ? firewall : null;
   const piece = playing && cardPieceId ? pieceCard(session, cardPieceId) : null;
   const cardOpen = card !== null || piece !== null;
-  const { inspection, pinned, noRoom, trigger, release, heading, holder, watchTheMap } = useInspection(session, opensCard, cardOpen);
+  const selection = useSelection(session, opensCard);
+  const { inspection, duplicate, noRoom, trigger, release, holder, watchTheMap } = useInspection(session, selection.selected, cardOpen);
+  const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const origins = piece?.tabs.find((tab) => tab.id === 'terminal')?.card.origins;
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -106,7 +82,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           still={still}
           blockName={classifiedBlock(session)}
           known={session.known}
-          activePieceId={card || piece ? cardPieceId : null}
+          activePieceId={card || piece ? cardPieceId : selection.pieceId}
           overlay={
             (card && chips && (
               <TaskCard
@@ -126,17 +102,13 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
               <PieceCard card={piece} {...pieceHandlers(session, dispatch, (fromId) => origins?.[fromId] && setCardPieceId(origins[fromId]))} onClose={closeCard} />
             ))
           }
-          inspectTrigger={trigger}
-          inspectStampsTrigger={(packetIds) => trigger(PIECE_ID.stamps(packetIds))}
+          inspectTrigger={triggerOf}
+          inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={activate}
         />
       </div>
-      <div aria-live="polite" className="incident__inspection" {...holder}>
-        {inspection ? (
-          <InspectionBox inspection={inspection} pinned={pinned} heading={heading} onClose={release} />
-        ) : (
-          !helpInPanel && <InspectHelp line="p" className="muted" cardOpen={cardOpen} />
-        )}
+      <div aria-live="polite" aria-hidden={duplicate || undefined} className="incident__inspection" {...holder}>
+        {inspection && <InspectionBox inspection={inspection} pinned={false} onClose={release} />}
       </div>
       <ShellColumn
         lucia={
@@ -163,13 +135,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
             {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
           </>
         }
-        panel={
-          helpInPanel && (
-            <Message variant="note" words={MESSAGE_TEXT}>
-              <InspectHelp line="span" className="incident__help-line" cardOpen={cardOpen} />
-            </Message>
-          )
-        }
+        panel={selection.inspection ? <SelectionPanel inspection={selection.inspection} packet={selection.packet} heading={selection.heading} onClose={selection.release} /> : <InspectHelp />}
       />
     </main>
   );

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useId, type RefObject } from 'react';
 import { INSPECTION_TEXT } from '@/copy';
 import { Button, Card } from '@/design';
 import type { Inspection } from '@/game';
@@ -9,7 +9,7 @@ import { TaggedText } from '@/ui/tagged-text';
 interface InspectionBoxProps {
   inspection: Inspection;
   pinned: boolean;
-  heading: RefObject<HTMLHeadingElement | null>;
+  heading?: RefObject<HTMLHeadingElement | null>;
   onClose: () => void;
 }
 
@@ -50,25 +50,23 @@ export function InspectionFields({ fields }: { fields: Inspection['fields'] }) {
   );
 }
 
-/** The box that tells what a piece or a stamp is and how it is. Pinned, its stripe says «Fijada» and offers «Cerrar»; its heading can take the focus, from which the arrow keys scroll its body. */
+/** The box that tells what a piece or a stamp is and how it is. A preview on the map has only its stripe and its fields; held in the panel (`pinned`), its stripe offers «Cerrar», and its heading, which `heading` gives to the caller, can take the focus, from which the arrow keys scroll its body. */
 export function InspectionBox({ inspection, pinned, heading, onClose }: InspectionBoxProps) {
+  const titleId = useId();
   return (
     <Card
-      aria-labelledby="inspection-title"
+      aria-labelledby={titleId}
       header={{
         icon: <CardIcon kind="inspection" />,
         type: INSPECTION_TEXT.type,
         meta: pinned ? (
-          <>
-            {INSPECTION_TEXT.pinned}{' '}
-            <Button variant="small" aria-label={INSPECTION_TEXT.closeLabel} onClick={onClose}>
-              {INSPECTION_TEXT.close}
-            </Button>
-          </>
+          <Button variant="small" aria-label={INSPECTION_TEXT.closeLabel} onClick={onClose}>
+            {INSPECTION_TEXT.close}
+          </Button>
         ) : undefined,
       }}
     >
-      <h2 id="inspection-title" ref={heading} tabIndex={-1}>
+      <h2 id={titleId} ref={heading} tabIndex={-1}>
         {inspection.entity && <EntityIcon entity={inspection.entity} />}
         <TaggedText text={inspection.title} tips={false} />
       </h2>

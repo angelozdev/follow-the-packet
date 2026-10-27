@@ -14,7 +14,8 @@ const PRINTER = 'impresora';
 const YOUR_LAPTOP = 'tu-laptop';
 const VISITOR_LAPTOP = 'laptop-visita';
 const OFFICE_ROUTER = 'router-oficina';
-const PINNED_MARK = 'data-pinned';
+const CHOSEN_MARK = 'data-pinned';
+const COLUMN = '.incident__side';
 const DESKTOP_WINDOW = { width: 1440, height: 900 };
 const FULL_WINDOWS = [
   { name: '1280×800', size: { width: 1280, height: 800 } },
@@ -102,11 +103,11 @@ describe('at the desktop window', () => {
 describe('at a tight window', () => {
   beforeEach(() => page.viewport(TIGHT_WINDOW.width, TIGHT_WINDOW.height));
 
-  it('with a card open and no room beside it, a hover shows no box and a pinned box is released', { timeout: SLOW_TEST_MS }, async () => {
+  it('with a card open and no room beside it, a hover shows no box and a click chooses the piece in the panel', { timeout: SLOW_TEST_MS }, async () => {
     await show('01-08');
     await standStill();
-    const pinHelp = page.getByText(SCREEN_TEXT.inspectPinHelp, CONTAINS);
-    expect(pinHelp.query(), 'with no card open, the grey help promises the pinned box').not.toBeNull();
+    const clickHelp = page.getByText(SCREEN_TEXT.inspectClickHelp, CONTAINS);
+    expect(clickHelp.query(), 'with nothing chosen, the help tells what a click does').not.toBeNull();
     const terminal = await openTerminal();
     await letGoOfItsBox(terminal);
     const piece = page.getByRole('button', { name: labelOf(OFFICE_ROUTER) });
@@ -119,13 +120,13 @@ describe('at a tight window', () => {
     const reason = page.getByText(SCREEN_TEXT.noRoomForTheBox, CONTAINS);
     await expect.element(reason, { message: 'the reason is written in the side panel' }).toBeVisible();
     expect(overlaps(reason.element().getBoundingClientRect(), terminal.element().getBoundingClientRect()), 'and no card of the map covers it').toBe(false);
-    expect(pinHelp.query(), 'the grey help no longer promises the pinned box').toBeNull();
+    expect(clickHelp.query(), 'the piece chosen with the card takes the panel from the help').toBeNull();
 
     await userEvent.click(piece);
     await standStill();
 
-    expect(box.query(), 'a click shows no box either: the pin is released').toBeNull();
-    await expect.element(piece, { message: 'and the piece wears no pin' }).not.toHaveAttribute(PINNED_MARK);
+    expect(box.element().closest(COLUMN), 'a click shows the piece in the panel of the column').not.toBeNull();
+    await expect.element(piece, { message: 'and the piece wears the mark of the choice' }).toHaveAttribute(CHOSEN_MARK);
     await expect.element(terminal, { message: 'the terminal stays open' }).toBeVisible();
     await expect.element(reason, { message: 'and the reason stays while the card does' }).toBeVisible();
   });
