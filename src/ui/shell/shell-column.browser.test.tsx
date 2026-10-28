@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { LUCIA_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { openByKeyboard, reachWithWheel } from '@/testing/browser-play';
+import { openByKeyboard, openCard, reachWithWheel } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -23,6 +23,10 @@ const ROOM_FOR_THE_BODY_PX = 120;
 const LUCIA_SHARE_KEPT = 0.35;
 const PANEL_SHARE_KEPT = 0.5;
 const YOUR_LAPTOP = 'tu-laptop';
+const OFFICE_ROUTER = 'router-oficina';
+const ROUTING_INCIDENT = '02-06';
+const HEADING = '.incident__side > .card h2';
+const SHORT_PHONE_WINDOW = { width: 390, height: 300 };
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
   { width: 1280, height: 720 },
@@ -148,6 +152,34 @@ describe('the fixed column of the incident screen', () => {
     await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the panel is scrolled into view, its foot above the status bar' }).toBeLessThanOrEqual(rectOf(BAR).top + EPSILON);
     expect(rectOf(PANEL_CARD).top, 'from its top').toBeGreaterThanOrEqual(-EPSILON);
     expect(window.scrollY).toBeGreaterThan(0);
+    window.scrollTo(0, 0);
+  });
+
+  it('at 390×844 choosing another piece after one brings the foot of its panel above the status bar once its tab has drawn', async () => {
+    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
+    await theScreen(ROUTING_INCIDENT);
+    window.scrollTo(0, 0);
+
+    await openCard(YOUR_LAPTOP);
+    await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the first panel is scrolled into view' }).toBeLessThanOrEqual(rectOf(BAR).top + EPSILON);
+
+    const router = await openCard(OFFICE_ROUTER);
+    await expect.element(router.getByRole('tab', { name: 'Tablas', exact: true })).toHaveAttribute('aria-selected', 'true');
+
+    await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the panel of the second piece ends above the status bar, its body drawn' }).toBeLessThanOrEqual(rectOf(BAR).top + EPSILON);
+    window.scrollTo(0, 0);
+  });
+
+  it('at 390×300 the panel of a piece taller than the room above the status bar shows its heading above it', async () => {
+    await page.viewport(SHORT_PHONE_WINDOW.width, SHORT_PHONE_WINDOW.height);
+    await theScreen(ROUTING_INCIDENT);
+    window.scrollTo(0, 0);
+
+    await openCard(OFFICE_ROUTER);
+    await expect.poll(() => rectOf(HEADING).top, { message: 'the heading of the panel is in view' }).toBeGreaterThanOrEqual(-EPSILON);
+
+    expect(rectOf(PANEL_CARD).height, 'the panel is taller than the room above the bar').toBeGreaterThan(rectOf(BAR).top);
+    expect(rectOf(HEADING).bottom, 'its heading ends above the status bar').toBeLessThanOrEqual(rectOf(BAR).top + EPSILON);
     window.scrollTo(0, 0);
   });
 });
