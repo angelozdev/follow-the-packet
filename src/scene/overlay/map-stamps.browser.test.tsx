@@ -194,7 +194,7 @@ describe('the stamps of the 2D map', () => {
     const asked = new Set<string>();
     const view = render(
       <div data-testid="box" style={{ width: WIDTH, position: 'relative' }}>
-        <GameScene world={WORLD} pieces={PIECES} flows={flows} sent={sent} still activePieceId={null} overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={(packetIds) => (asked.add(packetIds.join('|')), lists)} onActivate={() => undefined} />
+        <GameScene world={WORLD} pieces={PIECES} flows={flows} sent={sent} still activePieceId={null} inspectTrigger={() => ({})} inspectStampsTrigger={(packetIds) => (asked.add(packetIds.join('|')), lists)} onActivate={() => undefined} />
       </div>,
     );
     const drawn = await stampsDrawn(view, 3);

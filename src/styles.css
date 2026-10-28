@@ -70,17 +70,8 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .packet-tag rect { fill: var(--color-surface); stroke: var(--color-ink); stroke-width: var(--stroke-thin); }
 .packet-tag text { fill: var(--color-ink); dominant-baseline: central; font: var(--weight-regular) var(--text-xs) var(--font-mono); }
 
-.map-card { pointer-events: auto; display: flex; flex-direction: column; width: var(--card-width); max-height: var(--card-room); }
-.map-card--right { transform: translate(var(--card-gap), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
-.map-card--left { transform: translate(calc(-100% - var(--card-gap)), clamp(var(--card-top), -50%, calc(var(--card-y) - 100%))); }
-.map-card--dock { transform: translate(var(--card-x), calc(var(--card-y) - 100%)); }
-.map-stage .map-card { position: absolute; z-index: 30; }
-.map-card > .card { display: flex; flex-direction: column; min-height: 0; }
-.map-card .card__body { display: flex; flex-direction: column; min-height: 0; }
-.map-card .chip-card { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
-.map-card .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); }
-.incident__inspection .card__body::-webkit-scrollbar, .incident__side > .card > .card__body::-webkit-scrollbar, .incident__side .chip-card__body::-webkit-scrollbar, .map-card .chip-card__body::-webkit-scrollbar { width: var(--space-sm); }
-.incident__inspection .card__body::-webkit-scrollbar-thumb, .incident__side > .card > .card__body::-webkit-scrollbar-thumb, .incident__side .chip-card__body::-webkit-scrollbar-thumb, .map-card .chip-card__body::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-surface); border-radius: var(--radius-pill); }
+.incident__inspection .card__body::-webkit-scrollbar, .incident__side > .card > .card__body::-webkit-scrollbar, .incident__side .chip-card__body::-webkit-scrollbar { width: var(--space-sm); }
+.incident__inspection .card__body::-webkit-scrollbar-thumb, .incident__side > .card > .card__body::-webkit-scrollbar-thumb, .incident__side .chip-card__body::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-surface); border-radius: var(--radius-pill); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: var(--weight-bold) var(--text-lg) var(--font-display); background: var(--color-surface); border: var(--stroke-heavy) solid currentColor; border-radius: var(--radius-round); transform: rotate(-8deg); }
 .stamp--arrived, .stamp--warned { color: var(--color-ink); }
 .stamp--blocked { color: var(--color-danger); }
@@ -194,7 +185,6 @@ button.stamp { cursor: help; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
 .incident__help-line { display: block; }
 .incident__help-line + .incident__help-line { margin-top: var(--space-xs); }
-.incident__inspection[data-hold] { visibility: hidden; }
 .inspection__fields { margin: 0; }
 .inspection__fields > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-sm); }
 .inspection__fields > div:has(dd + dd) dd { flex-basis: 100%; }

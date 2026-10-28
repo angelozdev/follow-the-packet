@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TITLE_BAR } from '@/scene/cards/placement';
-import { frameOf } from './frame';
+import { TITLE_BAR, frameOf } from './frame';
 
 describe('frameOf', () => {
   it('centers a drawing narrower than its box and puts it under the title bar', () => {

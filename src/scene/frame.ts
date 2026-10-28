@@ -1,5 +1,6 @@
-import { TITLE_BAR } from '@/scene/cards/placement';
 import type { MapLayout } from '@/scene/layout/arrange/geometry';
+
+export const TITLE_BAR = 56;
 
 export interface Frame {
   x: number;

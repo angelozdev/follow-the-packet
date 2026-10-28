@@ -1,6 +1,6 @@
 import { useMemo, useReducer } from 'react';
-import { EXPLANATION_TEXT, MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
-import { Button, Message } from '@/design';
+import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
+import { Button } from '@/design';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
@@ -31,7 +31,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const pieces = pieceViews(session);
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
   const selection = useSelection(session);
-  const { inspection, duplicate, noRoom, trigger, release, holder, watchTheMap } = useInspection(session, selection.selected, false);
+  const { inspection, duplicate, trigger, release, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -45,7 +45,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
 
   return (
     <main className="incident">
-      <div className="incident__map" ref={watchTheMap}>
+      <div className="incident__map">
         <header className="incident__bar">
           <Button variant="text" href="#/">
             {SCREEN_TEXT.back}
@@ -62,7 +62,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           blockName={classifiedBlock(session)}
           known={session.known}
           activePieceId={selection.pieceId}
-          overlay={null}
           inspectTrigger={triggerOf}
           inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={() => undefined}
@@ -75,11 +74,6 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         lucia={
           <>
             <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
-            {noRoom && (
-              <Message variant="note" words={MESSAGE_TEXT} role="status">
-                {SCREEN_TEXT.noRoomForTheBox}
-              </Message>
-            )}
             {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
             {caseOnCard && (
               <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />

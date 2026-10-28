@@ -5,7 +5,7 @@ import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { OFFICE_FLOORS, device, officeNet, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
 import { mapPiece, mapRun, mapRunWithPorts, type MapPieceFixture, type PieceEntity } from '@/testing/map-pieces';
 import { tokenColor } from '@/testing/token-color';
-import { TITLE_BAR } from '@/scene/cards/placement';
+import { TITLE_BAR } from '@/scene/frame';
 import { blockTabBoxes, captionBoxes } from '@/scene/layout/captions';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GameScene } from './game-scene';
@@ -238,7 +238,7 @@ describe('MapStage', () => {
     const marked = FLOORS_PIECES.map((each) => (each.id === 'device:your-laptop' ? { ...each, insideBlock: true as const } : each));
     const scene = (known: ReadonlySet<TermId>) => (
       <div data-testid="box" style={{ width: WIDE, position: 'relative' }}>
-        <GameScene world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" overlay={null} inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} known={known} />
+        <GameScene world={FLOORS} pieces={marked} flows={[]} sent={[]} still blockName={BLOCK_NAME} activePieceId="device:your-laptop" inspectTrigger={() => ({})} inspectStampsTrigger={() => ({})} onActivate={() => undefined} known={known} />
       </div>
     );
     const view = render(scene(NOTHING_KNOWN));

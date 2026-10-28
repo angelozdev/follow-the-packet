@@ -11,7 +11,7 @@ import { GLYPH_BOX } from '@/scene/marks/still-packets';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
-const scene = vi.hoisted(() => ({ drawsItsCards: true, drawsTheList: false, drawsTheRealMap: false, sheet: { width: 1060, height: 800 } }));
+const scene = vi.hoisted(() => ({ drawsTheList: false, drawsTheRealMap: false, sheet: { width: 1060, height: 800 } }));
 
 vi.mock('@mantine/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@mantine/hooks')>()),
@@ -22,7 +22,7 @@ vi.mock('@/scene/game-scene', async () => {
   const { GameScene: TheRealMap } = await vi.importActual<typeof import('@/scene/game-scene')>('@/scene/game-scene');
   const { PieceLabel } = await vi.importActual<typeof import('@/scene/overlay/piece-label')>('@/scene/overlay/piece-label');
   const { toPlainText } = await vi.importActual<typeof import('@/copy')>('@/copy');
-  const PlainScene = ({ pieces, flows, sent, overlay, inspectTrigger, inspectStampsTrigger, onActivate, known }: GameSceneProps) => (
+  const PlainScene = ({ pieces, flows, sent, inspectTrigger, inspectStampsTrigger, onActivate, known }: GameSceneProps) => (
     <div data-known={[...(known ?? [])].sort().join(' ')}>
       {pieces.map((piece) => (
         <PieceLabel key={piece.id} piece={piece} trigger={inspectTrigger(piece.id)} onActivate={onActivate} />
@@ -37,7 +37,6 @@ vi.mock('@/scene/game-scene', async () => {
           {LIST_OF_THE_STAMPS}
         </button>
       )}
-      {overlay && scene.drawsItsCards && <div className="map-card">{overlay}</div>}
     </div>
   );
   return { GameScene: (props: GameSceneProps) => (scene.drawsTheRealMap ? <TheRealMap {...props} /> : <PlainScene {...props} />) };
