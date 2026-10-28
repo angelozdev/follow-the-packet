@@ -15,7 +15,7 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['packet', 'header', 'source-ip', 'destination-ip'],
   changes: [{ type: 'connectDevice', deviceId: DEVICE.visitor.id }],
-  report: `${NAME.visitor} ya está conectada. Ahora envía un {{packet|paquete}} desde ${NAME.you} a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. Después pasa el mouse por el {{packet|paquete}} y mira su {{header|encabezado}}: lleva la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}.`,
+  report: `${NAME.visitor} ya está conectada. Ahora envía un {{packet|paquete}} desde ${NAME.you} a la ${NAME.printer}: elige ${NAME.you} y abre su pestaña «Terminal». Después pasa el mouse por el {{packet|paquete}} y mira su {{header|encabezado}}: lleva la {{source-ip|IP de origen}} y la {{destination-ip|IP de destino}}.`,
   tasks: [
     {
       id: TASK.packet,

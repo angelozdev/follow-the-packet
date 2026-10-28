@@ -1296,7 +1296,7 @@ describe('02-08, one address for the whole office', () => {
     expect(card).toMatchObject({ tabbed: true, first: 'routes' });
     expect(card?.tabs.map(({ id }) => id)).toEqual(['routes', 'translations']);
     expect(plain(translationsOf(start)?.title ?? '')).toBe(`Tabla de traducciones de ${ROUTER.office.name}`);
-    expect(plain(start.incident.report)).toContain('abre router-oficina y su pestaña «Tabla de traducciones»');
+    expect(plain(start.incident.report)).toContain('elige router-oficina y abre su pestaña «Tablas»: ahí está la «Tabla de traducciones»');
   });
 
   it('02-08: the right option is the first and is not the longest of the three', () => {
@@ -1442,6 +1442,7 @@ describe('02-10, asking for a name', () => {
   const FIRST_PUBLIC_PORT = 40001;
   const SECOND_PUBLIC_PORT = 40002;
   const NETWORK_SETTINGS = 'Ajustes de red';
+  const SETTINGS_TAB = 'Ajustes';
   const GREETING = 'Saludo de tres pasos';
   const DNS_FIELD = 'DNS';
   const EXCHANGE = 'Consulta y respuesta';
@@ -1520,7 +1521,7 @@ describe('02-10, asking for a name', () => {
     const card = pieceCard(start, PIECE_ID.device(DEVICE.you.id));
     expect(card).toMatchObject({ tabbed: true, first: 'terminal' });
     expect(card?.tabs.map(({ id }) => id)).toEqual(['terminal', 'settings', 'routes']);
-    expect(plain(start.incident.report)).toContain(`abre ${DEVICE.you.name} y su pestaña «${NETWORK_SETTINGS}»`);
+    expect(plain(start.incident.report)).toContain(`elige ${DEVICE.you.name} y abre su pestaña «${SETTINGS_TAB}»`);
     const withoutTheTerm = { ...start, known: new Set([...start.known].filter((term) => term !== 'dhcp')) };
     expect(settingsCard(withoutTheTerm, PIECE_ID.device(DEVICE.you.id))).toBeNull();
   });
@@ -1530,7 +1531,7 @@ describe('02-10, asking for a name', () => {
     const [before, after] = [solvedWorld(INCIDENTS, '02-09'), startWorld(INCIDENTS, ASKING)];
     expect(report).toContain(`[[${DEVICE.you.name}]]`);
     expect(plain(report)).toMatch(new RegExp(`^Ahora ${DEVICE.you.name} puede usar un nombre de dominio, como ${HOSTNAME.www}, en vez de una IP\\.`));
-    expect(plain(report)).toContain(`Apareció en «${NETWORK_SETTINGS}» de ${DEVICE.you.name} porque se lo prestó DHCP.`);
+    expect(plain(report)).toContain(`Apareció en la pestaña «${SETTINGS_TAB}» de ${DEVICE.you.name} porque se lo prestó DHCP.`);
     expect(plain(report)).toContain(`Ese servidor es su resolver. Es ${SERVER.resolver.name}, en ${IP.resolver}.`);
     expect(changedNames(before, after)).toEqual([DEVICE.you.name]);
     expect(after.devices.find((device) => device.id === DEVICE.you.id)?.dnsServer).toBe(IP.resolver);

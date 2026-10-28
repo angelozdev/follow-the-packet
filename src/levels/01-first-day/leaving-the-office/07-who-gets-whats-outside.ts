@@ -16,7 +16,7 @@ export default defineIncident({
   introduces: ['default-gateway'],
   changes: [{ type: 'setGateway', deviceId: DEVICE.you.id }],
   shown: OFFICE_PIECES,
-  report: `Reinstalaron ${NAME.you}. Perdió un ajuste guardado: la {{default-gateway|puerta de enlace predeterminada}}. Es la {{ip-address|IP}} a la que ${NAME.you} manda los {{packet|paquetes}} que van a otra {{lan|red local}}. Debe ser la de un {{router}}. Haz un {{ping}} a ${NAME.andres} y mira qué pasa. Después abre «Ajustes de red» en ${NAME.you} y arregla ese ajuste.`,
+  report: `Reinstalaron ${NAME.you}. Perdió un ajuste guardado: la {{default-gateway|puerta de enlace predeterminada}}. Es la {{ip-address|IP}} a la que ${NAME.you} manda los {{packet|paquetes}} que van a otra {{lan|red local}}. Debe ser la de un {{router}}. Haz un {{ping}} a ${NAME.andres} y mira qué pasa. Después elige ${NAME.you}, abre su pestaña «Ajustes» y arregla ese ajuste.`,
   tasks: [pingTask(TASK.andres, `Que tu {{ping}} a ${NAME.andres} vuelva.`, ADDRESS.andres.id, 'replied', DEVICE.andres.id)],
   flows: [],
   send: {
@@ -38,7 +38,7 @@ export default defineIncident({
     ],
   },
   hints: [
-    `La {{default-gateway|puerta de enlace predeterminada}} de ${NAME.you} debe ser la {{ip-address|IP}} que ${NAME.router} tiene en tu piso: mírala en su caja. Elígela en «Ajustes de red».`,
+    `La {{default-gateway|puerta de enlace predeterminada}} de ${NAME.you} debe ser la {{ip-address|IP}} que ${NAME.router} tiene en tu piso: mírala en su caja. Elígela en la pestaña «Ajustes» de ${NAME.you}.`,
     `Elige ${IP.router}, la IP que ${NAME.router} tiene en tu piso, y vuelve a enviar el {{ping}}.`,
   ],
   question: `¿Por qué tu {{ping}} a ${NAME.andres} no salió de ${NAME.you}?`,

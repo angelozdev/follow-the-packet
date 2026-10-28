@@ -12,7 +12,7 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['protocol', 'icmp', 'ping', 'echo-request', 'echo-reply'],
   changes: [],
-  report: `Haz un {{ping}} a la ${NAME.printer}: un clic en ${NAME.you} abre su terminal. El {{ping}} manda un mensaje y espera otro de vuelta: el que va es un {{echo-request}} y el que vuelve, un {{echo-reply}}. Son mensajes de {{icmp}}, un {{protocol|protocolo}}. Mira el {{header|encabezado}} de cada uno en la caja.`,
+  report: `Haz un {{ping}} a la ${NAME.printer}: elige ${NAME.you} y abre su pestaña «Terminal». El {{ping}} manda un mensaje y espera otro de vuelta: el que va es un {{echo-request}} y el que vuelve, un {{echo-reply}}. Son mensajes de {{icmp}}, un {{protocol|protocolo}}. Mira el {{header|encabezado}} de cada uno en la caja.`,
   tasks: [pingTask(TASK.ping, `Que tu {{ping}} a la ${NAME.printer} vuelva con su {{echo-reply}}.`, ADDRESS.printer.id, 'replied', DEVICE.printer.id)],
   flows: [],
   send: { from: [ORIGIN.you], to: [ADDRESS.printer, ADDRESS.lucia], message: [MESSAGE.ping] },

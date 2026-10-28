@@ -27,7 +27,7 @@ export default defineIncident({
   introduces: ['bit', 'prefix', 'cidr', 'subnet-mask'],
   changes: [],
   shown: FLOORS_PIECES,
-  report: `Las {{ip-address|IPs}} de una red local forman un bloque. En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}, escritos como cuatro números de 8 {{bit|bits}} cada uno. Los primeros {{bit|bits}}, iguales para todo el bloque, son el {{prefix|prefijo}}. Abre la tarjeta de ${NAME.you}. En «Clasificar» ves su bloque en notación {{cidr|CIDR}}, su {{subnet-mask|máscara de subred}} y los {{bit|bits}} de su {{ip-address|IP}}. En «Preguntas» eliges el bloque y la máscara. Después clasifica la ${NAME.printer} y a ${NAME.andres}: dentro del bloque o fuera.`,
+  report: `Las {{ip-address|IPs}} de una red local forman un bloque. En {{ipv4}}, una {{ip-address|IP}} tiene 32 {{bit|bits}}, escritos como cuatro números de 8 {{bit|bits}} cada uno. Los primeros {{bit|bits}}, iguales para todo el bloque, son el {{prefix|prefijo}}. Elige ${NAME.you} y abre su pestaña «Preguntas», que tiene dos pestañas más. En «Clasificar» ves su bloque en notación {{cidr|CIDR}}, su {{subnet-mask|máscara de subred}} y los {{bit|bits}} de su {{ip-address|IP}}. En «Preguntas» eliges el bloque y la máscara. Después clasifica la ${NAME.printer} y a ${NAME.andres}: dentro del bloque o fuera.`,
   tasks: [
     {
       id: TASK.block,

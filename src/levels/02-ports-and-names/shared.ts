@@ -284,7 +284,7 @@ export const APP_ON_LOOPBACK: NetworkAction = { type: 'setListenAddress', ownerI
 
 export const APP_LISTEN = { setting: 'app-listen-address', loopback: 'loopback', all: 'all' } as const;
 
-/** The setting of 02-03 on the «Servicios» tab of laptop-lucia: the listen address of her app (TCP, port 3000). It sits on the device that listens and not on the one that tests. Each chip says its address in words and carries the value the engine takes. */
+/** The setting of 02-03 in the section «Servicios» of the tab «Ajustes» of laptop-lucia: the listen address of her app (TCP, port 3000). It sits on the device that listens and not on the one that tests. Each chip says its address in words and carries the value the engine takes. */
 export const APP_LISTEN_ADDRESS: SettingSpec = {
   id: APP_LISTEN.setting,
   deviceId: DEVICE.lucia.id,
