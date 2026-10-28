@@ -1,33 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ACTOR_ROLE_TEXT,
-  BROWSER_TEXT,
-  CASE_TEXT,
-  CLASSIFY_TEXT,
-  CLOCK_TEXT,
-  EXPLANATION_TEXT,
-  INSPECTION_TEXT,
-  LUCIA_TEXT,
-  MAP_TEXT,
-  MESSAGE_TEXT,
-  NOTICE_TEXT,
-  PIECE_TEXT,
-  RESTART_TEXT,
-  RESULT_TEXT,
-  ROADMAP_TEXT,
-  SCREEN_TEXT,
-  SERVICES_TEXT,
-  SETTINGS_TEXT,
-  SITES_TEXT,
-  TABLE_TEXT,
-  TASK_CARD_TEXT,
-  TERMINAL_TEXT,
-  URL_STRIP_TEXT,
-  WEB_BOX_TEXT,
-  toPlainText,
-} from '@/copy';
+import * as copy from '@/copy';
 import { incidentTexts } from './ladder';
 import { INCIDENTS } from './registry';
+
+const { PIECE_TEXT, TASK_CARD_TEXT, toPlainText } = copy;
 
 /**
  * The incidents whose texts still send the player to a place the shell does not have, as incident → why.
@@ -37,33 +13,11 @@ const NAMED_BEFORE_BUILT: Record<string, string> = {
   '03-07': 'its report sends the player to the card of servidor-app, which block 3 task 3 builds on the shell and does not exist today',
 };
 
-/** The text maps of `src/copy/` that the player reads while playing; `CATALOG_TEXT` and `INTERFACE_TEXT` name the specimens of the design system, which does have cards, and are left out. */
-const COPY_TEXTS = [
-  ACTOR_ROLE_TEXT,
-  BROWSER_TEXT,
-  CASE_TEXT,
-  CLASSIFY_TEXT,
-  CLOCK_TEXT,
-  EXPLANATION_TEXT,
-  INSPECTION_TEXT,
-  LUCIA_TEXT,
-  MAP_TEXT,
-  MESSAGE_TEXT,
-  NOTICE_TEXT,
-  PIECE_TEXT,
-  RESTART_TEXT,
-  RESULT_TEXT,
-  ROADMAP_TEXT,
-  SCREEN_TEXT,
-  SERVICES_TEXT,
-  SETTINGS_TEXT,
-  SITES_TEXT,
-  TABLE_TEXT,
-  TASK_CARD_TEXT,
-  TERMINAL_TEXT,
-  URL_STRIP_TEXT,
-  WEB_BOX_TEXT,
-];
+/** The text maps of `src/copy/` that the player reads while playing: every `*_TEXT` export but `LEFT_OUT`, so a new map is swept without being listed. */
+const LEFT_OUT = ['CATALOG_TEXT', 'INTERFACE_TEXT'];
+const COPY_TEXTS = Object.entries(copy)
+  .filter(([name]) => name.endsWith('_TEXT') && !LEFT_OUT.includes(name))
+  .map(([, texts]) => texts);
 
 function plainLabels(labels: string[]): string[] {
   return labels.map((label) => toPlainText(label).toLowerCase());
