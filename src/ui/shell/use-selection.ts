@@ -25,6 +25,11 @@ function isPacketBox({ entity }: Inspection): boolean {
   return entity === undefined || entity.kind === 'packet';
 }
 
+function markedSendOf(session: Session, chosen: Choice | null): number | undefined {
+  const send = chosen?.markedSend;
+  return session.history.some((run) => run.send === send) ? send : undefined;
+}
+
 function revealThePanel(heading: HTMLElement | null) {
   const panel = heading?.closest(PANEL);
   const map = panel?.closest('.incident')?.querySelector(MAP);
@@ -32,7 +37,7 @@ function revealThePanel(heading: HTMLElement | null) {
   if (panel.getBoundingClientRect().top >= map.getBoundingClientRect().bottom) panel.scrollIntoView(NEAREST);
 }
 
-/** Takes the session and returns the choice of the screen: the key of the piece, the packet or the list of stamps the player chose (`selected`, or null), its inspection (`inspection`, null when nothing is chosen) and the id of the chosen piece when it is a piece and not a packet or a list of stamps (`pieceId`, the one the map rings); the ref of the heading of its panel; `trigger(key, hover)`, which adds to the hover props of a trigger the click that chooses its key, the mark `data-pinned` while it is the chosen one and the silence of its focus while the focus is given back; `choosePiece(key)`, which chooses a piece with no click, as the terminal does when the player picks another origin, and leaves the focus where it is; `showRow(key, send)`, which chooses a piece for «Ver fila», brings the focus to the heading of its panel whatever the player used, and keeps the number of the send whose row the table of routes marks (`markedSend`, which any other choice drops); and `release()`, which drops the choice. A click, a tap, Enter or Space chooses a key, and the choice lasts until another is chosen or `release()` is called, whatever the hover and the focus do. A choice made with the keyboard moves the focus to the heading of the panel, and Escape from inside the panel gives the focus back to the trigger and keeps the choice. Under 901 px, where the panel lies below the map, a choice brings the panel into view, the least the player has to scroll, and a hover never does. A choice whose inspection no longer exists is released. */
+/** Takes the session and returns the choice of the screen: the key of the piece, the packet or the list of stamps the player chose (`selected`, or null), its inspection (`inspection`, null when nothing is chosen) and the id of the chosen piece when it is a piece and not a packet or a list of stamps (`pieceId`, the one the map rings); the ref of the heading of its panel; `trigger(key, hover)`, which adds to the hover props of a trigger the click that chooses its key, the mark `data-pinned` while it is the chosen one and the silence of its focus while the focus is given back; `choosePiece(key)`, which chooses a piece with no click, as the terminal does when the player picks another origin, and leaves the focus where it is; `showRow(key, send)`, which chooses a piece for «Ver fila», brings the focus to the heading of its panel whatever the player used, and keeps the number of the send whose row the table of routes marks (`markedSend`, which any other choice drops and which is `undefined` once the history no longer holds that send); and `release()`, which drops the choice. A click, a tap, Enter or Space chooses a key, and the choice lasts until another is chosen or `release()` is called, whatever the hover and the focus do. A choice made with the keyboard moves the focus to the heading of the panel, and Escape from inside the panel gives the focus back to the trigger and keeps the choice. Under 901 px, where the panel lies below the map, a choice brings the panel into view, the least the player has to scroll, and a hover never does. A choice whose inspection no longer exists is released. */
 export function useSelection(session: Session) {
   const [chosen, setChosen] = useState<Choice | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -92,5 +97,5 @@ export function useSelection(session: Session) {
   }, [gone]);
 
   const packet = inspection !== null && isPacketBox(inspection);
-  return { selected: chosen?.key ?? null, inspection, pieceId: chosen !== null && inspection !== null && !packet ? chosen.key : null, markedSend: chosen?.markedSend, heading, trigger, choosePiece, showRow, release };
+  return { selected: chosen?.key ?? null, inspection, pieceId: chosen !== null && inspection !== null && !packet ? chosen.key : null, markedSend: markedSendOf(session, chosen), heading, trigger, choosePiece, showRow, release };
 }
