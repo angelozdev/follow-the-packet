@@ -775,6 +775,13 @@ describe('02-04, is it in my block', () => {
     expect(start.incident.shown).toEqual(FLOORS_PIECES);
   });
 
+  it('02-04: the report names the tab Preguntas and, inside it, the tabs Responder and Clasificar', () => {
+    const report = plain(start.incident.report);
+    expect(report).toContain('abre su pestaña «Preguntas». Dentro hay dos pestañas: «Responder» y «Clasificar». En «Clasificar» ves su bloque');
+    expect(report).toContain('En «Responder» eliges el bloque y la máscara.');
+    expect(report).not.toContain('En «Preguntas» eliges');
+  });
+
   it('02-04: the right option is the second and is not the longest of the three', () => {
     expect(optionsOf(start.incident)).toHaveLength(3);
     expect(rightOptionPlace(start.incident)).toBe(1);

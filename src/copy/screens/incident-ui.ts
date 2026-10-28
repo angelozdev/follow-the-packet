@@ -338,7 +338,7 @@ export const PIECE_TEXT = {
   },
   parts: {
     terminal: 'Terminal',
-    identify: 'Preguntas',
+    identify: 'Responder',
     classify: 'Clasificar',
     settings: 'Ajustes de red',
     services: '{{service|Servicios}}',

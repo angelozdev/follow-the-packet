@@ -183,16 +183,16 @@ describe('the panel of a piece', () => {
     const { unmount } = render(<Hosted incident={classifyIncident()} first={LAPTOP} />);
     expect(mainTabs()).toEqual(['Estado', 'Preguntas']);
     const fichas = screen.getByRole('tablist', { name: 'Preguntas' });
-    expect(within(fichas).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Preguntas', 'Clasificar']);
+    expect(within(fichas).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Responder', 'Clasificar']);
     await user.click(within(fichas).getByRole('tab', { name: 'Clasificar' }));
     await user.click(screen.getByRole('button', { name: /^impresora/ }));
-    await user.click(within(fichas).getByRole('tab', { name: 'Preguntas' }));
+    await user.click(within(fichas).getByRole('tab', { name: 'Responder' }));
     await user.click(within(fichas).getByRole('tab', { name: 'Clasificar' }));
     expect(screen.getByRole('button', { name: /^impresora/ })).toHaveAttribute('aria-pressed', 'true');
     unmount();
     render(<Hosted incident={identifyIncident()} first={PIECE_ID.device('printer')} />);
     expect(screen.queryByRole('tablist', { name: 'Preguntas' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 3, name: 'Preguntas' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Responder' })).toBeInTheDocument();
   });
 
   it('Escape closes nothing in the panel and the tab bar names itself', async () => {

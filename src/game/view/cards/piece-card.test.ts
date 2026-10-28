@@ -98,7 +98,7 @@ describe('pieceCard', () => {
     const classifying = classifyIncident();
     const sorted = startSession([classifying], classifying.id);
     expect(ids(sorted, PIECE_ID.device('your-laptop'))).toEqual(['identify', 'classify']);
-    expect(labels(sorted, PIECE_ID.device('your-laptop'))).toEqual(['Preguntas', 'Clasificar']);
+    expect(labels(sorted, PIECE_ID.device('your-laptop'))).toEqual(['Responder', 'Clasificar']);
     expect(pieceCard(sorted, PIECE_ID.device('your-laptop'))?.first).toBe('identify');
     expect(pieceCard(sorted, PIECE_ID.device('printer'))).toBeNull();
   });
