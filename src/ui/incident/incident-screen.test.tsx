@@ -1883,8 +1883,7 @@ describe('the registry of the status bar', () => {
     const office = INCIDENTS.find(({ id }) => id === '01-01');
     if (office === undefined) throw new Error('01-01 is not registered');
     render(<IncidentScreen incidents={[office]} incidentId={office.id} nextId={null} onFinish={vi.fn()} />);
-    expect(registryButton()).toHaveTextContent('Registro (0)');
-    expect(registryButton()).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^Registro/ })).toBeNull();
     expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
     cleanup();
 
