@@ -217,6 +217,7 @@ button.stamp { cursor: help; }
   .incident .map-stage__sheet { min-height: 100%; }
 }
 @media (max-width: 900px) {
+  html { scroll-padding-bottom: var(--status-bar-room, 0px); }
   .incident { display: flex; flex-direction: column; grid-template: none; min-height: 100vh; height: auto; }
   .incident__side { flex: 1 0 auto; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
   .incident__inspection { place-self: stretch; width: auto; max-width: none; max-height: 45vh; }

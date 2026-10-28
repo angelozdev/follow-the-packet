@@ -122,7 +122,7 @@ describe('the fixed column of the incident screen', () => {
     await userEvent.click(piece);
     await expect.poll(() => document.querySelector(PANEL_CARD)).not.toBeNull();
 
-    await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the panel is scrolled into view' }).toBeLessThanOrEqual(window.innerHeight + EPSILON);
+    await expect.poll(() => rectOf(PANEL_CARD).bottom, { message: 'the panel is scrolled into view, its foot above the status bar' }).toBeLessThanOrEqual(rectOf(BAR).top + EPSILON);
     expect(rectOf(PANEL_CARD).top, 'from its top').toBeGreaterThanOrEqual(-EPSILON);
     expect(window.scrollY).toBeGreaterThan(0);
     window.scrollTo(0, 0);
