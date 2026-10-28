@@ -21,6 +21,8 @@ export type { FirewallCard } from './view/cards/firewall-card';
 export { inspect } from './view/inspection';
 export { PIECE_ID } from './view/piece-id';
 export type { Inspection } from './view/inspection';
+export { registryLines } from './view/registry/lines';
+export type { ChangeLine, PacketLine, RegistryLine, RejectionLine } from './view/registry/lines';
 export { PANEL_TABS, TAB_OF_PART, panelOf } from './view/panel/panel';
 export type { Panel, PanelPart, PanelTab, PanelTabId, RulesPart } from './view/panel/panel';
 export { pieceViews } from './view/pieces';

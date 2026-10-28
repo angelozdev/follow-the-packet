@@ -210,13 +210,29 @@ function roundTripField(session: Session, run: PacketRun): InspectionField[] {
   return cameBack && session.known.has('rtt') ? [{ label: INSPECTION_TEXT.roundTrip, lines: [roundTripText(rttMs), INSPECTION_TEXT.exampleTime] }] : [];
 }
 
+function isTraced(run: PacketRun & Asking): boolean {
+  return 'route' in run && run.route !== undefined;
+}
+
+/** Returns the result of a packet in the words of its box: what its trace says it did, naming the device it reached. */
+export function resultOf(session: Session, run: PacketRun): TermText {
+  const { destinationId } = run.trace;
+  return describeResult(run.trace, session.known, destinationId ? deviceName(session.world, destinationId) : undefined);
+}
+
+/** Returns where and why a packet stopped, in the words of its box, or null when it did not stop, when it is a traceroute (which states no reason for where its probes stopped) or when it vanished at a router out of sight (`routerOutOfSight`), since its sender cannot tell where it died. */
+export function stopOf(session: Session, run: PacketRun & Asking): TermText | null {
+  const step = stopStep(run.trace);
+  return step && routerOutOfSight(session.incident, run) === undefined && !isTraced(run) ? describeReason(step.reason, session.world, session.known, placesOf(session)) : null;
+}
+
 /** The box of a packet, in the order the packet lives it: what it is, its message, the url it asked for, the name it was sent to, its headers, the route each holder chose, what the NAT did, what its two ends said, the request and the response that went through the connection, the status code of the response and who generated it, the routers it crossed, the result (and, for a `curl` that waited, that it gave up) and the reason it stopped. A packet that vanished at a router out of sight (`routerOutOfSight`) shows neither the route, the translation, the routers nor the reason, since its sender cannot tell where it died. */
 function packet(session: Session, run: PacketRun & Asking): Inspection {
-  const step = stopStep(run.trace);
-  const { hops, destinationId } = run.trace;
-  const traced = 'route' in run && run.route !== undefined;
+  const { hops } = run.trace;
+  const traced = isTraced(run);
   const knowsTheRoute = routerOutOfSight(session.incident, run) === undefined;
   const path = knowsTheRoute && !traced;
+  const stop = stopOf(session, run);
   return {
     entity: { kind: 'packet', variant: packetShape(run.packet), intruder: run.intruder },
     title: run.label,
@@ -231,10 +247,10 @@ function packet(session: Session, run: PacketRun & Asking): Inspection {
       ...responseField(session, run),
       ...statusCodeFields(session, run),
       ...pathField(session, knowsTheRoute ? hops : []),
-      { label: INSPECTION_TEXT.result, lines: [describeResult(run.trace, session.known, destinationId ? deviceName(session.world, destinationId) : undefined)] },
+      { label: INSPECTION_TEXT.result, lines: [resultOf(session, run)] },
       ...curlWaitField(session, run),
       ...roundTripField(session, run),
-      ...(step && path ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [describeReason(step.reason, session.world, session.known, placesOf(session))] }] : []),
+      ...(stop ? [{ label: INSPECTION_TEXT.stoppedAt, lines: [stop] }] : []),
     ],
   };
 }

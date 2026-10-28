@@ -152,9 +152,14 @@ export function sendingOf(session: Session): SendOwner | null {
   return session.incident.mechanic === 'send' ? session.incident : currentCase(session);
 }
 
+/** Returns the notice of a change that emptied sends that were not empty: it names the device whose part changed and says the tests before were with the network before. */
+export function changeNotice({ world, known }: Session, { kind, ownerId }: Restart): TermText {
+  return RESTART_TEXT.notice(kind, deviceName(world, ownerId), known);
+}
+
 /** Returns the notice that the sends start again, naming the device whose change emptied sends that were not empty; null when no change did, or when the player has sent since. */
-export function restartNotice({ restart, world, known }: Session): TermText | null {
-  return restart && RESTART_TEXT.notice(restart.kind, deviceName(world, restart.ownerId), known);
+export function restartNotice(session: Session): TermText | null {
+  return session.restart && changeNotice(session, session.restart);
 }
 
 /** Returns the hints of what the player is on: the incident's, or those of the case of a diagnose. */

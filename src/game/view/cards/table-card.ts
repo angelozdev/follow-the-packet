@@ -2,7 +2,7 @@ import { INSPECTION_TEXT, SITE_PROBLEM_TEXT, TABLE_TEXT, deviceName, nameTag, to
 import { DNS_PORT, ROUTE_DEFAULT, cacheAfter, forwardRows, routingTableOf, translates, type AnswerRecord, type Device, type Router, type ServerActor, type TableRoute, type Translation } from '@/engine';
 import { recordEntryId, routeEntryId, tablesOf, type EntryProblem, type SendIncident, type TableSpec } from '@/levels';
 import { drawnSends, type SentPacket } from '@/game/flow-runs';
-import { canEdit, currentCase, type Session } from '@/game/session';
+import { canEdit, currentCase, type Session, type TableProblem } from '@/game/session';
 import { PIECE_ID, parsePieceId } from '@/game/view/piece-id';
 import { routerWithIp } from '@/game/view/revealed-routers';
 import { routerPlace } from '@/game/view/router-place';
@@ -80,11 +80,16 @@ export function words(text: TermText): TableCell {
   return { text, code: false };
 }
 
+const PROBLEM_TEXT: Record<EntryProblem, TermText> = { ...TABLE_TEXT.problems, ...SITE_PROBLEM_TEXT };
+
+/** Returns what the player reads when the engine refuses an entry of a table: that it could not be added, and why. */
+export function problemText({ code }: TableProblem): TermText {
+  return TABLE_TEXT.refused(PROBLEM_TEXT[code]);
+}
+
 export function problemOf(session: Session, spec: TableSpec | undefined): TermText | null {
   const kept = session.entryProblem;
-  if (!spec || kept?.tableId !== spec.id) return null;
-  const problems: Record<EntryProblem, TermText> = { ...TABLE_TEXT.problems, ...SITE_PROBLEM_TEXT };
-  return TABLE_TEXT.refused(problems[kept.code]);
+  return spec && kept?.tableId === spec.id ? problemText(kept) : null;
 }
 
 export function trayOf(name: string, label: string, chips: readonly { id: string; label: TermText }[]): EntryTray {
