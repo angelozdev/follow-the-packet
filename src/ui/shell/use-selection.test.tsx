@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import type { MouseEvent } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { PIECE_ID, sessionReducer, startSession } from '@/game';
 import { INCIDENTS } from '@/levels';
 import { pieceDomId } from '@/scene';
@@ -11,12 +11,17 @@ import { useSelection } from './use-selection';
 const WITH_THE_PIECE = '04-01';
 const WITHOUT_THE_PIECE = '01-01';
 const PIECE = PIECE_ID.device('servidor2');
+const LAPTOP = PIECE_ID.device('your-laptop');
 
 function clickOn(key: string, button: HTMLElement): MouseEvent<HTMLElement> {
   return { detail: 1, currentTarget: button } as unknown as MouseEvent<HTMLElement>;
 }
 
 describe('the selection of the incident screen', () => {
+  afterEach(() => {
+    document.getElementById(pieceDomId(LAPTOP))?.remove();
+  });
+
   it('a choice is released when its piece is no longer drawn', () => {
     const button = document.createElement('button');
     const { result, rerender } = renderHook(({ id }) => useSelection(startSession(INCIDENTS, id)), { initialProps: { id: WITH_THE_PIECE } });
@@ -45,20 +50,18 @@ describe('the selection of the incident screen', () => {
 
   it('the send that Ver fila marks is dropped when the history that held it is gone, and the piece stays chosen', () => {
     const incident = gatewayIncident();
-    const laptop = PIECE_ID.device('your-laptop');
     const label = document.createElement('button');
-    label.id = pieceDomId(laptop);
+    label.id = pieceDomId(LAPTOP);
     document.body.append(label);
     const sent = sessionReducer(startSession([incident], incident.id), { type: 'sendPacket', fromId: 'you', toId: 'printer', messageId: 'ping' });
     const [{ send }] = sent.history;
     const { result, rerender } = renderHook(({ session }) => useSelection(session), { initialProps: { session: sent } });
 
-    act(() => result.current.showRow(laptop, send));
+    act(() => result.current.showRow(LAPTOP, send));
     expect(result.current.markedSend).toBe(send);
 
     rerender({ session: sessionReducer(sent, { type: 'setSetting', deviceId: 'your-laptop', settingId: 'gateway', chipId: 'router' }) });
-    expect(result.current.selected).toBe(laptop);
+    expect(result.current.selected).toBe(LAPTOP);
     expect(result.current.markedSend).toBeUndefined();
-    label.remove();
   });
 });

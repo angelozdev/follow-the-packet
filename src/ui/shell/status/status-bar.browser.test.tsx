@@ -39,6 +39,12 @@ function rectOf(selector: string): DOMRect {
   return rect;
 }
 
+function maxHeightOf(selector: string): number {
+  const element = document.querySelector(selector);
+  if (element === null) throw new Error(`nothing matches ${selector}`);
+  return parseFloat(getComputedStyle(element).maxHeight);
+}
+
 function lastControl(): HTMLElement {
   const controls = [...document.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')].filter((control) => !document.querySelector(BAR)?.contains(control));
   const last = controls.at(-1);
@@ -122,6 +128,7 @@ describe('the open registry of the status bar', () => {
       expect(bar.bottom, `${where}: the bar ends with the window`).toBeCloseTo(window.innerHeight, 0);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
       expect(rectOf(REGISTRY).height, `${where}: the list has a cap`).toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
+      expect(maxHeightOf(REGISTRY), `${where}: the cap is a quarter of the window`).toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
       const controls = [...controlsInView(SIDE), ...controlsInView(MAP)];
       expect(controls.length, `${where}: there are controls to look at`).toBeGreaterThan(0);
       for (const control of controls) expect(isReachable(control), `${where}: ${control.textContent?.trim()} is reachable`).toBe(true);
@@ -134,6 +141,7 @@ describe('the open registry of the status bar', () => {
     const phone = await theScreen(INCIDENT_WITH_LINES);
     await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
     expect(rectOf(REGISTRY).height, 'the list has a cap').toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
+    expect(maxHeightOf(REGISTRY), 'the cap is a quarter of the window').toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
     expect(document.documentElement.scrollHeight, 'the page scrolls').toBeGreaterThan(window.innerHeight);
     window.scrollTo(0, document.documentElement.scrollHeight);
     expect(rectOf(BAR).bottom, 'the bar stays at the bottom of the window').toBeCloseTo(window.innerHeight, 0);
