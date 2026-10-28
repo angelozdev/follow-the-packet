@@ -1,4 +1,4 @@
-import type { TermText } from '@/copy';
+import { toPlainText, type TermText } from '@/copy';
 import { drawnSends, type DrawnSend, type FlowRun } from '@/game/flow-runs';
 import { changeNotice, type LogEntry, type Session } from '@/game/session';
 import { problemText } from '@/game/view/cards/table-card';
@@ -27,6 +27,12 @@ export interface RejectionLine {
 
 export type RegistryLine = PacketLine | ChangeLine | RejectionLine;
 
+/** A line of the registry with the packet lines that came before it and read the same: a single line has none. */
+export interface RegistryRow {
+  line: RegistryLine;
+  older: PacketLine[];
+}
+
 const BETWEEN_SENDS = 0.5;
 
 interface Dated {
@@ -49,4 +55,26 @@ export function registryLines(session: Session): RegistryLine[] {
   const inOrder = [...sends, ...events].sort((a, b) => a.at - b.at);
   const flows = session.runs.map((run) => packetLine(session, run));
   return [...inOrder.map(({ line }) => line).reverse(), ...flows.reverse()];
+}
+
+/** Takes a line and returns what the player reads on it, as plain text: for a packet its label, its result and its reason, one after the other. */
+export function printedText(line: RegistryLine): string {
+  switch (line.kind) {
+    case 'packet':
+      return [line.label, line.result, ...(line.reason ? [line.reason] : [])].map(toPlainText).join(' ');
+    case 'change':
+      return toPlainText(line.notice);
+    case 'rejection':
+      return toPlainText(line.text);
+  }
+}
+
+/** Takes the lines of the registry, the newest first, and returns its rows: the packet lines that follow each other and print the same text are one row, the newest line with the older ones in `older`, and a line of change or of refusal is a row of its own that no packet line joins across, so a group never crosses it. */
+export function registryRows(lines: readonly RegistryLine[]): RegistryRow[] {
+  return lines.reduce<RegistryRow[]>((rows, line) => {
+    const last = rows.at(-1);
+    if (last && line.kind === 'packet' && last.line.kind === 'packet' && printedText(last.line) === printedText(line)) last.older.push(line);
+    else rows.push({ line, older: [] });
+    return rows;
+  }, []);
 }

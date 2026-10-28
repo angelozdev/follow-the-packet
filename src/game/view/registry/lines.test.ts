@@ -9,7 +9,7 @@ import { restartNotice, sendingOf, sessionReducer, startSession, type Session, t
 import { recordsCard } from '@/game/view/cards/table-card';
 import { inspect } from '@/game/view/inspection';
 import { PIECE_ID } from '@/game/view/piece-id';
-import { registryLines, type PacketLine, type RegistryLine } from './lines';
+import { printedText, registryLines, registryRows, type PacketLine, type RegistryLine } from './lines';
 
 const WHEN_IT_DOES_NOT_COME_BACK = '01-05';
 const SEEING_THE_PATH = '01-10';
@@ -25,6 +25,7 @@ const placeRoute: SessionAction = { type: 'placeEntry', tableId: 'routes', picks
 const noResolver: SessionAction = { type: 'setSetting', deviceId: 'your-laptop', settingId: 'resolver', chipId: 'none' };
 const ambient = (id: string, to: string) => ({ id, kind: 'ambient' as const, packet: ping(device('your-laptop'), to) });
 const NOISY: SendIncident = { ...sendIncident(), flows: [ambient('hum', OFFICE.printer), ambient('noise', OFFICE.lucia)] };
+const ECHOING: SendIncident = { ...NAMES, flows: [ambient('hum', OFFICE_FLOORS.floor1.lucia), ambient('noise', OFFICE_FLOORS.floor1.lucia)] };
 const refuseRecord: SessionAction = { type: 'placeEntry', tableId: 'records', picks: { name: `www.${zone}`, type: 'CNAME', value: server.ip } };
 const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([NAMES], NAMES.id));
 const playIn = (id: string, ...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession(INCIDENTS, id));
@@ -142,5 +143,20 @@ describe('the lines of the registry', () => {
       const hidden = [...sent.runs, ...sent.history].filter((run) => run.hiddenStop).map(({ pieceId }) => pieceId);
       for (const line of packets(sent).filter(({ pieceId }) => hidden.includes(pieceId))) expect(line.reason, `${id} ${toPlainText(line.label)}`).toBeNull();
     }
+  });
+});
+
+describe('the rows of the registry', () => {
+  it('grouped lines never cross a line of change', () => {
+    const session = [PING, placeRoute, PING].reduce(sessionReducer, startSession([ECHOING], ECHOING.id));
+    const lines = registryLines(session);
+    expect(kinds(session)).toEqual(['packet', 'change', 'packet', 'packet']);
+    expect(printedText(lines[0])).toBe(printedText(lines[2]));
+    expect(printedText(lines[2])).toBe(printedText(lines[3]));
+    expect(registryRows(lines).map(({ line, older }) => [line.kind, older.length])).toEqual([
+      ['packet', 0],
+      ['change', 0],
+      ['packet', 1],
+    ]);
   });
 });

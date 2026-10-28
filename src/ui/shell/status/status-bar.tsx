@@ -1,59 +1,31 @@
-import { MESSAGE_TEXT, SCREEN_TEXT } from '@/copy';
-import { Button, Message } from '@/design';
-import type { PacketLine, RegistryLine } from '@/game';
-import type { GameSceneProps } from '@/scene';
-import { TaggedText } from '@/ui/tagged-text';
+import { useId, useState } from 'react';
+import { REGISTRY_TEXT, SCREEN_TEXT } from '@/copy';
+import { Button } from '@/design';
+import type { RegistryLine } from '@/game';
+import { LineText, type ChooseLine } from './line-text';
+import { Registry } from './registry';
 
 interface StatusBarProps {
-  line: RegistryLine | null;
-  choose: GameSceneProps['inspectTrigger'];
+  lines: RegistryLine[];
+  choose: ChooseLine;
 }
 
-function PacketText({ line }: { line: PacketLine }) {
+/** Takes the lines of the registry, the newest first, and what chooses a packet, and returns the bar fixed at the bottom of the incident screen: a live region that says the newest line and nothing else (with no line it says `SCREEN_TEXT.statusEmpty`, which names no term) and «Registro (N)», N being every line, which opens the whole registry above the bar and closes it. The button is disabled while there is no line, and the line that says so is beside it. The open registry is part of the bar, so it takes its height from the page. */
+export function StatusBar({ lines, choose }: StatusBarProps) {
+  const [open, setOpen] = useState(false);
+  const buttonId = useId();
+  const listId = useId();
+  const shown = open && lines.length > 0;
+  const [newest] = lines;
   return (
-    <>
-      <strong>
-        <TaggedText text={line.label} tips={false} />
-      </strong>{' '}
-      <TaggedText text={line.result} tips={false} />
-      {line.reason && (
-        <>
-          {' '}
-          <TaggedText text={line.reason} tips={false} />
-        </>
-      )}
-    </>
-  );
-}
-
-function LineText({ line, choose }: { line: RegistryLine; choose: StatusBarProps['choose'] }) {
-  switch (line.kind) {
-    case 'packet':
-      return (
-        <Button variant="text" {...choose(line.pieceId)}>
-          <PacketText line={line} />
+    <div className="incident__status">
+      {shown && <Registry id={listId} labelledBy={buttonId} lines={lines} choose={choose} />}
+      <div className="incident__status-line">
+        <div role="log">{newest ? <LineText line={newest} choose={choose} /> : <p>{SCREEN_TEXT.statusEmpty}</p>}</div>
+        <Button variant="small" id={buttonId} aria-expanded={shown} aria-controls={shown ? listId : undefined} disabled={lines.length === 0} onClick={() => setOpen(!open)}>
+          {REGISTRY_TEXT.open(lines.length)}
         </Button>
-      );
-    case 'change':
-      return (
-        <Message variant="note" words={MESSAGE_TEXT}>
-          <TaggedText text={line.notice} />
-        </Message>
-      );
-    case 'rejection':
-      return (
-        <Message variant="error" words={MESSAGE_TEXT}>
-          <TaggedText text={line.text} />
-        </Message>
-      );
-  }
-}
-
-/** Takes the newest line of the registry (null when there is none) and what chooses a packet, and returns the bar fixed at the bottom of the incident screen, a live region that says that line and nothing else: a packet is a button, which chooses it as its stamp does, with its label, its result and the reason it stopped when the player can place it; the change that emptied the sends is the note with its notice; the refusal of an entry of a table is an error message; and with no line the bar says `SCREEN_TEXT.statusEmpty`, which names no term. */
-export function StatusBar({ line, choose }: StatusBarProps) {
-  return (
-    <div role="log" className="incident__status">
-      {line ? <LineText line={line} choose={choose} /> : <p>{SCREEN_TEXT.statusEmpty}</p>}
+      </div>
     </div>
   );
 }

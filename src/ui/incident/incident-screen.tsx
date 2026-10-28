@@ -105,7 +105,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           />
         }
       />
-      <StatusBar line={lines[0] ?? null} choose={(pieceId) => selection.trigger(pieceId, {})} />
+      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} />
     </main>
   );
 }

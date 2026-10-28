@@ -8,7 +8,7 @@ import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type Incid
 import { pieceDomId, type GameSceneProps } from '@/scene';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GLYPH_BOX } from '@/scene/marks/still-packets';
-import { OFFICE, device, ping } from '@/testing/fixtures';
+import { OFFICE, OFFICE_FLOORS, device, ping } from '@/testing/fixtures';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
@@ -1845,5 +1845,130 @@ describe('the status bar of the incident screen', () => {
     expect(within(card).getByRole('status')).toHaveTextContent('Ese registro ya está en la zona.');
     expect(theBar().querySelector('p.message')).toHaveClass('message--error');
     expect(theBar()).toHaveTextContent('Ese registro ya está en la zona.');
+  });
+});
+
+describe('the registry of the status bar', () => {
+  const GATEWAY = { ...gatewayIncident(), introduces: [...CHAPTER_1_TERMS] };
+  const PRINTER = OFFICE_FLOORS.floor1.printer;
+  const ANDRES = OFFICE_FLOORS.floor2.andres;
+  const PING_PRINTER = 'ping de tu-laptop a impresora';
+  const PING_ANDRES = 'ping de tu-laptop a 192.168.2.15';
+  const PING_ANDRES_FOUND = 'ping de tu-laptop a laptop-andres';
+  const NOTICE = 'Cambiaste la puerta de enlace predeterminada de tu-laptop: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
+
+  const registryButton = () => screen.getByRole('button', { name: /^Registro \(\d+\)$/ });
+  const registryList = () => screen.getByRole('list', { name: /^Registro \(\d+\)$/ });
+  const rows = () => within(registryList()).getAllByRole('listitem');
+
+  function renderGateway() {
+    render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
+  }
+
+  async function sendTo(user: User, address: string) {
+    await user.click(pieceLabel('tu-laptop'));
+    const terminal = await showTab(user, panelOfTheColumn(), 'Terminal');
+    await user.click(within(terminal).getByRole('button', { name: address }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  async function setTheGateway(user: User) {
+    await user.click(pieceLabel('tu-laptop'));
+    const settings = await showTab(user, panelOfTheColumn(), 'Ajustes');
+    await user.click(within(settings).getByRole('button', { name: OFFICE_FLOORS.floor1.gateway }));
+  }
+
+  it('Registro (N) counts every line of the registry', async () => {
+    const user = userEvent.setup();
+    const office = INCIDENTS.find(({ id }) => id === '01-01');
+    if (office === undefined) throw new Error('01-01 is not registered');
+    render(<IncidentScreen incidents={[office]} incidentId={office.id} nextId={null} onFinish={vi.fn()} />);
+    expect(registryButton()).toHaveTextContent('Registro (0)');
+    expect(registryButton()).toBeDisabled();
+    expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
+    cleanup();
+
+    renderFirst();
+    expect(registryButton()).toHaveTextContent(`Registro (${registryLines(startSession(INCIDENTS, FIRST.id)).length})`);
+    expect(registryButton()).toBeEnabled();
+    cleanup();
+
+    renderGateway();
+    await sendTo(user, PRINTER);
+    await sendTo(user, ANDRES);
+    expect(registryButton()).toHaveTextContent('Registro (2)');
+    await setTheGateway(user);
+    expect(registryButton()).toHaveTextContent('Registro (1)');
+    await sendTo(user, PRINTER);
+    expect(registryButton()).toHaveTextContent('Registro (2)');
+  });
+
+  it('opening the registry lists the lines newest first with the change that emptied the sends as the first', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await sendTo(user, ANDRES);
+    expect(registryButton()).toHaveAttribute('aria-expanded', 'false');
+    await setTheGateway(user);
+    await sendTo(user, ANDRES);
+    await sendTo(user, PRINTER);
+    await user.click(registryButton());
+    expect(registryButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(rows()).toHaveLength(3);
+    expect(rows()[0]).toHaveTextContent(`${PING_PRINTER} Llegó y volvió la respuesta.`);
+    expect(rows()[1]).toHaveTextContent(`${PING_ANDRES_FOUND} Llegó y volvió la respuesta.`);
+    expect(rows()[2]).toHaveTextContent(NOTICE);
+    expect(registryList()).not.toHaveTextContent(PING_ANDRES);
+    await user.click(registryButton());
+    expect(screen.queryByRole('list', { name: /^Registro/ })).toBeNull();
+    expect(registryButton()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('consecutive lines with the same printed text are one row with its count and unfold on a click', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await sendTo(user, ANDRES);
+    for (let times = 0; times < 3; times++) await sendTo(user, PRINTER);
+    expect(registryButton()).toHaveTextContent('Registro (4)');
+    await user.click(registryButton());
+    expect(rows()).toHaveLength(2);
+    const sameLine = () => within(registryList()).queryAllByRole('button', { name: new RegExp(`^${PING_PRINTER}`) });
+    expect(sameLine()).toHaveLength(1);
+    const count = within(registryList()).getByRole('button', { name: '3 veces' });
+    expect(count).toHaveAttribute('aria-expanded', 'false');
+    expect(within(registryList()).queryByRole('button', { name: /veces/ })).toBe(count);
+    await user.click(count);
+    expect(count).toHaveAttribute('aria-expanded', 'true');
+    expect(sameLine()).toHaveLength(3);
+    await user.click(count);
+    expect(sameLine()).toHaveLength(1);
+  });
+
+  it('each line of the registry selects its packet', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await sendTo(user, ANDRES);
+    await setTheGateway(user);
+    await sendTo(user, ANDRES);
+    await sendTo(user, PRINTER);
+    await user.click(registryButton());
+    await user.click(within(registryList()).getByRole('button', { name: new RegExp(`^${PING_ANDRES_FOUND}`) }));
+    expect(panelOfTheColumn()).toHaveAccessibleName(PING_ANDRES_FOUND);
+    await user.click(within(registryList()).getByRole('button', { name: new RegExp(`^${PING_PRINTER}`) }));
+    expect(panelOfTheColumn()).toHaveAccessibleName(PING_PRINTER);
+  });
+
+  it('a change of the network while the registry is open leaves only the change line and N counts again', async () => {
+    const user = userEvent.setup();
+    renderGateway();
+    await sendTo(user, ANDRES);
+    await sendTo(user, PRINTER);
+    await user.click(registryButton());
+    expect(rows()).toHaveLength(2);
+    await setTheGateway(user);
+    expect(registryButton()).toHaveTextContent('Registro (1)');
+    expect(registryButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]).toHaveTextContent(NOTICE);
+    expect(registryList()).not.toHaveTextContent(PING_PRINTER);
   });
 });

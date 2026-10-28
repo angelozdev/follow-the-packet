@@ -485,6 +485,11 @@ export const RESULT_TEXT = {
   back: 'Volver al roadmap',
 } as const;
 
+export const REGISTRY_TEXT = {
+  open: (lines: number) => `Registro (${lines})`,
+  repeats: (times: number) => `${times} veces`,
+} as const;
+
 export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
