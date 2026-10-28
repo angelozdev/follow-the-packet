@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { TERMINAL_TEXT, type TermText } from '@/copy';
 import { Button, ChipTray } from '@/design';
 import { pickedParts, stripAddress, type SendPicks, type SendTrayName, type TerminalCard as Terminal, type ToolOutput, type TracerouteView, type UrlPartName, type UrlPicks } from '@/game';
-import { CardIcon } from '@/ui/card-icon';
 import { trayChips, type CardFrame } from '@/ui/incident/map-cards/card-frame';
 import { UrlStripTray } from '@/ui/incident/map-cards/web/url-strip';
 import { CommandLine } from './command-line';
@@ -69,8 +68,6 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
     if (chosen.to && chosen.message) onSend({ from: card.fromId, to: chosen.to, message: chosen.message });
   };
   return {
-    title: card.title,
-    icon: <CardIcon kind="terminal" />,
     actions: (
       <Button variant="primary" disabled={!line} onClick={send}>
         {TERMINAL_TEXT.send}

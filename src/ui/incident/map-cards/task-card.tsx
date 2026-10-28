@@ -3,7 +3,6 @@ import { Button, ChipTray, Choice, Tabs } from '@/design';
 import type { Direction } from '@/engine';
 import { rowText, type FirewallCard } from '@/game';
 import type { FromChip, ToChip, WhatChip } from '@/levels';
-import { EntityIcon } from '@/scene';
 import { TaggedText } from '@/ui/tagged-text';
 import { trayChips, type CardFrame } from './card-frame';
 import { useDraftsByKey } from './use-drafts-by-key';
@@ -162,8 +161,6 @@ export function rulesFrame(card: FirewallCard, chips: { what: WhatChip[]; from: 
     />
   );
   return {
-    title: card.title,
-    icon: <EntityIcon entity={{ kind: 'firewall', variant: card.kind }} />,
     body: outboundSide ? (
       <Tabs
         name={TASK_CARD_TEXT.tabsName}

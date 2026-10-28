@@ -10,7 +10,7 @@ interface InspectionBoxProps {
   inspection: Inspection;
   pinned: boolean;
   heading?: RefObject<HTMLHeadingElement | null>;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 /** The fields of the box, each a label and its values: a field that is an HTTP message draws its lines as code, on a light panel, as one block (the blank line before its body is one of the lines), and its notes stay under the panel in the body font. */

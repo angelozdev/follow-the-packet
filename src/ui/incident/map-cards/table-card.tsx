@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { MESSAGE_TEXT, TABLE_TEXT, toPlainText } from '@/copy';
 import { Button, ChipTray, Message, Table } from '@/design';
 import type { TableCard as Tabled, TableCell } from '@/game';
-import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { trayChips, type CardFrame } from './card-frame';
 
@@ -97,8 +96,6 @@ export function tableFrame(card: Tabled, drafts: EntryDrafts, { onPlace, onRemov
     refocus();
   };
   return {
-    title: card.title,
-    icon: <CardIcon kind="table" />,
     actions: card.add === null ? undefined : (
       <Button disabled={!complete} onClick={add}>
         {card.add}

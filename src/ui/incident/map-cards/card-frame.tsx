@@ -8,10 +8,8 @@ export function trayChips(chips: { id: string; label: TermText }[]): TrayChip[] 
   return chips.map(({ id, label }) => ({ id, label: <TaggedText text={label} ips={false} /> }));
 }
 
-/** What a card puts in the panel of its piece: its title, the icon of what it is about, what it shows, the actions of its foot and, when it has its own way out, what "Listo" does. The panel draws the body in the tab or ficha the card belongs to and the foot of the one that is chosen. */
+/** What a card puts in the panel of its piece: what it shows, the actions of its foot and, when it has its own way out, what "Listo" does. The panel draws the body in the tab or ficha the card belongs to and the foot of the one that is chosen. */
 export interface CardFrame {
-  title: TermText;
-  icon: ReactNode;
   body: ReactNode;
   actions?: ReactNode;
   onDone?: () => void;

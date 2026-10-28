@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { BROWSER_TEXT, TABLE_TEXT } from '@/copy';
 import { Button, ChipTray, Table } from '@/design';
 import type { BrowserCard as Browser, BrowserView, RememberedCookie, SendPicks } from '@/game';
-import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { trayChips, type CardFrame } from '@/ui/incident/map-cards/card-frame';
 
@@ -82,8 +81,6 @@ export function browserFrame(card: Browser, draft: BrowserDraft, { view, onOpen,
     if (draft.address !== null && draft.user !== null) onSignIn({ from: card.fromId, to: draft.address, message: draft.user });
   };
   return {
-    title: card.title,
-    icon: <CardIcon kind="terminal" />,
     actions: (
       <Button variant="primary" disabled={draft.address === null} onClick={open}>
         {BROWSER_TEXT.open}

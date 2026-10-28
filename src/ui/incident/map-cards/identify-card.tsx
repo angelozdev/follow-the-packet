@@ -2,7 +2,6 @@ import { Fragment } from 'react';
 import { MESSAGE_TEXT } from '@/copy';
 import { ChipTray, Message } from '@/design';
 import type { IdentifyCard as Identify } from '@/game';
-import { EntityIcon } from '@/scene';
 import { TaggedText } from '@/ui/tagged-text';
 import { trayChips, type CardFrame } from './card-frame';
 import { useDraftsByKey } from './use-drafts-by-key';
@@ -60,8 +59,6 @@ export function identifyFrame(card: Identify, draft: IdentifyDraft, { onAnswer, 
     else onClose();
   };
   return {
-    title: card.title,
-    icon: <EntityIcon entity={card.entity} />,
     onDone: done,
     body: (
       <>

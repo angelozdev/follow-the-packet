@@ -35,7 +35,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const lines = useMemo(() => registryLines(session), [session]);
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
-  const { inspection, duplicate, trigger, release, holder } = useInspection(session, selection.selected);
+  const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -77,7 +77,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         />
       </div>
       <div aria-live="polite" aria-hidden={duplicate || undefined} className="incident__inspection" {...holder}>
-        {inspection && <InspectionBox inspection={inspection} pinned={false} onClose={release} />}
+        {inspection && <InspectionBox inspection={inspection} pinned={false} />}
       </div>
       <ShellColumn
         lucia={

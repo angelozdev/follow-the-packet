@@ -2,7 +2,6 @@ import { useState, type CSSProperties } from 'react';
 import { CLASSIFY_TEXT, MESSAGE_TEXT, toPlainText } from '@/copy';
 import { Button, Choice, Message } from '@/design';
 import type { ClassifyCard as Classify, ClassifyItem, ClassifyNumber } from '@/game';
-import { EntityIcon } from '@/scene';
 import type { CardFrame } from '@/ui/incident/map-cards/card-frame';
 import { TaggedText } from '@/ui/tagged-text';
 
@@ -83,8 +82,6 @@ export function classifyFrame(card: Classify, draft: ClassifyDraft, { onAnswer }
     refocus();
   };
   return {
-    title: card.title,
-    icon: <EntityIcon entity={card.entity} />,
     body: (
       <>
         <dl className="classify__fields">
