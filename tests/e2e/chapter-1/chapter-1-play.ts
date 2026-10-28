@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
+import { card, confirm, openCard, openTerminal, sendMessage, sendTo } from '@e2e/cards';
 import { closeCase, submitAndFinish } from '@e2e/closing';
 
 export const IP = {
@@ -18,8 +18,8 @@ export const IP = {
   otherOffice: '10.0.0.10',
 } as const;
 
-const SETTINGS_TAB = 'Ajustes de red';
-const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+const SETTINGS_TAB = 'Ajustes';
+const YOUR_LAPTOP = 'tu-laptop';
 
 const NOTE_FEEDBACK = 'cada uno de los cuatro números va de 0 a 255';
 const NOTE_RULE = 'La nota de Lucía estaba mal';
@@ -126,16 +126,14 @@ async function playTheRouter(page: Page) {
   await submitAndFinish(page, /está en otra red local y a esa solo se llega por el router/);
 }
 
-/** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the tab «Ajustes de red» of the card of the laptop, which is open on its terminal, and sends it again, which now arrives: the pick clears the stamps of the old world. */
+/** Sends the ping to laptop-andres, which is lost, picks the router as the default gateway in the tab «Ajustes» of the panel of the laptop, which is open on its terminal, and sends it again, which now arrives: the pick clears the stamps of the old world. */
 async function fixTheGateway(page: Page) {
   await sendTo(await openTerminal(page), IP.andres);
   await expect(page.getByRole('button', { name: LOST_TO_ANDRES })).toBeVisible();
   await page.getByRole('tab', { name: SETTINGS_TAB, exact: true }).click();
-  const settings = page.getByRole('dialog', { name: SETTINGS_CARD });
+  const settings = card(page, YOUR_LAPTOP);
   await settings.getByRole('button', { name: IP.router, exact: true }).click();
   await expect(page.getByRole('button', { name: /^Paquete:/ })).toHaveCount(0);
-  await confirm(settings);
-  await expect(settings).toBeHidden();
   await sendTo(await openTerminal(page), IP.andres);
   await expect(page.getByRole('button', { name: ARRIVED_AT_ANDRES })).toBeVisible();
 }
@@ -186,7 +184,6 @@ async function playYourFirstRule(page: Page) {
   const firewall = await openCard(page, 'firewall laptop-marta');
   await firewall.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
   await firewall.getByRole('button', { name: LUCIA_CHIP, exact: true }).click();
-  await confirm(firewall);
   await submitAndFinish(page, /lo que ninguna regla permite queda denegado/);
 }
 
@@ -195,7 +192,6 @@ async function playInAndOut(page: Page) {
   await firewall.getByRole('tab', { name: OUTBOUND_TAB }).click();
   await firewall.getByRole('button', { name: ECHO_REQUEST, exact: true }).click();
   await firewall.getByRole('button', { name: LUCIA_CHIP, exact: true }).click();
-  await confirm(firewall);
   await submitAndFinish(page, /controlan lo que llega, y las de la salida, lo que sale/);
 }
 

@@ -3,11 +3,10 @@ import { CLASSIFY_TEXT, MESSAGE_TEXT, toPlainText } from '@/copy';
 import { Button, Choice, Message } from '@/design';
 import type { ClassifyCard as Classify, ClassifyItem, ClassifyNumber } from '@/game';
 import { EntityIcon } from '@/scene';
-import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
-import { FramedCard, type CardFrame } from '@/ui/incident/map-cards/chip-card';
+import type { CardFrame } from '@/ui/incident/map-cards/card-frame';
 import { TaggedText } from '@/ui/tagged-text';
 
-/** The item the player has picked up to put in a bin. It lives above the card, so a card that shows this one as a tab keeps it when the player switches tabs. */
+/** The item the player has picked up to put in a bin. It lives above the tabs of the panel, so the panel keeps it when the player switches fichas, tabs and pieces. */
 export interface ClassifyDraft {
   selected: string | null;
   select: (deviceId: string | null) => void;
@@ -72,7 +71,7 @@ interface ClassifyHandlers {
   onAnswer: (deviceId: string, picks: Record<string, string>) => void;
 }
 
-/** Returns what the card that classifies puts in its card: the block with its mask, the 32 bits of the IP of the owner with the first ones the prefix fixes filled, the items still to classify and the two bins with the ones already placed. The player picks an item up and presses "Poner aquí" in a bin, or in the other bin to move it: placing reports the answer of that item at once, because the bins, the line under each item and the outline of the block on the map are all drawn from the answers of the session. Each placed item carries a line that says whether it fits, as a success when the bin is right and as an error when it is not. "Listo" and Escape only close the card. */
+/** Returns what the card that classifies puts in the panel: the block with its mask, the 32 bits of the IP of the owner with the first ones the prefix fixes filled, the items still to classify and the two bins with the ones already placed. The player picks an item up and presses "Poner aquí" in a bin, or in the other bin to move it: placing reports the answer of that item at once, because the bins, the line under each item and the outline of the block on the map are all drawn from the answers of the session. Each placed item carries a line that says whether it fits, as a success when the bin is right and as an error when it is not. The card has no way out of its own. */
 export function classifyFrame(card: Classify, draft: ClassifyDraft, { onAnswer }: ClassifyHandlers, refocus: () => void): CardFrame {
   const items = [...card.waiting, ...card.bins.flatMap((bin) => bin.items)];
   const chosen = items.find((item) => item.deviceId === draft.selected);
@@ -161,16 +160,4 @@ export function classifyFrame(card: Classify, draft: ClassifyDraft, { onAnswer }
       </>
     ),
   };
-}
-
-interface ClassifyCardProps extends ClassifyHandlers {
-  card: Classify;
-  onClose: () => void;
-}
-
-/** The card that classifies as a card of its own, for a piece whose only card it is. */
-export function ClassifyCard({ card, onAnswer, onClose }: ClassifyCardProps) {
-  const heading = useFocusOnMount<HTMLHeadingElement>();
-  const draft = useClassifyDraft();
-  return <FramedCard frame={classifyFrame(card, draft, { onAnswer }, () => heading.current?.focus())} heading={heading} onClose={onClose} />;
 }

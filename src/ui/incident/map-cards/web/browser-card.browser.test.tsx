@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { BROWSER_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { card, openTerminal, reachWithWheel, showTheScreen, standStill } from '@/testing/browser-play';
+import { openCard, reachWithWheel, showTheScreen, standStill } from '@/testing/browser-play';
+import { PIECE_ID, panelOf, startSession } from '@/game';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const PHONE = { width: 360, height: 2600 };
-const BROWSER_CARD = 'Navegador de tu-laptop';
+const LAPTOP = 'tu-laptop';
 const ADMIN_URL = 'http://192.168.1.11:3000/admin';
 const CONTROL_WHEEL_PX = 20;
 const SLOW_TEST_MS = 60_000;
@@ -20,16 +21,14 @@ afterEach(async () => {
 
 const press = (opened: Locator, name: string) => userEvent.click(opened.getByRole('button', { name, exact: true }));
 
-async function openTheBrowserTabAt360(): Promise<Locator> {
+async function openThePanelAt360(tab?: string): Promise<Locator> {
   await page.viewport(PHONE.width, PHONE.height);
   await showTheScreen(<IncidentScreen incidents={INCIDENTS} incidentId="03-06" nextId={null} onFinish={() => undefined} />);
-  await openTerminal();
-  await userEvent.click(page.getByRole('tab', { name: 'Navegador', exact: true }));
-  return card(BROWSER_CARD);
+  return openCard(LAPTOP, tab);
 }
 
 async function signInAndOpenAt360(): Promise<{ browser: Locator; body: HTMLElement }> {
-  const browser = await openTheBrowserTabAt360();
+  const browser = await openThePanelAt360('Navegador');
   for (const name of [ADMIN_URL, 'Lucía', BROWSER_TEXT.signIn, BROWSER_TEXT.open]) await press(browser, name);
   await expect.element(browser.getByRole('group', { name: BROWSER_TEXT.memory.title })).toBeVisible();
   const body = browser.element().querySelector('.chip-card__body') as HTMLElement;
@@ -50,9 +49,10 @@ describe('the tab of the browser', () => {
     const strip = page.elementLocator(body.querySelector('[role="tablist"]') as HTMLElement);
     const tabs = [...body.querySelectorAll('[role="tab"]')].map((tab) => page.elementLocator(tab));
     const controls = [...body.querySelectorAll('button:not([role="tab"])')].map((control) => page.elementLocator(control));
-    expect(tabs.length, 'the four tabs of the laptop').toBe(4);
+    expect(tabs.length, 'the tabs of the laptop').toBe(panelOf(startSession(INCIDENTS, '03-06'), PIECE_ID.device('your-laptop')).tabs.length);
     expect(controls.length, 'the address, the users and the sign-in').toBeGreaterThan(2);
-    for (const tab of tabs) expect(await reachWithWheel(tab, { within: strip, wheelPx: CONTROL_WHEEL_PX, sideways: true }), `${tab.element().textContent} is within reach`).toBe(true);
+    const towards = (tab: Locator) => (tab.element().getBoundingClientRect().left < strip.element().getBoundingClientRect().left ? -CONTROL_WHEEL_PX : CONTROL_WHEEL_PX);
+    for (const tab of tabs) expect(await reachWithWheel(tab, { within: strip, wheelPx: towards(tab), sideways: true }), `${tab.element().textContent} is within reach`).toBe(true);
     for (const control of controls) expect(await reachWithWheel(control, { within, wheelPx: CONTROL_WHEEL_PX }), `${control.element().textContent} is within reach`).toBe(true);
     const lastCell = page.elementLocator(table.querySelector('tbody tr td:last-child') as HTMLElement);
     expect(await reachWithWheel(lastCell, { within, wheelPx: CONTROL_WHEEL_PX }), 'the last column of the table is within reach').toBe(true);
@@ -60,7 +60,7 @@ describe('the tab of the browser', () => {
   });
 
   it('at 360 px a tab cut by the edge of the bar is brought into view by a click that does not focus it, clear of the fade', { timeout: SLOW_TEST_MS }, async () => {
-    const browser = await openTheBrowserTabAt360();
+    const browser = await openThePanelAt360();
     const strip = browser.element().querySelector('[role="tablist"]') as HTMLElement;
     const bar = strip.getBoundingClientRect();
     const cut = [...strip.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.getBoundingClientRect().left < bar.right && tab.getBoundingClientRect().right > bar.right)!;
@@ -70,6 +70,7 @@ describe('the tab of the browser', () => {
     const tab = cut.getBoundingClientRect();
     expect(cut, 'Safari and Firefox on macOS do not focus a button on click').not.toHaveFocus();
     expect(tab.left, 'the tab starts inside the bar').toBeGreaterThanOrEqual(bar.left - SLACK_PX);
-    expect(tab.right, 'the tab ends before the fade of the right edge').toBeLessThanOrEqual(bar.right - FADE_PX + SLACK_PX);
+    const atTheEnd = strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - SLACK_PX;
+    expect(tab.right, 'the tab ends before the fade of the right edge, which is gone at the end of the bar').toBeLessThanOrEqual(bar.right - (atTheEnd ? 0 : FADE_PX) + SLACK_PX);
   });
 });

@@ -17,6 +17,6 @@ describe('the rules card of a send incident', () => {
     await userEvent.click(rules.getByRole('button', { name: SOURCE, exact: true }));
     await expect.element(rules.getByRole('listitem')).toMatchTextContent(`${TYPE}`);
     await expect.element(rules.getByRole('listitem')).toMatchTextContent(SOURCE);
-    expect(page.getByRole('tab').elements()).toEqual([]);
+    expect(page.getByRole('tab').elements().map((tab) => tab.textContent), 'the panel has its tabs and the rules have no tabs of direction').toEqual(['Estado', 'Tablas']);
   });
 });

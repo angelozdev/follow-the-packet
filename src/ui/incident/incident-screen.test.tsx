@@ -10,7 +10,6 @@ import { layoutMap } from '@/scene/layout/map-layout';
 import { GLYPH_BOX } from '@/scene/marks/still-packets';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
-import type { Frame } from './inspection-place';
 
 const scene = vi.hoisted(() => ({ drawsItsCards: true, drawsTheList: false, drawsTheRealMap: false, sheet: { width: 1060, height: 800 } }));
 
@@ -99,10 +98,22 @@ function expectInThePanel(region: HTMLElement) {
   expect(region.closest(HOLDER_OF_THE_PREVIEW)).toBeNull();
 }
 
-function expectCardKeepsTheFocusAndItsPieceIsInThePanel() {
-  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
-  expect(within(card).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
-  expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
+function panelOfTheColumn(): HTMLElement {
+  const panel = theColumn().querySelector<HTMLElement>(':scope > section');
+  if (panel === null) throw new Error('the panel is not in the column');
+  return panel;
+}
+
+function pieceLabel(name: string): HTMLElement {
+  const label = screen.getAllByRole('button', { name }).find((button) => button.classList.contains('map-button'));
+  if (label === undefined) throw new Error(`no piece on the map is called ${name}`);
+  return label;
+}
+
+async function showTab(user: User, panel: HTMLElement, name: string) {
+  const tab = within(panel).getByRole('tab', { name });
+  if (tab.getAttribute('aria-selected') !== 'true') await user.click(tab);
+  return panel;
 }
 
 async function chooseTheStampWithTheKeyboard(user: User) {
@@ -129,7 +140,7 @@ function renderFirst() {
 
 async function placeRule(user: User, source: string) {
   await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-  const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+  const card = screen.getByRole('region', { name: SG_SERVIDOR2 });
   await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
   await user.click(within(card).getByRole('button', { name: source }));
   return card;
@@ -142,7 +153,7 @@ function tracingIncident(): SendIncident {
 
 async function sendTraceToAndres(user: User) {
   await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
-  const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
+  const terminal = await showTab(user, screen.getByRole('region', { name: 'tu-laptop' }), 'Terminal');
   await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
   await user.click(within(terminal).getByRole('button', { name: 'traceroute' }));
   await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
@@ -176,9 +187,12 @@ describe('incident screen', () => {
     renderFirst();
     const label = screen.getByRole('button', { name: SG_SERVIDOR2 });
     await user.click(label);
-    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+    const panel = screen.getByRole('region', { name: SG_SERVIDOR2 });
+    expect(within(panel).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
+    within(panel).getByRole('button', { name: ECHO_REQUEST }).focus();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 }), 'Escape leaves the panel where it is').toBe(panel);
     expect(label).toHaveFocus();
   });
 
@@ -193,12 +207,12 @@ describe('incident screen', () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    await user.click(within(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).getByRole('button', { name: ECHO_REQUEST }));
+    await user.click(within(screen.getByRole('region', { name: SG_SERVIDOR2 })).getByRole('button', { name: ECHO_REQUEST }));
     await user.click(screen.getByRole('button', { name: OTHER_DOOR }));
-    const card = screen.getByRole('dialog', { name: OTHER_DOOR });
+    const card = screen.getByRole('region', { name: OTHER_DOOR });
     expect(within(card).queryByRole('button', { name: TASK_CARD_TEXT.giveBack(ECHO_REQUEST) })).toBeNull();
     expect(within(card).getByRole('button', { name: ECHO_REQUEST, pressed: false })).toBeInTheDocument();
-    expect(within(card).getByRole('heading', { name: OTHER_DOOR })).toHaveFocus();
+    expect(within(card).getByRole('heading', { name: OTHER_DOOR })).toBeInTheDocument();
   });
 
   it('a locked piece can be inspected but opens no card', async () => {
@@ -251,7 +265,7 @@ describe('incident screen', () => {
     const onFinish = renderFirst();
     await placeRule(user, SG_SERVIDOR1);
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(screen.getByRole('region', { name: SG_SERVIDOR2 })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado']);
     expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: RIGHT_ANSWER }));
     expect(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult })).toHaveFocus();
@@ -435,7 +449,8 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expectCardKeepsTheFocusAndItsPieceIsInThePanel();
+    expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
+    expect(within(panelOfTheColumn()).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('Enter on a piece that opens a card keeps the focus in the card and shows the piece in the panel', async () => {
@@ -443,7 +458,9 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     renderFirst();
     await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
     await user.keyboard('{Enter}');
-    expectCardKeepsTheFocusAndItsPieceIsInThePanel();
+    const panel = screen.getByRole('region', { name: SG_SERVIDOR2 });
+    expectInThePanel(panel);
+    expect(within(panel).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
   });
 
   it('a piece chosen with the keyboard that opens a card does not take the focus when the phase changes', async () => {
@@ -451,7 +468,7 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     renderFirst();
     await tabTo(user, screen.getByRole('button', { name: SG_SERVIDOR2 }));
     await user.keyboard('{Enter}');
-    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    const card = screen.getByRole('region', { name: SG_SERVIDOR2 });
     await tabTo(user, within(card).getByRole('button', { name: ECHO_REQUEST }));
     await user.keyboard('{Enter}');
     await tabTo(user, within(card).getByRole('button', { name: SG_SERVIDOR1 }));
@@ -506,7 +523,7 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     expect(panel).toHaveAttribute('aria-labelledby', heading.id);
     expect(panel).not.toHaveAttribute('role');
     expect(panel.closest('[role="dialog"]')).toBeNull();
-    expect(screen.getAllByRole('dialog'), 'the only dialog is the card of the piece').toHaveLength(1);
+    expect(screen.queryAllByRole('dialog'), 'no dialog is drawn').toHaveLength(0);
   });
 
 });
@@ -533,29 +550,27 @@ describe('the ring of the chosen piece', () => {
 });
 
 describe('a chosen piece or packet that the map no longer draws', () => {
-  const GATEWAY = gatewayIncident();
-  const SETTINGS = 'Ajustes de red de tu-laptop';
-  const ROUTER = '192.168.1.1';
-  const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
+  const DIAGNOSE = diagnoseIncident();
+  const LOOPBACK_PING = 'ping de tu-laptop a 127.0.0.1';
+  const rightCause = toPlainText(DIAGNOSE.diagnose.cases[0].cause.options.find((option) => option.correct)?.text ?? '');
 
   it('the selection is released when its piece or its packet is no longer drawn', async () => {
     const user = userEvent.setup();
-    render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
+    render(<IncidentScreen incidents={[DIAGNOSE]} incidentId={DIAGNOSE.id} nextId={null} onFinish={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
-    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
-    await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
+    const terminal = screen.getByRole('region', { name: 'tu-laptop' });
+    await user.click(within(terminal).getByRole('button', { name: '127.0.0.1' }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
-    await user.click(screen.getByRole('button', { name: LOST_PING }));
-    expectInThePanel(screen.getByRole('region', { name: LOST_PING }));
+    await user.click(screen.getByRole('button', { name: LOOPBACK_PING }));
+    expectInThePanel(screen.getByRole('region', { name: LOOPBACK_PING }));
 
-    await tabTo(user, within(screen.getByRole('dialog', { name: /^Terminal de/ })).getByRole('tab', { name: 'Terminal' }));
-    await user.keyboard('{ArrowRight}');
-    expectInThePanel(screen.getByRole('region', { name: LOST_PING }));
-    await tabTo(user, within(screen.getByRole('dialog', { name: SETTINGS })).getByRole('button', { name: ROUTER }));
-    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.know }));
+    await user.click(screen.getByRole('button', { name: rightCause }));
+    expectInThePanel(screen.getByRole('region', { name: LOOPBACK_PING }));
+    await user.click(screen.getByRole('button', { name: CASE_TEXT.next }));
 
-    expect(screen.queryByRole('button', { name: LOST_PING })).toBeNull();
-    expect(screen.queryByRole('region', { name: LOST_PING })).toBeNull();
+    expect(screen.queryByRole('button', { name: LOOPBACK_PING })).toBeNull();
+    expect(screen.queryByRole('region', { name: LOOPBACK_PING })).toBeNull();
     expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
     await user.hover(screen.getByRole('button', { name: 'tu-laptop' }));
     expect(screen.getByRole('region', { name: 'tu-laptop' })).not.toHaveTextContent(INSPECTION_TEXT.close);
@@ -578,6 +593,7 @@ describe('every piece of every registered incident can be read in the panel', ()
         }
         await user.click(label);
         const panel = screen.getByRole('region', { name: toPlainText(inspection.title) });
+        await user.click(within(panel).getByRole('tab', { name: 'Estado' }));
         if (panel.parentElement !== theColumn() || panel.querySelectorAll('dt').length !== inspection.fields.length) shown.push(`${id} ${pieceId}: the panel does not show its fields`);
       }
       view.unmount();
@@ -586,227 +602,75 @@ describe('every piece of every registered incident can be read in the panel', ()
   });
 });
 
-describe('the inspection box steps aside from an open card', () => {
-  const MAP: Frame = { left: 0, top: 0, right: 1060, bottom: 900 };
-  const NOTHING: Frame = { left: 0, top: 0, right: 0, bottom: 0 };
-  const DOCKED_AT_THE_LEFT: Frame = { left: 6, top: 582, right: 306, bottom: 894 };
-  const AT_THE_RIGHT: Frame = { left: 535, top: 203, right: 835, bottom: 589 };
-  const OVER_THE_TOP_OF_THE_TALLEST_BOX: Frame = { left: 700, top: 300, right: 1000, bottom: 600 };
-  const FAR_FROM_BOTH: Frame = { left: 400, top: 100, right: 600, bottom: 300 };
-  const OVER_BOTH: Frame = { left: 300, top: 600, right: 700, bottom: 880 };
-  const BOX_BOTTOM = 884;
-  const BOX_LEFT = 692;
-  const BOX_WIDTH = 352;
-  const SHORT_BOX = 100;
-  const TALL_BOX = 300;
-  const MOVED = 'translate(1px, 1px)';
-  const rects: { card: Frame } = { card: NOTHING };
-
-  function domRect({ left, top, right, bottom }: Frame): DOMRect {
-    return { left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) };
-  }
-
-  function drawTheMap(card: Frame) {
-    rects.card = card;
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
-      if (this.matches('.incident__map')) return domRect(MAP);
-      if (this.matches('.map-card')) return domRect(rects.card);
-      if (!this.matches('.incident__inspection')) return domRect(NOTHING);
-      const height = this.querySelector('h2')?.textContent === 'servidor2' ? SHORT_BOX : TALL_BOX;
-      return domRect({ left: BOX_LEFT, top: BOX_BOTTOM - height, right: BOX_LEFT + BOX_WIDTH, bottom: BOX_BOTTOM });
-    });
-  }
-
-  function theHolder() {
-    const holder = document.querySelector('.incident__inspection');
-    if (holder === null) throw new Error('the inspection holder is not on the page');
-    return holder;
-  }
-
-  async function moveTheCardTo(card: Frame) {
-    rects.card = card;
-    await act(async () => {
-      document.querySelector('.map-card')?.setAttribute('style', `transform: ${MOVED}`);
-    });
-  }
-
-  async function openTheCardAndLetGoOfItsBox(user: User) {
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    const card = screen.queryByRole('dialog', { name: SG_SERVIDOR2 });
-    if (card !== null) await user.click(within(card).getByRole('heading', { name: SG_SERVIDOR2 }));
-  }
+describe('the panel of a piece in the column of the screen', () => {
+  beforeEach(() => {
+    scene.drawsTheRealMap = true;
+  });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    scene.drawsItsCards = true;
+    scene.drawsTheRealMap = false;
   });
 
-  it('a box with no card open takes the right place', async () => {
-    drawTheMap(NOTHING);
+  it('Tab goes from the map to the column', async () => {
     const user = userEvent.setup();
     renderFirst();
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
-    expect(theHolder()).toHaveAttribute('data-place', 'right');
-  });
-
-  it('a box moves to the other place when the card takes its own', async () => {
-    drawTheMap(DOCKED_AT_THE_LEFT);
-    const user = userEvent.setup();
-    renderFirst();
+    const labels = [...document.querySelectorAll<HTMLElement>('.incident__map button')];
+    const last = labels.at(-1) as HTMLElement;
+    last.focus();
+    expect(last).toHaveFocus();
+    await user.tab();
+    expect(document.activeElement?.closest('.incident__side'), 'the next stop after the last control of the map is in the column').not.toBeNull();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expect(theHolder()).toHaveAttribute('data-place', 'right');
-    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
-
-    await moveTheCardTo(AT_THE_RIGHT);
-
-    expect(theHolder()).toHaveAttribute('data-place', 'left');
-    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
-
-    await moveTheCardTo(FAR_FROM_BOTH);
-
-    expect(theHolder(), 'a box that the card does not touch keeps the place it has').toHaveAttribute('data-place', 'left');
+    const [first] = within(panelOfTheColumn()).getAllByRole('tab');
+    first.focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement?.closest('.incident__map'), 'Shift+Tab from the panel goes back to the map or to Lucía, never past the column').toBeNull();
   });
 
-  it('no box is drawn over the map, and the piece clicked is in the panel, when the card takes both places', async () => {
-    drawTheMap(OVER_BOTH);
+  it('Escape in the panel gives the focus back to the piece', async () => {
     const user = userEvent.setup();
     renderFirst();
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expect(theHolder().querySelector('.card')).toBeNull();
-    expectInThePanel(screen.getByRole('region', { name: SG_SERVIDOR2 }));
-    expect(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).toBeInTheDocument();
+    const label = pieceLabel(SG_SERVIDOR2);
+    await tabTo(user, label);
+    await user.keyboard('{Enter}');
+    const panel = panelOfTheColumn();
+    expect(within(panel).getByRole('heading', { name: SG_SERVIDOR2 })).toHaveFocus();
+    await tabTo(user, within(panel).getByRole('tab', { name: 'Tablas' }));
+    await user.keyboard('{Escape}');
+    expect(label, 'Escape from a tab of the panel').toHaveFocus();
+    expect(panelOfTheColumn(), 'the piece stays chosen').toBe(panel);
+    await user.click(within(panel).getByRole('button', { name: ECHO_REQUEST }));
+    await user.keyboard('{Escape}');
+    expect(label, 'Escape from a chip of the panel').toHaveFocus();
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBe(panel);
   });
 
-  it('a preview is not drawn when the card takes both places', async () => {
-    drawTheMap(OVER_BOTH);
-    const user = userEvent.setup();
-    renderFirst();
-    await openTheCardAndLetGoOfItsBox(user);
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 }), 'the panel keeps the piece that was chosen').toBeInTheDocument();
-  });
-
-  it('a click on another piece draws no box over the map and chooses it in the panel when the card takes both places', async () => {
-    drawTheMap(OVER_BOTH);
-    const user = userEvent.setup();
-    renderFirst();
-    await openTheCardAndLetGoOfItsBox(user);
-    await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
-    expect(theHolder().querySelector('.card')).toBeNull();
-    expectInThePanel(screen.getByRole('region', { name: 'servidor2' }));
-    expect(screen.getByRole('button', { name: LOCKED_SERVER })).toHaveAttribute('data-pinned');
-  });
-
-  it('the box of the click that opens a card is not drawn until the card is measured', async () => {
-    drawTheMap(AT_THE_RIGHT);
-    scene.drawsItsCards = false;
-    const user = userEvent.setup();
-    const view = render(firstScreen());
-    await user.hover(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expect(theHolder(), 'the preview that was up before the click').not.toHaveAttribute('data-hold');
-
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-
-    expect(theHolder(), 'the card is asked for and not in the map yet').toHaveAttribute('data-hold');
-    expect(theHolder()).toHaveAttribute('data-place', 'right');
-
-    scene.drawsItsCards = true;
-    await act(async () => {
-      view.rerender(firstScreen());
-    });
-
-    expect(theHolder()).not.toHaveAttribute('data-hold');
-    expect(theHolder(), 'the card is measured before the box shows').toHaveAttribute('data-place', 'left');
-    expect(theHolder()).toHaveTextContent(SG_SERVIDOR2);
-  });
-
-  it('the reason is written when a piece is inspected and the card takes both places', async () => {
-    drawTheMap(OVER_BOTH);
-    const user = userEvent.setup();
-    renderFirst();
-    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'no card is open, so nothing to explain').toBeNull();
-    expect(screen.getByText(SCREEN_TEXT.inspectClickHelp), 'with nothing chosen the help tells what a click does').toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-
-    const reason = screen.getByText(SCREEN_TEXT.noRoomForTheBox);
-    expect(reason, 'a note, in the side panel, right under the card of Lucía').toHaveClass('message--note');
-    expect(reason.closest('.incident__side')).not.toBeNull();
-    expect(reason.previousElementSibling).toBe(screen.getByRole('region', { name: /Lucía/ }));
-    expect(screen.queryByText(SCREEN_TEXT.inspectHelp), 'the piece chosen takes the panel from the help').toBeNull();
-    expect(screen.queryByText(SCREEN_TEXT.inspectClickHelp), 'and the sentence about the click goes with it').toBeNull();
-
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-    await user.unhover(screen.getByRole('button', { name: LOCKED_SERVER }));
-
-    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox), 'it stays while the card is open, so it does not blink').toBeInTheDocument();
-
-    await user.click(within(screen.getByRole('dialog', { name: SG_SERVIDOR2 })).getByRole('button', { name: TASK_CARD_TEXT.done }));
-
-    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'it goes with the card').toBeNull();
-  });
-
-  it('the reason is written at a hover that finds no room, with no click on a piece', async () => {
-    drawTheMap(DOCKED_AT_THE_LEFT);
-    const user = userEvent.setup();
-    renderFirst();
-    await openTheCardAndLetGoOfItsBox(user);
-    await moveTheCardTo(OVER_BOTH);
-
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-
-    expect(screen.queryByRole('region', { name: 'servidor2' })).toBeNull();
-    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox)).toBeInTheDocument();
-  });
-
-  it('no reason is written while the card leaves a place free, and it goes when the card moves away and the box shows', async () => {
-    drawTheMap(DOCKED_AT_THE_LEFT);
-    const user = userEvent.setup();
-    renderFirst();
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    expect(screen.getByRole('region', { name: SG_SERVIDOR2 })).toBeInTheDocument();
-    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox)).toBeNull();
-
-    await moveTheCardTo(OVER_BOTH);
-    expect(theHolder().querySelector('.card')).toBeNull();
-    expect(screen.getByText(SCREEN_TEXT.noRoomForTheBox)).toBeInTheDocument();
-
-    await moveTheCardTo(FAR_FROM_BOTH);
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-
-    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
-    expect(screen.queryByText(SCREEN_TEXT.noRoomForTheBox), 'the card no longer takes the place, so the reason is no longer true').toBeNull();
-  });
-
-  it('the place does not change from one piece to the next while the card stays', async () => {
-    drawTheMap(OVER_THE_TOP_OF_THE_TALLEST_BOX);
-    const user = userEvent.setup();
-    renderFirst();
-    await openTheCardAndLetGoOfItsBox(user);
-
-    await user.hover(screen.getByRole('button', { name: LOCKED_SERVER }));
-    expect(screen.getByRole('region', { name: 'servidor2' })).toBeInTheDocument();
-    expect(theHolder(), 'a short box, which the card would not touch').toHaveAttribute('data-place', 'left');
-
-    await user.hover(screen.getByRole('button', { name: OTHER_DOOR }));
-    expect(screen.getByRole('region', { name: OTHER_DOOR })).toBeInTheDocument();
-    expect(theHolder(), 'a tall box, which it would').toHaveAttribute('data-place', 'left');
+  it('no card opens beside a piece in any registered incident', { timeout: 120_000 }, async () => {
+    const user = userEvent.setup({ delay: null });
+    const opened: string[] = [];
+    const clickEveryPiece = async (incidentId: string) => {
+      const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={incidentId} nextId={null} onFinish={vi.fn()} />);
+      const labels = pieceViews(startSession(INCIDENTS, incidentId)).flatMap((piece) => document.getElementById(pieceDomId(piece.id)) ?? []);
+      for (const label of labels) {
+        await user.click(label);
+        if (document.querySelector('.map-card, [role="dialog"]') !== null) opened.push(`${incidentId} ${label.id}`);
+        expect(panelOfTheColumn().parentElement, `${incidentId} ${label.id}: the panel is in the column`).toBe(theColumn());
+      }
+      view.unmount();
+    };
+    for (const { id } of INCIDENTS) await clickEveryPiece(id);
+    expect(opened).toEqual([]);
   });
 });
 
 describe('incident screen of a send incident', () => {
   const SENDING = sendIncident();
-  const TERMINAL = 'Terminal de your-laptop';
 
   function renderSending() {
     render(<IncidentScreen incidents={[SENDING]} incidentId={SENDING.id} nextId={null} onFinish={vi.fn()} />);
   }
 
-  function terminal(): HTMLElement {
-    return screen.getByRole('dialog', { name: /^Terminal de/ });
-  }
+  const terminal = panelOfTheColumn;
 
   async function send(user: User, address: string, message: string) {
     await user.click(within(terminal()).getByRole('button', { name: address }));
@@ -824,7 +688,7 @@ describe('incident screen of a send incident', () => {
     const user = userEvent.setup();
     renderSending();
     await user.click(screen.getByRole('button', { name: 'your-laptop' }));
-    expect(screen.getByRole('dialog', { name: TERMINAL })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'your-laptop' })).getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'true');
     await send(user, '192.168.1.20', 'ping');
     await user.click(screen.getByRole('button', { name: 'ping de your-laptop a printer' }));
     expect(screen.getByRole('region', { name: 'ping de your-laptop a printer' })).toHaveTextContent('Llegó y volvió la respuesta.');
@@ -848,10 +712,12 @@ describe('incident screen of a send incident', () => {
     renderSending();
     await user.click(screen.getByRole('button', { name: 'your-laptop' }));
     await user.click(within(terminal()).getByRole('button', { name: 'Atacante' }));
-    expect(terminal()).toHaveAccessibleName('Terminal de Atacante');
+    expect(terminal()).toHaveAccessibleName('Atacante');
+    expect(within(terminal()).getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Atacante' })).toHaveFocus();
+    expect(screen.getByRole('region', { name: 'Atacante' }), 'Escape leaves the panel where it is').toBeInTheDocument();
+    expect(pieceLabel('Atacante')).toHaveFocus();
   });
 
   it('with every send task done, Lucía asks the incident’s own question', async () => {
@@ -868,8 +734,7 @@ describe('incident screen of a send incident', () => {
 
 describe('incident screen of a send incident with settings', () => {
   const GATEWAY = { ...gatewayIncident(), introduces: [...CHAPTER_1_TERMS] };
-  const SETTINGS = 'Ajustes de red de tu-laptop';
-  const SETTINGS_TAB = 'Ajustes de red';
+  const SETTINGS_TAB = 'Ajustes';
   const ROUTER = '192.168.1.1';
   const LOST_PING = 'ping de tu-laptop a 192.168.2.15';
   const PING_ANDRES = 'ping de tu-laptop a laptop-andres';
@@ -881,7 +746,7 @@ describe('incident screen of a send incident with settings', () => {
   }
 
   async function sendToAndres(user: User) {
-    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    const terminal = await showTab(user, screen.getByRole('region', { name: 'tu-laptop' }), 'Terminal');
     await user.click(within(terminal).getByRole('button', { name: '192.168.2.15' }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
   }
@@ -891,16 +756,15 @@ describe('incident screen of a send incident with settings', () => {
     renderGateway();
     expect(screen.getAllByRole('button', { name: /^tu-laptop/ })).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
-    const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
-    expect(within(terminal).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Terminal', SETTINGS_TAB]);
+    const terminal = screen.getByRole('region', { name: 'tu-laptop' });
+    expect(within(terminal).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado', SETTINGS_TAB, 'Terminal']);
     expect(within(terminal).getByRole('tab', { name: 'Terminal' })).toHaveAttribute('aria-selected', 'true');
     expect(within(terminal).queryByRole('group', { name: TERMS['default-gateway'].name })).toBeNull();
     expect(within(terminal).queryByRole('button', { name: ROUTER })).toBeNull();
     await user.click(within(terminal).getByRole('tab', { name: SETTINGS_TAB }));
-    expect(screen.queryByRole('dialog', { name: 'Terminal de tu-laptop' })).toBeNull();
-    const card = screen.getByRole('dialog', { name: SETTINGS });
-    expect(within(card).getByRole('group', { name: TERMS['default-gateway'].name })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: SETTINGS })).toBeInTheDocument();
+    expect(within(terminal).queryByRole('button', { name: TERMINAL_TEXT.send })).toBeNull();
+    expect(within(terminal).getByRole('group', { name: TERMS['default-gateway'].name })).toBeInTheDocument();
+    expect(within(terminal).getByRole('heading', { name: 'Ajustes de red' })).toBeInTheDocument();
   });
 
   it('setting the gateway on the tab makes the ping come back and clears the stamps of before, and Esc gives the focus back to the only button of the label', async () => {
@@ -910,11 +774,12 @@ describe('incident screen of a send incident with settings', () => {
     await sendToAndres(user);
     expect(screen.getByRole('button', { name: LOST_PING })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: SETTINGS_TAB }));
-    await user.click(within(screen.getByRole('dialog', { name: SETTINGS })).getByRole('button', { name: ROUTER }));
+    await user.click(within(screen.getByRole('region', { name: 'tu-laptop' })).getByRole('button', { name: ROUTER }));
     expect(screen.queryByRole('button', { name: LOST_PING })).toBeNull();
     expect(screen.getByRole('button', { name: ROUTER })).toHaveAttribute('aria-pressed', 'true');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: 'tu-laptop' }), 'Escape leaves the panel where it is').toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'tu-laptop' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
     await sendToAndres(user);
@@ -927,7 +792,7 @@ describe('incident screen of a send incident with settings', () => {
     const user = userEvent.setup();
     render(<IncidentScreen incidents={[TRACING]} incidentId={TRACING.id} nextId={null} onFinish={vi.fn()} />);
     await sendTraceToAndres(user);
-    const reason = within(screen.getByRole('dialog', { name: 'Terminal de tu-laptop' })).getByText(OUTCOME_TEXT['no-route']);
+    const reason = within(screen.getByRole('region', { name: 'tu-laptop' })).getByText(OUTCOME_TEXT['no-route']);
     expect(reason.tagName).toBe('P');
     expect(reason).toHaveClass('message message--warning', { exact: true });
     expect(reason.querySelector('.message__tab')).toHaveTextContent('! Aviso');
@@ -952,18 +817,20 @@ describe('incident screen of an identify incident', () => {
     renderIdentifying();
     await user.click(screen.getByRole('button', { name: 'tu-laptop con candado' }));
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(screen.getByRole('region', { name: 'tu-laptop' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado']);
     await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
-    expect(screen.getByRole('dialog', { name: PRINTER_CARD })).toHaveTextContent('¿Cuál es su dirección IP?');
+    expect(screen.getByRole('region', { name: PRINTER_CARD })).toHaveTextContent('¿Cuál es su dirección IP?');
   });
 
   it('a pick does not tick the task until Listo, and Escape gives the focus back to the piece', async () => {
     const user = userEvent.setup();
     renderIdentifying();
     await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: '192.168.1.21' }));
     expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.pending);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: PRINTER_CARD }), 'Escape leaves the panel where it is').toBeInTheDocument();
     expect(screen.getByRole('button', { name: PRINTER_CARD })).toHaveFocus();
     expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.pending);
   });
@@ -972,19 +839,19 @@ describe('incident screen of an identify incident', () => {
     const user = userEvent.setup();
     renderIdentifying();
     await user.click(screen.getByRole('button', { name: GUEST_CARD }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'No' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: 'No' }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expect(screen.queryByRole('region', { name: GUEST_CARD })).toBeNull();
     expect(taskItem(GUEST_TASK)).toHaveTextContent(LUCIA_TEXT.done);
 
     await user.click(screen.getByRole('button', { name: PRINTER_CARD }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
-    expect(screen.getByRole('dialog', { name: PRINTER_CARD })).toHaveTextContent(`Correcto. ${NOTE_RULE}`);
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: '192.168.1.21' }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    expect(screen.getByRole('region', { name: PRINTER_CARD })).toHaveTextContent(`Correcto. ${NOTE_RULE}`);
     expect(taskItem(PRINTER_TASK)).toHaveTextContent(LUCIA_TEXT.done);
 
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(panelOfTheColumn()).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado']);
     expect(screen.getByRole('heading', { name: 'Lucía: «¿Por qué 192.168.1.300 no puede ser la IP de la impresora?»' })).toHaveFocus();
   });
 
@@ -1019,7 +886,7 @@ describe('incident screen of a diagnose incident', () => {
 
   async function sendLoopback(user: User) {
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
-    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    const terminal = screen.getByRole('region', { name: 'tu-laptop' });
     await user.click(within(terminal).getByRole('button', { name: '127.0.0.1' }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
   }
@@ -1098,7 +965,7 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
   const fixed = cases.findIndex(({ fix }) => fix);
   const KNOW = CASE_TEXT.know;
   const NEXT = CASE_TEXT.next;
-  const ROUTES = 'Tabla de rutas de router-provider';
+  const ROUTER_PANEL = 'router-provider';
   const optionOf = (index: number) => toPlainText(cases[index].cause.options.find((option) => option.correct)?.text ?? '');
   const caseCardOf = (index: number) => screen.getByRole('region', { name: CASE_TEXT.title(index + 1, cases.length) });
   const ticks = () => Array.from(caseCardOf(fixed).querySelectorAll('.tasks li'), (item) => item.textContent?.charAt(0));
@@ -1113,7 +980,7 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
 
   async function repairTheRoutes(user: User) {
     await user.click(screen.getByRole('button', { name: 'router-provider' }));
-    const table = screen.getByRole('dialog', { name: ROUTES });
+    const table = screen.getByRole('region', { name: ROUTER_PANEL });
     await user.click(within(table).getByRole('button', { name: /^Quitar 0\.0\.0\.0\/0/ }));
     await user.click(within(table).getByRole('button', { name: '198.51.100.0/24' }));
     await user.click(within(table).getByRole('button', { name: 'router-backbone' }));
@@ -1123,7 +990,7 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
 
   async function pingTheServer(user: User) {
     await user.click(screen.getByRole('button', { name: 'laptop-marta' }));
-    const terminal = screen.getByRole('dialog', { name: /^Terminal de/ });
+    const terminal = screen.getByRole('region', { name: 'laptop-marta' });
     expect(within(terminal).getByText('ping 198.51.100.50')).toBeInTheDocument();
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
   }
@@ -1175,7 +1042,7 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
     await user.click(screen.getByRole('button', { name: optionOf(fixed) }));
     expect(screen.getByRole('button', { name: NEXT })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'router-provider' }));
-    const table = screen.getByRole('dialog', { name: ROUTES });
+    const table = screen.getByRole('region', { name: ROUTER_PANEL });
     expect(within(table).getByRole('table')).toBeInTheDocument();
     expect(within(table).queryByRole('button', { name: /^Quitar/ })).toBeNull();
     expect(within(table).queryByRole('button', { name: 'Agregar ruta' })).toBeNull();
@@ -1220,10 +1087,10 @@ describe('the standard of warnings and errors', () => {
 
     const identify = render(<IncidentScreen incidents={[IDENTIFYING]} incidentId={IDENTIFYING.id} nextId={null} onFinish={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: 'impresora' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: TASK_CARD_TEXT.done }));
     expectDrawnBy(NOTE_FEEDBACK, 'error');
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '192.168.1.21' }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: TASK_CARD_TEXT.done }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: '192.168.1.21' }));
+    await user.click(within(panelOfTheColumn()).getByRole('button', { name: TASK_CARD_TEXT.done }));
     expectDrawnBy(NOTE_RULE, 'success');
     expectNoAlertOutsideAMessage();
     identify.unmount();
@@ -1259,7 +1126,7 @@ describe('incident screen of a send incident with a clock, tables and services',
   async function sendByName(user: User, message: string) {
     await user.click(screen.getByRole('button', { name: 'tu-laptop' }));
     await user.click(screen.getByRole('tab', { name: 'Terminal' }));
-    const terminal = screen.getByRole('dialog', { name: 'Terminal de tu-laptop' });
+    const terminal = screen.getByRole('region', { name: 'tu-laptop' });
     await user.click(within(terminal).getByRole('button', { name: WWW }));
     await user.click(within(terminal).getByRole('button', { name: message }));
     await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
@@ -1308,15 +1175,15 @@ describe('incident screen of a send incident with a clock, tables and services',
     renderNames();
     await digTheName(user);
     await user.click(screen.getByRole('button', { name: RESOLVER }));
-    const cache = screen.getByRole('dialog', { name: 'Caché de servidor-dns' });
+    const cache = screen.getByRole('region', { name: RESOLVER });
     expect(within(cache).getByRole('row', { name: new RegExp(WWW) })).toHaveTextContent('300 s');
     await user.click(screen.getByRole('button', { name: ONE_MINUTE }));
     expect(clock()).toHaveTextContent('1 min 00 s');
-    expect(within(screen.getByRole('dialog', { name: 'Caché de servidor-dns' })).getByRole('row', { name: new RegExp(WWW) })).toHaveTextContent('240 s');
+    expect(within(screen.getByRole('region', { name: RESOLVER })).getByRole('row', { name: new RegExp(WWW) })).toHaveTextContent('240 s');
     await user.click(screen.getByRole('button', { name: FIVE_MINUTES }));
     expect(clock()).toHaveTextContent('6 min 00 s');
-    expect(within(screen.getByRole('dialog', { name: 'Caché de servidor-dns' })).queryByRole('row', { name: new RegExp(WWW) })).toBeNull();
-    expect(within(screen.getByRole('dialog', { name: 'Caché de servidor-dns' })).getByText('No hay respuestas guardadas.')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: RESOLVER })).queryByRole('row', { name: new RegExp(WWW) })).toBeNull();
+    expect(within(screen.getByRole('region', { name: RESOLVER })).getByText('No hay respuestas guardadas.')).toBeInTheDocument();
   });
 
   it('waiting keeps the sends and the last answer of the terminal', async () => {
@@ -1350,22 +1217,23 @@ describe('incident screen of a send incident with a clock, tables and services',
     const user = userEvent.setup();
     renderNames();
     await user.click(screen.getByRole('button', { name: 'router-office' }));
-    const tables = screen.getByRole('dialog', { name: 'Tabla de rutas de router-office' });
-    expect(within(tables).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tabla de rutas', 'Tabla de traducciones']);
+    const tables = screen.getByRole('region', { name: 'router-office' });
+    expect(within(tables).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado', 'Tablas', 'Tabla de rutas', 'Tabla de traducciones']);
     await user.click(within(tables).getByRole('tab', { name: 'Tabla de traducciones' }));
-    expect(screen.getByRole('dialog', { name: 'Tabla de traducciones de router-office' })).toBeInTheDocument();
+    expect(within(tables).getByRole('table', { name: 'Tabla de traducciones de router-office' })).toBeInTheDocument();
+    within(tables).getByRole('tab', { name: 'Tabla de traducciones' }).focus();
     await user.keyboard('{Escape}');
     expect(screen.getByRole('button', { name: 'router-office' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: RESOLVER }));
-    expect(screen.queryAllByRole('tab')).toEqual([]);
-    expect(screen.getByRole('dialog', { name: 'Caché de servidor-dns' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: RESOLVER })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado', 'Tablas']);
+    expect(screen.getByRole('table', { name: 'Caché de servidor-dns' })).toBeInTheDocument();
   });
 
   it('a refused entry of a table is drawn by Message in a region that was already there, with no alert outside a message', async () => {
     const user = userEvent.setup();
     renderNames();
     await user.click(screen.getByRole('button', { name: 'servidor-autoritativo' }));
-    const card = screen.getByRole('dialog', { name: 'Registros de lucia.example' });
+    const card = screen.getByRole('region', { name: 'servidor-autoritativo' });
     const region = within(card).getByRole('status');
     expect(region).toBeEmptyDOMElement();
     await user.click(within(card).getByRole('button', { name: WWW }));
@@ -1383,8 +1251,7 @@ describe('incident screen of a send incident with a clock, tables and services',
 describe('the incidents of the chapters on the 2D map', () => {
   const IP = { marta: '192.168.1.12', lucia: '192.168.1.11', andres: '192.168.2.15', router: '192.168.1.1', loopback: '127.0.0.1', server: '198.51.100.50', freshServer: '198.51.100.60' };
   const LUCIA = 'laptop-lucia';
-  const SETTINGS_TAB = 'Ajustes de red';
-  const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+  const SETTINGS_TAB = 'Ajustes';
   const PING = 'ping';
   const NC_TO_THE_APP = 'nc · puerto 3000';
   const NC_TO_THE_DATABASE = 'nc · puerto 5432';
@@ -1432,7 +1299,6 @@ describe('the incidents of the chapters on the 2D map', () => {
   const TAGS_OF_THE_TWO_QUESTIONS = ['UDP 51514 → 53', 'UDP 51515 → 53'];
   const ANSWER_FROM_THE_CACHE = /www\.lucia\.example\.\s*240\s*IN\s*A\s*198\.51\.100\.50/;
   const PROVIDER = 'router-proveedor';
-  const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
   const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
   const SERVERS_BLOCK = '198.51.100.0/24';
   const DESTINATION_HOP = '203.0.113.2 router-destino';
@@ -1444,8 +1310,7 @@ describe('the incidents of the chapters on the 2D map', () => {
   const STAMP_OF_THE_PING_THAT_COMES_BACK = 'Paquete: ping de tu-laptop a servidor-internet. Llegó.';
   const FIX_NOT_DONE = '☐ Que el ping a servidor-internet vuelva. (sin cumplir)';
   const FIX_DONE = '✓ Que el ping a servidor-internet vuelva. (cumplida)';
-  const SERVICES_TAB = 'Servicios';
-  const SERVICES_CARD = 'Servicios de laptop-lucia';
+  const SERVICES_TAB = 'Ajustes';
   const ONLY_THIS_DEVICE = 'Solo este dispositivo (127.0.0.1)';
   const EVERY_IP = 'Todas las IPs (0.0.0.0)';
   const SENDS_START_AGAIN_ON_THE_APP = 'Cambiaste cómo escucha la app de laptop-lucia: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
@@ -1465,8 +1330,8 @@ describe('the incidents of the chapters on the 2D map', () => {
   }
 
   async function openTheTerminal(user: User, laptop = 'tu-laptop') {
-    await user.click(screen.getByRole('button', { name: laptop }));
-    return screen.getByRole('dialog', { name: `Terminal de ${laptop}` });
+    await user.click(pieceLabel(laptop));
+    return showTab(user, screen.getByRole('region', { name: laptop }), 'Terminal');
   }
 
   async function sendMessage(user: User, terminal: HTMLElement, message: string) {
@@ -1482,10 +1347,6 @@ describe('the incidents of the chapters on the 2D map', () => {
   async function sendNc(user: User, terminal: HTMLElement, ip: string, message: string) {
     await user.click(within(terminal).getByRole('button', { name: ip }));
     await sendMessage(user, terminal, message);
-  }
-
-  async function confirm(user: User, card: HTMLElement) {
-    await user.click(within(card).getByRole('button', { name: TASK_CARD_TEXT.done }));
   }
 
   async function drawWithoutAnimations(user: User) {
@@ -1555,11 +1416,9 @@ describe('the incidents of the chapters on the 2D map', () => {
     await sendTo(user, await openTheTerminal(user), IP.andres);
     expect(screen.getByRole('button', { name: LOST_TO_ANDRES })).toBeVisible();
     await user.click(screen.getByRole('tab', { name: SETTINGS_TAB }));
-    const settings = screen.getByRole('dialog', { name: SETTINGS_CARD });
+    const settings = screen.getByRole('region', { name: 'tu-laptop' });
     await user.click(within(settings).getByRole('button', { name: IP.router }));
     expect(screen.queryAllByRole('button', { name: ANY_PACKET_STAMP })).toHaveLength(0);
-    await confirm(user, settings);
-    expect(settings).not.toBeInTheDocument();
     await sendTo(user, await openTheTerminal(user), IP.andres);
     expect(screen.getByRole('button', { name: ARRIVED_AT_ANDRES })).toBeVisible();
   });
@@ -1568,17 +1427,15 @@ describe('the incidents of the chapters on the 2D map', () => {
     const user = userEvent.setup();
     renderIncident('01-13');
     await user.click(screen.getByRole('button', { name: 'firewall tu-laptop' }));
-    const firewall = screen.getByRole('dialog', { name: 'firewall tu-laptop' });
+    const firewall = screen.getByRole('region', { name: 'firewall tu-laptop' });
     const [inbound, outbound] = [/^entrada$/i, /^salida$/i].map((name) => within(firewall).getByRole('tab', { name }));
-    expect(within(firewall).getByRole('heading', { level: 2 })).toHaveFocus();
-    await user.tab();
-    expect(inbound).toHaveFocus();
+    inbound.focus();
     expect(inbound).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{ArrowRight}');
     expect(outbound).toHaveFocus();
     expect(outbound).toHaveAttribute('aria-selected', 'true');
     expect(inbound).toHaveAttribute('aria-selected', 'false');
-    expect(within(firewall).getByRole('tabpanel')).toHaveTextContent('cerrada');
+    expect(within(firewall).getByRole('tabpanel', { name: /^salida$/i })).toHaveTextContent('cerrada');
     await user.keyboard('{Home}');
     expect(inbound).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{End}');
@@ -1592,8 +1449,6 @@ describe('the incidents of the chapters on the 2D map', () => {
     const terminal = await openTheTerminal(user);
     await sendMessage(user, terminal, PING);
     await sendMessage(user, terminal, NC_TO_THE_APP);
-    await confirm(user, terminal);
-    expect(terminal).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: STAMP_OF_THE_APP })).toBeVisible();
     expect(packetTags()).toEqual([TAG_OF_THE_APP]);
     await sendMessage(user, await openTheTerminal(user), NC_TO_THE_DATABASE);
@@ -1607,8 +1462,6 @@ describe('the incidents of the chapters on the 2D map', () => {
     await drawWithoutAnimations(user);
     const first = await openTheTerminal(user);
     await sendMessage(user, first, NC_TO_THE_APP);
-    await confirm(user, first);
-    expect(first).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: STAMP_OF_THE_FIRST_CONNECTION })).toBeVisible();
     expect(packetTags()).toEqual([TAG_OF_THE_FIRST_CONNECTION]);
     await sendMessage(user, await openTheTerminal(user), NC_TO_THE_DATABASE);
@@ -1624,12 +1477,8 @@ describe('the incidents of the chapters on the 2D map', () => {
     await sendNc(user, yours, IP.lucia, NC_TO_THE_CLOSED_PORT);
     await sendNc(user, yours, IP.marta, NC_TO_THE_APP);
     await sendNc(user, yours, IP.lucia, NC_TO_THE_APP);
-    await confirm(user, yours);
-    expect(yours).not.toBeInTheDocument();
     const hers = await openTheTerminal(user, LUCIA);
     await sendNc(user, hers, IP.loopback, NC_TO_THE_APP);
-    await confirm(user, hers);
-    expect(hers).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: STAMP_OF_HER_OWN_APP })).toBeVisible();
     expect(screen.getByRole('button', { name: STAMP_OF_THE_REFUSAL })).toBeVisible();
     expect(screen.getByRole('button', { name: STAMP_OF_THE_SILENCE })).toBeVisible();
@@ -1663,11 +1512,10 @@ describe('the incidents of the chapters on the 2D map', () => {
     await drawWithoutAnimations(user);
     const yours = await openTheTerminal(user);
     await sendNc(user, yours, IP.lucia, NC_TO_THE_APP);
-    await confirm(user, yours);
     expect(screen.getByRole('button', { name: STAMP_OF_THE_FIRST_CONNECTION })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: LUCIA }));
+    await user.click(pieceLabel(LUCIA));
     await user.click(screen.getByRole('tab', { name: SERVICES_TAB }));
-    const services = screen.getByRole('dialog', { name: SERVICES_CARD });
+    const services = screen.getByRole('region', { name: LUCIA });
     const onlyHere = within(services).getByRole('button', { name: ONLY_THIS_DEVICE });
     const everywhere = within(services).getByRole('button', { name: EVERY_IP });
     expect([onlyHere, everywhere].map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
@@ -1684,14 +1532,12 @@ describe('the incidents of the chapters on the 2D map', () => {
     const yours = await openTheTerminal(user);
     await sendNc(user, yours, IP.lucia, NC_TO_THE_CLOSED_PORT);
     await sendNc(user, yours, IP.marta, NC_TO_THE_APP);
-    await confirm(user, yours);
     const hers = await openTheTerminal(user, LUCIA);
     await sendNc(user, hers, IP.loopback, NC_TO_THE_APP);
-    await confirm(user, hers);
     expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
-    await user.click(screen.getByRole('button', { name: LUCIA }));
+    await user.click(pieceLabel(LUCIA));
     await user.click(screen.getByRole('tab', { name: SERVICES_TAB }));
-    await user.click(within(screen.getByRole('dialog', { name: SERVICES_CARD })).getByRole('button', { name: EVERY_IP }));
+    await user.click(within(screen.getByRole('region', { name: LUCIA })).getByRole('button', { name: EVERY_IP }));
     expect(lucia).toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
     await sendNc(user, await openTheTerminal(user), IP.lucia, NC_TO_THE_APP);
     expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
@@ -1783,7 +1629,6 @@ describe('the incidents of the chapters on the 2D map', () => {
     const fixTask = () => Array.from(screen.getByRole('region', { name: CASE_TEXT.title(LOOP_CASE, onCall.diagnose.cases.length) }).querySelectorAll('.tasks li'), ({ textContent }) => textContent).at(-1);
     const terminal = await openTheTerminal(user);
     for (const message of [PING, TRACEROUTE]) await sendMessage(user, terminal, message);
-    await confirm(user, terminal);
     expect(stamps()).toEqual([STAMP_OF_THE_LOOPING_PING, STAMP_OF_THE_LOOPING_TRACEROUTE]);
     expect(fixTask()).toBe(FIX_NOT_DONE);
     await user.click(screen.getByRole('button', { name: CASE_TEXT.know }));
@@ -1792,12 +1637,11 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(screen.getByText(CASE_TEXT.causeNamed), 'the cause is named and the case waits for the fix').toBeInTheDocument();
     expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
     await user.click(screen.getByRole('button', { name: PROVIDER }));
-    const routes = screen.getByRole('dialog', { name: PROVIDER_ROUTES_CARD });
+    const routes = screen.getByRole('region', { name: PROVIDER });
     await user.click(within(routes).getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }));
     await user.click(within(routes).getByRole('button', { name: SERVERS_BLOCK }));
     await user.click(within(routes).getByRole('button', { name: DESTINATION_HOP }));
     await user.click(within(routes).getByRole('button', { name: ADD_ROUTE }));
-    await user.keyboard('{Escape}');
     expect(stamps(), 'writing a route clears the stamps').toEqual([]);
     expect(screen.queryByRole('button', { name: CASE_TEXT.next })).toBeNull();
     await sendMessage(user, await openTheTerminal(user), PING);
@@ -1813,8 +1657,6 @@ describe('the incidents of the chapters on the 2D map', () => {
     await drawWithoutAnimations(user);
     const terminal = await openTheTerminal(user);
     await sendMessage(user, terminal, NC_TO_THE_WEB_PORT);
-    await confirm(user, terminal);
-    expect(terminal).not.toBeInTheDocument();
     const trace = document.querySelector('.map-trace');
     if (trace === null) throw new Error('the map drew no trace');
     const path = pathOf(trace);
@@ -1834,7 +1676,7 @@ describe('the incidents of the chapters on the 2D map', () => {
     };
     const first = renderIncident(FIRST.id, '04-02');
     expect(screen.getByLabelText(SCREEN_TEXT.motion)).toBeChecked();
-    await confirm(user, await placeRule(user, SG_SERVIDOR1));
+    await placeRule(user, SG_SERVIDOR1);
     await finish(RIGHT_ANSWER);
     expect(screen.getByRole('link', { name: NEXT_INCIDENT })).toHaveAttribute('href', '#/level/04-02');
     first.unmount();
@@ -1843,11 +1685,10 @@ describe('the incidents of the chapters on the 2D map', () => {
     expect(screen.getAllByRole('listitem').find((task) => task.textContent?.includes(PING_TASK))).toHaveTextContent(LUCIA_TEXT.pending);
     expect(screen.queryByRole('dialog')).toBeNull();
     await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    const card = screen.getByRole('region', { name: SG_SERVIDOR2 });
     await user.click(within(card).getByRole('button', { name: REPLY_RULE }));
     await user.click(within(card).getByRole('button', { name: ECHO_REQUEST }));
     await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
-    await confirm(user, card);
     await finish(OPENING_RULE_ANSWER);
     expect(consoleErrors).not.toHaveBeenCalled();
   });
@@ -1856,20 +1697,21 @@ describe('the incidents of the chapters on the 2D map', () => {
     const user = userEvent.setup();
     renderIncident(FIRST.id);
     await drawWithoutAnimations(user);
-    const card = await placeRule(user, ANYWHERE);
-    await confirm(user, card);
+    await placeRule(user, ANYWHERE);
     expect(screen.getByRole('button', { name: ATTACKED_SERVER })).toBeVisible();
   });
 
   it('focus goes to the card heading when a Security Group opens, and back to it on Escape', async () => {
     const user = userEvent.setup();
     renderIncident(FIRST.id);
-    await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
-    const card = screen.getByRole('dialog', { name: SG_SERVIDOR2 });
+    const label = screen.getByRole('button', { name: SG_SERVIDOR2 });
+    await tabTo(user, label);
+    await user.keyboard('{Enter}');
+    const card = screen.getByRole('region', { name: SG_SERVIDOR2 });
     expect(within(card).getByRole('heading', { level: 2 })).toHaveFocus();
     await user.keyboard('{Escape}');
-    expect(card).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: SG_SERVIDOR2 })).toHaveFocus();
+    expect(screen.getByRole('region', { name: SG_SERVIDOR2 }), 'Escape leaves the panel where it is').toBe(card);
+    expect(label).toHaveFocus();
   });
 
   it('sending with Anywhere-IPv4 open gets Lucía\'s reply, and with the card still open the fix closes it and focuses the question', async () => {
@@ -1886,7 +1728,7 @@ describe('the incidents of the chapters on the 2D map', () => {
     await user.click(within(card).getByRole('button', { name: SG_SERVIDOR1 }));
     await sendTheSolution(user);
     expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
-    expect(card).not.toBeInTheDocument();
+    expect(within(card).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Estado']);
     expect(consoleErrors).not.toHaveBeenCalled();
   });
 

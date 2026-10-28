@@ -1,21 +1,21 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useReducer } from 'react';
+import { createRef, useReducer } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { BROWSER_TEXT, SITES_TEXT, TERMINAL_TEXT } from '@/copy';
-import { pieceCard, pieceViews, sessionReducer, startSession } from '@/game';
+import { BROWSER_TEXT, PIECE_TEXT, SITES_TEXT, TERMINAL_TEXT } from '@/copy';
+import { inspect, pieceCard, pieceViews, sessionReducer, startSession } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { OFFICE_FLOORS } from '@/testing/fixtures';
 import { webSendIncident } from '@/testing/web/web-incident';
-import { PieceCard, pieceHandlers } from '@/ui/incident/map-cards/piece-card';
+import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 
 const WEB = webSendIncident();
 const LAPTOP = PIECE_ID.device('your-laptop');
 const SERVER = PIECE_ID.actor(OFFICE_FLOORS.server.id);
 const BROWSER_TAB = 'Navegador';
-const BROWSER_CARD = 'Navegador de tu-laptop';
-const SITES_CARD = 'Sitios de servidor-internet';
+const LAPTOP_NAME = 'tu-laptop';
+const SERVER_NAME = 'servidor-internet';
 const SHOP_URL = 'http://www.lucia.example/';
 const BLOG_URL = 'http://blog.lucia.example/';
 const ORDERS_BY_IP = 'http://192.168.1.11:3000/pedidos';
@@ -27,9 +27,7 @@ const SERVES_THE_SHOP = 'La tienda';
 
 function Hosted({ pieceId = LAPTOP }: { pieceId?: string }) {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([WEB], WEB.id));
-  const card = pieceCard(session, pieceId);
-  if (!card) throw new Error('missing the card of the piece');
-  return <PieceCard card={card} {...pieceHandlers(session, dispatch, vi.fn())} onClose={vi.fn()} />;
+  return <ShellPanel session={session} dispatch={dispatch} inspection={inspect(session, pieceId)} pieceId={pieceId} heading={createRef()} onClose={vi.fn()} onChoose={vi.fn()} />;
 }
 
 const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
@@ -53,8 +51,8 @@ describe('the tab of the browser', () => {
     render(<Hosted />);
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toContain(BROWSER_TAB);
     await user.click(screen.getByRole('tab', { name: BROWSER_TAB }));
-    expect(screen.getByRole('dialog', { name: BROWSER_CARD })).toBeInTheDocument();
-    expect(within(screen.getByRole('dialog')).getByRole('button', { name: BROWSER_TEXT.open })).toBeDisabled();
+    expect(screen.getByRole('region', { name: LAPTOP_NAME })).toBeInTheDocument();
+    expect(within(screen.getByRole('region')).getByRole('button', { name: BROWSER_TEXT.open })).toBeDisabled();
   });
 
   it('opens an address and draws the page the server sent as the text of the card', async () => {
@@ -107,11 +105,12 @@ describe('the sites card of a web server', () => {
   const add = () => screen.getByRole('button', { name: SITES_TEXT.add });
   const rows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1);
 
-  it('a piece with a single card draws no tab bar', () => {
+  it('a piece with a single table draws no ficha bar and names the table under its piece', () => {
     expect(pieceCard(startSession([WEB], WEB.id), SERVER)?.tabbed).toBe(false);
     render(<Hosted pieceId={SERVER} />);
-    expect(screen.queryByRole('tablist')).toBeNull();
-    expect(screen.getByRole('dialog', { name: SITES_CARD })).toBeInTheDocument();
+    expect(screen.getAllByRole('tablist').map((list) => list.getAttribute('aria-label'))).toEqual([PIECE_TEXT.tabsName]);
+    expect(within(screen.getByRole('region', { name: SERVER_NAME })).getByRole('heading', { name: 'Sitios' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: `Sitios de ${SERVER_NAME}` })).toBeInTheDocument();
   });
 
   it('placing a site needs both trays and then places it', async () => {
@@ -128,7 +127,7 @@ describe('the sites card of a web server', () => {
     expect(rows()[1]).toHaveTextContent(`${BLOG_NAME}${SERVES_THE_BLOG}`);
     expect(pressed(BLOG_NAME)).toBe('false');
     expect(add()).toBeDisabled();
-    expect(screen.getByRole('heading', { name: SITES_CARD })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: SERVER_NAME })).toHaveFocus();
   });
 
   it('a rejected site shows its problem as an error message under the table, in a status region that was already there', async () => {

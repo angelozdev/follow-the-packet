@@ -9,8 +9,8 @@ const SG_SERVIDOR1 = 'SG servidor1';
 
 
 async function openDoor(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: SG_SERVIDOR2, exact: true }).click();
-  return page.getByRole('dialog', { name: SG_SERVIDOR2 });
+  await page.locator('.incident__map').getByRole('button', { name: SG_SERVIDOR2, exact: true }).click();
+  return page.getByRole('region', { name: SG_SERVIDOR2, exact: true });
 }
 
 async function placeRule(card: Locator, source: string) {
@@ -27,17 +27,15 @@ async function playBoth(page: Page) {
   await page.getByRole('link', { name: '1. El primer ping' }).click();
   const first = await openDoor(page);
   await placeRule(first, SG_SERVIDOR1);
-  await first.getByRole('button', { name: 'Listo' }).click();
   await submitAndFinish(page, /no había ninguna para el ping de servidor1/);
 
   await page.getByRole('link', { name: 'Siguiente incidente' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Abre lo justo' })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'vuelva a hacer' })).toContainText('pendiente');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: SG_SERVIDOR2, exact: true })).toHaveCount(0);
   const second = await openDoor(page);
   await second.getByRole('button', { name: /^Quitar la regla ICMP · Echo Reply/ }).click();
   await placeRule(second, SG_SERVIDOR1);
-  await second.getByRole('button', { name: 'Listo' }).click();
   await submitAndFinish(page, /solo hace falta permitir la ida/);
 }
 

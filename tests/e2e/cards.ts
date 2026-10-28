@@ -3,31 +3,30 @@ import { expect, type Locator, type Page } from '@playwright/test';
 const DONE = 'Listo';
 const SEND = 'Enviar';
 const YOUR_LAPTOP = 'tu-laptop';
+const MAP = '.incident__map';
 
-/** Returns the card of a piece, found by its name as a screen reader hears it. */
-export function card(page: Page, name: string): Locator {
-  return page.getByRole('dialog', { name });
+/** Returns the panel of a piece, found by the name of the piece as a screen reader hears it. */
+export function card(page: Page, piece: string): Locator {
+  return page.getByRole('region', { name: piece, exact: true });
 }
 
-/** Clicks the label of a piece, as a player does, and returns the card that opens. */
-export async function openCard(page: Page, device: string): Promise<Locator> {
-  await page.getByRole('button', { name: device, exact: true }).click();
-  const opened = card(page, device);
+/** Clicks the label of a piece on the map, as a player does, and returns its panel; with a `tab` it also clicks that tab of the panel. */
+export async function openCard(page: Page, piece: string, tab?: string): Promise<Locator> {
+  await page.locator(MAP).getByRole('button', { name: piece, exact: true }).click();
+  const opened = card(page, piece);
   await expect(opened).toBeVisible();
+  if (tab !== undefined) await opened.getByRole('tab', { name: tab, exact: true }).click();
   return opened;
 }
 
-/** Presses «Listo» on a card. */
+/** Presses «Listo» on a panel that has it. */
 export async function confirm(opened: Locator) {
   await opened.getByRole('button', { name: DONE, exact: true }).click();
 }
 
-/** Opens the terminal of a laptop that sends, your own unless another is given. */
-export async function openTerminal(page: Page, laptop = YOUR_LAPTOP): Promise<Locator> {
-  await page.getByRole('button', { name: laptop, exact: true }).click();
-  const terminal = card(page, `Terminal de ${laptop}`);
-  await expect(terminal).toBeVisible();
-  return terminal;
+/** Opens the terminal of a laptop that sends, your own unless another is given: the panel of the laptop on its «Terminal» tab. */
+export function openTerminal(page: Page, laptop = YOUR_LAPTOP): Promise<Locator> {
+  return openCard(page, laptop, 'Terminal');
 }
 
 /** Picks an address in the open terminal and sends the packet. */

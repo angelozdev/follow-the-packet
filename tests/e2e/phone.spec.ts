@@ -19,8 +19,8 @@ async function sidewaysOverflow(page: Page): Promise<number> {
 }
 
 async function tapPiece(page: Page, name: string): Promise<Locator> {
-  await page.getByRole('button', { name, exact: true }).tap();
-  const opened = page.getByRole('dialog', { name });
+  await page.locator('.incident__map').getByRole('button', { name, exact: true }).tap();
+  const opened = page.getByRole('region', { name, exact: true });
   await expect(opened).toBeVisible();
   return opened;
 }
@@ -52,7 +52,7 @@ test('the first incident is played with a touch at 390×844: no horizontal scrol
   await expect(printer.getByRole('status')).toContainText(NOTE_RULE);
   await tapDone(printer);
   await expect(printer).toBeHidden();
-  expect(await sidewaysOverflow(page), 'nor with the cards of the incident open').toBe(0);
+  expect(await sidewaysOverflow(page), 'nor with the panels of the incident open').toBe(0);
 
   await page.getByRole('button', { name: 'Enviar solución' }).tap();
   await page.getByRole('button', { name: RIGHT_ANSWER }).tap();

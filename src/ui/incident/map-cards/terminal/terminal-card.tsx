@@ -3,8 +3,7 @@ import { TERMINAL_TEXT, type TermText } from '@/copy';
 import { Button, ChipTray } from '@/design';
 import { pickedParts, stripAddress, type SendPicks, type SendTrayName, type TerminalCard as Terminal, type ToolOutput, type TracerouteView, type UrlPartName, type UrlPicks } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
-import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
-import { FramedCard, trayChips, type CardFrame } from '@/ui/incident/map-cards/chip-card';
+import { trayChips, type CardFrame } from '@/ui/incident/map-cards/card-frame';
 import { UrlStripTray } from '@/ui/incident/map-cards/web/url-strip';
 import { CommandLine } from './command-line';
 import { OutputCard, type Printed } from './output-card';
@@ -19,7 +18,7 @@ export interface TerminalHandlers {
   onSend: (picks: SendPicks) => void;
 }
 
-/** What the player has half done in a terminal: the chips picked and whether the output of a `dig` is unfolded. It lives above the card, so a card that shows the terminal as one tab among others keeps it when the player switches tabs. */
+/** What the player has half done in a terminal: the chips picked and whether the output of a `dig` is unfolded. It lives above the tabs of the panel, so the panel keeps it when the player switches tabs and pieces. */
 export interface TerminalDraft {
   picks: Partial<SendPicks>;
   parts: UrlPicks;
@@ -29,8 +28,8 @@ export interface TerminalDraft {
   setUnfolded: (unfolded: boolean) => void;
 }
 
-export function useTerminalDraft(card: Terminal | null): TerminalDraft {
-  const [picks, setPicks] = useState<Partial<SendPicks>>(card?.fixed ?? {});
+export function useTerminalDraft(): TerminalDraft {
+  const [picks, setPicks] = useState<Partial<SendPicks>>({});
   const [parts, setParts] = useState<UrlPicks>({});
   const [unfolded, setUnfolded] = useState(false);
   return { picks, parts, unfolded, setPicks, setParts, setUnfolded };
@@ -91,17 +90,4 @@ export function terminalFrame(card: Terminal, draft: TerminalDraft, { describe, 
       </>
     ),
   };
-}
-
-interface TerminalCardProps extends TerminalHandlers {
-  card: Terminal;
-  draft?: TerminalDraft;
-  onClose: () => void;
-}
-
-/** The terminal of an origin as a card of its own, for a piece whose only card it is. It keeps its own draft unless the caller gives one, which a screen does to keep what was picked when the card moves to the piece of another origin that shows its terminal in tabs. */
-export function TerminalCard({ card, draft, onClose, ...handlers }: TerminalCardProps) {
-  const heading = useFocusOnMount<HTMLHeadingElement>();
-  const own = useTerminalDraft(card);
-  return <FramedCard frame={terminalFrame(card, draft ?? own, handlers)} heading={heading} onClose={onClose} />;
 }

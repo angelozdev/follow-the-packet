@@ -79,8 +79,8 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .map-card .card__body { display: flex; flex-direction: column; min-height: 0; }
 .map-card .chip-card { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
 .map-card .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); }
-.incident__inspection .card__body::-webkit-scrollbar, .incident__side > .card > .card__body::-webkit-scrollbar, .map-card .chip-card__body::-webkit-scrollbar { width: var(--space-sm); }
-.incident__inspection .card__body::-webkit-scrollbar-thumb, .incident__side > .card > .card__body::-webkit-scrollbar-thumb, .map-card .chip-card__body::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-surface); border-radius: var(--radius-pill); }
+.incident__inspection .card__body::-webkit-scrollbar, .incident__side > .card > .card__body::-webkit-scrollbar, .incident__side .chip-card__body::-webkit-scrollbar, .map-card .chip-card__body::-webkit-scrollbar { width: var(--space-sm); }
+.incident__inspection .card__body::-webkit-scrollbar-thumb, .incident__side > .card > .card__body::-webkit-scrollbar-thumb, .incident__side .chip-card__body::-webkit-scrollbar-thumb, .map-card .chip-card__body::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-surface); border-radius: var(--radius-pill); }
 .stamp { pointer-events: auto; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font: var(--weight-bold) var(--text-lg) var(--font-display); background: var(--color-surface); border: var(--stroke-heavy) solid currentColor; border-radius: var(--radius-round); transform: rotate(-8deg); }
 .stamp--arrived, .stamp--warned { color: var(--color-ink); }
 .stamp--blocked { color: var(--color-danger); }
@@ -108,6 +108,9 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .chip-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
 .chip-card p:not(.message) { margin: 0; }
 .chip-card__body, .chip-card__actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
+.incident__side .chip-card__body { padding: var(--space-2xs); margin: calc(-1 * var(--space-2xs)); }
+.incident__side .tabs__panel { grid-template-columns: minmax(0, 1fr); }
+.incident__side .chip-card { gap: var(--space-md); }
 .rules { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2xs); }
 .rules li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); }
 .rules__text { min-width: 0; }
@@ -204,7 +207,10 @@ button.stamp { cursor: help; }
 @media (min-width: 901px) {
   .incident__lucia { flex: 0 1 auto; min-height: 0; max-height: 60%; overflow-y: auto; padding-bottom: var(--space-xs); }
   .incident__side > .card { flex: 1 1 0; min-height: 35%; display: flex; flex-direction: column; }
-  .incident__side > .card > .card__body { min-height: 0; overflow-y: auto; }
+  .incident__side > .card > .card__body { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+  .incident__side .chip-card { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr) auto; }
+  .incident__side .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; }
+  .incident__side .chip-card__body > .tabs > .tabs__list { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
   .incident__inspection[data-place='left'] { place-self: end start; }
   .incident .map-stage { position: absolute; inset: 0; overflow: auto; }
   .incident .map-stage__sheet { min-height: 100%; }

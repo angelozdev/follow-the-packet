@@ -3,9 +3,8 @@ import { MESSAGE_TEXT, TABLE_TEXT, toPlainText } from '@/copy';
 import { Button, ChipTray, Message, Table } from '@/design';
 import type { TableCard as Tabled, TableCell } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
-import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { FramedCard, trayChips, type CardFrame } from './chip-card';
+import { trayChips, type CardFrame } from './card-frame';
 
 type Picks = Record<string, string>;
 
@@ -15,7 +14,7 @@ export interface TableHandlers {
   onRemove: (tableId: string, entryId: string) => void;
 }
 
-/** The chips the player has picked in the trays of the editable tables of a piece, by table. They live above the card, so a card that shows several tables as tabs keeps them when the player switches tabs. */
+/** The chips the player has picked in the trays of the editable tables of a piece, by table. They live above the tabs of the panel, so the panel keeps them when the player switches fichas, tabs and pieces. */
 export interface EntryDrafts {
   picked: (tableId: string) => Picks;
   pick: (tableId: string, tray: string, chipId: string) => void;
@@ -118,16 +117,4 @@ export function tableFrame(card: Tabled, drafts: EntryDrafts, { onPlace, onRemov
       />
     ),
   };
-}
-
-interface TableCardProps extends TableHandlers {
-  card: Tabled;
-  onClose: () => void;
-}
-
-/** A table as a card of its own, for a piece whose only card it is. */
-export function TableCard({ card, onPlace, onRemove, onClose }: TableCardProps) {
-  const heading = useFocusOnMount<HTMLHeadingElement>();
-  const drafts = useEntryDrafts();
-  return <FramedCard frame={tableFrame(card, drafts, { onPlace, onRemove }, () => heading.current?.focus())} heading={heading} onClose={onClose} />;
 }

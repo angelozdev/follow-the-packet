@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useReducer, useState } from 'react';
+import { createRef, useReducer, useState, type Dispatch } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TASK_CARD_TEXT } from '@/copy';
-import { identifyCard, sessionReducer, startSession, taskHolds } from '@/game';
+import { inspect, sessionReducer, startSession, taskHolds, type Session, type SessionAction } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { NOTE_RULE, identifyIncident } from '@/testing/incidents';
-import { IdentifyCard } from './identify-card';
+import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 
 const INCIDENT = identifyIncident();
 const START = startSession([INCIDENT], INCIDENT.id);
+const PRINTER = PIECE_ID.device('printer');
 const NOTE = '192.168.1.300';
 const RIGHT = '192.168.1.21';
 const OTHER = '192.168.1.12';
@@ -24,31 +25,29 @@ const PATHS = [
   [OTHER, OTHER_FEEDBACK, 'open'],
 ] as const;
 
-function cardOf(pieceId: string) {
-  const card = identifyCard(START, pieceId);
-  if (!card) throw new Error(`missing card ${pieceId}`);
-  return card;
-}
+const panelFor = (session: Session, pieceId: string | null, dispatch: Dispatch<SessionAction> = vi.fn(), onClose: () => void = vi.fn()) => <ShellPanel session={session} dispatch={dispatch} inspection={pieceId === null ? null : inspect(session, pieceId)} pieceId={pieceId} heading={createRef()} onClose={onClose} onChoose={vi.fn()} />;
 
-function renderCard(pieceId = PIECE_ID.device('printer')) {
-  const handlers = { onAnswer: vi.fn(), onClose: vi.fn() };
-  render(<IdentifyCard card={cardOf(pieceId)} {...handlers} />);
-  return handlers;
+function renderCard(pieceId = PRINTER) {
+  const spies = { dispatch: vi.fn(), onClose: vi.fn() };
+  render(panelFor(START, pieceId, spies.dispatch, spies.onClose));
+  return spies;
 }
 
 function ReopeningPrinter() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([INCIDENT], INCIDENT.id));
-  const [open, setOpen] = useState(true);
-  const card = identifyCard(session, PIECE_ID.device('printer'));
+  const [chosen, choose] = useState<string | null>(PRINTER);
   const printerTask = INCIDENT.tasks[1];
   return (
     <>
       <span data-testid="saved">{session.answers.printer?.ip}</span>
       <span data-testid="printer-task">{taskHolds(printerTask, session.runs, session.sent, session.answers) ? 'done' : 'open'}</span>
-      <button type="button" onClick={() => setOpen(true)}>
+      <button type="button" onClick={() => choose(null)}>
+        away
+      </button>
+      <button type="button" onClick={() => choose(PRINTER)}>
         reopen
       </button>
-      {open && card && <IdentifyCard card={card} onAnswer={(picks) => dispatch({ type: 'answerCard', deviceId: card.deviceId, picks })} onClose={() => setOpen(false)} />}
+      {panelFor(session, chosen, dispatch, () => choose(null))}
     </>
   );
 }
@@ -59,21 +58,20 @@ const pressed = (name: string) => chip(name).getAttribute('aria-pressed');
 describe('identify card', () => {
   it('shows the trays of the device and reports the picks only when Listo is pressed', async () => {
     const user = userEvent.setup();
-    const { onAnswer, onClose } = renderCard(PIECE_ID.device('guest-laptop'));
-    expect(screen.getByRole('heading', { name: 'laptop-visita' })).toHaveFocus();
-    expect(screen.getByRole('dialog', { name: 'laptop-visita' })).toBeInTheDocument();
+    const { dispatch, onClose } = renderCard(PIECE_ID.device('guest-laptop'));
+    expect(screen.getByRole('region', { name: 'laptop-visita' })).toBeInTheDocument();
     expect(screen.getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['¿Está en la red?']);
     await user.click(chip('No'));
     expect(pressed('No')).toBe('true');
-    expect(onAnswer).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
     await user.click(chip(LISTO));
-    expect(onAnswer).toHaveBeenCalledExactlyOnceWith({ 'in-network': 'no' });
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith({ type: 'answerCard', deviceId: 'guest-laptop', picks: { 'in-network': 'no' } });
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('shows the question of the card and draws a yes or no as one segmented pill', () => {
     renderCard();
-    expect(screen.getByRole('dialog', { name: 'impresora' })).toHaveTextContent('¿Cuál es su dirección IP?');
+    expect(screen.getByRole('region', { name: 'impresora' })).toHaveTextContent('¿Cuál es su dirección IP?');
     expect(screen.getByRole('group', { name: 'Dirección IP' })).not.toHaveClass('tray--segmented');
     renderCard(PIECE_ID.device('guest-laptop'));
     expect(screen.getByRole('group', { name: '¿Está en la red?' })).toHaveClass('tray--segmented');
@@ -104,7 +102,7 @@ describe('identify card', () => {
     await user.click(chip(LISTO));
     expect(screen.getByRole('status')).toHaveTextContent(NOTE_FEEDBACK);
     expect(screen.getByRole('status')).not.toHaveTextContent(NOTE_RULE);
-    expect(screen.getByRole('dialog', { name: 'impresora' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'impresora' })).toBeInTheDocument();
     expect(pressed(NOTE)).toBe('true');
     expect(screen.getByTestId('printer-task')).toHaveTextContent('open');
     expect(screen.getByTestId('saved')).toHaveTextContent('note');
@@ -118,7 +116,7 @@ describe('identify card', () => {
       await user.click(chip(LISTO));
       expect(screen.getByRole('status')).toHaveTextContent(line);
       expect(screen.getByTestId('printer-task')).toHaveTextContent(task);
-      expect(screen.getByRole('dialog', { name: 'impresora' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'impresora' })).toBeInTheDocument();
     }
   });
 
@@ -150,7 +148,7 @@ describe('identify card', () => {
     expect(right).toHaveTextContent(SUCCESS);
   });
 
-  it('a pick counts only after Listo, and Escape keeps the answer saved before', async () => {
+  it('a pick counts only after Listo, and the pick stays as a draft when the panel goes away and comes back', async () => {
     const user = userEvent.setup();
     render(<ReopeningPrinter />);
     expect(screen.getByTestId('saved')).toHaveTextContent('note');
@@ -158,14 +156,16 @@ describe('identify card', () => {
     expect(screen.getByTestId('saved')).toHaveTextContent('note');
     expect(screen.getByTestId('printer-task')).toHaveTextContent('open');
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: 'impresora' }), 'Escape closes nothing').toBeInTheDocument();
+    await user.click(chip('away'));
+    expect(screen.queryByRole('region', { name: 'impresora' })).toBeNull();
     expect(screen.getByTestId('saved')).toHaveTextContent('note');
     expect(screen.getByTestId('printer-task')).toHaveTextContent('open');
     await user.click(chip('reopen'));
-    expect(pressed(NOTE)).toBe('true');
-    expect(pressed(RIGHT)).toBe('false');
+    expect(pressed(RIGHT)).toBe('true');
+    expect(pressed(NOTE)).toBe('false');
+    expect(screen.getByTestId('saved')).toHaveTextContent('note');
 
-    await user.click(chip(RIGHT));
     await user.click(chip(LISTO));
     expect(screen.getByTestId('saved')).toHaveTextContent('right');
     expect(screen.getByTestId('printer-task')).toHaveTextContent('done');
@@ -178,7 +178,7 @@ describe('identify card', () => {
     await user.click(chip(RIGHT));
     await user.click(chip(LISTO));
     await user.click(chip(LISTO));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'impresora' })).toBeNull();
     await user.click(chip('reopen'));
     expect(pressed(RIGHT)).toBe('true');
     expect(pressed(NOTE)).toBe('false');
@@ -187,11 +187,11 @@ describe('identify card', () => {
 
   it('pressing Listo with a chip that has no feedback closes the card', async () => {
     const user = userEvent.setup();
-    const { onAnswer, onClose } = renderCard(PIECE_ID.device('guest-laptop'));
+    const { dispatch, onClose } = renderCard(PIECE_ID.device('guest-laptop'));
     await user.click(chip('No'));
     await user.click(chip(LISTO));
     expect(screen.queryByRole('status')).toBeNull();
-    expect(onAnswer).toHaveBeenCalledWith({ 'in-network': 'no' });
+    expect(dispatch).toHaveBeenCalledWith({ type: 'answerCard', deviceId: 'guest-laptop', picks: { 'in-network': 'no' } });
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -234,27 +234,27 @@ describe('identify card', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('Escape closes the card even when the chip picked has a feedback line', async () => {
+  it('Escape closes nothing, not even when the chip picked has a feedback line', async () => {
     const user = userEvent.setup();
-    const { onAnswer, onClose } = renderCard();
+    const { dispatch, onClose } = renderCard();
     await user.click(chip(LISTO));
     expect(screen.getByRole('status')).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    expect(onClose).toHaveBeenCalledOnce();
-    expect(onAnswer).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('picks and confirms with the keyboard', async () => {
     const user = userEvent.setup();
-    const { onAnswer } = renderCard(PIECE_ID.device('guest-laptop'));
-    await user.tab();
-    expect(chip('Sí')).toHaveFocus();
+    const { dispatch } = renderCard(PIECE_ID.device('guest-laptop'));
+    chip('Sí').focus();
     await user.tab();
     await user.keyboard('{Enter}');
     expect(pressed('No')).toBe('true');
     await user.tab();
     expect(chip(LISTO)).toHaveFocus();
     await user.keyboard('{Enter}');
-    expect(onAnswer).toHaveBeenCalledWith({ 'in-network': 'no' });
+    expect(dispatch).toHaveBeenCalledWith({ type: 'answerCard', deviceId: 'guest-laptop', picks: { 'in-network': 'no' } });
   });
 });

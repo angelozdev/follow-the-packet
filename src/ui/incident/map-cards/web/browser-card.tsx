@@ -3,9 +3,8 @@ import { BROWSER_TEXT, TABLE_TEXT } from '@/copy';
 import { Button, ChipTray, Table } from '@/design';
 import type { BrowserCard as Browser, BrowserView, RememberedCookie, SendPicks } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
-import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { FramedCard, trayChips, type CardFrame } from '@/ui/incident/map-cards/chip-card';
+import { trayChips, type CardFrame } from '@/ui/incident/map-cards/card-frame';
 
 /** What the browser asks of its screen: what it shows for the address picked, opening that address and signing in as a user (a send, like opening). */
 export interface BrowserHandlers {
@@ -14,7 +13,7 @@ export interface BrowserHandlers {
   onSignIn: (picks: SendPicks) => void;
 }
 
-/** The address and the user the player has picked in the browser of a device (the user is the id of the message that signs in as that user). They live above the card, so a card that shows the browser as one tab among others keeps them when the player switches tabs. */
+/** The address and the user the player has picked in the browser of a device (the user is the id of the message that signs in as that user). They live above the tabs of the panel, so the panel keeps them when the player switches tabs and pieces. */
 export interface BrowserDraft {
   address: string | null;
   setAddress: (address: string) => void;
@@ -106,17 +105,4 @@ export function browserFrame(card: Browser, draft: BrowserDraft, { view, onOpen,
       </>
     ),
   };
-}
-
-interface BrowserCardProps extends BrowserHandlers {
-  card: Browser;
-  draft?: BrowserDraft;
-  onClose: () => void;
-}
-
-/** The browser of a device as a card of its own, for a piece whose only card it is. It keeps its own draft unless the caller gives one. */
-export function BrowserCard({ card, draft, onClose, ...handlers }: BrowserCardProps) {
-  const heading = useFocusOnMount<HTMLHeadingElement>();
-  const own = useBrowserDraft();
-  return <FramedCard frame={browserFrame(card, draft ?? own, handlers)} heading={heading} onClose={onClose} />;
 }

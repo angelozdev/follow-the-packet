@@ -6,7 +6,6 @@ import {
   OFFICE_IP,
   bringTheLastLineIntoView,
   card,
-  confirm,
   holdTheGrace,
   moveTheMouseAway,
   moveTheMouseTo,
@@ -121,8 +120,6 @@ async function sendTheLostPing(): Promise<Locator> {
   const terminal = await openTerminal();
   await sendTo(terminal, OFFICE_IP.server);
   await sendTo(terminal, OFFICE_IP.otherOffice);
-  await confirm(terminal);
-  await expect.element(terminal).not.toBeInTheDocument();
   const lost = page.getByRole('button', { name: LOST_TO_THE_OTHER_OFFICE });
   await expect.element(lost).toBeVisible();
   return lost;
@@ -141,8 +138,6 @@ async function sendNc(terminal: Locator, ip: string, message: string): Promise<v
 async function stackFourStampsAtLucia(): Promise<Locator> {
   const terminal = await openTerminal(LUCIA_LAPTOP);
   for (const ip of [OFFICE_IP.lucia, LOOPBACK]) for (const message of [NC_TO_THE_APP, NC_TO_THE_CLOSED_PORT]) await sendNc(terminal, ip, message);
-  await confirm(terminal);
-  await expect.element(terminal).not.toBeInTheDocument();
   await moveTheMouseAway();
   return page.getByRole('button', { name: MAP_TEXT.moreStamps(HIDDEN_AT_LUCIA, STAMPS_AT_LUCIA), exact: true });
 }
@@ -232,14 +227,13 @@ describe('at the desktop window', () => {
     const first = await show(INCIDENT);
     await standStill();
     const label = page.getByRole('button', { name: YOUR_LAPTOP, exact: true });
-    const terminal = card(`Terminal de ${YOUR_LAPTOP}`);
+    const terminal = card(YOUR_LAPTOP);
     const box = page.getByRole('region', { name: YOUR_LAPTOP, exact: true });
     const chip = terminal.getByRole('button', { name: OFFICE_IP.server, exact: true });
 
     await userEvent.click(label);
 
     await expect.element(terminal).toBeVisible();
-    await expect.poll(() => terminal.element().contains(document.activeElement), { message: 'the terminal holds the focus' }).toBe(true);
     await expect.element(box, { message: 'the piece is in the panel' }).toBeVisible();
     expect(box.element().closest(PANEL_CARD)).toBe(box.element());
     await expect.element(label).toHaveAttribute(PINNED_MARK, 'true');
@@ -259,7 +253,7 @@ describe('at the desktop window', () => {
     await userEvent.keyboard('{Enter}');
 
     await expect.element(terminal).toBeVisible();
-    await expect.poll(() => terminal.element().contains(document.activeElement), { message: 'with the keyboard the terminal holds the focus too' }).toBe(true);
+    await expect.poll(() => box.getByRole('heading', { name: YOUR_LAPTOP }).element() === document.activeElement, { message: 'with the keyboard the focus goes to the heading of the panel' }).toBe(true);
     await expect.element(box, { message: 'with the keyboard the piece is in the panel' }).toBeVisible();
     await expect.element(label).toHaveAttribute(PINNED_MARK, 'true');
   });

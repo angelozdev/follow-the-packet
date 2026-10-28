@@ -22,8 +22,8 @@ const OPTIONS = [SAMPLE.option, SAMPLE.chosen, SAMPLE.closed];
 const LETTER = /^[A-Z]$/;
 const TABLE_CAPTION = SAMPLE.table.caption;
 const REMOVE_BUTTON = new RegExp(`^${SAMPLE.table.remove} `);
-const MAP_CARD_WIDTH_PX = 352;
-const MAP_CARD_ROOM_PX = 224;
+const PANEL_WIDTH_PX = 380;
+const PANEL_ROOM_PX = 240;
 const ROW_COPIES = 6;
 const WHEEL_PX = 120;
 const OUTPUT_WHEEL_PX = 30;
@@ -107,10 +107,10 @@ async function openCatalog() {
   return { container, pieces, elements: page.getByRole('region', { name: INTERFACE_TEXT.title }) };
 }
 
-function inAMapCard(container: HTMLElement, source: Element): HTMLElement {
-  const holder = document.createElement('div');
-  holder.className = 'map-card';
-  holder.style.cssText = `position: fixed; top: 16px; left: 16px; z-index: 100; --card-width: ${MAP_CARD_WIDTH_PX}px; --card-room: ${MAP_CARD_ROOM_PX}px`;
+function inThePanel(container: HTMLElement, source: Element): HTMLElement {
+  const holder = document.createElement('aside');
+  holder.className = 'incident__side';
+  holder.style.cssText = `position: fixed; top: 16px; left: 16px; z-index: 100; width: ${PANEL_WIDTH_PX}px; height: ${PANEL_ROOM_PX}px`;
   holder.append(source);
   container.append(holder);
   return holder;
@@ -238,10 +238,10 @@ it('a long Table in a card on the map stays inside the card and scrolls there', 
   const card = source.cloneNode(true) as Element;
   const body = card.querySelector('tbody');
   for (let copy = 0; copy < ROW_COPIES; copy++) for (const row of rows) body?.append(row.cloneNode(true));
-  const holder = inAMapCard(container, card);
+  const holder = inThePanel(container, card);
   const [wrapper, table] = [theOne(holder, '.table'), theOne(holder, 'table')];
   const cardBox = boxOf(theOne(holder, '.card'));
-  expect(cardBox.height, 'the card keeps the height the map gives it').toBeLessThanOrEqual(MAP_CARD_ROOM_PX + 1);
+  expect(cardBox.height, 'the card keeps the height the column gives it').toBeLessThanOrEqual(PANEL_ROOM_PX + 1);
   expect(wrapper.scrollHeight, 'the Table has more rows than it shows').toBeGreaterThan(wrapper.clientHeight + 1);
   expect(getComputedStyle(wrapper).overflowY, 'the Table scrolls in its wrapper').toBe('auto');
   expect(getComputedStyle(wrapper, '::-webkit-scrollbar').width, 'the wrapper draws its own scrollbar').toBe(`${SCROLLBAR_PX}px`);
@@ -261,10 +261,10 @@ it('an unfolded output in a card on the map stays inside the card, scrolls in it
   await expect.element(elements.getByRole('button', { name: OUTPUT_HIDE })).toBeVisible();
   const source = document.querySelector(`[aria-label="${OUTPUT_GROUP}"]`)?.closest('.card');
   if (!source) throw new Error('the specimen of the output is not on the page');
-  const holder = inAMapCard(container, source.cloneNode(true) as Element);
+  const holder = inThePanel(container, source.cloneNode(true) as Element);
   const [card, body, foot] = [theOne(holder, '.card'), theOne(holder, '.chip-card__body'), theOne(holder, '.chip-card__actions')];
   const cardBox = boxOf(card);
-  expect(cardBox.height, 'the card keeps the height the map gives it').toBeLessThanOrEqual(MAP_CARD_ROOM_PX + 1);
+  expect(cardBox.height, 'the card keeps the height the column gives it').toBeLessThanOrEqual(PANEL_ROOM_PX + 1);
   expect(body.scrollHeight, 'the output has more lines than it shows').toBeGreaterThan(body.clientHeight + 1);
   expect(getComputedStyle(body).overflowY, 'the body of the card scrolls').toBe('auto');
   expect(getComputedStyle(body, '::-webkit-scrollbar').width, 'the body draws its own scrollbar').toBe(`${SCROLLBAR_PX}px`);

@@ -1,22 +1,21 @@
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import { MESSAGE_TEXT } from '@/copy';
 import { ChipTray, Message } from '@/design';
 import type { IdentifyCard as Identify } from '@/game';
 import { EntityIcon } from '@/scene';
-import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
 import { TaggedText } from '@/ui/tagged-text';
-import { FramedCard, trayChips, type CardFrame } from './chip-card';
+import { trayChips, type CardFrame } from './card-frame';
+import { useDraftsByKey } from './use-drafts-by-key';
 
 type Picks = Record<string, string>;
 type Tray = Identify['trays'][number];
 
-interface IdentifyCardProps {
-  card: Identify;
+interface IdentifyHandlers {
   onAnswer: (picks: Picks) => void;
   onClose: () => void;
 }
 
-/** What the player has half done in the card of a device: the chips picked in its trays and whether the lines of the chips picked show. It goes back to the answer saved when the card is the card of another device. */
+/** What the player has half done in the card of a device: the chips picked in its trays and whether the lines of the chips picked show. Each device has its own, and it starts from the answer saved. */
 export interface IdentifyDraft {
   picks: Picks;
   shown: boolean;
@@ -32,33 +31,30 @@ function chipPicked(tray: Tray, picks: Picks): Tray['chips'][number] | undefined
   return tray.chips.find((chip) => chip.id === picks[tray.id]);
 }
 
-interface DraftState {
-  deviceId: string | null;
-  picks: Picks;
-  shown: boolean;
+type DraftState = Pick<IdentifyDraft, 'picks' | 'shown'>;
+
+/** Returns what takes the card of a device and gives its draft. The drafts live above the tabs of the panel, one for each device, so the picks of a device are still there when the player chooses another piece and comes back, and when the panel changes tab. */
+export function useIdentifyDrafts(): (card: Identify) => IdentifyDraft {
+  const drafts = useDraftsByKey<DraftState>();
+  return (card) => {
+    const fresh = { picks: savedPicks(card), shown: false };
+    const { picks, shown } = drafts.of(card.deviceId, fresh);
+    return { picks, shown, setPicks: (next) => drafts.change(card.deviceId, fresh, { picks: next }), setShown: (next) => drafts.change(card.deviceId, fresh, { shown: next }) };
+  };
 }
 
-function freshDraft(card: Identify | null): DraftState {
-  return { deviceId: card?.deviceId ?? null, picks: card ? savedPicks(card) : {}, shown: false };
-}
-
-export function useIdentifyDraft(card: Identify | null): IdentifyDraft {
-  const deviceId = card?.deviceId ?? null;
-  const [kept, setKept] = useState<DraftState>(() => freshDraft(card));
-  const current = kept.deviceId === deviceId ? kept : freshDraft(card);
-  const change = (next: Partial<Pick<DraftState, 'picks' | 'shown'>>) => setKept((previous) => ({ ...(previous.deviceId === deviceId ? previous : freshDraft(card)), ...next }));
-  return { picks: current.picks, shown: current.shown, setPicks: (picks) => change({ picks }), setShown: (shown) => change({ shown }) };
-}
-
-/** Returns what the card of a device in an identify incident puts in its card: its question and a tray of chips for each thing to say about it, starting from the answer saved. A pick is only a draft: "Listo" confirms the picks of every tray and shows, under each tray, the lines of the chip picked; while they show, "Listo" closes the card, and picking another chip hides them. Escape closes the card at any time and leaves the answer saved as it was. */
-export function identifyFrame(card: Identify, draft: IdentifyDraft, { onAnswer, onClose }: Pick<IdentifyCardProps, 'onAnswer' | 'onClose'>): CardFrame {
+/** Returns what the card of a device in an identify incident puts in the panel: its question and a tray of chips for each thing to say about it, starting from the answer saved. A pick is only a draft: "Listo" confirms the picks of every tray and shows, under each tray, the lines of the chip picked; with no line to show, or while they show, "Listo" hides them and calls `onClose`, which the screen makes the release of the piece chosen, and picking another chip hides them. Nothing is reported before "Listo". */
+export function identifyFrame(card: Identify, draft: IdentifyDraft, { onAnswer, onClose }: IdentifyHandlers): CardFrame {
   const pick = (trayId: string, chipId: string) => {
     if (draft.picks[trayId] === chipId) return;
     draft.setPicks({ ...draft.picks, [trayId]: chipId });
     draft.setShown(false);
   };
   const done = () => {
-    if (draft.shown) return onClose();
+    if (draft.shown) {
+      draft.setShown(false);
+      return onClose();
+    }
     onAnswer(draft.picks);
     if (card.trays.some((tray) => (chipPicked(tray, draft.picks)?.lines.length ?? 0) > 0)) draft.setShown(true);
     else onClose();
@@ -90,11 +86,4 @@ export function identifyFrame(card: Identify, draft: IdentifyDraft, { onAnswer, 
       </>
     ),
   };
-}
-
-/** The card of a device in an identify incident as a card of its own, for a piece whose only card it is. */
-export function IdentifyCard({ card, onAnswer, onClose }: IdentifyCardProps) {
-  const heading = useFocusOnMount<HTMLHeadingElement>();
-  const draft = useIdentifyDraft(card);
-  return <FramedCard frame={identifyFrame(card, draft, { onAnswer, onClose })} heading={heading} onClose={onClose} />;
 }

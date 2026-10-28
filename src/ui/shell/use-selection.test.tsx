@@ -17,7 +17,7 @@ function clickOn(key: string, button: HTMLElement): MouseEvent<HTMLElement> {
 describe('the selection of the incident screen', () => {
   it('a choice is released when its piece is no longer drawn', () => {
     const button = document.createElement('button');
-    const { result, rerender } = renderHook(({ id }) => useSelection(startSession(INCIDENTS, id), () => false), { initialProps: { id: WITH_THE_PIECE } });
+    const { result, rerender } = renderHook(({ id }) => useSelection(startSession(INCIDENTS, id)), { initialProps: { id: WITH_THE_PIECE } });
 
     act(() => result.current.trigger(PIECE, {}).onClick?.(clickOn(PIECE, button)));
     expect(result.current.selected).toBe(PIECE);
@@ -30,7 +30,7 @@ describe('the selection of the incident screen', () => {
 
   it('a hover or a focus is not a choice, and only the chosen key wears the mark', () => {
     const button = document.createElement('button');
-    const { result } = renderHook(() => useSelection(startSession(INCIDENTS, WITH_THE_PIECE), () => false));
+    const { result } = renderHook(() => useSelection(startSession(INCIDENTS, WITH_THE_PIECE)));
     const hover = { onPointerEnter: () => undefined };
 
     expect(result.current.trigger(PIECE, hover).onPointerEnter).toBe(hover.onPointerEnter);

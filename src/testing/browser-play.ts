@@ -21,6 +21,7 @@ export const OFFICE_IP = {
 
 const YOUR_LAPTOP = 'tu-laptop';
 const MAP_LABEL = 'button.map-button';
+const MAP = '.incident__map';
 const STILL_FRAMES = 5;
 const FRAME_BUDGET = 1200;
 export const GENTLE_WHEEL_PX = 60;
@@ -28,7 +29,7 @@ const WHEEL_PX = 300;
 const MAX_TURNS = 40;
 const SIDE_PANEL = '.incident__side';
 const SLACK_PX = 1;
-const WATCHED = '.card, .map-card, .map-button, button.stamp, .html-layer .caption, .incident__inspection, .incident__map, .incident__bar, .incident__side';
+const WATCHED = '.card, .map-button, button.stamp, .html-layer .caption, .incident__inspection, .incident__map, .incident__bar, .incident__side';
 const MOUSE_AWAY = { x: 0, y: 0 };
 const REDUCED_MOTION = { name: 'prefers-reduced-motion', value: 'reduce' };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -63,34 +64,37 @@ export async function showTheScreen(screen: ReactElement) {
   return view;
 }
 
-/** Returns the card of a piece, found by its name as a screen reader hears it. */
-export function card(name: string): Locator {
-  return page.getByRole('dialog', { name });
+/** Returns the panel of a piece, found by the name of the piece as a screen reader hears it. */
+export function card(piece: string): Locator {
+  return page.getByRole('region', { name: piece, exact: true });
 }
 
-/** Clicks the label of a piece with the mouse, as a player does, and returns the card that opens. */
-export async function openCard(device: string): Promise<Locator> {
-  await userEvent.click(page.getByRole('button', { name: device, exact: true }));
-  const opened = card(device);
+/** Returns the label of a piece on the map, found by its name among the buttons of the map only: the chips of the panel may carry the same name. */
+export function pieceLabel(piece: string): Locator {
+  return page.elementLocator(document.querySelector(MAP) as Element).getByRole('button', { name: piece, exact: true });
+}
+
+/** Clicks the label of a piece with the mouse, as a player does, and returns its panel; with a `tab` it also clicks that tab of the panel. */
+export async function openCard(piece: string, tab?: string): Promise<Locator> {
+  await userEvent.click(pieceLabel(piece));
+  const opened = card(piece);
   await expect.element(opened).toBeVisible();
+  if (tab !== undefined) await userEvent.click(opened.getByRole('tab', { name: tab, exact: true }));
   return opened;
 }
 
-/** Opens the terminal of a laptop that sends, your own unless another is given. */
-export async function openTerminal(laptop: string = YOUR_LAPTOP): Promise<Locator> {
-  await userEvent.click(page.getByRole('button', { name: laptop, exact: true }));
-  const terminal = card(`Terminal de ${laptop}`);
-  await expect.element(terminal).toBeVisible();
-  return terminal;
+/** Opens the terminal of a laptop that sends, your own unless another is given: the panel of the laptop on its «Terminal» tab. */
+export function openTerminal(laptop: string = YOUR_LAPTOP): Promise<Locator> {
+  return openCard(laptop, 'Terminal');
 }
 
-/** Focuses the label of a piece and presses Enter on it, which opens its card without a click: a title or a card can lie over a label in a low window, and a click would land on them. */
+/** Focuses the label of a piece and presses Enter on it, which chooses it and moves the focus to its panel without a click: a title can lie over a label in a low window, and a click would land on it. */
 export async function openByKeyboard(label: string): Promise<void> {
-  page.getByRole('button', { name: label, exact: true }).element().focus();
+  pieceLabel(label).element().focus();
   await userEvent.keyboard('{Enter}');
 }
 
-/** Presses «Listo» on a card. */
+/** Presses «Listo» on a panel that has it. */
 export async function confirm(opened: Locator): Promise<void> {
   await userEvent.click(opened.getByRole('button', { name: TASK_CARD_TEXT.done, exact: true }));
 }

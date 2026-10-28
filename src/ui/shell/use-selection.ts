@@ -1,7 +1,7 @@
 import { useWindowEvent } from '@mantine/hooks';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { inspect, type Inspection, type Session } from '@/game';
-import type { GameSceneProps } from '@/scene';
+import { pieceDomId, type GameSceneProps } from '@/scene';
 
 type TriggerProps = ReturnType<GameSceneProps['inspectTrigger']>;
 
@@ -31,8 +31,8 @@ function revealThePanel(heading: HTMLElement | null) {
   if (panel.getBoundingClientRect().top >= map.getBoundingClientRect().bottom) panel.scrollIntoView(NEAREST);
 }
 
-/** Takes the session and which keys open a card beside their piece (a click on one of those leaves the focus and the view to the card), and returns the choice of the screen: the key of the piece, the packet or the list of stamps the player chose (`selected`, or null), its inspection (`inspection`, null when nothing is chosen), whether that is a packet box (`packet`) and the id of the chosen piece when it is a piece (`pieceId`, the one the map rings); the ref of the heading of its panel; `trigger(key, hover)`, which adds to the hover props of a trigger the click that chooses its key, the mark `data-pinned` while it is the chosen one and the silence of its focus while the focus is given back; and `release()`, which drops the choice. A click, a tap, Enter or Space chooses a key, and the choice lasts until another is chosen or `release()` is called, whatever the hover and the focus do. A choice made with the keyboard moves the focus to the heading of the panel, and Escape from inside the panel gives the focus back to the trigger and keeps the choice. Under 901 px, where the panel lies below the map, a choice that opens no card brings the panel into view, the least the player has to scroll, and a hover never does. A choice whose inspection no longer exists is released. */
-export function useSelection(session: Session, opensCard: (key: string) => boolean) {
+/** Takes the session and returns the choice of the screen: the key of the piece, the packet or the list of stamps the player chose (`selected`, or null), its inspection (`inspection`, null when nothing is chosen) and the id of the chosen piece when it is a piece and not a packet or a list of stamps (`pieceId`, the one the map rings); the ref of the heading of its panel; `trigger(key, hover)`, which adds to the hover props of a trigger the click that chooses its key, the mark `data-pinned` while it is the chosen one and the silence of its focus while the focus is given back; `choosePiece(key)`, which chooses a piece with no click, as the terminal does when the player picks another origin, and leaves the focus where it is; and `release()`, which drops the choice. A click, a tap, Enter or Space chooses a key, and the choice lasts until another is chosen or `release()` is called, whatever the hover and the focus do. A choice made with the keyboard moves the focus to the heading of the panel, and Escape from inside the panel gives the focus back to the trigger and keeps the choice. Under 901 px, where the panel lies below the map, a choice brings the panel into view, the least the player has to scroll, and a hover never does. A choice whose inspection no longer exists is released. */
+export function useSelection(session: Session) {
   const [chosen, setChosen] = useState<Choice | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const arrival = useRef<Arrival | null>(null);
@@ -41,9 +41,12 @@ export function useSelection(session: Session, opensCard: (key: string) => boole
   const gone = chosen !== null && inspection === null;
 
   const choose = (key: string, event: MouseEvent<HTMLElement>) => {
-    const takesTheCard = opensCard(key);
-    arrival.current = { key, focus: event.detail === 0 && !takesTheCard, reveal: !takesTheCard };
+    arrival.current = { key, focus: event.detail === 0, reveal: true };
     setChosen({ key, trigger: event.currentTarget });
+  };
+  const choosePiece = (key: string) => {
+    const label = document.getElementById(pieceDomId(key));
+    if (label !== null) setChosen({ key, trigger: label });
   };
   const focusIsInThePanel = () => heading.current?.closest(PANEL)?.contains(document.activeElement) ?? false;
   const giveTheFocusBack = () => {
@@ -82,5 +85,5 @@ export function useSelection(session: Session, opensCard: (key: string) => boole
   }, [gone]);
 
   const packet = inspection !== null && isPacketBox(inspection);
-  return { selected: chosen?.key ?? null, inspection, packet, pieceId: chosen !== null && inspection !== null && !packet ? chosen.key : null, heading, trigger, release };
+  return { selected: chosen?.key ?? null, inspection, pieceId: chosen !== null && inspection !== null && !packet ? chosen.key : null, heading, trigger, choosePiece, release };
 }

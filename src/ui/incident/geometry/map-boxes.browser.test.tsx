@@ -10,10 +10,10 @@ import { coveredBy, drawingOf, mapBoxes, overlappingPairs, overlaps, type Area }
 import {
   OFFICE_IP,
   card,
-  confirm,
   drawWithoutAnimations,
   openCard,
   openTerminal,
+  pieceLabel,
   sendMessage,
   sendTo,
   showTheScreen,
@@ -37,8 +37,7 @@ const GLOBE_AND_SERVER = /internet/;
 const ROUTER = /router-oficina/;
 const PING = 'ping';
 const TRACEROUTE = 'traceroute';
-const SETTINGS_TAB = 'Ajustes de red';
-const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
+const SETTINGS_TAB = 'Ajustes';
 const TRACEROUTE_OUTPUT = 'Salida de traceroute';
 const PACKET_ARRIVED_AT_THE_PRINTER = /^Paquete: paquete de tu-laptop a impresora\. Llegó\.$/;
 const SG_SERVIDOR2 = 'Security Group servidor2';
@@ -87,7 +86,7 @@ function areaOf(target: Locator): Area {
 function expectApart(opened: Locator, pieces: readonly string[]): void {
   const taken = areaOf(opened);
   for (const piece of pieces) {
-    const label = page.getByRole('button', { name: piece, exact: true }).element();
+    const label = pieceLabel(piece).element();
     const drawing = drawingOf(label);
     expect(overlaps(taken, areaOf(page.elementLocator(label))), `${piece}: its label`).toBe(false);
     expect(drawing, `${piece}: the map draws it`).not.toBeNull();
@@ -147,13 +146,10 @@ describe.each(WINDOWS)('$name', ({ size }) => {
   it('in 01-07 the open settings card covers none of the pieces of the office, and no label or stamp overlaps', { timeout: SLOW_TEST_MS }, async () => {
     await show('01-07');
     await drawWithoutAnimations();
-    await userEvent.click(page.getByRole('button', { name: 'tu-laptop', exact: true }));
-    await userEvent.click(page.getByRole('tab', { name: SETTINGS_TAB, exact: true }));
-    const settings = card(SETTINGS_CARD);
+    const settings = await openCard('tu-laptop', SETTINGS_TAB);
     await expect.element(settings).toBeVisible();
     expectApart(settings, OFFICE_PIECES);
     await expect.poll(() => overlappingPairs()).toEqual([]);
-    await confirm(settings);
     const terminal = await openTerminal();
     await sendTo(terminal, OFFICE_IP.andres);
     expectApart(terminal, OFFICE_PIECES);
@@ -186,7 +182,7 @@ describe('1280×800', () => {
   it('at 1280×800, after a traceroute, the terminal keeps Enviar and Listo in view', { timeout: SLOW_TEST_MS }, async () => {
     const terminal = await listTheTraceroute();
     const box = terminal.element().getBoundingClientRect();
-    for (const name of ['Enviar', 'Listo']) {
+    for (const name of ['Enviar']) {
       const action = terminal.getByRole('button', { name, exact: true }).element().getBoundingClientRect();
       expect(action.top, name).toBeGreaterThanOrEqual(0);
       expect(action.bottom, name).toBeLessThanOrEqual(window.innerHeight);

@@ -60,3 +60,26 @@ it('the arrow keys bring the tab they select into view, clear of the fade', asyn
   expect(tab.left, 'the tab starts inside the bar').toBeGreaterThanOrEqual(bar.left - SLACK_PX);
   expect(tab.right, 'the tab ends before the fade of the right edge').toBeLessThanOrEqual(bar.right - FADE_PX + SLACK_PX);
 });
+
+it('a tab chosen outside the edge of the bar is scrolled into view when it mounts and when the choice comes from outside', async () => {
+  const draw = (selected: string) => (
+    <div style={{ width: NARROW, padding: '1rem' }}>
+      <Tabs name="Tarjetas" tabs={TABS} selected={selected} onSelect={() => undefined} />
+    </div>
+  );
+  const last = TABS.at(-1) as TabItem;
+  const { container, rerender } = render(draw(last.id));
+  const list = container.querySelector('[role="tablist"]') as HTMLElement;
+  const within = () => {
+    const [tab, bar] = [(container.querySelector('[aria-selected="true"]') as HTMLElement).getBoundingClientRect(), list.getBoundingClientRect()];
+    return tab.left >= bar.left - SLACK_PX && tab.right <= bar.right + SLACK_PX;
+  };
+  await standStill();
+  expect(within(), 'the last tab is in view when the bar mounts with it chosen').toBe(true);
+  rerender(draw(TABS[0].id));
+  await standStill();
+  expect(within(), 'the first tab comes back into view when the choice comes from outside').toBe(true);
+  rerender(draw(last.id));
+  await standStill();
+  expect(within(), 'and the last one again').toBe(true);
+});

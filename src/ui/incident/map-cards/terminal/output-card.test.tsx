@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useReducer, useState } from 'react';
+import { createRef, useReducer, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TERMINAL_TEXT } from '@/copy';
-import { sessionReducer, startSession, terminalCard, terminalLine, toolOutput, tracerouteLines, type ToolOutput } from '@/game';
+import { inspect, sessionReducer, startSession, toolOutput, tracerouteLines, type ToolOutput } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { namesSendIncident, routedSendIncident } from '@/testing/incidents';
+import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { OutputCard, type Printed } from './output-card';
-import { TerminalCard } from './terminal-card';
 
 const NAMES = namesSendIncident();
 const GROUP = TERMINAL_TEXT.output.label;
@@ -119,10 +119,8 @@ describe('output card of an nc and of a traceroute', () => {
 describe('terminal card with the output of a dig', () => {
   function Terminal() {
     const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([NAMES], NAMES.id));
-    const card = terminalCard(session, PIECE_ID.device('your-laptop'));
-    if (!card) throw new Error('missing terminal');
-    const onSend = ({ from, to, message }: { from: string; to: string; message: string }) => dispatch({ type: 'sendPacket', fromId: from, toId: to, messageId: message });
-    return <TerminalCard card={card} describe={(picks) => terminalLine(session, picks)} route={() => null} printed={(picks) => toolOutput(session, picks)} onPickOrigin={vi.fn()} onSend={onSend} onClose={vi.fn()} />;
+    const piece = PIECE_ID.device('your-laptop');
+    return <ShellPanel session={session} dispatch={dispatch} inspection={inspect(session, piece)} pieceId={piece} heading={createRef()} onClose={vi.fn()} onChoose={vi.fn()} />;
   }
 
   const send = async (user: ReturnType<typeof userEvent.setup>, address: string, message: string) => {
@@ -134,8 +132,9 @@ describe('terminal card with the output of a dig', () => {
   it('prints a dig under its command, folded, and folds it again when another chip is picked', async () => {
     const user = userEvent.setup();
     render(<Terminal />);
+    await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     await send(user, 'www.lucia.example', 'dig');
-    expect(screen.getByRole('dialog').querySelector('code')).toHaveTextContent('dig www.lucia.example');
+    expect(screen.getByRole('region').querySelector('code')).toHaveTextContent('dig www.lucia.example');
     await user.click(screen.getByRole('button', { name: TERMINAL_TEXT.output.show(17) }));
     expect(linesOf(screen.getByRole('group', { name: GROUP.dig }))).toHaveLength(20);
     await user.click(screen.getByRole('button', { name: 'nadie.lucia.example' }));
@@ -148,8 +147,9 @@ describe('terminal card with the output of a dig', () => {
   it('prints an nc under its command and no dig output', async () => {
     const user = userEvent.setup();
     render(<Terminal />);
+    await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     await send(user, '192.168.1.11', 'nc · puerto 3000');
-    expect(screen.getByRole('dialog').querySelector('code')).toHaveTextContent('nc -vz -w 3 192.168.1.11 3000');
+    expect(screen.getByRole('region').querySelector('code')).toHaveTextContent('nc -vz -w 3 192.168.1.11 3000');
     expect(linesOf(screen.getByRole('group', { name: GROUP.nc }))).toEqual(['Ncat: Version 7.93 ( https://nmap.org/ncat )', 'Ncat: Connection refused.']);
     expect(screen.queryByRole('group', { name: GROUP.dig })).not.toBeInTheDocument();
   });

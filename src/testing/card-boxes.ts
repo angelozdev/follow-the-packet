@@ -44,10 +44,6 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
     const [, offset] = getComputedStyle(element).boxShadow.match(/(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px/) ?? [];
     return Math.max(Number(offset ?? 0), 0);
   };
-  const withLip = (element: Element): Rect => {
-    const rect = rectOf(element);
-    return { ...rect, bottom: rect.bottom + lipOf(element) };
-  };
   const describe = (element: Element) => `${element.tagName.toLowerCase()} «${(element.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 32)}»`;
   const nameOf = (card: Element) => card.getAttribute('aria-label') ?? document.getElementById(card.getAttribute('aria-labelledby') ?? '')?.textContent?.trim() ?? describe(card);
   const ancestorsOf = (element: Element): Element[] => {
@@ -98,16 +94,17 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
       if (nearest && nearest.gap < gap) problems.push(`${nameOf(card)}: ${describe(stamp)} is ${nearest.gap.toFixed(1)}px under ${describe(nearest.element)}`);
     }
 
-    const buttons = inner.filter((element) => element.matches('.btn'));
+    const buttons = inner.filter((element) => element.matches('.btn') && !isEmpty(visibleBoxOf(element, card)));
+    const shownWithLip = (element: Element): Rect => ({ ...visibleBoxOf(element, card), bottom: visibleBoxOf(element, card).bottom + lipOf(element) });
     for (const [index, upper] of buttons.entries()) {
       for (const lower of buttons.slice(index + 1)) {
-        const [a, b] = [withLip(upper), withLip(lower)];
+        const [a, b] = [shownWithLip(upper), shownWithLip(lower)];
         const [first, second] = a.top <= b.top ? [a, b] : [b, a];
         if (overlap(a, b)) problems.push(`${nameOf(card)}: ${describe(upper)} overlaps ${describe(lower)}`);
         else if (sideBySide(a, b) && second.top - first.bottom < buttonGap) problems.push(`${nameOf(card)}: ${describe(upper)} and ${describe(lower)} are ${(second.top - first.bottom).toFixed(1)}px apart`);
       }
     }
-    const lowest = buttons.map(withLip).sort((a, b) => b.bottom - a.bottom)[0];
+    const lowest = buttons.map(shownWithLip).sort((a, b) => b.bottom - a.bottom)[0];
     if (lowest && paddingBoxOf(card).bottom - lowest.bottom < gap) problems.push(`${nameOf(card)}: its last button is ${(paddingBoxOf(card).bottom - lowest.bottom).toFixed(1)}px from the bottom edge`);
   }
 
@@ -123,24 +120,28 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
   return problems;
 }
 
-/** Returns one line per card of the map that sticks out of it above or below, which cuts its band or its foot off, and per card beside its piece that rises under the title bar that floats over the top of the map: the map holds a card whatever the window, and a card taller than the map scrolls its body. */
-export function cardsOutsideTheMap(): string[] {
+/** Returns one line per defect of the panel of the column: it sticks out of the column, its body does not scroll when its content is taller than the room the panel has, or its foot (the actions and «Listo» under the body) is cut off or lies over the body. A panel with no foot has no defect of that kind. Above 900 px the column is as tall as the window, so the panel must hold itself inside it; at 900 px and under the page scrolls and the panel is as tall as its content, so only the foot can fail. */
+export function panelOutsideTheColumn(): string[] {
   const EPSILON = 0.5;
-  const map = document.querySelector('.incident__map')?.getBoundingClientRect();
-  const bar = document.querySelector('.incident__bar')?.getBoundingClientRect();
-  if (!map || !bar) return [];
-  return [...document.querySelectorAll('.map-card')].flatMap((holder) => {
-    const card = holder.querySelector('.card');
-    if (!card) return [];
-    const { top, bottom } = card.getBoundingClientRect();
-    const name = card.querySelector('h2')?.textContent?.trim() ?? 'a card';
-    const beside = holder.matches('.map-card--left, .map-card--right');
-    const problems: string[] = [];
-    if (top < map.top - EPSILON) problems.push(`${name} sticks out of the map by ${(map.top - top).toFixed(1)}px above`);
-    else if (beside && top < bar.bottom - EPSILON) problems.push(`${name} rises ${(bar.bottom - top).toFixed(1)}px under the title bar`);
-    if (bottom > map.bottom + EPSILON) problems.push(`${name} sticks out of the map by ${(bottom - map.bottom).toFixed(1)}px below`);
-    return problems;
-  });
+  const column = document.querySelector('.incident__side')?.getBoundingClientRect();
+  const panel = document.querySelector('.incident__side > .card');
+  if (!column || !panel) return [];
+  const { top, bottom, left, right } = panel.getBoundingClientRect();
+  const name = panel.querySelector('h2')?.textContent?.trim() ?? 'the panel';
+  const problems: string[] = [];
+  const stacked = window.matchMedia('(max-width: 900px)').matches;
+  if (!stacked && bottom > column.bottom + EPSILON) problems.push(`${name} sticks out of the column by ${(bottom - column.bottom).toFixed(1)}px below`);
+  if (!stacked && top < column.top - EPSILON) problems.push(`${name} sticks out of the column by ${(column.top - top).toFixed(1)}px above`);
+  if (left < column.left - EPSILON || right > column.right + EPSILON) problems.push(`${name} sticks out of the column sideways`);
+  const body = panel.querySelector('.chip-card__body');
+  const foot = panel.querySelector('.chip-card__actions');
+  if (body && !stacked && body.scrollHeight > body.clientHeight + 1 && getComputedStyle(body).overflowY !== 'auto') problems.push(`${name}: its body is taller than the room it has and does not scroll`);
+  if (foot) {
+    const box = foot.getBoundingClientRect();
+    if (box.bottom > bottom + EPSILON || (!stacked && box.bottom > column.bottom + EPSILON)) problems.push(`${name}: its foot is cut off`);
+    if (body && box.top < body.getBoundingClientRect().bottom - EPSILON) problems.push(`${name}: its foot lies over its body`);
+  }
+  return problems;
 }
 
 /** True when the element lies wholly in the window and is what a click lands on at its middle and at a quarter of its width from each side, so nothing covers it and no ancestor cuts it off. Self-contained, so a Playwright test can pass it to `locator.evaluate`. */
@@ -153,16 +154,16 @@ export function isReachable(element: Element): boolean {
   });
 }
 
-/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the map that it covers. */
+/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the column that it covers. */
 export function inspectionBoxOverCards(): { shown: boolean; covered: string[] } {
   const EPSILON = 0.5;
   const box = document.querySelector('.incident__inspection > .card');
   if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
   const taken = box.getBoundingClientRect();
-  const covered = [...document.querySelectorAll('.map-card .card')].flatMap((card) => {
+  const covered = [...document.querySelectorAll('.incident__side .card')].flatMap((card) => {
     const { left, top, right, bottom } = card.getBoundingClientRect();
     const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
-    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the map'}`] : [];
+    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the column'}`] : [];
   });
   return { shown: true, covered };
 }

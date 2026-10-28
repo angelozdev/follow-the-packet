@@ -7,7 +7,7 @@ import { INCIDENTS } from '@/levels';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { MapStage } from '@/scene/map-stage';
 import { pieceDomId } from '@/scene/overlay/piece-label';
-import { confirm, openTerminal, sendMessage, showTheScreen, standStill } from '@/testing/browser-play';
+import { openTerminal, sendMessage, showTheScreen, standStill } from '@/testing/browser-play';
 import { namesSendIncident } from '@/testing/incidents';
 import { NAME_SERVER_PIECES } from '@/testing/fixtures';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
@@ -120,9 +120,5 @@ describe('the screen of 02-13 at 360 px', () => {
     await sendMessage(terminal, DIG);
     await standStill();
     expectNothingToScrollSideways('with the terminal open and the dig to the news server sent');
-    await confirm(terminal);
-    await expect.element(terminal).not.toBeInTheDocument();
-    await standStill();
-    expectNothingToScrollSideways('with the terminal closed');
   });
 });

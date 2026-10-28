@@ -1,7 +1,7 @@
 import { URL_STRIP_TEXT } from '@/copy';
 import { ChipTray } from '@/design';
 import type { UrlPartName, UrlPicks, UrlStrip } from '@/game';
-import { trayChips } from '@/ui/incident/map-cards/chip-card';
+import { trayChips } from '@/ui/incident/map-cards/card-frame';
 
 interface UrlStripTrayProps {
   strip: UrlStrip;

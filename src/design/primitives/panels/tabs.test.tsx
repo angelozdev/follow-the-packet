@@ -111,6 +111,29 @@ describe('Tabs', () => {
     expect(screen.getByRole('button', { name: 'Fuera' })).toHaveFocus();
   });
 
+  it('a tab chosen outside the edge of the bar is scrolled into view when it mounts and when the choice comes from outside', () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const where = { selectedTabIsOutside: true };
+    const frame = (left: number, right: number) => ({ left, right, top: 0, bottom: 0, width: right - left, height: 0, x: left, y: 0, toJSON: () => ({}) });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this.matches('[role="tablist"]')) return frame(0, 100);
+      return this.getAttribute('aria-selected') === 'true' && where.selectedTabIsOutside ? frame(150, 250) : frame(10, 90);
+    });
+    const draw = (selected: string) => <Tabs name={NAME} tabs={TABS} selected={selected} onSelect={vi.fn()} />;
+    const { rerender } = render(draw(LAST.id));
+    expect(scrolled.mock.contexts.at(-1)).toBe(tabOf(LAST));
+    scrolled.mockClear();
+    rerender(draw(LAST.id));
+    expect(scrolled, 'a render that chooses nothing new scrolls nothing').not.toHaveBeenCalled();
+    where.selectedTabIsOutside = false;
+    rerender(draw(FIRST.id));
+    expect(scrolled, 'a tab already in view is left where it is').not.toHaveBeenCalled();
+    where.selectedTabIsOutside = true;
+    rerender(draw(SECOND.id));
+    expect(scrolled.mock.contexts.at(-1)).toBe(tabOf(SECOND));
+    vi.restoreAllMocks();
+  });
+
   it('names the tab list for screen readers', () => {
     render(<Harness />);
     const list = screen.getByRole('tablist', { name: NAME });

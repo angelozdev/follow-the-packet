@@ -1,23 +1,26 @@
 import { render } from '@testing-library/react';
-import { createRef, useReducer, type CSSProperties } from 'react';
+import { createRef, useReducer } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { INTERFACE_TEXT, TERMINAL_TEXT, WEB_BOX_TEXT } from '@/copy';
 import { tokenPx } from '@/design';
-import { PIECE_ID, inspect, pieceCard, sessionReducer, startSession, terminalCard, toolOutputOf } from '@/game';
+import { PIECE_ID, inspect, panelOf, sessionReducer, startSession, toolOutputOf } from '@/game';
 import { sendIncident } from '@/testing/incidents';
 import { moveTheMouseAway } from '@/testing/browser-play';
 import { tokenColor } from '@/testing/token-color';
 import { webSendIncident } from '@/testing/web/web-incident';
 import { InspectionBox } from '@/ui/incident/inspection-box';
-import { PieceCard, pieceHandlers } from '@/ui/incident/map-cards/piece-card';
-import { TerminalCard } from '@/ui/incident/map-cards/terminal/terminal-card';
+import { frameOfPart } from '@/ui/shell/panel/frame-of-part';
+import { panelHandlers } from '@/ui/shell/panel/panel-handlers';
+import { PiecePanel } from '@/ui/shell/panel/piece-panel';
+import { ShellPanel } from '@/ui/shell/panel/shell-panel';
+import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
+import { usePanelDrafts } from '@/ui/shell/panel/use-panel-drafts';
 import { TaggedText } from '@/ui/tagged-text';
 import { InterfaceSection } from './interface-section';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const PHONE = { width: 360, height: 800 };
-const CARD_ON_A_PHONE = { '--card-width': '300px', '--card-room': '720px' } as CSSProperties;
 const PROMPT = '"$ "';
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 const NO_BREAK_SPACE = '\u00a0';
@@ -36,7 +39,8 @@ const RESPONSE_NOTE = WEB_BOX_TEXT.notes.response;
 const SENDING = sendIncident();
 const WEB = webSendIncident();
 const SESSION = startSession([WEB], WEB.id);
-const TERMINAL = terminalCard(SESSION, PIECE_ID.device('your-laptop'));
+const LAPTOP = PIECE_ID.device('your-laptop');
+const nothing = () => undefined;
 const LONG_OUTPUT = toolOutputOf(
   'curl',
   [LONG_HEADER, '', LONG_WORD].map((text) => ({ text, key: false })),
@@ -139,14 +143,12 @@ describe('the command and the output of a terminal as code', () => {
 describe('the prompt of the command', () => {
   function Terminal() {
     const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([SENDING], SENDING.id));
-    const card = pieceCard(session, PIECE_ID.device('your-laptop'));
-    if (!card) throw new Error('missing the card of the piece');
-    return <PieceCard card={card} {...pieceHandlers(session, dispatch, () => undefined)} onClose={() => undefined} />;
+    return <ShellPanel session={session} dispatch={dispatch} inspection={inspect(session, LAPTOP)} pieceId={LAPTOP} heading={createRef()} onClose={nothing} onChoose={nothing} />;
   }
 
   it('a hand-made packet line of chapter 1 keeps the dark panel and has no prompt, and a shell command has it', async () => {
     const view = render(<Terminal />);
-    const terminal = page.getByRole('dialog', { name: 'Terminal de your-laptop' });
+    const terminal = page.getByRole('region', { name: 'your-laptop', exact: true });
     await userEvent.click(terminal.getByRole('button', { name: '192.168.1.11', exact: true }));
     await userEvent.click(terminal.getByRole('button', { name: 'Echo Reply', exact: true }));
     await moveTheMouseAway();
@@ -211,11 +213,15 @@ describe('the message of the box and the prose as code', () => {
 
 describe('at 360 px', () => {
   function Terminal({ line }: { line: string }) {
-    if (!TERMINAL) throw new Error('missing terminal');
+    const drafts = usePanelDrafts();
+    const choice = usePanelChoice();
+    const handlers = { ...panelHandlers(SESSION, nothing, nothing), terminal: { describe: () => line, route: () => null, printed: () => LONG_OUTPUT, onPickOrigin: nothing, onSend: nothing } };
+    const inspection = inspect(SESSION, LAPTOP);
+    if (!inspection) throw new Error('missing the inspection of the laptop');
     return (
-      <div className="map-card" style={CARD_ON_A_PHONE}>
-        <TerminalCard card={TERMINAL} describe={() => line} route={() => null} printed={() => LONG_OUTPUT} onPickOrigin={() => undefined} onSend={() => undefined} onClose={() => undefined} />
-      </div>
+      <aside className="incident__side">
+        <PiecePanel panel={panelOf(SESSION, LAPTOP)} inspection={inspection} heading={createRef()} choice={choice} frameOf={(part) => frameOfPart(part, { handlers, drafts, onClose: nothing, refocus: nothing })} />
+      </aside>
     );
   }
 

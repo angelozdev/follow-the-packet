@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useReducer, type Dispatch } from 'react';
-import { describe, expect, it } from 'vitest';
+import { createRef, useReducer, type Dispatch } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { BROWSER_TEXT } from '@/copy';
-import { pieceCard, sessionReducer, startSession, type SessionAction } from '@/game';
+import { inspect, sessionReducer, startSession, type Session, type SessionAction } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { OFFICE_FLOORS } from '@/testing/fixtures';
 import { signInIncident } from '@/testing/web/web-incident';
-import { PieceCard, pieceHandlers } from '@/ui/incident/map-cards/piece-card';
+import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 
 const SIGN_IN = signInIncident();
 const LAPTOP = PIECE_ID.device('your-laptop');
@@ -16,15 +16,15 @@ const ADMIN_URL = `http://${OFFICE_FLOORS.floor1.lucia}:3000/admin`;
 const LOGIN_URL = `http://${OFFICE_FLOORS.floor1.lucia}:3000/login`;
 const SITE = OFFICE_FLOORS.floor1.lucia;
 
+const panelFor = (session: Session, dispatch: Dispatch<SessionAction>) => <ShellPanel session={session} dispatch={dispatch} inspection={inspect(session, LAPTOP)} pieceId={LAPTOP} heading={createRef()} onClose={vi.fn()} onChoose={vi.fn()} />;
+
 function Browser({ record }: { record: SessionAction[] }) {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([SIGN_IN], SIGN_IN.id));
   const recording: Dispatch<SessionAction> = (action) => {
     record.push(action);
     dispatch(action);
   };
-  const card = pieceCard(session, LAPTOP);
-  if (!card) throw new Error('missing the card of the browser');
-  return <PieceCard card={card} {...pieceHandlers(session, recording, () => undefined)} onClose={() => undefined} />;
+  return panelFor(session, recording);
 }
 
 const press = (name: string) => screen.getByRole('button', { name });
@@ -100,7 +100,7 @@ describe('signing in from the tab of the browser', () => {
     const offering = { ...SIGN_IN, send: { ...SIGN_IN.send, message: SIGN_IN.send.message.filter(({ signIn }) => signIn === undefined) } };
     const Plain = () => {
       const [session, dispatch] = useReducer(sessionReducer, undefined, () => startSession([offering], offering.id));
-      return <PieceCard card={pieceCard(session, LAPTOP)!} {...pieceHandlers(session, dispatch, () => undefined)} onClose={() => undefined} />;
+      return panelFor(session, dispatch);
     };
     render(<Plain />);
     await user.click(screen.getByRole('tab', { name: 'Navegador' }));

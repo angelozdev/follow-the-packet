@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { INCIDENTS, type Incident } from '@/levels';
-import { cardProblems, cardsOutsideTheMap, inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
+import { cardProblems, inspectionBoxOverCards, isReachable, panelOutsideTheColumn } from '@/testing/card-boxes';
 import { coveredBy } from '@/testing/map-boxes';
 import {
   GENTLE_WHEEL_PX,
   OFFICE_IP,
   bringTheLastLineIntoView,
   card,
-  confirm,
   holdTheGrace,
   openByKeyboard,
   openCard,
   openTerminal,
   passTheGrace,
+  pieceLabel,
   reachWithWheel,
   releaseTheGrace,
   sendMessage,
@@ -28,7 +28,7 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const SLOW_TEST_MS = 300_000;
 const HTML_LAYER = '.html-layer';
-const MAP_CARD = '.map-card .card';
+const PANEL = '.incident__side > .card';
 const DRAWING = '.map-stage__svg';
 const SUBMIT = 'Enviar solución';
 const SEE_RESULT = 'Ver resultado';
@@ -37,7 +37,6 @@ const KNOW_THE_CAUSE = 'Ya sé la causa';
 const ASK_HINT = '¿Alguna pista?';
 const BACK_TO_ROADMAP = 'Volver al roadmap';
 const FULL_STARS = '3 de 3 estrellas';
-const TERMINAL = 'Terminal de tu-laptop';
 const FIREWALL = 'firewall tu-laptop';
 const PRINTER = 'impresora';
 const YOUR_LAPTOP = 'tu-laptop';
@@ -55,24 +54,18 @@ const ARRIVED_AT_ANDRES = /^Paquete: ping de tu-laptop a laptop-andres\. Llegó\
 const ANY_PACKET = /^Paquete:/;
 const WARNED_PING = 'Paquete: ping de tu-laptop a 192.168.1.50. Apareció un aviso.';
 const WARNED_PING_BOX = 'ping de tu-laptop a 192.168.1.50';
-const SETTINGS_TAB = 'Ajustes de red';
-const SETTINGS_CARD = 'Ajustes de red de tu-laptop';
-const SERVICES_TAB = 'Servicios';
-const SERVICES_CARD = 'Servicios de laptop-lucia';
+const SETTINGS_TAB = 'Ajustes';
+const SERVICES_TAB = 'Ajustes';
 const CLASSIFY_TAB = 'Clasificar';
 const INSIDE_THE_BLOCK = 'Dentro de 192.168.1.0/24';
 const OUTSIDE_THE_BLOCK = 'Fuera';
 const ANDRES = 'laptop-andres';
-const ROUTES_TAB = 'Tabla de rutas';
-const YOUR_ROUTES_CARD = 'Tabla de rutas de tu-laptop';
-const OFFICE_ROUTES_CARD = 'Tabla de rutas de router-oficina';
+const TABLES_TAB = 'Tablas';
 const ANYWHERE = '0.0.0.0/0';
 const WEB = webSendIncident();
 const BY_PARTS = addressByPartsIncident();
-const LUCIA_TERMINAL = 'Terminal de laptop-lucia';
 const ORDER_7_BY_PARTS = ['3000', '/pedidos', '?id=7'];
 const BROWSER_TAB = 'Navegador';
-const BROWSER_CARD = 'Navegador de tu-laptop';
 const OPEN = 'Abrir';
 const ADMIN_URL = 'http://192.168.1.11:3000/admin';
 const LUCIA_USER = 'Lucía';
@@ -84,7 +77,6 @@ const SERVES_TRAY = 'Qué sirve';
 const CURL = 'curl';
 const SHOP_URL = 'http://www.lucia.example/';
 const WEB_SERVER = 'servidor-internet';
-const SITES_CARD = 'Sitios de servidor-internet';
 const SHOP_NAME = 'www.lucia.example';
 const BLOG_CONTENT = 'El blog';
 const ADD_SITE = 'Agregar sitio';
@@ -94,10 +86,8 @@ const PROVIDER_HOP = '203.0.113.1 router-proveedor';
 const BRANCH_HOP = '172.16.0.2 router-sucursal';
 const ADD_ROUTE = 'Agregar ruta';
 const TRANSLATIONS_TAB = 'Tabla de traducciones';
-const TRANSLATIONS_CARD = 'Tabla de traducciones de router-oficina';
 const NC_TO_THE_WEB_PORT = 'nc · puerto 80';
 const AUTHORITATIVE = 'servidor-autoritativo';
-const RECORDS_CARD = 'Registros de lucia.example';
 const NAME_TRAY = 'Nombre';
 const TYPE_TRAY = 'Tipo';
 const VALUE_TRAY = 'Valor';
@@ -108,7 +98,6 @@ const ADD_RECORD = 'Agregar registro';
 const ALIAS_REFUSED = 'No se pudo agregar.';
 const SEND = 'Enviar';
 const RESOLVER = 'servidor-dns';
-const CACHE_CARD = 'Caché de servidor-dns';
 const ONE_MINUTE = 'Esperar 1 min';
 const CLOCK_NOTE = 'El tiempo pasa para todo el mapa.';
 const RIGHT_CAUSES_BEFORE_THE_LOOP = [
@@ -119,16 +108,13 @@ const RIGHT_CAUSES_BEFORE_THE_LOOP = [
 ];
 const THIRD_CAUSE_OF_THE_LOOP = /router-oficina descarta lo que va al servidor/;
 const PROVIDER = 'router-proveedor';
-const PROVIDER_ROUTES_CARD = 'Tabla de rutas de router-proveedor';
 const REMOVE_THE_DEFAULT_ROUTE = /^Quitar 0\.0\.0\.0\/0/;
 const SERVERS_BLOCK = '198.51.100.0/24';
-const NARROWEST_PHONE = { width: 360, height: 800 };
 const NEW_SERVER = 'servidor-nuevo';
-const SHOP_SITES_CARD = 'Sitios de servidor-nuevo';
 const ROLES_LINE = '.chip-card__roles';
-const SERVER_CARDS = [
-  { name: 'the records of servidor-autoritativo', level: '02-11', server: AUTHORITATIVE, card: RECORDS_CARD, line: 'Papel: servidor autoritativo' },
-  { name: 'the sites of servidor-nuevo', level: '03-04', server: NEW_SERVER, card: SHOP_SITES_CARD, line: 'Papel: servidor web' },
+const SERVER_PANELS = [
+  { name: 'the records of servidor-autoritativo', level: '02-11', server: AUTHORITATIVE, line: 'Papel: servidor autoritativo' },
+  { name: 'the sites of servidor-nuevo', level: '03-04', server: NEW_SERVER, line: 'Papel: servidor web' },
 ];
 const DESTINATION_HOP = '203.0.113.2 router-destino';
 const PING = 'ping';
@@ -139,6 +125,7 @@ const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
 const ANYWHERE_CHIP = /Anywhere-IPv4/;
 const CLOSE = 'Cerrar';
 const PHONE_WINDOW = { width: 390, height: 844 };
+const STACKED_UNDER_PX = 900;
 const HOLDER = '.incident__inspection';
 const SCROLLING_INSPECTION = '.incident__inspection[data-scrolls]';
 
@@ -151,10 +138,16 @@ const LOW_WINDOWS = [
   { name: '1280×720', size: { width: 1280, height: 720 } },
 ];
 const LOW_MAP_WINDOWS = [
-  { name: '1280×360', size: { width: 1280, height: 360 }, boxShows: true },
-  { name: '1000×700', size: { width: 1000, height: 700 }, boxShows: false },
+  { name: '1280×600', size: { width: 1280, height: 600 }, boxShows: true },
+  { name: '1000×700', size: { width: 1000, height: 700 }, boxShows: true },
   { name: '700×600', size: { width: 700, height: 600 }, boxShows: true },
   { name: '844×460', size: { width: 844, height: 460 }, boxShows: true },
+];
+const SCROLLING_PANEL_WINDOWS = [{ name: '1280×600', size: { width: 1280, height: 600 } }];
+const PANEL_WINDOWS = [
+  { name: '1280×600', size: { width: 1280, height: 600 } },
+  { name: '1280×720', size: { width: 1280, height: 720 } },
+  { name: '1440×900', size: { width: 1440, height: 900 } },
 ];
 const FULL_WINDOWS = [
   { name: '1280×800', size: { width: 1280, height: 800 } },
@@ -164,7 +157,7 @@ const INSPECTION_WINDOWS = [
   { name: '1280×800', size: { width: 1280, height: 800 } },
   { name: '390×844', size: PHONE_WINDOW },
   { name: '1000×700', size: { width: 1000, height: 700 } },
-  { name: '1280×500', size: { width: 1280, height: 500 } },
+  { name: '1280×600', size: { width: 1280, height: 600 } },
 ];
 
 interface Scene {
@@ -182,6 +175,20 @@ const opening = (name: string) => async () => {
   await openCard(name);
 };
 
+function lastOfThePanel(piece: string): () => Locator {
+  return () => {
+    const panel = card(piece).element();
+    const foot = panel.querySelector('.chip-card__actions')?.lastElementChild;
+    const inTheBody = [...panel.querySelectorAll('.chip-card__body button:not([role="tab"]), .chip-card__body .table')].at(-1);
+    return page.elementLocator((foot ?? inTheBody ?? panel) as Element);
+  };
+}
+
+function scrollingAround(last: Locator): { within?: Locator } {
+  const body = last.element().closest('.chip-card__body');
+  return body !== null && window.innerWidth > STACKED_UNDER_PX ? { within: page.elementLocator(body) } : {};
+}
+
 async function submit(): Promise<void> {
   await click(button(SUBMIT, false));
 }
@@ -196,11 +203,9 @@ async function fixTheGateway(): Promise<void> {
   await sendTo(await openTerminal(), OFFICE_IP.andres);
   await expect.element(button(LOST_TO_ANDRES, false)).toBeVisible();
   await click(page.getByRole('tab', { name: SETTINGS_TAB, exact: true }));
-  const settings = card(SETTINGS_CARD);
+  const settings = card(YOUR_LAPTOP);
   await click(settings.getByRole('button', { name: OFFICE_IP.router, exact: true }));
   await expect.poll(() => button(ANY_PACKET, false).elements().length).toBe(0);
-  await confirm(settings);
-  await expect.element(settings).not.toBeInTheDocument();
   await sendTo(await openTerminal(), OFFICE_IP.andres);
   await expect.element(button(ARRIVED_AT_ANDRES, false)).toBeVisible();
 }
@@ -280,12 +285,12 @@ async function addRoute(routes: Locator, destination: string, nextHop: string): 
 
 async function reachYourRoutes(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
-  await click(page.getByRole('tab', { name: ROUTES_TAB, exact: true }));
+  await click(page.getByRole('tab', { name: TABLES_TAB, exact: true }));
 }
 
 async function reachTheOfficeRoutes(): Promise<void> {
   await openByKeyboard(OFFICE_ROUTER);
-  const table = card(OFFICE_ROUTES_CARD);
+  const table = card(OFFICE_ROUTER);
   await addRoute(table, ANYWHERE, PROVIDER_HOP);
   await addRoute(table, OTHER_OFFICE_BLOCK, BRANCH_HOP);
 }
@@ -306,7 +311,7 @@ async function openTheQuestionOfTheLoopCase(): Promise<void> {
 async function reachTheProviderRoutes(): Promise<void> {
   await reachTheLoopCase();
   await openByKeyboard(PROVIDER);
-  const routes = card(PROVIDER_ROUTES_CARD);
+  const routes = card(PROVIDER);
   await click(routes.getByRole('button', { name: REMOVE_THE_DEFAULT_ROUTE }));
   await addRoute(routes, SERVERS_BLOCK, DESTINATION_HOP);
 }
@@ -315,8 +320,6 @@ async function reachTheTranslations(): Promise<void> {
   for (const laptop of [YOUR_LAPTOP, LUCIA]) {
     const terminal = await openTerminal(laptop);
     await sendMessage(terminal, NC_TO_THE_WEB_PORT);
-    await confirm(terminal);
-    await expect.element(terminal).not.toBeInTheDocument();
   }
   await openByKeyboard(OFFICE_ROUTER);
   await click(page.getByRole('tab', { name: TRANSLATIONS_TAB, exact: true }));
@@ -328,7 +331,7 @@ async function pickInTray(table: Locator, tray: string, chip: string): Promise<v
 
 async function reachTheRefusedAlias(): Promise<void> {
   await openByKeyboard(AUTHORITATIVE);
-  const records = card(RECORDS_CARD);
+  const records = card(AUTHORITATIVE);
   await pickInTray(records, NAME_TRAY, BLOG_NAME);
   await pickInTray(records, TYPE_TRAY, CNAME_TYPE);
   await pickInTray(records, VALUE_TRAY, WWW_NAME);
@@ -344,8 +347,6 @@ async function reachTheCacheAfterAMinute(): Promise<void> {
   await waitAMinute();
   const terminal = await openTerminal();
   await click(terminal.getByRole('button', { name: SEND, exact: true }));
-  await confirm(terminal);
-  await expect.element(terminal).not.toBeInTheDocument();
   await openByKeyboard(RESOLVER);
 }
 
@@ -361,7 +362,7 @@ function scrollTheBodyToItsEnd(opened: Locator): void {
 async function openTheShopInTheBrowser(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await click(page.getByRole('tab', { name: BROWSER_TAB, exact: true }));
-  const browser = card(BROWSER_CARD);
+  const browser = card(YOUR_LAPTOP);
   await click(browser.getByRole('button', { name: SHOP_URL, exact: true }));
   await click(browser.getByRole('button', { name: OPEN, exact: true }));
   await expect.element(browser.getByRole('group', { name: BROWSER_SEES })).toBeVisible();
@@ -371,7 +372,7 @@ async function openTheShopInTheBrowser(): Promise<void> {
 async function signInAndOpenTheAdmin(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
   await click(page.getByRole('tab', { name: BROWSER_TAB, exact: true }));
-  const browser = card(BROWSER_CARD);
+  const browser = card(YOUR_LAPTOP);
   for (const name of [ADMIN_URL, LUCIA_USER, SIGN_IN, OPEN]) await click(browser.getByRole('button', { name, exact: true }));
   await expect.element(browser.getByRole('group', { name: BROWSER_MEMORY })).toBeVisible();
   scrollTheBodyToItsEnd(browser);
@@ -379,7 +380,7 @@ async function signInAndOpenTheAdmin(): Promise<void> {
 
 async function reachTheRefusedSite(): Promise<void> {
   await openByKeyboard(WEB_SERVER);
-  const sites = card(SITES_CARD);
+  const sites = card(WEB_SERVER);
   await pickInTray(sites, NAME_TRAY, SHOP_NAME);
   await pickInTray(sites, SERVES_TRAY, BLOG_CONTENT);
   await click(sites.getByRole('button', { name: ADD_SITE, exact: true }));
@@ -403,31 +404,31 @@ async function pickTheUrlByParts(): Promise<void> {
 
 async function sendFromTheTabbedTerminal(): Promise<void> {
   await openByKeyboard(YOUR_LAPTOP);
-  await sendTo(card(TERMINAL), OFFICE_IP.andres);
+  await sendTo(card(YOUR_LAPTOP), OFFICE_IP.andres);
 }
 
-const THE_TERMINAL: Scene = { name: 'the terminal', level: '01-11', reach: sendOnePing, last: doneOf(TERMINAL) };
+const THE_TERMINAL: Scene = { name: 'the terminal', level: '01-11', reach: sendOnePing, last: lastOfThePanel(YOUR_LAPTOP) };
 const THE_PRINTER: Scene = { name: 'the card of the printer', level: '01-01', reach: opening(PRINTER), last: doneOf(PRINTER) };
-const THE_SETTINGS: Scene = { name: 'the network settings', level: '01-07', reach: reachTheSettings, last: doneOf(SETTINGS_CARD) };
-const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the card of the laptop', level: '01-07', reach: sendFromTheTabbedTerminal, last: doneOf(TERMINAL) };
-const THE_NAMES_TERMINAL: Scene = { name: 'the terminal, the first of the three tabs of the card of tu-laptop, with the answer of a dig', level: '02-10', reach: digTheName, last: doneOf(TERMINAL) };
-const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: doneOf(SERVICES_CARD) };
-const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing placed yet', level: '02-04', reach: reachTheClassifyCard, last: doneOf(YOUR_LAPTOP) };
-const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: doneOf(YOUR_LAPTOP) };
-const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, a tab of its card', level: '02-06', reach: reachYourRoutes, last: doneOf(YOUR_ROUTES_CARD) };
-const THE_EDITABLE_ROUTES: Scene = { name: 'the routing table of router-oficina, with its two routes written and its trays', level: '02-07', reach: reachTheOfficeRoutes, last: doneOf(OFFICE_ROUTES_CARD) };
-const THE_PROVIDER_ROUTES: Scene = { name: 'the routes of router-proveedor, the fix of the loop, with the default route taken away and a route written', level: '02-14', reach: reachTheProviderRoutes, last: doneOf(PROVIDER_ROUTES_CARD) };
-const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: doneOf(TRANSLATIONS_CARD) };
-const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: doneOf(RECORDS_CARD) };
-const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: doneOf(CACHE_CARD) };
+const THE_SETTINGS: Scene = { name: 'the network settings', level: '01-07', reach: reachTheSettings, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_TABBED_TERMINAL: Scene = { name: 'the terminal, the first tab of the card of the laptop', level: '01-07', reach: sendFromTheTabbedTerminal, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_NAMES_TERMINAL: Scene = { name: 'the terminal, the first of the three tabs of the card of tu-laptop, with the answer of a dig', level: '02-10', reach: digTheName, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_SERVICES: Scene = { name: 'the services, a tab of the card of laptop-lucia', level: '02-03', reach: reachTheServices, last: lastOfThePanel(LUCIA) };
+const THE_CLASSIFY: Scene = { name: 'the card that classifies, with nothing placed yet', level: '02-04', reach: reachTheClassifyCard, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_PLACED_CLASSIFY: Scene = { name: 'the card that classifies, with both items placed and a line under each', level: '02-04', reach: placeBothItems, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_ROUTES: Scene = { name: 'the routing table of your laptop, read only, a tab of its card', level: '02-06', reach: reachYourRoutes, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_EDITABLE_ROUTES: Scene = { name: 'the routing table of router-oficina, with its two routes written and its trays', level: '02-07', reach: reachTheOfficeRoutes, last: lastOfThePanel(OFFICE_ROUTER) };
+const THE_PROVIDER_ROUTES: Scene = { name: 'the routes of router-proveedor, the fix of the loop, with the default route taken away and a route written', level: '02-14', reach: reachTheProviderRoutes, last: lastOfThePanel(PROVIDER) };
+const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: lastOfThePanel(OFFICE_ROUTER) };
+const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: lastOfThePanel(AUTHORITATIVE) };
+const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: lastOfThePanel(RESOLVER) };
 const THE_CLOCK: Scene = { name: 'the clock of the game below the card of Lucía, after a minute of waiting', level: '02-12', reach: waitAMinute, last: () => page.getByText(CLOCK_NOTE) };
-const THE_BROWSER: Scene = { name: 'the browser, a tab of the card of tu-laptop, with a page opened', level: WEB.id, incidents: [WEB], reach: openTheShopInTheBrowser, last: doneOf(BROWSER_CARD) };
-const THE_SIGNED_IN_BROWSER: Scene = { name: 'the browser of 03-06, signed in as Lucía, with the cookie in what it remembers', level: '03-06', reach: signInAndOpenTheAdmin, last: doneOf(BROWSER_CARD) };
-const THE_SITES: Scene = { name: 'the sites of servidor-internet, with a name that already has a site refused and the reason under the table', level: WEB.id, incidents: [WEB], reach: reachTheRefusedSite, last: doneOf(SITES_CARD) };
-const THE_CURL_TERMINAL: Scene = { name: 'the terminal with the output of a curl sent twice, titled Envío 1 and Envío 2', level: WEB.id, incidents: [WEB], reach: sendTheCurlTwice, last: doneOf(TERMINAL) };
-const THE_STRIP: Scene = { name: 'the terminal of laptop-lucia with the url by parts, in three rows, and the order 7 picked', level: BY_PARTS.id, incidents: [BY_PARTS], reach: pickTheUrlByParts, last: doneOf(LUCIA_TERMINAL) };
-const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: doneOf(FIREWALL) };
-const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: doneOf(TERMINAL) };
+const THE_BROWSER: Scene = { name: 'the browser, a tab of the card of tu-laptop, with a page opened', level: WEB.id, incidents: [WEB], reach: openTheShopInTheBrowser, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_SIGNED_IN_BROWSER: Scene = { name: 'the browser of 03-06, signed in as Lucía, with the cookie in what it remembers', level: '03-06', reach: signInAndOpenTheAdmin, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_SITES: Scene = { name: 'the sites of servidor-internet, with a name that already has a site refused and the reason under the table', level: WEB.id, incidents: [WEB], reach: reachTheRefusedSite, last: lastOfThePanel(WEB_SERVER) };
+const THE_CURL_TERMINAL: Scene = { name: 'the terminal with the output of a curl sent twice, titled Envío 1 and Envío 2', level: WEB.id, incidents: [WEB], reach: sendTheCurlTwice, last: lastOfThePanel(YOUR_LAPTOP) };
+const THE_STRIP: Scene = { name: 'the terminal of laptop-lucia with the url by parts, in three rows, and the order 7 picked', level: BY_PARTS.id, incidents: [BY_PARTS], reach: pickTheUrlByParts, last: lastOfThePanel(LUCIA) };
+const THE_FIREWALL: Scene = { name: 'the firewall with its tabs', level: '01-13', reach: opening(FIREWALL), last: lastOfThePanel(FIREWALL) };
+const THE_TRACEROUTE: Scene = { name: 'the terminal with a traceroute', level: '01-10', reach: sendThePingAndTheTraceroute, last: lastOfThePanel(YOUR_LAPTOP) };
 
 const SCENES: Scene[] = [
   { name: 'Lucía alone', level: '01-11', reach: async () => undefined, last: () => button(ASK_HINT) },
@@ -438,7 +439,7 @@ const SCENES: Scene[] = [
   { name: 'the case, answered', level: '01-14', reach: answerTheCaseQuestion, last: () => button(NEXT_CASE) },
   { name: 'the case with a fix, its tasks and its question open', level: '02-14', reach: openTheQuestionOfTheLoopCase, last: () => button(THIRD_CAUSE_OF_THE_LOOP, false) },
   THE_TERMINAL,
-  { name: 'the terminal with a piece inspected', level: '01-11', reach: inspectBesideTheTerminal, last: doneOf(TERMINAL) },
+  { name: 'the terminal with a piece inspected', level: '01-11', reach: inspectBesideTheTerminal, last: lastOfThePanel(YOUR_LAPTOP) },
   THE_PRINTER,
   THE_SETTINGS,
   THE_TABBED_TERMINAL,
@@ -529,22 +530,17 @@ describe('the cards of the game in a real browser', () => {
     const layer = document.querySelector(HTML_LAYER) as HTMLElement;
     const drawing = document.querySelector(DRAWING) as Element;
     const scrolled = () => [layer.scrollLeft, layer.scrollTop];
-    const router = button(OFFICE_ROUTER);
+    const router = pieceLabel(OFFICE_ROUTER);
     const routerOverTheDrawing = () => {
       const [label, map] = [router.element().getBoundingClientRect(), drawing.getBoundingClientRect()];
       return [label.left - map.left, label.top - map.top];
     };
     await standStill();
     const home = routerOverTheDrawing();
-    const terminal = await openTerminal(LUCIA);
+    await openTerminal(LUCIA);
     await standStill();
     expect(scrolled(), 'with the terminal of the laptop at the right edge open').toEqual([0, 0]);
     expect(routerOverTheDrawing(), 'the label of the router stands over the drawing where it stood, with the terminal open').toEqual(home);
-    await confirm(terminal);
-    await expect.element(terminal).not.toBeInTheDocument();
-    await standStill();
-    expect(scrolled(), 'after it closes').toEqual([0, 0]);
-    expect(routerOverTheDrawing(), 'and after it closes').toEqual(home);
   });
 
   it('the tab of a Message in the cards of the game covers nothing of the element above it', { timeout: SLOW_TEST_MS }, async () => {
@@ -581,7 +577,7 @@ describe.each(LOW_WINDOWS)('$name', ({ size }) => {
     for (const scene of SCENES) {
       await inTheScene(scene, 'live', async () => {
         const last = scene.last();
-        if (!(await reachWithWheel(last))) stuck.push(scene.name);
+        if (!(await reachWithWheel(last, scrollingAround(last)))) stuck.push(scene.name);
       });
     }
     expect(stuck).toEqual([]);
@@ -596,8 +592,6 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
     await show('01-05');
     const terminal = await openTerminal();
     await sendTo(terminal, OFFICE_IP.nobody);
-    await confirm(terminal);
-    await expect.element(terminal).not.toBeInTheDocument();
     const stamp = button(WARNED_PING);
     const box = page.getByRole('region', { name: WARNED_PING_BOX, exact: true });
     const holder = document.querySelector(HOLDER) as HTMLElement;
@@ -629,7 +623,7 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
   });
 });
 
-describe.each([...LOW_WINDOWS, ...LOW_MAP_WINDOWS])('$name', ({ size }) => {
+describe.each(SCROLLING_PANEL_WINDOWS)('$name', ({ size }) => {
   useWindow(size);
 
   it('the body of the card that classifies scrolls to its last bin, under the mouse, and its foot stays in view', { timeout: SLOW_TEST_MS }, async () => {
@@ -641,25 +635,28 @@ describe.each([...LOW_WINDOWS, ...LOW_MAP_WINDOWS])('$name', ({ size }) => {
       expect(body.scrollHeight > body.clientHeight, 'the body does not fit, so it scrolls').toBe(true);
       expect(isReachable(lastBin.element()), 'the last bin starts out of reach').toBe(false);
       expect(await reachWithWheel(lastBin, { within: page.elementLocator(body), wheelPx: GENTLE_WHEEL_PX }), 'the wheel brings the last bin into view').toBe(true);
-      expect(isReachable(THE_PLACED_CLASSIFY.last().element()), 'the foot stays in reach').toBe(true);
-      expect(cardsOutsideTheMap(), 'the card stays inside the map').toEqual([]);
+      expect(isReachable(classify.getByRole('tab', { name: 'Estado', exact: true }).element()), 'the tabs stay in reach').toBe(true);
+      expect(panelOutsideTheColumn(), 'the panel stays inside the column').toEqual([]);
     });
   });
 });
 
-describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size }) => {
+describe.each(PANEL_WINDOWS)('$name', ({ name, size }) => {
   useWindow(size);
 
-  it('a card beside a piece stays inside the map, with its foot in view, in a low or narrow window', { timeout: SLOW_TEST_MS }, async () => {
+  it('the panel of every scene of the card scenes stays inside the column, its foot in view and its body scrolling, at 1280×600, 1280×720 and 1440×900', { timeout: SLOW_TEST_MS }, async () => {
     const problems: string[] = [];
     for (const scene of MAP_SCENES) {
-      for (const mode of ['right-after-the-click', 'at-rest'] as const) {
-        await inTheScene(scene, mode, () => {
-          problems.push(...cardsOutsideTheMap().map((problem) => `${name}, ${scene.name}, ${mode}: ${problem}`));
-          const last = scene.last().query();
-          if (last === null || !isReachable(last)) problems.push(`${name}, ${scene.name}, ${mode}: its foot is out of reach`);
-        });
-      }
+      await inTheScene(scene, 'at-rest', async () => {
+        problems.push(...panelOutsideTheColumn().map((problem) => `${name}, ${scene.name}: ${problem}`));
+        const last = scene.last();
+        const element = last.query();
+        if (element === null || !(await reachWithWheel(last, scrollingAround(last)))) problems.push(`${name}, ${scene.name}: its last element is out of reach`);
+        const foot = document.querySelector(`${PANEL} .chip-card__actions`);
+        if (foot !== null && !isReachable(foot.lastElementChild as Element)) problems.push(`${name}, ${scene.name}: its foot is out of view`);
+        const body = document.querySelector(`${PANEL} .chip-card__body`) as HTMLElement;
+        if (body.scrollHeight > body.clientHeight + 1 && getComputedStyle(body).overflowY !== 'auto') problems.push(`${name}, ${scene.name}: its body does not scroll`);
+      });
     }
     expect(problems).toEqual([]);
   });
@@ -672,7 +669,7 @@ describe.each(FULL_WINDOWS)('$name', ({ name, size }) => {
     const covered: string[] = [];
     for (const scene of TABLES_OUTPUT_AND_SERVICES) {
       await inTheScene(scene, 'at-rest', () => {
-        const opened = (document.querySelector(MAP_CARD) as Element).getBoundingClientRect();
+        const opened = (document.querySelector(PANEL) as Element).getBoundingClientRect();
         covered.push(...coveredBy(opened).map((piece) => `${name}, ${scene.name}: the card covers ${piece}`));
       });
     }
@@ -709,21 +706,21 @@ describe.each(LOW_MAP_WINDOWS)('$name', ({ name, size, boxShows }) => {
 });
 
 describe('the card of a server on the narrowest phone', () => {
-  it('at 360 px the card of a server with its line of roles does not scroll sideways and every control is within reach', { timeout: SLOW_TEST_MS }, async () => {
-    await page.viewport(NARROWEST_PHONE.width, NARROWEST_PHONE.height);
-    for (const { name, level, server, card: cardName, line } of SERVER_CARDS) {
-      await inTheScene({ name, level, reach: () => openByKeyboard(server), last: doneOf(cardName) }, 'at-rest', async () => {
-        const opened = card(cardName);
+  it('at 390 px the panel of a server with its line of roles does not scroll sideways and every control is within reach', { timeout: SLOW_TEST_MS }, async () => {
+    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
+    for (const { name, level, server, line } of SERVER_PANELS) {
+      await inTheScene({ name, level, reach: () => openByKeyboard(server), last: lastOfThePanel(server) }, 'at-rest', async () => {
+        const opened = card(server);
         await expect.element(opened).toBeVisible();
-        expect(opened.element().querySelector(ROLES_LINE)?.textContent, `${name}: the card says the role`).toBe(line);
+        expect(opened.element().querySelector(ROLES_LINE)?.textContent, `${name}: the panel says the role`).toBe(line);
         expect(document.documentElement.scrollWidth - window.innerWidth, `${name}: the page does not scroll sideways`).toBe(0);
         const body = opened.element().querySelector('.chip-card__body') as HTMLElement;
-        expect(body.scrollWidth, `${name}: nor does the body of the card`).toBeLessThanOrEqual(body.clientWidth);
-        expect(opened.element().querySelector(ROLES_LINE)?.getBoundingClientRect().right, `${name}: the line ends inside the card`).toBeLessThanOrEqual(opened.element().getBoundingClientRect().right);
-        expect(await reachWithWheel(doneOf(cardName)()), `${name}: the foot is within reach`).toBe(true);
-        expect(cardsOutsideTheMap(), `${name}: the card stays inside the map`).toEqual([]);
+        expect(body.scrollWidth, `${name}: nor does the body of the panel`).toBeLessThanOrEqual(body.clientWidth);
+        expect(opened.element().querySelector(ROLES_LINE)?.getBoundingClientRect().right, `${name}: the line ends inside the panel`).toBeLessThanOrEqual(opened.element().getBoundingClientRect().right);
+        const controls = [...opened.element().querySelectorAll('button, [role="tab"]')].map((control) => page.elementLocator(control));
+        for (const control of controls) expect(await reachWithWheel(control, { wheelPx: GENTLE_WHEEL_PX }), `${name}: ${control.element().textContent} is within reach`).toBe(true);
+        expect(panelOutsideTheColumn(), `${name}: the panel stays inside the column`).toEqual([]);
       });
     }
   });
 });
-
