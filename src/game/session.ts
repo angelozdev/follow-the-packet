@@ -49,6 +49,9 @@ export interface Restart {
   ownerId: string;
 }
 
+/** A line of the log of the world that is no send, with the number of sends made until then, so it comes after the send of that number and before the next one: the change whose edit emptied sends that were not empty, or the entry of a table that the engine refused. */
+export type LogEntry = { kind: 'change'; restart: Restart; sends: number } | { kind: 'rejection'; problem: TableProblem; sends: number };
+
 export interface Session {
   incident: Incident;
   known: ReadonlySet<TermId>;
@@ -62,6 +65,7 @@ export interface Session {
   clock: number;
   entryProblem: TableProblem | null;
   restart: Restart | null;
+  log: LogEntry[];
   answers: Answers;
   rejection: Rejection | null;
   alerts: number;
@@ -124,6 +128,7 @@ export function startSession(incidents: Incident[], incidentId: string): Session
     clock: 0,
     entryProblem: null,
     restart: null,
+    log: [],
     answers: initialAnswers(incident),
     rejection: null,
     alerts: hasIntrusion(runs) ? 1 : 0,
@@ -190,19 +195,22 @@ function move(state: Session, action: RuleMove): Session {
   return { ...next, alerts: state.alerts + (startsEpisode ? 1 : 0) };
 }
 
-/** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. When the sends were not empty it keeps what the move edited as `restart`, so the card of the tasks says why they start again; an earlier `restart` stays until the player sends. */
+/** Clears the sends once the world has changed: the stamps of the packets sent before described the old world, and with them go the translation table and the cache that came from them. The game clock does not go back, and the send number goes on counting. When the sends were not empty it keeps what the move edited as `restart`, so the card of the tasks says why they start again, and as the first line of a new `log`; the refusals before the change go with the sends. An earlier `restart` and its line stay until the player sends. */
 function withNewWorld(state: Session, world: Network, action: SettingMove | TableMove | RuleMove): Session {
-  const restart = state.history.length > 0 ? (editedPart(world, state.incident, action, currentCase(state)) ?? state.restart) : state.restart;
-  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], history: [], rejection: null, entryProblem: null, restart };
+  const edited = state.history.length > 0 ? editedPart(world, state.incident, action, currentCase(state)) : undefined;
+  const log: LogEntry[] = edited ? [{ kind: 'change', restart: edited, sends: state.sends }] : state.log.filter(({ kind }) => kind === 'change');
+  return { ...state, world, runs: runFlows(world, state.incident.flows, state.known), sent: [], history: [], rejection: null, entryProblem: null, restart: edited ?? state.restart, log };
 }
 
-/** Keeps the problem of an entry the engine refused, unless it is the one already kept. A refusal the incident gives nothing to explain leaves the session as it was. */
+/** Keeps the problem of an entry the engine refused, and a line of the log for it, unless it is the one just refused with no send since. A refusal the incident gives nothing to explain leaves the session as it was. */
 function withProblem(state: Session, action: SettingMove | TableMove): Session {
   if (action.type !== 'placeEntry') return state;
   const code = placementProblem(state.world, state.incident, action, currentCase(state));
-  const kept = state.entryProblem;
-  if (code === undefined || (kept?.tableId === action.tableId && kept.code === code)) return state;
-  return { ...state, entryProblem: { tableId: action.tableId, code } };
+  if (code === undefined) return state;
+  const problem = { tableId: action.tableId, code };
+  const last = state.log.at(-1);
+  if (last?.kind === 'rejection' && last.sends === state.sends && last.problem.tableId === problem.tableId && last.problem.code === code) return state;
+  return { ...state, entryProblem: problem, log: [...state.log, { kind: 'rejection', problem, sends: state.sends }] };
 }
 
 /** True when the player can change the world from the cards of the pieces: in a send incident that is still open, and in a diagnose only in a case that has a fix and is not closed yet, where the tables of the fix are all there is to edit. The session refuses every other edit, and the cards of the tables read this same fact to offer no control that would do nothing. */
@@ -298,13 +306,13 @@ function nameCause(state: Session, index: number): Session {
   return closeCaseIfDone({ ...state, named: [...state.named, index] });
 }
 
-/** Opens the next case of a diagnose once the one before is closed: its world is the one the incident started from plus its own changes, and the packets sent and the hints asked belong to the case before. The send number goes on counting. */
+/** Opens the next case of a diagnose once the one before is closed: its world is the one the incident started from plus its own changes, and the packets sent, the hints asked and the log belong to the case before. The send number goes on counting. */
 function nextCase(state: Session): Session {
   const { incident } = state;
   if (state.phase !== 'playing' || incident.mechanic !== 'diagnose' || !caseClosed(state)) return state;
   const caseIndex = state.caseIndex + 1;
   const world = caseWorld(state.start, incident.diagnose.cases[caseIndex]);
-  return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], history: [], entryProblem: null, hintsShown: 0, named: [] };
+  return { ...state, caseIndex, world, runs: runFlows(world, incident.flows, state.known), sent: [], history: [], entryProblem: null, log: [], hintsShown: 0, named: [] };
 }
 
 function reduce(state: Session, action: SessionAction): Session {
