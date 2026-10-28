@@ -490,5 +490,6 @@ export const SCREEN_TEXT = {
   motion: 'Sin animaciones',
   inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
   inspectClickHelp: 'Haz clic, o pulsa Enter, para elegirlo y leerlo aquí.',
+  statusEmpty: 'Aquí verás lo último que pase.',
   stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso. Una pieza con candado no se puede cambiar en este incidente.',
 } as const;

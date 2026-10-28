@@ -1,11 +1,12 @@
 import { useMemo, useReducer } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, sessionReducer, startSession, starsOf } from '@/game';
+import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { ShellColumn } from '@/ui/shell/shell-column';
+import { StatusBar } from '@/ui/shell/status/status-bar';
 import { useSelection } from '@/ui/shell/use-selection';
 import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
@@ -30,6 +31,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
+  const lines = useMemo(() => registryLines(session), [session]);
   const selection = useSelection(session);
   const { inspection, duplicate, trigger, release, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
@@ -103,6 +105,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           />
         }
       />
+      <StatusBar line={lines[0] ?? null} choose={(pieceId) => selection.trigger(pieceId, {})} />
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CASE_TEXT, EXPLANATION_TEXT, MESSAGE_TEXT, type TermText } from '@/copy';
-import { Button, Card, Message } from '@/design';
+import { CASE_TEXT, EXPLANATION_TEXT, type TermText } from '@/copy';
+import { Button, Card } from '@/design';
 import type { CaseCard as Case, CaseRepair } from '@/game';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
@@ -98,11 +98,6 @@ export function CaseCard({ card, onNameCause, onNext, onShowResult }: CaseCardPr
       <p>
         <TaggedText text={CASE_TEXT.says(card.report)} />
       </p>
-      {card.restart && (
-        <Message variant="note" words={MESSAGE_TEXT} role="status">
-          <TaggedText text={card.restart} />
-        </Message>
-      )}
       {card.origins.map((origin) => (
         <Tests key={origin.fromId} origin={origin} />
       ))}

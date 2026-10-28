@@ -9,6 +9,7 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const TALL_LUCIA_INCIDENT = '02-12';
 const SIDE = '.incident__side';
+const BAR = '.incident__status';
 const LUCIA_REGION = '.incident__lucia';
 const MAP = '.incident__map';
 const NOTE = '.message--note';
@@ -55,7 +56,7 @@ describe('the fixed column of the incident screen', () => {
       const lucia = view.container.querySelector(LUCIA_REGION) as HTMLElement;
       const note = rectOf(NOTE);
 
-      expect(side.height, `${where}: the column is as tall as the window`).toBeCloseTo(window.innerHeight, 0);
+      expect(side.height + rectOf(BAR).height, `${where}: the column is as tall as the window less the status bar`).toBeCloseTo(window.innerHeight, 0);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
       expect(document.documentElement.scrollWidth - window.innerWidth, `${where}: the page does not scroll sideways`).toBeLessThanOrEqual(0);
       const column = view.container.querySelector(SIDE) as HTMLElement;

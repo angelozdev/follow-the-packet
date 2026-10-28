@@ -3,11 +3,12 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
-import { inspect, pieceViews, startSession } from '@/game';
-import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type SendIncident } from '@/levels';
+import { inspect, pieceViews, registryLines, startSession } from '@/game';
+import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { pieceDomId, type GameSceneProps } from '@/scene';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GLYPH_BOX } from '@/scene/marks/still-packets';
+import { OFFICE, device, ping } from '@/testing/fixtures';
 import { CHAPTER_1_TERMS, NOTE_RULE, diagnoseIncident, filterIncident, gatewayIncident, identifyIncident, namesSendIncident, repairableDiagnoseIncident, sendIncident } from '@/testing/incidents';
 import { IncidentScreen } from './incident-screen';
 
@@ -101,6 +102,10 @@ function panelOfTheColumn(): HTMLElement {
   const panel = theColumn().querySelector<HTMLElement>(':scope > section');
   if (panel === null) throw new Error('the panel is not in the column');
   return panel;
+}
+
+function theBar(): HTMLElement {
+  return screen.getByRole('log');
 }
 
 function pieceLabel(name: string): HTMLElement {
@@ -987,6 +992,12 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
     await user.keyboard('{Escape}');
   }
 
+  async function renderAtTheFixAfterATest(user: User) {
+    render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
+    await reachTheFix(user);
+    await pingTheServer(user);
+  }
+
   async function pingTheServer(user: User) {
     await user.click(screen.getByRole('button', { name: 'laptop-marta' }));
     const terminal = screen.getByRole('region', { name: 'laptop-marta' });
@@ -1020,14 +1031,24 @@ describe('incident screen of a diagnose incident with a case that has a fix', ()
 
   it('the case card says the sends start again, naming the router, when the routes of the fix change after a test, and until the next send', async () => {
     const user = userEvent.setup();
-    render(<IncidentScreen incidents={[REPAIRABLE]} incidentId={REPAIRABLE.id} nextId={null} onFinish={vi.fn()} />);
-    await reachTheFix(user);
-    await pingTheServer(user);
+    await renderAtTheFixAfterATest(user);
     await user.keyboard('{Escape}');
-    expect(caseCardOf(fixed)).not.toHaveTextContent('Cambiaste');
+    expect(theBar()).not.toHaveTextContent('Cambiaste');
     await repairTheRoutes(user);
-    expect(caseCardOf(fixed)).toHaveTextContent('Cambiaste la tabla de rutas de router-provider: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.');
+    expect(theBar()).toHaveTextContent('Cambiaste la tabla de rutas de router-provider: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.');
+    expect(caseCardOf(fixed)).not.toHaveTextContent('Cambiaste');
     await pingTheServer(user);
+    expect(theBar()).not.toHaveTextContent('Cambiaste');
+  });
+
+  it('the notice Cambiaste appears in the bar with the same words and in neither the card of Lucía nor the case card', async () => {
+    const user = userEvent.setup();
+    await renderAtTheFixAfterATest(user);
+    await repairTheRoutes(user);
+    const notice = theBar().querySelector('p.message');
+    expect(notice).toHaveClass('message--note');
+    expect(notice).toHaveTextContent('Cambiaste la tabla de rutas de router-provider: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.');
+    expect(screen.getByRole('region', { name: LUCIA_TEXT.name })).not.toHaveTextContent('Cambiaste');
     expect(caseCardOf(fixed)).not.toHaveTextContent('Cambiaste');
   });
 
@@ -1533,13 +1554,14 @@ describe('the incidents of the chapters on the 2D map', () => {
     await sendNc(user, yours, IP.marta, NC_TO_THE_APP);
     const hers = await openTheTerminal(user, LUCIA);
     await sendNc(user, hers, IP.loopback, NC_TO_THE_APP);
-    expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
+    expect(theBar()).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
     await user.click(pieceLabel(LUCIA));
     await user.click(screen.getByRole('tab', { name: SERVICES_TAB }));
     await user.click(within(screen.getByRole('region', { name: LUCIA })).getByRole('button', { name: EVERY_IP }));
-    expect(lucia).toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
-    await sendNc(user, await openTheTerminal(user), IP.lucia, NC_TO_THE_APP);
+    expect(theBar()).toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
     expect(lucia).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
+    await sendNc(user, await openTheTerminal(user), IP.lucia, NC_TO_THE_APP);
+    expect(theBar()).not.toHaveTextContent(SENDS_START_AGAIN_ON_THE_APP);
   });
 
   it('02-13: dig of tienda.lucia.example draws a question to the resolver and ping of the same name draws none', async () => {
@@ -1735,5 +1757,93 @@ describe('the incidents of the chapters on the 2D map', () => {
     renderIncident('03-07');
     expect(screen.getByRole('button', { name: 'servidor-nuevo con candado' })).toHaveAccessibleDescription('proxy inverso y servidor web');
     expect(screen.getByRole('button', { name: 'servidor-app con candado' })).toHaveAccessibleDescription('app, servidor de origen');
+  });
+});
+
+describe('the status bar of the incident screen', () => {
+  const SENDING = sendIncident();
+  const ambient = (id: string, to: string) => ({ id, kind: 'ambient' as const, packet: ping(device('your-laptop'), to) });
+  const WITH_FLOWS = { ...identifyIncident(), flows: [ambient('hum', OFFICE.printer), ambient('noise', OFFICE.lucia)] };
+  const WITH_NO_FLOWS = identifyIncident();
+  const FIRST_PING = 'ping de your-laptop a printer';
+  const SECOND_PING = 'ping de your-laptop a lucia-laptop';
+  const ARRIVED = 'Llegó y volvió la respuesta.';
+
+  function renderOf(incident: Incident) {
+    render(<IncidentScreen incidents={[incident]} incidentId={incident.id} nextId={null} onFinish={vi.fn()} />);
+  }
+
+  async function sendPing(user: User, address: string) {
+    await user.click(pieceLabel('your-laptop'));
+    const terminal = panelOfTheColumn();
+    await user.click(within(terminal).getByRole('button', { name: address }));
+    await user.click(within(terminal).getByRole('button', { name: 'ping' }));
+    await user.click(within(terminal).getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+
+  function newestLineOf(incidents: Incident[], id: string) {
+    const [newest] = registryLines(startSession(incidents, id));
+    if (newest?.kind !== 'packet') throw new Error(`${id} starts with no packet line`);
+    return `${toPlainText(newest.label)} ${toPlainText(newest.result)}`;
+  }
+
+  it('the bar shows the newest line in a send incident, a filter incident, an identify with flows and an identify with none', async () => {
+    const user = userEvent.setup();
+    renderOf(SENDING);
+    expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
+    await sendPing(user, OFFICE.printer);
+    expect(theBar()).toHaveTextContent(`${FIRST_PING} ${ARRIVED}`);
+    await sendPing(user, OFFICE.lucia);
+    expect(theBar()).toHaveTextContent(`${SECOND_PING} ${ARRIVED}`);
+    expect(theBar()).not.toHaveTextContent(FIRST_PING);
+    cleanup();
+
+    renderFirst();
+    expect(theBar()).toHaveTextContent(newestLineOf(INCIDENTS, FIRST.id));
+    cleanup();
+
+    renderOf(WITH_FLOWS);
+    expect(theBar()).toHaveTextContent(newestLineOf([WITH_FLOWS], WITH_FLOWS.id));
+    expect(theBar()).not.toHaveTextContent(SCREEN_TEXT.statusEmpty);
+    cleanup();
+
+    renderOf(WITH_NO_FLOWS);
+    expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
+  });
+
+  it('the bar of 01-01 shows the empty line and names no term', () => {
+    const office = INCIDENTS.find(({ id }) => id === '01-01');
+    if (office === undefined) throw new Error('01-01 is not registered');
+    expect(office.flows).toEqual([]);
+    renderOf(office);
+    expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
+    expect(theBar().querySelector('.term')).toBeNull();
+    expect(SCREEN_TEXT.statusEmpty).toBe(toPlainText(SCREEN_TEXT.statusEmpty));
+  });
+
+  it('clicking the line of a send selects its packet and the panel shows its box', async () => {
+    const user = userEvent.setup();
+    renderOf(SENDING);
+    await sendPing(user, OFFICE.printer);
+    expect(panelOfTheColumn()).toHaveAccessibleName('your-laptop');
+    await user.click(within(theBar()).getByRole('button'));
+    expect(panelOfTheColumn()).toHaveAccessibleName(FIRST_PING);
+    expect(panelOfTheColumn()).toHaveTextContent(ARRIVED);
+    expect(panelOfTheColumn().querySelector('h2')).not.toHaveFocus();
+  });
+
+  it('a refused entry of a table is in the bar and the table keeps saying it', async () => {
+    const user = userEvent.setup();
+    const NAMES = namesSendIncident();
+    render(<IncidentScreen incidents={[NAMES]} incidentId={NAMES.id} nextId={null} onFinish={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'servidor-autoritativo' }));
+    const card = screen.getByRole('region', { name: 'servidor-autoritativo' });
+    await user.click(within(card).getByRole('button', { name: 'www.lucia.example' }));
+    await user.click(within(card).getByRole('button', { name: 'A' }));
+    await user.click(within(card).getByRole('button', { name: '198.51.100.50' }));
+    await user.click(within(card).getByRole('button', { name: 'Agregar registro' }));
+    expect(within(card).getByRole('status')).toHaveTextContent('Ese registro ya está en la zona.');
+    expect(theBar().querySelector('p.message')).toHaveClass('message--error');
+    expect(theBar()).toHaveTextContent('Ese registro ya está en la zona.');
   });
 });

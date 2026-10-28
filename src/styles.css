@@ -171,7 +171,7 @@ button.stamp { cursor: help; }
   .stamp__dot { background: CanvasText; border-color: Canvas; }
 }
 
-.incident { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr); height: 100vh; }
+.incident { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1fr) auto; height: 100vh; }
 .incident__map { grid-area: 1 / 1; position: relative; min-height: 0; }
 .incident__bar { position: absolute; inset: 0 0 auto 0; z-index: 40; display: flex; align-items: baseline; gap: var(--space-md); padding: var(--space-sm) var(--space-md); pointer-events: none; }
 .incident__bar > * { pointer-events: auto; }
@@ -183,6 +183,10 @@ button.stamp { cursor: help; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
+.incident__status { grid-area: 2 / 1 / 3 / 3; z-index: 45; padding: var(--space-xs) var(--space-md); background: var(--color-page); border-top: var(--stroke-regular) solid var(--color-ink); font-size: var(--text-md); }
+.incident__status p { margin: 0; }
+.incident__status p.message { margin-block: var(--space-xl) var(--space-2xs); }
+.incident__status .link { font: inherit; text-align: start; }
 .incident__help-line { display: block; }
 .incident__help-line + .incident__help-line { margin-top: var(--space-xs); }
 .inspection__fields { margin: 0; }
@@ -206,9 +210,10 @@ button.stamp { cursor: help; }
   .incident .map-stage__sheet { min-height: 100%; }
 }
 @media (max-width: 900px) {
-  .incident { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; height: auto; }
-  .incident__inspection { grid-area: 2 / 1; place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
-  .incident__side { grid-area: 3 / 1; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
+  .incident { display: flex; flex-direction: column; grid-template: none; min-height: 100vh; height: auto; }
+  .incident__side { flex: 1 0 auto; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
+  .incident__inspection { place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
+  .incident__status { position: sticky; bottom: 0; }
 }
 
 .catalog { padding: var(--space-xl) var(--space-lg) var(--space-3xl); }
