@@ -164,27 +164,41 @@ describe('the rows of the registry', () => {
 
 describe('the row of a send in its table of routes', () => {
   const YOU = PIECE_ID.device('your-laptop');
+  const ROUTER = PIECE_ID.router(officeRouter.id);
   const rowOfTheNewest = (session: Session) => (registryLines(session)[0] as PacketLine).row;
+  const without = (session: Session, term: 'router' | 'routing-table'): Session => ({ ...session, known: new Set([...session.known].filter((known) => known !== term)) });
 
-  it('a send line names the piece of its first drawn decision and its send number, and its question, a traceroute and a flow name none', () => {
+  it('a send line names the first router of its route decisions that the map draws and its send number, and its question, a traceroute and a flow name none', () => {
     const sent = playing(PING, nameSend('server', 'ping'));
     expect(sent.history.map(({ send }) => send)).toEqual([1, 2]);
-    expect(packets(sent).slice(0, 2).map(({ row }) => row)).toEqual([{ pieceId: YOU, send: 2 }, { pieceId: YOU, send: 1 }]);
+    expect(sent.history[1].trace.routes?.map(({ holderId }) => holderId)[0]).toBe('your-laptop');
+    expect(packets(sent).slice(0, 2).map(({ row }) => row)).toEqual([{ pieceId: ROUTER, send: 2 }, { pieceId: YOU, send: 1 }]);
     expect(packets(sent).slice(2).every(({ row }) => row === undefined)).toBe(true);
     const byName = playing(nameSend('www', 'ping'));
     const [packet, question] = packets(byName);
-    expect(packet.row).toEqual({ pieceId: YOU, send: 1 });
+    expect(packet.row).toEqual({ pieceId: ROUTER, send: 1 });
     expect(question.row).toBeUndefined();
     const tracing = [nameSend('server', 'trace')].reduce(sessionReducer, startSession([TRACING], TRACING.id));
     expect(tracing.history[0].route).toBeDefined();
     expect(rowOfTheNewest(tracing)).toBeUndefined();
   });
 
+  it('the device whose decision it is when the decisions hold no router, and nothing when they hold routers and the map draws none', () => {
+    const insideTheLan = playing(PING);
+    expect(insideTheLan.history[0].trace.routes?.map(({ holderId }) => holderId)).toEqual(['your-laptop']);
+    expect(rowOfTheNewest(insideTheLan)).toEqual({ pieceId: YOU, send: 1 });
+    expect(rowOfTheNewest(without(insideTheLan, 'router'))).toEqual({ pieceId: YOU, send: 1 });
+    const crossing = playing(nameSend('server', 'ping'));
+    expect(rowOfTheNewest(crossing)).toEqual({ pieceId: ROUTER, send: 1 });
+    expect(crossing.history[0].trace.routes?.some(({ holderId }) => holderId === officeRouter.id)).toBe(true);
+    expect(rowOfTheNewest(without(crossing, 'router'))).toBeUndefined();
+  });
+
   it('is hidden for a send that never left, with the routing table unknown and once the incident is over', () => {
     expect(rowOfTheNewest(playing(noResolver, DIG))).toBeUndefined();
     const left = playing(PING);
     expect(rowOfTheNewest(left)).toBeDefined();
-    expect(rowOfTheNewest({ ...left, known: new Set([...left.known].filter((term) => term !== 'routing-table')) })).toBeUndefined();
+    expect(rowOfTheNewest(without(left, 'routing-table'))).toBeUndefined();
     expect(rowOfTheNewest({ ...left, phase: 'result' })).toBeUndefined();
   });
 });

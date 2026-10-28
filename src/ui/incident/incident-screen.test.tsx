@@ -1972,8 +1972,13 @@ describe('the registry of the status bar', () => {
     expect(registryList()).not.toHaveTextContent(PING_PRINTER);
   });
 
+  function withTheServer(incident: SendIncident): SendIncident {
+    return { ...incident, send: { ...incident.send, to: [...incident.send.to, { id: 'server', address: OFFICE_FLOORS.server.ip }] } };
+  }
+
   describe('Ver fila', () => {
-    const ROUTED = gatewayIncident();
+    const SERVER = OFFICE_FLOORS.server.ip;
+    const ROUTED = withTheServer(gatewayIncident());
     const SEE_ROW = 'Ver fila';
     const seeRowButton = () => screen.getByRole('button', { name: SEE_ROW });
     const rowsInUse = () =>
@@ -1990,21 +1995,23 @@ describe('the registry of the status bar', () => {
     it('Ver fila selects the router, opens Tablas and its ficha of routes and marks the row of that send, not the last one', async () => {
       const user = userEvent.setup();
       await routedWithTheGateway(user);
-      await sendTo(user, PRINTER);
       await sendTo(user, ANDRES);
+      await sendTo(user, SERVER);
       await user.click(registryButton());
       await user.click(within(rows()[1]).getByRole('button', { name: SEE_ROW }));
       const panel = panelOfTheColumn();
-      expect(panel).toHaveAccessibleName('tu-laptop');
+      expect(panel).toHaveAccessibleName('router-office');
       expect(within(panel).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
-      expect(within(panel).getByRole('table', { name: 'Tabla de rutas de tu-laptop' })).toBeInTheDocument();
+      expect(within(panel).getByRole('tab', { name: 'Tabla de rutas' })).toHaveAttribute('aria-selected', 'true');
+      expect(within(panel).getByRole('table', { name: 'Tabla de rutas de router-office' })).toBeInTheDocument();
       expect(rowsInUse()).toHaveLength(1);
-      expect(rowsInUse()[0]).toContain('192.168.1.0/24');
+      expect(rowsInUse()[0]).toContain('192.168.2.0/24');
       await user.click(within(rows()[0]).getByRole('button', { name: SEE_ROW }));
       expect(rowsInUse()).toHaveLength(1);
       expect(rowsInUse()[0]).toContain('0.0.0.0/0');
+      await user.click(within(rows()[1]).getByRole('button', { name: SEE_ROW }));
       await user.click(pieceLabel('impresora'));
-      await user.click(pieceLabel('tu-laptop'));
+      await user.click(pieceLabel('router-office'));
       expect(within(panelOfTheColumn()).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
       expect(rowsInUse()[0]).toContain('0.0.0.0/0');
     });
