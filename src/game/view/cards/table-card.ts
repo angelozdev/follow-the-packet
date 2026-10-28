@@ -72,6 +72,10 @@ function lastRun(session: Session): SentPacket | undefined {
   return last && last.route === undefined ? last : undefined;
 }
 
+function markedRun(session: Session, markedSend?: number): SentPacket | undefined {
+  return markedSend === undefined ? lastRun(session) : session.history.find((run) => run.send === markedSend && run.route === undefined);
+}
+
 export function code(text: TermText): TableCell {
   return { text, code: true };
 }
@@ -115,8 +119,8 @@ function outletOf(session: Session, holder: Device | Router, route: TableRoute):
   return next ? code(routerText(session, next)) : words(TABLE_TEXT.routes.direct);
 }
 
-function routeRow(session: Session, holder: Device | Router, route: TableRoute, editable: boolean): TableRowView {
-  const decision = lastRun(session)?.trace.routes?.find((candidate) => candidate.holderId === holder.id);
+function routeRow(session: Session, holder: Device | Router, route: TableRoute, editable: boolean, marked: SentPacket | undefined): TableRowView {
+  const decision = marked?.trace.routes?.find((candidate) => candidate.holderId === holder.id);
   const destination = route.to === ROUTE_DEFAULT ? ANYWHERE : route.to;
   return {
     id: `${route.kind}:${route.to}`,
@@ -131,14 +135,15 @@ function opensRoutes(session: Session, pieceId: string, holder: Device | Router)
   return 'interfaces' in holder || Object.values(originPieces(session)).includes(pieceId);
 }
 
-/** Returns the «Tabla de rutas» card of a device or a router: the routing table the engine derives for it (`routingTableOf`: a connected route for each network it is plugged into, the default route and, for a router, its routes), with the row the last packet sent used marked. A router whose table the incident lets the player edit gets the trays of the destination and the next hop, a button to take away each route that is not connected, the problem the engine gave to the last entry it refused and the label of the button that adds one; any other table is read only, and shows only once `routing-table` is known, for a router and for a device that sends. A table the incident lets the player edit is read only too once the session no longer accepts edits (`canEdit`: the case of a diagnose is closed, or the incident is), so the card never offers a control that would do nothing. The column of the next hop is called «Por dónde sale» until `next-hop` is known. Null for a piece that is no device or router, in an incident that is not a send, and when the piece has no such card. */
-export function routesCard(session: Session, pieceId: string): TableCard | null {
+/** Returns the «Tabla de rutas» card of a device or a router: the routing table the engine derives for it (`routingTableOf`: a connected route for each network it is plugged into, the default route and, for a router, its routes), with the row the last packet sent used marked, or the row the send numbered `markedSend` used when one is given (a send that is not in the history, or a traceroute, marks none). A router whose table the incident lets the player edit gets the trays of the destination and the next hop, a button to take away each route that is not connected, the problem the engine gave to the last entry it refused and the label of the button that adds one; any other table is read only, and shows only once `routing-table` is known, for a router and for a device that sends. A table the incident lets the player edit is read only too once the session no longer accepts edits (`canEdit`: the case of a diagnose is closed, or the incident is), so the card never offers a control that would do nothing. The column of the next hop is called «Por dónde sale» until `next-hop` is known. Null for a piece that is no device or router, in an incident that is not a send, and when the piece has no such card. */
+export function routesCard(session: Session, pieceId: string, markedSend?: number): TableCard | null {
   const holder = holderOf(session, pieceId);
   if (!holder) return null;
   const spec = tableSpec(session, holder.id, 'routes');
   if (!spec && !opensRoutes(session, pieceId, holder)) return null;
   const editable = spec?.kind === 'routes' && canEdit(session);
   const outlet = session.known.has('next-hop') ? TABLE_TEXT.routes.nextHop : TABLE_TEXT.routes.outlet;
+  const marked = markedRun(session, markedSend);
   return {
     kind: 'routes',
     tableId: editable ? spec.id : null,
@@ -149,7 +154,7 @@ export function routesCard(session: Session, pieceId: string): TableCard | null 
       { id: 'destination', label: TABLE_TEXT.destination },
       { id: 'outlet', label: outlet },
     ],
-    rows: routingTableOf(session.world, holder).map((route) => routeRow(session, holder, route, editable)),
+    rows: routingTableOf(session.world, holder).map((route) => routeRow(session, holder, route, editable, marked)),
     empty: TABLE_TEXT.routes.empty,
     note: null,
     trays: editable ? [trayOf('destination', TABLE_TEXT.destination, spec.trays.destination), trayOf('nextHop', toPlainText(outlet), spec.trays.nextHop)] : null,

@@ -22,7 +22,7 @@ export { inspect } from './view/inspection';
 export { PIECE_ID } from './view/piece-id';
 export type { Inspection } from './view/inspection';
 export { printedText, registryLines, registryRows } from './view/registry/lines';
-export type { ChangeLine, PacketLine, RegistryLine, RegistryRow, RejectionLine } from './view/registry/lines';
+export type { ChangeLine, PacketLine, RegistryLine, RegistryRow, RejectionLine, RouteRow } from './view/registry/lines';
 export { PANEL_TABS, TAB_OF_PART, panelOf } from './view/panel/panel';
 export type { Panel, PanelPart, PanelTab, PanelTabId, RulesPart } from './view/panel/panel';
 export { pieceViews } from './view/pieces';

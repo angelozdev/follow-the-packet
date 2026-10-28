@@ -1861,8 +1861,8 @@ describe('the registry of the status bar', () => {
   const registryList = () => screen.getByRole('list', { name: /^Registro \(\d+\)$/ });
   const rows = () => within(registryList()).getAllByRole('listitem');
 
-  function renderGateway() {
-    render(<IncidentScreen incidents={[GATEWAY]} incidentId={GATEWAY.id} nextId={null} onFinish={vi.fn()} />);
+  function renderGateway(incident = GATEWAY) {
+    render(<IncidentScreen incidents={[incident]} incidentId={incident.id} nextId={null} onFinish={vi.fn()} />);
   }
 
   async function sendTo(user: User, address: string) {
@@ -1970,5 +1970,92 @@ describe('the registry of the status bar', () => {
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toHaveTextContent(NOTICE);
     expect(registryList()).not.toHaveTextContent(PING_PRINTER);
+  });
+
+  describe('Ver fila', () => {
+    const ROUTED = gatewayIncident();
+    const SEE_ROW = 'Ver fila';
+    const seeRowButton = () => screen.getByRole('button', { name: SEE_ROW });
+    const rowsInUse = () =>
+      within(panelOfTheColumn())
+        .getAllByRole('row')
+        .filter((row) => within(row).queryByText('en uso') !== null)
+        .map((row) => row.textContent);
+
+    async function routedWithTheGateway(user: User) {
+      renderGateway(ROUTED);
+      await setTheGateway(user);
+    }
+
+    it('Ver fila selects the router, opens Tablas and its ficha of routes and marks the row of that send, not the last one', async () => {
+      const user = userEvent.setup();
+      await routedWithTheGateway(user);
+      await sendTo(user, PRINTER);
+      await sendTo(user, ANDRES);
+      await user.click(registryButton());
+      await user.click(within(rows()[1]).getByRole('button', { name: SEE_ROW }));
+      const panel = panelOfTheColumn();
+      expect(panel).toHaveAccessibleName('tu-laptop');
+      expect(within(panel).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
+      expect(within(panel).getByRole('table', { name: 'Tabla de rutas de tu-laptop' })).toBeInTheDocument();
+      expect(rowsInUse()).toHaveLength(1);
+      expect(rowsInUse()[0]).toContain('192.168.1.0/24');
+      await user.click(within(rows()[0]).getByRole('button', { name: SEE_ROW }));
+      expect(rowsInUse()).toHaveLength(1);
+      expect(rowsInUse()[0]).toContain('0.0.0.0/0');
+      await user.click(pieceLabel('impresora'));
+      await user.click(pieceLabel('tu-laptop'));
+      expect(within(panelOfTheColumn()).getByRole('tab', { name: 'Tablas' })).toHaveAttribute('aria-selected', 'true');
+      expect(rowsInUse()[0]).toContain('0.0.0.0/0');
+    });
+
+    it('the line of the bar has its Ver fila too', async () => {
+      const user = userEvent.setup();
+      await routedWithTheGateway(user);
+      await sendTo(user, PRINTER);
+      await sendTo(user, ANDRES);
+      await sendTo(user, PRINTER);
+      await user.click(seeRowButton());
+      expect(rowsInUse()[0]).toContain('192.168.1.0/24');
+      expect(theBar()).not.toContainElement(seeRowButton());
+    });
+
+    it('a send that never left has no Ver fila', async () => {
+      const user = userEvent.setup();
+      renderGateway(ROUTED);
+      await sendTo(user, ANDRES);
+      expect(theBar()).toHaveTextContent(PING_ANDRES);
+      expect(screen.queryByRole('button', { name: SEE_ROW })).toBeNull();
+      await setTheGateway(user);
+      await sendTo(user, ANDRES);
+      expect(theBar()).toHaveTextContent(PING_ANDRES_FOUND);
+      expect(seeRowButton()).toBeInTheDocument();
+    });
+
+    it('a send with the routing table still unknown has no Ver fila', async () => {
+      const user = userEvent.setup();
+      renderGateway();
+      await sendTo(user, PRINTER);
+      expect(theBar()).toHaveTextContent(PING_PRINTER);
+      expect(screen.queryByRole('button', { name: SEE_ROW })).toBeNull();
+      cleanup();
+      renderGateway(ROUTED);
+      await sendTo(user, PRINTER);
+      expect(seeRowButton()).toBeInTheDocument();
+    });
+
+    it('Ver fila leaves the focus on the heading of the panel', async () => {
+      const user = userEvent.setup();
+      await routedWithTheGateway(user);
+      await sendTo(user, PRINTER);
+      await user.click(pieceLabel('impresora'));
+      await user.click(seeRowButton());
+      expect(panelOfTheColumn().querySelector('h2')).toHaveFocus();
+      await user.click(pieceLabel('impresora'));
+      seeRowButton().focus();
+      await user.keyboard('{Enter}');
+      expect(panelOfTheColumn()).toHaveAccessibleName('tu-laptop');
+      expect(panelOfTheColumn().querySelector('h2')).toHaveFocus();
+    });
   });
 });

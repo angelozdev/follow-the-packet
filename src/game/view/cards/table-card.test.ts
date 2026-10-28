@@ -68,6 +68,18 @@ describe('routesCard', () => {
     expect(used(routesCard(play(START, send('server', 'ping'), send('server', 'trace')), YOU))).toEqual([]);
   });
 
+  it('routesCard marks the row of the send it is given and the last packet when it is given none', () => {
+    const played = play(START, send('lucia', 'ping'), send('server', 'ping'), send('server', 'trace'));
+    const [toLucia, toServer, trace] = played.history.map((run) => run.send);
+    const afterTwo = play(START, send('lucia', 'ping'), send('server', 'ping'));
+    expect(used(routesCard(afterTwo, YOU))).toEqual(['default:default']);
+    expect(used(routesCard(afterTwo, YOU, toLucia))).toEqual(['connected:192.168.1.0/24']);
+    expect(used(routesCard(afterTwo, YOU, toServer))).toEqual(['default:default']);
+    expect(used(routesCard(afterTwo, YOU, afterTwo.sends + 1))).toEqual([]);
+    expect(used(routesCard(played, YOU, trace))).toEqual([]);
+    expect(used(routesCard(played, YOU, toLucia))).toEqual(['connected:192.168.1.0/24']);
+  });
+
   it('a router whose table the incident lets the player edit offers the trays, a button for each route that is not connected, and the label of the button that adds one', () => {
     const card = routesCard(START, PROVIDER);
     expect(card).toMatchObject({ kind: 'routes', tableId: 'routes', ownerId: provider.id, add: 'Agregar ruta' });

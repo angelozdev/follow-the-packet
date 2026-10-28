@@ -1,10 +1,11 @@
-import { MESSAGE_TEXT } from '@/copy';
+import { MESSAGE_TEXT, REGISTRY_TEXT } from '@/copy';
 import { Button, Message } from '@/design';
-import type { PacketLine, RegistryLine } from '@/game';
+import type { PacketLine, RegistryLine, RouteRow } from '@/game';
 import type { GameSceneProps } from '@/scene';
 import { TaggedText } from '@/ui/tagged-text';
 
 export type ChooseLine = GameSceneProps['inspectTrigger'];
+export type SeeRow = (row: RouteRow) => void;
 
 interface LineTextProps {
   line: RegistryLine;
@@ -50,4 +51,29 @@ export function LineText({ line, choose }: LineTextProps) {
         </Message>
       );
   }
+}
+
+/** Takes a line and returns where its «Ver fila» goes, or undefined when it has none: only the line of a send that left, with the routing table known, has one. */
+export function rowOfLine(line: RegistryLine): RouteRow | undefined {
+  return line.kind === 'packet' ? line.row : undefined;
+}
+
+/** Takes the row a line points to and what shows it, and returns «Ver fila». */
+export function SeeRowButton({ row, seeRow }: { row: RouteRow; seeRow: SeeRow }) {
+  return (
+    <Button variant="small" onClick={() => seeRow(row)}>
+      {REGISTRY_TEXT.seeRow}
+    </Button>
+  );
+}
+
+/** Takes a line, what chooses a packet and what shows a row, and returns the line with its «Ver fila» after it when it has one. */
+export function LineEntry({ line, choose, seeRow }: LineTextProps & { seeRow: SeeRow }) {
+  const row = rowOfLine(line);
+  return (
+    <>
+      <LineText line={line} choose={choose} />
+      {row && <SeeRowButton row={row} seeRow={seeRow} />}
+    </>
+  );
 }

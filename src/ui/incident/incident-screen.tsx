@@ -1,10 +1,11 @@
 import { useMemo, useReducer } from 'react';
 import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
 import { Button } from '@/design';
-import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf } from '@/game';
+import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
+import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import { ShellColumn } from '@/ui/shell/shell-column';
 import { StatusBar } from '@/ui/shell/status/status-bar';
 import { useSelection } from '@/ui/shell/use-selection';
@@ -33,6 +34,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
   const lines = useMemo(() => registryLines(session), [session]);
   const selection = useSelection(session);
+  const panelChoice = usePanelChoice();
   const { inspection, duplicate, trigger, release, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
@@ -44,6 +46,11 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
     onFinish(countStars(starsOf(session)));
   };
   const nextCase = () => dispatch({ type: 'nextCase' });
+  const seeRow = ({ pieceId, send }: RouteRow) => {
+    panelChoice.chooseTab(pieceId, 'tables');
+    panelChoice.chooseFicha(pieceId, 'tables', 'routes');
+    selection.showRow(pieceId, send);
+  };
 
   return (
     <main className="incident">
@@ -102,10 +109,12 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
             heading={selection.heading}
             onClose={selection.release}
             onChoose={selection.choosePiece}
+            choice={panelChoice}
+            markedSend={selection.markedSend}
           />
         }
       />
-      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} />
+      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} seeRow={seeRow} />
     </main>
   );
 }

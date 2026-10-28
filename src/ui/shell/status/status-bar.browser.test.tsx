@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { INCIDENTS } from '@/levels';
+import { OFFICE_IP, openTerminal, sendTo } from '@/testing/browser-play';
 import { isReachable } from '@/testing/card-boxes';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
@@ -14,6 +15,9 @@ const INCIDENT_WITH_LINES = '04-01';
 const REGISTRY = '.incident__registry';
 const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
 const CAP_OF_THE_REGISTRY = 0.5;
+const INCIDENT_WITH_TABLES = '02-06';
+const SEE_ROW = 'Ver fila';
+const LOW_WINDOW = { width: 1280, height: 600 };
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
   { width: 1280, height: 600 },
@@ -136,5 +140,33 @@ describe('the open registry of the status bar', () => {
     expect(lastControl().getBoundingClientRect().bottom, 'the last control ends above the open registry').toBeLessThanOrEqual(rectOf(REGISTRY).top + EPSILON);
     window.scrollTo(0, 0);
     phone.unmount();
+  });
+});
+
+describe('Ver fila in the real map', () => {
+  it('Ver fila opens Tablas with the row of its send marked, the focus on the heading and the tab in view, at 1280×600 and at 390 px', async () => {
+    for (const size of [LOW_WINDOW, PHONE_WINDOW]) {
+      await page.viewport(size.width, size.height);
+      const view = await theScreen(INCIDENT_WITH_TABLES);
+      const where = `${size.width}×${size.height}`;
+      const terminal = await openTerminal();
+      await sendTo(terminal, OFFICE_IP.printer);
+      await sendTo(terminal, OFFICE_IP.andres);
+      await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
+      const registry = page.elementLocator(document.querySelector(REGISTRY) as Element);
+      await userEvent.click(registry.getByRole('button', { name: SEE_ROW }).nth(1));
+
+      const panel = document.querySelector(`${SIDE} > section`) as HTMLElement;
+      const tabs = panel.querySelector('[role="tablist"]') as HTMLElement;
+      const chosen = tabs.querySelector('[aria-selected="true"]') as HTMLElement;
+      const inUse = [...panel.querySelectorAll('tr')].filter((row) => row.textContent?.includes('en uso'));
+      expect(document.activeElement, `${where}: the focus is on the heading`).toBe(panel.querySelector('h2'));
+      expect(chosen.textContent, `${where}: Tablas is the tab`).toBe('Tablas');
+      expect(chosen.getBoundingClientRect().left, `${where}: the tab is inside the bar at its left`).toBeGreaterThanOrEqual(tabs.getBoundingClientRect().left - EPSILON);
+      expect(chosen.getBoundingClientRect().right, `${where}: and at its right`).toBeLessThanOrEqual(tabs.getBoundingClientRect().right + EPSILON);
+      expect(inUse, `${where}: one row is marked`).toHaveLength(1);
+      expect(inUse[0].textContent, `${where}: the row of the ping to the printer, not the last`).toContain('192.168.1.0/24');
+      view.unmount();
+    }
   });
 });

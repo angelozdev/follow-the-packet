@@ -1,16 +1,24 @@
 import { toPlainText, type TermText } from '@/copy';
 import { drawnSends, type DrawnSend, type FlowRun } from '@/game/flow-runs';
 import { changeNotice, type LogEntry, type Session } from '@/game/session';
-import { problemText } from '@/game/view/cards/table-card';
-import { resultOf, stopOf } from '@/game/view/inspection';
+import { problemText, routesCard } from '@/game/view/cards/table-card';
+import { inspect, resultOf, stopOf } from '@/game/view/inspection';
+import { PIECE_ID } from '@/game/view/piece-id';
 
-/** A packet of the map, a send of the player or a flow of the incident: the id of its piece, its label, its result and, when the player can place where it stopped, the reason, in the words of its box. */
+/** Where «Ver fila» of a send takes the player: the piece whose table of routes holds the row that send used, and the number of the send. */
+export interface RouteRow {
+  pieceId: string;
+  send: number;
+}
+
+/** A packet of the map, a send of the player or a flow of the incident: the id of its piece, its label, its result and, when the player can place where it stopped, the reason, in the words of its box. A send that left, with the routing table known, also has `row`. */
 export interface PacketLine {
   kind: 'packet';
   pieceId: string;
   label: TermText;
   result: TermText;
   reason: TermText | null;
+  row?: RouteRow;
 }
 
 /** The change whose edit emptied sends that were not empty, as the notice that says it. */
@@ -44,13 +52,29 @@ function packetLine(session: Session, run: DrawnSend | FlowRun): PacketLine {
   return { kind: 'packet', pieceId: run.pieceId, label: run.label, result: resultOf(session, run), reason: run.hiddenStop ? null : stopOf(session, run) };
 }
 
+function holderPiece(session: Session, holderId: string): string {
+  return (session.world.routers ?? []).some(({ id }) => id === holderId) ? PIECE_ID.router(holderId) : PIECE_ID.device(holderId);
+}
+
+function rowOf(session: Session, run: DrawnSend): RouteRow | undefined {
+  const sent = session.history.find(({ send, id }) => send === run.send && id === run.id);
+  if (sent === undefined || sent.route !== undefined || session.phase !== 'playing' || !session.known.has('routing-table')) return undefined;
+  const pieceId = (sent.trace.routes ?? []).map(({ holderId }) => holderPiece(session, holderId)).find((id) => routesCard(session, id) !== null && inspect(session, id) !== null);
+  return pieceId === undefined ? undefined : { pieceId, send: sent.send };
+}
+
+function sendLine(session: Session, run: DrawnSend): PacketLine {
+  const row = rowOf(session, run);
+  return { ...packetLine(session, run), ...(row && { row }) };
+}
+
 function logLine(session: Session, entry: LogEntry): ChangeLine | RejectionLine {
   return entry.kind === 'change' ? { kind: 'change', notice: changeNotice(session, entry.restart) } : { kind: 'rejection', text: problemText(entry.problem) };
 }
 
-/** Takes the session and returns the lines of its registry, the newest first: the sends since the world last changed (a send by name is two lines, its packet over its question, which left first), with the change that emptied the sends and the entries of tables the engine refused (`Session.log`) between them as they happened, and then the flows of the incident, the last one first, since a flow has no send and is older than all of them. A packet whose stop the player cannot place has no reason. Every line of a packet carries the id of the piece the map draws for it, so a click on it chooses the same packet. Pure, from the session. */
+/** Takes the session and returns the lines of its registry, the newest first: the sends since the world last changed (a send by name is two lines, its packet over its question, which left first), with the change that emptied the sends and the entries of tables the engine refused (`Session.log`) between them as they happened, and then the flows of the incident, the last one first, since a flow has no send and is older than all of them. A packet whose stop the player cannot place has no reason. A line of a send that left (not its question, not a traceroute) also has `row`, the piece of the first of its route decisions that the map draws and has a table of routes, and its send number, while the incident is on and `routing-table` is known; no other line has it. Every line of a packet carries the id of the piece the map draws for it, so a click on it chooses the same packet. Pure, from the session. */
 export function registryLines(session: Session): RegistryLine[] {
-  const sends: Dated[] = drawnSends(session.history).map((run) => ({ at: run.send, line: packetLine(session, run) }));
+  const sends: Dated[] = drawnSends(session.history).map((run) => ({ at: run.send, line: sendLine(session, run) }));
   const events: Dated[] = session.log.map((entry) => ({ at: entry.sends + BETWEEN_SENDS, line: logLine(session, entry) }));
   const inOrder = [...sends, ...events].sort((a, b) => a.at - b.at);
   const flows = session.runs.map((run) => packetLine(session, run));

@@ -488,6 +488,7 @@ export const RESULT_TEXT = {
 export const REGISTRY_TEXT = {
   open: (lines: number) => `Registro (${lines})`,
   repeats: (times: number) => `${times} veces`,
+  seeRow: 'Ver fila',
 } as const;
 
 export const SCREEN_TEXT = {

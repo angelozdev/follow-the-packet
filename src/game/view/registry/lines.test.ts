@@ -25,6 +25,7 @@ const placeRoute: SessionAction = { type: 'placeEntry', tableId: 'routes', picks
 const noResolver: SessionAction = { type: 'setSetting', deviceId: 'your-laptop', settingId: 'resolver', chipId: 'none' };
 const ambient = (id: string, to: string) => ({ id, kind: 'ambient' as const, packet: ping(device('your-laptop'), to) });
 const NOISY: SendIncident = { ...sendIncident(), flows: [ambient('hum', OFFICE.printer), ambient('noise', OFFICE.lucia)] };
+const TRACING: SendIncident = { ...NAMES, send: { ...NAMES.send, message: [...NAMES.send.message, { id: 'trace', label: '{{traceroute}}', command: 'traceroute', icmpType: 8 }] } };
 const ECHOING: SendIncident = { ...NAMES, flows: [ambient('hum', OFFICE_FLOORS.floor1.lucia), ambient('noise', OFFICE_FLOORS.floor1.lucia)] };
 const refuseRecord: SessionAction = { type: 'placeEntry', tableId: 'records', picks: { name: `www.${zone}`, type: 'CNAME', value: server.ip } };
 const playing = (...actions: SessionAction[]): Session => actions.reduce(sessionReducer, startSession([NAMES], NAMES.id));
@@ -158,5 +159,32 @@ describe('the rows of the registry', () => {
       ['change', 0],
       ['packet', 1],
     ]);
+  });
+});
+
+describe('the row of a send in its table of routes', () => {
+  const YOU = PIECE_ID.device('your-laptop');
+  const rowOfTheNewest = (session: Session) => (registryLines(session)[0] as PacketLine).row;
+
+  it('a send line names the piece of its first drawn decision and its send number, and its question, a traceroute and a flow name none', () => {
+    const sent = playing(PING, nameSend('server', 'ping'));
+    expect(sent.history.map(({ send }) => send)).toEqual([1, 2]);
+    expect(packets(sent).slice(0, 2).map(({ row }) => row)).toEqual([{ pieceId: YOU, send: 2 }, { pieceId: YOU, send: 1 }]);
+    expect(packets(sent).slice(2).every(({ row }) => row === undefined)).toBe(true);
+    const byName = playing(nameSend('www', 'ping'));
+    const [packet, question] = packets(byName);
+    expect(packet.row).toEqual({ pieceId: YOU, send: 1 });
+    expect(question.row).toBeUndefined();
+    const tracing = [nameSend('server', 'trace')].reduce(sessionReducer, startSession([TRACING], TRACING.id));
+    expect(tracing.history[0].route).toBeDefined();
+    expect(rowOfTheNewest(tracing)).toBeUndefined();
+  });
+
+  it('is hidden for a send that never left, with the routing table unknown and once the incident is over', () => {
+    expect(rowOfTheNewest(playing(noResolver, DIG))).toBeUndefined();
+    const left = playing(PING);
+    expect(rowOfTheNewest(left)).toBeDefined();
+    expect(rowOfTheNewest({ ...left, known: new Set([...left.known].filter((term) => term !== 'routing-table')) })).toBeUndefined();
+    expect(rowOfTheNewest({ ...left, phase: 'result' })).toBeUndefined();
   });
 });
