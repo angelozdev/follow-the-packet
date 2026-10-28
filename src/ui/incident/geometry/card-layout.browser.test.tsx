@@ -185,7 +185,7 @@ function lastOfThePanel(piece: string): () => Locator {
 }
 
 function scrollingAround(last: Locator): { within?: Locator } {
-  const body = last.element().closest('.chip-card__body');
+  const body = last.element().closest('.chip-card__body, .incident__lucia');
   return body !== null && window.innerWidth > STACKED_UNDER_PX ? { within: page.elementLocator(body) } : {};
 }
 

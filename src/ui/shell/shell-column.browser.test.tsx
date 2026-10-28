@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { LUCIA_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { reachWithWheel } from '@/testing/browser-play';
+import { openByKeyboard, reachWithWheel } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -21,6 +21,8 @@ const CHOSEN_PIECE = /^servidor2/;
 const PIECE_IN_VIEW_INCIDENT = '04-01';
 const ROOM_FOR_THE_BODY_PX = 120;
 const LUCIA_SHARE_KEPT = 0.35;
+const PANEL_SHARE_KEPT = 0.5;
+const YOUR_LAPTOP = 'tu-laptop';
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
   { width: 1280, height: 720 },
@@ -28,6 +30,7 @@ const COLUMN_WINDOWS = [
   { width: 1280, height: 600 },
 ];
 const LOW_WINDOW = { width: 1280, height: 600 };
+const TALL_LUCIA_WINDOWS = [{ width: 1280, height: 800 }, LOW_WINDOW];
 const BREAK_WINDOW = { width: 900, height: 800 };
 const PHONE_WINDOW = { width: 390, height: 844 };
 
@@ -87,6 +90,26 @@ describe('the fixed column of the incident screen', () => {
     expect(await reachWithWheel(submit, { within: page.elementLocator(lucia) }), 'the wheel over her region brings «Enviar solución» into reach').toBe(true);
     lucia.scrollTop = 0;
     expect(rectOf(`${LUCIA_REGION} h2`).top, 'her report starts inside the region').toBeGreaterThanOrEqual(lucia.getBoundingClientRect().top - EPSILON);
+  });
+
+  it('with a tall Lucía the panel of a piece keeps at least half the column at 1280×800 and 1280×600 and she scrolls inside her region', async () => {
+    for (const size of TALL_LUCIA_WINDOWS) {
+      await page.viewport(size.width, size.height);
+      const view = await theScreen(TALL_LUCIA_INCIDENT);
+      const where = `${size.width}×${size.height}`;
+      await openByKeyboard(YOUR_LAPTOP);
+      await expect.poll(() => document.querySelector(PANEL_CARD), { message: `${where}: the piece chosen fills the panel` }).not.toBeNull();
+      const column = view.container.querySelector(SIDE) as HTMLElement;
+      const lucia = view.container.querySelector(LUCIA_REGION) as HTMLElement;
+      const style = getComputedStyle(column);
+      const room = column.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+
+      expect(lucia.scrollHeight, `${where}: her cards do not fit what is left to her, so her region scrolls`).toBeGreaterThan(lucia.clientHeight);
+      expect(rectOf(PANEL_CARD).height, `${where}: the panel keeps at least half the column`).toBeGreaterThanOrEqual(PANEL_SHARE_KEPT * room - EPSILON);
+      expect(rectOf(PANEL_BODY).height, `${where}: its body keeps room to be read`).toBeGreaterThanOrEqual(ROOM_FOR_THE_BODY_PX);
+      expect(column.scrollHeight - column.clientHeight, `${where}: the column holds its regions without scrolling`).toBeLessThanOrEqual(EPSILON);
+      view.unmount();
+    }
   });
 
   it('at 900 px and under the column stacks under the map and at 390 px nothing scrolls sideways', async () => {

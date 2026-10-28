@@ -32,6 +32,7 @@ const SIDE_PANEL = '.incident__side';
 const LUCIA_REGION = '.incident__lucia';
 const MAP = '.incident__map';
 const NOTE = '.message--note';
+const LUCIA_SHARE_KEPT = 0.35;
 
 function rectOf(selector: string): DOMRect | null {
   return document.querySelector(selector)?.getBoundingClientRect() ?? null;
@@ -166,7 +167,7 @@ describe('the inspection help of the 2D screen at the 900 px break', () => {
     expect(lines[0].closest(NOTE)?.previousElementSibling, 'right under the region of Lucía').toBe(view.container.querySelector(LUCIA_REGION));
   });
 
-  it('keeps the region of Lucía where it is while a box previews and while a piece is chosen', async () => {
+  it('keeps the region of Lucía where it is while a box previews and only yields room to the panel while a piece is chosen', async () => {
     await page.viewport(NARROWEST_WIDE_WINDOW.width, NARROWEST_WIDE_WINDOW.height);
     const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={FIRST_INCIDENT} nextId={null} onFinish={() => undefined} />);
     await waitForTheHelp(view);
@@ -182,7 +183,9 @@ describe('the inspection help of the 2D screen at the 900 px break', () => {
 
     await userEvent.click(label);
     await expect.poll(() => document.querySelector(PANEL_CARD), { message: 'the click chooses the piece' }).not.toBeNull();
-    expect(luciaBottom(), 'with the piece chosen').toBe(before);
+    expect(luciaBottom(), 'with the piece chosen she gives room to the panel and takes none').toBeLessThanOrEqual(before);
+    const column = view.container.querySelector(SIDE_PANEL) as HTMLElement;
+    expect(lucia.clientHeight, 'and keeps what her cards need, up to a share of the column').toBeGreaterThanOrEqual(Math.min(lucia.scrollHeight, LUCIA_SHARE_KEPT * column.clientHeight) - EPSILON);
     expect(view.queryByText(SCREEN_TEXT.inspectHelp), 'the panel is the piece, not the note').toBeNull();
   });
 
