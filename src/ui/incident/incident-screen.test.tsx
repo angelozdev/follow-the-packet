@@ -1978,7 +1978,7 @@ describe('the registry of the status bar', () => {
   describe('Ver fila', () => {
     const SERVER = OFFICE_FLOORS.server.ip;
     const ROUTED = withTheServer(gatewayIncident());
-    const SEE_ROW = 'Ver fila';
+    const SEE_ROW = 'Ver fila en la tabla de rutas';
     const seeRowButton = () => screen.getByRole('button', { name: SEE_ROW });
     const rowsInUse = () =>
       within(panelOfTheColumn())

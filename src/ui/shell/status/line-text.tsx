@@ -53,12 +53,12 @@ export function LineText({ line, choose }: LineTextProps) {
   }
 }
 
-/** Takes a line and returns where its «Ver fila» goes, or undefined when it has none: only the line of a send that left, with the routing table known, has one. */
+/** Takes a line and returns where its «Ver fila en la tabla de rutas» goes, or undefined when it has none: only the line of a send that left, with the routing table known, has one. */
 export function rowOfLine(line: RegistryLine): RouteRow | undefined {
   return line.kind === 'packet' ? line.row : undefined;
 }
 
-/** Takes the row a line points to and what shows it, and returns «Ver fila». */
+/** Takes the row a line points to and what shows it, and returns «Ver fila en la tabla de rutas». */
 export function SeeRowButton({ row, seeRow }: { row: RouteRow; seeRow: SeeRow }) {
   return (
     <Button variant="small" onClick={() => seeRow(row)}>
@@ -67,7 +67,7 @@ export function SeeRowButton({ row, seeRow }: { row: RouteRow; seeRow: SeeRow })
   );
 }
 
-/** Takes a line, what chooses a packet and what shows a row, and returns the line with its «Ver fila» after it when it has one. */
+/** Takes a line, what chooses a packet and what shows a row, and returns the line with its «Ver fila en la tabla de rutas» after it when it has one. */
 export function LineEntry({ line, choose, seeRow }: LineTextProps & { seeRow: SeeRow }) {
   const row = rowOfLine(line);
   return (

@@ -5,13 +5,13 @@ import { problemText, routesCard } from '@/game/view/cards/table-card';
 import { inspect, resultOf, stopOf } from '@/game/view/inspection';
 import { PIECE_ID } from '@/game/view/piece-id';
 
-/** Where «Ver fila» of a send takes the player: the piece whose table of routes holds the row that send used, and the number of the send. */
+/** Where «Ver fila en la tabla de rutas» of a send takes the player: the piece whose table of routes holds the row that send used, and the number of the send. */
 export interface RouteRow {
   pieceId: string;
   send: number;
 }
 
-/** A packet of the map, a send of the player or a flow of the incident: the id of its piece, its label, its result and, when the player can place where it stopped, the reason, in the words of its box. A send that left, with the routing table known, also has `row`: where «Ver fila» takes the player. */
+/** A packet of the map, a send of the player or a flow of the incident: the id of its piece, its label, its result and, when the player can place where it stopped, the reason, in the words of its box. A send that left, with the routing table known, also has `row`: where «Ver fila en la tabla de rutas» takes the player. */
 export interface PacketLine {
   kind: 'packet';
   pieceId: string;

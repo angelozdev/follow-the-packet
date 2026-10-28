@@ -488,7 +488,7 @@ export const RESULT_TEXT = {
 export const REGISTRY_TEXT = {
   open: (lines: number) => `Registro (${lines})`,
   repeats: (times: number) => `${times} veces`,
-  seeRow: 'Ver fila',
+  seeRow: 'Ver fila en la tabla de rutas',
 } as const;
 
 export const SCREEN_TEXT = {

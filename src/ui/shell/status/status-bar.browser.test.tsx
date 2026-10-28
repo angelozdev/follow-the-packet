@@ -16,7 +16,8 @@ const REGISTRY = '.incident__registry';
 const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
 const CAP_OF_THE_REGISTRY = 0.25;
 const INCIDENT_WITH_TABLES = '02-06';
-const SEE_ROW = 'Ver fila';
+const SEE_ROW = 'Ver fila en la tabla de rutas';
+const BAR_LINE = '.incident__status-line';
 const LOW_WINDOW = { width: 1280, height: 600 };
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
@@ -176,5 +177,26 @@ describe('Ver fila in the real map', () => {
       expect(inUse[0].textContent, `${where}: the row of the ping to the printer, not the last`).toContain('192.168.1.0/24');
       view.unmount();
     }
+  });
+
+  it('the line of the bar fits at 390×844 after one ping: the page does not scroll sideways and neither button is clipped', async () => {
+    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
+    const view = await theScreen(INCIDENT_WITH_TABLES);
+    const terminal = await openTerminal();
+    await sendTo(terminal, OFFICE_IP.printer);
+    const line = document.querySelector(BAR_LINE) as HTMLElement;
+    const buttons = [...line.querySelectorAll(':scope > button')];
+    const bar = rectOf(BAR);
+
+    expect(buttons.map((button) => button.textContent), 'the line has both buttons').toEqual([SEE_ROW, 'Registro (1)']);
+    expect(document.documentElement.scrollWidth, 'the page does not scroll sideways').toBeLessThanOrEqual(window.innerWidth);
+    for (const button of buttons) {
+      const box = button.getBoundingClientRect();
+      expect(button.scrollWidth, `${button.textContent}: the label is not cut at its right`).toBeLessThanOrEqual(button.clientWidth + EPSILON);
+      expect(button.scrollHeight, `${button.textContent}: nor at its bottom`).toBeLessThanOrEqual(button.clientHeight + EPSILON);
+      expect(box.left, `${button.textContent}: inside the bar at its left`).toBeGreaterThanOrEqual(bar.left - EPSILON);
+      expect(box.right, `${button.textContent}: and at its right`).toBeLessThanOrEqual(bar.right + EPSILON);
+    }
+    view.unmount();
   });
 });
