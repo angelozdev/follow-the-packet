@@ -2032,6 +2032,12 @@ describe('02-12, still the old ip', () => {
     expect(sentences.filter((sentence) => /TTL de IP/.test(sentence) && /segundo/.test(sentence) && !/DNS/.test(sentence))).toEqual([]);
   });
 
+  it('02-12: the takeaway tells the tab Tablas of the resolver in the past, because the result card has no such tab', () => {
+    const takeaway = plain(start.incident.takeaway);
+    expect(takeaway).toContain(`La pestaña «Tablas» de ${SERVER.resolver.name} mostraba lo que tenía guardado y los segundos que le quedaban.`);
+    expect(takeaway).not.toContain('muestra lo que tiene guardado');
+  });
+
   it('02-12: the report names servidor-autoritativo and servidor-dns', () => {
     const { report } = start.incident;
     const [before, after] = [solvedWorld(INCIDENTS, PREVIOUS_INCIDENT), startWorld(INCIDENTS, STILL)];

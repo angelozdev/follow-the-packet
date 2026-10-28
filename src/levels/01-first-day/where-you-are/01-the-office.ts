@@ -35,7 +35,7 @@ export default defineIncident({
   concept: CONCEPT,
   introduces: ['network', 'device', 'ip-address', 'ipv4'],
   base: BASE_WORLD,
-  report: `Te doy la bienvenida a tu primer día. Esta oficina es una {{network|red}}: un conjunto de {{device|dispositivos}} conectados entre sí. Anoté la {{ip-address|dirección IP}} de la ${NAME.printer} en una nota: ${IP.note}. Revisa dos cosas: qué laptop no está conectada y si mi nota está bien. Elige ${NAME.visitor} o la ${NAME.printer} y abre su pestaña «Estado».`,
+  report: `Te doy la bienvenida a tu primer día. Esta oficina es una {{network|red}}: un conjunto de {{device|dispositivos}} conectados entre sí. Anoté la {{ip-address|dirección IP}} de la ${NAME.printer} en una nota: ${IP.note}. Revisa dos cosas: qué laptop no está conectada y si mi nota está bien. Elige ${NAME.visitor} o la ${NAME.printer}. En su pestaña «Estado» ves si está conectada y cuál es su {{ip-address|IP}}. En su pestaña «Preguntas» eliges la respuesta.`,
   tasks: [
     {
       id: TASK.visitor,

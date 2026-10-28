@@ -319,6 +319,14 @@ describe('01-01, the office', () => {
     expect(openTasks(start)).toContain(TASK.printer);
   });
 
+  it('01-01: the report says that the tab Estado shows if a device is connected and its IP', () => {
+    expect(toPlainText(guidedOf(THE_OFFICE).report)).toContain('En su pestaña «Estado» ves si está conectada y cuál es su IP.');
+  });
+
+  it('01-01: the report says that the answers are chosen in the tab Preguntas', () => {
+    expect(toPlainText(guidedOf(THE_OFFICE).report)).toContain('En su pestaña «Preguntas» eliges la respuesta.');
+  });
+
   it('01-01: pressing Listo with 192.168.1.300 picked shows that the numbers stop at 255 and leaves the task open', () => {
     expect(printerLines(start, CARD.ip.note)).toEqual([NOTE_FEEDBACK]);
     const confirmed = pickPrinter(start, CARD.ip.note);
