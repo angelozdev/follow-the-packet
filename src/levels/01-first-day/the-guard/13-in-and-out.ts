@@ -17,7 +17,7 @@ export default defineIncident({
   tasks: [{ id: TASK.leave, text: `Que tu {{ping}} a ${NAME.lucia} vuelva.`, flowIds: [FLOW.leave.id] }],
   flows: [FLOW.leave, FLOW.background],
   chips: { what: [WHAT.echoRequest], from: [FROM.lucia, FROM.printer], to: [TO.lucia, TO.printer] },
-  hints: ['Mira dónde está el ✕ del {{ping}}.', `En el {{firewall}} de ${NAME.you}, abre su pestaña «Tablas» y agrega la {{rule|regla}} en la pestaña «salida».`],
+  hints: ['Mira dónde está el ✕ del {{ping}}.', `Elige el {{firewall}} de ${NAME.you} y abre su pestaña «Tablas». Ahí, en la pestaña «salida», agrega la {{rule|regla}}.`],
   question: 'Si pones una {{rule|regla}} en la {{inbound|entrada}}, ¿por qué el {{ping}} sigue sin salir?',
   explanation: [
     {

@@ -13,7 +13,7 @@ export default defineIncident({
   introduces: ['http-header', 'host-header', 'virtual-host'],
   changes: [SHOP_SERVER],
   shown: SITE_PIECES,
-  report: `Lucía instaló un {{web-server|servidor web}} en ${NAME.freshServer} con un solo sitio: la tienda. ${HOSTNAME.blog} es un alias de ${HOSTNAME.www}: los dos nombres llevan a ${IP.freshServer}, y blog muestra la tienda. Con -i, {{curl}} muestra la respuesta entera, no solo su cuerpo. Pide con {{curl}} -i y con el {{browser|navegador}} a www, a blog y a la {{ip-address|IP}}, y lee en la caja cada petición. Agrega el sitio del blog en «Sitios», en la pestaña «Tablas» de ${NAME.freshServer}.`,
+  report: `Lucía instaló un {{web-server|servidor web}} en ${NAME.freshServer} con un solo sitio: la tienda. ${HOSTNAME.blog} es un alias de ${HOSTNAME.www}: los dos nombres llevan a ${IP.freshServer}, y blog muestra la tienda. Con -i, {{curl}} muestra la respuesta entera, no solo su cuerpo. Pide con {{curl}} -i y con el {{browser|navegador}} a www, a blog y a la {{ip-address|IP}}, y lee en la caja cada petición. Elige ${NAME.freshServer} y abre su pestaña «Tablas». En «Sitios», agrega el sitio del blog.`,
   tasks: [
     bodyTask(TASK.shopByName, `Con {{curl}} -i, que ${HOSTNAME.www} reciba la tienda.`, SITE_URL.www.id, SITE_BODY.shop, CURL_INCLUDE),
     bodyTask(TASK.blogByName, `Con {{curl}} -i, que ${HOSTNAME.blog} reciba el blog.`, SITE_URL.blog.id, SITE_BODY.blog, CURL_INCLUDE),
