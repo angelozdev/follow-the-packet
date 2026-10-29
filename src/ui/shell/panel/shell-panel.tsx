@@ -37,5 +37,5 @@ export function ShellPanel({ session, dispatch, inspection, pieceId, heading, on
     onChoose(target);
   });
   const refocus = () => heading.current?.focus();
-  return <PiecePanel panel={panel} inspection={inspection} heading={heading} choice={choice} frameOf={(part) => frameOfPart(part, { handlers, drafts, onClose, refocus })} />;
+  return <PiecePanel panel={panel} inspection={inspection} heading={heading} choice={choice} frameOf={(part) => frameOfPart(part, { handlers, drafts, onClose, refocus })} onClose={onClose} />;
 }

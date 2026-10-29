@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type Dispatch } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { TABLE_TEXT } from '@/copy';
+import { PIECE_TEXT, TABLE_TEXT } from '@/copy';
 import { inspect, sessionReducer, startSession, type Session, type SessionAction } from '@/game';
 import { PIECE_ID } from '@/game/view/piece-id';
 import { NAME_SERVER_PIECES, OFFICE_FLOORS } from '@/testing/fixtures';
@@ -67,7 +67,7 @@ describe('table card', () => {
   it('a read-only table has no trays and no buttons', () => {
     renderTable(START, PIECE_ID.actor(NAME_SERVER_PIECES.resolver.id));
     expect(screen.queryAllByRole('group')).toEqual([]);
-    expect(within(screen.getByRole('region')).queryAllByRole('button')).toEqual([]);
+    expect(within(screen.getByRole('region')).queryAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([PIECE_TEXT.closeLabel]);
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByText(TABLE_TEXT.cache.empty)).toBeInTheDocument();
     const routes = renderTable(START, PIECE_ID.router(officeRouter.id));

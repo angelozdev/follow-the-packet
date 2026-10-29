@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, PIECE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { inspect, pieceViews, registryLines, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { pieceDomId, type GameSceneProps } from '@/scene';
@@ -333,7 +333,7 @@ describe('the inspection box can be reached with the mouse', () => {
 });
 
 describe('a piece or a stamp can be chosen and read in the panel', () => {
-  it('clicking a piece shows what it is in the panel', async () => {
+  it('clicking a piece shows what it is in the panel, with its X', async () => {
     const user = userEvent.setup();
     renderFirst();
     await user.click(screen.getByRole('button', { name: LOCKED_SERVER }));
@@ -341,7 +341,8 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     expectInThePanel(panel);
     expect(within(panel).getByRole('heading', { name: 'servidor2' }).querySelector('svg.entity-icon')).toBeInTheDocument();
     expect(panel.querySelector('dt')).toHaveTextContent(INSPECTION_TEXT.whatIs);
-    expect(within(panel).queryByRole('button', { name: INSPECTION_TEXT.closeLabel }), 'a piece stays chosen until another is').toBeNull();
+    expect(within(panel).getByRole('button', { name: PIECE_TEXT.closeLabel }), 'a piece has its X').toHaveTextContent(PIECE_TEXT.close);
+    expect(within(panel).queryByRole('button', { name: INSPECTION_TEXT.closeLabel }), 'and not the «Cerrar» of the box of a packet').toBeNull();
   });
 
   it('clicking a stamp, a packet or a «+N» shows its box in the panel with «Cerrar»', async () => {
@@ -628,7 +629,9 @@ describe('the panel of a piece in the column of the screen', () => {
     const [first] = within(thePanel()).getAllByRole('tab');
     first.focus();
     await user.tab({ shift: true });
-    expect(document.activeElement?.closest('.incident__map'), 'Shift+Tab from the first tab of the panel goes back to the map').not.toBeNull();
+    expect(document.activeElement?.closest(PANEL_ZONE), 'Shift+Tab from the first tab of the panel stays in the panel, at its X').not.toBeNull();
+    await user.tab({ shift: true });
+    expect(document.activeElement?.closest('.incident__map'), 'and from the X it goes back to the map').not.toBeNull();
   });
 
   it('Escape in the panel gives the focus back to the piece', async () => {

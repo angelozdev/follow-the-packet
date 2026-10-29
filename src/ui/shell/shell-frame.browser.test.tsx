@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { LUCIA_TEXT } from '@/copy';
+import { LUCIA_TEXT, PIECE_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { openByKeyboard, openCard, pieceLabel, reachWithWheel } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
@@ -138,7 +138,7 @@ describe('the frame of the incident screen above 900 px', () => {
     expect(covered).toEqual([]);
   });
 
-  it('the box of the map keeps its rectangle when a piece is chosen and when the text of Lucía grows', async () => {
+  it('the box of the map keeps its rectangle when a piece is chosen and freed and when the text of Lucía grows', async () => {
     await page.viewport(LABEL_ACCEPTANCE_WINDOW.width, LABEL_ACCEPTANCE_WINDOW.height);
     await theScreen(TALL_LUCIA_INCIDENT);
     const before = rectOf(MAP).toJSON();
@@ -146,6 +146,10 @@ describe('the frame of the incident screen above 900 px', () => {
     await openByKeyboard(YOUR_LAPTOP);
     await expect.poll(() => document.querySelector(PANEL_CARD), { message: 'the piece chosen fills the panel' }).not.toBeNull();
     expect(rectOf(MAP).toJSON(), 'with a piece chosen').toEqual(before);
+
+    await userEvent.click(page.getByRole('button', { name: PIECE_TEXT.closeLabel }));
+    await expect.poll(() => document.querySelector(PANEL_CARD), { message: 'the X frees the choice' }).toBeNull();
+    expect(rectOf(MAP).toJSON(), 'with the choice freed').toEqual(before);
 
     const textOfLucia = () => elementOf(LUCIA_ZONE).scrollHeight;
     const short = textOfLucia();

@@ -328,6 +328,8 @@ export const SERVICES_TEXT = {
 
 export const PIECE_TEXT = {
   tabsName: 'Pestañas del panel',
+  close: '×',
+  closeLabel: 'Cerrar el panel',
   tabs: {
     status: 'Estado',
     settings: 'Ajustes',

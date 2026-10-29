@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { render, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { LUCIA_TEXT, SCREEN_TEXT } from '@/copy';
+import { LUCIA_TEXT, PIECE_TEXT, SCREEN_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
@@ -12,6 +13,7 @@ vi.mock('@mantine/hooks', async (importOriginal) => ({
 
 const INCIDENT = '04-01';
 const LOCKED_SERVER = 'servidor2 con candado';
+const CHOSEN = 'servidor2';
 const ZONES = ['.incident__strip', '.incident__lucia', '.incident__map', '.incident__panel', '.incident__status'];
 
 function renderScreen() {
@@ -25,6 +27,21 @@ function zone(selector: string): HTMLElement {
 }
 
 describe('the frame of the incident screen', () => {
+  it('the X of the panel of a piece frees the choice, brings the help back and gives the focus to the piece', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    const label = screen.getByRole('button', { name: LOCKED_SERVER });
+    await user.click(label);
+    expect(label).toHaveAttribute('data-pinned');
+
+    await user.click(within(screen.getByRole('region', { name: CHOSEN })).getByRole('button', { name: PIECE_TEXT.closeLabel }));
+
+    expect(screen.queryByRole('region', { name: CHOSEN })).toBeNull();
+    expect(screen.getByText(SCREEN_TEXT.inspectHelp)).toBeInTheDocument();
+    expect(label).not.toHaveAttribute('data-pinned');
+    expect(label).toHaveFocus();
+  });
+
   it('the zones of the screen follow the reading order: strip, Lucía, map, panel and status bar', () => {
     renderScreen();
     const main = zone('main.incident');
