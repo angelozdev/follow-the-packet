@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { LUCIA_TEXT, PIECE_TEXT, SCREEN_TEXT } from '@/copy';
+import { EXPLANATION_TEXT, LUCIA_TEXT, PIECE_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
@@ -24,6 +24,11 @@ const CARDS_OF_THE_ZONE: [string, number][] = [
   [DIAGNOSING, 2],
 ];
 const REACHABLE = 'button, summary, a[href], input, [tabindex]';
+const SG_SERVIDOR2 = 'Security Group servidor2';
+const ECHO_REQUEST = 'ICMP · Echo Request';
+const ANYWHERE = 'Anywhere-IPv4 (0.0.0.0/0)';
+const FROM_SERVIDOR1 = 'SG servidor1';
+const QUESTION = toPlainText(EXPLANATION_TEXT.asks(EXPLANATION_TEXT.whatHappened));
 
 function renderScreen() {
   render(<IncidentScreen incidents={INCIDENTS} incidentId={INCIDENT} nextId={null} onFinish={vi.fn()} />);
@@ -35,6 +40,16 @@ function renderIncident(incidentId: string) {
 
 function arrow(): HTMLElement {
   return screen.getByRole('button', { name: LUCIA_TEXT.foldLabel });
+}
+
+type User = ReturnType<typeof userEvent.setup>;
+
+async function placeRule(user: User, source: string) {
+  await user.click(screen.getByRole('button', { name: SG_SERVIDOR2 }));
+  const panel = screen.getByRole('region', { name: SG_SERVIDOR2 });
+  await user.click(within(panel).getByRole('button', { name: ECHO_REQUEST }));
+  await user.click(within(panel).getByRole('button', { name: source }));
+  return panel;
 }
 
 function stored(): string {
@@ -124,5 +139,78 @@ describe('the fold of the zone of Lucía', () => {
       for (const card of cards) expect(card, id).toBeVisible();
       view.unmount();
     }
+  });
+
+  it('Lucía unfolds by herself when the alert of an intruder shows while she is folded', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(arrow());
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await placeRule(user, ANYWHERE);
+
+    expect(arrow()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent(LUCIA_TEXT.intrusion);
+    expect(screen.getByRole('alert')).toBeVisible();
+  });
+
+  it('Lucía unfolds by herself when the question of explanation appears while she is folded', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await placeRule(user, FROM_SERVIDOR1);
+    await user.click(arrow());
+    expect(screen.queryByRole('button', { name: LUCIA_TEXT.submit })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit, hidden: true }));
+
+    expect(arrow()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('heading', { name: QUESTION })).toBeVisible();
+    expect(screen.getByRole('heading', { name: QUESTION })).toHaveFocus();
+  });
+
+  it('a ticked task leaves Lucía folded', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(arrow());
+    expect(zone(LUCIA_ZONE).querySelector('.task')).toHaveTextContent(LUCIA_TEXT.pending);
+
+    await placeRule(user, FROM_SERVIDOR1);
+
+    expect(zone(LUCIA_ZONE).querySelector('.task')).toHaveTextContent(LUCIA_TEXT.done);
+    expect(arrow()).toHaveAttribute('aria-expanded', 'false');
+    expect(zone(LUCIA_ZONE).querySelector('.task')).not.toBeVisible();
+  });
+
+  it('the player can fold her again after she unfolded by herself and she stays folded until something new', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(arrow());
+    const panel = await placeRule(user, ANYWHERE);
+    expect(arrow()).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(arrow());
+    await user.click(within(panel).getByRole('button', { name: TASK_CARD_TEXT.remove(`${ECHO_REQUEST} ← ${ANYWHERE}`) }));
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(zone(LUCIA_ZONE).querySelector('[role="alert"]')).toBeNull();
+    expect(arrow()).toHaveAttribute('aria-expanded', 'false');
+
+    await placeRule(user, ANYWHERE);
+
+    expect(arrow()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('alert')).toBeVisible();
+  });
+
+  it('a reply of Lucía that goes away leaves her folded', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+    expect(screen.getByRole('status')).not.toBeEmptyDOMElement();
+    await user.click(arrow());
+
+    await placeRule(user, FROM_SERVIDOR1);
+
+    expect(zone(LUCIA_ZONE).querySelector('.lucia__reply')).toBeEmptyDOMElement();
+    expect(arrow()).toHaveAttribute('aria-expanded', 'false');
   });
 });

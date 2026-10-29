@@ -35,7 +35,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const lines = useMemo(() => registryLines(session), [session]);
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
-  const fold = useLuciaFold();
+  const fold = useLuciaFold(session);
   const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
