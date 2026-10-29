@@ -14,8 +14,8 @@ const TOP_STRIP = '.incident__strip';
 const INCIDENT = '02-12';
 const INCIDENT_WITH_LINES = '04-01';
 const REGISTRY = '.incident__registry';
+const WINDOW = '[role="dialog"]';
 const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
-const CAP_OF_THE_REGISTRY = 0.25;
 const INCIDENT_WITH_TABLES = '02-06';
 const SEE_ROW = 'Ver fila en la tabla de rutas';
 const BAR_LINE = '.incident__newest';
@@ -40,12 +40,6 @@ function rectOf(selector: string): DOMRect {
   const rect = document.querySelector(selector)?.getBoundingClientRect();
   if (rect === undefined) throw new Error(`nothing matches ${selector}`);
   return rect;
-}
-
-function maxHeightOf(selector: string): number {
-  const element = document.querySelector(selector);
-  if (element === null) throw new Error(`nothing matches ${selector}`);
-  return parseFloat(getComputedStyle(element).maxHeight);
 }
 
 function lastControl(): HTMLElement {
@@ -93,16 +87,14 @@ describe('the open registry of the status bar', () => {
       const where = `${size.width}×${size.height}`;
       const closed = { bar: rectOf(BAR).toJSON(), panel: rectOf(PANEL).toJSON(), map: rectOf(MAP).toJSON() };
       await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
-      const list = rectOf(REGISTRY);
+      const box = rectOf(WINDOW);
 
       expect(rectOf(BAR).toJSON(), `${where}: the strip keeps its rectangle`).toEqual(closed.bar);
       expect(rectOf(PANEL).toJSON(), `${where}: the panel keeps its rectangle`).toEqual(closed.panel);
       expect(rectOf(MAP).toJSON(), `${where}: and the map too`).toEqual(closed.map);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
-      expect(list.bottom, `${where}: the list ends where the strip begins`).toBeLessThanOrEqual(closed.bar.top + EPSILON);
-      expect(list.top, `${where}: and starts under the strip of the top`).toBeGreaterThanOrEqual(rectOf(TOP_STRIP).bottom);
-      expect(list.height, `${where}: the list has a cap`).toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
-      expect(maxHeightOf(REGISTRY), `${where}: the cap is a quarter of the window`).toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
+      expect(box.bottom, `${where}: the window ends where the strip begins`).toBeLessThanOrEqual(closed.bar.top + EPSILON);
+      expect(box.top, `${where}: and starts under the strip of the top`).toBeGreaterThanOrEqual(rectOf(TOP_STRIP).bottom);
       const controls = [...document.querySelectorAll<HTMLElement>(`${TOP_STRIP} a, ${TOP_STRIP} input, ${BAR} button`)];
       expect(controls.length, `${where}: there are controls to look at`).toBeGreaterThan(0);
       for (const control of controls) expect(isReachable(control), `${where}: ${control.textContent?.trim()} is reachable`).toBe(true);

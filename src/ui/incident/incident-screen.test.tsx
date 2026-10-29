@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, PIECE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
+import { CASE_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, OUTCOME_TEXT, PIECE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, SYSTEMS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, TERMS, toPlainText } from '@/copy';
 import { inspect, pieceViews, registryLines, startSession } from '@/game';
 import { INCIDENTS, knownTerms, type CaseSpec, type DiagnoseIncident, type Incident, type SendIncident } from '@/levels';
 import { pieceDomId, type GameSceneProps } from '@/scene';
@@ -1861,7 +1861,8 @@ describe('the registry of the status bar', () => {
   const NOTICE = 'Cambiaste la puerta de enlace predeterminada de tu-laptop: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
 
   const registryButton = () => screen.getByRole('button', { name: /^Registro \(\d+\)$/ });
-  const registryList = () => screen.getByRole('list', { name: /^Registro \(\d+\)$/ });
+  const theWindow = () => screen.getByRole('dialog', { name: SYSTEMS_TEXT.registry });
+  const registryList = () => within(theWindow()).getByRole('list', { name: /^Registro \(\d+\)$/ });
   const rows = () => within(registryList()).getAllByRole('listitem');
 
   function renderGateway(incident = GATEWAY) {
@@ -1955,8 +1956,11 @@ describe('the registry of the status bar', () => {
     await user.click(registryButton());
     await user.click(within(registryList()).getByRole('button', { name: new RegExp(`^${PING_ANDRES_FOUND}`) }));
     expect(thePanel()).toHaveAccessibleName(PING_ANDRES_FOUND);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(registryButton());
     await user.click(within(registryList()).getByRole('button', { name: new RegExp(`^${PING_PRINTER}`) }));
     expect(thePanel()).toHaveAccessibleName(PING_PRINTER);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('a change of the network while the registry is open leaves only the change line and N counts again', async () => {
@@ -2008,9 +2012,12 @@ describe('the registry of the status bar', () => {
       expect(within(panel).getByRole('table', { name: 'Tabla de rutas de router-office' })).toBeInTheDocument();
       expect(rowsInUse()).toHaveLength(1);
       expect(rowsInUse()[0]).toContain('192.168.2.0/24');
+      expect(screen.queryByRole('dialog')).toBeNull();
+      await user.click(registryButton());
       await user.click(within(rows()[0]).getByRole('button', { name: SEE_ROW }));
       expect(rowsInUse()).toHaveLength(1);
       expect(rowsInUse()[0]).toContain('0.0.0.0/0');
+      await user.click(registryButton());
       await user.click(within(rows()[1]).getByRole('button', { name: SEE_ROW }));
       await user.click(pieceLabel('impresora'));
       await user.click(pieceLabel('router-office'));

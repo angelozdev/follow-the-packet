@@ -1,4 +1,4 @@
-import { useMemo, useReducer } from 'react';
+import { useMemo, useReducer, type MouseEvent } from 'react';
 import { EXPLANATION_TEXT } from '@/copy';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
@@ -8,13 +8,13 @@ import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import { NewestLine } from '@/ui/shell/status/newest-line';
-import { Registry } from '@/ui/shell/status/registry';
-import { useRegistryBox } from '@/ui/shell/status/use-registry-box';
 import { BottomStrip } from '@/ui/shell/strip/bottom-strip';
 import { SystemsBar } from '@/ui/shell/systems/systems-bar';
 import { useSystems } from '@/ui/shell/systems/use-systems';
 import { TopStrip } from '@/ui/shell/strip/top-strip';
 import { useSelection } from '@/ui/shell/use-selection';
+import { RegistryWindow } from '@/ui/shell/windows/registry-window';
+import { SYSTEM_WINDOW, useSystemWindow } from '@/ui/shell/windows/use-system-window';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
 import { ClockCard } from './side-cards/clock-card';
@@ -41,9 +41,19 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
   const fold = useLuciaFold(session);
-  const registry = useRegistryBox(lines);
-  const systems = useSystems(session, selection, panelChoice, registry);
-  const chooseLine = (pieceId: string) => selection.trigger(pieceId, {});
+  const windows = useSystemWindow(lines.length > 0 ? [SYSTEM_WINDOW.registry] : []);
+  const systems = useSystems(session, selection, panelChoice, windows, lines.length);
+  const covered = windows.open !== null;
+  const chooseLine = (pieceId: string) => {
+    const props = selection.trigger(pieceId, {});
+    return {
+      ...props,
+      onClick: (event: MouseEvent<HTMLElement>) => {
+        props.onClick?.(event);
+        windows.close();
+      },
+    };
+  };
   const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
@@ -56,6 +66,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   };
   const nextCase = () => dispatch({ type: 'nextCase' });
   const seeRow = ({ pieceId, send }: RouteRow) => {
+    windows.close();
     panelChoice.chooseTab(pieceId, 'tables');
     panelChoice.chooseFicha(pieceId, 'tables', 'routes');
     selection.showRow(pieceId, send);
@@ -64,7 +75,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   return (
     <main className="incident">
       <TopStrip title={incident.title} still={still} onStillChange={setStill} />
-      <LuciaZone id={fold.controls}>
+      <LuciaZone id={fold.controls} inert={covered}>
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} fold={fold} />
         {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} hidden={fold.folded} />}
         {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} hidden={fold.folded} />}
@@ -80,7 +91,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
         )}
         {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} hidden={fold.folded} />}
       </LuciaZone>
-      <div className="incident__map">
+      <div className="incident__map" inert={covered}>
         <GameScene
           world={session.world}
           pieces={pieces}
@@ -98,7 +109,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       <div aria-live="polite" aria-hidden={duplicate || undefined} className="incident__inspection" {...holder}>
         {inspection && <InspectionBox inspection={inspection} pinned={false} />}
       </div>
-      <aside className="incident__panel">
+      <aside className="incident__panel" inert={covered}>
         <ShellPanel
           key={caseOnCard?.number}
           session={session}
@@ -115,7 +126,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       <BottomStrip
         line={<NewestLine lines={lines} choose={chooseLine} seeRow={seeRow} />}
         bar={systems.length > 0 && <SystemsBar systems={systems} />}
-        box={registry.open && <Registry id={registry.listId} labelledBy={registry.buttonId} lines={lines} choose={chooseLine} seeRow={seeRow} />}
+        box={<RegistryWindow windows={windows} lines={lines} choose={chooseLine} seeRow={seeRow} />}
       />
     </main>
   );

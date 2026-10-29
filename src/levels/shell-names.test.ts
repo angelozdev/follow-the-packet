@@ -29,6 +29,8 @@ const TABS_OF_THE_SHELL = plainLabels([...Object.values(PIECE_TEXT.tabs), ...Obj
 const SECTIONS_OF_THE_SHELL = plainLabels([PIECE_TEXT.parts.settings, PIECE_TEXT.parts.services]);
 const NAMED_BUTTON = /\bbotón\s+«([^»]+)»/giu;
 const BUTTONS_OF_THE_SHELL = plainLabels(Object.values(SYSTEMS_TEXT));
+const NAMED_WINDOW = /\bventana\s+«([^»]+)»/giu;
+const WINDOWS_OF_THE_SHELL = plainLabels([SYSTEMS_TEXT.registry]);
 
 function leaves(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -45,6 +47,10 @@ function missingPlaces(text: string): string[] {
 
 function missingButtons(text: string): string[] {
   return [...toPlainText(text).matchAll(NAMED_BUTTON)].filter(([, name]) => !BUTTONS_OF_THE_SHELL.includes(name.toLowerCase())).map(([, name]) => `botón «${name}»`);
+}
+
+function missingWindows(text: string): string[] {
+  return [...toPlainText(text).matchAll(NAMED_WINDOW)].filter(([, name]) => !WINDOWS_OF_THE_SHELL.includes(name.toLowerCase())).map(([, name]) => `ventana «${name}»`);
 }
 
 const TEXTS_OF_THE_COPY = COPY_TEXTS.flatMap(leaves);
@@ -74,6 +80,20 @@ describe('the texts that name a button of the shell', () => {
     expect(BUTTONS_OF_THE_SHELL).toEqual(['terminal', 'navegador', 'registro']);
     expect(missingButtons('Pulsa el botón «Terminal» o el botón «{{browser|Navegador}}».')).toEqual([]);
     expect(missingButtons('Pulsa el botón «Mapa».')).toEqual(['botón «Mapa»']);
+    expect(unknown).toEqual([]);
+  });
+});
+
+describe('the texts that name a window of the shell', () => {
+  it('every window that a text names exists in the shell', () => {
+    const unknown = [
+      ...INCIDENTS.flatMap((incident) => incidentTexts(incident).flatMap(missingWindows).map((window) => `${incident.id}: ${window}`)),
+      ...TEXTS_OF_THE_COPY.flatMap(missingWindows).map((window) => `copy: ${window}`),
+    ];
+
+    expect(WINDOWS_OF_THE_SHELL).toEqual(['registro']);
+    expect(missingWindows('Abre la ventana «Registro» y mira la última fila.')).toEqual([]);
+    expect(missingWindows('Abre la ventana «Almanaque».')).toEqual(['ventana «Almanaque»']);
     expect(unknown).toEqual([]);
   });
 });
