@@ -19,6 +19,7 @@ const CAP_OF_THE_REGISTRY = 0.25;
 const INCIDENT_WITH_TABLES = '02-06';
 const SEE_ROW = 'Ver fila en la tabla de rutas';
 const BAR_LINE = '.incident__newest';
+const SYSTEMS = '.incident__systems';
 const LOW_WINDOW = { width: 1280, height: 600 };
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
@@ -143,7 +144,7 @@ describe('Ver fila in the real map', () => {
     const terminal = await openTerminal();
     await sendTo(terminal, OFFICE_IP.printer);
     const line = document.querySelector(BAR_LINE) as HTMLElement;
-    const buttons = [...line.querySelectorAll(':scope > button')];
+    const buttons = [...line.querySelectorAll(':scope > button'), ...document.querySelectorAll(`${SYSTEMS} button`)].filter((button) => button.closest(SYSTEMS) === null || REGISTRY_BUTTON.test(button.textContent ?? ''));
     const bar = rectOf(BAR);
 
     expect(buttons.map((button) => button.textContent), 'the line has both buttons').toEqual([SEE_ROW, 'Registro (1)']);

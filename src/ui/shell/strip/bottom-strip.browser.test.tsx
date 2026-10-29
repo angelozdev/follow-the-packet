@@ -18,10 +18,18 @@ const GATEWAY = OFFICE_FLOORS.floor1.gateway;
 const EMPTY_INCIDENT = '01-01';
 const NOTICE = /Cambiaste la puerta de enlace/;
 const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
+const REGISTRY = '.incident__registry';
+const TOP_STRIP = '.incident__strip';
+const BAR = '.incident__systems';
+const LINE_ROW = '.incident__newest';
+const SEE_ROW = 'Ver fila en la tabla de rutas';
+const LOW_WINDOW = { width: 1280, height: 600 };
+const WIDE_WINDOW = { width: 1440, height: 900 };
 const EPSILON = 1;
 const DESKTOP_WINDOW = { width: 1280, height: 720 };
 const PHONE_WINDOW = { width: 390, height: 844 };
 const WINDOWS = [DESKTOP_WINDOW, PHONE_WINDOW];
+const BOX_WINDOWS = [...WINDOWS, LOW_WINDOW, WIDE_WINDOW];
 
 async function theScreen(incident: Incident = gatewayIncident()) {
   const view = render(<IncidentScreen incidents={[incident]} incidentId={incident.id} nextId={null} onFinish={() => undefined} />);
@@ -87,7 +95,7 @@ describe('the bottom strip of the incident screen', () => {
     expect(log.scrollTop, 'and it does scroll').toBeGreaterThan(0);
     expect(heightOfTheStrip(), 'the strip did not grow').toBeCloseTo(strip, 0);
 
-    page.getByRole('button', { name: REGISTRY_BUTTON }).element().focus();
+    elementOf(`${BAR} button`).focus();
     await userEvent.tab({ shift: true });
     await userEvent.tab({ shift: true });
     expect(document.activeElement, 'Shift+Tab from the bar reaches the box').toBe(log);
@@ -150,5 +158,29 @@ describe('the bottom strip of the incident screen', () => {
     expect(elementOf(STRIP).querySelectorAll('button').length, 'the bar has a button').toBeGreaterThan(0);
     expect(heightOfTheStrip(), 'the strip is as tall with buttons').toBeCloseTo(stripWithoutButtons, 0);
     expect(rectOfTheMap(), 'and the box of the map is the same').toEqual(mapWithoutButtons);
+  });
+
+  it('the box of the open registry covers no control of the strip, the line or the bar', async () => {
+    for (const size of BOX_WINDOWS) {
+      await page.viewport(size.width, size.height);
+      const view = await theScreen();
+      const where = `${size.width}×${size.height}`;
+      await pingAndres();
+      await setTheGateway();
+      await pingAndres();
+      await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
+      const box = elementOf(REGISTRY).getBoundingClientRect();
+      const controls = [...document.querySelectorAll<HTMLElement>(`${TOP_STRIP} a, ${TOP_STRIP} input, ${LINE_ROW} button, ${LINE_ROW} [role="log"], ${BAR} button`)];
+      const names = controls.map((control) => control.getAttribute('role') ?? control.textContent?.trim() ?? control.tagName);
+
+      expect(names, `${where}: the bar holds the three systems and the line holds its row`).toEqual(expect.arrayContaining(['Terminal', 'Registro (2)', SEE_ROW, 'log']));
+      expect(box.height, `${where}: the box is on the page`).toBeGreaterThan(0);
+      for (const control of controls) {
+        const { left, right, top, bottom } = control.getBoundingClientRect();
+        const apart = right <= box.left + EPSILON || left >= box.right - EPSILON || bottom <= box.top + EPSILON || top >= box.bottom - EPSILON;
+        expect(apart, `${where}: the box does not cover ${control.getAttribute('role') ?? control.textContent?.trim()}`).toBe(true);
+      }
+      view.unmount();
+    }
   });
 });

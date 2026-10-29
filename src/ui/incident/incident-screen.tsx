@@ -7,7 +7,10 @@ import { LuciaZone } from '@/ui/shell/lucia/lucia-zone';
 import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
-import { StatusBar } from '@/ui/shell/status/status-bar';
+import { NewestLine } from '@/ui/shell/status/newest-line';
+import { Registry } from '@/ui/shell/status/registry';
+import { useRegistryBox } from '@/ui/shell/status/use-registry-box';
+import { BottomStrip } from '@/ui/shell/strip/bottom-strip';
 import { SystemsBar } from '@/ui/shell/systems/systems-bar';
 import { useSystems } from '@/ui/shell/systems/use-systems';
 import { TopStrip } from '@/ui/shell/strip/top-strip';
@@ -38,7 +41,9 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
   const fold = useLuciaFold(session);
-  const systems = useSystems(session, selection, panelChoice);
+  const registry = useRegistryBox(lines);
+  const systems = useSystems(session, selection, panelChoice, registry);
+  const chooseLine = (pieceId: string) => selection.trigger(pieceId, {});
   const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
@@ -107,7 +112,11 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           markedSend={selection.markedSend}
         />
       </aside>
-      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} seeRow={seeRow} bar={systems.length > 0 && <SystemsBar systems={systems} />} />
+      <BottomStrip
+        line={<NewestLine lines={lines} choose={chooseLine} seeRow={seeRow} />}
+        bar={systems.length > 0 && <SystemsBar systems={systems} />}
+        box={registry.open && <Registry id={registry.listId} labelledBy={registry.buttonId} lines={lines} choose={chooseLine} seeRow={seeRow} />}
+      />
     </main>
   );
 }

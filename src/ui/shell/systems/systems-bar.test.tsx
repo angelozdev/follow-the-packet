@@ -2,7 +2,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EXPLANATION_TEXT, LUCIA_TEXT, PIECE_TEXT, TERMINAL_TEXT } from '@/copy';
+import { EXPLANATION_TEXT, LUCIA_TEXT, PIECE_TEXT, SCREEN_TEXT, TERMINAL_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
@@ -16,6 +16,8 @@ vi.mock('@mantine/hooks', async (importOriginal) => ({
 const STRIP = '.incident__status';
 const PANEL_ZONE = '.incident__panel';
 const NO_TOOLS = '01-01';
+const WITH_LINES = '04-01';
+const BAR = '.incident__systems';
 const ROUTING = '02-06';
 const TWO_ORIGINS = '02-03';
 const WEB = '03-03';
@@ -164,3 +166,34 @@ describe('the bar of systems', () => {
     expect(button(REGISTRY_BUTTON)).toBeEnabled();
   });
 });
+
+describe('the registry in the bar of systems', () => {
+  it('with no line it says the empty line and draws no Registro button', () => {
+    renderIncident(NO_TOOLS);
+
+    expect(screen.getByText(SCREEN_TEXT.statusEmpty)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Registro/ })).toBeNull();
+  });
+
+  it('Registro (N) opens the list in a box over the bottom strip and the same button closes it', async () => {
+    const user = userEvent.setup();
+    renderIncident(WITH_LINES);
+    const registro = within(zone(BAR)).getByRole('button', { name: REGISTRY_BUTTON });
+    expect(registro, 'the button is in the bar').toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('list', { name: REGISTRY_BUTTON })).toBeNull();
+
+    await user.click(registro);
+
+    const list = screen.getByRole('list', { name: REGISTRY_BUTTON });
+    expect(registro).toHaveAttribute('aria-expanded', 'true');
+    expect(registro).toHaveAttribute('aria-controls', list.id);
+    expect(zone(STRIP).contains(list), 'the box is part of the strip').toBe(true);
+    expect(zone(BAR).contains(list), 'and not of the bar').toBe(false);
+
+    await user.click(registro);
+
+    expect(registro).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('list', { name: REGISTRY_BUTTON })).toBeNull();
+  });
+});
+

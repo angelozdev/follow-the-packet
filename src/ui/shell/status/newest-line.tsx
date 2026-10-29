@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { SCREEN_TEXT } from '@/copy';
 import type { RegistryLine } from '@/game';
 import { LineText, SeeRowButton, rowOfLine, type ChooseLine, type SeeRow } from './line-text';
@@ -7,10 +6,9 @@ interface NewestLineProps {
   lines: RegistryLine[];
   choose: ChooseLine;
   seeRow: SeeRow;
-  children?: ReactNode;
 }
 
-export function NewestLine({ lines, choose, seeRow, children }: NewestLineProps) {
+export function NewestLine({ lines, choose, seeRow }: NewestLineProps) {
   const [newest] = lines;
   const newestRow = newest && rowOfLine(newest);
   return (
@@ -19,7 +17,6 @@ export function NewestLine({ lines, choose, seeRow, children }: NewestLineProps)
         {newest ? <LineText line={newest} choose={choose} /> : <p>{SCREEN_TEXT.statusEmpty}</p>}
       </div>
       {newestRow && <SeeRowButton row={newestRow} seeRow={seeRow} />}
-      {children}
     </div>
   );
 }
