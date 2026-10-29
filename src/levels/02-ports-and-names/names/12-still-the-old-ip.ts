@@ -1,4 +1,3 @@
-import { CLOCK_TEXT } from '@/copy';
 import { RECORD_TTL } from '@/engine';
 import { defineIncident } from '@/levels/contract/incident';
 import {
@@ -34,7 +33,7 @@ export default defineIncident({
   introduces: ['dns-cache', 'dns-ttl'],
   changes: MOVED_SITE,
   shown: CACHE_PIECES,
-  report: `Lucía mudó el sitio a otro servidor, ${NAME.freshServer}, con la {{ip-address|IP}} ${IP.freshServer}. Después cambió el registro de ${HOSTNAME.www} en ${NAME.authoritative}: ahora apunta a esa {{ip-address|IP}}. Antes de la mudanza, ${NAME.resolver}, tu {{resolver}}, ya había contestado una pregunta por ${HOSTNAME.www}. Haz un {{dig}} a ${HOSTNAME.www} y mira qué {{ip-address|IP}} contesta. El tiempo del juego solo pasa cuando tú esperas, con las fichas de «${CLOCK_TEXT.title}».`,
+  report: `Lucía mudó el sitio a otro servidor, ${NAME.freshServer}, con la {{ip-address|IP}} ${IP.freshServer}. Después cambió el registro de ${HOSTNAME.www} en ${NAME.authoritative}: ahora apunta a esa {{ip-address|IP}}. Antes de la mudanza, ${NAME.resolver}, tu {{resolver}}, ya había contestado una pregunta por ${HOSTNAME.www}. Haz un {{dig}} a ${HOSTNAME.www} y mira qué {{ip-address|IP}} contesta. El tiempo del juego pasa para todo el mapa, y solo cuando tú esperas, con las fichas «${WAIT.oneMinute.label}» y «${WAIT.fiveMinutes.label}» que están arriba, junto al reloj.`,
   tasks: [answerTaskFrom(ORIGIN.you, TASK.digNewIp, `Que el {{dig}} a ${HOSTNAME.www} vuelva con ${IP.freshServer}.`, MESSAGE.dig.id, ADDRESS.www.id, IP.freshServer)],
   flows: [],
   send: { from: [ORIGIN.you], to: [ADDRESS.www], message: [MESSAGE.dig], clock: { steps: [WAIT.oneMinute, WAIT.fiveMinutes] } },

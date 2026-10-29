@@ -2054,7 +2054,7 @@ describe('02-12, still the old ip', () => {
     expect(report).toContain(`[[${SERVER.resolver.name}]]`);
     expect(plain(report)).toContain(`Después cambió el registro de ${HOSTNAME.www} en ${SERVER.authoritative.name}: ahora apunta a esa IP.`);
     expect(plain(report)).toContain(`Antes de la mudanza, ${SERVER.resolver.name}, tu resolver, ya había contestado una pregunta por ${HOSTNAME.www}.`);
-    expect(plain(report)).toContain('El tiempo del juego solo pasa cuando tú esperas, con las fichas de «Reloj del juego».');
+    expect(plain(report)).toContain('El tiempo del juego pasa para todo el mapa, y solo cuando tú esperas, con las fichas «Esperar 1 min» y «Esperar 5 min» que están arriba, junto al reloj.');
     expect(plain(report), 'the report leaves the cause for the question').not.toMatch(NAMES_A_NEW_TERM);
     expect(changedNames(before, after), 'router-destino only gains the wiring of the new server').toEqual([SERVER.authoritative.name, SERVER.resolver.name]);
     expect(zone.filter(({ type }) => type !== 'NS' && type !== 'SOA').map(({ name, type, value }) => [name, type, value])).toEqual([[HOSTNAME.www, RECORD_TYPE.a, IP.freshServer], [HOSTNAME.blog, RECORD_TYPE.cname, HOSTNAME.www]]);
