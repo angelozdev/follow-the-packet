@@ -17,5 +17,5 @@ export function IncidentPage({ incidents, levelId, progress, onFinish }: Inciden
   if (!incident) return <NoticePage variant="error" title={NOTICE_TEXT.notFound.title} body={NOTICE_TEXT.notFound.body(levelId)} />;
   if (!isUnlocked(incident, progress, incidents)) return <NoticePage variant="warning" title={NOTICE_TEXT.locked.title} body={NOTICE_TEXT.locked.body(levelId)} />;
   const next = incidents.at(incidents.indexOf(incident) + 1);
-  return <IncidentScreen key={incident.id} incidents={incidents} incidentId={incident.id} nextId={next?.id ?? null} onFinish={(stars) => onFinish(incident.id, stars)} />;
+  return <IncidentScreen key={incident.id} incidents={incidents} incidentId={incident.id} nextId={next?.id ?? null} onFinish={(stars) => onFinish(incident.id, stars)} progress={progress} />;
 }

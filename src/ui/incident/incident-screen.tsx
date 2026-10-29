@@ -3,6 +3,7 @@ import { EXPLANATION_TEXT } from '@/copy';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
+import type { Progress } from '@/storage';
 import { LuciaZone } from '@/ui/shell/lucia/lucia-zone';
 import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
@@ -14,6 +15,8 @@ import { SystemsBar } from '@/ui/shell/systems/systems-bar';
 import { useSystems } from '@/ui/shell/systems/use-systems';
 import { TopStrip } from '@/ui/shell/strip/top-strip';
 import { useSelection } from '@/ui/shell/use-selection';
+import { AlmanacWindow } from '@/ui/shell/windows/almanac-window';
+import { lessonsOf } from '@/ui/shell/windows/almanac-lessons';
 import { RegistryWindow } from '@/ui/shell/windows/registry-window';
 import { SYSTEM_WINDOW, useSystemWindow } from '@/ui/shell/windows/use-system-window';
 import { useStillMode } from '@/ui/use-still-mode';
@@ -29,9 +32,10 @@ interface IncidentScreenProps {
   incidentId: string;
   nextId: string | null;
   onFinish: (stars: number) => void;
+  progress?: Progress;
 }
 
-export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: IncidentScreenProps) {
+export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progress = {} }: IncidentScreenProps) {
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [still, setStill] = useStillMode();
   const playing = session.phase === 'playing';
@@ -41,7 +45,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
   const fold = useLuciaFold(session);
-  const windows = useSystemWindow(lines.length > 0 ? [SYSTEM_WINDOW.registry] : []);
+  const windows = useSystemWindow(lines.length > 0 ? [SYSTEM_WINDOW.registry, SYSTEM_WINDOW.almanac] : [SYSTEM_WINDOW.almanac]);
   const systems = useSystems(session, selection, panelChoice, windows, lines.length);
   const covered = windows.open !== null;
   const chooseLine = (pieceId: string) => {
@@ -60,6 +64,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const steps = clockSteps(session);
   const clock = playing && steps.length > 0 && <GameClock seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />;
   const { incident } = session;
+  const almanac = { domId: windows.buttonId(SYSTEM_WINDOW.almanac), expanded: windows.open === SYSTEM_WINDOW.almanac, onPress: () => windows.toggle(SYSTEM_WINDOW.almanac) };
 
   const showResult = () => {
     dispatch({ type: 'showResult' });
@@ -75,7 +80,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
 
   return (
     <main className="incident">
-      <TopStrip title={incident.title} still={still} onStillChange={setStill} clock={clock} />
+      <TopStrip title={incident.title} still={still} onStillChange={setStill} almanac={almanac} clock={clock} />
       <LuciaZone id={fold.controls} inert={covered}>
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} fold={fold} />
         {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} hidden={fold.folded} />}
@@ -126,7 +131,12 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       <BottomStrip
         line={<NewestLine lines={lines} choose={chooseLine} seeRow={seeRow} />}
         bar={systems.length > 0 && <SystemsBar systems={systems} />}
-        box={<RegistryWindow windows={windows} lines={lines} choose={chooseLine} seeRow={seeRow} />}
+        box={
+          <>
+            <RegistryWindow windows={windows} lines={lines} choose={chooseLine} seeRow={seeRow} />
+            <AlmanacWindow windows={windows} known={session.known} newTerms={new Set(incident.introduces)} lessons={lessonsOf(incidents, incidentId, progress)} />
+          </>
+        }
       />
     </main>
   );

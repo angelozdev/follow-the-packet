@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useReducer } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -21,32 +21,8 @@ function Harness({ incidentId = FIRST.id, actions = [] }: { incidentId?: string;
   return <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch(SUBMIT)} />;
 }
 
-function glossary(): HTMLElement {
-  const details = screen.getByText(LUCIA_TEXT.glossary).closest('details');
-  if (!details) throw new Error('missing glossary');
-  return details;
-}
-
-function nameOf(dt: Element): string | null | undefined {
-  return dt.querySelector('.glossary__name')?.textContent;
-}
-
-function glossaryNames(): (string | null | undefined)[] {
-  return [...glossary().querySelectorAll('dt')].map(nameOf);
-}
-
-function termRow(name: string): HTMLElement {
-  const row = [...glossary().querySelectorAll('dt')].find((dt) => nameOf(dt) === name);
-  if (!(row instanceof HTMLElement)) throw new Error(`missing glossary row ${name}`);
-  return row;
-}
-
 function usesOf(container: HTMLElement, id: TermId): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>('.term')].filter((term) => term.textContent === TERMS[id].name && !term.closest('.lucia__glossary'));
-}
-
-function namesOf(ids: TermId[]): string[] {
-  return ids.map((id) => TERMS[id].name).sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 describe("Lucía's card", () => {
@@ -61,20 +37,11 @@ describe("Lucía's card", () => {
     expect(screen.getByRole('listitem')).toHaveTextContent(LUCIA_TEXT.done);
   });
 
-  it('keeps the definitions in one folded glossary, with no open list beside it', () => {
+  it('the card of Lucía holds no glossary', () => {
     const { container } = render(<Harness />);
-    expect(glossary()).not.toHaveAttribute('open');
-    expect(container.querySelectorAll('dl')).toHaveLength(1);
-    expect(within(glossary()).getByText(TERMS['security-group'].definition)).toBeInTheDocument();
-  });
-
-  it('lists the new terms first, marked new, and then every earlier term, each group in alphabetical order', () => {
-    render(<Harness incidentId="04-02" />);
-    const second = filterIncident('04-02');
-    const earlier = [...startSession(INCIDENTS, second.id).known].filter((id) => !second.introduces.includes(id));
-    expect(glossaryNames()).toEqual([...namesOf(second.introduces), ...namesOf(earlier)]);
-    const marked = [...glossary().querySelectorAll('dt')].filter((dt) => within(dt).queryByText(LUCIA_TEXT.newBadge));
-    expect(marked.map(nameOf)).toEqual(namesOf(second.introduces));
+    expect(screen.queryByText(LUCIA_TEXT.glossary)).toBeNull();
+    expect(container.querySelector('dl')).toBeNull();
+    expect(container.querySelector('details')).toBeNull();
   });
 
   it('marks a new term once on the card, at its first appearance, however often the report and the tasks use it', () => {
@@ -85,21 +52,6 @@ describe("Lucía's card", () => {
       expect(uses.filter((use) => use.nextElementSibling?.classList.contains('term__new')), id).toEqual([uses[0]]);
     }
     expect(screen.getByRole('listitem').querySelector('.term__new')).toBeNull();
-  });
-
-  it('shows the icon of the entity a term names, and none for a term with no entity', () => {
-    render(<Harness incidentId="04-02" />);
-    expect(termRow(TERMS['security-group'].name).querySelector('svg.entity-icon')).toBeInTheDocument();
-    expect(termRow(TERMS['echo-reply'].name).querySelector('svg.entity-icon')).toBeInTheDocument();
-    expect(termRow(TERMS['least-privilege'].name).querySelector('svg')).toBeNull();
-  });
-
-  it('the glossary of 04-01 keeps the terms of chapter 1, least-privilege among them, and has none from a later incident', () => {
-    render(<Harness />);
-    expect(glossaryNames()).toContain(TERMS['ip-address'].name);
-    expect(glossaryNames()).toContain(TERMS['least-privilege'].name);
-    expect(glossaryNames()).not.toContain(TERMS.stateful.name);
-    expect(glossaryNames()).not.toContain(TERMS['outbound-rule'].name);
   });
 
   it('sending with the task failing: Lucía says which one, and the game goes on', async () => {

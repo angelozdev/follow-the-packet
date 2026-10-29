@@ -95,6 +95,8 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .lucia__glossary { margin: 0 0 var(--space-sm); }
 .lucia__glossary summary { cursor: pointer; }
 .lucia__glossary[open] summary { margin-bottom: var(--space-xs); }
+.almanac__lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-sm); }
+.almanac__lessons h3, .almanac__lessons p { margin: 0; }
 .hint { margin: var(--space-xs) 0; }
 
 .chip-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
@@ -171,11 +173,11 @@ button.stamp { cursor: help; }
 }
 
 .incident { position: relative; --lucia-width: 316px; --panel-width: clamp(300px, 24vw, 380px); --strip-room: 2.6875rem; --newest-room: 4.75rem; --systems-room: 2.5rem; display: grid; grid-template-columns: var(--lucia-width) minmax(0, 1fr) var(--panel-width); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'strip strip strip' 'lucia map panel' 'status status status'; height: 100vh; }
-.incident__strip { grid-area: strip; display: flex; align-items: center; gap: var(--space-md); height: var(--strip-room); padding: var(--space-xs) var(--space-md); border-bottom: var(--stroke-regular) solid var(--color-ink); background: var(--color-page); }
+.incident__strip { grid-area: strip; display: flex; align-items: center; gap: var(--space-sm); height: var(--strip-room); padding: var(--space-xs) var(--space-md); border-bottom: var(--stroke-regular) solid var(--color-ink); background: var(--color-page); }
 .incident__strip h1 { font-size: var(--text-xl); margin: 0; }
 .incident__motion { margin-left: auto; font-size: var(--text-md); }
 .incident__clock { display: flex; align-items: center; gap: var(--space-xs); }
-.incident__clock .tray { flex-wrap: nowrap; }
+.incident__clock .tray { flex-wrap: nowrap; gap: var(--space-2xs); }
 .incident__clock .tray__name { display: none; }
 .incident__lucia { grid-area: lucia; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; align-self: start; gap: var(--space-md); max-height: 100%; padding: var(--space-md); }
 .incident__map { grid-area: map; position: relative; min-height: 0; }
@@ -207,6 +209,8 @@ button.stamp { cursor: help; }
 .result__list { list-style: none; padding: 0; }
 .result__nav { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
 @media (min-width: 901px) {
+  .incident__strip > * { flex-shrink: 0; }
+  .incident__strip h1 { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .incident__lucia { overflow-y: auto; padding-right: var(--space-xs); }
   .incident__panel > .card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   .incident__panel > .card > .card__body { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }

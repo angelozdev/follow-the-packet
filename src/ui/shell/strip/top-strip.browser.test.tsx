@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
-import { CLOCK_TEXT } from '@/copy';
+import { ALMANAC_TEXT, CLOCK_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { showTheScreen } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
@@ -32,7 +32,7 @@ afterEach(async () => {
 });
 
 describe('the top strip of the real screen', () => {
-  it('the top strip is one row of the same height at 901 px in every registered incident, with the clock', { timeout: 120_000 }, async () => {
+  it('the top strip is one row of the same height at 901 px in every registered incident, with the clock and the Almanaque', { timeout: 120_000 }, async () => {
     await page.viewport(NARROWEST_DESKTOP_WINDOW.width, NARROWEST_DESKTOP_WINDOW.height);
     const heights = new Map<string, number>();
     const spilled: string[] = [];
@@ -41,6 +41,7 @@ describe('the top strip of the real screen', () => {
       const strip = elementOf(TOP_STRIP);
       heights.set(id, strip.getBoundingClientRect().height);
       if (strip.scrollWidth > strip.clientWidth + EPSILON) spilled.push(`${id}: the strip scrolls sideways`);
+      if (![...strip.querySelectorAll('button')].some((button) => button.textContent === ALMANAC_TEXT.open)) spilled.push(`${id}: the Almanaque button is not in the strip`);
       spilled.push(...spillOf(strip).map((name) => `${id}: ${name} lies outside the strip`));
       if (id === INCIDENT_WITH_A_CLOCK) expect(strip.querySelector(`[aria-label="${CLOCK_TEXT.title}"]`), `${id}: the clock is in the strip`).not.toBeNull();
       view.unmount();

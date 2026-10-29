@@ -1,7 +1,6 @@
 import { CLOCK_TEXT } from '@/copy';
 import { ChipTray } from '@/design';
 import type { ClockStep } from '@/levels';
-import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 
 interface GameClockProps {
@@ -13,7 +12,6 @@ interface GameClockProps {
 export function GameClock({ seconds, steps, onWait }: GameClockProps) {
   return (
     <section className="incident__clock" aria-label={CLOCK_TEXT.title}>
-      <CardIcon kind="clock" />
       <code aria-live="polite">{CLOCK_TEXT.time(seconds)}</code>
       <ChipTray
         name={CLOCK_TEXT.tray}

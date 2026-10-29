@@ -1,9 +1,8 @@
 import type { RefObject } from 'react';
-import { LUCIA_TEXT, MESSAGE_TEXT, TERMS, TERM_ENTITY, termsIn, type TermId, type TermText } from '@/copy';
+import { LUCIA_TEXT, MESSAGE_TEXT, termsIn, type TermId, type TermText } from '@/copy';
 import { Button, Card, Message } from '@/design';
 import { canAskHint, hintsOf, isIntruding, taskHolds, type Rejection, type Session } from '@/game';
 import { isGuided, type IncidentTask } from '@/levels';
-import { EntityIcon } from '@/scene';
 import { CardIcon } from '@/ui/card-icon';
 import { TaggedText } from '@/ui/tagged-text';
 import { useFocusOnMount } from '@/ui/incident/use-focus-on-mount';
@@ -51,15 +50,6 @@ function FocusedHintLine({ number, text }: HintLineProps) {
   return <HintLine number={number} text={text} lineRef={line} />;
 }
 
-function byName(a: TermId, b: TermId): number {
-  return TERMS[a].name.localeCompare(TERMS[b].name, 'es');
-}
-
-/** Orders the glossary: the terms this incident introduces first, then the earlier ones, each group by name. */
-function glossaryOrder(known: ReadonlySet<TermId>, newTerms: ReadonlySet<TermId>): TermId[] {
-  return [...known].sort((a, b) => Number(newTerms.has(b)) - Number(newTerms.has(a)) || byName(a, b));
-}
-
 /** Returns, for each text in the order the card shows it, the new terms it marks: those that appear in it for the first time on the card, so a term is marked once however many texts use it. */
 function newTermsFirstSeen(texts: TermText[], newTerms: ReadonlySet<TermId>): ReadonlySet<TermId>[] {
   const unseen = new Set(newTerms);
@@ -68,26 +58,6 @@ function newTermsFirstSeen(texts: TermText[], newTerms: ReadonlySet<TermId>): Re
     firstSeen.forEach((id) => unseen.delete(id));
     return firstSeen;
   });
-}
-
-function Glossary({ terms, newTerms }: { terms: TermId[]; newTerms: ReadonlySet<TermId> }) {
-  return (
-    <dl className="glossary">
-      {terms.map((id) => {
-        const entity = TERM_ENTITY[id];
-        return (
-          <div key={id}>
-            <dt>
-              {entity && <EntityIcon entity={entity} />}
-              <span className="glossary__name">{TERMS[id].name}</span>
-              {newTerms.has(id) && <>{' '}<span className="term__new">{LUCIA_TEXT.newBadge}</span></>}
-            </dt>
-            <dd>{TERMS[id].definition}</dd>
-          </div>
-        );
-      })}
-    </dl>
-  );
 }
 
 function RejectionReply({ rejection, tasks }: { rejection: Rejection; tasks: IncidentTask[] }) {
@@ -154,10 +124,6 @@ export function LuciaCard({ session, onAskHint, onSubmit, fold }: LuciaCardProps
           </div>
         </>
       )}
-      <details className="lucia__glossary">
-        <summary className="caption">{LUCIA_TEXT.glossary}</summary>
-        <Glossary terms={glossaryOrder(session.known, newTerms)} newTerms={newTerms} />
-      </details>
       <div aria-live="polite">
         {hints.slice(0, session.hintsShown).map((hint, index) => {
           const Line = index === hints.length - 1 ? FocusedHintLine : HintLine;

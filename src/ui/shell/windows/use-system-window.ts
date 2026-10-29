@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 
-export const SYSTEM_WINDOW = { registry: 'registry' } as const;
+export const SYSTEM_WINDOW = { registry: 'registry', almanac: 'almanac' } as const;
 
 export type SystemWindowId = (typeof SYSTEM_WINDOW)[keyof typeof SYSTEM_WINDOW];
 

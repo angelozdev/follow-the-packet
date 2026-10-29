@@ -500,6 +500,14 @@ export const WINDOW_TEXT = {
   closeLabel: 'Cerrar la ventana',
 } as const;
 
+export const ALMANAC_TEXT = {
+  open: 'Almanaque',
+  tabs: 'Secciones del Almanaque',
+  terms: 'Términos',
+  lessons: 'Lecciones',
+  noLessons: 'Todavía no hay lecciones. Aquí aparece la de cada incidente que termines con una estrella o más.',
+} as const;
+
 export const REGISTRY_TEXT = {
   open: (lines: number) => `${SYSTEMS_TEXT.registry} (${lines})`,
   repeats: (times: number) => `${times} veces`,
