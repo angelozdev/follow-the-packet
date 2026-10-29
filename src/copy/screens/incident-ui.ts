@@ -490,8 +490,14 @@ export const RESULT_TEXT = {
   back: 'Volver al roadmap',
 } as const;
 
+export const SYSTEMS_TEXT = {
+  terminal: PIECE_TEXT.tabs.terminal,
+  browser: PIECE_TEXT.tabs.browser,
+  registry: 'Registro',
+} as const;
+
 export const REGISTRY_TEXT = {
-  open: (lines: number) => `Registro (${lines})`,
+  open: (lines: number) => `${SYSTEMS_TEXT.registry} (${lines})`,
   repeats: (times: number) => `${times} veces`,
   seeRow: 'Ver fila en la tabla de rutas',
 } as const;

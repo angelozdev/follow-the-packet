@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { REGISTRY_TEXT } from '@/copy';
 import { Button } from '@/design';
 import type { RegistryLine } from '@/game';
@@ -11,9 +11,10 @@ interface StatusBarProps {
   lines: RegistryLine[];
   choose: ChooseLine;
   seeRow: SeeRow;
+  bar?: ReactNode;
 }
 
-export function StatusBar({ lines, choose, seeRow }: StatusBarProps) {
+export function StatusBar({ lines, choose, seeRow, bar }: StatusBarProps) {
   const [open, setOpen] = useState(false);
   const buttonId = useId();
   const listId = useId();
@@ -31,7 +32,7 @@ export function StatusBar({ lines, choose, seeRow }: StatusBarProps) {
           )}
         </NewestLine>
       }
-      bar={null}
+      bar={bar}
       box={shown && <Registry id={listId} labelledBy={buttonId} lines={lines} choose={choose} seeRow={seeRow} />}
     />
   );

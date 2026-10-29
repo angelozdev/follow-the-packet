@@ -186,6 +186,7 @@ button.stamp { cursor: help; }
 .incident__status { grid-area: status; position: relative; z-index: 45; padding: var(--space-xs) var(--space-md); background: var(--color-page); border-top: var(--stroke-regular) solid var(--color-ink); font-size: var(--text-md); display: grid; grid-template-rows: var(--newest-room) var(--systems-room); }
 .incident__newest { display: flex; align-items: center; gap: var(--space-md); min-height: 0; }
 .incident__newest > [role='log'] { flex: 1 1 auto; min-width: 0; max-height: 100%; overflow-y: auto; }
+.incident__systems { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 0; }
 .incident__registry { position: absolute; bottom: 100%; left: var(--lucia-width); right: var(--panel-width); z-index: 1; list-style: none; margin: 0; padding: var(--space-xs) var(--space-md); max-height: 25vh; overflow-y: auto; display: grid; gap: var(--space-xs); background: var(--color-page); border: var(--stroke-regular) solid var(--color-ink); border-bottom: 0; }
 .incident__registry li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-sm); }
 .incident__registry ul { flex-basis: 100%; list-style: none; margin: 0; padding: 0 0 0 var(--space-md); display: grid; gap: var(--space-2xs); }

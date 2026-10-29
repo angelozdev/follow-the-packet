@@ -8,6 +8,8 @@ import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import { StatusBar } from '@/ui/shell/status/status-bar';
+import { SystemsBar } from '@/ui/shell/systems/systems-bar';
+import { useSystems } from '@/ui/shell/systems/use-systems';
 import { TopStrip } from '@/ui/shell/strip/top-strip';
 import { useSelection } from '@/ui/shell/use-selection';
 import { useStillMode } from '@/ui/use-still-mode';
@@ -36,6 +38,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
   const fold = useLuciaFold(session);
+  const systems = useSystems(session, selection, panelChoice);
   const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
@@ -104,7 +107,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
           markedSend={selection.markedSend}
         />
       </aside>
-      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} seeRow={seeRow} />
+      <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} seeRow={seeRow} bar={systems.length > 0 && <SystemsBar systems={systems} />} />
     </main>
   );
 }
