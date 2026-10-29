@@ -46,6 +46,24 @@ describe('Card', () => {
     expect(screen.getByRole('region', { name: 'Incidente cerrado' })).toBeInTheDocument();
   });
 
+  it('a folded card keeps its stripe and its body mounted but hidden, and an unfolded one shows it', () => {
+    const { container, rerender } = render(
+      <Card folded header={{ title: <h2>Lucía</h2> }}>
+        <button type="button">Enviar</button>
+      </Card>,
+    );
+    expect(within(stripeOf(container)).getByRole('heading', { name: 'Lucía' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Enviar' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Enviar', hidden: true })).not.toBeVisible();
+
+    rerender(
+      <Card folded={false} header={{ title: <h2>Lucía</h2> }}>
+        <button type="button">Enviar</button>
+      </Card>,
+    );
+    expect(screen.getByRole('button', { name: 'Enviar' })).toBeVisible();
+  });
+
   it('keeps its stripe in the soon variant, which stays faded and dashed', () => {
     const { container } = render(<Card as="li" variant="soon" header={{ type: 'Capítulo 2' }}>Puertos y nombres</Card>);
     expect(container.querySelector('li')).toHaveClass('card card--soon', { exact: true });

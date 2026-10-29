@@ -15,6 +15,7 @@ interface ResultCardProps {
   takeaway: TermText;
   nextId: string | null;
   cases: CaseSummary | null;
+  hidden?: boolean;
 }
 
 function starText(key: (typeof STAR_KEYS)[number], mechanic: Mechanic): string {
@@ -31,10 +32,10 @@ function CaseOutcomes({ summary }: { summary: CaseSummary }) {
   );
 }
 
-export function ResultCard({ stars, mechanic, takeaway, nextId, cases }: ResultCardProps) {
+export function ResultCard({ stars, mechanic, takeaway, nextId, cases, hidden }: ResultCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <Card aria-labelledby="result-title" header={{ icon: <CardIcon kind="result" />, type: RESULT_TEXT.type }}>
+    <Card aria-labelledby="result-title" hidden={hidden} header={{ icon: <CardIcon kind="result" />, type: RESULT_TEXT.type }}>
       <h2 id="result-title" ref={heading} tabIndex={-1}>
         {RESULT_TEXT.title}
       </h2>

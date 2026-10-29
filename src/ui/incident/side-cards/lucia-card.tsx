@@ -14,10 +14,28 @@ interface HintLineProps {
   lineRef?: RefObject<HTMLParagraphElement | null>;
 }
 
+interface LuciaFoldProps {
+  folded: boolean;
+  controls: string;
+  onToggle: () => void;
+}
+
 interface LuciaCardProps {
   session: Session;
   onAskHint: () => void;
   onSubmit: () => void;
+  fold?: LuciaFoldProps;
+}
+
+function FoldArrow({ folded, controls, onToggle }: LuciaFoldProps) {
+  return (
+    <span className="lucia__band-end">
+      {LUCIA_TEXT.role}
+      <Button variant="small" aria-label={LUCIA_TEXT.foldLabel} aria-expanded={!folded} aria-controls={controls} onClick={onToggle}>
+        {folded ? LUCIA_TEXT.unfold : LUCIA_TEXT.fold}
+      </Button>
+    </span>
+  );
 }
 
 function HintLine({ number, text, lineRef }: HintLineProps) {
@@ -91,14 +109,18 @@ function RejectionReply({ rejection, tasks }: { rejection: Rejection; tasks: Inc
   );
 }
 
-export function LuciaCard({ session, onAskHint, onSubmit }: LuciaCardProps) {
+export function LuciaCard({ session, onAskHint, onSubmit, fold }: LuciaCardProps) {
   const { incident } = session;
   const withTasks = isGuided(incident) ? incident : null;
   const hints = hintsOf(session);
   const newTerms = new Set(incident.introduces);
   const [reportTerms, ...taskTerms] = newTermsFirstSeen([incident.report, ...(withTasks?.tasks.map((task) => task.text) ?? [])], newTerms);
   return (
-    <Card aria-labelledby="lucia-title" header={{ icon: <CardIcon kind="lucia" />, title: <h2 id="lucia-title">{LUCIA_TEXT.name}</h2>, meta: LUCIA_TEXT.role }}>
+    <Card
+      aria-labelledby="lucia-title"
+      folded={fold?.folded}
+      header={{ icon: <CardIcon kind="lucia" />, title: <h2 id="lucia-title">{LUCIA_TEXT.name}</h2>, meta: fold ? <FoldArrow {...fold} /> : LUCIA_TEXT.role }}
+    >
       <p>
         <TaggedText text={incident.report} newTerms={reportTerms} />
       </p>

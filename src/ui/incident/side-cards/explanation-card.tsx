@@ -11,6 +11,7 @@ interface ExplanationCardProps {
   choice: number | null;
   onChoose: (index: number) => void;
   onContinue: () => void;
+  hidden?: boolean;
 }
 
 /** One option of a question as the list draws it: its text, whether it is the right one, whether the player picked it, whether it can still be picked, and the feedback to show under it (null for none). */
@@ -67,10 +68,10 @@ function explanationLines(options: ExplanationOption[], choice: number | null): 
   }));
 }
 
-export function ExplanationCard({ question, options, choice, onChoose, onContinue }: ExplanationCardProps) {
+export function ExplanationCard({ question, options, choice, onChoose, onContinue, hidden }: ExplanationCardProps) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
-    <Card aria-labelledby="explanation-title" header={{ icon: <CardIcon kind="question" />, type: EXPLANATION_TEXT.type }}>
+    <Card aria-labelledby="explanation-title" hidden={hidden} header={{ icon: <CardIcon kind="question" />, type: EXPLANATION_TEXT.type }}>
       <h2 id="explanation-title" ref={heading} tabIndex={-1}>
         <TaggedText text={EXPLANATION_TEXT.asks(question)} />
       </h2>

@@ -4,6 +4,7 @@ import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStar
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
 import { LuciaZone } from '@/ui/shell/lucia/lucia-zone';
+import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import { StatusBar } from '@/ui/shell/status/status-bar';
@@ -34,6 +35,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const lines = useMemo(() => registryLines(session), [session]);
   const selection = useSelection(session);
   const panelChoice = usePanelChoice();
+  const fold = useLuciaFold();
   const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
@@ -54,10 +56,10 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   return (
     <main className="incident">
       <TopStrip title={incident.title} still={still} onStillChange={setStill} />
-      <LuciaZone>
-        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
-        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
-        {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />}
+      <LuciaZone id={fold.controls}>
+        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} fold={fold} />
+        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} hidden={fold.folded} />}
+        {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} hidden={fold.folded} />}
         {session.phase === 'explaining' && isGuided(incident) && (
           <ExplanationCard
             question={incident.question ?? EXPLANATION_TEXT.whatHappened}
@@ -65,9 +67,10 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
             choice={session.choice}
             onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
             onContinue={showResult}
+            hidden={fold.folded}
           />
         )}
-        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
+        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} hidden={fold.folded} />}
       </LuciaZone>
       <div className="incident__map">
         <GameScene

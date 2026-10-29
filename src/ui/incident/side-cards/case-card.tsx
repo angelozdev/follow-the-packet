@@ -12,6 +12,7 @@ interface CaseCardProps {
   onNameCause: (index: number) => void;
   onNext: () => void;
   onShowResult: () => void;
+  hidden?: boolean;
 }
 
 interface Tick {
@@ -91,10 +92,10 @@ function Question({ card, onNameCause }: Pick<CaseCardProps, 'card' | 'onNameCau
 }
 
 /** The card of the case a diagnose is on, in the side panel: its number, what Lucía reports and the tests the origin can send, each marked once sent. A case with a fix adds what it asks besides the cause: where it is fixed and its tasks, each marked once it holds. «Ya sé la causa» opens the one question of the case with its options in the order the case gives them; a wrong one shows its feedback and the player tries another; the right one closes the case and offers the next, or the result after the last, and in a case with a fix it closes it only once the tasks hold too (until then it says the cause is named and the fix is missing). The caller keys it by the case, so each case starts with its question closed. */
-export function CaseCard({ card, onNameCause, onNext, onShowResult }: CaseCardProps) {
+export function CaseCard({ card, onNameCause, onNext, onShowResult, hidden }: CaseCardProps) {
   const [asking, setAsking] = useState(false);
   return (
-    <Card aria-labelledby="case-title" header={{ icon: <CardIcon kind="case" />, title: <h2 id="case-title">{CASE_TEXT.title(card.number, card.total)}</h2> }}>
+    <Card aria-labelledby="case-title" hidden={hidden} header={{ icon: <CardIcon kind="case" />, title: <h2 id="case-title">{CASE_TEXT.title(card.number, card.total)}</h2> }}>
       <p>
         <TaggedText text={CASE_TEXT.says(card.report)} />
       </p>

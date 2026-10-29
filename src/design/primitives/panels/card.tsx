@@ -14,6 +14,7 @@ type CardProps = Omit<ComponentProps<'section'>, 'className' | 'style' | 'ref'> 
   as?: 'section' | 'li';
   variant?: CardVariant;
   header?: CardHeader;
+  folded?: boolean;
   children?: ReactNode;
 };
 
@@ -28,12 +29,14 @@ function Stripe({ icon, title, type, meta }: CardHeader) {
   );
 }
 
-/** The one card of the game, in style B: a paper panel with a thick ink border, rounded corners and a shadow below, as a section or as an item of a list. A card with a header wears a dark stripe on top, which rounds its own corners: the card clips nothing, so no parent can squeeze it below its content. The caller owns the heading that names the card, whether it goes in the stripe (`title`) or at the top of the content, and labels the card with it. A soon card holds what is not open yet: faded, dashed and without shadow. */
-export function Card({ as: Element = 'section', variant = 'default', header, children, ...props }: CardProps) {
+/** The one card of the game, in style B: a paper panel with a thick ink border, rounded corners and a shadow below, as a section or as an item of a list. A card with a header wears a dark stripe on top, which rounds its own corners: the card clips nothing, so no parent can squeeze it below its content. The caller owns the heading that names the card, whether it goes in the stripe (`title`) or at the top of the content, and labels the card with it. A soon card holds what is not open yet: faded, dashed and without shadow. A folded card shows only its stripe: its body stays mounted, hidden from the page, the Tab order and the accessibility tree. */
+export function Card({ as: Element = 'section', variant = 'default', header, folded, children, ...props }: CardProps) {
   return (
     <Element className={variant === 'soon' ? 'card card--soon' : 'card'} {...props}>
       {header && <Stripe {...header} />}
-      <div className="card__body">{children}</div>
+      <div className="card__body" hidden={folded}>
+        {children}
+      </div>
     </Element>
   );
 }

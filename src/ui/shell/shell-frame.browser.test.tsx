@@ -70,6 +70,13 @@ function rectOf(selector: string): DOMRect {
   return elementOf(selector).getBoundingClientRect();
 }
 
+async function setLuciaExpanded(expanded: boolean) {
+  const arrow = page.getByRole('button', { name: LUCIA_TEXT.foldLabel });
+  await userEvent.click(arrow);
+  await expect.element(arrow).toHaveAttribute('aria-expanded', String(expanded));
+  return arrow;
+}
+
 function overlap(a: DOMRect, b: DOMRect): boolean {
   return a.left < b.right - EPSILON && b.left < a.right - EPSILON && a.top < b.bottom - EPSILON && b.top < a.bottom - EPSILON;
 }
@@ -161,6 +168,33 @@ describe('the frame of the incident screen above 900 px', () => {
     expect(rectOf(MAP).toJSON(), 'with her text grown').toEqual(before);
   });
 
+  it('folding and unfolding Lucía does not move the box of the map', async () => {
+    await page.viewport(LABEL_ACCEPTANCE_WINDOW.width, LABEL_ACCEPTANCE_WINDOW.height);
+    await theScreen(LONG_BOX_INCIDENT);
+    const before = rectOf(MAP).toJSON();
+    const unfoldedHeight = rectOf(LUCIA_ZONE).height;
+
+    await setLuciaExpanded(false);
+    expect(rectOf(LUCIA_ZONE).height, 'her zone shrinks to her band').toBeLessThan(unfoldedHeight);
+    expect(rectOf(MAP).toJSON(), 'folded').toEqual(before);
+
+    await setLuciaExpanded(true);
+    expect(rectOf(LUCIA_ZONE).height, 'her zone is as tall as before').toBeCloseTo(unfoldedHeight, 0);
+    expect(rectOf(MAP).toJSON(), 'unfolded again').toEqual(before);
+  });
+
+  it('folded, Tab goes from the arrow of Lucía to the map and never into her zone', async () => {
+    await page.viewport(LABEL_ACCEPTANCE_WINDOW.width, LABEL_ACCEPTANCE_WINDOW.height);
+    await theScreen(LONG_BOX_INCIDENT);
+    const arrow = await setLuciaExpanded(false);
+    arrow.element().focus();
+
+    await userEvent.tab();
+
+    expect(elementOf(LUCIA_ZONE).contains(document.activeElement), 'the focus left her zone').toBe(false);
+    expect(elementOf(MAP).contains(document.activeElement), 'and went to the map').toBe(true);
+  });
+
   it('the panel measures a quarter of the window, never under its floor nor over its ceiling', async () => {
     for (const size of PANEL_WINDOWS) {
       await page.viewport(size.width, size.height);
@@ -216,6 +250,20 @@ describe('the frame of the incident screen at 900 px and under', () => {
 
     expect(document.documentElement.scrollWidth - window.innerWidth, 'at 390 px the page does not scroll sideways').toBeLessThanOrEqual(0);
     expect(elementOf(PANEL).scrollWidth - PHONE_WINDOW.width, 'nor does the panel').toBeLessThanOrEqual(0);
+    expect(elementOf(LUCIA_ZONE).scrollWidth - PHONE_WINDOW.width, 'nor does Lucía').toBeLessThanOrEqual(0);
+  });
+
+  it('at 390 px Lucía folds too and the page does not scroll sideways', async () => {
+    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
+    await theScreen(TALL_LUCIA_INCIDENT);
+    const unfoldedHeight = rectOf(LUCIA_ZONE).height;
+
+    const arrow = await setLuciaExpanded(false);
+
+    expect(rectOf(LUCIA_ZONE).height, 'her zone shrinks to her band').toBeLessThan(unfoldedHeight);
+    expect(rectOf(LUCIA_ZONE).bottom, 'the map box comes up under her band').toBeLessThanOrEqual(rectOf(MAP).top + EPSILON);
+    expect(arrow.element().getBoundingClientRect().right, 'the arrow is inside the window').toBeLessThanOrEqual(window.innerWidth);
+    expect(document.documentElement.scrollWidth - window.innerWidth, 'the page does not scroll sideways').toBeLessThanOrEqual(0);
     expect(elementOf(LUCIA_ZONE).scrollWidth - PHONE_WINDOW.width, 'nor does Lucía').toBeLessThanOrEqual(0);
   });
 

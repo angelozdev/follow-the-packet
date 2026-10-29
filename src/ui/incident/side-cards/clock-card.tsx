@@ -8,12 +8,13 @@ interface ClockCardProps {
   seconds: number;
   steps: ClockStep[];
   onWait: (seconds: number) => void;
+  hidden?: boolean;
 }
 
 /** The clock of the game, below the card of Lucía: the seconds it has run, written as minutes and seconds, and one chip for each step the incident lets the player wait by. The time belongs to the whole game and to no piece of the map, which is why it is not in a terminal or in a cache. The chips are actions (none stays picked) and report the seconds of the step. */
-export function ClockCard({ seconds, steps, onWait }: ClockCardProps) {
+export function ClockCard({ seconds, steps, onWait, hidden }: ClockCardProps) {
   return (
-    <Card aria-labelledby="clock-title" header={{ icon: <CardIcon kind="clock" />, title: <h2 id="clock-title">{CLOCK_TEXT.title}</h2> }}>
+    <Card aria-labelledby="clock-title" hidden={hidden} header={{ icon: <CardIcon kind="clock" />, title: <h2 id="clock-title">{CLOCK_TEXT.title}</h2> }}>
       <p className="clock" aria-live="polite">
         <code>{CLOCK_TEXT.time(seconds)}</code>
       </p>

@@ -186,6 +186,9 @@ export const ACTOR_ROLE_TEXT: Record<ClientActor['kind'], TermText> = {
 export const LUCIA_TEXT = {
   name: 'Lucía',
   role: 'soporte',
+  foldLabel: 'Plegar o desplegar a Lucía',
+  fold: '▴',
+  unfold: '▾',
   tasks: 'Tareas',
   pending: 'pendiente',
   done: 'hecha',
