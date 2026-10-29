@@ -2,6 +2,8 @@
 
 Fecha: 2026-10-26 · Estado: aprobado por el estudiante el 2026-10-26. El estudiante decidió ocho puntos el 2026-10-26 (ver «Decisiones del estudiante»). Lo demás sale del prototipo S2 que vio o son llamadas mías, y está en «Decididas sin el estudiante (para revisar)»: el estudiante las revisa cuando se le entregue este documento, y una vez aprobado el documento esas llamadas quedan resueltas para planear. Dos puntos siguen abiertos y se deciden con un prototipo dibujado: «Abierto, para el estudiante». Se escribió leyendo `feat/chapter-3` en `ce44cb3`. El plan de implementación se escribe cuando termine la segunda tanda del bloque 3 (T0a, T0b y T1 hechas): su base es ese commit y lee el código de ahí (T0b agrega una línea de papeles al marco de la tarjeta de pieza, en `piece-card.tsx`). Prototipos: S1, la barra de estado (https://claude.ai/artifact/3LRHd1ZyksDbvCvJejzyNv, se decidió la opción D) y S2, el casco entero (https://claude.ai/artifact/8oisrSv9wq8UaHFKoZyVzE). Registro de la conversación: `.superpowers/sdd/2026-10-25-follow-the-packet-fixed-shell-brainstorm/progress.md`.
 
+Disposición reemplazada el 2026-10-29: la disposición A, la columna, la barra de ancho completo y el punto abierto 1 los reemplaza [el casco B](2026-10-29-follow-the-packet-shell-layout-b-design.md); lo demás sigue vigente según ese documento.
+
 Marcas: **(R)** lo decidió el estudiante. **(P)** lo propuso el prototipo S2 y el estudiante lo vio, pero no lo decidió por separado. Todo (P) y toda llamada mía se repite en «Decididas sin el estudiante».
 
 ## Resumen
