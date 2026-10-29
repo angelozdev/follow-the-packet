@@ -10,27 +10,40 @@ export interface TabItem {
 
 const NEAREST: ScrollIntoViewOptions = { block: 'nearest', inline: 'nearest' };
 
+export type TabsVariant = 'pills' | 'underline';
+
+const TABS_CLASS: Record<TabsVariant, string> = {
+  pills: 'tabs',
+  underline: 'tabs tabs--underline',
+};
+
 interface TabsProps {
   name: string;
   tabs: TabItem[];
   selected: string;
   onSelect: (tabId: string) => void;
+  variant?: TabsVariant;
 }
 
 const panelKey = (id: string, selected: string) => `${id}:${id === selected}`;
 
 const bringIntoView = (event: SyntheticEvent<HTMLButtonElement>) => event.currentTarget.scrollIntoView(NEAREST);
 
+const holdTextForBoldWidth = (reserve: HTMLSpanElement | null) => {
+  if (reserve) reserve.dataset.text = reserve.parentElement?.textContent ?? '';
+};
+
 /** A named list of tabs, built on Radix Tabs, of which one is selected and only its panel is shown: the name labels the list for screen readers, selecting a tab reports its id, and the arrow keys, Home and End move the selection. The list is one row that scrolls sideways by itself when its tabs do not fit, fades the edge that hides tabs, and brings a focused or clicked tab into view (Safari and Firefox on macOS do not focus a button on click), and brings the selected tab into view when the bar mounts and each time the selection changes, so a tab that the caller chose from outside, one that lies past the edge of a bar that scrolls, is not left out of sight (`use-reveal-selected-tab.ts`). Radix mounts only the panel of the selected tab, so whatever a panel's content keeps in its own state is lost when another tab is selected: the caller keeps that state above the tabs. The panel of a tab is keyed by whether it is the selected one, so Radix draws the body of the tab that has just been selected in the same render as the selection and not in the next one, and a caller that measures or scrolls right after a choice reads the body that stays. */
-export function Tabs({ name, tabs, selected, onSelect }: TabsProps) {
+export function Tabs({ name, tabs, selected, onSelect, variant = 'pills' }: TabsProps) {
   const list = useRef<HTMLDivElement>(null);
   useRevealSelectedTab(list, selected);
   return (
-    <Root className="tabs" value={selected} onValueChange={onSelect}>
+    <Root className={TABS_CLASS[variant]} value={selected} onValueChange={onSelect}>
       <List ref={list} className="tabs__list" aria-label={name}>
         {tabs.map(({ id, label }) => (
           <Trigger key={id} className="tabs__tab" value={id} onFocus={bringIntoView} onClick={bringIntoView}>
             {label}
+            {variant === 'underline' && <span aria-hidden="true" className="tabs__bold-width" ref={(reserve) => holdTextForBoldWidth(reserve)} />}
           </Trigger>
         ))}
       </List>

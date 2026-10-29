@@ -144,18 +144,31 @@ export async function tapAt(point: Point): Promise<void> {
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
-/** Presses the left mouse button on the centre of an element and keeps it down, so the element is `:active` while the test reads it, and returns the function that lets go and takes the mouse away. `userEvent` has no press without a release, so the three mouse events go through the protocol of the browser, at the place the element has in the page that holds the iframe of the test. */
-export async function holdTheMouseDown(target: Element): Promise<() => Promise<void>> {
-  const box = target.getBoundingClientRect();
-  const point = inThePageOfTheFrame({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
-  const press = { ...point, button: 'left', clickCount: 1 } as const;
+async function pressAt(point: Point): Promise<() => Promise<void>> {
+  const at = inThePageOfTheFrame(point);
+  const press = { ...at, button: 'left', clickCount: 1 } as const;
   const session = cdp();
-  await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+  await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...at });
   await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...press });
   return async () => {
     await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...press });
+  };
+}
+
+/** Presses the left mouse button on the centre of an element and keeps it down, so the element is `:active` while the test reads it, and returns the function that lets go and takes the mouse away. `userEvent` has no press without a release, so the three mouse events go through the protocol of the browser, at the place the element has in the page that holds the iframe of the test. */
+export async function holdTheMouseDown(target: Element): Promise<() => Promise<void>> {
+  const box = target.getBoundingClientRect();
+  const release = await pressAt({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  return async () => {
+    await release();
     await moveTheMouseAway();
   };
+}
+
+/** Presses and lets go of the left mouse button at a point of the window of the test, through the protocol of the browser: the press lands where the pointer is, with nothing scrolled into view first, as a hand does and `userEvent.click` does not (it scrolls its element into view before it presses). It is how a test clicks the visible edge of an element that a scroller half hides. The point adds the place of the iframe of the test in the page that holds it. */
+export async function clickAt(point: Point): Promise<void> {
+  const release = await pressAt(point);
+  await release();
 }
 
 /** Resolves after the next frame the browser draws. */

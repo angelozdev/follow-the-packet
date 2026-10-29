@@ -91,6 +91,7 @@ export const INTERFACE_TEXT = {
     alert: 'alerta',
     reply: 'respuesta de Lucía',
     tabs: 'pestañas: elegida y sin elegir',
+    tabsUnderline: 'pestañas de dentro de otra pestaña: elegida y sin elegir',
     table: 'tabla: una fila fija, una que se quita y una en uso',
     tableEmpty: 'tabla vacía',
     output: 'tarjeta terminal con la salida de dig plegada',
@@ -115,7 +116,7 @@ export const INTERFACE_TEXT = {
     yes: 'Sí',
     no: 'No',
     feedback: 'Por qué la respuesta es así.',
-    tabs: { name: 'Sentido de las reglas', in: 'Entrada', out: 'Salida' },
+    tabs: { name: 'Sentido de las reglas', in: 'Entrada', out: 'Salida', inner: { name: 'Tablas del router', labels: ['Tabla de rutas', 'Tabla de traducciones'] } },
     table: {
       title: 'Tabla de rutas',
       owner: nameTag('router-oficina'),

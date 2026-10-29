@@ -164,6 +164,7 @@ export function rulesFrame(card: FirewallCard, chips: { what: WhatChip[]; from: 
     body: outboundSide ? (
       <Tabs
         name={TASK_CARD_TEXT.tabsName}
+        variant="underline"
         selected={draft.selected}
         onSelect={(tabId) => draft.setSelected(directionOf(tabId))}
         tabs={[

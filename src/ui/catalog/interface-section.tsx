@@ -36,6 +36,7 @@ const SAMPLE_TABS = [
   },
 ];
 const [FIRST_TAB] = SAMPLE_TABS;
+const INNER_TABS = SAMPLE_TABS.map((tab, index) => ({ ...tab, label: SAMPLE.tabs.inner.labels[index] }));
 const TABLE = SAMPLE.table;
 const TABLE_COLUMNS = [
   { id: 'to', label: TABLE.columns.to },
@@ -286,6 +287,9 @@ export function InterfaceSection() {
       <Family name={INTERFACE_TEXT.family.tabs}>
         <Specimen caption={VARIANT.tabs} wide>
           <Tabs name={SAMPLE.tabs.name} tabs={SAMPLE_TABS} selected={FIRST_TAB.id} onSelect={noPick} />
+        </Specimen>
+        <Specimen caption={VARIANT.tabsUnderline} wide>
+          <Tabs name={SAMPLE.tabs.inner.name} variant="underline" tabs={INNER_TABS} selected={FIRST_TAB.id} onSelect={noPick} />
         </Specimen>
       </Family>
       <Family name={INTERFACE_TEXT.family.tables}>

@@ -61,6 +61,7 @@ function contentOf(tab: PanelTab, { panel, inspection, choice, frameOf }: Omit<P
     body: (
       <Tabs
         name={toPlainText(tab.label)}
+        variant="underline"
         selected={chosen}
         onSelect={(partId) => choice.chooseFicha(panel.pieceId, tab.id, partId)}
         tabs={tab.parts.map((part, index) => ({ id: part.id, label: <TaggedText text={part.label} />, panel: frames[index].body }))}
