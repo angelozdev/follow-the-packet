@@ -9,8 +9,8 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const BAR = '.incident__status';
 const PANEL = '.incident__panel';
-const LUCIA_ZONE = '.incident__lucia';
 const MAP = '.incident__map';
+const TOP_STRIP = '.incident__strip';
 const INCIDENT = '02-12';
 const INCIDENT_WITH_LINES = '04-01';
 const REGISTRY = '.incident__registry';
@@ -18,7 +18,7 @@ const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
 const CAP_OF_THE_REGISTRY = 0.25;
 const INCIDENT_WITH_TABLES = '02-06';
 const SEE_ROW = 'Ver fila en la tabla de rutas';
-const BAR_LINE = '.incident__status-line';
+const BAR_LINE = '.incident__newest';
 const LOW_WINDOW = { width: 1280, height: 600 };
 const EPSILON = 1;
 const COLUMN_WINDOWS = [
@@ -54,32 +54,18 @@ function lastControl(): HTMLElement {
   return last;
 }
 
-function isShownInside(control: HTMLElement, regionSelector: string): boolean {
-  const box = control.getBoundingClientRect();
-  if (box.width === 0) return false;
-  for (let ancestor = control.parentElement; ancestor !== null; ancestor = ancestor.parentElement) {
-    const { overflowX, overflowY } = getComputedStyle(ancestor);
-    const clips = ancestor.matches(regionSelector) || overflowX !== 'visible' || overflowY !== 'visible';
-    const edge = ancestor.getBoundingClientRect();
-    if (clips && (box.left < edge.left || box.right > edge.right || box.top < edge.top || box.bottom > edge.bottom)) return false;
-    if (ancestor.matches(regionSelector)) return true;
-  }
-  return false;
-}
-
-function controlsInView(regionSelector: string): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>(`${regionSelector} button, ${regionSelector} a[href]`)].filter((control) => isShownInside(control, regionSelector));
-}
-
 afterEach(async () => {
   await page.viewport(INITIAL_VIEWPORT.width, INITIAL_VIEWPORT.height);
 });
 
 describe('the status bar of the incident screen', () => {
   it('the bar stays at the bottom above 900 px and at 390×844 and the last control of the page can be reached by scrolling', async () => {
+    let fixedHeight: number | undefined;
     for (const size of ABOVE_900_WINDOWS) {
       await page.viewport(size.width, size.height);
       const view = await theScreen(INCIDENT);
+      fixedHeight ??= rectOf(BAR).height;
+      expect(rectOf(BAR).height, `${size.width}×${size.height}: the strip has the same fixed height`).toBeCloseTo(fixedHeight, 0);
       expect(rectOf(BAR).bottom, `${size.width}×${size.height}: the bar is at the bottom of the window`).toBeCloseTo(window.innerHeight, 0);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${size.width}×${size.height}: the page does not scroll`).toBeLessThanOrEqual(0);
       view.unmount();
@@ -88,6 +74,7 @@ describe('the status bar of the incident screen', () => {
     await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
     const phone = await theScreen(INCIDENT);
     expect(document.documentElement.scrollHeight, 'the page of the phone scrolls').toBeGreaterThan(window.innerHeight);
+    expect(rectOf(BAR).height, '390×844: the strip has the same fixed height').toBeCloseTo(fixedHeight ?? 0, 0);
     expect(rectOf(BAR).bottom, '390×844: the bar is at the bottom of the window').toBeCloseTo(window.innerHeight, 0);
     window.scrollTo(0, document.documentElement.scrollHeight);
     expect(rectOf(BAR).bottom, 'and stays there after scrolling to the end').toBeCloseTo(window.innerHeight, 0);
@@ -98,43 +85,28 @@ describe('the status bar of the incident screen', () => {
 });
 
 describe('the open registry of the status bar', () => {
-  it('the open registry takes room from the map and the panel and covers no control', async () => {
+  it('the open registry takes no room from the map and the panel and covers no control of the strip, the line or the bar', async () => {
     for (const size of COLUMN_WINDOWS) {
       await page.viewport(size.width, size.height);
       const view = await theScreen(INCIDENT_WITH_LINES);
       const where = `${size.width}×${size.height}`;
-      const closed = { bar: rectOf(BAR).height, panel: rectOf(PANEL).height, map: rectOf(MAP).height };
+      const closed = { bar: rectOf(BAR).toJSON(), panel: rectOf(PANEL).toJSON(), map: rectOf(MAP).toJSON() };
       await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
-      const bar = rectOf(BAR);
+      const list = rectOf(REGISTRY);
 
-      expect(bar.height, `${where}: the bar grows`).toBeGreaterThan(closed.bar);
-      expect(rectOf(PANEL).height, `${where}: the panel gives it room`).toBeLessThan(closed.panel);
-      expect(rectOf(MAP).height, `${where}: and the map too`).toBeLessThan(closed.map);
-      expect(rectOf(PANEL).bottom, `${where}: the panel still ends where the bar begins`).toBeCloseTo(bar.top, 0);
-      expect(rectOf(MAP).bottom, `${where}: and the map too`).toBeCloseTo(bar.top, 0);
-      expect(bar.bottom, `${where}: the bar ends with the window`).toBeCloseTo(window.innerHeight, 0);
+      expect(rectOf(BAR).toJSON(), `${where}: the strip keeps its rectangle`).toEqual(closed.bar);
+      expect(rectOf(PANEL).toJSON(), `${where}: the panel keeps its rectangle`).toEqual(closed.panel);
+      expect(rectOf(MAP).toJSON(), `${where}: and the map too`).toEqual(closed.map);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
-      expect(rectOf(REGISTRY).height, `${where}: the list has a cap`).toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
+      expect(list.bottom, `${where}: the list ends where the strip begins`).toBeLessThanOrEqual(closed.bar.top + EPSILON);
+      expect(list.top, `${where}: and starts under the strip of the top`).toBeGreaterThanOrEqual(rectOf(TOP_STRIP).bottom);
+      expect(list.height, `${where}: the list has a cap`).toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
       expect(maxHeightOf(REGISTRY), `${where}: the cap is a quarter of the window`).toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
-      const controls = [...controlsInView(LUCIA_ZONE), ...controlsInView(PANEL), ...controlsInView(MAP)];
+      const controls = [...document.querySelectorAll<HTMLElement>(`${TOP_STRIP} a, ${TOP_STRIP} input, ${BAR} button`)];
       expect(controls.length, `${where}: there are controls to look at`).toBeGreaterThan(0);
       for (const control of controls) expect(isReachable(control), `${where}: ${control.textContent?.trim()} is reachable`).toBe(true);
       view.unmount();
     }
-  });
-
-  it('at 390 px the open registry leaves the last control of the page reachable by scrolling', async () => {
-    await page.viewport(PHONE_WINDOW.width, PHONE_WINDOW.height);
-    const phone = await theScreen(INCIDENT_WITH_LINES);
-    await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
-    expect(rectOf(REGISTRY).height, 'the list has a cap').toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
-    expect(maxHeightOf(REGISTRY), 'the cap is a quarter of the window').toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
-    expect(document.documentElement.scrollHeight, 'the page scrolls').toBeGreaterThan(window.innerHeight);
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    expect(rectOf(BAR).bottom, 'the bar stays at the bottom of the window').toBeCloseTo(window.innerHeight, 0);
-    expect(lastControl().getBoundingClientRect().bottom, 'the last control ends above the open registry').toBeLessThanOrEqual(rectOf(REGISTRY).top + EPSILON);
-    window.scrollTo(0, 0);
-    phone.unmount();
   });
 });
 

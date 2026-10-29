@@ -172,7 +172,7 @@ button.stamp { cursor: help; }
   .stamp__dot { background: CanvasText; border-color: Canvas; }
 }
 
-.incident { --lucia-width: 316px; --panel-width: clamp(300px, 24vw, 380px); display: grid; grid-template-columns: var(--lucia-width) minmax(0, 1fr) var(--panel-width); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'strip strip strip' 'lucia map panel' 'status status status'; height: 100vh; }
+.incident { --lucia-width: 316px; --panel-width: clamp(300px, 24vw, 380px); --newest-room: 4.75rem; --systems-room: 2.5rem; display: grid; grid-template-columns: var(--lucia-width) minmax(0, 1fr) var(--panel-width); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'strip strip strip' 'lucia map panel' 'status status status'; height: 100vh; }
 .incident__strip { grid-area: strip; display: flex; align-items: baseline; gap: var(--space-md); padding: var(--space-xs) var(--space-md); border-bottom: var(--stroke-regular) solid var(--color-ink); background: var(--color-page); }
 .incident__strip h1 { font-size: var(--text-xl); margin: 0; }
 .incident__motion { margin-left: auto; font-size: var(--text-md); }
@@ -183,16 +183,16 @@ button.stamp { cursor: help; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
 .incident__inspection .card__body { min-height: 0; overflow-y: auto; }
-.incident__status { grid-area: status; z-index: 45; padding: var(--space-xs) var(--space-md); background: var(--color-page); border-top: var(--stroke-regular) solid var(--color-ink); font-size: var(--text-md); display: grid; gap: var(--space-xs); }
-.incident__status-line { display: flex; align-items: center; gap: var(--space-md); }
-.incident__status-line > [role='log'] { flex: 1 1 auto; min-width: 0; }
-.incident__registry { list-style: none; margin: 0; padding: 0 0 var(--space-xs); max-height: 25vh; overflow-y: auto; display: grid; gap: var(--space-xs); border-bottom: var(--stroke-regular) solid var(--color-ink-soft); }
+.incident__status { grid-area: status; position: relative; z-index: 45; padding: var(--space-xs) var(--space-md); background: var(--color-page); border-top: var(--stroke-regular) solid var(--color-ink); font-size: var(--text-md); display: grid; grid-template-rows: var(--newest-room) var(--systems-room); }
+.incident__newest { display: flex; align-items: center; gap: var(--space-md); min-height: 0; }
+.incident__newest > [role='log'] { flex: 1 1 auto; min-width: 0; max-height: 100%; overflow-y: auto; }
+.incident__registry { position: absolute; bottom: 100%; left: var(--lucia-width); right: var(--panel-width); z-index: 1; list-style: none; margin: 0; padding: var(--space-xs) var(--space-md); max-height: 25vh; overflow-y: auto; display: grid; gap: var(--space-xs); background: var(--color-page); border: var(--stroke-regular) solid var(--color-ink); border-bottom: 0; }
 .incident__registry li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-sm); }
 .incident__registry ul { flex-basis: 100%; list-style: none; margin: 0; padding: 0 0 0 var(--space-md); display: grid; gap: var(--space-2xs); }
 .incident__registry::-webkit-scrollbar { width: var(--space-sm); }
 .incident__registry::-webkit-scrollbar-thumb { background: var(--color-ink-soft); border: var(--stroke-bold) solid var(--color-page); border-radius: var(--radius-pill); }
 .incident__status p { margin: 0; }
-.incident__status p.message { margin-block: var(--space-xl) var(--space-2xs); }
+.incident__status p.message { margin-block: var(--space-lg) 0; }
 .incident__status .link { font: inherit; text-align: start; }
 .incident__help-line { display: block; }
 .incident__help-line + .incident__help-line { margin-top: var(--space-xs); }
@@ -222,6 +222,7 @@ button.stamp { cursor: help; }
   .incident__panel { flex: 1 0 auto; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
   .incident__inspection { place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
   .incident__status { position: sticky; bottom: 0; }
+  .incident__registry { left: 0; right: 0; }
 }
 
 .catalog { padding: var(--space-xl) var(--space-lg) var(--space-3xl); }
