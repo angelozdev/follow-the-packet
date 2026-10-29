@@ -26,6 +26,10 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const SLOW_TEST_MS = 120_000;
 const WINDOWS = [
+  { name: '1280×800', size: { width: 1280, height: 800 } },
+  { name: '1440×900', size: { width: 1440, height: 900 } },
+];
+const INSPECTION_WINDOWS = [
   { name: '1440×900', size: { width: 1440, height: 900 } },
   { name: '1920×1080', size: { width: 1920, height: 1080 } },
 ];
@@ -230,7 +234,7 @@ describe('the cards and boxes of 04-01', () => {
   });
 });
 
-describe.each(WINDOWS)('$name', ({ size }) => {
+describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
   useWindow(size);
 
   it.each(INSPECTED_THINGS)('the inspection box of %s lies inside the window and covers no label or stamp', { timeout: SLOW_TEST_MS }, async (name) => {
