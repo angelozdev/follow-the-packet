@@ -227,6 +227,7 @@ button.stamp { cursor: help; }
   .incident__strip { height: auto; min-height: var(--strip-room); flex-wrap: wrap; }
   .incident__panel { flex: 1 0 auto; border-left: none; border-top: var(--stroke-regular) solid var(--color-ink); }
   .incident__inspection { place-self: stretch; width: auto; max-width: none; max-height: 45vh; }
+  .incident__inspection[aria-hidden='true'] > .card { display: none; }
   .incident__status { position: sticky; bottom: 0; }
   .incident__status > .dialog { position: fixed; inset: 0 0 var(--status-bar-room, 0px); }
 }
