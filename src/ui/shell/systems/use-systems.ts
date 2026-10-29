@@ -15,7 +15,6 @@ const TOOLS = [
 
 const holdsTab = (session: Session, pieceId: string, tab: PanelTabId) => panelOf(session, pieceId).tabs.some(({ id }) => id === tab);
 
-/** Takes the session, the choice of the screen, the choice of tab of the panel and the box of the registry, and returns the buttons of the bar of systems the incident offers, in order: Terminal and Navegador, each only when some origin piece has that tab (so neither once the incident is over), and «Registro (N)», only when the registry has a line, which opens and closes its box. Pressing one chooses the piece of the last origin the player had in view in one of those tabs (or the first of `send.from` that has the tab, before any), opens the tab in its panel and brings the focus to the heading of the panel; when that tab is already in view on that piece it does nothing more. */
 export function useSystems(session: Session, selection: Selection, panelChoice: PanelChoice, registry: RegistryBox): System[] {
   const [lastOrigin, setLastOrigin] = useState<string | null>(null);
   const origins = Object.values(originPieces(session));

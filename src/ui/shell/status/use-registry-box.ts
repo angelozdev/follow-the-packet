@@ -9,7 +9,6 @@ export interface RegistryBox {
   listId: string;
 }
 
-/** Takes the lines of the registry and returns the state of its box: how many lines there are, whether the box is open, what opens and closes it and the ids that tie the button to the list. A box that was open when the lines ran out stays closed when a line comes back, and with no line it is never open. */
 export function useRegistryBox(lines: RegistryLine[]): RegistryBox {
   const [wanted, setWanted] = useState(false);
   const buttonId = useId();
