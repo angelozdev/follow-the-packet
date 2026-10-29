@@ -9,6 +9,7 @@ import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import { NewestLine } from '@/ui/shell/status/newest-line';
 import { BottomStrip } from '@/ui/shell/strip/bottom-strip';
+import { GameClock } from '@/ui/shell/strip/game-clock';
 import { SystemsBar } from '@/ui/shell/systems/systems-bar';
 import { useSystems } from '@/ui/shell/systems/use-systems';
 import { TopStrip } from '@/ui/shell/strip/top-strip';
@@ -17,7 +18,6 @@ import { RegistryWindow } from '@/ui/shell/windows/registry-window';
 import { SYSTEM_WINDOW, useSystemWindow } from '@/ui/shell/windows/use-system-window';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
-import { ClockCard } from './side-cards/clock-card';
 import { ExplanationCard } from './side-cards/explanation-card';
 import { InspectionBox } from './inspection-box';
 import { LuciaCard } from './side-cards/lucia-card';
@@ -58,6 +58,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
+  const clock = playing && steps.length > 0 && <GameClock seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />;
   const { incident } = session;
 
   const showResult = () => {
@@ -74,10 +75,9 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
 
   return (
     <main className="incident">
-      <TopStrip title={incident.title} still={still} onStillChange={setStill} />
+      <TopStrip title={incident.title} still={still} onStillChange={setStill} clock={clock} />
       <LuciaZone id={fold.controls} inert={covered}>
         <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} fold={fold} />
-        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} hidden={fold.folded} />}
         {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} hidden={fold.folded} />}
         {session.phase === 'explaining' && isGuided(incident) && (
           <ExplanationCard

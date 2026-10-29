@@ -99,7 +99,6 @@ const ALIAS_REFUSED = 'No se pudo agregar.';
 const SEND = 'Enviar';
 const RESOLVER = 'servidor-dns';
 const ONE_MINUTE = 'Esperar 1 min';
-const CLOCK_NOTE = 'El tiempo pasa para todo el mapa.';
 const RIGHT_CAUSES_BEFORE_THE_LOOP = [
   /Porque el servicio escucha solo en 127\.0\.0\.1/,
   /Porque el nombre está mal escrito y no existe/,
@@ -421,7 +420,7 @@ const THE_PROVIDER_ROUTES: Scene = { name: 'the routes of router-proveedor, the 
 const THE_TRANSLATIONS: Scene = { name: 'the table of translations of router-oficina, read only, with the rows of two laptops', level: '02-08', reach: reachTheTranslations, last: lastOfThePanel(OFFICE_ROUTER) };
 const THE_RECORDS: Scene = { name: 'the records of servidor-autoritativo, with an alias refused and the reason under the table', level: '02-11', reach: reachTheRefusedAlias, last: lastOfThePanel(AUTHORITATIVE) };
 const THE_CACHE: Scene = { name: 'the cache of servidor-dns, read only, a minute after the dig, with the clock of the game in the panel', level: '02-12', reach: reachTheCacheAfterAMinute, last: lastOfThePanel(RESOLVER) };
-const THE_CLOCK: Scene = { name: 'the clock of the game below the card of Lucía, after a minute of waiting', level: '02-12', reach: waitAMinute, last: () => page.getByText(CLOCK_NOTE) };
+const THE_CLOCK: Scene = { name: 'the clock of the game in the top strip, after a minute of waiting', level: '02-12', reach: waitAMinute, last: () => button(ONE_MINUTE) };
 const THE_BROWSER: Scene = { name: 'the browser, a tab of the card of tu-laptop, with a page opened', level: WEB.id, incidents: [WEB], reach: openTheShopInTheBrowser, last: lastOfThePanel(YOUR_LAPTOP) };
 const THE_SIGNED_IN_BROWSER: Scene = { name: 'the browser of 03-06, signed in as Lucía, with the cookie in what it remembers', level: '03-06', reach: signInAndOpenTheAdmin, last: lastOfThePanel(YOUR_LAPTOP) };
 const THE_SITES: Scene = { name: 'the sites of servidor-internet, with a name that already has a site refused and the reason under the table', level: WEB.id, incidents: [WEB], reach: reachTheRefusedSite, last: lastOfThePanel(WEB_SERVER) };

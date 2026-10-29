@@ -441,7 +441,6 @@ export const CLOCK_TEXT = {
   title: 'Reloj del juego',
   tray: 'Esperar',
   time: (seconds: number): string => `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')} s`,
-  note: 'El tiempo pasa para todo el mapa.',
 } as const;
 
 const CASE_LIST = new Intl.ListFormat('es', { style: 'long', type: 'conjunction' });

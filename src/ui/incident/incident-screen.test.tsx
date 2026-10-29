@@ -1184,13 +1184,13 @@ describe('incident screen of a send incident with a clock, tables and services',
     expect(screen.queryByRole('region', { name: CLOCK })).toBeNull();
   });
 
-  it('the clock card sits below the card of Lucía', () => {
+  it('the clock sits in the top strip and not below the card of Lucía', () => {
     renderNames();
+    const strip = document.querySelector('.incident__strip');
     const lucia = screen.getByRole('region', { name: LUCIA_TEXT.name });
-    const card = screen.getByRole('region', { name: CLOCK });
-    expect(lucia.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(lucia.parentElement).toBe(card.parentElement);
-    expect(card.previousElementSibling).toBe(lucia);
+    const clock = screen.getByRole('region', { name: CLOCK });
+    expect(strip).toContainElement(clock);
+    expect(lucia.parentElement).not.toContainElement(clock);
   });
 
   it('waiting advances the game clock and the cache measures against it', async () => {

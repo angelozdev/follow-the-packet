@@ -20,7 +20,7 @@ const WITH_A_CLOCK = '02-12';
 const DIAGNOSING = INCIDENTS.find((incident) => incident.mechanic === 'diagnose')?.id ?? '';
 const CARDS_OF_THE_ZONE: [string, number][] = [
   [INCIDENT, 1],
-  [WITH_A_CLOCK, 2],
+  [WITH_A_CLOCK, 1],
   [DIAGNOSING, 2],
 ];
 const REACHABLE = 'button, summary, a[href], input, [tabindex]';
