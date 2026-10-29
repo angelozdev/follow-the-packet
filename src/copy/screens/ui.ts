@@ -96,6 +96,7 @@ export const INTERFACE_TEXT = {
     tableEmpty: 'tabla vacía',
     output: 'tarjeta terminal con la salida de dig plegada',
     httpMessage: 'caja del paquete con un mensaje HTTP',
+    window: 'ventana de sistema: su nombre, su X y su contenido',
     note: 'nota',
     success: 'acierto',
     warning: 'aviso',

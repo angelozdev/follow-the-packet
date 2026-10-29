@@ -5,6 +5,7 @@ export { Message } from './primitives/message';
 export type { MessageVariant } from './primitives/message';
 export { NameTag } from './primitives/name-tag';
 export { Card } from './primitives/panels/card';
+export { Dialog } from './primitives/panels/dialog';
 export { Table } from './primitives/panels/table';
 export { Tabs } from './primitives/panels/tabs';
 export { tokenPx } from './tokens';

@@ -496,6 +496,11 @@ export const SYSTEMS_TEXT = {
   registry: 'Registro',
 } as const;
 
+export const WINDOW_TEXT = {
+  close: '×',
+  closeLabel: 'Cerrar la ventana',
+} as const;
+
 export const REGISTRY_TEXT = {
   open: (lines: number) => `${SYSTEMS_TEXT.registry} (${lines})`,
   repeats: (times: number) => `${times} veces`,
