@@ -582,25 +582,22 @@ describe('a chosen piece or packet that the map no longer draws', () => {
 });
 
 describe('every piece of every registered incident can be read in the panel', () => {
-  it('every piece the map draws in every registered incident shows its fields in the panel', async () => {
+  it.each(INCIDENTS.map(({ id }) => id))('every piece the map draws in %s shows its fields in the panel', async (id) => {
     const user = userEvent.setup({ delay: null });
     const shown: string[] = [];
-    for (const { id } of INCIDENTS) {
-      const session = startSession(INCIDENTS, id);
-      const view = render(<IncidentScreen incidents={INCIDENTS} incidentId={id} nextId={null} onFinish={vi.fn()} />);
-      for (const { id: pieceId } of pieceViews(session)) {
-        const inspection = inspect(session, pieceId);
-        const label = document.getElementById(pieceDomId(pieceId));
-        if (inspection === null || label === null) {
-          shown.push(`${id} ${pieceId}: nothing to read`);
-          continue;
-        }
-        await user.click(label);
-        const panel = screen.getByRole('region', { name: toPlainText(inspection.title) });
-        await user.click(within(panel).getByRole('tab', { name: 'Estado' }));
-        if (panel.parentElement !== theColumn() || panel.querySelectorAll('dt').length !== inspection.fields.length) shown.push(`${id} ${pieceId}: the panel does not show its fields`);
+    const session = startSession(INCIDENTS, id);
+    render(<IncidentScreen incidents={INCIDENTS} incidentId={id} nextId={null} onFinish={vi.fn()} />);
+    for (const { id: pieceId } of pieceViews(session)) {
+      const inspection = inspect(session, pieceId);
+      const label = document.getElementById(pieceDomId(pieceId));
+      if (inspection === null || label === null) {
+        shown.push(`${id} ${pieceId}: nothing to read`);
+        continue;
       }
-      view.unmount();
+      await user.click(label);
+      const panel = screen.getByRole('region', { name: toPlainText(inspection.title) });
+      await user.click(within(panel).getByRole('tab', { name: 'Estado' }));
+      if (panel.parentElement !== theColumn() || panel.querySelectorAll('dt').length !== inspection.fields.length) shown.push(`${id} ${pieceId}: the panel does not show its fields`);
     }
     expect(shown).toEqual([]);
   });
