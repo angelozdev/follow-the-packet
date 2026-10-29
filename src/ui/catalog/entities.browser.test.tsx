@@ -109,7 +109,7 @@ async function openCatalog() {
 
 function inThePanel(container: HTMLElement, source: Element): HTMLElement {
   const holder = document.createElement('aside');
-  holder.className = 'incident__side';
+  holder.className = 'incident__panel';
   holder.style.cssText = `position: fixed; top: 16px; left: 16px; z-index: 100; width: ${PANEL_WIDTH_PX}px; height: ${PANEL_ROOM_PX}px`;
   holder.append(source);
   container.append(holder);

@@ -50,7 +50,7 @@ describe('the browser project', () => {
     await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height);
     expect(window.innerWidth).toBe(DESKTOP_VIEWPORT.width);
     expect(window.matchMedia(NARROW_QUERY).matches).toBe(false);
-    expect(columnsOf(incident)).toBe(2);
+    expect(columnsOf(incident)).toBe(3);
     await page.viewport(PHONE_VIEWPORT.width, PHONE_VIEWPORT.height);
     expect(window.innerWidth).toBe(PHONE_VIEWPORT.width);
     expect(window.matchMedia(NARROW_QUERY).matches).toBe(true);

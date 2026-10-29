@@ -20,7 +20,7 @@ import {
   tapAt,
   type Point,
 } from '@/testing/browser-play';
-import { inspectionBoxOverCards } from '@/testing/card-boxes';
+import { inspectionBoxOverCards, isReachable } from '@/testing/card-boxes';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -37,8 +37,8 @@ const PACKET_STAMP = /^Paquete:/;
 const LISTED_PACKET = 'dl > div';
 const SOURCE_OF_THE_PACKET = /^TCP \d+ → /;
 const PIECE_LABEL = '.map-button';
-const PANEL_CARD = '.incident__side > .card';
-const PANEL_BODY = '.incident__side > .card > .card__body';
+const PANEL_CARD = '.incident__panel > .card';
+const PANEL_BODY = '.incident__panel > .card > .card__body';
 const LOST_TO_THE_OTHER_OFFICE = /^Paquete: ping de tu-laptop a 10\.0\.0\.10\. Perdido\.$/;
 const LOST_PING_BOX = 'ping de tu-laptop a 10.0.0.10';
 const TRIP_STEPS = 30;
@@ -144,7 +144,8 @@ async function stackFourStampsAtLucia(): Promise<Locator> {
 
 async function readToTheEnd(box: Locator): Promise<void> {
   const body = document.querySelector(PANEL_BODY) as HTMLElement;
-  if (body.scrollHeight > body.clientHeight + 1) await bringTheLastLineIntoView(box);
+  const last = [...box.element().querySelectorAll('dd')].at(-1) as Element;
+  if (body.scrollHeight > body.clientHeight + 1 && !isReachable(last)) await bringTheLastLineIntoView(box);
 }
 
 function listOfTheFour(): Locator {
@@ -264,13 +265,14 @@ describe('at the desktop window', () => {
     await standStill();
     const glossed = [...page.getByRole('region', { name: LUCIA_CARD, exact: true }).element().querySelectorAll(TERM_WITH_TIP)].find((candidate) => candidate.textContent?.includes(GLOSSED_TERM.name));
     if (glossed === undefined) throw new Error('the card of Lucía does not use the term');
-    const term = page.elementLocator(glossed);
     const tip = page.getByRole('tooltip');
+    const [firstLine] = glossed.getClientRects();
+    const from = { x: firstLine.x + firstLine.width / 2, y: firstLine.y + firstLine.height / 2 };
 
-    await userEvent.hover(term);
+    await moveTheMouseTo(from);
 
     await expect.element(tip).toMatchTextContent(GLOSSED_TERM.definition);
-    const [from, shown] = [centerOf(term.element()), tip.element().getBoundingClientRect()];
+    const shown = tip.element().getBoundingClientRect();
     const onto = { x: clamp(from.x, shown.x + TIP_INSET_PX, shown.x + shown.width - TIP_INSET_PX), y: clamp(from.y, shown.y + TIP_INSET_PX, shown.y + shown.height - TIP_INSET_PX) };
 
     await travel(straightPath(from, onto, SLOW_STEPS), SLOW_STEP_MS);
@@ -286,7 +288,7 @@ describe('at the desktop window', () => {
     await passTheGrace();
     await expect.element(tip, { message: 'leaving the term afterwards closes it once the grace ends' }).not.toBeInTheDocument();
 
-    await userEvent.hover(term);
+    await moveTheMouseTo(from);
     await expect.element(tip).toBeVisible();
     await userEvent.keyboard('{Escape}');
     await expect.element(tip).not.toBeInTheDocument();

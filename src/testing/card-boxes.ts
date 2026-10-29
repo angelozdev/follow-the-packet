@@ -120,25 +120,25 @@ export function cardProblems(gap: number = MIN_GAP_PX, buttonGap: number = MIN_B
   return problems;
 }
 
-/** Returns one line per defect of the panel of the column: it sticks out of the column, its body does not scroll when its content is taller than the room the panel has, or its foot (the actions and «Listo» under the body) is cut off or lies over the body. A panel with no foot has no defect of that kind. Above 900 px the column is as tall as the window, so the panel must hold itself inside it; at 900 px and under the page scrolls and the panel is as tall as its content, so only the foot can fail. */
-export function panelOutsideTheColumn(): string[] {
+/** Returns one line per defect of the panel in its zone: it sticks out of the zone, its body does not scroll when its content is taller than the room the panel has, or its foot (the actions and «Listo» under the body) is cut off or lies over the body. A panel with no foot has no defect of that kind. Above 900 px the zone is as tall as the window less the strip and the status bar, so the panel must hold itself inside it; at 900 px and under the page scrolls and the panel is as tall as its content, so only the foot can fail. */
+export function panelOutsideItsZone(): string[] {
   const EPSILON = 0.5;
-  const column = document.querySelector('.incident__side')?.getBoundingClientRect();
-  const panel = document.querySelector('.incident__side > .card');
-  if (!column || !panel) return [];
+  const zone = document.querySelector('.incident__panel')?.getBoundingClientRect();
+  const panel = document.querySelector('.incident__panel > .card');
+  if (!zone || !panel) return [];
   const { top, bottom, left, right } = panel.getBoundingClientRect();
   const name = panel.querySelector('h2')?.textContent?.trim() ?? 'the panel';
   const problems: string[] = [];
   const stacked = window.matchMedia('(max-width: 900px)').matches;
-  if (!stacked && bottom > column.bottom + EPSILON) problems.push(`${name} sticks out of the column by ${(bottom - column.bottom).toFixed(1)}px below`);
-  if (!stacked && top < column.top - EPSILON) problems.push(`${name} sticks out of the column by ${(column.top - top).toFixed(1)}px above`);
-  if (left < column.left - EPSILON || right > column.right + EPSILON) problems.push(`${name} sticks out of the column sideways`);
+  if (!stacked && bottom > zone.bottom + EPSILON) problems.push(`${name} sticks out of its zone by ${(bottom - zone.bottom).toFixed(1)}px below`);
+  if (!stacked && top < zone.top - EPSILON) problems.push(`${name} sticks out of its zone by ${(zone.top - top).toFixed(1)}px above`);
+  if (left < zone.left - EPSILON || right > zone.right + EPSILON) problems.push(`${name} sticks out of its zone sideways`);
   const body = panel.querySelector('.chip-card__body');
   const foot = panel.querySelector('.chip-card__actions');
   if (body && !stacked && body.scrollHeight > body.clientHeight + 1 && getComputedStyle(body).overflowY !== 'auto') problems.push(`${name}: its body is taller than the room it has and does not scroll`);
   if (foot) {
     const box = foot.getBoundingClientRect();
-    if (box.bottom > bottom + EPSILON || (!stacked && box.bottom > column.bottom + EPSILON)) problems.push(`${name}: its foot is cut off`);
+    if (box.bottom > bottom + EPSILON || (!stacked && box.bottom > zone.bottom + EPSILON)) problems.push(`${name}: its foot is cut off`);
     if (body && box.top < body.getBoundingClientRect().bottom - EPSILON) problems.push(`${name}: its foot lies over its body`);
   }
   return problems;
@@ -154,16 +154,16 @@ export function isReachable(element: Element): boolean {
   });
 }
 
-/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the column that it covers. */
+/** Returns whether the inspection box is on show (drawn, not held back) and one line per card of the zones of Lucía and of the panel that it covers. */
 export function inspectionBoxOverCards(): { shown: boolean; covered: string[] } {
   const EPSILON = 0.5;
   const box = document.querySelector('.incident__inspection > .card');
   if (box === null || getComputedStyle(box).visibility === 'hidden') return { shown: false, covered: [] };
   const taken = box.getBoundingClientRect();
-  const covered = [...document.querySelectorAll('.incident__side .card')].flatMap((card) => {
+  const covered = [...document.querySelectorAll('.incident__lucia .card, .incident__panel .card')].flatMap((card) => {
     const { left, top, right, bottom } = card.getBoundingClientRect();
     const overlaps = left < taken.right - EPSILON && taken.left < right - EPSILON && top < taken.bottom - EPSILON && taken.top < bottom - EPSILON;
-    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of the column'}`] : [];
+    return overlaps ? [`the inspection box covers the card ${card.querySelector('h2')?.textContent?.trim() ?? 'of a zone'}`] : [];
   });
   return { shown: true, covered };
 }

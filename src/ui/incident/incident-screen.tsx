@@ -1,15 +1,14 @@
 import { useMemo, useReducer } from 'react';
-import { EXPLANATION_TEXT, SCREEN_TEXT } from '@/copy';
-import { Button } from '@/design';
+import { EXPLANATION_TEXT } from '@/copy';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene } from '@/scene';
+import { LuciaZone } from '@/ui/shell/lucia/lucia-zone';
 import { ShellPanel } from '@/ui/shell/panel/shell-panel';
 import { usePanelChoice } from '@/ui/shell/panel/use-panel-choice';
-import { ShellColumn } from '@/ui/shell/shell-column';
 import { StatusBar } from '@/ui/shell/status/status-bar';
+import { TopStrip } from '@/ui/shell/strip/top-strip';
 import { useSelection } from '@/ui/shell/use-selection';
-import { MotionToggle } from '@/ui/motion-toggle';
 import { useStillMode } from '@/ui/use-still-mode';
 import { CaseCard } from './side-cards/case-card';
 import { ClockCard } from './side-cards/clock-card';
@@ -54,14 +53,23 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
 
   return (
     <main className="incident">
+      <TopStrip title={incident.title} still={still} onStillChange={setStill} />
+      <LuciaZone>
+        <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
+        {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
+        {caseOnCard && <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />}
+        {session.phase === 'explaining' && isGuided(incident) && (
+          <ExplanationCard
+            question={incident.question ?? EXPLANATION_TEXT.whatHappened}
+            options={incident.explanation}
+            choice={session.choice}
+            onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
+            onContinue={showResult}
+          />
+        )}
+        {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
+      </LuciaZone>
       <div className="incident__map">
-        <header className="incident__bar">
-          <Button variant="text" href="#/">
-            {SCREEN_TEXT.back}
-          </Button>
-          <h1>{session.incident.title}</h1>
-          <MotionToggle still={still} className="incident__motion" onChange={setStill} />
-        </header>
         <GameScene
           world={session.world}
           pieces={pieces}
@@ -79,41 +87,20 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish }: Inci
       <div aria-live="polite" aria-hidden={duplicate || undefined} className="incident__inspection" {...holder}>
         {inspection && <InspectionBox inspection={inspection} pinned={false} />}
       </div>
-      <ShellColumn
-        lucia={
-          <>
-            <LuciaCard session={session} onAskHint={() => dispatch({ type: 'showHint' })} onSubmit={() => dispatch({ type: 'submit' })} />
-            {playing && steps.length > 0 && <ClockCard seconds={session.clock} steps={steps} onWait={(seconds) => dispatch({ type: 'wait', seconds })} />}
-            {caseOnCard && (
-              <CaseCard key={caseOnCard.number} card={caseOnCard} onNameCause={(index) => dispatch({ type: 'nameCause', index })} onNext={nextCase} onShowResult={showResult} />
-            )}
-            {session.phase === 'explaining' && isGuided(incident) && (
-              <ExplanationCard
-                question={incident.question ?? EXPLANATION_TEXT.whatHappened}
-                options={incident.explanation}
-                choice={session.choice}
-                onChoose={(index) => dispatch({ type: 'chooseExplanation', index })}
-                onContinue={showResult}
-              />
-            )}
-            {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} />}
-          </>
-        }
-        panel={
-          <ShellPanel
-            key={caseOnCard?.number}
-            session={session}
-            dispatch={dispatch}
-            inspection={selection.inspection}
-            pieceId={selection.pieceId}
-            heading={selection.heading}
-            onClose={selection.release}
-            onChoose={selection.choosePiece}
-            choice={panelChoice}
-            markedSend={selection.markedSend}
-          />
-        }
-      />
+      <aside className="incident__panel">
+        <ShellPanel
+          key={caseOnCard?.number}
+          session={session}
+          dispatch={dispatch}
+          inspection={selection.inspection}
+          pieceId={selection.pieceId}
+          heading={selection.heading}
+          onClose={selection.release}
+          onChoose={selection.choosePiece}
+          choice={panelChoice}
+          markedSend={selection.markedSend}
+        />
+      </aside>
       <StatusBar lines={lines} choose={(pieceId) => selection.trigger(pieceId, {})} seeRow={seeRow} />
     </main>
   );

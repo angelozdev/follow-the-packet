@@ -27,9 +27,10 @@ const FRAME_BUDGET = 1200;
 export const GENTLE_WHEEL_PX = 60;
 const WHEEL_PX = 300;
 const MAX_TURNS = 40;
-const SIDE_PANEL = '.incident__side';
+const PANEL_ZONE = '.incident__panel';
+const ZONES = '.incident__lucia, .incident__panel';
 const SLACK_PX = 1;
-const WATCHED = '.card, .map-button, button.stamp, .html-layer .caption, .incident__inspection, .incident__map, .incident__bar, .incident__side';
+const WATCHED = '.card, .map-button, button.stamp, .html-layer .caption, .incident__inspection, .incident__map, .incident__strip, .incident__lucia, .incident__panel';
 const MOUSE_AWAY = { x: 0, y: 0 };
 const REDUCED_MOTION = { name: 'prefers-reduced-motion', value: 'reduce' };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
@@ -251,9 +252,9 @@ function isInside(target: Element, scroller: Element): boolean {
   return endsInside && (box.top >= frame.top - SLACK_PX || box.height > frame.height);
 }
 
-/** Turns the mouse wheel over the side panel, or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it (an element taller than the scroller, such as the last field of an inspection box that the marks of the map cap, never can: its end in view is what counts); and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. With `sideways` the wheel turns along the scroller's width, for a strip such as a bar of tabs. */
+/** Turns the mouse wheel over the zone that holds the element (Lucía's or the panel's, the panel's when the element is not drawn yet), or over the scroller `within` when one is given, until the element can be reached, and, with a scroller, lies wholly inside it (an element taller than the scroller, such as the last field of an inspection box that the marks of the map cap, never can: its end in view is what counts); and returns whether it can. The wheel alone does it: nothing scrolls the element into view for the player. Each turn moves `wheelPx` pixels: a scroller that the page itself carries away needs turns short enough for the mouse to stay over it. With `sideways` the wheel turns along the scroller's width, for a strip such as a bar of tabs. */
 export async function reachWithWheel(target: Locator, { within, wheelPx = WHEEL_PX, sideways = false }: WheelOptions = {}): Promise<boolean> {
-  const scroller = within ?? page.elementLocator(document.querySelector(SIDE_PANEL) as Element);
+  const scroller = within ?? page.elementLocator((target.query()?.closest(ZONES) ?? document.querySelector(PANEL_ZONE)) as Element);
   const readable = () => {
     const element = target.query();
     return element !== null && isReachable(element) && (within === undefined || isInside(element, within.element()));

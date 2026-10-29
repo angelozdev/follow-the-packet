@@ -8,7 +8,8 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const BAR = '.incident__status';
-const SIDE = '.incident__side';
+const PANEL = '.incident__panel';
+const LUCIA_ZONE = '.incident__lucia';
 const MAP = '.incident__map';
 const INCIDENT = '02-12';
 const INCIDENT_WITH_LINES = '04-01';
@@ -94,43 +95,28 @@ describe('the status bar of the incident screen', () => {
     window.scrollTo(0, 0);
     phone.unmount();
   });
-
-  it('the column and the map end where the bar begins at 1280×600, 1280×720 and 1440×900', async () => {
-    for (const size of COLUMN_WINDOWS) {
-      await page.viewport(size.width, size.height);
-      const view = await theScreen(INCIDENT);
-      const where = `${size.width}×${size.height}`;
-      const bar = rectOf(BAR);
-
-      expect(rectOf(SIDE).bottom, `${where}: the column ends where the bar begins`).toBeCloseTo(bar.top, 0);
-      expect(rectOf(MAP).bottom, `${where}: and the map too`).toBeCloseTo(bar.top, 0);
-      expect(bar.bottom, `${where}: the bar ends with the window`).toBeCloseTo(window.innerHeight, 0);
-      expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
-      view.unmount();
-    }
-  });
 });
 
 describe('the open registry of the status bar', () => {
-  it('the open registry takes room from the map and the column and covers no control', async () => {
+  it('the open registry takes room from the map and the panel and covers no control', async () => {
     for (const size of COLUMN_WINDOWS) {
       await page.viewport(size.width, size.height);
       const view = await theScreen(INCIDENT_WITH_LINES);
       const where = `${size.width}×${size.height}`;
-      const closed = { bar: rectOf(BAR).height, side: rectOf(SIDE).height, map: rectOf(MAP).height };
+      const closed = { bar: rectOf(BAR).height, panel: rectOf(PANEL).height, map: rectOf(MAP).height };
       await userEvent.click(page.getByRole('button', { name: REGISTRY_BUTTON }));
       const bar = rectOf(BAR);
 
       expect(bar.height, `${where}: the bar grows`).toBeGreaterThan(closed.bar);
-      expect(rectOf(SIDE).height, `${where}: the column gives it room`).toBeLessThan(closed.side);
+      expect(rectOf(PANEL).height, `${where}: the panel gives it room`).toBeLessThan(closed.panel);
       expect(rectOf(MAP).height, `${where}: and the map too`).toBeLessThan(closed.map);
-      expect(rectOf(SIDE).bottom, `${where}: the column still ends where the bar begins`).toBeCloseTo(bar.top, 0);
+      expect(rectOf(PANEL).bottom, `${where}: the panel still ends where the bar begins`).toBeCloseTo(bar.top, 0);
       expect(rectOf(MAP).bottom, `${where}: and the map too`).toBeCloseTo(bar.top, 0);
       expect(bar.bottom, `${where}: the bar ends with the window`).toBeCloseTo(window.innerHeight, 0);
       expect(document.documentElement.scrollHeight - window.innerHeight, `${where}: the page does not scroll`).toBeLessThanOrEqual(0);
       expect(rectOf(REGISTRY).height, `${where}: the list has a cap`).toBeLessThanOrEqual(window.innerHeight * CAP_OF_THE_REGISTRY);
       expect(maxHeightOf(REGISTRY), `${where}: the cap is a quarter of the window`).toBeCloseTo(window.innerHeight * CAP_OF_THE_REGISTRY, 1);
-      const controls = [...controlsInView(SIDE), ...controlsInView(MAP)];
+      const controls = [...controlsInView(LUCIA_ZONE), ...controlsInView(PANEL), ...controlsInView(MAP)];
       expect(controls.length, `${where}: there are controls to look at`).toBeGreaterThan(0);
       for (const control of controls) expect(isReachable(control), `${where}: ${control.textContent?.trim()} is reachable`).toBe(true);
       view.unmount();
@@ -165,7 +151,7 @@ describe('Ver fila in the real map', () => {
       const registry = page.elementLocator(document.querySelector(REGISTRY) as Element);
       await userEvent.click(registry.getByRole('button', { name: SEE_ROW }).nth(1));
 
-      const panel = document.querySelector(`${SIDE} > section`) as HTMLElement;
+      const panel = document.querySelector(`${PANEL} > section`) as HTMLElement;
       const tabs = panel.querySelector('[role="tablist"]') as HTMLElement;
       const chosen = tabs.querySelector('[aria-selected="true"]') as HTMLElement;
       const inUse = [...panel.querySelectorAll('tr')].filter((row) => row.textContent?.includes('en uso'));

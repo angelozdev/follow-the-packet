@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
 import { INCIDENTS, type Incident } from '@/levels';
-import { cardProblems, inspectionBoxOverCards, isReachable, panelOutsideTheColumn } from '@/testing/card-boxes';
+import { cardProblems, inspectionBoxOverCards, isReachable, panelOutsideItsZone } from '@/testing/card-boxes';
 import { coveredBy } from '@/testing/map-boxes';
 import {
   GENTLE_WHEEL_PX,
@@ -28,7 +28,7 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const SLOW_TEST_MS = 300_000;
 const HTML_LAYER = '.html-layer';
-const PANEL = '.incident__side > .card';
+const PANEL = '.incident__panel > .card';
 const DRAWING = '.map-stage__svg';
 const SUBMIT = 'Enviar solución';
 const SEE_RESULT = 'Ver resultado';
@@ -599,6 +599,9 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
     const inView = () => holder.getBoundingClientRect().bottom <= window.innerHeight;
     const panelInView = () => box.element().getBoundingClientRect().bottom <= window.innerHeight;
 
+    stamp.element().scrollIntoView({ block: 'center' });
+    const scrolledBefore = window.scrollY;
+
     await userEvent.hover(stamp);
     await expect.element(box).toBeVisible();
     await expect.poll(() => document.querySelectorAll(SCROLLING_INSPECTION).length, { message: 'the box sees that its text does not fit' }).toBe(1);
@@ -608,7 +611,7 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
       await expect.element(box, { message: 'the preview stays while the mouse is over it' }).toBeVisible();
       await expect.element(box, { message: 'a preview has no «Cerrar»' }).not.toMatchTextContent(CLOSE);
     } else {
-      expect(window.scrollY, 'a hover leaves the page where it is, so the holder under the map stays out of view').toBe(0);
+      expect(window.scrollY, 'a hover leaves the page where it is, so the holder under the map stays out of view').toBe(scrolledBefore);
     }
 
     await click(stamp);
@@ -619,7 +622,8 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
     await passTheGrace();
     await expect.element(box, { message: 'the box stays while the mouse is over it' }).toBeVisible();
     expect(getComputedStyle(bodyOfTheBox(), '::-webkit-scrollbar').width, 'the body draws its own scrollbar, so a scroller that hides it still shows there is more').not.toBe('auto');
-    if (bodyOfTheBox().scrollHeight > bodyOfTheBox().clientHeight + 1) await bringTheLastLineIntoView(box);
+    const lastLine = [...box.element().querySelectorAll('dd')].at(-1) as Element;
+    if (bodyOfTheBox().scrollHeight > bodyOfTheBox().clientHeight + 1 && !isReachable(lastLine)) await bringTheLastLineIntoView(box);
   });
 });
 
@@ -636,7 +640,7 @@ describe.each(SCROLLING_PANEL_WINDOWS)('$name', ({ size }) => {
       expect(isReachable(lastBin.element()), 'the last bin starts out of reach').toBe(false);
       expect(await reachWithWheel(lastBin, { within: page.elementLocator(body), wheelPx: GENTLE_WHEEL_PX }), 'the wheel brings the last bin into view').toBe(true);
       expect(isReachable(classify.getByRole('tab', { name: 'Estado', exact: true }).element()), 'the tabs stay in reach').toBe(true);
-      expect(panelOutsideTheColumn(), 'the panel stays inside the column').toEqual([]);
+      expect(panelOutsideItsZone(), 'the panel stays inside the column').toEqual([]);
     });
   });
 });
@@ -648,7 +652,7 @@ describe.each(PANEL_WINDOWS)('$name', ({ name, size }) => {
     const problems: string[] = [];
     for (const scene of MAP_SCENES) {
       await inTheScene(scene, 'at-rest', async () => {
-        problems.push(...panelOutsideTheColumn().map((problem) => `${name}, ${scene.name}: ${problem}`));
+        problems.push(...panelOutsideItsZone().map((problem) => `${name}, ${scene.name}: ${problem}`));
         const last = scene.last();
         const element = last.query();
         if (element === null || !(await reachWithWheel(last, scrollingAround(last)))) problems.push(`${name}, ${scene.name}: its last element is out of reach`);
@@ -719,7 +723,7 @@ describe('the card of a server on the narrowest phone', () => {
         expect(opened.element().querySelector(ROLES_LINE)?.getBoundingClientRect().right, `${name}: the line ends inside the panel`).toBeLessThanOrEqual(opened.element().getBoundingClientRect().right);
         const controls = [...opened.element().querySelectorAll('button, [role="tab"]')].map((control) => page.elementLocator(control));
         for (const control of controls) expect(await reachWithWheel(control, { wheelPx: GENTLE_WHEEL_PX }), `${name}: ${control.element().textContent} is within reach`).toBe(true);
-        expect(panelOutsideTheColumn(), `${name}: the panel stays inside the column`).toEqual([]);
+        expect(panelOutsideItsZone(), `${name}: the panel stays inside the column`).toEqual([]);
       });
     }
   });

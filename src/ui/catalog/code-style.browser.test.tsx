@@ -219,7 +219,7 @@ describe('at 360 px', () => {
     const inspection = inspect(SESSION, LAPTOP);
     if (!inspection) throw new Error('missing the inspection of the laptop');
     return (
-      <aside className="incident__side">
+      <aside className="incident__panel">
         <PiecePanel panel={panelOf(SESSION, LAPTOP)} inspection={inspection} heading={createRef()} choice={choice} frameOf={(part) => frameOfPart(part, { handlers, drafts, onClose: nothing, refocus: nothing })} />
       </aside>
     );

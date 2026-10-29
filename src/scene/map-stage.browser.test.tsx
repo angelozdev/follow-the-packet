@@ -5,7 +5,6 @@ import { MAP_TEXT, nameTag, type TermId } from '@/copy';
 import { OFFICE_FLOORS, device, officeNet, officeTwoFloorsNet, ping, tcp } from '@/testing/fixtures';
 import { mapPiece, mapRun, mapRunWithPorts, type MapPieceFixture, type PieceEntity } from '@/testing/map-pieces';
 import { tokenColor } from '@/testing/token-color';
-import { TITLE_BAR } from '@/scene/frame';
 import { blockTabBoxes, captionBoxes } from '@/scene/layout/captions';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { GameScene } from './game-scene';
@@ -17,7 +16,8 @@ const LANDSCAPE_VIEWPORT = { width: 844, height: 390 };
 const SMALL_PHONE_VIEWPORT = { width: 320, height: 640 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const SMALL_DESKTOP_VIEWPORT = { width: 800, height: 800 };
-const SIDE_PANEL = 380;
+const LUCIA_ZONE_PX = 316;
+const PANEL_SHARE = 0.24;
 const WIDE = 1000;
 const NARROW = 600;
 const TOO_NARROW = 320;
@@ -154,15 +154,15 @@ describe('MapStage', () => {
     }
   });
 
-  it('the map is centered in its box and drawn under the title bar', async () => {
+  it('the map is centered in its box and drawn against its top edge', async () => {
     const { box } = mount(WIDE, NOTHING_KNOWN, OFFICE, OFFICE_PIECES);
     const svg = await drawing(box);
     const { size } = layoutMap(OFFICE, OFFICE_PIECES, { width: WIDE });
     expect(size.width).toBeLessThan(WIDE);
     const [inBox, inSvg] = [box.getBoundingClientRect(), svg.getBoundingClientRect()];
     expect(inSvg.left - inBox.left).toBeCloseTo(Math.floor((WIDE - size.width) / 2), 0);
-    expect(inSvg.top - inBox.top).toBe(TITLE_BAR);
-    expect(inBox.height).toBe(TITLE_BAR + size.height);
+    expect(inSvg.top - inBox.top).toBe(0);
+    expect(inBox.height).toBe(size.height);
     expect(layerOf(box).getBoundingClientRect()).toMatchObject({ left: inBox.left, top: inBox.top, width: inBox.width, height: inBox.height });
   });
 
@@ -408,7 +408,7 @@ describe('MapStage', () => {
     const { size } = layoutMap(FLOORS, FLOORS_PIECES, { width: PHONE_VIEWPORT.width });
     expect(svg.getBoundingClientRect().width).toBe(PHONE_VIEWPORT.width);
     expect(size.width).toBe(PHONE_VIEWPORT.width);
-    expect(map.getBoundingClientRect().height).toBe(TITLE_BAR + size.height);
+    expect(map.getBoundingClientRect().height).toBe(size.height);
     expect(pageOverflow()).toBe(0);
   });
 
@@ -440,9 +440,9 @@ describe('MapStage', () => {
     await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height);
     const map = mountOnTheScreen();
     await drawing(map);
-    const wide = DESKTOP_VIEWPORT.width - SIDE_PANEL;
-    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(wide));
-    expect(map.getBoundingClientRect().width).toBe(wide);
+    const wide = DESKTOP_VIEWPORT.width - LUCIA_ZONE_PX - PANEL_SHARE * DESKTOP_VIEWPORT.width;
+    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(map.getBoundingClientRect().width));
+    expect(map.getBoundingClientRect().width).toBeCloseTo(wide, 0);
     await page.viewport(SMALL_DESKTOP_VIEWPORT.width, SMALL_DESKTOP_VIEWPORT.height);
     await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(SMALL_DESKTOP_VIEWPORT.width));
     expect(map.getBoundingClientRect().width).toBe(SMALL_DESKTOP_VIEWPORT.width);

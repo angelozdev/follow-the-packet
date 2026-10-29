@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TITLE_BAR, frameOf } from './frame';
+import { frameOf } from './frame';
 
 describe('frameOf', () => {
-  it('centers a drawing narrower than its box and puts it under the title bar', () => {
-    expect(frameOf(1000, { width: 600, height: 400 })).toEqual({ x: 200, y: TITLE_BAR });
+  it('centers a drawing narrower than its box and puts it against the top', () => {
+    expect(frameOf(1000, { width: 600, height: 400 })).toEqual({ x: 200, y: 0 });
   });
 
   it('keeps whole pixels when the box and the drawing differ by an odd number', () => {
