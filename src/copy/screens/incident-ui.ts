@@ -492,7 +492,7 @@ export const RESULT_TEXT = {
 export const SYSTEMS_TEXT = {
   terminal: PIECE_TEXT.tabs.terminal,
   browser: PIECE_TEXT.tabs.browser,
-  registry: 'Registro',
+  registry: 'Historial',
 } as const;
 
 export const CAMERA_TEXT = {

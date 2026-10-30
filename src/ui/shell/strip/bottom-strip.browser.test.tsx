@@ -17,7 +17,7 @@ const ANDRES = OFFICE_FLOORS.floor2.andres;
 const GATEWAY = OFFICE_FLOORS.floor1.gateway;
 const EMPTY_INCIDENT = '01-01';
 const NOTICE = /Cambiaste la puerta de enlace/;
-const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
+const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
 const REGISTRY = '.incident__registry';
 const TOP_STRIP = '.incident__strip';
 const BAR = '.incident__systems';
@@ -129,7 +129,7 @@ describe('the bottom strip of the incident screen', () => {
     await page.viewport(DESKTOP_WINDOW.width, DESKTOP_WINDOW.height);
     await theScreen();
     const before = rectOfTheMap();
-    expect(page.getByRole('button', { name: REGISTRY_BUTTON }).query(), 'no Registro button yet').toBeNull();
+    expect(page.getByRole('button', { name: REGISTRY_BUTTON }).query(), 'no Historial button yet').toBeNull();
 
     await pingAndres();
     expect(page.getByRole('button', { name: REGISTRY_BUTTON }).query(), 'the first button appeared with the first line').not.toBeNull();
@@ -173,7 +173,7 @@ describe('the bottom strip of the incident screen', () => {
       const controls = [...document.querySelectorAll<HTMLElement>(`${TOP_STRIP} a, ${TOP_STRIP} input, ${LINE_ROW} button, ${LINE_ROW} [role="log"], ${BAR} button`)];
       const names = controls.map((control) => control.getAttribute('role') ?? control.textContent?.trim() ?? control.tagName);
 
-      expect(names, `${where}: the bar holds the three systems and the line holds its row`).toEqual(expect.arrayContaining(['Terminal', 'Registro (2)', SEE_ROW, 'log']));
+      expect(names, `${where}: the bar holds the three systems and the line holds its row`).toEqual(expect.arrayContaining(['Terminal', 'Historial (2)', SEE_ROW, 'log']));
       expect(box.height, `${where}: the box is on the page`).toBeGreaterThan(0);
       for (const control of controls) {
         const { left, right, top, bottom } = control.getBoundingClientRect();

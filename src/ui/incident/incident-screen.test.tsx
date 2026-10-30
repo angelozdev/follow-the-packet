@@ -1860,9 +1860,9 @@ describe('the registry of the status bar', () => {
   const PING_ANDRES_FOUND = 'ping de tu-laptop a laptop-andres';
   const NOTICE = 'Cambiaste la puerta de enlace predeterminada de tu-laptop: las pruebas de antes eran con la red anterior. Vuelve a mandarlas.';
 
-  const registryButton = () => screen.getByRole('button', { name: /^Registro \(\d+\)$/ });
+  const registryButton = () => screen.getByRole('button', { name: /^Historial \(\d+\)$/ });
   const theWindow = () => screen.getByRole('dialog', { name: SYSTEMS_TEXT.registry });
-  const registryList = () => within(theWindow()).getByRole('list', { name: /^Registro \(\d+\)$/ });
+  const registryList = () => within(theWindow()).getByRole('list', { name: /^Historial \(\d+\)$/ });
   const rows = () => within(registryList()).getAllByRole('listitem');
 
   function renderGateway(incident = GATEWAY) {
@@ -1882,28 +1882,28 @@ describe('the registry of the status bar', () => {
     await user.click(within(settings).getByRole('button', { name: OFFICE_FLOORS.floor1.gateway }));
   }
 
-  it('Registro (N) counts every line of the registry', async () => {
+  it('Historial (N) counts every line of the registry', async () => {
     const user = userEvent.setup();
     const office = INCIDENTS.find(({ id }) => id === '01-01');
     if (office === undefined) throw new Error('01-01 is not registered');
     render(<IncidentScreen incidents={[office]} incidentId={office.id} nextId={null} onFinish={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: /^Registro/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Historial/ })).toBeNull();
     expect(theBar()).toHaveTextContent(SCREEN_TEXT.statusEmpty);
     cleanup();
 
     renderFirst();
-    expect(registryButton()).toHaveTextContent(`Registro (${registryLines(startSession(INCIDENTS, FIRST.id)).length})`);
+    expect(registryButton()).toHaveTextContent(`Historial (${registryLines(startSession(INCIDENTS, FIRST.id)).length})`);
     expect(registryButton()).toBeEnabled();
     cleanup();
 
     renderGateway();
     await sendTo(user, PRINTER);
     await sendTo(user, ANDRES);
-    expect(registryButton()).toHaveTextContent('Registro (2)');
+    expect(registryButton()).toHaveTextContent('Historial (2)');
     await setTheGateway(user);
-    expect(registryButton()).toHaveTextContent('Registro (1)');
+    expect(registryButton()).toHaveTextContent('Historial (1)');
     await sendTo(user, PRINTER);
-    expect(registryButton()).toHaveTextContent('Registro (2)');
+    expect(registryButton()).toHaveTextContent('Historial (2)');
   });
 
   it('opening the registry lists the lines newest first with the change that emptied the sends as the first', async () => {
@@ -1922,7 +1922,7 @@ describe('the registry of the status bar', () => {
     expect(rows()[2]).toHaveTextContent(NOTICE);
     expect(registryList()).not.toHaveTextContent(PING_ANDRES);
     await user.click(registryButton());
-    expect(screen.queryByRole('list', { name: /^Registro/ })).toBeNull();
+    expect(screen.queryByRole('list', { name: /^Historial/ })).toBeNull();
     expect(registryButton()).toHaveAttribute('aria-expanded', 'false');
   });
 
@@ -1931,7 +1931,7 @@ describe('the registry of the status bar', () => {
     renderGateway();
     await sendTo(user, ANDRES);
     for (let times = 0; times < 3; times++) await sendTo(user, PRINTER);
-    expect(registryButton()).toHaveTextContent('Registro (4)');
+    expect(registryButton()).toHaveTextContent('Historial (4)');
     await user.click(registryButton());
     expect(rows()).toHaveLength(2);
     const sameLine = () => within(registryList()).queryAllByRole('button', { name: new RegExp(`^${PING_PRINTER}`) });
@@ -1971,7 +1971,7 @@ describe('the registry of the status bar', () => {
     await user.click(registryButton());
     expect(rows()).toHaveLength(2);
     await setTheGateway(user);
-    expect(registryButton()).toHaveTextContent('Registro (1)');
+    expect(registryButton()).toHaveTextContent('Historial (1)');
     expect(registryButton()).toHaveAttribute('aria-expanded', 'true');
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toHaveTextContent(NOTICE);

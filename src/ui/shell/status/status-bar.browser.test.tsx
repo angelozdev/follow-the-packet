@@ -15,7 +15,7 @@ const INCIDENT = '02-12';
 const INCIDENT_WITH_LINES = '04-01';
 const REGISTRY = '.incident__registry';
 const WINDOW = '[role="dialog"]';
-const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
+const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
 const INCIDENT_WITH_TABLES = '02-06';
 const SEE_ROW = 'Ver fila en la tabla de rutas';
 const BAR_LINE = '.incident__newest';
@@ -139,7 +139,7 @@ describe('Ver fila in the real map', () => {
     const buttons = [...line.querySelectorAll(':scope > button'), ...document.querySelectorAll(`${SYSTEMS} button`)].filter((button) => button.closest(SYSTEMS) === null || REGISTRY_BUTTON.test(button.textContent ?? ''));
     const bar = rectOf(BAR);
 
-    expect(buttons.map((button) => button.textContent), 'the line has both buttons').toEqual([SEE_ROW, 'Registro (1)']);
+    expect(buttons.map((button) => button.textContent), 'the line has both buttons').toEqual([SEE_ROW, 'Historial (1)']);
     expect(document.documentElement.scrollWidth, 'the page does not scroll sideways').toBeLessThanOrEqual(window.innerWidth);
     for (const button of buttons) {
       const box = button.getBoundingClientRect();

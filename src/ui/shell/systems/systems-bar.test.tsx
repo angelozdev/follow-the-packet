@@ -30,8 +30,8 @@ const LOOPBACK_IP = '127.0.0.1';
 const NC_TO_THE_APP = 'nc · puerto 3000';
 const TERMINAL = PIECE_TEXT.tabs.terminal;
 const BROWSER = 'Navegador';
-const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
-const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}|${BROWSER}|Registro \\(\\d+\\))$`);
+const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
+const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}|${BROWSER}|Historial \\(\\d+\\))$`);
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -72,7 +72,7 @@ async function sendPing(user: User, address: string) {
 }
 
 describe('the bar of systems', () => {
-  it('the bar draws Terminal, Navegador and Registro (N) only where the incident offers them: nothing in 01-01 and, in 02-06, Terminal, and Registro (N) once a packet is sent', async () => {
+  it('the bar draws Terminal, Navegador and Historial (N) only where the incident offers them: nothing in 01-01 and, in 02-06, Terminal, and Historial (N) once a packet is sent', async () => {
     const user = userEvent.setup();
     const bare = renderIncident(NO_TOOLS);
     expect(systemsOfTheStrip()).toEqual([]);
@@ -82,7 +82,7 @@ describe('the bar of systems', () => {
     expect(systemsOfTheStrip()).toEqual([TERMINAL]);
     await user.click(button(TERMINAL));
     await sendPing(user, PRINTER_IP);
-    expect(systemsOfTheStrip()).toEqual(sorted([TERMINAL, 'Registro (1)']));
+    expect(systemsOfTheStrip()).toEqual(sorted([TERMINAL, 'Historial (1)']));
     routing.unmount();
 
     renderIncident(WEB);
@@ -150,32 +150,32 @@ describe('the bar of systems', () => {
     expect(within(thePanel()).getByRole('heading', { name: YOUR_LAPTOP })).toHaveFocus();
   });
 
-  it('Terminal and Navegador are not drawn once the incident is over and Registro stays', async () => {
+  it('Terminal and Navegador are not drawn once the incident is over and Historial stays', async () => {
     const user = userEvent.setup();
     renderIncident(ROUTING);
     await user.click(button(TERMINAL));
     await sendPing(user, PRINTER_IP);
     await sendPing(user, '192.168.2.15');
-    expect(systemsOfTheStrip()).toEqual(sorted([TERMINAL, 'Registro (2)']));
+    expect(systemsOfTheStrip()).toEqual(sorted([TERMINAL, 'Historial (2)']));
 
     await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
     await user.click(screen.getByRole('button', { name: /^Porque ninguna otra fila cubre/ }));
     await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
 
-    expect(systemsOfTheStrip()).toEqual(['Registro (2)']);
+    expect(systemsOfTheStrip()).toEqual(['Historial (2)']);
     expect(button(REGISTRY_BUTTON)).toBeEnabled();
   });
 });
 
 describe('the registry in the bar of systems', () => {
-  it('with no line it says the empty line and draws no Registro button', () => {
+  it('with no line it says the empty line and draws no Historial button', () => {
     renderIncident(NO_TOOLS);
 
     expect(screen.getByText(SCREEN_TEXT.statusEmpty)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Registro/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Historial/ })).toBeNull();
   });
 
-  it('Registro (N) opens the list in a box over the bottom strip and the same button closes it', async () => {
+  it('Historial (N) opens the list in a box over the bottom strip and the same button closes it', async () => {
     const user = userEvent.setup();
     renderIncident(WITH_LINES);
     const registro = within(zone(BAR)).getByRole('button', { name: REGISTRY_BUTTON });

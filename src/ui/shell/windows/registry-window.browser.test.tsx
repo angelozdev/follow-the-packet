@@ -9,7 +9,7 @@ import { IncidentScreen } from '@/ui/incident/incident-screen';
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const INCIDENT_WITH_LINES = '04-01';
 const INCIDENT_WITH_TABLES = '02-06';
-const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
+const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
 const TOP_STRIP = '.incident__strip';
 const BOTTOM_STRIP = '.incident__status';
 const WINDOW = '[role="dialog"]';

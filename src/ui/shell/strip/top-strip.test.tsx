@@ -30,7 +30,7 @@ const FIRST = filterIncident('04-01').id;
 const SECOND = filterIncident('04-02').id;
 const PLAYED = '01-04';
 const LATER = '01-05';
-const REGISTRY_BUTTON = /^Registro \(\d+\)$/;
+const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
 const COURSE_ORDER_PROGRESS: Progress = { '01-05': 3, '01-04': 2, '01-02': 1, '01-01': 3 };
 const LESSONS_OF_THE_COURSE = ['01-01', '01-02', '01-04'];
 const WITH_AND_WITHOUT_STARS: Progress = { '01-01': 3, '01-02': 0, '01-03': 2, '01-04': 0, '01-05': 3 };
@@ -139,7 +139,7 @@ describe('the Almanaque in a system window', () => {
     await waitFor(() => expect(button).toHaveFocus());
   });
 
-  it("Registro and the Almanaque change in one click, each from the other's open window", async () => {
+  it("Historial and the Almanaque change in one click, each from the other's open window", async () => {
     const user = userEvent.setup();
     renderIncident(INCIDENT_WITH_A_CLOCK);
     await send(user);

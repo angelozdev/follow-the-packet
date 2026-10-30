@@ -77,7 +77,7 @@ describe('the texts that name a button of the shell', () => {
       ...TEXTS_OF_THE_COPY.flatMap(missingButtons).map((button) => `copy: ${button}`),
     ];
 
-    expect(BUTTONS_OF_THE_SHELL).toEqual(['terminal', 'navegador', 'registro']);
+    expect(BUTTONS_OF_THE_SHELL).toEqual(['terminal', 'navegador', 'historial']);
     expect(missingButtons('Pulsa el botón «Terminal» o el botón «{{browser|Navegador}}».')).toEqual([]);
     expect(missingButtons('Pulsa el botón «Mapa».')).toEqual(['botón «Mapa»']);
     expect(unknown).toEqual([]);
@@ -91,8 +91,8 @@ describe('the texts that name a window of the shell', () => {
       ...TEXTS_OF_THE_COPY.flatMap(missingWindows).map((window) => `copy: ${window}`),
     ];
 
-    expect(WINDOWS_OF_THE_SHELL).toEqual(['registro']);
-    expect(missingWindows('Abre la ventana «Registro» y mira la última fila.')).toEqual([]);
+    expect(WINDOWS_OF_THE_SHELL).toEqual(['historial']);
+    expect(missingWindows('Abre la ventana «Historial» y mira la última fila.')).toEqual([]);
     expect(missingWindows('Abre la ventana «Almanaque».')).toEqual(['ventana «Almanaque»']);
     expect(unknown).toEqual([]);
   });
