@@ -141,7 +141,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
         box={
           <>
             <RegistryWindow windows={windows} lines={lines} choose={chooseLine} seeRow={seeRow} />
-            <AlmanacWindow windows={windows} known={session.known} newTerms={new Set(incident.introduces)} lessons={lessonsOf(incidents, incidentId, progress)} />
+            <AlmanacWindow windows={windows} known={session.known} newTerms={new Set(incident.introduces)} lessons={lessonsOf(incidents, incidentId, progress, session.phase === 'result')} />
           </>
         }
       />

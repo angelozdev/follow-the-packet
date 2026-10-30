@@ -9,9 +9,9 @@ export interface Lesson {
   takeaway: TermText;
 }
 
-export function lessonsOf(incidents: Incident[], playedId: string, progress: Progress): Lesson[] {
+export function lessonsOf(incidents: Incident[], playedId: string, progress: Progress, ended: boolean): Lesson[] {
   return incidents
-    .slice(0, incidents.findIndex(({ id }) => id === playedId) + 1)
+    .slice(0, incidents.findIndex(({ id }) => id === playedId) + (ended ? 1 : 0))
     .filter(({ id }) => (progress[id] ?? 0) > 0)
     .map(({ id, title, takeaway }) => ({ id, title, takeaway }));
 }

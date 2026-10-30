@@ -2,9 +2,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ALMANAC_TEXT, CLOCK_TEXT, LUCIA_TEXT, PIECE_TEXT, SYSTEMS_TEXT, TERMINAL_TEXT, TERMS, WINDOW_TEXT, toPlainText, type TermId } from '@/copy';
+import { ALMANAC_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, LUCIA_TEXT, PIECE_TEXT, SYSTEMS_TEXT, TERMINAL_TEXT, TERMS, WINDOW_TEXT, toPlainText, type TermId } from '@/copy';
 import { startSession } from '@/game';
-import { INCIDENTS } from '@/levels';
+import { INCIDENTS, isGuided } from '@/levels';
 import type { Progress } from '@/storage';
 import { filterIncident } from '@/testing/incidents';
 import { IncidentPage } from '@/ui/incident-page';
@@ -20,6 +20,7 @@ vi.mock('@mantine/hooks', async (importOriginal) => {
 const TOP_STRIP = '.incident__strip';
 const LUCIA_ZONE = '.incident__lucia';
 const BAR = '.incident__systems';
+const PANEL = '.incident__panel';
 const INCIDENT_WITH_A_CLOCK = '02-12';
 const INCIDENT_WITHOUT_A_CLOCK = '01-01';
 const FIVE_MINUTES = 'Esperar 5 min';
@@ -32,9 +33,12 @@ const PLAYED = '01-04';
 const LATER = '01-05';
 const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
 const COURSE_ORDER_PROGRESS: Progress = { '01-05': 3, '01-04': 2, '01-02': 1, '01-01': 3 };
-const LESSONS_OF_THE_COURSE = ['01-01', '01-02', '01-04'];
+const LESSONS_OF_THE_COURSE = ['01-01', '01-02'];
 const WITH_AND_WITHOUT_STARS: Progress = { '01-01': 3, '01-02': 0, '01-03': 2, '01-04': 0, '01-05': 3 };
 const LESSONS_WITH_STARS = ['01-01', '01-03'];
+const REPLAYED: Progress = { '01-03': 2, '01-04': 3 };
+const LOOPBACK_IP = '127.0.0.1';
+const PRINTER_IP = '192.168.1.21';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -45,6 +49,10 @@ function elementOf(selector: string): HTMLElement {
 }
 
 const takeawayOf = (incidentId: string) => toPlainText(INCIDENTS.find(({ id }) => id === incidentId)?.takeaway ?? '');
+const rightAnswerOf = (incidentId: string) => {
+  const incident = INCIDENTS.find(({ id }) => id === incidentId);
+  return toPlainText((incident && isGuided(incident) ? incident.explanation.find(({ correct }) => correct)?.text : undefined) ?? '');
+};
 const renderIncident = (incidentId: string, progress?: Progress) => render(<IncidentScreen incidents={INCIDENTS} incidentId={incidentId} nextId={null} onFinish={vi.fn()} progress={progress} />);
 const theClock = () => within(elementOf(TOP_STRIP)).queryByRole('region', { name: CLOCK_TEXT.title });
 const almanacButton = () => within(elementOf(TOP_STRIP)).getByRole('button', { name: ALMANAC_TEXT.open });
@@ -57,6 +65,18 @@ const lessonsShown = () => within(theAlmanac()).queryAllByRole('listitem').map((
 async function send(user: User) {
   await user.click(within(elementOf(BAR)).getByRole('button', { name: PIECE_TEXT.tabs.terminal }));
   await user.click(screen.getByRole('button', { name: TERMINAL_TEXT.send }));
+}
+
+async function solveThePlayedIncident(user: User) {
+  const panel = within(elementOf(PANEL));
+  await user.click(within(elementOf(BAR)).getByRole('button', { name: PIECE_TEXT.tabs.terminal }));
+  for (const address of [LOOPBACK_IP, PRINTER_IP]) {
+    await user.click(panel.getByRole('button', { name: address }));
+    await user.click(screen.getByRole('button', { name: TERMINAL_TEXT.send }));
+  }
+  await user.click(screen.getByRole('button', { name: LUCIA_TEXT.submit }));
+  await user.click(screen.getByRole('button', { name: rightAnswerOf(PLAYED) }));
+  await user.click(screen.getByRole('button', { name: EXPLANATION_TEXT.seeResult }));
 }
 
 async function openTheAlmanac(user: User) {
@@ -172,7 +192,7 @@ describe('the Almanaque in a system window', () => {
     expect(tabNamed(ALMANAC_TEXT.terms)).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('Lecciones lists the takeaway of each incident the player solved with one star or more, up to the one being played, in the order of the course', async () => {
+  it('Lecciones lists the takeaway of each incident the player solved with one star or more, before the one being played, in the order of the course', async () => {
     const user = userEvent.setup();
     renderIncident(PLAYED, COURSE_ORDER_PROGRESS);
     await openTheLessons(user);
@@ -192,6 +212,11 @@ describe('the Almanaque in a system window', () => {
     expect(screen.queryByText(ALMANAC_TEXT.noLessons)).toBeNull();
     view.unmount();
 
+    const replay = renderIncident(PLAYED, REPLAYED);
+    await openTheLessons(user);
+    expect(lessonsShown(), 'an incident replayed has stars and its lesson stays out until it ends').toEqual([expect.stringContaining(takeawayOf('01-03'))]);
+    replay.unmount();
+
     renderIncident(PLAYED);
     await openTheLessons(user);
     expect(within(theAlmanac()).getByText(ALMANAC_TEXT.noLessons)).toBeInTheDocument();
@@ -205,7 +230,10 @@ describe('the Almanaque in a system window', () => {
     const view = render(page(started));
     await openTheLessons(user);
     expect(within(theAlmanac()).getAllByRole('listitem')).toHaveLength(1);
+    await user.keyboard('{Escape}');
+    await solveThePlayedIncident(user);
     view.rerender(page({ ...started, [PLAYED]: 3 }));
+    await user.click(almanacButton());
     const items = within(theAlmanac()).getAllByRole('listitem');
     expect(items).toHaveLength(2);
     expect(items[1]).toHaveTextContent(takeawayOf(PLAYED));
