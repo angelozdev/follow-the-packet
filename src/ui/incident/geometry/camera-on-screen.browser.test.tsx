@@ -14,6 +14,7 @@ const LAPTOP = 'tu-laptop';
 const MAP = '.incident__map';
 const SHEET = '.map-stage__sheet';
 const PREVIEW = '.incident__inspection > .card';
+const CAMERA_GROUP = 'Controles del mapa';
 const CORNER_PX = 24;
 const TAB_STOPS = 60;
 const DRAG_PX = 60;
@@ -88,6 +89,14 @@ describe('the camera on the screen of an incident', () => {
       await expect.poll(scale, { message: `${where}: a tap on Acercar zooms` }).toBeGreaterThan(before);
       shown.unmount();
     }
+  });
+
+  it('the three camera buttons are one group named Controles del mapa', async () => {
+    await page.viewport(WINDOWS[0].width, WINDOWS[0].height);
+    await theScreen();
+    const group = page.getByRole('group', { name: CAMERA_GROUP, exact: true });
+    for (const name of [CAMERA_TEXT.zoomIn, CAMERA_TEXT.zoomOut, CAMERA_TEXT.fit]) await expect.element(group.getByRole('button', { name, exact: true })).toBeVisible();
+    expect(group.element().querySelectorAll('button')).toHaveLength(3);
   });
 
   it('with the stage under the panels the wheel still zooms around the pointer', async () => {

@@ -499,6 +499,7 @@ export const SYSTEMS_BAR_TEXT = {
 } as const;
 
 export const CAMERA_TEXT = {
+  group: 'Controles del mapa',
   zoomIn: 'Acercar',
   zoomOut: 'Alejar',
   fit: 'Ajustar',

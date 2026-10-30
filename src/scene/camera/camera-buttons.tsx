@@ -9,7 +9,7 @@ interface CameraButtonsProps {
 
 export function CameraButtons({ onZoomIn, onZoomOut, onFit }: CameraButtonsProps) {
   return (
-    <div className="camera-buttons">
+    <div className="camera-buttons" role="group" aria-label={CAMERA_TEXT.group}>
       <Button variant="small" aria-label={CAMERA_TEXT.zoomIn} onClick={onZoomIn}>
         {CAMERA_TEXT.zoomInSign}
       </Button>
