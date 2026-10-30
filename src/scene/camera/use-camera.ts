@@ -21,6 +21,9 @@ const BUTTON_ZOOM_STEP = 1.25;
 const KEY_PAN_PX = 64;
 const TOUCH_ACTION_OURS = 'none';
 const CHOSEN = '[data-pinned]';
+const GLIDE_MS = 250;
+const GLIDE_EASING = 'ease-out';
+const NO_TRANSITION = 'none';
 
 export interface CameraControls {
   zoomTo: (scale: number) => void;
@@ -32,6 +35,7 @@ interface Inputs {
   drawing: Box | null;
   limits: ZoomLimits;
   start: Point | undefined;
+  still: boolean;
   onMove: (() => void) | undefined;
 }
 
@@ -41,6 +45,7 @@ interface CameraOptions {
   drawing: Box | null;
   limits?: ZoomLimits;
   start?: Point;
+  still?: boolean;
   controls?: Ref<CameraControls>;
   onMove?: () => void;
 }
@@ -76,6 +81,8 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     touchAction: '',
     minScale: UNLIMITED.min,
     maxScale: UNLIMITED.max,
+    duration: GLIDE_MS,
+    easing: GLIDE_EASING,
     handleStartEvent: () => undefined,
     ...startOf(fitted()),
     setTransform: (_element, pan) => {
@@ -86,13 +93,17 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
       place(next);
     },
   });
-  const apply = (view: View) => {
+  const apply = (view: View, smooth = false) => {
     stage.scrollLeft = 0;
     stage.scrollTop = 0;
     const start = startOf(view);
-    camera.reset({ ...start, animate: false });
+    const glides = smooth && !latest.current.still;
+    camera.reset({ ...start, animate: glides });
+    if (glides) return;
+    sheet.style.transition = NO_TRANSITION;
     place({ scale: start.startScale, x: start.startX, y: start.startY });
   };
+  const gliding = () => typeof sheet.getAnimations === 'function' && sheet.getAnimations().length > 0;
   const current = (): View => {
     const view = viewOfPan({ scale: camera.getScale(), ...camera.getPan() }, sheetCenter());
     return { ...view, x: view.x - stage.scrollLeft, y: view.y - stage.scrollTop };
@@ -108,8 +119,14 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
   const boxInSheet = (element: Element): Box => {
     const own = element.getBoundingClientRect();
     const origin = sheet.getBoundingClientRect();
-    const zoom = camera.getScale();
+    const zoom = origin.width / sheet.offsetWidth;
     return { x: (own.left - origin.left) / zoom, y: (own.top - origin.top) / zoom, width: own.width / zoom, height: own.height / zoom };
+  };
+
+  const reveal = (element: Element, smooth: boolean) => {
+    const view = current();
+    const next = bringIntoView(view, boxInSheet(element), room());
+    if (Math.hypot(next.x - view.x, next.y - view.y) > SAME_PIXEL) apply(next, smooth);
   };
 
   const inGap = (event: { clientX: number; clientY: number }): Point => {
@@ -142,16 +159,17 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
   document.addEventListener('pointercancel', release, PASSIVE);
 
   return {
-    fit: () => apply(fitted()),
+    fit: (smooth: boolean) => apply(fitted(), smooth),
     zoomIn: () => zoomBy(BUTTON_ZOOM_STEP),
     zoomOut: () => zoomBy(1 / BUTTON_ZOOM_STEP),
     panBy,
     zoomTo: (scale: number) => apply(zoomAt(current(), gapCenter(), scale, UNLIMITED)),
-    reveal: (element: Element) => {
-      const view = current();
-      const next = bringIntoView(view, boxInSheet(element), room());
-      if (Math.hypot(next.x - view.x, next.y - view.y) > SAME_PIXEL) apply(next);
+    reveal,
+    land: (element: Element) => {
+      if (gliding()) apply(current());
+      reveal(element, false);
     },
+    isGliding: gliding,
     press: (event: globalThis.PointerEvent) => {
       if (event.button !== PRIMARY_BUTTON) return;
       pressed = true;
@@ -193,14 +211,14 @@ const CAMERA_KEYS = new Map<string, (controller: Controller) => void>([
   ['-', (controller) => controller.zoomOut()],
 ]);
 
-export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, controls, onMove }: CameraOptions) {
+export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, still = false, controls, onMove }: CameraOptions) {
   const sheet = useRef<HTMLDivElement>(null);
   const controller = useRef<Controller | null>(null);
-  const latest = useRef<Inputs>({ gap, drawing, limits, start, onMove });
+  const latest = useRef<Inputs>({ gap, drawing, limits, start, still, onMove });
   const ready = drawing !== null;
 
   useLayoutEffect(() => {
-    latest.current = { gap, drawing, limits, start, onMove };
+    latest.current = { gap, drawing, limits, start, still, onMove };
   });
 
   useEffect(() => {
@@ -212,8 +230,10 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, co
     };
   }, [ready]);
 
+  const placed = useRef(false);
   useEffect(() => {
-    controller.current?.fit();
+    controller.current?.fit(placed.current);
+    placed.current = ready;
   }, [stage.width, stage.height, gap?.width, gap?.height, ready]);
 
   useImperativeHandle(
@@ -222,7 +242,7 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, co
       zoomTo: (scale) => controller.current?.zoomTo(scale),
       revealChosen: () => {
         const chosen = sheet.current?.querySelector(CHOSEN);
-        if (chosen) controller.current?.reveal(chosen);
+        if (chosen) controller.current?.reveal(chosen, true);
       },
     }),
     [],
@@ -237,14 +257,15 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, co
   const quietly = <Args extends unknown[]>(trigger: (...args: Args) => TriggerProps) => {
     return (...args: Args): TriggerProps => {
       const props = trigger(...args);
-      const unlessMoving = <E extends { timeStamp: number }>(handler: ((event: E) => void) | undefined) => (event: E) => {
-        if (!controller.current?.isMoving(event)) handler?.(event);
+      const onPointerEnter = (event: PointerEvent<HTMLElement>) => {
+        if (!controller.current?.isMoving(event) && !controller.current?.isGliding()) props.onPointerEnter?.(event);
       };
-      const onFocus = unlessMoving((event: FocusEvent<HTMLElement>) => {
-        controller.current?.reveal(event.currentTarget);
+      const onFocus = (event: FocusEvent<HTMLElement>) => {
+        if (controller.current?.isMoving(event)) return;
+        controller.current?.land(event.currentTarget);
         props.onFocus?.(event);
-      });
-      return { ...props, onPointerEnter: unlessMoving(props.onPointerEnter), onFocus };
+      };
+      return { ...props, onPointerEnter, onFocus };
     };
   };
 
@@ -252,7 +273,7 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, co
     sheet,
     stageRef: wheelRef,
     quietly,
-    fit: useCallback(() => controller.current?.fit(), []),
+    fit: useCallback(() => controller.current?.fit(true), []),
     zoomIn: useCallback(() => controller.current?.zoomIn(), []),
     zoomOut: useCallback(() => controller.current?.zoomOut(), []),
     onPointerDown: (event: PointerEvent<HTMLElement>) => controller.current?.press(event.nativeEvent),

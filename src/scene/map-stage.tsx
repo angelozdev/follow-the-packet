@@ -74,7 +74,7 @@ export function MapStage({ gap, startPieceId, controls, onCameraMove, ...props }
   const frame = layout && frameOf(room.width, layout.size);
   const icon = layout && startPieceId ? layout.icons[startPieceId] : undefined;
   const start = icon && frame ? { x: frame.x + icon.x + icon.width / 2, y: frame.y + icon.y + icon.height / 2 } : undefined;
-  const camera = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, start, controls, onMove: onCameraMove });
+  const camera = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, start, still: props.still, controls, onMove: onCameraMove });
   const stageRef = useMergedRef(stage.ref, camera.stageRef);
   return (
     <>
