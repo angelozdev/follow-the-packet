@@ -1,8 +1,8 @@
 import { useEventListener } from '@mantine/hooks';
 import Panzoom from '@panzoom/panzoom';
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type MouseEvent, type PointerEvent, type Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type FocusEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
 import type { TriggerProps } from '@/scene/overlay/inspect-trigger';
-import { ZOOM_LIMITS, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
+import { ZOOM_LIMITS, bringIntoView, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
 
 const INSTANT = { animate: false, force: true } as const;
 const NOT_PASSIVE = { passive: false };
@@ -17,9 +17,11 @@ const PINCH_WHEEL_FACTOR = 10;
 const LINE_PX = 16;
 const WHEEL_QUIET_MS = 250;
 const BUTTON_ZOOM_STEP = 1.25;
+const CHOSEN = '[data-pinned]';
 
 export interface CameraControls {
   zoomTo: (scale: number) => void;
+  revealChosen: () => void;
 }
 
 interface Inputs {
@@ -51,6 +53,14 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     const { drawing, limits } = latest.current;
     return fitView(room(), drawing as Box, limits);
   };
+  let written = '';
+  const place = (pan: View) => {
+    const value = `scale(${pan.scale}) translate(${pan.x}px, ${pan.y}px)`;
+    if (value === written) return;
+    written = value;
+    sheet.style.transform = value;
+    latest.current.onMove?.();
+  };
   const startOf = (view: View) => {
     const pan = panOfView(kept(view), sheetCenter());
     return { startScale: pan.scale, startX: pan.x, startY: pan.y };
@@ -63,19 +73,20 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     maxScale: UNLIMITED.max,
     handleStartEvent: () => undefined,
     ...startOf(fitted()),
-    setTransform: (element, pan) => {
+    setTransform: (_element, pan) => {
       const view = viewOfPan(pan, sheetCenter());
       const inside = kept(view);
       const next = panOfView(inside, sheetCenter());
-      element.style.transform = `scale(${next.scale}) translate(${next.x}px, ${next.y}px)`;
       if (Math.abs(inside.x - view.x) > SAME_PIXEL || Math.abs(inside.y - view.y) > SAME_PIXEL) camera.pan(next.x, next.y, INSTANT);
-      latest.current.onMove?.();
+      place(next);
     },
   });
   const apply = (view: View) => {
     stage.scrollLeft = 0;
     stage.scrollTop = 0;
-    camera.reset({ ...startOf(view), animate: false });
+    const start = startOf(view);
+    camera.reset({ ...start, animate: false });
+    place({ scale: start.startScale, x: start.startX, y: start.startY });
   };
   const current = (): View => {
     const view = viewOfPan({ scale: camera.getScale(), ...camera.getPan() }, sheetCenter());
@@ -84,6 +95,12 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
   const zoomBy = (factor: number) => apply(zoomAt(current(), gapCenter(), current().scale * factor, latest.current.limits));
   const absorbTheScroll = () => {
     if (stage.scrollLeft !== 0 || stage.scrollTop !== 0) apply(current());
+  };
+  const boxInSheet = (element: Element): Box => {
+    const own = element.getBoundingClientRect();
+    const origin = sheet.getBoundingClientRect();
+    const zoom = camera.getScale();
+    return { x: (own.left - origin.left) / zoom, y: (own.top - origin.top) / zoom, width: own.width / zoom, height: own.height / zoom };
   };
 
   let pressed = false;
@@ -103,6 +120,11 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     zoomIn: () => zoomBy(BUTTON_ZOOM_STEP),
     zoomOut: () => zoomBy(1 / BUTTON_ZOOM_STEP),
     zoomTo: (scale: number) => apply(zoomAt(current(), gapCenter(), scale, UNLIMITED)),
+    reveal: (element: Element) => {
+      const view = current();
+      const next = bringIntoView(view, boxInSheet(element), room());
+      if (Math.hypot(next.x - view.x, next.y - view.y) > SAME_PIXEL) apply(next);
+    },
     press: (event: globalThis.PointerEvent) => {
       if (event.button !== PRIMARY_BUTTON) return;
       pressed = true;
@@ -158,7 +180,17 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, controls,
     controller.current?.fit();
   }, [stage.width, stage.height, gap?.width, gap?.height, ready]);
 
-  useImperativeHandle(controls, () => ({ zoomTo: (scale) => controller.current?.zoomTo(scale) }), []);
+  useImperativeHandle(
+    controls,
+    () => ({
+      zoomTo: (scale) => controller.current?.zoomTo(scale),
+      revealChosen: () => {
+        const chosen = sheet.current?.querySelector(CHOSEN);
+        if (chosen) controller.current?.reveal(chosen);
+      },
+    }),
+    [],
+  );
 
   const turnTheWheel = useCallback((event: WheelEvent) => {
     event.preventDefault();
@@ -172,7 +204,11 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, controls,
       const unlessMoving = <E extends { timeStamp: number }>(handler: ((event: E) => void) | undefined) => (event: E) => {
         if (!controller.current?.isMoving(event)) handler?.(event);
       };
-      return { ...props, onPointerEnter: unlessMoving(props.onPointerEnter), onFocus: unlessMoving(props.onFocus) };
+      const onFocus = unlessMoving((event: FocusEvent<HTMLElement>) => {
+        controller.current?.reveal(event.currentTarget);
+        props.onFocus?.(event);
+      });
+      return { ...props, onPointerEnter: unlessMoving(props.onPointerEnter), onFocus };
     };
   };
 

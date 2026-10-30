@@ -1,9 +1,9 @@
 import { useElementSize } from '@mantine/hooks';
-import { useMemo, useReducer, type MouseEvent } from 'react';
+import { useMemo, useReducer, useRef, type MouseEvent } from 'react';
 import { EXPLANATION_TEXT } from '@/copy';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
-import { GameScene } from '@/scene';
+import { GameScene, type CameraControls } from '@/scene';
 import type { Progress } from '@/storage';
 import { LuciaZone } from '@/ui/shell/lucia/lucia-zone';
 import { useLuciaFold } from '@/ui/shell/lucia/use-lucia-fold';
@@ -44,7 +44,8 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
   const pieces = pieceViews(session);
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
   const lines = useMemo(() => registryLines(session), [session]);
-  const selection = useSelection(session);
+  const camera = useRef<CameraControls>(null);
+  const selection = useSelection(session, camera);
   const panelChoice = usePanelChoice();
   const fold = useLuciaFold(session);
   const windows = useSystemWindow(lines.length > 0 ? [SYSTEM_WINDOW.registry, SYSTEM_WINDOW.almanac] : [SYSTEM_WINDOW.almanac]);
@@ -112,6 +113,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
           inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={() => undefined}
           gap={{ width: gap.width, height: gap.height }}
+          controls={camera}
           onCameraMove={close}
         />
       </div>

@@ -28,19 +28,36 @@ export const KEEP_IN_VIEW_PX = 96;
 
 export function fitView(gap: Size, drawing: Box, limits: ZoomLimits): View {
   const heightScale = gap.height > 0 ? gap.height / drawing.height : 1;
-  const scale = Math.max(limits.min, Math.min(1, gap.width / drawing.width, heightScale));
+  const scale = Math.max(
+    limits.min,
+    Math.min(1, gap.width / drawing.width, heightScale),
+  );
   const width = scale * drawing.width;
   const x = width <= gap.width ? Math.floor((gap.width - width) / 2) : 0;
   return { scale, x: x - scale * drawing.x, y: -scale * drawing.y };
 }
 
-export function zoomAt(view: View, point: Point, scale: number, limits: ZoomLimits): View {
+export function zoomAt(
+  view: View,
+  point: Point,
+  scale: number,
+  limits: ZoomLimits,
+): View {
   const next = Math.min(limits.max, Math.max(limits.min, scale));
   const ratio = next / view.scale;
-  return { scale: next, x: point.x - (point.x - view.x) * ratio, y: point.y - (point.y - view.y) * ratio };
+  return {
+    scale: next,
+    x: point.x - (point.x - view.x) * ratio,
+    y: point.y - (point.y - view.y) * ratio,
+  };
 }
 
-function clampAxis(offset: number, start: number, extent: number, room: number): number {
+function clampAxis(
+  offset: number,
+  start: number,
+  extent: number,
+  room: number,
+): number {
   const keep = Math.min(KEEP_IN_VIEW_PX, extent, room);
   return Math.min(Math.max(offset, keep - extent - start), room - keep - start);
 }
@@ -54,10 +71,34 @@ export function clampView(view: View, gap: Size, drawing: Box): View {
   };
 }
 
+function nudgeAxis(start: number, extent: number, room: number): number {
+  if (start < 0 || extent > room) return -start;
+  return Math.min(0, room - start - extent);
+}
+
+export function bringIntoView(view: View, box: Box, gap: Size): View {
+  const { scale } = view;
+  return {
+    scale,
+    x: view.x + nudgeAxis(view.x + scale * box.x, scale * box.width, gap.width),
+    y:
+      view.y +
+      nudgeAxis(view.y + scale * box.y, scale * box.height, gap.height),
+  };
+}
+
 export function viewOfPan(pan: View, center: Point): View {
-  return { scale: pan.scale, x: center.x * (1 - pan.scale) + pan.scale * pan.x, y: center.y * (1 - pan.scale) + pan.scale * pan.y };
+  return {
+    scale: pan.scale,
+    x: center.x * (1 - pan.scale) + pan.scale * pan.x,
+    y: center.y * (1 - pan.scale) + pan.scale * pan.y,
+  };
 }
 
 export function panOfView(view: View, center: Point): View {
-  return { scale: view.scale, x: (view.x - center.x * (1 - view.scale)) / view.scale, y: (view.y - center.y * (1 - view.scale)) / view.scale };
+  return {
+    scale: view.scale,
+    x: (view.x - center.x * (1 - view.scale)) / view.scale,
+    y: (view.y - center.y * (1 - view.scale)) / view.scale,
+  };
 }

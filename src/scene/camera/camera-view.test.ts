@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KEEP_IN_VIEW_PX, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
+import { KEEP_IN_VIEW_PX, bringIntoView, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
 
 const LIMITS: ZoomLimits = { min: 0.5, max: 2 };
 const GAP = { width: 600, height: 400 };
@@ -91,5 +91,25 @@ describe('the library pan', () => {
     expect(back.scale).toBe(view.scale);
     expect(back.x).toBeCloseTo(view.x, 9);
     expect(back.y).toBeCloseTo(view.y, 9);
+  });
+});
+
+describe('bringIntoView', () => {
+  const view = { scale: 0.5, x: 40, y: 10 };
+  const label: Box = { x: 100, y: 100, width: 80, height: 20 };
+
+  it('bringing a label into the gap pans the least and keeps the zoom', () => {
+    expect(bringIntoView(view, label, GAP)).toEqual(view);
+    expect(bringIntoView(view, { ...label, x: 1200 }, GAP)).toEqual({ scale: 0.5, x: -40, y: 10 });
+    expect(bringIntoView(view, { ...label, x: -200 }, GAP)).toEqual({ scale: 0.5, x: 100, y: 10 });
+    expect(bringIntoView(view, { ...label, y: 900 }, GAP)).toEqual({ scale: 0.5, x: 40, y: -60 });
+    expect(bringIntoView(view, { ...label, y: -40 }, GAP)).toEqual({ scale: 0.5, x: 40, y: 20 });
+    expect(bringIntoView(view, { ...label, x: 1200, y: 900 }, GAP)).toEqual({ scale: 0.5, x: -40, y: -60 });
+    const edge = { ...label, x: (GAP.width - 40 - 0.5 * label.width) / 0.5 };
+    expect(bringIntoView(view, edge, GAP)).toEqual(view);
+  });
+
+  it('a label wider than the gap is brought in by its start', () => {
+    expect(bringIntoView(view, { ...label, x: 1200, width: 1600 }, GAP)).toEqual({ scale: 0.5, x: -600, y: 10 });
   });
 });
