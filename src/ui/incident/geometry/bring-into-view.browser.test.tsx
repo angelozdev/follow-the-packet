@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { CAMERA_TEXT, REGISTRY_TEXT, SYSTEMS_TEXT, toPlainText } from '@/copy';
+import { CAMERA_TEXT, CASE_TEXT, REGISTRY_TEXT, SYSTEMS_TEXT, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { KEEP_IN_VIEW_PX } from '@/scene/camera/camera-view';
 import { drawingOf } from '@/testing/map-boxes';
@@ -36,6 +36,8 @@ const SHEET = '.map-stage__sheet';
 const STAGE_BUTTONS = '.map-stage button';
 const ROUTING_INCIDENT = '02-06';
 const WEB_INCIDENT = '03-03';
+const DIAGNOSE_INCIDENT = '01-14';
+const CASES_BEFORE_THE_TALL_ONE = 5;
 const ROUTER = 'router-oficina';
 const PRINTER_PING = /^ping de tu-laptop a impresora/;
 const ANDRES_PING = /^ping de tu-laptop a laptop-andres/;
@@ -186,6 +188,23 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
     for (let element: Element | null = last; element !== null; element = element.parentElement) {
       expect(element.scrollTop + element.scrollLeft, `${element.className || element.tagName} was not scrolled`).toBe(0);
     }
+  });
+
+  it('a new case of a diagnose fits the camera again at the start of that case', async () => {
+    await page.viewport(WINDOW.width, WINDOW.height);
+    await theScreen(DIAGNOSE_INCIDENT);
+    const incident = INCIDENTS.find(({ id }) => id === DIAGNOSE_INCIDENT);
+    const cases = incident?.mechanic === 'diagnose' ? incident.diagnose.cases : [];
+    for (const { cause } of cases.slice(0, CASES_BEFORE_THE_TALL_ONE)) {
+      await userEvent.click(theButton(CASE_TEXT.know));
+      const right = cause.options.find(({ correct }) => correct);
+      await userEvent.click(page.getByRole('button', { name: toPlainText(right?.text ?? '') }));
+      await userEvent.click(theButton(CASE_TEXT.next));
+    }
+    await standStill();
+    const labels = [...document.querySelectorAll<HTMLElement>(PIECE_LABELS)];
+    expect(labels.length, 'the labels of the case are drawn').toBeGreaterThan(0);
+    expect(labels.filter((label) => !isInTheGap(label)).map((label) => label.textContent?.trim())).toEqual([]);
   });
 
   it('at 1280×600 each incident that does not fit at the minimum zoom is named and starts centered, clamped at the edge of the drawing, on the first origin of send.from, or on the first piece a task of Lucía names, or at the top-left corner, and every piece of it is brought into the free gap when chosen from the registry, from Ver fila or with the keyboard', { timeout: 300_000 }, async () => {

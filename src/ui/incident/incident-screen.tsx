@@ -101,6 +101,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
       </LuciaZone>
       <div ref={gap.ref} className="incident__map" inert={covered}>
         <GameScene
+          key={session.caseIndex}
           world={session.world}
           pieces={pieces}
           flows={session.runs}
