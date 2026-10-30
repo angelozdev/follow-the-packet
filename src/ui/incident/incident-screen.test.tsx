@@ -933,6 +933,34 @@ describe('incident screen of a diagnose incident', () => {
     expect(screen.getByRole('region', { name: CASE_TEXT.title(2, cases.length) })).toBeInTheDocument();
   });
 
+  async function keepTheChoiceIntoTheNextCase(user: User) {
+    await tabTo(user, pieceLabel('tu-laptop'));
+    await user.keyboard('{Enter}');
+    await nameRight(user, 1);
+    await user.click(screen.getByRole('button', { name: NEXT }));
+    const panel = screen.getByRole('region', { name: 'tu-laptop' });
+    await user.click(within(panel).getByRole('heading', { name: 'tu-laptop' }));
+    return panel;
+  }
+
+  it('a choice kept into the next case gives the focus back to the label of its piece in that case on Escape', async () => {
+    const user = userEvent.setup();
+    renderDiagnosing();
+    const panel = await keepTheChoiceIntoTheNextCase(user);
+    await user.keyboard('{Escape}');
+    expect(pieceLabel('tu-laptop')).toHaveFocus();
+    expect(screen.getByRole('region', { name: 'tu-laptop' }), 'Escape keeps the piece chosen').toBe(panel);
+  });
+
+  it('a choice kept into the next case gives the focus back to the label of its piece in that case on the X of the panel', async () => {
+    const user = userEvent.setup();
+    renderDiagnosing();
+    const panel = await keepTheChoiceIntoTheNextCase(user);
+    await user.click(within(panel).getByRole('button', { name: INSPECTION_TEXT.closeLabel }));
+    expect(screen.queryByRole('region', { name: 'tu-laptop' })).toBeNull();
+    expect(pieceLabel('tu-laptop')).toHaveFocus();
+  });
+
   it('naming every cause right with no hint gives 3 stars and the result says every case went right', async () => {
     const user = userEvent.setup();
     const onFinish = renderDiagnosing();
