@@ -167,6 +167,21 @@ describe('the camera of the map', () => {
     expect(stage.scrollLeft).toBe(0);
     expect(last.getBoundingClientRect().bottom, 'and the label is in view').toBeLessThanOrEqual(stage.getBoundingClientRect().bottom + SLOW_ENOUGH_PX);
   });
+  it('a label that takes the focus before the box of the map has a height moves nothing, so the camera does not move again when the height arrives', async () => {
+    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height);
+    const moved = vi.fn();
+    const box = mount({ gap: { width: BOX_WIDTH, height: 0 }, onCameraMove: moved });
+    const sheet = part(box, '.map-stage__sheet');
+    await expect.poll(() => part(box, 'button.map-button')).not.toBeNull();
+    await standStill();
+    const [before, movesBefore] = [transformOf(sheet), moved.mock.calls.length];
+    const last = [...box.querySelectorAll<HTMLElement>('button.map-button')].reduce((lowest, label) => (label.getBoundingClientRect().top > lowest.getBoundingClientRect().top ? label : lowest));
+    last.focus();
+    await standStill();
+    expect(transformOf(sheet)).toBe(before);
+    expect(moved.mock.calls.length).toBe(movesBefore);
+  });
+
   it('dragging the map N px moves the drawing N px and a press without movement still chooses the piece', async () => {
     const { chosen, svg } = await mountToChoose();
     const start = svg.getBoundingClientRect();

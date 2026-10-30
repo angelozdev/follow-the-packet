@@ -159,6 +159,12 @@ describe('bringIntoView', () => {
     expect(bringIntoView(view, edge, GAP)).toEqual(view);
   });
 
+  it('a gap with no size yet on an axis moves nothing on that axis', () => {
+    expect(bringIntoView(view, { ...label, y: 900 }, { width: GAP.width, height: 0 })).toEqual(view);
+    expect(bringIntoView(view, { ...label, x: 1200 }, { width: 0, height: GAP.height })).toEqual(view);
+    expect(bringIntoView(view, { ...label, x: 1200, y: 900 }, { width: GAP.width, height: 0 })).toEqual({ scale: 0.5, x: -40, y: 10 });
+  });
+
   it('a label wider than the gap is brought in by its start', () => {
     expect(bringIntoView(view, { ...label, x: 1200, width: 1600 }, GAP)).toEqual({ scale: 0.5, x: -600, y: 10 });
   });

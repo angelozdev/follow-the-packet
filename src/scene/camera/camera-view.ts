@@ -83,6 +83,7 @@ export function clampView(view: View, gap: Size, drawing: Box): View {
 }
 
 function nudgeAxis(start: number, extent: number, room: number): number {
+  if (room <= 0) return 0;
   if (start < 0 || extent > room) return -start;
   return Math.min(0, room - start - extent);
 }
