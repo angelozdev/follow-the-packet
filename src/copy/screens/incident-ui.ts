@@ -504,16 +504,16 @@ export const CAMERA_TEXT = {
 } as const;
 
 export const WINDOW_TEXT = {
-  close: '×',
+  close: PIECE_TEXT.close,
   closeLabel: 'Cerrar la ventana',
 } as const;
 
 export const ALMANAC_TEXT = {
   open: 'Almanaque',
-  tabs: 'Secciones del Almanaque',
+  tabs: 'Pestañas del Almanaque',
   terms: 'Términos',
   lessons: 'Lecciones',
-  noLessons: 'Todavía no hay lecciones. Aquí aparece la de cada incidente que termines con una estrella o más.',
+  noLessons: 'Todavía no hay lecciones. Aquí aparece lo que te llevas de cada incidente que termines.',
 } as const;
 
 export const REGISTRY_TEXT = {
@@ -526,7 +526,7 @@ export const SCREEN_TEXT = {
   back: '← Roadmap',
   motion: 'Sin animaciones',
   inspectHelp: 'Pasa el mouse o el foco por una pieza o un sello para ver qué es y cómo está.',
-  inspectClickHelp: 'Haz clic, o pulsa Enter, para elegirlo y abrirlo aquí.',
+  inspectClickHelp: 'Haz clic, toca o pulsa Enter para elegirlo y abrirlo aquí.',
   statusEmpty: 'Aquí verás lo último que pase.',
   stampLegend: 'Sellos: ✓ llegó · ✕ lo frenaron · ? se perdió · ! apareció un aviso. Una pieza con candado no se puede cambiar en este incidente.',
 } as const;

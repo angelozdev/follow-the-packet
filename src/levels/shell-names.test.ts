@@ -3,7 +3,7 @@ import * as copy from '@/copy';
 import { incidentTexts } from './ladder';
 import { INCIDENTS } from './registry';
 
-const { PIECE_TEXT, SYSTEMS_TEXT, TASK_CARD_TEXT, toPlainText } = copy;
+const { ALMANAC_TEXT, PIECE_TEXT, SYSTEMS_TEXT, TASK_CARD_TEXT, toPlainText } = copy;
 
 /**
  * The incidents whose texts still send the player to a place the shell does not have, as incident → why.
@@ -25,12 +25,12 @@ function plainLabels(labels: string[]): string[] {
 
 const NAMED_PLACE = /\b(pestaña|sección)\s+«([^»]+)»/giu;
 const RETIRED_PLACE = /\btarjetas?\b|\babre su terminal\b/iu;
-const TABS_OF_THE_SHELL = plainLabels([...Object.values(PIECE_TEXT.tabs), ...Object.values(TASK_CARD_TEXT.tabs).flatMap((directions) => Object.values(directions))]);
+const TABS_OF_THE_SHELL = plainLabels([...Object.values(PIECE_TEXT.tabs), ...Object.values(TASK_CARD_TEXT.tabs).flatMap((directions) => Object.values(directions)), ALMANAC_TEXT.terms, ALMANAC_TEXT.lessons]);
 const SECTIONS_OF_THE_SHELL = plainLabels([PIECE_TEXT.parts.settings, PIECE_TEXT.parts.services]);
 const NAMED_BUTTON = /\bbotón\s+«([^»]+)»/giu;
-const BUTTONS_OF_THE_SHELL = plainLabels(Object.values(SYSTEMS_TEXT));
+const BUTTONS_OF_THE_SHELL = plainLabels([...Object.values(SYSTEMS_TEXT), ALMANAC_TEXT.open]);
 const NAMED_WINDOW = /\bventana\s+«([^»]+)»/giu;
-const WINDOWS_OF_THE_SHELL = plainLabels([SYSTEMS_TEXT.registry]);
+const WINDOWS_OF_THE_SHELL = plainLabels([SYSTEMS_TEXT.registry, ALMANAC_TEXT.open]);
 
 function leaves(value: unknown): string[] {
   if (typeof value === 'string') return [value];
@@ -64,6 +64,7 @@ describe('the texts that name a place of the shell', () => {
     const retired = INCIDENTS.filter((incident) => incidentTexts(incident).some((text) => RETIRED_PLACE.test(toPlainText(text)))).map(({ id }) => id);
     const retiredInTheCopy = TEXTS_OF_THE_COPY.filter((text) => RETIRED_PLACE.test(toPlainText(text)));
 
+    expect(missingPlaces('Abre la pestaña «Términos» o la pestaña «Lecciones».')).toEqual([]);
     expect(unknown).toEqual([]);
     expect(retired).toEqual(Object.keys(NAMED_BEFORE_BUILT));
     expect(retiredInTheCopy).toEqual([]);
@@ -77,7 +78,8 @@ describe('the texts that name a button of the shell', () => {
       ...TEXTS_OF_THE_COPY.flatMap(missingButtons).map((button) => `copy: ${button}`),
     ];
 
-    expect(BUTTONS_OF_THE_SHELL).toEqual(['terminal', 'navegador', 'historial']);
+    expect(BUTTONS_OF_THE_SHELL).toEqual(['terminal', 'navegador', 'historial', 'almanaque']);
+    expect(missingButtons('Pulsa el botón «Almanaque».')).toEqual([]);
     expect(missingButtons('Pulsa el botón «Terminal» o el botón «{{browser|Navegador}}».')).toEqual([]);
     expect(missingButtons('Pulsa el botón «Mapa».')).toEqual(['botón «Mapa»']);
     expect(unknown).toEqual([]);
@@ -91,9 +93,10 @@ describe('the texts that name a window of the shell', () => {
       ...TEXTS_OF_THE_COPY.flatMap(missingWindows).map((window) => `copy: ${window}`),
     ];
 
-    expect(WINDOWS_OF_THE_SHELL).toEqual(['historial']);
+    expect(WINDOWS_OF_THE_SHELL).toEqual(['historial', 'almanaque']);
     expect(missingWindows('Abre la ventana «Historial» y mira la última fila.')).toEqual([]);
-    expect(missingWindows('Abre la ventana «Almanaque».')).toEqual(['ventana «Almanaque»']);
+    expect(missingWindows('Abre la ventana «Almanaque».')).toEqual([]);
+    expect(missingWindows('Abre la ventana «Mapa».')).toEqual(['ventana «Mapa»']);
     expect(unknown).toEqual([]);
   });
 });
