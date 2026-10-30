@@ -194,15 +194,15 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
   it('a focus that lands right after the wheel still brings the piece into the free gap', async () => {
     await page.viewport(WINDOW.width, WINDOW.height);
     await theScreen(ROUTING_INCIDENT);
-    const last = [...document.querySelectorAll<HTMLElement>(STAGE_BUTTONS)].at(-1) as HTMLElement;
-    await pushOut(last);
+    const first = document.querySelector<HTMLElement>(PIECE_LABELS) as HTMLElement;
+    await pushOut(first);
     const zoom = zoomOf();
 
     (document.querySelector(STAGE) as Element).dispatchEvent(new WheelEvent('wheel', { deltaY: 0, bubbles: true, cancelable: true }));
-    last.focus();
+    first.focus();
 
-    expect(document.activeElement, 'the focus is on the last piece of the map').toBe(last);
-    await expectBroughtIn(last, zoom, 'a focus right after the wheel');
+    expect(document.activeElement, 'the focus is on the first piece of the map').toBe(first);
+    await expectBroughtIn(first, zoom, 'a focus right after the wheel');
   });
 
   it('a new case of a diagnose fits the camera again at the start of that case', async () => {
