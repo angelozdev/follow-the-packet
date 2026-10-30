@@ -145,6 +145,32 @@ export async function tapAt(point: Point): Promise<void> {
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
+const LEFT_BUTTON = { button: 'left', buttons: 1 } as const;
+const CTRL_MODIFIER = 2;
+const DRAG_STEPS = 6;
+
+async function sendMouse(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased' | 'mouseWheel', point: Point, extra: object = {}): Promise<void> {
+  await cdp().send('Input.dispatchMouseEvent', { type, ...inThePageOfTheFrame(point), ...extra });
+}
+
+export async function holdDrag(from: Point, to: Point): Promise<() => Promise<void>> {
+  await sendMouse('mouseMoved', from);
+  await sendMouse('mousePressed', from, { ...LEFT_BUTTON, clickCount: 1 });
+  for (let step = 1; step <= DRAG_STEPS; step++) {
+    await sendMouse('mouseMoved', { x: from.x + ((to.x - from.x) * step) / DRAG_STEPS, y: from.y + ((to.y - from.y) * step) / DRAG_STEPS }, LEFT_BUTTON);
+  }
+  return () => sendMouse('mouseReleased', to, { button: 'left', clickCount: 1 });
+}
+
+export async function dragFromTo(from: Point, to: Point): Promise<void> {
+  const release = await holdDrag(from, to);
+  await release();
+}
+
+export async function wheelAt(point: Point, deltaY: number, { ctrl = false }: { ctrl?: boolean } = {}): Promise<void> {
+  await sendMouse('mouseWheel', point, { deltaX: 0, deltaY, modifiers: ctrl ? CTRL_MODIFIER : 0 });
+}
+
 async function pressAt(point: Point): Promise<() => Promise<void>> {
   const at = inThePageOfTheFrame(point);
   const press = { ...at, button: 'left', clickCount: 1 } as const;

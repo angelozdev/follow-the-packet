@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
+import { KEEP_IN_VIEW_PX, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
 
 const LIMITS: ZoomLimits = { min: 0.5, max: 2 };
 const GAP = { width: 600, height: 400 };
@@ -54,6 +54,32 @@ describe('zoomAt', () => {
     const view = { scale: 1, x: 0, y: 0 };
     expect(zoomAt(view, { x: 0, y: 0 }, 9, LIMITS).scale).toBe(2);
     expect(zoomAt(view, { x: 0, y: 0 }, 0.1, LIMITS).scale).toBe(0.5);
+  });
+});
+
+describe('clampView', () => {
+  const view = (x: number, y: number) => ({ scale: 1, x, y });
+
+  it('a pan is clamped so that part of the drawing stays in the window', () => {
+    const drawing: Box = { x: 0, y: 0, width: 800, height: 600 };
+    const farRight = clampView(view(5000, 0), GAP, drawing);
+    expect(farRight.x).toBe(GAP.width - KEEP_IN_VIEW_PX);
+    const farLeft = clampView(view(-5000, 0), GAP, drawing);
+    expect(farLeft.x).toBe(KEEP_IN_VIEW_PX - drawing.width);
+    const farDown = clampView(view(0, 5000), GAP, drawing);
+    expect(farDown.y).toBe(GAP.height - KEEP_IN_VIEW_PX);
+    const farUp = clampView(view(0, -5000), GAP, drawing);
+    expect(farUp.y).toBe(KEEP_IN_VIEW_PX - drawing.height);
+    expect(clampView(view(-30, -40), GAP, drawing)).toEqual(view(-30, -40));
+  });
+
+  it('counts the place of the drawing in its sheet and the zoom', () => {
+    const drawing: Box = { x: 100, y: 0, width: 400, height: 300 };
+    const zoomed = clampView({ scale: 0.5, x: 5000, y: 0 }, GAP, drawing);
+    expect(screenOf(zoomed, { x: drawing.x, y: 0 }).x).toBe(GAP.width - KEEP_IN_VIEW_PX);
+    const small: Box = { x: 0, y: 0, width: 40, height: 30 };
+    const whole = clampView(view(5000, 5000), GAP, small);
+    expect(whole).toEqual(view(GAP.width - small.width, GAP.height - small.height));
   });
 });
 

@@ -495,6 +495,14 @@ export const SYSTEMS_TEXT = {
   registry: 'Registro',
 } as const;
 
+export const CAMERA_TEXT = {
+  zoomIn: 'Acercar',
+  zoomOut: 'Alejar',
+  fit: 'Ajustar',
+  zoomInSign: '+',
+  zoomOutSign: '−',
+} as const;
+
 export const WINDOW_TEXT = {
   close: '×',
   closeLabel: 'Cerrar la ventana',

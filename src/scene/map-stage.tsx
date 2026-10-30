@@ -1,4 +1,4 @@
-import { useElementSize } from '@mantine/hooks';
+import { useElementSize, useMergedRef } from '@mantine/hooks';
 import type { Ref } from 'react';
 import type { TermId } from '@/copy';
 import type { Network } from '@/engine';
@@ -6,6 +6,7 @@ import { GroupBoxes } from '@/scene/entities/group-boxes';
 import { LinkLines, MarkDots } from '@/scene/entities/links';
 import { Pieces } from '@/scene/pieces';
 import type { Size } from '@/scene/camera/camera-view';
+import { CameraButtons } from '@/scene/camera/camera-buttons';
 import { useCamera, type CameraControls } from '@/scene/camera/use-camera';
 import type { MapLayout } from '@/scene/layout/arrange/geometry';
 import { blockTabBoxes } from '@/scene/layout/captions';
@@ -33,9 +34,10 @@ export interface MapStageProps {
   inspectStampsTrigger: InspectStampsTrigger;
   gap?: Size;
   controls?: Ref<CameraControls>;
+  onCameraMove?: () => void;
 }
 
-function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, layout, frame }: Omit<MapStageProps, 'world' | 'gap' | 'controls'> & { layout: MapLayout; frame: Frame }) {
+function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, layout, frame }: Omit<MapStageProps, 'world' | 'gap' | 'controls' | 'onCameraMove'> & { layout: MapLayout; frame: Frame }) {
   const { size } = layout;
   const runs = [...flows, ...sent];
   const inTheAir = useSendsInTheAir(sent, layout, still);
@@ -64,17 +66,21 @@ function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, 
   );
 }
 
-export function MapStage({ gap, controls, ...props }: MapStageProps) {
+export function MapStage({ gap, controls, onCameraMove, ...props }: MapStageProps) {
   const stage = useElementSize();
   const room = gap ?? stage;
   const layout = Number.isFinite(room.width) && room.width > 0 ? layoutMap(props.world, props.pieces, { width: room.width, blockTab: props.blockName !== null }) : null;
   const frame = layout && frameOf(room.width, layout.size);
-  const { sheet } = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, controls });
+  const camera = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, controls, onMove: onCameraMove });
+  const stageRef = useMergedRef(stage.ref, camera.stageRef);
   return (
-    <div ref={stage.ref} className="map-stage">
-      <div ref={sheet} className="map-stage__sheet" style={{ minWidth: layout?.size.width }}>
-        {layout && frame && <Drawing {...props} layout={layout} frame={frame} />}
+    <>
+      <div ref={stageRef} className="map-stage" onPointerDown={camera.onPointerDown} onClickCapture={camera.onClickCapture}>
+        <div ref={camera.sheet} className="map-stage__sheet" style={{ minWidth: layout?.size.width }}>
+          {layout && frame && <Drawing {...props} inspectTrigger={camera.quietly(props.inspectTrigger)} inspectStampsTrigger={camera.quietly(props.inspectStampsTrigger)} layout={layout} frame={frame} />}
+        </div>
       </div>
-    </div>
+      <CameraButtons onZoomIn={camera.zoomIn} onZoomOut={camera.zoomOut} onFit={camera.fit} />
+    </>
   );
 }

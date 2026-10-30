@@ -58,7 +58,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
       },
     };
   };
-  const { inspection, duplicate, trigger, holder } = useInspection(session, selection.selected);
+  const { inspection, duplicate, trigger, close, holder } = useInspection(session, selection.selected);
   const triggerOf = (key: string) => selection.trigger(key, trigger(key));
   const caseOnCard = session.phase === 'result' ? null : caseCard(session);
   const steps = clockSteps(session);
@@ -109,6 +109,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
           inspectTrigger={triggerOf}
           inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={() => undefined}
+          onCameraMove={close}
         />
       </div>
       <div aria-live="polite" aria-hidden={duplicate || undefined} className="incident__inspection" {...holder}>

@@ -24,6 +24,7 @@ export interface ZoomLimits {
 export const MIN_ZOOM = 0.7;
 export const MAX_ZOOM = 2;
 export const ZOOM_LIMITS: ZoomLimits = { min: MIN_ZOOM, max: MAX_ZOOM };
+export const KEEP_IN_VIEW_PX = 96;
 
 export function fitView(gap: Size, drawing: Box, limits: ZoomLimits): View {
   const heightScale = gap.height > 0 ? gap.height / drawing.height : 1;
@@ -37,6 +38,20 @@ export function zoomAt(view: View, point: Point, scale: number, limits: ZoomLimi
   const next = Math.min(limits.max, Math.max(limits.min, scale));
   const ratio = next / view.scale;
   return { scale: next, x: point.x - (point.x - view.x) * ratio, y: point.y - (point.y - view.y) * ratio };
+}
+
+function clampAxis(offset: number, start: number, extent: number, room: number): number {
+  const keep = Math.min(KEEP_IN_VIEW_PX, extent, room);
+  return Math.min(Math.max(offset, keep - extent - start), room - keep - start);
+}
+
+export function clampView(view: View, gap: Size, drawing: Box): View {
+  const { scale } = view;
+  return {
+    scale,
+    x: clampAxis(view.x, scale * drawing.x, scale * drawing.width, gap.width),
+    y: clampAxis(view.y, scale * drawing.y, scale * drawing.height, gap.height),
+  };
 }
 
 export function viewOfPan(pan: View, center: Point): View {

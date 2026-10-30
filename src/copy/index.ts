@@ -11,7 +11,7 @@ export type { PlaceOf, RouterPlace } from './reasons';
 export { FIRST_WARNING_TERM, OUTCOME_TEXT, describeOutcome, describeResult, deviceName, endpointName, isProblemStamp, messageLabel, packetLabel, packetMessage, packetPortLabels, packetShape, replyShape, roundTripText, stampLabel, stampOf, tracerouteLabel, warningOf } from './packet-labels';
 export type { PacketPorts, PortLabels, StampState, WarnedBy, Warning, WarningTerm } from './packet-labels';
 export { CATALOG_TEXT, INTERFACE_TEXT, MESSAGE_TEXT, NOTICE_TEXT, ROADMAP_TEXT, entityName } from './screens/ui';
-export { ACTOR_ROLE_TEXT, ALMANAC_TEXT, CASE_TEXT, CLASSIFY_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, PIECE_TEXT, REGISTRY_TEXT, RESTART_TEXT, RESULT_TEXT, SCREEN_TEXT, SERVICES_TEXT, SETTINGS_TEXT, SYSTEMS_TEXT, TABLE_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, WINDOW_TEXT } from './screens/incident-ui';
+export { ACTOR_ROLE_TEXT, ALMANAC_TEXT, CAMERA_TEXT, CASE_TEXT, CLASSIFY_TEXT, CLOCK_TEXT, EXPLANATION_TEXT, INSPECTION_TEXT, LUCIA_TEXT, MAP_TEXT, PIECE_TEXT, REGISTRY_TEXT, RESTART_TEXT, RESULT_TEXT, SCREEN_TEXT, SERVICES_TEXT, SETTINGS_TEXT, SYSTEMS_TEXT, TABLE_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, WINDOW_TEXT } from './screens/incident-ui';
 export { ROLES } from './screens/incident-ui';
 export type { RestartKind, Role } from './screens/incident-ui';
 export { curlOutput } from './tools/curl-output';

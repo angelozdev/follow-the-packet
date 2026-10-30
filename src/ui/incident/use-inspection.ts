@@ -73,6 +73,7 @@ export function useInspection(session: Session, selected: string | null) {
     inspection,
     duplicate: shown !== null && shown === selected,
     trigger: box.trigger,
+    close: release,
     holder: { ref: holderRef, 'data-scrolls': scrolls ? true : undefined, onPointerEnter: box.box.onPointerEnter, onPointerLeave: box.box.onPointerLeave },
   };
 }
