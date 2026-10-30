@@ -31,7 +31,9 @@ const NC_TO_THE_APP = 'nc · puerto 3000';
 const TERMINAL = PIECE_TEXT.tabs.terminal;
 const BROWSER = 'Navegador';
 const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
-const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}|${BROWSER}|Historial \\(\\d+\\))$`);
+const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}( · .+)?|${BROWSER}|Historial \\(\\d+\\))$`);
+
+const terminalOf = (piece: string) => `${TERMINAL} · ${piece}`;
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -86,14 +88,14 @@ describe('the bar of systems', () => {
     routing.unmount();
 
     renderIncident(WEB);
-    expect(systemsOfTheStrip()).toEqual(sorted([TERMINAL, BROWSER]));
+    expect(systemsOfTheStrip()).toEqual(sorted([terminalOf(YOUR_LAPTOP), BROWSER]));
   });
 
   it('Terminal opens the Terminal tab of the piece of the last origin the player used, and of the first send.from that has one before any', async () => {
     const user = userEvent.setup();
     renderIncident(TWO_ORIGINS);
 
-    await user.click(button(TERMINAL));
+    await user.click(button(terminalOf(YOUR_LAPTOP)));
     expect(thePanel(), 'before any origin was used, the first of send.from').toHaveAccessibleName(YOUR_LAPTOP);
     expect(within(thePanel()).getByRole('tab', { name: TERMINAL })).toHaveAttribute('aria-selected', 'true');
 
@@ -104,9 +106,32 @@ describe('the bar of systems', () => {
     await user.click(pieceLabel(OTHER_PIECE));
     expect(thePanel(), 'another piece is chosen').toHaveAccessibleName(/^laptop-marta/);
 
-    await user.click(button(TERMINAL));
+    await user.click(button(terminalOf(OTHER_LAPTOP)));
     expect(thePanel(), 'the last origin used').toHaveAccessibleName(OTHER_LAPTOP);
     expect(within(thePanel()).getByRole('tab', { name: TERMINAL })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('with two or more pieces that have a terminal the Terminal button names the piece it opens, and with one it reads Terminal', async () => {
+    const user = userEvent.setup();
+    const single = renderIncident(ROUTING);
+    expect(button(TERMINAL), 'one piece has a terminal').toBeInTheDocument();
+    single.unmount();
+
+    renderIncident(TWO_ORIGINS);
+    expect(within(zone(BAR)).queryByRole('button', { name: TERMINAL }), 'two pieces have one').toBeNull();
+    await user.click(button(terminalOf(YOUR_LAPTOP)));
+    expect(thePanel(), 'the button opens the piece it names').toHaveAccessibleName(YOUR_LAPTOP);
+  });
+
+  it('the button follows the piece when the player uses the terminal of another origin', async () => {
+    const user = userEvent.setup();
+    renderIncident(TWO_ORIGINS);
+    await user.click(button(terminalOf(YOUR_LAPTOP)));
+    await user.click(within(thePanel()).getByRole('button', { name: OTHER_LAPTOP }));
+
+    expect(thePanel()).toHaveAccessibleName(OTHER_LAPTOP);
+    expect(button(terminalOf(OTHER_LAPTOP))).toBeInTheDocument();
+    expect(within(zone(BAR)).queryByRole('button', { name: terminalOf(YOUR_LAPTOP) })).toBeNull();
   });
 
   it('Navegador does the same with the piece that has the browser', async () => {
@@ -142,7 +167,7 @@ describe('the bar of systems', () => {
     const user = userEvent.setup();
     renderIncident(WEB);
 
-    await user.click(button(TERMINAL));
+    await user.click(button(terminalOf(YOUR_LAPTOP)));
     expect(within(thePanel()).getByRole('heading', { name: YOUR_LAPTOP })).toHaveFocus();
 
     await user.click(button(BROWSER));

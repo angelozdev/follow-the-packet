@@ -160,7 +160,7 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
     routing.unmount();
 
     await theScreen(WEB_INCIDENT);
-    for (const system of [SYSTEMS_TEXT.terminal, SYSTEMS_TEXT.browser]) {
+    for (const system of [`${SYSTEMS_TEXT.terminal} · ${YOUR_LAPTOP}`, SYSTEMS_TEXT.browser]) {
       await userEvent.click(theButton(CAMERA_TEXT.fit));
       await standStill();
       const laptop = pieceLabel(YOUR_LAPTOP).element();

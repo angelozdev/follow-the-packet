@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { REGISTRY_TEXT, SYSTEMS_TEXT } from '@/copy';
-import { originPieces, panelOf, type PanelTabId, type Session } from '@/game';
+import { REGISTRY_TEXT, SYSTEMS_TEXT, TERMINAL_TEXT, type TermText } from '@/copy';
+import { inspect, originPieces, panelOf, type PanelTabId, type Session } from '@/game';
 import type { PanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import type { useSelection } from '@/ui/shell/use-selection';
 import { SYSTEM_WINDOW, type SystemWindowId, type SystemWindowState } from '@/ui/shell/windows/use-system-window';
@@ -8,10 +8,16 @@ import type { System } from './systems-bar';
 
 type Selection = Pick<ReturnType<typeof useSelection>, 'pieceId' | 'showPiece'>;
 
-const TOOLS = [
-  { tab: 'terminal', label: SYSTEMS_TEXT.terminal },
+interface Tool {
+  tab: PanelTabId;
+  label: string;
+  labelOf?: (origin: TermText) => TermText;
+}
+
+const TOOLS: readonly Tool[] = [
+  { tab: 'terminal', label: SYSTEMS_TEXT.terminal, labelOf: TERMINAL_TEXT.button },
   { tab: 'browser', label: SYSTEMS_TEXT.browser },
-] as const satisfies readonly { tab: PanelTabId; label: string }[];
+];
 
 const holdsTab = (session: Session, pieceId: string, tab: PanelTabId) => panelOf(session, pieceId).tabs.some(({ id }) => id === tab);
 
@@ -21,17 +27,18 @@ export function useSystems(session: Session, selection: Selection, panelChoice: 
   const chosen = selection.pieceId;
   const tabInView = chosen === null ? undefined : panelChoice.tabOf(panelOf(session, chosen));
   if (chosen !== null && chosen !== lastOrigin && origins.includes(chosen) && TOOLS.some(({ tab }) => tab === tabInView)) setLastOrigin(chosen);
-  const tools = TOOLS.flatMap(({ tab, label }) => {
+  const tools = TOOLS.flatMap(({ tab, label, labelOf }) => {
     const holders = origins.filter((pieceId) => holdsTab(session, pieceId, tab));
     const target = lastOrigin !== null && holders.includes(lastOrigin) ? lastOrigin : holders[0];
     if (target === undefined) return [];
+    const origin = holders.length > 1 ? inspect(session, target)?.title : undefined;
     const press = () => {
       windows.close();
       if (chosen === target && tabInView === tab) return;
       panelChoice.chooseTab(target, tab);
       selection.showPiece(target);
     };
-    return [{ id: tab, label, onPress: press }];
+    return [{ id: tab, label: origin === undefined || labelOf === undefined ? label : labelOf(origin), onPress: press }];
   });
   const registryOpen = windows.open === SYSTEM_WINDOW.registry;
   const registry: System[] =
