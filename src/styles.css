@@ -220,7 +220,7 @@ button.stamp { cursor: help; }
   .incident__panel .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; }
   .incident__panel .chip-card__body > .tabs > .tabs__list { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
   .incident__inspection[data-place='left'] { place-self: end start; }
-  .incident .map-stage { position: absolute; inset: 0; }
+  .incident .map-stage { position: absolute; inset: 0; touch-action: none; }
   .incident .map-stage__sheet { min-height: 100%; }
   .incident .map-stage--under-panels { inset: 0 calc(-1 * var(--panel-width)) auto calc(-1 * var(--lucia-width)); height: calc(100vh - var(--strip-room)); }
   .incident .map-stage--under-panels .map-stage__sheet { margin-left: var(--lucia-width); }
@@ -234,6 +234,7 @@ button.stamp { cursor: help; }
   .incident__inspection[aria-hidden='true'] > .card { display: none; }
   .incident__status { position: sticky; bottom: 0; }
   .incident__status > .dialog { position: fixed; inset: 0 0 var(--status-bar-room, 0px); }
+  .incident .map-stage { touch-action: pan-x pan-y; }
 }
 
 .catalog { padding: var(--space-xl) var(--space-lg) var(--space-3xl); }

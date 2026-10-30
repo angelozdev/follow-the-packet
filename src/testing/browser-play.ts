@@ -145,6 +145,19 @@ export async function tapAt(point: Point): Promise<void> {
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
+const FINGER_STEPS = 6;
+
+export async function moveFingers(from: Point[], to: Point[]): Promise<void> {
+  const session = cdp();
+  const touching = (points: Point[]) => points.map((point, id) => ({ ...inThePageOfTheFrame(point), id }));
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touching(from) });
+  for (let step = 1; step <= FINGER_STEPS; step++) {
+    const along = from.map((start, finger) => ({ x: start.x + ((to[finger].x - start.x) * step) / FINGER_STEPS, y: start.y + ((to[finger].y - start.y) * step) / FINGER_STEPS }));
+    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touching(along) });
+  }
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
 const LEFT_BUTTON = { button: 'left', buttons: 1 } as const;
 const CTRL_MODIFIER = 2;
 const DRAG_STEPS = 6;

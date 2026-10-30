@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KEEP_IN_VIEW_PX, bringIntoView, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
+import { KEEP_IN_VIEW_PX, bringIntoView, clampView, fitView, panOfView, touchView, viewOfPan, zoomAt, type Box, type Point, type ZoomLimits } from './camera-view';
 
 const LIMITS: ZoomLimits = { min: 0.5, max: 2 };
 const GAP = { width: 600, height: 400 };
@@ -167,5 +167,45 @@ describe('bringIntoView', () => {
 
   it('a label wider than the gap is brought in by its start', () => {
     expect(bringIntoView(view, { ...label, x: 1200, width: 1600 }, GAP)).toEqual({ scale: 0.5, x: -600, y: 10 });
+  });
+});
+
+describe('touchView', () => {
+  const view = { scale: 1, x: 10, y: -20 };
+  const apart = (middle: Point, half: number): Point[] => [{ x: middle.x - half, y: middle.y }, { x: middle.x + half, y: middle.y }];
+
+  it('one finger pans the drawing as far as it moves', () => {
+    expect(touchView(view, [{ x: 100, y: 100 }], [{ x: 130, y: 90 }], LIMITS)).toEqual({ scale: 1, x: 40, y: -30 });
+  });
+
+  it('two fingers that spread zoom in by the ratio of their distance, around the point between them, which stays under them', () => {
+    const middle = { x: 300, y: 200 };
+    const world = { x: 190, y: 130 };
+    const under = screenOf(view, world);
+    const zoomed = touchView(view, apart(under, 40), apart(under, 60), LIMITS);
+    expect(zoomed.scale).toBe(1.5);
+    const after = screenOf(zoomed, world);
+    expect(after.x).toBeCloseTo(under.x, 9);
+    expect(after.y).toBeCloseTo(under.y, 9);
+    expect(touchView(view, apart(middle, 60), apart(middle, 30), LIMITS).scale).toBe(0.5);
+  });
+
+  it('two fingers that move together pan, and moving and spreading at once does both', () => {
+    const start = { x: 300, y: 200 };
+    const panned = touchView(view, apart(start, 40), apart({ x: 280, y: 230 }, 40), LIMITS);
+    expect(panned).toEqual({ scale: 1, x: -10, y: 10 });
+    const both = touchView(view, apart(start, 40), apart({ x: 280, y: 230 }, 60), LIMITS);
+    const world = { x: (start.x - view.x) / view.scale, y: (start.y - view.y) / view.scale };
+    expect(both.scale).toBe(1.5);
+    expect(screenOf(both, world).x).toBeCloseTo(280, 9);
+    expect(screenOf(both, world).y).toBeCloseTo(230, 9);
+  });
+
+  it('stops at the limits and ignores a third finger', () => {
+    const middle = { x: 300, y: 200 };
+    expect(touchView(view, apart(middle, 10), apart(middle, 400), LIMITS).scale).toBe(2);
+    expect(touchView(view, apart(middle, 400), apart(middle, 1), LIMITS).scale).toBe(0.5);
+    const third = { x: 0, y: 0 };
+    expect(touchView(view, [...apart(middle, 40), third], [...apart(middle, 60), { x: 500, y: 500 }], LIMITS)).toEqual(touchView(view, apart(middle, 40), apart(middle, 60), LIMITS));
   });
 });

@@ -63,6 +63,21 @@ export function zoomAt(
   };
 }
 
+function middleOf([first, second]: readonly Point[]): Point {
+  return second ? { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 } : first;
+}
+
+function spanOf([first, second]: readonly Point[]): number {
+  return second ? Math.hypot(second.x - first.x, second.y - first.y) : 0;
+}
+
+export function touchView(view: View, before: readonly Point[], after: readonly Point[], limits: ZoomLimits): View {
+  const [from, to] = [middleOf(before), middleOf(after)];
+  const wasApart = spanOf(before);
+  const zoomed = wasApart > 0 ? zoomAt(view, from, (view.scale * spanOf(after)) / wasApart, limits) : view;
+  return { ...zoomed, x: zoomed.x + to.x - from.x, y: zoomed.y + to.y - from.y };
+}
+
 function clampAxis(
   offset: number,
   start: number,

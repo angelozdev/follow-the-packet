@@ -1,8 +1,8 @@
 import { useEventListener } from '@mantine/hooks';
 import Panzoom from '@panzoom/panzoom';
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type FocusEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
 import type { TriggerProps } from '@/scene/overlay/inspect-trigger';
-import { ZOOM_LIMITS, bringIntoView, clampView, fitView, panOfView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
+import { ZOOM_LIMITS, bringIntoView, clampView, fitView, panOfView, touchView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
 
 const INSTANT = { animate: false, force: true } as const;
 const NOT_PASSIVE = { passive: false };
@@ -11,12 +11,15 @@ const UNLIMITED: ZoomLimits = { min: 0.01, max: 100 };
 const SAME_PIXEL = 0.01;
 const PRIMARY_BUTTON = 0;
 const WHEEL_BY_LINES = 1;
+const TOUCH = 'touch';
 export const DRAG_THRESHOLD_PX = 5;
 const WHEEL_ZOOM_PER_PX = 0.002;
 const PINCH_WHEEL_FACTOR = 10;
 const LINE_PX = 16;
 const WHEEL_QUIET_MS = 250;
 const BUTTON_ZOOM_STEP = 1.25;
+const KEY_PAN_PX = 64;
+const TOUCH_ACTION_OURS = 'none';
 const CHOSEN = '[data-pinned]';
 
 export interface CameraControls {
@@ -94,6 +97,10 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     const view = viewOfPan({ scale: camera.getScale(), ...camera.getPan() }, sheetCenter());
     return { ...view, x: view.x - stage.scrollLeft, y: view.y - stage.scrollTop };
   };
+  const panBy = (dx: number, dy: number) => {
+    const view = current();
+    apply({ ...view, x: view.x - dx, y: view.y - dy });
+  };
   const zoomBy = (factor: number) => apply(zoomAt(current(), gapCenter(), current().scale * factor, latest.current.limits));
   const absorbTheScroll = () => {
     if (stage.scrollLeft !== 0 || stage.scrollTop !== 0) apply(current());
@@ -105,15 +112,32 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     return { x: (own.left - origin.left) / zoom, y: (own.top - origin.top) / zoom, width: own.width / zoom, height: own.height / zoom };
   };
 
+  const inGap = (event: { clientX: number; clientY: number }): Point => {
+    const { left, top } = stage.getBoundingClientRect();
+    return { x: event.clientX - left - sheet.offsetLeft, y: event.clientY - top - sheet.offsetTop };
+  };
+
   let pressed = false;
   let origin: Point | null = null;
   let lastWheelAt = -Infinity;
+  const fingers = new Map<number, Point>();
+  const oneFingerIsOurs = () => getComputedStyle(stage).touchAction === TOUCH_ACTION_OURS;
+  const move = (event: globalThis.PointerEvent) => {
+    if (!fingers.has(event.pointerId)) {
+      camera.handleMove(event);
+      return;
+    }
+    const before = [...fingers.values()];
+    fingers.set(event.pointerId, inGap(event));
+    if (before.length > 1 || oneFingerIsOurs()) apply(touchView(current(), before, [...fingers.values()], latest.current.limits));
+  };
   const release = (event: globalThis.PointerEvent) => {
     pressed = false;
+    fingers.delete(event.pointerId);
     camera.handleUp(event);
   };
   stage.addEventListener('scroll', absorbTheScroll);
-  document.addEventListener('pointermove', camera.handleMove, PASSIVE);
+  document.addEventListener('pointermove', move, PASSIVE);
   document.addEventListener('pointerup', release, PASSIVE);
   document.addEventListener('pointercancel', release, PASSIVE);
 
@@ -121,6 +145,7 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     fit: () => apply(fitted()),
     zoomIn: () => zoomBy(BUTTON_ZOOM_STEP),
     zoomOut: () => zoomBy(1 / BUTTON_ZOOM_STEP),
+    panBy,
     zoomTo: (scale: number) => apply(zoomAt(current(), gapCenter(), scale, UNLIMITED)),
     reveal: (element: Element) => {
       const view = current();
@@ -131,7 +156,8 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
       if (event.button !== PRIMARY_BUTTON) return;
       pressed = true;
       origin = { x: event.clientX, y: event.clientY };
-      camera.handleDown(event);
+      if (event.pointerType === TOUCH) fingers.set(event.pointerId, inGap(event));
+      else camera.handleDown(event);
     },
     wasDragged: (event: globalThis.MouseEvent) => {
       const far = origin !== null && event.detail > 0 && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > DRAG_THRESHOLD_PX;
@@ -142,14 +168,13 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
       lastWheelAt = event.timeStamp;
       const pixels = event.deltaMode === WHEEL_BY_LINES ? event.deltaY * LINE_PX : event.deltaY;
       const perPixel = WHEEL_ZOOM_PER_PX * (event.ctrlKey ? PINCH_WHEEL_FACTOR : 1);
-      const { left, top } = stage.getBoundingClientRect();
       const view = current();
-      apply(zoomAt(view, { x: event.clientX - left - sheet.offsetLeft, y: event.clientY - top - sheet.offsetTop }, view.scale * Math.exp(-pixels * perPixel), latest.current.limits));
+      apply(zoomAt(view, inGap(event), view.scale * Math.exp(-pixels * perPixel), latest.current.limits));
     },
     isMoving: (event: { timeStamp: number }) => pressed || event.timeStamp - lastWheelAt < WHEEL_QUIET_MS,
     destroy: () => {
       stage.removeEventListener('scroll', absorbTheScroll);
-      document.removeEventListener('pointermove', camera.handleMove);
+      document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', release);
       document.removeEventListener('pointercancel', release);
       camera.destroy();
@@ -158,6 +183,15 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
 }
 
 type Controller = ReturnType<typeof createController>;
+
+const CAMERA_KEYS = new Map<string, (controller: Controller) => void>([
+  ['ArrowLeft', (controller) => controller.panBy(-KEY_PAN_PX, 0)],
+  ['ArrowRight', (controller) => controller.panBy(KEY_PAN_PX, 0)],
+  ['ArrowUp', (controller) => controller.panBy(0, -KEY_PAN_PX)],
+  ['ArrowDown', (controller) => controller.panBy(0, KEY_PAN_PX)],
+  ['+', (controller) => controller.zoomIn()],
+  ['-', (controller) => controller.zoomOut()],
+]);
 
 export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, controls, onMove }: CameraOptions) {
   const sheet = useRef<HTMLDivElement>(null);
@@ -222,6 +256,12 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, co
     zoomIn: useCallback(() => controller.current?.zoomIn(), []),
     zoomOut: useCallback(() => controller.current?.zoomOut(), []),
     onPointerDown: (event: PointerEvent<HTMLElement>) => controller.current?.press(event.nativeEvent),
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      const act = CAMERA_KEYS.get(event.key);
+      if (!act || !controller.current || event.ctrlKey || event.metaKey || event.altKey) return;
+      event.preventDefault();
+      act(controller.current);
+    },
     onClickCapture: (event: MouseEvent<HTMLElement>) => {
       if (!controller.current?.wasDragged(event.nativeEvent)) return;
       event.stopPropagation();
