@@ -108,6 +108,7 @@ export const INTERFACE_TEXT = {
     origin: nameTag('tu-laptop'),
     addresses: ['192.168.1.20', '192.168.1.11'],
     text: `El {{security-group}} de ${nameTag('servidor2')} no deja entrar el {{ping}}.`,
+    windowName: 'Registro',
     option: 'Una respuesta posible',
     chosen: 'La respuesta elegida',
     closed: 'Una respuesta que ya no se puede elegir',

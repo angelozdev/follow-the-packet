@@ -1,5 +1,5 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, MESSAGE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, SYSTEMS_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, WEB_BOX_TEXT, WINDOW_TEXT, digOutput, type TermId } from '@/copy';
+import { EXPLANATION_TEXT, INSPECTION_TEXT, INTERFACE_TEXT, LUCIA_TEXT, MESSAGE_TEXT, RESULT_TEXT, ROADMAP_TEXT, SCREEN_TEXT, TASK_CARD_TEXT, TERMINAL_TEXT, WEB_BOX_TEXT, WINDOW_TEXT, digOutput, type TermId } from '@/copy';
 import { Button, Card, ChipTray, Choice, Dialog, Message, Table, Tabs, type MessageVariant } from '@/design';
 import { toolOutputOf, type Inspection } from '@/game';
 import { EntityIcon } from '@/scene';
@@ -243,7 +243,7 @@ export function InterfaceSection() {
           </Card>
         </Specimen>
         <Specimen caption={VARIANT.window} wide>
-          <Dialog name={SYSTEMS_TEXT.registry} closeText={WINDOW_TEXT.close} closeLabel={WINDOW_TEXT.closeLabel} open modal={false} onOpenChange={noPick}>
+          <Dialog name={SAMPLE.windowName} closeText={WINDOW_TEXT.close} closeLabel={WINDOW_TEXT.closeLabel} open modal={false} onOpenChange={noPick}>
             <p>
               <TaggedText text={SAMPLE.text} newTerms={NEW_TERMS} />
             </p>
