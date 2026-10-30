@@ -20,11 +20,16 @@ import { fanStamps, stampsByPlace, type Fan, type StampsByPlace } from '@/scene/
 import { stillPackets, translationAt, wayOf, type StillPacket } from '@/scene/marks/still-packets';
 import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from '@/scene/traffic/flight/flight-plan';
 
-const WIDTHS = [360, 390, 657, 768, 778, 900, 1060, 1280, 1440];
+const WIDTHS = [360, 390, 484, 657, 768, 778, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SENDS_BY_NAME = ['02-10', '02-11', '02-12', '02-13', '02-14'];
 const SAME_POINT = 1e-6;
-const OVERHANGING_SHAPE = { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping', overhang: 4 };
+const OVERHANGING_SHAPES = [
+  { incident: '01-14', width: 360, shape: 'going of sent-you-ip-server-ping' },
+  { incident: '02-14', width: 484, shape: 'going of sent-you-ip-server-ping' },
+  { incident: '02-14', width: 484, shape: 'going of sent-you-ip-server-traceroute' },
+];
+const OVERHANG_PX = 4;
 const STAMP_FACE = 32;
 const STAMP_TILT = (8 * Math.PI) / 180;
 const TILT_OVERHANG = (STAMP_FACE * (Math.cos(STAMP_TILT) + Math.sin(STAMP_TILT)) - STAMP) / 2;
@@ -240,12 +245,12 @@ describe('the sweep of the registered incidents', () => {
     const tolerated: { state: string; overhang: number }[] = [];
     for (const analysis of analyses) {
       const strays = straysOf(analysis);
-      const isTheKnownShape = (name: string) => analysis.state.incident === OVERHANGING_SHAPE.incident && analysis.width === OVERHANGING_SHAPE.width && name === OVERHANGING_SHAPE.shape;
-      tolerated.push(...strays.filter(isTheKnownShape).map(() => ({ state: analysis.state.name, overhang: overhangOf(analysis, OVERHANGING_SHAPE.shape) })));
+      const isTheKnownShape = (name: string) => OVERHANGING_SHAPES.some(({ incident, width, shape }) => analysis.state.incident === incident && analysis.width === width && name === shape);
+      tolerated.push(...strays.filter(isTheKnownShape).map((name) => ({ state: analysis.state.name, overhang: overhangOf(analysis, name) })));
       expect(strays.filter((name) => !isTheKnownShape(name)), where(analysis)).toEqual([]);
     }
-    const states = ['case 4, only you to ip-server with ping', 'case 4, every combination'];
-    expect(tolerated).toEqual(states.map((state) => ({ state, overhang: expect.closeTo(OVERHANGING_SHAPE.overhang, 6) })));
+    const states = ['case 4, only you to ip-server with ping', 'case 4, every combination', 'case 5, repaired, every combination', 'case 5, repaired, every combination'];
+    expect(tolerated).toEqual(states.map((state) => ({ state, overhang: expect.closeTo(OVERHANG_PX, 6) })));
   });
 
   it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at seven widths', () => {
