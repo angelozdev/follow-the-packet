@@ -50,7 +50,7 @@ export function InspectionFields({ fields }: { fields: Inspection['fields'] }) {
   );
 }
 
-/** The box that tells what a piece or a stamp is and how it is. A preview on the map has only its stripe and its fields; held in the panel (`pinned`), its stripe offers «Cerrar», and its heading, which `heading` gives to the caller, can take the focus, from which the arrow keys scroll its body. */
+/** The box that tells what a piece or a stamp is and how it is. A preview on the map has only its stripe and its fields; held in the panel (`pinned`), its stripe offers the X of the panel, and its heading, which `heading` gives to the caller, can take the focus, from which the arrow keys scroll its body. */
 export function InspectionBox({ inspection, pinned, heading, onClose }: InspectionBoxProps) {
   const titleId = useId();
   return (
