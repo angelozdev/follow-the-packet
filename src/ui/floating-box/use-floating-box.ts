@@ -5,6 +5,7 @@ export const GRACE_MS = 400;
 const TOUCH = 'touch';
 const OUTSIDE_EVENTS = ['pointerdown'];
 const TAKEN_EVENT = 'floating-box-taken';
+const HELD_BY_THE_USER = ':hover, :focus';
 
 interface BoxState<K extends string> {
   key: K | null;
@@ -27,7 +28,7 @@ interface FloatingBoxOptions<K extends string> {
 
 const IDLE: BoxState<never> = { key: null, pinned: false, trigger: null };
 
-/** Takes the scope of the box (the boxes of one scope hand a preview to each other at once) and the options, and returns what a box that many triggers open needs. `trigger(key)` gives the props of one trigger: hovering it (not with a touch) or focusing it previews the box of its key; when the pointer or the focus leaves, the preview waits for `GRACE_MS` and stays while the pointer is over the box, and the pointer can go from the box straight back onto the trigger without closing it; another trigger takes it at once; a click, a tap, Enter or Space pins it (`data-pinned`), and a pinned box ignores hover and focus on other triggers. `box` gives the props of the element that holds the box. `shown` is the key on display or null, `pinned` whether it is pinned, and `release()` closes it and, when the focus was inside the box, gives it back to the trigger that opened it without reopening the box. Escape and a pointerdown outside the box and the trigger release it too. The optional `onPin(key, fromKeyboard)` runs once, when a click newly pins a key (`fromKeyboard` is true for Enter and Space), before the box shows it. */
+/** Takes the scope of the box (the boxes of one scope hand a preview to each other at once) and the options, and returns what a box that many triggers open needs. `trigger(key)` gives the props of one trigger: hovering it (not with a touch) or focusing it previews the box of its key; when the pointer or the focus leaves, the preview waits for `GRACE_MS` and stays while the pointer is over the box, and the pointer can go from the box straight back onto the trigger without closing it; another trigger takes it at once; a click, a tap, Enter or Space pins it (`data-pinned`), and a pinned box ignores hover and focus on other triggers. `box` gives the props of the element that holds the box. `shown` is the key on display or null, `pinned` whether it is pinned, and `release()` closes it and, when the focus was inside the box, gives it back to the trigger that opened it without reopening the box; a pinned box, or a preview whose trigger still has the focus or the pointer, does not reopen for that trigger until it blurs or the pointer leaves it, while a preview that only waited out its grace after the focus left does not stop its trigger from previewing again. Escape and a pointerdown outside the box and the trigger release it too. The optional `onPin(key, fromKeyboard)` runs once, when a click newly pins a key (`fromKeyboard` is true for Enter and Space), before the box shows it. */
 export function useFloatingBox<K extends string>(scope: string, { onPin }: FloatingBoxOptions<K> = {}) {
   const [state, setState] = useState<BoxState<K>>(IDLE);
   const [boxElement, setBoxElement] = useState<HTMLElement | null>(null);
@@ -62,11 +63,12 @@ export function useFloatingBox<K extends string>(scope: string, { onPin }: Float
     commit({ key, pinned: true, trigger: event.currentTarget });
   };
   const release = useCallback(() => {
-    const { key, trigger } = latest.current;
+    const { key, trigger, pinned } = latest.current;
     stopGrace();
     if (key !== null) {
-      dismissed.current = key;
-      if (trigger?.isConnected && boxElement?.contains(document.activeElement)) trigger.focus();
+      const focusInTheBox = boxElement?.contains(document.activeElement) ?? false;
+      if (pinned || focusInTheBox || trigger?.matches(HELD_BY_THE_USER)) dismissed.current = key;
+      if (trigger?.isConnected && focusInTheBox) trigger.focus();
     }
     commit(IDLE);
   }, [boxElement, commit, stopGrace]);

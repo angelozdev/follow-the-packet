@@ -33,6 +33,29 @@ function Harness({ scope = 'test' }: { scope?: string }) {
   );
 }
 
+function HarnessWhoseSecondMovesTheCamera() {
+  const box = useFloatingBox<string>('moving');
+  const second = box.trigger('second');
+  return (
+    <div>
+      <button type="button" {...box.trigger('first')}>
+        First
+      </button>
+      <button
+        type="button"
+        {...second}
+        onFocus={(event) => {
+          box.release();
+          second.onFocus(event);
+        }}
+      >
+        Second
+      </button>
+      {box.shown !== null && <section aria-label={`Box of ${box.shown}`} {...box.box} />}
+    </div>
+  );
+}
+
 function wait(ms: number) {
   act(() => {
     vi.advanceTimersByTime(ms);
@@ -191,6 +214,19 @@ describe('useFloatingBox', () => {
     expect(screen.queryByRole('region')).toBeNull();
     await user.tab();
     await user.tab({ shift: true });
+    expect(screen.getByRole('region', { name: BOX_OF_FIRST })).toBeInTheDocument();
+  });
+
+  it('a release made by the Tab that leaves a preview does not keep the trigger it left from previewing when the focus comes back', async () => {
+    const user = fakeTimeUser();
+    render(<HarnessWhoseSecondMovesTheCamera />);
+    await user.tab();
+    expect(screen.getByRole('region', { name: BOX_OF_FIRST })).toBeInTheDocument();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Second' })).toHaveFocus();
+    expect(screen.getByRole('region', { name: BOX_OF_SECOND })).toBeInTheDocument();
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'First' })).toHaveFocus();
     expect(screen.getByRole('region', { name: BOX_OF_FIRST })).toBeInTheDocument();
   });
 
