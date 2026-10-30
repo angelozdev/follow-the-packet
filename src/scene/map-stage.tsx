@@ -33,11 +33,12 @@ export interface MapStageProps {
   sent: readonly SentRun[];
   inspectStampsTrigger: InspectStampsTrigger;
   gap?: Size;
+  startPieceId?: string | null;
   controls?: Ref<CameraControls>;
   onCameraMove?: () => void;
 }
 
-function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, layout, frame }: Omit<MapStageProps, 'world' | 'gap' | 'controls' | 'onCameraMove'> & { layout: MapLayout; frame: Frame }) {
+function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, layout, frame }: Omit<MapStageProps, 'world' | 'gap' | 'startPieceId' | 'controls' | 'onCameraMove'> & { layout: MapLayout; frame: Frame }) {
   const { size } = layout;
   const runs = [...flows, ...sent];
   const inTheAir = useSendsInTheAir(sent, layout, still);
@@ -66,12 +67,14 @@ function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, 
   );
 }
 
-export function MapStage({ gap, controls, onCameraMove, ...props }: MapStageProps) {
+export function MapStage({ gap, startPieceId, controls, onCameraMove, ...props }: MapStageProps) {
   const stage = useElementSize();
   const room = gap ?? stage;
   const layout = Number.isFinite(room.width) && room.width > 0 ? layoutMap(props.world, props.pieces, { width: room.width, blockTab: props.blockName !== null }) : null;
   const frame = layout && frameOf(room.width, layout.size);
-  const camera = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, controls, onMove: onCameraMove });
+  const icon = layout && startPieceId ? layout.icons[startPieceId] : undefined;
+  const start = icon && frame ? { x: frame.x + icon.x + icon.width / 2, y: frame.y + icon.y + icon.height / 2 } : undefined;
+  const camera = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, start, controls, onMove: onCameraMove });
   const stageRef = useMergedRef(stage.ref, camera.stageRef);
   return (
     <>

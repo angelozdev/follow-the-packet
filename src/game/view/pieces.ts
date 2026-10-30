@@ -1,10 +1,12 @@
-import { MAP_TEXT, entityTerm, nameTag, type EntityRef, type Role, type TermId, type TermText } from '@/copy';
+import { MAP_TEXT, entityTerm, nameTag, parseTermText, type EntityRef, type Role, type TermId, type TermText } from '@/copy';
 import { facesALan, isClientActor, type Network } from '@/engine';
 import { blockingDeviceIds, intrudedDeviceIds } from '@/game/flow-runs';
-import { canConfigure, type Session } from '@/game/session';
+import { isGuided } from '@/levels';
+import { canConfigure, currentCase, type Session } from '@/game/session';
 import { PIECE_ID } from './piece-id';
 import { insideBlockPieces } from './cards/identify/classify-card';
 import { pieceCard } from './cards/piece-card';
+import { originPieces } from './cards/terminal/terminal-card';
 import { markOf, rolesOf } from './roles/roles';
 import { ROUTER_ENTITY, drawsActor, drawsRouter, isDrawn, isShown, shownIds, waitsForTraceroute } from './drawn';
 
@@ -122,4 +124,17 @@ export function pieceViews(session: Session): PieceView[] {
       }),
     ...outside(session),
   ];
+}
+
+function namesIn(text: TermText): string[] {
+  return parseTermText(text).flatMap((segment) => (segment.kind === 'name' ? [segment.text] : []));
+}
+
+export function startPieceId(session: Session, pieces: readonly PieceView[]): string | null {
+  const drawn = new Set(pieces.map(({ id }) => id));
+  const origin = Object.values(originPieces(session)).find((id) => drawn.has(id));
+  if (origin !== undefined) return origin;
+  const tasks = isGuided(session.incident) ? session.incident.tasks : (currentCase(session)?.fix?.tasks ?? []);
+  const named = tasks.flatMap((task) => namesIn(task.text)).map((name) => pieces.find((candidate) => namesIn(candidate.label).includes(name))?.id);
+  return named.find((id) => id !== undefined) ?? null;
 }

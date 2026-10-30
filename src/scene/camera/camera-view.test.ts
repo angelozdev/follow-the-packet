@@ -30,6 +30,32 @@ describe('fitView', () => {
   });
 });
 
+describe('the initial view', () => {
+  const huge: Box = { x: 0, y: 0, width: 2000, height: 900 };
+  const piece = { x: 1500, y: 100 };
+
+  it('the initial view centers the piece it is given when the drawing does not fit at the minimum zoom', () => {
+    const view = fitView(GAP, huge, LIMITS, piece);
+    expect(view.scale).toBe(0.5);
+    expect(screenOf(view, piece)).toEqual({ x: GAP.width / 2, y: GAP.height / 2 });
+  });
+
+  it('keeps the fit of an axis on which the drawing fits and centers the piece on the other', () => {
+    const wide: Box = { x: 0, y: 0, width: 2000, height: 300 };
+    const view = fitView(GAP, wide, LIMITS, { x: 1500, y: 40 });
+    expect(view.scale).toBe(0.5);
+    expect(screenOf(view, { x: 1500, y: 40 }).x).toBe(GAP.width / 2);
+    expect(view.y).toBeCloseTo(0, 9);
+  });
+
+  it('is the plain fit when the drawing fits or when there is no piece', () => {
+    expect(fitView(GAP, NARROW_DRAWING, LIMITS, { x: 150, y: 20 })).toEqual(fitView(GAP, NARROW_DRAWING, LIMITS));
+    const shrunk = fitView(GAP, { x: 0, y: 0, width: 1000, height: 700 }, LIMITS, { x: 900, y: 600 });
+    expect(shrunk).toEqual(fitView(GAP, { x: 0, y: 0, width: 1000, height: 700 }, LIMITS));
+    expect(screenOf(fitView(GAP, huge, LIMITS), { x: 0, y: 0 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
 describe('a gap with no height yet', () => {
   it('does not shrink the drawing', () => {
     expect(fitView({ width: 600, height: 0 }, { x: 0, y: 0, width: 400, height: 900 }, LIMITS).scale).toBe(1);

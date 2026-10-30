@@ -12,7 +12,7 @@ import { PIECE_ID } from './piece-id';
 import { applyAction } from '@/engine';
 import { drawsRouter } from './drawn';
 import { inspect } from './inspection';
-import { pieceViews } from './pieces';
+import { pieceViews, startPieceId } from './pieces';
 
 const first = startSession(INCIDENTS, '04-01');
 const office: Session = { ...first, world: withDevice(officeNet(), 'lucia-laptop', { firewallIds: ['fw-lucia'] }) };
@@ -350,5 +350,33 @@ describe('pieceViews of the servers of names and the clients of the internet', (
     const drawn = { ...namesOnly(everything), world: applyAction(names.world, { type: 'addActor', actor: home }) };
     expect(pieceViews(drawn).find((piece) => piece.anchorId === home.id)).toMatchObject({ kind: 'actor', variant: 'home', id: PIECE_ID.actor(home.id), term: null, label: nameTag(home.name) });
     expect(pieceViews(drawn).filter((piece) => piece.kind === 'device' && piece.variant === 'internet-server').map((piece) => piece.anchorId)).not.toContain(home.id);
+  });
+});
+
+describe('startPieceId', () => {
+  const start = (incident: Parameters<typeof startSession>[0][number], caseIndex = 0) => {
+    const session = { ...startSession([incident], incident.id), caseIndex };
+    return startPieceId(session, pieceViews(session));
+  };
+
+  it('a send incident starts on the first origin of send.from', () => {
+    expect(start(sendIncident())).toBe(PIECE_ID.device('your-laptop'));
+  });
+
+  it('a diagnose starts on the origin of the case it is on', () => {
+    expect([0, 2].map((caseIndex) => start(diagnoseIncident(), caseIndex))).toEqual([PIECE_ID.device('your-laptop'), PIECE_ID.device('andres-laptop')]);
+  });
+
+  it('with no send it starts on the first piece a task of Lucía names, in the order the tasks read', () => {
+    const sending = sendIncident();
+    const [first, second] = pieceViews(startSession([sending], sending.id)).filter((piece) => piece.kind === 'device');
+    const [task] = sending.tasks;
+    const naming = { ...sending, send: { ...sending.send, from: [] }, tasks: [{ ...task, text: 'Nada.' }, { ...task, id: 'names', text: `Mira ${second.label} y ${first.label}.` }] };
+    expect(start(naming)).toBe(second.id);
+  });
+
+  it('is none when no origin is drawn and no task names a piece the map draws', () => {
+    const sending = sendIncident();
+    expect(start({ ...sending, send: { ...sending.send, from: [] }, tasks: [{ ...sending.tasks[0], text: 'Mira [[nadie-aqui]].' }] })).toBeNull();
   });
 });

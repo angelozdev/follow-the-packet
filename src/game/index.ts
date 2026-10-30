@@ -25,7 +25,7 @@ export { printedText, registryLines, registryRows } from './view/registry/lines'
 export type { ChangeLine, PacketLine, RegistryLine, RegistryRow, RejectionLine, RouteRow } from './view/registry/lines';
 export { PANEL_TABS, TAB_OF_PART, panelOf } from './view/panel/panel';
 export type { Panel, PanelPart, PanelTab, PanelTabId, RulesPart } from './view/panel/panel';
-export { pieceViews } from './view/pieces';
+export { pieceViews, startPieceId } from './view/pieces';
 export { commandGroups } from './view/cards/terminal/command-groups';
 export { isShellCommand, originPieces, terminalCard, terminalLine } from './view/cards/terminal/terminal-card';
 export type { SendPicks, SendTrayName, TerminalCard } from './view/cards/terminal/terminal-card';

@@ -1,7 +1,7 @@
 import { useElementSize } from '@mantine/hooks';
 import { useMemo, useReducer, useRef, type MouseEvent } from 'react';
 import { EXPLANATION_TEXT } from '@/copy';
-import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
+import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startPieceId, startSession, starsOf, type RouteRow } from '@/game';
 import { isGuided, type Incident } from '@/levels';
 import { GameScene, type CameraControls } from '@/scene';
 import type { Progress } from '@/storage';
@@ -113,6 +113,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
           inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={() => undefined}
           gap={{ width: gap.width, height: gap.height }}
+          startPieceId={startPieceId(session, pieces)}
           controls={camera}
           onCameraMove={close}
         />

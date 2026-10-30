@@ -26,15 +26,20 @@ export const MAX_ZOOM = 2;
 export const ZOOM_LIMITS: ZoomLimits = { min: MIN_ZOOM, max: MAX_ZOOM };
 export const KEEP_IN_VIEW_PX = 96;
 
-export function fitView(gap: Size, drawing: Box, limits: ZoomLimits): View {
+const SAME_PIXEL = 0.01;
+
+export function fitView(gap: Size, drawing: Box, limits: ZoomLimits, start?: Point): View {
   const heightScale = gap.height > 0 ? gap.height / drawing.height : 1;
-  const scale = Math.max(
-    limits.min,
-    Math.min(1, gap.width / drawing.width, heightScale),
-  );
-  const width = scale * drawing.width;
-  const x = width <= gap.width ? Math.floor((gap.width - width) / 2) : 0;
-  return { scale, x: x - scale * drawing.x, y: -scale * drawing.y };
+  const scale = Math.max(limits.min, Math.min(1, gap.width / drawing.width, heightScale));
+  const [width, height] = [scale * drawing.width, scale * drawing.height];
+  const tooWide = width - gap.width > SAME_PIXEL;
+  const tooTall = gap.height > 0 && height - gap.height > SAME_PIXEL;
+  const sideways = width <= gap.width ? Math.floor((gap.width - width) / 2) : 0;
+  return {
+    scale,
+    x: tooWide && start ? gap.width / 2 - scale * start.x : sideways - scale * drawing.x,
+    y: tooTall && start ? gap.height / 2 - scale * start.y : -scale * drawing.y,
+  };
 }
 
 export function zoomAt(

@@ -3,18 +3,39 @@ import { page, userEvent } from 'vitest/browser';
 import { CAMERA_TEXT, REGISTRY_TEXT, SYSTEMS_TEXT, toPlainText } from '@/copy';
 import { INCIDENTS } from '@/levels';
 import { KEEP_IN_VIEW_PX } from '@/scene/camera/camera-view';
+import { drawingOf } from '@/testing/map-boxes';
 import { OFFICE_IP, clickAt, dragFromTo, openTerminal, pieceLabel, sendTo, showTheScreen, standStill, type Point } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
 const WINDOW = { width: 1280, height: 720 };
+const LOW_WINDOW = { width: 1280, height: 600 };
+const YOUR_LAPTOP = 'tu-laptop';
+const NOT_FITTING_AT_THE_MINIMUM: Record<string, string | null> = {
+  '01-08': YOUR_LAPTOP,
+  '02-04': YOUR_LAPTOP,
+  '02-06': YOUR_LAPTOP,
+  '02-07': YOUR_LAPTOP,
+  '02-08': YOUR_LAPTOP,
+  '02-10': YOUR_LAPTOP,
+  '02-11': YOUR_LAPTOP,
+  '02-12': YOUR_LAPTOP,
+  '02-13': YOUR_LAPTOP,
+  '02-14': YOUR_LAPTOP,
+  '03-04': YOUR_LAPTOP,
+  '03-07': YOUR_LAPTOP,
+  '04-01': null,
+  '04-02': null,
+};
+const PIECE_LABELS = 'button.map-button';
+const REGISTRY_ROW_BUTTON = '.incident__registry li > button:first-of-type';
+const CHOSEN = '.map-stage [data-pinned]';
 const GAP = '.incident__map';
 const DRAWING = '.map-stage__svg';
 const SHEET = '.map-stage__sheet';
 const STAGE_BUTTONS = '.map-stage button';
 const ROUTING_INCIDENT = '02-06';
 const WEB_INCIDENT = '03-03';
-const YOUR_LAPTOP = 'tu-laptop';
 const ROUTER = 'router-oficina';
 const PRINTER_PING = /^ping de tu-laptop a impresora/;
 const ANDRES_PING = /^ping de tu-laptop a laptop-andres/;
@@ -69,6 +90,14 @@ async function expectBroughtIn(element: Element, zoom: number, where: string): P
   await expect.poll(() => isInTheGap(element), { message: `${where}: the piece is brought into the free gap` }).toBe(true);
   await standStill();
   expect(zoomOf(), `${where}: and the zoom is the one it had`).toBeCloseTo(zoom, 5);
+}
+
+async function openRegistry(): Promise<HTMLElement[]> {
+  const opener = page.getByRole('button', { name: new RegExp(`^${SYSTEMS_TEXT.registry}`) });
+  if (opener.query() === null) return [];
+  await userEvent.click(opener);
+  await expect.element(page.getByRole('dialog')).toBeVisible();
+  return [...document.querySelectorAll<HTMLElement>(REGISTRY_ROW_BUTTON)];
 }
 
 afterEach(async () => {
@@ -145,5 +174,41 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
     for (let element: Element | null = last; element !== null; element = element.parentElement) {
       expect(element.scrollTop + element.scrollLeft, `${element.className || element.tagName} was not scrolled`).toBe(0);
     }
+  });
+
+  it('at 1280×600 each incident that does not fit at the minimum zoom is named and starts centered on the first origin of send.from, or on the first piece a task of Lucía names, or at the top-left corner, and every piece of it is brought into the free gap when chosen from the registry, from Ver fila or with the keyboard', { timeout: 300_000 }, async () => {
+    await page.viewport(LOW_WINDOW.width, LOW_WINDOW.height);
+    const problems: string[] = [];
+    for (const { id } of INCIDENTS) {
+      const view = await theScreen(id);
+      const [gap, drawing] = [rectOf(GAP), rectOf(DRAWING)];
+      const fits = drawing.left >= gap.left - EPSILON && drawing.right <= gap.right + EPSILON && drawing.top >= gap.top - EPSILON && drawing.bottom <= gap.bottom + EPSILON;
+      const named = id in NOT_FITTING_AT_THE_MINIMUM;
+      if (fits === named) problems.push(`${id}: ${fits ? 'it fits and is named as one that does not' : 'it does not fit and is not named'}`);
+      if (!fits) {
+        const starts = NOT_FITTING_AT_THE_MINIMUM[id];
+        const piece = starts === null || starts === undefined ? null : drawingOf(pieceLabel(starts).element());
+        const [centerX, centerY] = [gap.left + gap.width / 2, gap.top + gap.height / 2];
+        if (piece === null && Math.abs(drawing.top - gap.top) > EPSILON) problems.push(`${id}: it starts at ${drawing.top}, not at the top of the gap`);
+        if (piece !== null && drawing.height > gap.height + EPSILON && Math.abs(piece.y + piece.height / 2 - centerY) > EPSILON) problems.push(`${id}: it is not centered on ${starts} in height`);
+        if (piece !== null && drawing.width > gap.width + EPSILON && Math.abs(piece.x + piece.width / 2 - centerX) > EPSILON) problems.push(`${id}: it is not centered on ${starts} in width`);
+        for (const label of document.querySelectorAll<HTMLElement>(PIECE_LABELS)) {
+          label.focus();
+          await standStill();
+          if (!isInTheGap(label)) problems.push(`${id}: Tab to ${label.textContent?.trim()} leaves it out of the gap`);
+        }
+        const rows = (await openRegistry()).length;
+        if (rows > 0) await userEvent.keyboard('{Escape}');
+        for (let row = 0; row < rows; row++) {
+          const buttons = await openRegistry();
+          await userEvent.click(page.elementLocator(buttons[row]));
+          await standStill();
+          const chosen = document.querySelector(CHOSEN);
+          if (chosen !== null && !isInTheGap(chosen)) problems.push(`${id}: row ${row} of the registry leaves ${chosen.getAttribute('aria-label') ?? chosen.textContent} out of the gap`);
+        }
+      }
+      view.unmount();
+    }
+    expect(problems).toEqual([]);
   });
 });

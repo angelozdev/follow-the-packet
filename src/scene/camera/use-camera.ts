@@ -28,6 +28,7 @@ interface Inputs {
   gap: Size | undefined;
   drawing: Box | null;
   limits: ZoomLimits;
+  start: Point | undefined;
   onMove: (() => void) | undefined;
 }
 
@@ -36,6 +37,7 @@ interface CameraOptions {
   gap?: Size;
   drawing: Box | null;
   limits?: ZoomLimits;
+  start?: Point;
   controls?: Ref<CameraControls>;
   onMove?: () => void;
 }
@@ -50,8 +52,8 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
     return drawing ? clampView(view, room(), drawing) : view;
   };
   const fitted = (): View => {
-    const { drawing, limits } = latest.current;
-    return fitView(room(), drawing as Box, limits);
+    const { drawing, limits, start } = latest.current;
+    return fitView(room(), drawing as Box, limits, start);
   };
   let written = '';
   const place = (pan: View) => {
@@ -157,14 +159,14 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
 
 type Controller = ReturnType<typeof createController>;
 
-export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, controls, onMove }: CameraOptions) {
+export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, controls, onMove }: CameraOptions) {
   const sheet = useRef<HTMLDivElement>(null);
   const controller = useRef<Controller | null>(null);
-  const latest = useRef<Inputs>({ gap, drawing, limits, onMove });
+  const latest = useRef<Inputs>({ gap, drawing, limits, start, onMove });
   const ready = drawing !== null;
 
   useLayoutEffect(() => {
-    latest.current = { gap, drawing, limits, onMove };
+    latest.current = { gap, drawing, limits, start, onMove };
   });
 
   useEffect(() => {
