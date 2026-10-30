@@ -190,7 +190,7 @@ function expectClear(analysis: Analysis) {
 }
 
 describe('the sweep of the registered incidents', () => {
-  it('visits every registered incident, the start and the solved world of each, and every combination its chips offer, at seven widths', () => {
+  it('visits every registered incident, the start and the solved world of each, and every combination its chips offer, at ten widths', () => {
     const { states, analyses } = sweep();
     expect(new Set(states.map(({ incident }) => incident))).toEqual(new Set(INCIDENTS.map(({ id }) => id)));
     expect(analyses).toHaveLength(states.length * WIDTHS.length);
@@ -238,7 +238,7 @@ describe('the sweep of the registered incidents', () => {
     }
   });
 
-  it('in every state of every registered incident the drawing is no wider than its width and every label, icon, name, group, stamp and packet lies inside it, at seven widths, but for one shape at 360 px', () => {
+  it('in every state of every registered incident the drawing is no wider than its width and every label, icon, name, group, stamp and packet lies inside it, at ten widths, but for three shapes at 360 and 484 px', () => {
     const { analyses } = sweep();
     expect(analyses.filter(({ layout, width }) => layout.size.width === Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
     expect(analyses.filter(({ layout, width }) => layout.size.width < Math.max(width, MIN_WIDTH)).length).toBeGreaterThan(0);
@@ -253,7 +253,7 @@ describe('the sweep of the registered incidents', () => {
     expect(tolerated).toEqual(states.map((state) => ({ state, overhang: expect.closeTo(OVERHANG_PX, 6) })));
   });
 
-  it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at seven widths', () => {
+  it('in every state of every registered incident no label of a packet touches the box a stamp draws once it is tilted, at ten widths', () => {
     let compared = 0;
     for (const analysis of sweep().analyses) {
       const stamps = analysis.fans.flatMap(({ stamps: drawn, more }) => [...drawn.map(({ box }) => box), ...(more ? [more.box] : [])]);
@@ -310,7 +310,7 @@ describe('the sweep of the registered incidents', () => {
     for (const id of SENDS_BY_NAME) expect(examined.get(id), `${id} sends every combination and its places are examined`).toBeGreaterThan(0);
   });
 
-  it('in every state of every registered incident each packet that starts on the map is drawn with its shape halfway, and no label of a packet stands over a shape, at seven widths', () => {
+  it('in every state of every registered incident each packet that starts on the map is drawn with its shape halfway, and no label of a packet stands over a shape, at ten widths', () => {
     const seen = { going: 0, answer: 0, appears: 0, labels: 0 };
     for (const analysis of sweep().analyses) {
       const { runs, packets, layout } = analysis;
@@ -332,7 +332,7 @@ describe('the sweep of the registered incidents', () => {
     expect(seen.labels).toBeGreaterThan(0);
   });
 
-  it('in every state of every registered incident every label of a packet lies inside the drawing, at seven widths', () => {
+  it('in every state of every registered incident every label of a packet lies inside the drawing, at ten widths', () => {
     let inside = 0;
     for (const analysis of sweep().analyses) {
       const { width, height } = analysis.layout.size;
@@ -346,7 +346,7 @@ describe('the sweep of the registered incidents', () => {
     expect(inside).toBeGreaterThan(0);
   });
 
-  it('in every state of every registered incident the flight of every packet has times a browser takes and its label rides inside the drawing, at seven widths', () => {
+  it('in every state of every registered incident the flight of every packet has times a browser takes and its label rides inside the drawing, at ten widths', () => {
     const seen = { flights: 0, labelled: 0, copies: 0 };
     for (const analysis of sweep().analyses) {
       const { layout } = analysis;
@@ -381,7 +381,7 @@ describe('the sweep of the registered incidents', () => {
     expect(seen.copies).toBeGreaterThan(seen.flights);
   });
 
-  it('in every state of every registered incident no two shapes of packets stand on one point, at seven widths', () => {
+  it('in every state of every registered incident no two shapes of packets stand on one point, at ten widths', () => {
     let shapes = 0;
     for (const analysis of sweep().analyses) {
       const points = analysis.packets.flatMap(({ id, glyphs }) => glyphs.map(({ role, point }) => ({ at: `${id} ${role}`, point })));
@@ -441,7 +441,7 @@ describe('the sweep of the registered incidents', () => {
     }
   });
 
-  it('with the room for its tab, the outline of a block has its tab inside its floor and clear of every label, icon, name and mark, and placing a device inside moves nothing else, at seven widths', () => {
+  it('with the room for its tab, the outline of a block has its tab inside its floor and clear of every label, icon, name and mark, and placing a device inside moves nothing else, at ten widths', () => {
     const owners = INCIDENTS.map(({ id }) => startSession(INCIDENTS, id)).filter((session) => classifiedBlock(session) !== null);
     expect(owners.length).toBeGreaterThan(0);
     const placements = (session: Session): Session[] => {
@@ -470,7 +470,7 @@ describe('the sweep of the registered incidents', () => {
     expect(outlines).toBeGreaterThan(owners.length * WIDTHS.length);
   });
 
-  it('in every state of every registered incident no label stands in the mat of a device, whichever device is selected, at seven widths', () => {
+  it('in every state of every registered incident no label stands in the mat of a device, whichever device is selected, at ten widths', () => {
     let mats = 0;
     for (const { layout, state, width } of sweep().analyses) {
       for (const [id, icon] of Object.entries(layout.icons).filter(([key]) => key.startsWith('device:'))) {
@@ -888,7 +888,7 @@ describe('the sweep of the sends by name', () => {
     }
   });
 
-  it('the packet of a lookup that failed stays at the doorstep of tu-laptop and the question that was answered ends at the resolver, in every world and at seven widths', () => {
+  it('the packet of a lookup that failed stays at the doorstep of tu-laptop and the question that was answered ends at the resolver, in every world and at ten widths', () => {
     let stuck = 0;
     let answered = 0;
     for (const analysis of analyses) {
@@ -909,7 +909,7 @@ describe('the sweep of the sends by name', () => {
     expect(answered).toBeGreaterThan(0);
   });
 
-  it('no label, stamp, packet label, name of a box or piece overlaps another, nothing leaves the drawing and no stamp is lost, in every world, at seven widths', () => {
+  it('no label, stamp, packet label, name of a box or piece overlaps another, nothing leaves the drawing and no stamp is lost, in every world, at ten widths', () => {
     expect(analyses).toHaveLength(states.length * WIDTHS.length);
     for (const analysis of analyses) expectClear(analysis);
     expect(analyses.some(({ packets }) => packets.some(({ id }) => id.endsWith('-question')))).toBe(true);
