@@ -28,6 +28,12 @@ export const KEEP_IN_VIEW_PX = 96;
 
 const SAME_PIXEL = 0.01;
 
+function centerOnAxis(point: number, room: number, scale: number, edge: number, extent: number): number {
+  const farthestFromTheEdge = room - scale * (edge + extent);
+  const nearestToTheEdge = -scale * edge;
+  return Math.min(nearestToTheEdge, Math.max(farthestFromTheEdge, room / 2 - scale * point));
+}
+
 export function fitView(gap: Size, drawing: Box, limits: ZoomLimits, start?: Point): View {
   const heightScale = gap.height > 0 ? gap.height / drawing.height : 1;
   const scale = Math.max(limits.min, Math.min(1, gap.width / drawing.width, heightScale));
@@ -37,8 +43,8 @@ export function fitView(gap: Size, drawing: Box, limits: ZoomLimits, start?: Poi
   const sideways = width <= gap.width ? Math.floor((gap.width - width) / 2) : 0;
   return {
     scale,
-    x: tooWide && start ? gap.width / 2 - scale * start.x : sideways - scale * drawing.x,
-    y: tooTall && start ? gap.height / 2 - scale * start.y : -scale * drawing.y,
+    x: tooWide && start ? centerOnAxis(start.x, gap.width, scale, drawing.x, drawing.width) : sideways - scale * drawing.x,
+    y: tooTall && start ? centerOnAxis(start.y, gap.height, scale, drawing.y, drawing.height) : -scale * drawing.y,
   };
 }
 

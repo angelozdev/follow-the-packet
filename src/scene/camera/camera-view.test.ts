@@ -32,20 +32,44 @@ describe('fitView', () => {
 
 describe('the initial view', () => {
   const huge: Box = { x: 0, y: 0, width: 2000, height: 900 };
-  const piece = { x: 1500, y: 100 };
+  const piece = { x: 1000, y: 450 };
 
   it('the initial view centers the piece it is given when the drawing does not fit at the minimum zoom', () => {
     const view = fitView(GAP, huge, LIMITS, piece);
     expect(view.scale).toBe(0.5);
     expect(screenOf(view, piece)).toEqual({ x: GAP.width / 2, y: GAP.height / 2 });
+    const aside = fitView(GAP, huge, LIMITS, { x: 800, y: 420 });
+    expect(screenOf(aside, { x: 800, y: 420 })).toEqual({ x: GAP.width / 2, y: GAP.height / 2 });
+  });
+
+  it('stops at the edge of the drawing: on each axis where it does not fit no blank lies beyond it inside the gap', () => {
+    const farCorner = fitView(GAP, huge, LIMITS, { x: 1900, y: 850 });
+    expect(screenOf(farCorner, { x: huge.width, y: huge.height })).toEqual({ x: GAP.width, y: GAP.height });
+    const nearCorner = fitView(GAP, huge, LIMITS, { x: 100, y: 50 });
+    expect(screenOf(nearCorner, { x: 0, y: 0 })).toEqual({ x: 0, y: 0 });
+    const mixed = fitView(GAP, huge, LIMITS, { x: 1500, y: 100 });
+    expect(screenOf(mixed, { x: huge.width, y: 0 })).toEqual({ x: GAP.width, y: 0 });
+    expect(screenOf(mixed, { x: 1500, y: 100 }).x).toBeGreaterThan(GAP.width / 2);
+    expect(screenOf(mixed, { x: 1500, y: 100 }).y).toBeLessThan(GAP.height / 2);
+  });
+
+  it('stops at the edge of a drawing that stands away from the corner of its sheet', () => {
+    const placed: Box = { x: 100, y: 40, width: 2000, height: 900 };
+    const view = fitView(GAP, placed, LIMITS, { x: 150, y: 60 });
+    expect(screenOf(view, { x: placed.x, y: placed.y })).toEqual({ x: 0, y: 0 });
+    const far = fitView(GAP, placed, LIMITS, { x: 2050, y: 900 });
+    expect(screenOf(far, { x: placed.x + placed.width, y: placed.y + placed.height })).toEqual({ x: GAP.width, y: GAP.height });
   });
 
   it('keeps the fit of an axis on which the drawing fits and centers the piece on the other', () => {
     const wide: Box = { x: 0, y: 0, width: 2000, height: 300 };
-    const view = fitView(GAP, wide, LIMITS, { x: 1500, y: 40 });
+    const view = fitView(GAP, wide, LIMITS, { x: 1000, y: 40 });
     expect(view.scale).toBe(0.5);
-    expect(screenOf(view, { x: 1500, y: 40 }).x).toBe(GAP.width / 2);
+    expect(screenOf(view, { x: 1000, y: 40 }).x).toBe(GAP.width / 2);
     expect(view.y).toBeCloseTo(0, 9);
+    const clamped = fitView(GAP, wide, LIMITS, { x: 1500, y: 40 });
+    expect(screenOf(clamped, { x: wide.width, y: 0 }).x).toBe(GAP.width);
+    expect(clamped.y).toBeCloseTo(0, 9);
   });
 
   it('is the plain fit when the drawing fits or when there is no piece', () => {

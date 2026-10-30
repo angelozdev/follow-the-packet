@@ -92,6 +92,18 @@ async function expectBroughtIn(element: Element, zoom: number, where: string): P
   expect(zoomOf(), `${where}: and the zoom is the one it had`).toBeCloseTo(zoom, 5);
 }
 
+type Span = [number, number];
+
+function startProblems(id: string, piece: string | null | undefined, axis: string, drawing: Span, gap: Span, center: number): string[] {
+  const [blankBefore, blankAfter] = [drawing[0] > gap[0] + EPSILON, drawing[1] < gap[1] - EPSILON];
+  const [flushBefore, flushAfter] = [Math.abs(drawing[0] - gap[0]) <= EPSILON, Math.abs(drawing[1] - gap[1]) <= EPSILON];
+  const middle = (gap[0] + gap[1]) / 2;
+  const centered = Math.abs(center - middle) <= EPSILON;
+  const stoppedAtTheEdge = (flushBefore && center < middle) || (flushAfter && center > middle);
+  if (blankBefore || blankAfter) return [`${id}: it starts with blank beyond the drawing in ${axis}`];
+  return centered || stoppedAtTheEdge ? [] : [`${id}: it is neither centered on ${piece} nor stopped at the edge of the drawing in ${axis}`];
+}
+
 async function openRegistry(): Promise<HTMLElement[]> {
   const opener = page.getByRole('button', { name: new RegExp(`^${SYSTEMS_TEXT.registry}`) });
   if (opener.query() === null) return [];
@@ -176,7 +188,7 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
     }
   });
 
-  it('at 1280×600 each incident that does not fit at the minimum zoom is named and starts centered on the first origin of send.from, or on the first piece a task of Lucía names, or at the top-left corner, and every piece of it is brought into the free gap when chosen from the registry, from Ver fila or with the keyboard', { timeout: 300_000 }, async () => {
+  it('at 1280×600 each incident that does not fit at the minimum zoom is named and starts centered, clamped at the edge of the drawing, on the first origin of send.from, or on the first piece a task of Lucía names, or at the top-left corner, and every piece of it is brought into the free gap when chosen from the registry, from Ver fila or with the keyboard', { timeout: 300_000 }, async () => {
     await page.viewport(LOW_WINDOW.width, LOW_WINDOW.height);
     const problems: string[] = [];
     for (const { id } of INCIDENTS) {
@@ -187,11 +199,13 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
       if (fits === named) problems.push(`${id}: ${fits ? 'it fits and is named as one that does not' : 'it does not fit and is not named'}`);
       if (!fits) {
         const starts = NOT_FITTING_AT_THE_MINIMUM[id];
-        const piece = starts === null || starts === undefined ? null : drawingOf(pieceLabel(starts).element());
-        const [centerX, centerY] = [gap.left + gap.width / 2, gap.top + gap.height / 2];
+        const label = starts === null || starts === undefined ? null : pieceLabel(starts).element();
+        const piece = label === null ? null : drawingOf(label);
         if (piece === null && Math.abs(drawing.top - gap.top) > EPSILON) problems.push(`${id}: it starts at ${drawing.top}, not at the top of the gap`);
-        if (piece !== null && drawing.height > gap.height + EPSILON && Math.abs(piece.y + piece.height / 2 - centerY) > EPSILON) problems.push(`${id}: it is not centered on ${starts} in height`);
-        if (piece !== null && drawing.width > gap.width + EPSILON && Math.abs(piece.x + piece.width / 2 - centerX) > EPSILON) problems.push(`${id}: it is not centered on ${starts} in width`);
+        if (label !== null && !isInTheGap(label)) problems.push(`${id}: ${starts} is not in the gap at the start`);
+        if (id === ROUTING_INCIDENT && Math.abs(drawing.top - gap.top) > EPSILON) problems.push(`${id}: the drawing starts at ${drawing.top}, not flush with the top of the gap`);
+        if (piece !== null && drawing.height > gap.height + EPSILON) problems.push(...startProblems(id, starts, 'height', [drawing.top, drawing.bottom], [gap.top, gap.bottom], piece.y + piece.height / 2));
+        if (piece !== null && drawing.width > gap.width + EPSILON) problems.push(...startProblems(id, starts, 'width', [drawing.left, drawing.right], [gap.left, gap.right], piece.x + piece.width / 2));
         for (const label of document.querySelectorAll<HTMLElement>(PIECE_LABELS)) {
           label.focus();
           await standStill();
