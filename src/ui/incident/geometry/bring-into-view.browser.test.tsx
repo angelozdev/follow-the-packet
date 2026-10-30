@@ -33,7 +33,8 @@ const CHOSEN = '.map-stage [data-pinned]';
 const GAP = '.incident__map';
 const DRAWING = '.map-stage__svg';
 const SHEET = '.map-stage__sheet';
-const STAGE_BUTTONS = '.map-stage button';
+const STAGE = '.map-stage';
+const STAGE_BUTTONS = `${STAGE} button`;
 const ROUTING_INCIDENT = '02-06';
 const WEB_INCIDENT = '03-03';
 const DIAGNOSE_INCIDENT = '01-14';
@@ -188,6 +189,20 @@ describe('bringing the piece that is chosen or focused into the free gap', () =>
     for (let element: Element | null = last; element !== null; element = element.parentElement) {
       expect(element.scrollTop + element.scrollLeft, `${element.className || element.tagName} was not scrolled`).toBe(0);
     }
+  });
+
+  it('a focus that lands right after the wheel still brings the piece into the free gap', async () => {
+    await page.viewport(WINDOW.width, WINDOW.height);
+    await theScreen(ROUTING_INCIDENT);
+    const last = [...document.querySelectorAll<HTMLElement>(STAGE_BUTTONS)].at(-1) as HTMLElement;
+    await pushOut(last);
+    const zoom = zoomOf();
+
+    (document.querySelector(STAGE) as Element).dispatchEvent(new WheelEvent('wheel', { deltaY: 0, bubbles: true, cancelable: true }));
+    last.focus();
+
+    expect(document.activeElement, 'the focus is on the last piece of the map').toBe(last);
+    await expectBroughtIn(last, zoom, 'a focus right after the wheel');
   });
 
   it('a new case of a diagnose fits the camera again at the start of that case', async () => {

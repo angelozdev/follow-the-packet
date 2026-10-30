@@ -189,6 +189,7 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
       const view = current();
       apply(zoomAt(view, inGap(event), view.scale * Math.exp(-pixels * perPixel), latest.current.limits));
     },
+    isPressed: () => pressed,
     isMoving: (event: { timeStamp: number }) => pressed || event.timeStamp - lastWheelAt < WHEEL_QUIET_MS,
     destroy: () => {
       stage.removeEventListener('scroll', absorbTheScroll);
@@ -261,9 +262,9 @@ export function useCamera({ stage, gap, drawing, limits = ZOOM_LIMITS, start, st
         if (!controller.current?.isMoving(event) && !controller.current?.isGliding()) props.onPointerEnter?.(event);
       };
       const onFocus = (event: FocusEvent<HTMLElement>) => {
-        if (controller.current?.isMoving(event)) return;
+        if (controller.current?.isPressed()) return;
         controller.current?.land(event.currentTarget);
-        props.onFocus?.(event);
+        if (!controller.current?.isMoving(event)) props.onFocus?.(event);
       };
       return { ...props, onPointerEnter, onFocus };
     };
