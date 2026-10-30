@@ -2,13 +2,12 @@ import { useEventListener } from '@mantine/hooks';
 import Panzoom from '@panzoom/panzoom';
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
 import type { TriggerProps } from '@/scene/overlay/inspect-trigger';
-import { ZOOM_LIMITS, bringIntoView, clampView, fitView, panOfView, touchView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
+import { SAME_PIXEL, ZOOM_LIMITS, bringIntoView, clampView, fitView, panOfView, touchView, viewOfPan, zoomAt, type Box, type Point, type Size, type View, type ZoomLimits } from './camera-view';
 
 const INSTANT = { animate: false, force: true } as const;
 const NOT_PASSIVE = { passive: false };
 const PASSIVE = { passive: true };
 const UNLIMITED: ZoomLimits = { min: 0.01, max: 100 };
-const SAME_PIXEL = 0.01;
 const PRIMARY_BUTTON = 0;
 const WHEEL_BY_LINES = 1;
 const TOUCH = 'touch';

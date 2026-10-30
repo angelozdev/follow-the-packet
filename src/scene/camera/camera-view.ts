@@ -26,7 +26,7 @@ export const MAX_ZOOM = 2;
 export const ZOOM_LIMITS: ZoomLimits = { min: MIN_ZOOM, max: MAX_ZOOM };
 export const KEEP_IN_VIEW_PX = 96;
 
-const SAME_PIXEL = 0.01;
+export const SAME_PIXEL = 0.01;
 
 function centerOnAxis(point: number, room: number, scale: number, edge: number, extent: number): number {
   const farthestFromTheEdge = room - scale * (edge + extent);
