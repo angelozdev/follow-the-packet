@@ -1,9 +1,13 @@
 import { useElementSize } from '@mantine/hooks';
+import type { Ref } from 'react';
 import type { TermId } from '@/copy';
 import type { Network } from '@/engine';
 import { GroupBoxes } from '@/scene/entities/group-boxes';
 import { LinkLines, MarkDots } from '@/scene/entities/links';
 import { Pieces } from '@/scene/pieces';
+import type { Size } from '@/scene/camera/camera-view';
+import { useCamera, type CameraControls } from '@/scene/camera/use-camera';
+import type { MapLayout } from '@/scene/layout/arrange/geometry';
 import { blockTabBoxes } from '@/scene/layout/captions';
 import { layoutMap } from '@/scene/layout/map-layout';
 import { fanStamps, stampsByPlace } from '@/scene/marks/stamp-fan';
@@ -13,7 +17,7 @@ import { stampButtons, type DrawnRun, type InspectStampsTrigger, type SentRun } 
 import { FlightLabels, Traffic, useSendsInTheAir } from '@/scene/traffic/traffic';
 import type { InspectTrigger } from '@/scene/overlay/inspect-trigger';
 import type { MapPiece } from '@/scene/overlay/piece-label';
-import { frameOf } from './frame';
+import { frameOf, type Frame } from './frame';
 
 export interface MapStageProps {
   world: Network;
@@ -27,12 +31,12 @@ export interface MapStageProps {
   flows: readonly DrawnRun[];
   sent: readonly SentRun[];
   inspectStampsTrigger: InspectStampsTrigger;
+  gap?: Size;
+  controls?: Ref<CameraControls>;
 }
 
-function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, width }: MapStageProps & { width: number }) {
-  const layout = layoutMap(world, pieces, { width, blockTab: blockName !== null });
+function Drawing({ pieces, flows, sent, known, blockName, activePieceId, still, inspectTrigger, inspectStampsTrigger, onActivate, layout, frame }: Omit<MapStageProps, 'world' | 'gap' | 'controls'> & { layout: MapLayout; frame: Frame }) {
   const { size } = layout;
-  const frame = frameOf(width, size);
   const runs = [...flows, ...sent];
   const inTheAir = useSendsInTheAir(sent, layout, still);
   const fans = fanStamps(stampsByPlace(runs, layout.drawn), layout.marks);
@@ -60,13 +64,16 @@ function Drawing({ world, pieces, flows, sent, known, blockName, activePieceId, 
   );
 }
 
-/** Takes the world, the pieces the map draws, the terms the player knows, the block the player is classifying in (null when the incident has none), the piece the player chose, whether animations are off, what inspects a piece and what the screen does when one is activated; returns the map at the width of its box: a sheet that measures its own width (`useElementSize`), draws nothing until it has a width above 0 and then lays the map out at that width (`layoutMap`, with room for the tab of an outline of a block when there is a block to name) and draws it at one unit to the pixel, an SVG for the art that screen readers skip (the boxes of the groups, the links, the marks, the pieces and the packets: with animations off their traces and labels, with animations on the packets in flight) and the HTML layer above it for what the player reads and presses (the names of the groups, the tab of a block once `cidr` is known, and the label of every piece), centered across its box and against its top edge; with animations on, a second SVG over the layer, hidden from screen readers and taking no pointer, draws the labels that fly beside the packets, so they pass over the stamps without covering what the player presses. The stage fills the box that holds it: on a phone it is as tall as its drawing, and above 900 px the box scrolls down when the drawing is taller and sideways when it is wider. */
-export function MapStage(props: MapStageProps) {
-  const { ref, width } = useElementSize();
+export function MapStage({ gap, controls, ...props }: MapStageProps) {
+  const stage = useElementSize();
+  const room = gap ?? stage;
+  const layout = Number.isFinite(room.width) && room.width > 0 ? layoutMap(props.world, props.pieces, { width: room.width, blockTab: props.blockName !== null }) : null;
+  const frame = layout && frameOf(room.width, layout.size);
+  const { sheet } = useCamera({ stage, gap, drawing: layout && frame && { ...frame, ...layout.size }, controls });
   return (
-    <div className="map-stage">
-      <div ref={ref} className="map-stage__sheet">
-        {Number.isFinite(width) && width > 0 && <Drawing {...props} width={width} />}
+    <div ref={stage.ref} className="map-stage">
+      <div ref={sheet} className="map-stage__sheet" style={{ minWidth: layout?.size.width }}>
+        {layout && frame && <Drawing {...props} layout={layout} frame={frame} />}
       </div>
     </div>
   );

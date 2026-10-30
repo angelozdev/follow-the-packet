@@ -206,16 +206,17 @@ describe('the frame of the incident screen above 900 px', () => {
     }
   });
 
-  it('between 901 px and the width the zones need the box of the map scrolls sideways and no panel covers it', async () => {
+  it('between 901 px and the width the zones need the drawing keeps 360 px, the fit or the camera shows its right edge and no panel covers the map', async () => {
     for (const size of NARROW_WINDOWS) {
       await page.viewport(size.width, size.height);
       const view = await theScreen(LONG_BOX_INCIDENT);
       const where = `${size.width}×${size.height}`;
       const [lucia, map, panel] = [LUCIA_ZONE, MAP, PANEL].map(rectOf);
-      const stage = elementOf(`${MAP} .map-stage`);
+      const drawing = elementOf(`${MAP} .map-stage__svg`);
 
       expect(window.innerWidth - lucia.width - panel.width, `${where}: the zones leave the map less than its floor`).toBeLessThan(MAP_FLOOR_PX);
-      expect(stage.scrollWidth, `${where}: the box of the map scrolls sideways`).toBeGreaterThan(stage.clientWidth);
+      expect(drawing.getAttribute('width'), `${where}: the drawing keeps its 360 px`).toBe(`${MAP_FLOOR_PX}`);
+      await expect.poll(() => drawing.getBoundingClientRect().right, { message: `${where}: the camera shows the right edge of the drawing` }).toBeLessThanOrEqual(map.right + EPSILON);
       expect(overlap(map, lucia) || overlap(map, panel), `${where}: no zone covers the box of the map`).toBe(false);
       expect(map.left, `${where}: the box starts where Lucía ends`).toBeCloseTo(lucia.right, 0);
       expect(map.right, `${where}: and ends where the panel begins`).toBeCloseTo(panel.left, 0);

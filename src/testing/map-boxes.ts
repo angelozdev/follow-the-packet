@@ -47,6 +47,11 @@ export function drawingOf(label: Element): Area | null {
   return drawing === undefined ? null : boxOf('', drawing);
 }
 
+function zoomOfTheMap(): number {
+  const sheet = document.querySelector('.map-stage__sheet');
+  return sheet === null ? 1 : new DOMMatrix(getComputedStyle(sheet).transform).a;
+}
+
 const STAMP_NAME = /^Paquete:/;
 const SAME_PLACE_PX = 0.5;
 
@@ -71,7 +76,7 @@ function pairsThatOverlap(boxes: Box[], fanPitch?: number): string[] {
 
 /** Returns every pair of labels, stamps or floor names of the map that overlap, as "a / b"; `fanPitch` is as in `pairsThatOverlap`. */
 export function overlappingPairs(fanPitch?: number): string[] {
-  return pairsThatOverlap(mapBoxes(), fanPitch);
+  return pairsThatOverlap(mapBoxes(), fanPitch === undefined ? undefined : fanPitch * zoomOfTheMap());
 }
 
 /** Returns the names of everything on the map that a card covers: the labels, stamps and floor names, and the drawings of the pieces as the svg of the 2D map draws them. */

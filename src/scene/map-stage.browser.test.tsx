@@ -77,6 +77,7 @@ function mountOnTheScreen(): HTMLElement {
 }
 
 const widthOfTheSvg = (map: HTMLElement) => map.querySelector('svg')?.getBoundingClientRect().width;
+const layoutWidthOfTheSvg = (svg: SVGSVGElement) => Number(svg.getAttribute('width'));
 const widthOfTheLayoutAt = (width: number) => layoutMap(FLOORS, FLOORS_PIECES, { width }).size.width;
 const pageOverflow = () => document.documentElement.scrollWidth - window.innerWidth;
 
@@ -385,14 +386,14 @@ describe('MapStage', () => {
     });
   });
 
-  it('below 360 px the drawing keeps 360 px, against the left edge, and the stage scrolls sideways', async () => {
+  it('below 360 px the drawing keeps 360 px, against the left edge, and the camera shows its right edge', async () => {
     const { box } = mount(TOO_NARROW);
     const svg = await drawing(box);
     const stage = box.querySelector('.map-stage') as HTMLElement;
-    expect(svg.getBoundingClientRect().width).toBe(MIN_MAP_WIDTH);
+    expect(layoutWidthOfTheSvg(svg)).toBe(MIN_MAP_WIDTH);
     expect(svg.getBoundingClientRect().left).toBe(box.getBoundingClientRect().left);
-    expect(stage.clientWidth).toBe(TOO_NARROW);
-    expect(stage.scrollWidth).toBe(MIN_MAP_WIDTH);
+    expect(stage.getBoundingClientRect().width).toBe(TOO_NARROW);
+    await expect.poll(() => svg.getBoundingClientRect().right).toBeLessThanOrEqual(stage.getBoundingClientRect().right + HALF_A_PIXEL);
   });
 
   it('draws no svg in its first render, before its container has been measured', () => {
@@ -424,15 +425,15 @@ describe('MapStage', () => {
     expect(pageOverflow()).toBe(0);
   });
 
-  it('on a phone narrower than 360 px the stage scrolls sideways and the page does not', async () => {
+  it('on a phone narrower than 360 px the camera shows the right edge of the drawing and the page does not scroll sideways', async () => {
     await page.viewport(SMALL_PHONE_VIEWPORT.width, SMALL_PHONE_VIEWPORT.height);
     const map = mountOnTheScreen();
-    await drawing(map);
+    const svg = await drawing(map);
     const stage = map.querySelector('.map-stage') as HTMLElement;
-    expect(widthOfTheSvg(map)).toBe(MIN_MAP_WIDTH);
+    expect(layoutWidthOfTheSvg(svg)).toBe(MIN_MAP_WIDTH);
     expect(map.getBoundingClientRect().width).toBe(SMALL_PHONE_VIEWPORT.width);
-    expect(stage.clientWidth).toBe(SMALL_PHONE_VIEWPORT.width);
-    expect(stage.scrollWidth).toBe(MIN_MAP_WIDTH);
+    expect(stage.getBoundingClientRect().width).toBe(SMALL_PHONE_VIEWPORT.width);
+    await expect.poll(() => svg.getBoundingClientRect().right).toBeLessThanOrEqual(stage.getBoundingClientRect().right + HALF_A_PIXEL);
     expect(pageOverflow()).toBe(0);
   });
 
@@ -441,10 +442,10 @@ describe('MapStage', () => {
     const map = mountOnTheScreen();
     await drawing(map);
     const wide = DESKTOP_VIEWPORT.width - LUCIA_ZONE_PX - PANEL_SHARE * DESKTOP_VIEWPORT.width;
-    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(map.getBoundingClientRect().width));
+    await expect.poll(() => layoutWidthOfTheSvg(map.querySelector('svg') as SVGSVGElement)).toBe(widthOfTheLayoutAt(map.getBoundingClientRect().width));
     expect(map.getBoundingClientRect().width).toBeCloseTo(wide, 0);
     await page.viewport(SMALL_DESKTOP_VIEWPORT.width, SMALL_DESKTOP_VIEWPORT.height);
-    await expect.poll(() => widthOfTheSvg(map)).toBe(widthOfTheLayoutAt(SMALL_DESKTOP_VIEWPORT.width));
+    await expect.poll(() => layoutWidthOfTheSvg(map.querySelector('svg') as SVGSVGElement)).toBe(widthOfTheLayoutAt(SMALL_DESKTOP_VIEWPORT.width));
     expect(map.getBoundingClientRect().width).toBe(SMALL_DESKTOP_VIEWPORT.width);
     expect(pageOverflow()).toBe(0);
   });

@@ -19,6 +19,7 @@ export default defineConfig({
           exclude: [...configDefaults.exclude, BROWSER_TESTS],
           setupFiles: ['./src/testing/setup.ts'],
           environment: 'node',
+          server: { deps: { inline: ['@panzoom/panzoom'] } },
           css: { include: [/\/design\/tokens\.css/] },
         },
       },

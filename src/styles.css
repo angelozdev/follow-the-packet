@@ -20,7 +20,8 @@ code { font-family: var(--font-mono); font-size: var(--text-md); }
 .locked { color: var(--color-ink-soft); }
 
 .html-layer { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
-.map-stage, .catalog2d { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; overflow-x: auto; }
+.map-stage, .catalog2d { --font-mono: 'IBM Plex Mono', Menlo, Consolas, monospace; position: relative; }
+.catalog2d { overflow-x: auto; }
 .map-stage__sheet { position: relative; display: flow-root; }
 .map-stage__svg { display: block; }
 .map-stage__flight-labels { position: absolute; pointer-events: none; }
@@ -218,7 +219,7 @@ button.stamp { cursor: help; }
   .incident__panel .chip-card__body { min-height: 0; overflow-y: auto; align-content: start; }
   .incident__panel .chip-card__body > .tabs > .tabs__list { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
   .incident__inspection[data-place='left'] { place-self: end start; }
-  .incident .map-stage { position: absolute; inset: 0; overflow: auto; }
+  .incident .map-stage { position: absolute; inset: 0; }
   .incident .map-stage__sheet { min-height: 100%; }
 }
 @media (max-width: 900px) {
