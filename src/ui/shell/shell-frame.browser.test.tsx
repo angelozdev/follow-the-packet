@@ -1,9 +1,10 @@
 import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { LUCIA_TEXT, PIECE_TEXT } from '@/copy';
+import { CAMERA_TEXT, LUCIA_TEXT, PIECE_TEXT } from '@/copy';
 import { INCIDENTS } from '@/levels';
-import { openByKeyboard, openCard, pieceLabel, reachWithWheel } from '@/testing/browser-play';
+import { MIN_ZOOM } from '@/scene/camera/camera-view';
+import { clickAt, dragFromTo, openByKeyboard, openCard, pieceLabel, reachWithWheel, standStill, type Point } from '@/testing/browser-play';
 import { IncidentScreen } from '@/ui/incident/incident-screen';
 
 const INITIAL_VIEWPORT = { width: window.innerWidth, height: window.innerHeight };
@@ -48,6 +49,28 @@ const NARROW_WINDOWS = [
   { width: 960, height: 800 },
 ];
 const WIDE_ENOUGH_WINDOW = { width: 1100, height: 800 };
+const ACCEPTANCE_WINDOWS = [
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+  { width: 1100, height: 700 },
+  { width: 390, height: 844 },
+];
+const DOES_NOT_FIT_AT_THE_MINIMUM: Record<string, string[]> = {
+  '1280×720': ['01-08', '02-04', '02-07', '02-12', '02-13', '04-01', '04-02'],
+  '1440×900': ['02-13'],
+  '1100×700': ['01-06', '01-07', '01-08', '02-04', '02-05', '02-06', '02-07', '02-11', '02-12', '02-13', '03-07', '04-01', '04-02'],
+};
+const DRAWING = '.map-stage__svg';
+const STAGE = '.map-stage';
+const UNDER_WINDOW = { width: 1280, height: 800 };
+const INSIDE_PX = 4;
+const COVERS = [
+  { name: 'the card of Lucía', selector: `${LUCIA_ZONE} .card`, label: (box: DOMRect) => box.left, spot: (box: DOMRect): Point => centerOf(box) },
+  { name: 'the panel', selector: PANEL, label: (box: DOMRect) => -box.left, spot: (box: DOMRect): Point => centerOf(box) },
+  { name: 'the bottom strip', selector: BAR, label: (box: DOMRect) => -box.top, spot: (box: DOMRect): Point => ({ x: box.left + box.width / 2, y: box.top + INSIDE_PX * 2 }) },
+];
+const SHEET = '.map-stage__sheet';
+const STACKED_UP_TO_PX = 900;
 const LABEL_ACCEPTANCE_WINDOW = { width: 1280, height: 720 };
 const LOW_WINDOW = { width: 1280, height: 600 };
 const BREAK_WINDOW = { width: 900, height: 800 };
@@ -75,6 +98,14 @@ async function setLuciaExpanded(expanded: boolean) {
   await userEvent.click(arrow);
   await expect.element(arrow).toHaveAttribute('aria-expanded', String(expanded));
   return arrow;
+}
+
+function centerOf({ left, top, width, height }: DOMRect): Point {
+  return { x: left + width / 2, y: top + height / 2 };
+}
+
+function contains(outer: DOMRect, inner: DOMRect): boolean {
+  return inner.left >= outer.left - EPSILON && inner.right <= outer.right + EPSILON && inner.top >= outer.top - EPSILON && inner.bottom <= outer.bottom + EPSILON;
 }
 
 function overlap(a: DOMRect, b: DOMRect): boolean {
@@ -127,22 +158,61 @@ describe('the frame of the incident screen above 900 px', () => {
     expect(rectOf(`${LUCIA_ZONE} h2`).top, 'her report starts inside the zone').toBeGreaterThanOrEqual(lucia.getBoundingClientRect().top - EPSILON);
   });
 
-  it('at 1280×720 no label of a piece in any registered incident lies under the panel, the card of Lucía, the strip or the status bar', { timeout: 120_000 }, async () => {
-    await page.viewport(LABEL_ACCEPTANCE_WINDOW.width, LABEL_ACCEPTANCE_WINDOW.height);
-    const covered: string[] = [];
-    for (const { id } of INCIDENTS) {
-      const view = await theScreen(id);
-      const box = rectOf(MAP);
-      for (const label of view.container.querySelectorAll<HTMLElement>(MAP_LABEL)) {
-        const { left, top, width, height } = label.getBoundingClientRect();
-        const [x, y] = [left + width / 2, top + height / 2];
-        const shown = x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
-        const above = document.elementFromPoint(x, y);
-        if (shown && !(above !== null && label.contains(above))) covered.push(`${id} ${label.textContent?.trim()}: ${above?.className || above?.tagName}`);
+  it('at the fit in 1280×720, 1440×900, 1100×700 and 390×844 no label of a piece in any registered incident lies under a panel or outside the free gap', { timeout: 300_000 }, async () => {
+    const misplaced: string[] = [];
+    for (const size of ACCEPTANCE_WINDOWS) {
+      await page.viewport(size.width, size.height);
+      const named = DOES_NOT_FIT_AT_THE_MINIMUM[`${size.width}×${size.height}`] ?? [];
+      for (const { id } of INCIDENTS) {
+        const view = await theScreen(id);
+        await standStill();
+        const gap = rectOf(MAP);
+        const where = `${size.width}×${size.height}, ${id}`;
+        const fits = contains(gap, rectOf(DRAWING));
+        const zoom = new DOMMatrix(getComputedStyle(elementOf(SHEET)).transform).a;
+        if (fits === named.includes(id)) misplaced.push(`${where}: ${fits ? 'it fits and is named as one that does not' : 'it does not fit and is not named'}`);
+        if (!fits && Math.abs(zoom - MIN_ZOOM) > EPSILON / 100) misplaced.push(`${where}: it does not fit but the zoom is ${zoom}, not the minimum`);
+        for (const label of fits ? view.container.querySelectorAll<HTMLElement>(MAP_LABEL) : []) {
+          const box = label.getBoundingClientRect();
+          const above = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+          const covered = window.innerWidth > STACKED_UP_TO_PX && !(above !== null && label.contains(above));
+          if (!contains(gap, box) || covered) misplaced.push(`${where}, ${label.textContent?.trim()}: ${above?.className || above?.tagName}`);
+        }
+        view.unmount();
       }
-      view.unmount();
     }
-    expect(covered).toEqual([]);
+    expect(misplaced).toEqual([]);
+  });
+
+  it('the map is drawn under the card of Lucía, the panel and the bottom strip, and a click there reaches them, not the map', async () => {
+    await page.viewport(UNDER_WINDOW.width, UNDER_WINDOW.height);
+    await theScreen(LONG_BOX_INCIDENT);
+    await standStill();
+    const [strip, stage] = [STRIP, STAGE].map(rectOf);
+    expect([stage.left, stage.top, stage.right, stage.bottom], 'the stage fills the window under the strip of the top').toEqual([0, strip.bottom, window.innerWidth, window.innerHeight]);
+
+    for (const { name, selector, label, spot } of COVERS) {
+      await userEvent.click(page.getByRole('button', { name: CAMERA_TEXT.fit }));
+      await standStill();
+      const cover = rectOf(selector);
+      const target = spot(cover);
+      const labels = [...document.querySelectorAll<HTMLElement>(MAP_LABEL)];
+      const piece = labels.reduce((best, each) => (label(each.getBoundingClientRect()) < label(best.getBoundingClientRect()) ? each : best));
+      const from = centerOf(piece.getBoundingClientRect());
+      const start = centerOf(rectOf(MAP));
+      await dragFromTo(start, { x: start.x + target.x - from.x, y: start.y + target.y - from.y });
+      await standStill();
+
+      const there = centerOf(piece.getBoundingClientRect());
+      expect(Math.hypot(there.x - target.x, there.y - target.y), `${name}: the drawing is brought under it`).toBeLessThanOrEqual(EPSILON);
+      const stack = document.elementsFromPoint(target.x, target.y);
+      expect(elementOf(selector).contains(stack[0]), `${name}: what lies on top at that point is it`).toBe(true);
+      expect(stack.includes(piece), `${name}: and the piece of the map lies under it`).toBe(true);
+
+      await clickAt(target);
+      expect(document.querySelector(PANEL_CARD), `${name}: a click there chooses no piece`).toBeNull();
+      expect(piece.hasAttribute('data-pinned'), `${name}: nor rings the one under it`).toBe(false);
+    }
   });
 
   it('the box of the map keeps its rectangle when a piece is chosen and freed and when the text of Lucía grows', async () => {

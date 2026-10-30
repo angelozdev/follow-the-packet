@@ -181,9 +181,9 @@ button.stamp { cursor: help; }
 .incident__clock { display: flex; align-items: center; gap: var(--space-xs); }
 .incident__clock .tray { flex-wrap: nowrap; gap: var(--space-2xs); }
 .incident__clock .tray__name { display: none; }
-.incident__lucia { grid-area: lucia; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; align-self: start; gap: var(--space-md); max-height: 100%; padding: var(--space-md); }
+.incident__lucia { grid-area: lucia; position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; align-self: start; gap: var(--space-md); max-height: 100%; padding: var(--space-md); }
 .incident__map { grid-area: map; position: relative; min-height: 0; }
-.incident__panel { grid-area: panel; display: flex; flex-direction: column; min-height: 0; padding: var(--space-md); background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
+.incident__panel { grid-area: panel; position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; padding: var(--space-md); background: var(--color-page); border-left: var(--stroke-regular) solid var(--color-ink); }
 .incident__inspection { grid-area: map; place-self: end; margin: var(--space-md); z-index: 35; display: flex; flex-direction: column; width: 22rem; max-width: calc(100% - 2 * var(--space-md)); max-height: min(45%, var(--inspection-room, 45%)); pointer-events: none; }
 .incident__inspection > .card { min-height: 0; display: flex; flex-direction: column; }
 .incident__inspection[data-scrolls] > .card, .incident__inspection .btn { pointer-events: auto; }
@@ -222,6 +222,8 @@ button.stamp { cursor: help; }
   .incident__inspection[data-place='left'] { place-self: end start; }
   .incident .map-stage { position: absolute; inset: 0; }
   .incident .map-stage__sheet { min-height: 100%; }
+  .incident .map-stage--under-panels { inset: 0 calc(-1 * var(--panel-width)) auto calc(-1 * var(--lucia-width)); height: calc(100vh - var(--strip-room)); }
+  .incident .map-stage--under-panels .map-stage__sheet { margin-left: var(--lucia-width); }
 }
 @media (max-width: 900px) {
   html { scroll-padding-bottom: var(--status-bar-room, 0px); }

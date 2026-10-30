@@ -66,6 +66,20 @@ describe('the camera on the screen of an incident', () => {
     }
   });
 
+  it('with the stage under the panels the wheel still zooms around the pointer', async () => {
+    await page.viewport(WINDOWS[0].width, WINDOWS[0].height);
+    await theScreen();
+    await standStill();
+    const label = pieceLabel(LAPTOP).element();
+    const before = centerOf(label);
+    const zoom = scale();
+    await wheelAt(before, WHEEL_PX);
+    await expect.poll(scale, { message: 'the wheel zooms in' }).toBeGreaterThan(zoom);
+    await standStill();
+    const after = centerOf(label);
+    expect(Math.hypot(after.x - before.x, after.y - before.y), 'the point under the pointer stays where it was').toBeLessThanOrEqual(1);
+  });
+
   it('with a system window open a drag or the wheel does not move the camera', async () => {
     await page.viewport(WINDOWS[0].width, WINDOWS[0].height);
     await theScreen();

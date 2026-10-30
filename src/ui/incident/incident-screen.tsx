@@ -1,3 +1,4 @@
+import { useElementSize } from '@mantine/hooks';
 import { useMemo, useReducer, type MouseEvent } from 'react';
 import { EXPLANATION_TEXT } from '@/copy';
 import { PIECE_ID, caseCard, caseSummary, classifiedBlock, clockSteps, countStars, drawnSends, pieceViews, registryLines, sessionReducer, startSession, starsOf, type RouteRow } from '@/game';
@@ -38,6 +39,7 @@ interface IncidentScreenProps {
 export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progress = {} }: IncidentScreenProps) {
   const [session, dispatch] = useReducer(sessionReducer, incidentId, (id) => startSession(incidents, id));
   const [still, setStill] = useStillMode();
+  const gap = useElementSize<HTMLDivElement>();
   const playing = session.phase === 'playing';
   const pieces = pieceViews(session);
   const sent = useMemo(() => drawnSends(session.sent), [session.sent]);
@@ -96,7 +98,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
         )}
         {session.phase === 'result' && <ResultCard stars={starsOf(session)} mechanic={incident.mechanic} takeaway={incident.takeaway} nextId={nextId} cases={caseSummary(session)} hidden={fold.folded} />}
       </LuciaZone>
-      <div className="incident__map" inert={covered}>
+      <div ref={gap.ref} className="incident__map" inert={covered}>
         <GameScene
           world={session.world}
           pieces={pieces}
@@ -109,6 +111,7 @@ export function IncidentScreen({ incidents, incidentId, nextId, onFinish, progre
           inspectTrigger={triggerOf}
           inspectStampsTrigger={(packetIds) => triggerOf(PIECE_ID.stamps(packetIds))}
           onActivate={() => undefined}
+          gap={{ width: gap.width, height: gap.height }}
           onCameraMove={close}
         />
       </div>

@@ -75,7 +75,7 @@ export function MapStage({ gap, controls, onCameraMove, ...props }: MapStageProp
   const stageRef = useMergedRef(stage.ref, camera.stageRef);
   return (
     <>
-      <div ref={stageRef} className="map-stage" onPointerDown={camera.onPointerDown} onClickCapture={camera.onClickCapture}>
+      <div ref={stageRef} className={gap ? 'map-stage map-stage--under-panels' : 'map-stage'} onPointerDown={camera.onPointerDown} onClickCapture={camera.onClickCapture}>
         <div ref={camera.sheet} className="map-stage__sheet" style={{ minWidth: layout?.size.width }}>
           {layout && frame && <Drawing {...props} inspectTrigger={camera.quietly(props.inspectTrigger)} inspectStampsTrigger={camera.quietly(props.inspectStampsTrigger)} layout={layout} frame={frame} />}
         </div>

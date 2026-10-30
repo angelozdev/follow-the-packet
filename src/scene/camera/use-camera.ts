@@ -120,7 +120,7 @@ function createController(sheet: HTMLElement, latest: { current: Inputs }) {
       const perPixel = WHEEL_ZOOM_PER_PX * (event.ctrlKey ? PINCH_WHEEL_FACTOR : 1);
       const { left, top } = stage.getBoundingClientRect();
       const view = current();
-      apply(zoomAt(view, { x: event.clientX - left, y: event.clientY - top }, view.scale * Math.exp(-pixels * perPixel), latest.current.limits));
+      apply(zoomAt(view, { x: event.clientX - left - sheet.offsetLeft, y: event.clientY - top - sheet.offsetTop }, view.scale * Math.exp(-pixels * perPixel), latest.current.limits));
     },
     isMoving: (event: { timeStamp: number }) => pressed || event.timeStamp - lastWheelAt < WHEEL_QUIET_MS,
     destroy: () => {

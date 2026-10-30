@@ -20,7 +20,7 @@ import { fanStamps, stampsByPlace, type Fan, type StampsByPlace } from '@/scene/
 import { stillPackets, translationAt, wayOf, type StillPacket } from '@/scene/marks/still-packets';
 import { flightPlan, flowCycles, keyframes, labelRide, motionOf, routeOf, sendCycle } from '@/scene/traffic/flight/flight-plan';
 
-const WIDTHS = [360, 390, 768, 900, 1060, 1280, 1440];
+const WIDTHS = [360, 390, 657, 768, 778, 900, 1060, 1280, 1440];
 const HUNDRED = 100;
 const SENDS_BY_NAME = ['02-10', '02-11', '02-12', '02-13', '02-14'];
 const SAME_POINT = 1e-6;
