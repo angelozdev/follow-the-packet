@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page, userEvent, type Locator } from 'vitest/browser';
+import { INSPECTION_TEXT } from '@/copy';
 import { INCIDENTS, type Incident } from '@/levels';
 import { cardProblems, inspectionBoxOverCards, isReachable, panelOutsideItsZone } from '@/testing/card-boxes';
 import { coveredBy } from '@/testing/map-boxes';
@@ -122,7 +123,7 @@ const TRACEROUTE = 'traceroute';
 const SECURITY_GROUP = 'Security Group servidor2';
 const ECHO_REQUEST_CHIP = 'ICMP · Echo Request';
 const ANYWHERE_CHIP = /Anywhere-IPv4/;
-const CLOSE = 'Cerrar';
+const CLOSE = INSPECTION_TEXT.close;
 const PHONE_WINDOW = { width: 390, height: 844 };
 const STACKED_UNDER_PX = 900;
 const HOLDER = '.incident__inspection';
@@ -608,14 +609,14 @@ describe.each(INSPECTION_WINDOWS)('$name', ({ size }) => {
       await userEvent.hover(page.elementLocator(bodyOfTheBox()));
       await passTheGrace();
       await expect.element(box, { message: 'the preview stays while the mouse is over it' }).toBeVisible();
-      await expect.element(box, { message: 'a preview has no «Cerrar»' }).not.toMatchTextContent(CLOSE);
+      await expect.element(box, { message: 'a preview has no X' }).not.toMatchTextContent(CLOSE);
     } else {
       expect(window.scrollY, 'a hover leaves the page where it is, so the holder under the map stays out of view').toBe(scrolledBefore);
     }
 
     await click(stamp);
 
-    await expect.element(box, { message: 'the click shows the box in the panel, with «Cerrar»' }).toMatchTextContent(CLOSE);
+    await expect.element(box, { message: 'the click shows the box in the panel, with its X' }).toMatchTextContent(CLOSE);
     await expect.poll(panelInView, { message: 'the choice brings the panel into view' }).toBe(true);
     await userEvent.hover(page.elementLocator(bodyOfTheBox()));
     await passTheGrace();

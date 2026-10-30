@@ -342,10 +342,10 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     expect(within(panel).getByRole('heading', { name: 'servidor2' }).querySelector('svg.entity-icon')).toBeInTheDocument();
     expect(panel.querySelector('dt')).toHaveTextContent(INSPECTION_TEXT.whatIs);
     expect(within(panel).getByRole('button', { name: PIECE_TEXT.closeLabel }), 'a piece has its X').toHaveTextContent(PIECE_TEXT.close);
-    expect(within(panel).queryByRole('button', { name: INSPECTION_TEXT.closeLabel }), 'and not the «Cerrar» of the box of a packet').toBeNull();
+    expect(within(panel).getAllByRole('button', { name: PIECE_TEXT.closeLabel }), 'and it is the only X of the panel').toHaveLength(1);
   });
 
-  it('clicking a stamp, a packet or a «+N» shows its box in the panel with «Cerrar»', async () => {
+  it('clicking a stamp, a packet or a «+N» shows its box in the panel with its X', async () => {
     scene.drawsTheList = true;
     const user = userEvent.setup();
     renderFirst();
@@ -353,11 +353,11 @@ describe('a piece or a stamp can be chosen and read in the panel', () => {
     await user.click(screen.getByRole('button', { name: ATTACKER_PACKET }));
     const packet = screen.getByRole('region', { name: ATTACKER_PACKET });
     expectInThePanel(packet);
-    expect(within(packet).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
+    expect(within(packet).getByRole('button', { name: PIECE_TEXT.closeLabel })).toHaveTextContent(PIECE_TEXT.close);
     await user.click(screen.getByRole('button', { name: LIST_OF_THE_STAMPS }));
     const list = screen.getByRole('region', { name: INSPECTION_TEXT.stampsTitle(runs.length + sent.length) });
     expectInThePanel(list);
-    expect(within(list).getByRole('button', { name: INSPECTION_TEXT.closeLabel })).toHaveTextContent(INSPECTION_TEXT.close);
+    expect(within(list).getByRole('button', { name: PIECE_TEXT.closeLabel })).toHaveTextContent(PIECE_TEXT.close);
     expect(screen.queryByRole('region', { name: ATTACKER_PACKET }), 'the list takes the place of the packet').toBeNull();
   });
 

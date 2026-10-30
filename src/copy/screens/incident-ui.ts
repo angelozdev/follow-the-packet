@@ -37,6 +37,7 @@ function roleList(roles: readonly Role[], known?: ReadonlySet<TermId>): TermText
   return ROLE_LIST.format(roles.map((role) => roleWords(role, known)));
 }
 
+const CLOSE_THE_PANEL = { close: '×', closeLabel: 'Cerrar el panel' } as const;
 const STOPPED_PROCESS = 'terminó';
 const MORE_STAMPS = (hidden: number, total: number): string => `${hidden} sellos más. Abre la lista de los ${total} sellos de este lugar.`;
 const HIDDEN_PROBLEM = 'Entre los escondidos hay alguno bloqueado, perdido, con un aviso o que entró y no debía.';
@@ -60,8 +61,7 @@ export const MAP_TEXT = {
 
 export const INSPECTION_TEXT = {
   type: 'Inspección',
-  close: 'Cerrar',
-  closeLabel: 'Cerrar la caja de inspección',
+  ...CLOSE_THE_PANEL,
   whatIs: 'Qué es',
   stampsTitle: (count: number): TermText => `${count} sellos juntos`,
   stampLine: (state: StampState): TermText => STAMP_TEXT[state],
@@ -331,8 +331,7 @@ export const SERVICES_TEXT = {
 
 export const PIECE_TEXT = {
   tabsName: 'Pestañas del panel',
-  close: '×',
-  closeLabel: 'Cerrar el panel',
+  ...CLOSE_THE_PANEL,
   tabs: {
     status: 'Estado',
     settings: 'Ajustes',
