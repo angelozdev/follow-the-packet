@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { REGISTRY_TEXT, SYSTEMS_TEXT, TERMINAL_TEXT, type TermText } from '@/copy';
+import { REGISTRY_TEXT, SYSTEMS_BAR_TEXT, SYSTEMS_TEXT } from '@/copy';
 import { inspect, originPieces, panelOf, type PanelTabId, type Session } from '@/game';
 import type { PanelChoice } from '@/ui/shell/panel/use-panel-choice';
 import type { useSelection } from '@/ui/shell/use-selection';
@@ -11,11 +11,10 @@ type Selection = Pick<ReturnType<typeof useSelection>, 'pieceId' | 'showPiece'>;
 interface Tool {
   tab: PanelTabId;
   label: string;
-  labelOf?: (origin: TermText) => TermText;
 }
 
 const TOOLS: readonly Tool[] = [
-  { tab: 'terminal', label: SYSTEMS_TEXT.terminal, labelOf: TERMINAL_TEXT.button },
+  { tab: 'terminal', label: SYSTEMS_TEXT.terminal },
   { tab: 'browser', label: SYSTEMS_TEXT.browser },
 ];
 
@@ -27,7 +26,7 @@ export function useSystems(session: Session, selection: Selection, panelChoice: 
   const chosen = selection.pieceId;
   const tabInView = chosen === null ? undefined : panelChoice.tabOf(panelOf(session, chosen));
   if (chosen !== null && chosen !== lastOrigin && origins.includes(chosen) && TOOLS.some(({ tab }) => tab === tabInView)) setLastOrigin(chosen);
-  const tools = TOOLS.flatMap(({ tab, label, labelOf }) => {
+  const tools = TOOLS.flatMap(({ tab, label }) => {
     const holders = origins.filter((pieceId) => holdsTab(session, pieceId, tab));
     const target = lastOrigin !== null && holders.includes(lastOrigin) ? lastOrigin : holders[0];
     if (target === undefined) return [];
@@ -38,7 +37,7 @@ export function useSystems(session: Session, selection: Selection, panelChoice: 
       panelChoice.chooseTab(target, tab);
       selection.showPiece(target);
     };
-    return [{ id: tab, label: origin === undefined || labelOf === undefined ? label : labelOf(origin), onPress: press }];
+    return [{ id: tab, label: origin === undefined ? label : SYSTEMS_BAR_TEXT.named(label, origin), onPress: press }];
   });
   const registryOpen = windows.open === SYSTEM_WINDOW.registry;
   const registry: System[] =

@@ -265,7 +265,6 @@ const EXAMPLE_TIME_NOTE = 'El tiempo es una cifra de ejemplo.';
 
 export const TERMINAL_TEXT = {
   title: (origin: TermText): TermText => `Terminal de ${origin}`,
-  button: (origin: TermText): TermText => `${PIECE_TEXT.tabs.terminal} · ${origin}`,
   trays: { from: 'Origen', to: 'Destino', message: 'Mensaje' },
   ping: (address: string, ttl?: number): TermText => (ttl === undefined ? `ping ${address}` : `ping -t ${ttl} ${address}`),
   traceroute: (address: string): TermText => `traceroute -I ${address}`,
@@ -493,6 +492,10 @@ export const SYSTEMS_TEXT = {
   terminal: PIECE_TEXT.tabs.terminal,
   browser: PIECE_TEXT.tabs.browser,
   registry: 'Historial',
+} as const;
+
+export const SYSTEMS_BAR_TEXT = {
+  named: (tool: TermText, origin: TermText): TermText => `${tool} · ${origin}`,
 } as const;
 
 export const CAMERA_TEXT = {

@@ -21,6 +21,7 @@ const BAR = '.incident__systems';
 const ROUTING = '02-06';
 const TWO_ORIGINS = '02-03';
 const WEB = '03-03';
+const ONE_BROWSER = '03-04';
 const YOUR_LAPTOP = 'tu-laptop';
 const OTHER_LAPTOP = 'laptop-lucia';
 const OTHER_PIECE = /^laptop-marta/;
@@ -31,9 +32,10 @@ const NC_TO_THE_APP = 'nc · puerto 3000';
 const TERMINAL = PIECE_TEXT.tabs.terminal;
 const BROWSER = 'Navegador';
 const REGISTRY_BUTTON = /^Historial \(\d+\)$/;
-const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}( · .+)?|${BROWSER}|Historial \\(\\d+\\))$`);
+const SYSTEM_BUTTON = new RegExp(`^(${TERMINAL}( · .+)?|${BROWSER}( · .+)?|Historial \\(\\d+\\))$`);
 
 const terminalOf = (piece: string) => `${TERMINAL} · ${piece}`;
+const browserOf = (piece: string) => `${BROWSER} · ${piece}`;
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -88,7 +90,7 @@ describe('the bar of systems', () => {
     routing.unmount();
 
     renderIncident(WEB);
-    expect(systemsOfTheStrip()).toEqual(sorted([terminalOf(YOUR_LAPTOP), BROWSER]));
+    expect(systemsOfTheStrip()).toEqual(sorted([terminalOf(YOUR_LAPTOP), browserOf(YOUR_LAPTOP)]));
   });
 
   it('Terminal opens the Terminal tab of the piece of the last origin the player used, and of the first send.from that has one before any', async () => {
@@ -138,17 +140,33 @@ describe('the bar of systems', () => {
     const user = userEvent.setup();
     renderIncident(WEB);
 
-    await user.click(button(BROWSER));
+    await user.click(button(browserOf(YOUR_LAPTOP)));
     expect(thePanel(), 'before any origin was used, the first of send.from that has a browser').toHaveAccessibleName(YOUR_LAPTOP);
     expect(within(thePanel()).getByRole('tab', { name: BROWSER })).toHaveAttribute('aria-selected', 'true');
 
     await user.click(within(thePanel()).getByRole('tab', { name: TERMINAL }));
     await user.click(within(thePanel()).getByRole('button', { name: OTHER_LAPTOP }));
     await user.click(pieceLabel(FIREWALL_PIECE));
-    await user.click(button(BROWSER));
+    await user.click(button(browserOf(OTHER_LAPTOP)));
 
     expect(thePanel(), 'the browser of the last origin the player chose').toHaveAccessibleName(OTHER_LAPTOP);
     expect(within(thePanel()).getByRole('tab', { name: BROWSER })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('with two or more pieces that have a browser the Navegador button names the piece it opens and follows the last origin used, and with one it reads Navegador', async () => {
+    const user = userEvent.setup();
+    const single = renderIncident(ONE_BROWSER);
+    expect(button(BROWSER), 'one piece has a browser').toBeInTheDocument();
+    single.unmount();
+
+    renderIncident(WEB);
+    expect(within(zone(BAR)).queryByRole('button', { name: BROWSER }), 'two pieces have one').toBeNull();
+    await user.click(button(terminalOf(YOUR_LAPTOP)));
+    await user.click(within(thePanel()).getByRole('button', { name: OTHER_LAPTOP }));
+
+    expect(within(zone(BAR)).queryByRole('button', { name: browserOf(YOUR_LAPTOP) })).toBeNull();
+    await user.click(button(browserOf(OTHER_LAPTOP)));
+    expect(thePanel(), 'the button opens the piece it names').toHaveAccessibleName(OTHER_LAPTOP);
   });
 
   it('a button whose tab is already in view does nothing more', async () => {
@@ -170,7 +188,7 @@ describe('the bar of systems', () => {
     await user.click(button(terminalOf(YOUR_LAPTOP)));
     expect(within(thePanel()).getByRole('heading', { name: YOUR_LAPTOP })).toHaveFocus();
 
-    await user.click(button(BROWSER));
+    await user.click(button(browserOf(YOUR_LAPTOP)));
     expect(within(thePanel()).getByRole('tab', { name: BROWSER })).toHaveAttribute('aria-selected', 'true');
     expect(within(thePanel()).getByRole('heading', { name: YOUR_LAPTOP })).toHaveFocus();
   });

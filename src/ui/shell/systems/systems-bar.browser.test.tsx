@@ -39,7 +39,7 @@ describe('the bar of systems in the real window', () => {
     const buttons = [...strip.querySelectorAll<HTMLElement>('button')].filter((button) => button.closest('[role="log"]') === null);
     const inTheBar = [...bar.querySelectorAll('button')].map((button) => button.textContent?.trim());
 
-    expect(inTheBar, 'the three systems are in the bar, in order').toEqual([`Terminal · ${YOUR_LAPTOP}`, 'Navegador', 'Historial (1)']);
+    expect(inTheBar, 'the three systems are in the bar, in order').toEqual([`Terminal · ${YOUR_LAPTOP}`, `Navegador · ${YOUR_LAPTOP}`, 'Historial (1)']);
     expect(document.documentElement.scrollWidth, 'the page does not scroll sideways').toBeLessThanOrEqual(window.innerWidth);
     expect(bar.scrollWidth, 'the bar does not scroll sideways').toBeLessThanOrEqual(bar.clientWidth + EPSILON);
     for (const button of buttons) expect(isReachable(button), `${button.textContent?.trim()} is within reach`).toBe(true);
