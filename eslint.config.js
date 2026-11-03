@@ -126,7 +126,7 @@ const syntaxBlocks = [
 ];
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'playwright-report', 'test-results'] },
+  { ignores: ['dist', 'node_modules', 'playwright-report', 'test-results', '.superpowers'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
