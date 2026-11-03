@@ -5015,7 +5015,7 @@ En `README.md`, la segunda línea de enlaces pasa a:
 Design: [live incidents spec](../../docs/specs/2026-10-08-follow-the-packet-live-incidents-design.md) · Plans: [clean base](../../docs/plans/2026-10-08-follow-the-packet-clean-base.md) · [incidents prototype](../../docs/plans/2026-10-08-follow-the-packet-live-incidents-prototype.md)
 ```
 
-y la primera frase termina en "…chapter 4 is being rebuilt as live incidents based on [lab 03](../../labs/03-ping-connectivity/README.md); incidents 04-01 and 04-02 are playable."
+y la primera frase termina en "…chapter 4 is being rebuilt as live incidents based on [lab 03](https://github.com/angelozdev/aws-commit-academy/blob/main/labs/03-ping-connectivity/README.md); incidents 04-01 and 04-02 are playable."
 
 - [ ] **Step 3: Estado en el spec y en el backlog**
 

@@ -2,15 +2,16 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../..');
+export const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+export const COURSE_COPY = resolve(REPO_ROOT, 'docs/course');
 const CHAPTERS_DOC = 'docs/research/2026-10-09-follow-the-packet-chapters.md';
 const OPTIONAL_MARK = ' (opcional)';
 
 export function readSyllabus(): string {
-  return readFileSync(resolve(REPO_ROOT, 'syllabus.md'), 'utf8');
+  return readFileSync(resolve(COURSE_COPY, 'syllabus.md'), 'utf8');
 }
 
-/** Returns the "## N. Title" headings of the repository's syllabus.md. */
+/** Returns the "## N. Title" headings of the copy of the course's syllabus.md in docs/course/. */
 export function syllabusChapters(text = readSyllabus()): { number: number; title: string }[] {
   return [...text.matchAll(/^## (\d+)\. (.+)$/gm)].map((m) => ({ number: Number(m[1]), title: m[2].trim() }));
 }

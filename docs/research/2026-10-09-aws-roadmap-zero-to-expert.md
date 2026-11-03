@@ -180,7 +180,7 @@ Los temas siguen las áreas transversales. Los códigos de examen son los de cad
 
 ## 3. Mapa contra el curso
 
-Se compara con los **títulos** de `syllabus.md` (ver [`../../syllabus.md`](../../syllabus.md)). Un título no prueba la profundidad. «No aparece en los títulos» no significa que el curso no lo mencione dentro de una clase.
+Se compara con los **títulos** de `syllabus.md` (ver [`../../syllabus.md`](../course/syllabus.md)). Un título no prueba la profundidad. «No aparece en los títulos» no significa que el curso no lo mencione dentro de una clase.
 
 | Tema | Módulos del curso | Cobertura según los títulos |
 |------|-------------------|------------------------------|

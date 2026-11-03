@@ -1,6 +1,6 @@
 # English only
 
-Everything written into this project (`projects/follow-the-packet/`) is in English: identifiers, file and folder names, types, constants, test names (`describe`/`it`), JSDoc, commit messages, agent instruction files, rule files, the project README and any other doc. The design spec and plan stay in Spanish: they live outside the project, in the repository's `docs/`.
+Everything written into this repo is in English: identifiers, file and folder names, types, constants, test names (`describe`/`it`), JSDoc, commit messages, agent instruction files, rule files, the README and any other file outside `docs/`. Specs, plans and research stay in Spanish in this repo's `docs/`, and `docs/course/` holds verbatim Spanish copies of course files.
 
 User-facing text is in Spanish, the product's language, and the project has no i18n layer. Spanish text lives only in named constants or message files, never inline in logic (see [[no-magic-strings]]):
 

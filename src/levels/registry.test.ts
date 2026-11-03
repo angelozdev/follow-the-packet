@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { toPlainText } from '@/copy';
-import { OFFICE_FLOORS, REPO_ROOT, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
+import { COURSE_COPY, OFFICE_FLOORS, device, diagnoseIncident, identifyIncident, officeNet, officeTwoFloorsNet, routedSendIncident, sendIncident, syllabusLessons, withDevice } from '@/testing';
 import type { Network } from '@/engine';
 import { CHAPTERS } from './chapters';
 import { curlsOutsideWebServices, missingShownIds, officeLeaks, refusedSignIns, routersCrossedByTraceroutes, shownOf, unknownCardDeviceIds, unknownClassifiedDeviceIds, unknownExpectedIds, unknownSettingDeviceIds, unknownShownIds, unknownTableOwnerIds, type SendOwner } from './contract/chips';
@@ -77,7 +77,7 @@ describe.each(INCIDENTS.map((i): [string, Incident] => [i.id, i]))('incident %s'
   it('cites a lesson of syllabus.md and a concept note that exists', () => {
     expect(missingCitations(incident)).toEqual([]);
     if (incident.lesson !== undefined) expect(lessons.has(incident.lesson)).toBe(true);
-    if (incident.concept !== undefined) expect(existsSync(resolve(REPO_ROOT, incident.concept))).toBe(true);
+    if (incident.concept !== undefined) expect(existsSync(resolve(COURSE_COPY, incident.concept))).toBe(true);
   });
 
   it('has two hints and exactly one correct explanation, in every case of a diagnose', () => {

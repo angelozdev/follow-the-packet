@@ -71,7 +71,7 @@ No tomo la decisión. El plan de 33 capítulos está aprobado.
 
 ### 2.1 Qué hay hoy
 
-Solo existen 04-01 y 04-02 ([`04-iaas/`](../../projects/follow-the-packet/src/levels/04-iaas/shared.ts)).
+Solo existen 04-01 y 04-02 ([`04-iaas/`](../../src/levels/04-iaas/shared.ts)).
 
 - Las reglas de entrada usan solo **ICMP** (`Echo Request`, `Echo Reply`, `All ICMP`) y un origen (`SG servidor1` o `Anywhere-IPv4`).
 - **Ninguna regla lleva puerto.** El jugador nunca elige protocolo ni rango de puertos.
@@ -80,11 +80,11 @@ Solo existen 04-01 y 04-02 ([`04-iaas/`](../../projects/follow-the-packet/src/le
 
 ### 2.2 Qué asume el motor
 
-- **La batería de sondas** ([`exposure.ts`](../../projects/follow-the-packet/src/engine/exposure/exposure.ts), `SERVICES`) prueba ICMP tipo 8 y 0, TCP 22, 80, 443, 3306 y 5432, y UDP 53. La estrella «sin abrir de más» depende de ella. El jugador del capítulo 4 tiene que reconocer esos puertos.
+- **La batería de sondas** ([`exposure.ts`](../../src/engine/exposure/exposure.ts), `SERVICES`) prueba ICMP tipo 8 y 0, TCP 22, 80, 443, 3306 y 5432, y UDP 53. La estrella «sin abrir de más» depende de ella. El jugador del capítulo 4 tiene que reconocer esos puertos.
 - **El esquema de reglas** ya admite `tcp` y `udp` con `fromPort` y `toPort`. El capítulo 2 puede usarlo tal cual.
 - **El paquete solo lleva el puerto de destino** (`port`). No hay puerto de origen. NAT con puertos y la vuelta con puertos invertidos lo necesitan.
 - **El anfitrión solo tiene `listeningTcpPorts`.** No hay servicios UDP ni dirección de escucha.
-- **Desajuste de rigor.** [`host.ts`](../../projects/follow-the-packet/src/engine/simulation/stages/host.ts) trata todo UDP como «sin servicio» y calla (`host-udp-no-service`, resultado `arrived-no-reply`). En la realidad, un puerto UDP cerrado debería devolver ICMP Port Unreachable (ver 4.3). Lo señalo, no lo arreglo.
+- **Desajuste de rigor.** [`host.ts`](../../src/engine/simulation/stages/host.ts) trata todo UDP como «sin servicio» y calla (`host-udp-no-service`, resultado `arrived-no-reply`). En la realidad, un puerto UDP cerrado debería devolver ICMP Port Unreachable (ver 4.3). Lo señalo, no lo arreglo.
 
 ### 2.3 Qué prometía la escalera para 04-03 a 04-08
 
@@ -101,7 +101,7 @@ Fuente: [spec de incidentes en vivo](../specs/2026-10-08-follow-the-packet-live-
 
 ### 2.4 Qué términos del registro cambian de capítulo
 
-El registro está en [`terms.ts`](../../projects/follow-the-packet/src/copy/terms.ts). El [documento de capítulos](2026-10-09-follow-the-packet-chapters.md) (línea 370) ya dice que CIDR, NAT y DNS genéricos pasan al capítulo 2.
+El registro está en [`terms.ts`](../../src/copy/terms.ts). El [documento de capítulos](2026-10-09-follow-the-packet-chapters.md) (línea 370) ya dice que CIDR, NAT y DNS genéricos pasan al capítulo 2.
 
 | Término actual | Qué hacer |
 |----------------|-----------|

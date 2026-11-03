@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-09 · Estado: aprobado por el estudiante el 2026-10-10, tal cual («Cambia todo el temario del juego para que muestre los 33 caps»). El juego lo sigue desde el [plan de los 33 capítulos](../plans/2026-10-10-follow-the-packet-33-chapters.md).
 
-Base: [hoja de ruta de AWS](2026-10-09-aws-roadmap-zero-to-expert.md) (niveles, 69 temas, dependencias), [`syllabus.md`](../../syllabus.md) (20 módulos), [spec de incidentes en vivo](../specs/2026-10-08-follow-the-packet-live-incidents-design.md) y [spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md).
+Base: [hoja de ruta de AWS](2026-10-09-aws-roadmap-zero-to-expert.md) (niveles, 69 temas, dependencias), [`syllabus.md`](../course/syllabus.md) (20 módulos), [spec de incidentes en vivo](../specs/2026-10-08-follow-the-packet-live-incidents-design.md) y [spec del capítulo 1](../specs/2026-10-09-follow-the-packet-chapter-1-design.md).
 
 Este documento solo corta capítulos. No diseña incidentes ni lista conceptos: eso lo hará después una investigación por capítulo, que parte de las preguntas de cada ficha.
 

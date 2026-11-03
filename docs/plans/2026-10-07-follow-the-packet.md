@@ -4961,7 +4961,7 @@ Expected: 3 tests PASS y 7 capturas en `test-results/levels/`. Si el canvas no a
 ```markdown
 # Sigue el paquete
 
-Juego para estudiar redes en AWS: predices dónde muere un paquete, lo ves viajar y arreglas (o atacas) la configuración. Un capítulo por módulo del curso; el capítulo 4 tiene 7 niveles de Security Groups basados en el [lab 03](../../labs/03-ping-connectivity/README.md).
+Juego para estudiar redes en AWS: predices dónde muere un paquete, lo ves viajar y arreglas (o atacas) la configuración. Un capítulo por módulo del curso; el capítulo 4 tiene 7 niveles de Security Groups basados en el [lab 03](https://github.com/angelozdev/aws-commit-academy/blob/main/labs/03-ping-connectivity/README.md).
 
 Diseño: [spec](../../docs/specs/2026-10-07-follow-the-packet-design.md) · Plan: [plan](../../docs/plans/2026-10-07-follow-the-packet.md)
 

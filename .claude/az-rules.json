@@ -19,7 +19,7 @@
       "origin": "core/english-only",
       "version": 1,
       "notes": [
-        "covers all of projects/follow-the-packet, project README included; spec and plan stay in Spanish in the repo-root docs/",
+        "covers this whole repo, README included; specs, plans and research stay in Spanish in this repo's docs/, and docs/course/ holds verbatim Spanish copies of course files",
         "display language Spanish, no i18n layer: Spanish text in src/copy/ and in level files",
         "deviation: the engine returns reason codes and src/copy/ renders them in Spanish"
       ]

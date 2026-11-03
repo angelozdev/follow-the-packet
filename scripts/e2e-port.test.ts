@@ -6,7 +6,7 @@ import { E2E_PORT_COUNT, FIRST_E2E_PORT, e2ePort, e2ePortOf } from './e2e-port';
 
 const LAST_E2E_PORT = FIRST_E2E_PORT + E2E_PORT_COUNT - 1;
 const STUDENT_PORTS = [5173, 5180];
-const MAIN_TREE = '/Users/angelozdev/me/AWS Commit Academy/projects/follow-the-packet';
+const MAIN_TREE = '/Users/angelozdev/me/follow-the-packet';
 const CHAPTER_2_TREE = '/Users/angelozdev/me/aws-commit-academy-chapter-2/projects/follow-the-packet';
 const SAMPLE_COUNT = 2000;
 const samples = Array.from({ length: SAMPLE_COUNT }, (_, index) => `/Users/angelozdev/me/worktree-${index}/projects/follow-the-packet`);
